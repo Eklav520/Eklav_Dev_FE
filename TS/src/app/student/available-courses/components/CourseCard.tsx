@@ -34,6 +34,7 @@ type CourseType = {
   description?: string
   totalLectures: string
   features?: string
+  previewVideo?: string
   videos?: Array<{
     _id?: string
     video?: string
@@ -70,6 +71,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
     language,
     features,
     videos = [],
+    previewVideo,
     price,
     discountPrice,
     averageRating = 0,
@@ -122,7 +124,9 @@ const CourseCard = ({ course }: { course: CourseType }) => {
     return s.replace(/^"+|"+$/g, '')
   }
 
-  const previewUrl = useMemo(() => getVideoUrl(videos[0] || {}), [videos])
+  const previewUrl = useMemo(() => {
+    return previewVideo?.trim() || ''
+  }, [previewVideo])
 
   // effects
   useEffect(() => {

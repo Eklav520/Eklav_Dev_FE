@@ -9,30 +9,28 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
 
 type VideoUpload = {
-  videos: File;
-  description: string;
+  videos: File
+  description: string
   caseStudy?: {
-    title: string;
-    description: string;
-    inputExample: string;
-    expectedOutput: string;
-    boilerplate: string;
-  } | null;
-};
+    title: string
+    description: string
+    inputExample: string
+    expectedOutput: string
+    boilerplate: string
+  } | null
+}
 
 type UploadVideoPayload = {
-  video: string;
-  description: string;
+  video: string
+  description: string
   caseStudy?: {
-    title: string;
-    description: string;
-    inputExample: string;
-    expectedOutput: string;
-    boilerplate: string;
-  } | null;
-};
-
-
+    title: string
+    description: string
+    inputExample: string
+    expectedOutput: string
+    boilerplate: string
+  } | null
+}
 
 type CourseFormData = {
   title: string
@@ -49,6 +47,8 @@ type CourseFormData = {
   image: File | null
   videoUrl: { url: string; description: string }[]
   videos: VideoUpload[]
+  previewVideo: File | null // ✅ ADD
+  previewVideoUrl?: string | null
   addFAQ: { question: string; answer: string }[]
   features: string[]
   quizFile: File | null
@@ -61,6 +61,8 @@ const CreateCourseForm = () => {
   const { showNotification } = useNotificationContext()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  // ADD STATE
+  const [uploadedVideoCount, setUploadedVideoCount] = useState<number>(0)
   const [uploadProgress, setUploadProgress] = useState<number>(0)
   const [formData, setFormData] = useState<CourseFormData>({
     title: '',
@@ -77,6 +79,8 @@ const CreateCourseForm = () => {
     image: null,
     videoUrl: [],
     videos: [],
+    previewVideo: null, // ✅ ADD
+    previewVideoUrl: null, // ✅ ADD
     addFAQ: [],
     features: [],
     quizFile: null,
@@ -93,120 +97,129 @@ const CreateCourseForm = () => {
     else navigate('/instructor/edit-profile')
   }
 
- const handleSubmit = async () => {
-  console.log("🟢 handleSubmit called");
-  try {
-    setUploadProgress(0);
+  const uploadToS3WithProgress = (file: File, folder: string, onProgress: (percent: number) => void): Promise<string> => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        // 1️⃣ Get presigned POST
+        const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
+          fileName: file.name,
+          fileType: file.type,
+          folder,
+        })
 
-    // --- Step 1: Upload videos ---
-   const uploadedVideos: UploadVideoPayload[] = [];
-    for (const videoObj of formData.videos) {
-      const file = videoObj.videos;
-      const description = videoObj.description;
-      const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
-        fileName: file.name,
-        fileType: file.type,
-      });
+        // 2️⃣ Build form data
+        const formData = new FormData()
+        Object.entries(data.fields).forEach(([k, v]) => {
+          formData.append(k, v as string)
+        })
+        formData.append('file', file)
 
-      await axios.put(data.uploadUrl, file, {       // ✅ fixed
-        headers: { "Content-Type": file.type },
-        onUploadProgress: (e) => {
-          if (e.total)
-            setUploadProgress(Math.round((e.loaded * 100) / e.total));
-        },
-      });
+        // 3️⃣ Upload with XHR (for progress)
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', data.uploadUrl)
 
-      uploadedVideos.push({
-        video: data.key,
-        description,
-        caseStudy: videoObj.caseStudy || null,
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100)
+            onProgress(percent)
+          }
+        }
+
+        xhr.onload = () => {
+          if (xhr.status === 204 || xhr.status === 201) {
+            resolve(data.key)
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`))
+          }
+        }
+
+        xhr.onerror = () => reject(new Error('Upload failed'))
+
+        xhr.send(formData)
+      } catch (err) {
+        reject(err)
+      }
+    })
+  }
+
+  const handleSubmit = async () => {
+    try {
+      setUploadProgress(0)
+      setUploadedVideoCount(0) // ✅ RESET COUNT
+
+      // ======================
+      // Upload videos
+      // ======================
+      const uploadedVideos: UploadVideoPayload[] = []
+
+      for (let i = 0; i < formData.videos.length; i++) {
+        const videoObj = formData.videos[i]
+        const file = videoObj.videos
+
+        const videoKey = await uploadToS3WithProgress(file, 'videos', (percent) => {
+          setUploadProgress(percent)
+        })
+
+        // ✅ INCREMENT AFTER EACH SUCCESSFUL UPLOAD
+        setUploadedVideoCount((prev) => prev + 1)
+
+        uploadedVideos.push({
+          video: videoKey,
+          description: videoObj.description,
+          caseStudy: videoObj.caseStudy || null,
+        })
+      }
+
+      // ======================
+      // Upload image
+      // ======================
+      let uploadedImageKey: string | null = null
+      if (formData.image) {
+        uploadedImageKey = await uploadToS3WithProgress(formData.image, 'images', setUploadProgress)
+      }
+
+      // ======================
+      // Upload preview video
+      // ======================
+      let uploadedPreviewVideoKey: string | null = null
+      if (formData.previewVideo) {
+        uploadedPreviewVideoKey = await uploadToS3WithProgress(formData.previewVideo, 'preview-videos', setUploadProgress)
+      }
+
+      // ======================
+      // Upload quiz file
+      // ======================
+      let uploadedQuizKey: string | null = null
+      if (formData.quizFile) {
+        uploadedQuizKey = await uploadToS3WithProgress(formData.quizFile, 'quiz', setUploadProgress)
+      }
+
+      // ======================
+      // Submit course
+      // ======================
+      await axios.post(`${baseURL}/courses`, {
+        ...formData,
+        image: uploadedImageKey,
+        previewVideo: uploadedPreviewVideoKey,
+        quizKey: uploadedQuizKey,
+        addVideo: uploadedVideos,
+      })
+
+      showNotification({
+        message: 'Course created successfully',
+        variant: 'success',
+      })
+
+      // ✅ REDIRECT AFTER SUCCESS
+      navigate('/instructor/manage-course')
+    } catch (err) {
+      console.error(err)
+      showNotification({
+        message: 'Upload failed',
+        variant: 'danger',
       })
     }
-
-    // --- Step 2: Upload image ---
-    let uploadedImageKey: string | null = null;
-    if (formData.image) {
-      const file = formData.image;
-      const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
-        fileName: file.name,
-        fileType: file.type,
-      });
-
-      await axios.put(data.uploadUrl, file, {       // ✅ fixed
-        headers: { "Content-Type": file.type },
-        onUploadProgress: (e) => {
-          if (e.total)
-            setUploadProgress(Math.round((e.loaded * 100) / e.total));
-        },
-      });
-
-      uploadedImageKey = data.key;
-    }
-
-    // --- Step 3: Upload quiz Excel ---
-    let uploadedQuizKey: string | null = null;
-    if (formData.quizFile) {
-      const file = formData.quizFile;
-      const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
-        fileName: file.name,
-        fileType: file.type,
-        folder: "quiz",
-      });
-
-      await axios.put(data.uploadUrl, file, {       // ✅ fixed
-        headers: { "Content-Type": file.type },
-        onUploadProgress: (e) => {
-          if (e.total)
-            setUploadProgress(Math.round((e.loaded * 100) / e.total));
-        },
-      });
-
-      uploadedQuizKey = data.key;
-    }
-
-    // --- Step 4: Build JSON payload ---
-    const payload = {
-      title: formData.title,
-      shortDescription: formData.shortDescription,
-      category: formData.category,
-      level: formData.level,
-      language: formData.language,
-      isFeatured: formData.isFeatured,
-      duration: formData.duration,
-      totalLectures: formData.totalLectures,
-      price: formData.price,
-      discountPrice: formData.discountPrice,
-      description: formData.description,
-      image: uploadedImageKey,
-      videoUrl: formData.videoUrl,
-      features: formData.features,
-      addFAQ: formData.addFAQ,
-      quizKey: uploadedQuizKey,
-      addVideo: uploadedVideos,
-    };
-
-    // --- Step 5: Submit JSON ---
-    const response = await axios.post(`${baseURL}/courses`, payload, {
-      headers: { "Content-Type": "application/json" },
-    });
-
-    if (response.status === 201) {
-      showNotification({
-        message: "Successfully Course Created. Redirecting...",
-        variant: "success",
-      });
-      redirectUser();
-    } else {
-      showNotification({
-        message: "Something went wrong during course creation.",
-        variant: "danger",
-      });
-    }
-  } catch (error) {
-    console.error("Error submitting course:", error);
-    showNotification({ message: "Network Failed.", variant: "danger" });
   }
-};
 
   return (
     <section>
@@ -214,8 +227,8 @@ const CreateCourseForm = () => {
         <Row>
           <Col md={8} className="mx-auto text-center">
             <p>
-              Use this interface to add a new Course to the portal. Once you are done adding the item it will be reviewed
-              for quality. If approved, your course will appear for sale and you will be informed by email.
+              Use this interface to add a new Course to the portal. Once you are done adding the item it will be reviewed for quality. If approved,
+              your course will appear for sale and you will be informed by email.
             </p>
           </Col>
         </Row>
@@ -261,6 +274,7 @@ const CreateCourseForm = () => {
                   setFormData={setFormData}
                   handleSubmit={handleSubmit}
                   uploadProgress={uploadProgress}
+                  uploadedVideoCount={uploadedVideoCount} // ✅ ADD
                 />
               </div>
             </CardBody>
