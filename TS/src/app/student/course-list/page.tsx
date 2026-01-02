@@ -420,7 +420,6 @@ const CourseListPage = () => {
 
   if (loading) return <p>Loading enrolled courses...</p>
   if (error) return <p>Error: {error}</p>
-  if (enrolledCourses.length === 0) return <p>No enrolled courses found.</p>
 
   return (
     <>
@@ -462,68 +461,81 @@ const CourseListPage = () => {
           </Row>
         </CardHeader>
         <CardBody>
-          <Row className="g-3 align-items-center justify-content-between mb-4">
-            <Col md={8}></Col>
-          </Row>
+          {enrolledCourses.length === 0 ? (
+            <div className="d-flex flex-column align-items-center justify-content-center py-5 text-center">
+              <div
+                className="d-flex align-items-center justify-content-center mb-3"
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.08)',
+                }}>
+                <BsPlayCircle size={36} className="text-primary" />
+              </div>
 
-          <div className="table-responsive border-0">
-            <table className="table table-dark-gray align-middle p-4 mb-0 table-hover">
-              <thead>
-                <tr>
-                  <th scope="col" className="border-0 rounded-start">
-                    Course Title
-                  </th>
-                  <th scope="col" className="border-0">
-                    Total Lectures
-                  </th>
-                  <th scope="col" className="border-0">
-                    Total Progress
-                  </th>
-                  <th scope="col" className="border-0">
-                    Status
-                  </th>
-                  <th scope="col" className="border-0">
-                    Your Rating
-                  </th>
-                  <th scope="col" className="border-0 rounded-end">
-                    Action
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentCourses.map((item, idx) => (
-                  <CourseData key={idx} {...item} onRateCourse={handleRateCourse} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+              <h5 className="mb-2">No enrolled courses yet</h5>
+              <p className="text-muted mb-4" style={{ maxWidth: 420 }}>
+                You haven’t enrolled in any courses. Start learning by exploring our available courses.
+              </p>
 
-          <div className="d-sm-flex justify-content-sm-between align-items-sm-center mt-4 mt-sm-3">
-            <p className="mb-0 text-center text-sm-start">Showing {filteredCourses.length} entries</p>
-            <nav aria-label="Page navigation">
-              <ul className="pagination pagination-sm pagination-primary-soft d-inline-block d-md-flex rounded mb-0">
-                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
-                    <FaAngleLeft className="icons-center" />
-                  </button>
-                </li>
+              <Button variant="primary" onClick={() => (window.location.href = '/student/available-courses')}>
+                Browse Courses
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* ✅ Existing Table UI */}
+              <div className="table-responsive border-0">
+                <table className="table table-dark-gray align-middle p-4 mb-0 table-hover">
+                  <thead>
+                    <tr>
+                      <th className="border-0 rounded-start">Course Title</th>
+                      <th className="border-0">Total Lectures</th>
+                      <th className="border-0">Total Progress</th>
+                      <th className="border-0">Status</th>
+                      <th className="border-0">Your Rating</th>
+                      <th className="border-0 rounded-end">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentCourses.map((item, idx) => (
+                      <CourseData key={idx} {...item} onRateCourse={handleRateCourse} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                {[...Array(totalPages)].map((_, idx) => (
-                  <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                    <button className="page-link" onClick={() => setCurrentPage(idx + 1)}>
-                      {idx + 1}
-                    </button>
-                  </li>
-                ))}
+              {/* Pagination */}
+              <div className="d-sm-flex justify-content-sm-between align-items-sm-center mt-4">
+                <p className="mb-0 text-center text-sm-start">Showing {filteredCourses.length} entries</p>
 
-                <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                  <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
-                    <FaAngleRight className="icons-center" />
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          </div>
+                <nav>
+                  <ul className="pagination pagination-sm pagination-primary-soft mb-0">
+                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
+                        <FaAngleLeft />
+                      </button>
+                    </li>
+
+                    {[...Array(totalPages)].map((_, idx) => (
+                      <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
+                        <button className="page-link" onClick={() => setCurrentPage(idx + 1)}>
+                          {idx + 1}
+                        </button>
+                      </li>
+                    ))}
+
+                    <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
+                        <FaAngleRight />
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              </div>
+            </>
+          )}
         </CardBody>
       </Card>
     </>
