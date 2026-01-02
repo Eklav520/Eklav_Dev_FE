@@ -97,14 +97,22 @@ const CreateCourseForm = () => {
     else navigate('/instructor/edit-profile')
   }
 
-  const uploadToS3WithProgress = (file: File, folder: string, onProgress: (percent: number) => void): Promise<string> => {
+  const uploadToS3WithProgress = (
+    file: File,
+    options: {
+      courseTitle: string
+      assetType: 'video' | 'image' | 'preview' | 'quiz'
+    },
+    onProgress: (percent: number) => void,
+  ): Promise<string> => {
     return new Promise(async (resolve, reject) => {
       try {
-        // 1️⃣ Get presigned POST
+        // 1️⃣ Get presigned POST (NEW PAYLOAD)
         const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
           fileName: file.name,
           fileType: file.type,
-          folder,
+          courseTitle: options.courseTitle,
+          assetType: options.assetType,
         })
 
         // 2️⃣ Build form data
@@ -114,7 +122,7 @@ const CreateCourseForm = () => {
         })
         formData.append('file', file)
 
-        // 3️⃣ Upload with XHR (for progress)
+        // 3️⃣ Upload with progress
         const xhr = new XMLHttpRequest()
         xhr.open('POST', data.uploadUrl)
 
@@ -127,7 +135,7 @@ const CreateCourseForm = () => {
 
         xhr.onload = () => {
           if (xhr.status === 204 || xhr.status === 201) {
-            resolve(data.key)
+            resolve(data.key) // ✅ S3 KEY with auto folder
           } else {
             reject(new Error(`Upload failed with status ${xhr.status}`))
           }
@@ -145,10 +153,10 @@ const CreateCourseForm = () => {
   const handleSubmit = async () => {
     try {
       setUploadProgress(0)
-      setUploadedVideoCount(0) // ✅ RESET COUNT
+      setUploadedVideoCount(0)
 
       // ======================
-      // Upload videos
+      // Upload lesson videos
       // ======================
       const uploadedVideos: UploadVideoPayload[] = []
 
@@ -156,11 +164,15 @@ const CreateCourseForm = () => {
         const videoObj = formData.videos[i]
         const file = videoObj.videos
 
-        const videoKey = await uploadToS3WithProgress(file, 'videos', (percent) => {
-          setUploadProgress(percent)
-        })
+        const videoKey = await uploadToS3WithProgress(
+          file,
+          {
+            courseTitle: formData.title, // ✅ auto folder from title
+            assetType: 'video',
+          },
+          (percent) => setUploadProgress(percent),
+        )
 
-        // ✅ INCREMENT AFTER EACH SUCCESSFUL UPLOAD
         setUploadedVideoCount((prev) => prev + 1)
 
         uploadedVideos.push({
@@ -171,11 +183,18 @@ const CreateCourseForm = () => {
       }
 
       // ======================
-      // Upload image
+      // Upload course image
       // ======================
       let uploadedImageKey: string | null = null
       if (formData.image) {
-        uploadedImageKey = await uploadToS3WithProgress(formData.image, 'images', setUploadProgress)
+        uploadedImageKey = await uploadToS3WithProgress(
+          formData.image,
+          {
+            courseTitle: formData.title,
+            assetType: 'image',
+          },
+          setUploadProgress,
+        )
       }
 
       // ======================
@@ -183,7 +202,14 @@ const CreateCourseForm = () => {
       // ======================
       let uploadedPreviewVideoKey: string | null = null
       if (formData.previewVideo) {
-        uploadedPreviewVideoKey = await uploadToS3WithProgress(formData.previewVideo, 'preview-videos', setUploadProgress)
+        uploadedPreviewVideoKey = await uploadToS3WithProgress(
+          formData.previewVideo,
+          {
+            courseTitle: formData.title,
+            assetType: 'preview',
+          },
+          setUploadProgress,
+        )
       }
 
       // ======================
@@ -191,11 +217,18 @@ const CreateCourseForm = () => {
       // ======================
       let uploadedQuizKey: string | null = null
       if (formData.quizFile) {
-        uploadedQuizKey = await uploadToS3WithProgress(formData.quizFile, 'quiz', setUploadProgress)
+        uploadedQuizKey = await uploadToS3WithProgress(
+          formData.quizFile,
+          {
+            courseTitle: formData.title,
+            assetType: 'quiz',
+          },
+          setUploadProgress,
+        )
       }
 
       // ======================
-      // Submit course
+      // Submit course metadata
       // ======================
       await axios.post(`${baseURL}/courses`, {
         ...formData,
@@ -210,7 +243,6 @@ const CreateCourseForm = () => {
         variant: 'success',
       })
 
-      // ✅ REDIRECT AFTER SUCCESS
       navigate('/instructor/manage-course')
     } catch (err) {
       console.error(err)
