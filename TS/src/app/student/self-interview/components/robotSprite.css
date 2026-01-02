@@ -1,0 +1,34 @@
+:root {
+  --fw: 576px;   /* frame width */
+  --fh: 896px;   /* frame height */
+}
+
+.robot-sprite {
+  width: var(--fw);
+  height: var(--fh);
+  background-image: url("../../../../assets/images/robot-sprite.png");
+  background-repeat: no-repeat;
+  background-position: 0px 0px;
+
+  animation: robotBlink 5s infinite ease-in-out;
+}
+
+/* SPEAKING mode */
+.robot-sprite.speaking {
+  animation: robotTalk 1.2s steps(4) infinite;
+}
+
+/* TALK animation */
+@keyframes robotTalk {
+  0%   { background-position:    0px      0px; }
+  25%  { background-position:  calc(-1 * var(--fw))      0px; }
+  50%  { background-position:    0px   calc(-1 * var(--fh)); }
+  75%  { background-position:  calc(-1 * var(--fw))   calc(-1 * var(--fh)); }
+  100% { background-position:    0px      0px; }
+}
+
+/* BLINK animation */
+@keyframes robotBlink {
+  0%, 96%, 100% { background-position: 0px 0px; }
+  95% { background-position: calc(-1 * var(--fw)) 0px; }
+}

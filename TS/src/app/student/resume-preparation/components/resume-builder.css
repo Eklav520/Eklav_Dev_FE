@@ -1,0 +1,74 @@
+/* ==============================
+   Resume Builder – FORCE WHITE BACKGROUND
+   ============================== */
+
+.resume-builder-page {
+  background-color: #f8f9fa !important; /* light background */
+  min-height: 100vh;
+}
+
+.resume-builder-content {
+  background-color: #f8f9fa !important;
+}
+
+/* Cards stay white */
+.resume-builder-page .bg-white,
+.resume-builder-page .card {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+}
+
+/* Inputs */
+.resume-builder-page input,
+.resume-builder-page textarea,
+.resume-builder-page select {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da;
+}
+
+/* Step labels & text */
+.resume-builder-page h5,
+.resume-builder-page small {
+  color: #212529 !important;
+}
+
+/* ==============================
+   Resume Builder – Input Fix
+   ============================== */
+
+.resume-builder-page .form-control,
+.resume-builder-page input,
+.resume-builder-page textarea,
+.resume-builder-page select {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+}
+
+/* Remove grey/blue focus background */
+.resume-builder-page .form-control:focus,
+.resume-builder-page input:focus,
+.resume-builder-page textarea:focus,
+.resume-builder-page select:focus {
+  background-color: #ffffff !important;
+  color: #212529 !important;
+  border-color: #86b7fe;
+  box-shadow: 0 0 0 0.15rem rgba(13, 110, 253, 0.15);
+}
+
+/* Fix autofill (Chrome issue) */
+.resume-builder-page input:-webkit-autofill,
+.resume-builder-page input:-webkit-autofill:hover,
+.resume-builder-page input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #212529 !important;
+}
+
+/* Disabled / readonly fields (if any) */
+.resume-builder-page input:disabled,
+.resume-builder-page input[readonly] {
+  background-color: #ffffff !important;
+  opacity: 1;
+}
+

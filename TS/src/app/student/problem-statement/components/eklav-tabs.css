@@ -1,0 +1,23 @@
+/* ===== EKLAV ORANGE TAB STYLE ===== */
+
+.eklav-tabs .nav-link {
+  color: #adb5bd;
+  border: none !important;
+  background: transparent !important;
+  font-weight: 500;
+}
+
+.eklav-tabs .nav-link:hover {
+  color: #f59f00;
+}
+
+.eklav-tabs .nav-link.active {
+  color: #f59f00 !important;
+  background: transparent !important;
+  border-bottom: 2px solid #f59f00 !important;
+  font-weight: 600;
+}
+
+.eklav-tabs .nav-item {
+  margin-right: 8px;
+}

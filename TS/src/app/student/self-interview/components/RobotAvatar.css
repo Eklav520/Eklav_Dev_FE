@@ -1,0 +1,149 @@
+.robot-svg-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: floatRobot 3s ease-in-out infinite;
+}
+
+/* Floating */
+@keyframes floatRobot {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Blinking eyes */
+.eye {
+  transform-origin: center;
+  animation: blink 4s infinite;
+}
+
+@keyframes blink {
+  0%, 96%, 100% { transform: scaleY(1); }
+  98% { transform: scaleY(0.1); }
+}
+
+/* Mouth talking animation */
+.robot-svg-container.talking .mouth {
+  animation: talkAnim 0.25s infinite;
+}
+
+@keyframes talkAnim {
+  0% { height: 20px; rx: 10; }
+  50% { height: 8px; rx: 4; }
+  100% { height: 20px; rx: 10; }
+}
+
+/* Waving hand */
+.wave-hand {
+  animation: wave 1.8s ease-in-out infinite;
+  transform-origin: top right;
+}
+
+@keyframes wave {
+  0% { transform: rotate(0deg); }
+  30% { transform: rotate(18deg); }
+  60% { transform: rotate(-10deg); }
+  100% { transform: rotate(0deg); }
+}
+.robot-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: robotPop 0.5s ease-out;
+  filter: drop-shadow(0px 3px 8px rgba(0,0,0,0.25));
+}
+
+@keyframes robotPop {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Glow */
+.robot-glow {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  background: radial-gradient(circle, rgba(200,200,200,0.35), rgba(120,120,120,0.15), transparent 70%);
+  border-radius: 50%;
+  top: -15%;
+  left: -25%;
+  animation: glowPulse 3s ease-in-out infinite;
+  filter: blur(10px);
+  z-index: -1;
+}
+
+@keyframes glowPulse {
+  0% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+  100% { opacity: 0.4; transform: scale(1); }
+}
+
+/* Head tilt on speaking */
+.robot-speaking .robot-head {
+  animation: headTilt 1.5s infinite ease-in-out;
+}
+
+@keyframes headTilt {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(4deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Eyes */
+.eye {
+  fill: #ff4fd0;
+}
+
+/* Mouth animations */
+.mouth-smile {
+  stroke: #ff4fd0;
+}
+
+.mouth-talking {
+  fill: #ff4fd0;
+  animation: talkMouth 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes talkMouth {
+  0% { height: 6px; }
+  100% { height: 16px; }
+}
+
+.mouth-listening {
+  fill: #00ccff;
+}
+
+.mouth-processing {
+  fill: #ffaa00;
+}
+
+/* Arms */
+.robot-speaking .right-arm {
+  animation: waveHand 1s infinite ease-in-out;
+  transform-origin: top center;
+}
+
+@keyframes waveHand {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(18deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Status text */
+.robot-status-text {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.eye, .mouth-smile, .mouth-talking {
+  fill: #d06cff !important;
+  stroke: #d06cff !important;
+}
+
+
+
+

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css?v=2"
+/>
+
+  <title>Eklav | Learning & Career Platform</title>
+
+  <style>
+    #splash-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: white;
+      display: flex;
+      height: 100%;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: all 0.5s ease;
+    }
+
+    #splash-screen.remove {
+      animation: fadeout 0.7s forwards;
+      z-index: 0;
+    }
+
+    @keyframes fadeout {
+      to {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <div id="splash-screen">
+    <img alt="Logo" src="./src/assets/images/logo.svg" style="height: 80px;" />
+  </div>
+
+  <!-- 🔄 Razorpay Checkout Script -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <!-- React App Entry Point -->
+  <script type="module" src="/src/main.tsx"></script>
+
+  <script>
+    const rootEl = document.querySelector('#root');
+    new MutationObserver(() => {
+      document.querySelector('#splash-screen')?.classList.add('remove');
+    }).observe(rootEl, { childList: true });
+
+    // Optional fallback timeout in case React doesn't render
+    setTimeout(() => {
+      document.querySelector('#splash-screen')?.classList.add('remove');
+    }, 5000);
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,935 @@
+import React, { useState, useEffect } from 'react'
+import { Container, Card, Form, Button, Row, Col, Spinner, ProgressBar, Badge } from 'react-bootstrap'
+import { FaFeatherAlt, FaPlay, FaRedo, FaLightbulb, FaCheckCircle, FaPenNib, FaStar } from 'react-icons/fa'
+import { useAuthContext } from '@/context/useAuthContext'
+
+interface WritingFeedbackResult {
+  score: number
+  corrections?: string
+  feedback?: FeedbackDetail
+}
+
+interface WritingHistoryUI {
+  attemptsUsed: number
+  weeklyLimit: number
+  attemptsLeft: number
+  bestScore: number | null
+}
+
+interface FeedbackDetail {
+  overall?: string
+  grammar?: string
+  tone?: string
+  suggestions?: string[]
+}
+
+interface Submission {
+  _id?: string
+  mode: string
+  prompt: string
+  text: string
+  corrections?: string
+  feedback?: FeedbackDetail
+  score?: number
+  createdAt?: string
+}
+
+type ModeType = 'essay' | 'email' | 'summary'
+
+const WritingPractice: React.FC = () => {
+  const { user } = useAuthContext()
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const token = user?.token
+
+  const [started, setStarted] = useState(false)
+  const [mode, setMode] = useState<ModeType>('essay')
+  const [prompt, setPrompt] = useState('')
+  const [text, setText] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [feedback, setFeedback] = useState<WritingFeedbackResult | null>(null)
+  const [fetchingPrompt, setFetchingPrompt] = useState(false)
+  const [history, setHistory] = useState<WritingHistoryUI | null>(null)
+
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
+  const isWeeklyLimitReached = !!history && history.attemptsUsed >= history.weeklyLimit
+
+  const canStart = !started && !isWeeklyLimitReached
+
+  const startWriting = async () => {
+    setStarted(true)
+    setFeedback(null)
+    setText('')
+    setPrompt('')
+    setFetchingPrompt(true)
+
+    try {
+      const res = await fetch(`${baseURL}/writing/prompt/${mode}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setPrompt(data?.prompt || 'Write about a topic of your choice.')
+    } catch (err) {
+      console.error('Error fetching AI prompt:', err)
+      setPrompt('Write about a topic of your choice.')
+    } finally {
+      setFetchingPrompt(false)
+    }
+  }
+
+  const fetchWritingHistory = async () => {
+    if (!token || !user?.id) return
+
+    try {
+      setLoadingHistory(true)
+
+      const res = await fetch(`${baseURL}/writing/history/${user.id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!res.ok) throw new Error('Failed to fetch writing history')
+
+      const data = await res.json()
+
+      // No history yet
+      if (!Array.isArray(data) || data.length === 0) {
+        setHistory({
+          attemptsUsed: 0,
+          weeklyLimit: 5,
+          attemptsLeft: 5,
+          bestScore: null,
+        })
+        return
+      }
+
+      const latest = data[0]
+      const attempts = latest.attempts || []
+
+      const attemptsUsed = attempts.length
+      const weeklyLimit = latest.weeklyLimit ?? 5
+      const attemptsLeft = Math.max(weeklyLimit - attemptsUsed, 0)
+
+      // Prefer backend summary, fallback to computation
+      const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
+
+      setHistory({
+        attemptsUsed,
+        weeklyLimit,
+        attemptsLeft,
+        bestScore,
+      })
+    } catch (err) {
+      console.error('Writing history error:', err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    if (token && user?.id) {
+      fetchWritingHistory()
+    }
+  }, [token, user?.id])
+
+  const handleSubmit = async () => {
+    if (!text.trim()) return alert('Please write your response first!')
+    setLoading(true)
+    try {
+      const res = await fetch(`${baseURL}/writing/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentId: user?.id,
+          mode,
+          prompt,
+          text,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setFeedback({
+        score: data.score,
+        corrections: data.feedback?.corrections,
+        feedback: data.feedback?.feedback,
+      })
+    } catch (err) {
+      console.error('Error submitting writing:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const restartPractice = () => {
+    setStarted(false)
+    setFeedback(null)
+    setPrompt('')
+    setText('')
+  }
+
+  const getScoreVariant = (score: number) => {
+    if (score >= 8) return 'success'
+    if (score >= 6) return 'warning'
+    return 'danger'
+  }
+
+  const getScoreFeedback = (score: number) => {
+    if (score >= 9) return 'Excellent!'
+    if (score >= 8) return 'Very Good!'
+    if (score >= 7) return 'Good!'
+    if (score >= 6) return 'Fair'
+    return 'Needs Improvement'
+  }
+
+  const formatParagraphs = (text?: string) => {
+    if (!text) return null // safely handle undefined
+    return text
+      .split(/\n+/)
+      .filter((p) => p.trim() !== '')
+      .map((p, i) => (
+        <p key={i} className="mb-2">
+          {p}
+        </p>
+      ))
+  }
+
+  return (
+    <Container fluid className="writing-practice-container">
+      {!started ? (
+        <div className="start-screen text-center">
+          <div className="start-card">
+            <div className="icon-wrapper">
+              <FaFeatherAlt className="main-icon" />
+            </div>
+            <h2>Writing Practice</h2>
+            <p className="description">
+              Enhance your writing skills with AI-powered feedback on grammar, tone, structure, and vocabulary. Get detailed analysis and improvement
+              suggestions.
+            </p>
+
+            <div className="mode-selection mb-4">
+              <Form.Select value={mode} onChange={(e) => setMode(e.target.value as ModeType)} className="mode-selector">
+                <option value="essay">📝 Essay Writing</option>
+                <option value="email">📧 Email Writing</option>
+                <option value="summary">📄 Summary Writing</option>
+              </Form.Select>
+            </div>
+
+            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isWeeklyLimitReached} className="start-button">
+              {fetchingPrompt ? (
+                <>
+                  <Spinner animation="border" size="sm" className="me-2" />
+                  Generating Prompt...
+                </>
+              ) : (
+                <>
+                  <FaPlay className="me-2" />
+                  Start {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </>
+              )}
+            </Button>
+            {history && (
+              <div className="mt-3 d-flex flex-column gap-2 align-items-center">
+                <Badge bg={!isWeeklyLimitReached ? 'info' : 'danger'}>
+                  Attempts: {history.attemptsUsed} / {history.weeklyLimit}
+                </Badge>
+
+                {history.bestScore !== null && <Badge bg="success">Best Score: {history.bestScore}/10 ⭐</Badge>}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="practice-container">
+          {/* Question Section - Top */}
+          <Card className="question-card mb-4">
+            <Card.Body className="question-body">
+              <div className="question-header">
+                <h4 className="question-title">
+                  <FaPenNib className="me-2" />
+                  Writing Topic
+                </h4>
+                <Badge bg="primary" className="mode-badge">
+                  {mode.toUpperCase()}
+                </Badge>
+              </div>
+              <div className="question-content">
+                {fetchingPrompt ? (
+                  <div className="loading-prompt text-center">
+                    <Spinner animation="border" variant="primary" size="sm" className="me-2" />
+                    Generating your writing prompt...
+                  </div>
+                ) : (
+                  <p className="mb-0 question-text">{prompt}</p>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+
+          {/* Writing and Feedback Section - Bottom */}
+          <Row className="practice-layout g-4">
+            {/* Left: Writing Area */}
+            <Col xl={6}>
+              <Card className="writing-card">
+                <Card.Header className="writing-header">
+                  <FaFeatherAlt className="me-2" />
+                  Your Response
+                  <span className="word-count">
+                    {text.length > 0 ? `${text.split(/\s+/).filter((word) => word.length > 0).length} words` : 'Start writing...'}
+                  </span>
+                </Card.Header>
+
+                <Card.Body className="writing-body d-flex flex-column">
+                  <Form.Group className="flex-grow-1 d-flex flex-column">
+                    <Form.Control
+                      as="textarea"
+                      placeholder={`Start writing your ${mode} here... Express your thoughts clearly and creatively.`}
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      className="writing-textarea flex-grow-1"
+                    />
+                  </Form.Group>
+
+                  {/* Action Buttons */}
+                  <div className="action-buttons mt-4">
+                    <Row className="g-3">
+                      <Col md={6}>
+                        <Button
+                          variant="success"
+                          size="lg"
+                          disabled={loading || !text.trim() || isWeeklyLimitReached}
+                          onClick={handleSubmit}
+                          className="w-100 submit-button">
+                          {loading ? (
+                            <>
+                              <Spinner animation="border" size="sm" className="me-2" />
+                              Evaluating...
+                            </>
+                          ) : (
+                            <>
+                              <FaCheckCircle className="me-2" />
+                              Submit
+                            </>
+                          )}
+                        </Button>
+                      </Col>
+                      <Col md={6}>
+                        <Button variant="outline-primary" size="lg" onClick={restartPractice} className="w-100 restart-button">
+                          <FaRedo className="me-2" />
+                          Try Another Topic
+                        </Button>
+                      </Col>
+                    </Row>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            {/* Right: AI Feedback */}
+            <Col xl={6}>
+              <Card className="feedback-card">
+                <Card.Header className="feedback-header">
+                  <FaLightbulb className="me-2" />
+                  AI Feedback & Analysis
+                </Card.Header>
+
+                <Card.Body className="feedback-body">
+                  {loading ? (
+                    <div className="loading-feedback text-center d-flex flex-column justify-content-center align-items-center">
+                      <Spinner animation="border" variant="info" />
+                      <h5 className="mt-3 text-info">Analyzing Your Writing</h5>
+                      <p className="text-muted">Our AI is evaluating your grammar, tone, and structure...</p>
+                    </div>
+                  ) : feedback ? (
+                    <div className="feedback-content">
+                      {/* Score Section */}
+                      <div className="score-display text-center mb-4">
+                        <h3 className="fw-bold mb-3">Your Writing Score</h3>
+                        <div className="score-circle mb-3">
+                          <span className="score-number">{feedback.score}/10</span>
+                          <span className="score-text">{getScoreFeedback(feedback.score!)}</span>
+                        </div>
+                        <ProgressBar now={feedback.score! * 10} variant={getScoreVariant(feedback.score!)} className="score-bar" />
+                      </div>
+
+                      {/* Corrected Version */}
+                      {feedback.corrections && (
+                        <div className="feedback-item corrected-version mb-3">
+                          <h6 className="fw-bold">
+                            <FaCheckCircle className="me-2" />
+                            Corrected Version
+                          </h6>
+                          {feedback.corrections && <div className="content-box">{formatParagraphs(feedback.corrections)}</div>}
+                        </div>
+                      )}
+
+                      {/* Detailed Feedback */}
+                      {feedback.feedback && (
+                        <>
+                          {/* Overall Feedback */}
+                          {feedback.feedback.overall && (
+                            <div className="feedback-item overall-feedback mb-3">
+                              <h6 className="fw-bold">
+                                <FaStar className="me-2" />
+                                Overall Feedback
+                              </h6>
+                              {feedback.feedback?.overall && <div className="content-box">{formatParagraphs(feedback.feedback?.overall)}</div>}
+                            </div>
+                          )}
+
+                          {/* Skills Assessment */}
+                          {(feedback.feedback.grammar || feedback.feedback.tone) && (
+                            <div className="feedback-item skills-assessment mb-3">
+                              <h6 className="fw-bold mb-3">Skills Breakdown</h6>
+                              <Row className="g-2">
+                                {feedback.feedback.grammar && (
+                                  <Col md={6}>
+                                    <div className="skill-card grammar h-100">
+                                      <div className="skill-icon">📚</div>
+                                      <div className="skill-content">
+                                        <h6 className="fw-bold">Grammar & Vocabulary</h6>
+                                        {feedback.feedback?.grammar && <p className="mb-0 small">{formatParagraphs(feedback.feedback?.grammar)}</p>}
+                                      </div>
+                                    </div>
+                                  </Col>
+                                )}
+                                {feedback.feedback.tone && (
+                                  <Col md={6}>
+                                    <div className="skill-card tone h-100">
+                                      <div className="skill-icon">🎯</div>
+                                      <div className="skill-content">
+                                        <h6 className="fw-bold">Tone & Structure</h6>
+                                        {feedback.feedback?.tone && <p className="mb-0 small">{formatParagraphs(feedback.feedback?.tone)}</p>}
+                                      </div>
+                                    </div>
+                                  </Col>
+                                )}
+                              </Row>
+                            </div>
+                          )}
+
+                          {/* Suggestions */}
+                          {feedback.feedback.suggestions?.length ? (
+                            <div className="feedback-item recommendations">
+                              <h6 className="fw-bold">
+                                <FaLightbulb className="me-2" />
+                                Suggestions for Improvement
+                              </h6>
+                              <div className="content-box">
+                                <ul className="mb-0 suggestions-list">
+                                  {feedback.feedback.suggestions.map((s, i) => (
+                                    <li key={i}>{s}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="empty-feedback text-center d-flex flex-column justify-content-center align-items-center">
+                      <div className="display-1 text-muted mb-3">✍️</div>
+                      <h5 className="text-muted">Ready for Feedback</h5>
+                      <p className="text-muted">Submit your writing to receive detailed AI feedback on your skills.</p>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </div>
+      )}
+
+      <style>{`
+        .writing-practice-container {
+          padding: 2rem;
+          min-height: 80vh;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+          max-width: 1800px;
+          margin: 0 auto;
+        }
+
+        /* Start Screen */
+        .start-screen {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 60vh;
+        }
+
+        .start-card {
+          background: white;
+          padding: 4rem;
+          border-radius: 25px;
+          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
+          text-align: center;
+          max-width: 600px;
+          width: 100%;
+        }
+
+        .icon-wrapper {
+          margin-bottom: 2.5rem;
+        }
+
+        .main-icon {
+          font-size: 5rem;
+          color: #667eea;
+        }
+
+        .start-card h2 {
+          color: #2d3748;
+          margin-bottom: 1.5rem;
+          font-weight: 700;
+          font-size: 2.5rem;
+        }
+
+        .description {
+          color: #4a5568;
+          font-size: 1.2rem;
+          line-height: 1.7;
+          margin-bottom: 2.5rem;
+        }
+
+        .mode-selection {
+          max-width: 300px;
+          margin: 0 auto 2rem;
+        }
+
+        .mode-selector {
+          border-radius: 12px;
+          border: 2px solid #e2e8f0;
+          padding: 0.75rem 1rem;
+          font-size: 1.1rem;
+          font-weight: 500;
+        }
+
+        .start-button {
+          padding: 1.2rem 3rem;
+          border-radius: 12px;
+          font-size: 1.2rem;
+          font-weight: 600;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border: none;
+          transition: all 0.3s ease;
+        }
+
+        .start-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Practice Container */
+        .practice-container {
+          max-width: 1600px;
+          margin: 0 auto;
+        }
+
+        /* Question Card - Top */
+        .question-card {
+          border: none;
+          border-radius: 20px;
+          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          background: #ffffff;
+        }
+
+        .question-body {
+          padding: 2.5rem;
+        }
+
+        .question-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+        }
+
+        .question-title {
+          color: #2d3748;
+          font-weight: 700;
+          font-size: 1.5rem;
+          margin: 0;
+          display: flex;
+          align-items: center;
+        }
+
+        .mode-badge {
+          font-size: 0.9rem;
+          padding: 0.6rem 1.2rem;
+          border-radius: 20px;
+        }
+
+        .question-content {
+          background: #f8fafc;
+          padding: 2rem;
+          border-radius: 16px;
+          border-left: 6px solid #667eea;
+        }
+
+        .question-text {
+          color: #4a5568;
+          font-size: 1.3rem;
+          line-height: 1.7;
+          font-weight: 500;
+        }
+
+        .loading-prompt {
+          color: #667eea;
+          font-weight: 500;
+        }
+
+        /* Practice Layout */
+        .practice-layout {
+          margin: 0;
+          align-items: flex-start; /* This prevents cards from stretching */
+        }
+
+        /* Writing Card */
+        .writing-card {
+          border: none;
+          border-radius: 20px;
+          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          background: #ffffff;
+          height: auto; /* Remove fixed height */
+          min-height: 500px; /* Minimum height but can grow with content */
+        }
+
+        .writing-header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-size: 1.3rem;
+          font-weight: 600;
+          padding: 1.5rem 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: none;
+          border-radius: 20px 20px 0 0 !important;
+        }
+
+        .word-count {
+          background: rgba(255, 255, 255, 0.2);
+          padding: 0.4rem 1rem;
+          border-radius: 15px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          backdrop-filter: blur(10px);
+        }
+
+        .writing-body {
+          padding: 2rem;
+          height: auto; /* Let content determine height */
+        }
+
+        .writing-textarea {
+          border-radius: 12px;
+          border: 2px solid #e2e8f0;
+          padding: 1.5rem;
+          font-size: 1.1rem;
+          line-height: 1.6;
+          resize: vertical; /* Allow vertical resize only */
+          min-height: 350px;
+          max-height: 600px; /* Maximum height before scrolling */
+          transition: all 0.3s ease;
+          font-family: 'Inter', sans-serif;
+        }
+
+        .writing-textarea:focus {
+          border-color: #667eea;
+          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+          margin-top: 2rem;
+        }
+
+        .submit-button, .restart-button {
+          padding: 1rem 2rem;
+          border-radius: 12px;
+          font-size: 1.1rem;
+          font-weight: 600;
+          border: none;
+          transition: all 0.3s ease;
+        }
+
+        .submit-button {
+          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .submit-button:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
+        }
+
+        .restart-button {
+          border: 2px solid #667eea;
+          color: #667eea;
+        }
+
+        .restart-button:hover {
+          background: #667eea;
+          color: white;
+          transform: translateY(-2px);
+        }
+
+        /* Feedback Card */
+        .feedback-card {
+          border: none;
+          border-radius: 20px;
+          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          background: #ffffff;
+          height: auto; /* Remove fixed height */
+          min-height: 500px; /* Minimum height but can grow with content */
+        }
+
+        .feedback-header {
+          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          color: white;
+          font-size: 1.3rem;
+          font-weight: 600;
+          padding: 1.5rem 2rem;
+          border-bottom: none;
+          border-radius: 20px 20px 0 0 !important;
+        }
+
+        .feedback-body {
+          padding: 2rem;
+          height: auto; /* Let content determine height */
+        }
+
+        .empty-feedback {
+          min-height: 300px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+
+        .empty-feedback .display-1 {
+          font-size: 4rem;
+        }
+
+        .empty-feedback h5 {
+          font-size: 1.3rem;
+        }
+
+        .empty-feedback p {
+          font-size: 1rem;
+          max-width: 250px;
+        }
+
+        .loading-feedback {
+          min-height: 300px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+        }
+
+        /* Score Display */
+        .score-display h3 {
+          color: #2d3748;
+          font-weight: 700;
+          font-size: 1.6rem;
+        }
+
+        .score-circle {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          width: 130px;
+          height: 130px;
+          border-radius: 50%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto;
+          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .score-number {
+          font-size: 2rem;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        .score-text {
+          font-size: 0.85rem;
+          opacity: 0.9;
+          margin-top: 0.4rem;
+        }
+
+        .score-bar {
+          height: 10px;
+          border-radius: 5px;
+          max-width: 280px;
+          margin: 0 auto;
+        }
+
+        /* Feedback Items */
+        .feedback-item {
+          padding: 1.25rem;
+          border-radius: 14px;
+          margin-bottom: 1.25rem;
+        }
+
+        .feedback-item h6 {
+          font-weight: 600;
+          margin-bottom: 0.75rem;
+          color: #2d3748;
+          display: flex;
+          align-items: center;
+          font-size: 1.1rem;
+        }
+
+        .corrected-version {
+          background: #e3f2fd;
+          border-left: 5px solid #1976d2;
+        }
+
+        .overall-feedback {
+          background: #f0fff4;
+          border-left: 5px solid #48bb78;
+        }
+
+        .skills-assessment {
+          background: #f7fafc;
+          border-left: 5px solid #ed8936;
+        }
+
+        .recommendations {
+          background: #fffaf0;
+          border-left: 5px solid #ed8936;
+        }
+
+        .general-feedback {
+          background: #f0f9ff;
+          border-left: 5px solid #0ea5e9;
+        }
+
+        .content-box {
+          line-height: 1.6;
+          color: #4a5568;
+          font-size: 1rem;
+        }
+
+        .suggestions-list {
+          padding-left: 1.25rem;
+          margin-bottom: 0;
+        }
+
+        .suggestions-list li {
+          margin-bottom: 0.4rem;
+          line-height: 1.5;
+        }
+
+        .suggestions-list li:last-child {
+          margin-bottom: 0;
+        }
+
+        /* Skill Cards */
+        .skill-card {
+          background: white;
+          padding: 1rem;
+          border-radius: 10px;
+          border: 1px solid #e2e8f0;
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          transition: all 0.3s ease;
+          height: 100%;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .skill-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .skill-icon {
+          font-size: 1.3rem;
+          flex-shrink: 0;
+          margin-top: 0.2rem;
+        }
+
+        .skill-content h6 {
+          margin: 0 0 0.5rem 0;
+          font-size: 0.9rem;
+        }
+
+        .skill-content p {
+          margin: 0;
+          font-size: 0.85rem;
+          color: #718096;
+          line-height: 1.4;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+          .writing-practice-container {
+            padding: 1.5rem;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .writing-practice-container {
+            padding: 1rem;
+          }
+
+          .start-card {
+            padding: 2.5rem 2rem;
+          }
+
+          .question-body {
+            padding: 2rem;
+          }
+
+          .question-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: flex-start;
+          }
+
+          .question-content {
+            padding: 1.5rem;
+          }
+
+          .writing-body,
+          .feedback-body {
+            padding: 1.5rem;
+          }
+
+          .writing-header,
+          .feedback-header {
+            padding: 1.25rem;
+            font-size: 1.1rem;
+            flex-direction: column;
+            gap: 0.75rem;
+            text-align: center;
+          }
+
+          .writing-textarea {
+            min-height: 300px;
+            font-size: 1rem;
+          }
+
+          .action-buttons .btn {
+            width: 100%;
+          }
+
+          .score-circle {
+            width: 110px;
+            height: 110px;
+          }
+        }
+      `}</style>
+    </Container>
+  )
+}
+
+export default WritingPractice

@@ -1,0 +1,137 @@
+import PageMetaData from '@/components/PageMetaData'
+import { Col, Row } from 'react-bootstrap'
+import AuthLayout from '../components/AuthLayout'
+import SignIn from './components/SignIn'
+import { useState } from 'react'
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import CaptchaBox from '@/common/CaptchaBox'
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
+const SignInPage = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [captchaValid, setCaptchaValid] = useState(false);
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setLoading(true);
+
+    const name = e.target.name.value;
+    const email = e.target.email.value;
+    const phone = e.target.phone.value;
+    const message = e.target.message.value;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, message }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success("Request sent successfully 🎉");
+        e.target.reset();
+        setShowForm(false);
+      } else {
+        toast.warning(data.msg || "Something went wrong ⚠️");
+      }
+    } catch {
+      toast.error("Server error. Try again later ❌");
+    }
+
+    setLoading(false);
+  };
+
+  return (
+    <>
+      <PageMetaData title="Sign-In" />
+
+      {/* Glass Popup CSS */}
+      <style>{`
+        .popup-overlay{
+          position:fixed; inset:0; background:rgba(0,0,0,.55);
+          backdrop-filter:blur(6px); display:flex; justify-content:center; align-items:center;
+          z-index:9999; animation:fadeIn .3s;
+        }
+        .popup-card{
+          width:400px; background:rgba(255,255,255,.08);
+          padding:25px; border-radius:14px; border:1px solid rgba(255,255,255,.2);
+          box-shadow:0 10px 35px rgba(0,0,0,.45); position:relative;
+          animation:scaleIn .3s;
+        }
+        .close-btn{position:absolute; top:14px; right:18px; color:#fff; font-size:20px; cursor:pointer;}
+
+        @keyframes fadeIn{from{opacity:0;} to{opacity:1;}}
+        @keyframes scaleIn{from{transform:scale(.9);opacity:0;} to{transform:scale(1);opacity:1;}}
+      `}</style>
+
+      <AuthLayout>
+        <Col xs={12} lg={6} className="m-auto">
+          <Row className="my-5">
+            <Col sm={10} xl={8} className="m-auto">
+
+              <h1 className="fs-2 fw-bold d-flex align-items-center gap-2">
+                Login into Learning Path <span>👋</span>
+              </h1>
+
+              <p className="text-muted mb-4">Welcome back! Continue your learning journey 🚀</p>
+
+              <SignIn />
+
+              <div className="text-center mt-3">
+                <span>
+                  Need a subscription plan?{" "}
+                  <span
+                    className="text-primary fw-bold"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setShowForm(true)}
+                  >
+                    Request Access
+                  </span>
+                </span>
+              </div>
+
+            </Col>
+          </Row>
+        </Col>
+      </AuthLayout>
+
+      {/* Contact Popup Form */}
+      {showForm && (
+        <div className="popup-overlay" onClick={() => setShowForm(false)}>
+          <div className="popup-card" onClick={(e) => e.stopPropagation()}>
+            
+            <span className="close-btn" onClick={() => setShowForm(false)}>✖</span>
+            <h4 className="text-center text-white mb-3">Get in Touch</h4>
+
+            <form onSubmit={handleSubmit}>
+              <label className="form-label text-white">Name</label>
+              <input name="name" className="form-control mb-2" maxLength={30} required />
+
+              <label className="form-label text-white">Email</label>
+              <input type="email" maxLength={50} name="email" className="form-control mb-2" required />
+
+              <label className="form-label text-white">Phone</label>
+              <input type="tel" maxLength={10} minLength={10} name="phone" className="form-control mb-2" required />
+
+              <label className="form-label text-white">Message</label>
+              <textarea name="message" rows={3} className="form-control mb-3" maxLength={500} required />
+              <CaptchaBox onValidate={setCaptchaValid} />
+              <button className="btn btn-primary w-100" disabled={!captchaValid || loading}>
+                {loading ? "Sending..." : "Send Request"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <ToastContainer position="top-right" theme="colored" autoClose={2500} />
+    </>
+  );
+};
+
+export default SignInPage;

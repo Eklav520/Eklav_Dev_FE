@@ -1,0 +1,184 @@
+/* Interview Modal Layout Styling */
+
+/* Card Styling */
+.interview-card {
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(145deg, #ffffff, #f8f9fa);
+}
+
+.interview-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
+}
+
+.interview-card.hover-lift:hover {
+  transform: translateY(-5px);
+}
+
+.icon-wrapper {
+  transition: transform 0.3s ease;
+}
+
+.interview-card:hover .icon-wrapper {
+  transform: scale(1.1);
+}
+
+/* Fullscreen Overlay */
+.fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
+
+/* Close Button */
+.btn-close-modal {
+  position: fixed !important;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 50px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.btn-close-modal:hover {
+  background: white;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+.close-icon {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.close-text {
+  font-size: 14px;
+}
+
+/* Modal Header Info */
+.modal-header-info {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px 0;
+  z-index: 9998;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Fullscreen Content */
+.fullscreen-content {
+  width: 100%;
+  height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  padding-top: 80px; /* Adjust based on header height */
+  padding-bottom: 40px; /* Adjust based on status bar height */
+}
+
+/* Status Bar */
+.modal-status-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 12px 0;
+  z-index: 9998;
+  backdrop-filter: blur(10px);
+}
+
+/* Recording Indicator */
+.recording-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.recording-dot {
+  width: 12px;
+  height: 12px;
+  background: #ff4757;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Connection Status */
+.connection-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.connection-status.connected {
+  background: #2ed573;
+  box-shadow: 0 0 10px #2ed573;
+}
+
+/* Keyboard Key Styling */
+kbd {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .btn-close-modal {
+    top: 12px;
+    right: 12px;
+    padding: 8px 16px;
+  }
+  
+  .close-text {
+    display: none;
+  }
+  
+  .modal-header-info,
+  .modal-status-bar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  
+  .interview-card {
+    margin-bottom: 16px;
+  }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .interview-card {
+    background: linear-gradient(145deg, #2d3748, #1a202c);
+    color: #e2e8f0;
+  }
+  
+  .fullscreen-content {
+    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+  }
+}
