@@ -34,7 +34,7 @@ const kpis = [
   { label: 'Hours Spent', value: '18 min', icon: <FaClock />, color: 'primary', bgColor: 'rgba(13, 110, 253, 0.1)', trend: '+2%' },
   { label: 'Courses', value: '1', icon: <FaBookOpen />, color: 'success', bgColor: 'rgba(25, 135, 84, 0.1)', trend: '+1' },
   { label: 'Accuracy', value: '78%', icon: <FaBullseye />, color: 'warning', bgColor: 'rgba(255, 193, 7, 0.1)', trend: '+5%' },
-  { label: 'Rank', value: '#124', icon: <FaTrophy />, color: 'info', bgColor: 'rgba(13, 202, 240, 0.1)', trend: '↑12' },
+  { label: 'Rank', value: '#-', icon: <FaTrophy />, color: 'info', bgColor: 'rgba(13, 202, 240, 0.1)', trend: '↑12' },
 ]
 
 /* Courses */

@@ -147,7 +147,7 @@ const StudentDashboardUpdated: React.FC = () => {
     },
     {
       label: 'Rank',
-      value: dashboardSummary.rank.value,
+      value: '#',
       icon: FaTrophy,
       color: 'info',
       bgColor: 'rgba(13,202,240,.1)',

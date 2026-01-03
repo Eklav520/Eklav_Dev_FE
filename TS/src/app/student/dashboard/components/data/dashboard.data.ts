@@ -67,7 +67,7 @@ export const kpis: KPI[] = [
   },
   {
     label: 'Rank',
-    value: '#124',
+    value: '#',
     icon: FaTrophy,
     color: 'info',
     bgColor: 'rgba(13,202,240,.1)',
@@ -223,7 +223,7 @@ export const courses: Course[] = [
   {
     name: 'Full Stack MERN',
     status: 'In Progress',
-    rank: 124,
+    rank: 0,
     progress: 65,
     color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     skills: [
