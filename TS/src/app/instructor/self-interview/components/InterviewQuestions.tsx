@@ -9,36 +9,68 @@ const InterviewQuestions: React.FC = () => {
   const handleUpload = async () => {
     if (!file) return;
 
+    const fileType =
+      file.type ||
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
     try {
-      // Step 1: Ask backend for presigned URL
-      const presignedRes = await fetch(`${baseURL}/s3/generate-presigned-url`, {
+      // ===============================
+      // Step 1: Get presigned POST data
+      // ===============================
+      const presignedRes = await fetch(
+        `${baseURL}/s3/generate-presigned-url`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType,
+            context: "interview-questions", // ✅ REQUIRED
+            assetType: "excel",
+          }),
+        }
+      );
+
+      if (!presignedRes.ok) {
+        throw new Error("Failed to get presigned URL");
+      }
+
+      const { uploadUrl, fields, fileKey } = await presignedRes.json();
+
+      // ===============================
+      // Step 2: Upload using Presigned POST
+      // ===============================
+      const formData = new FormData();
+
+      Object.entries(fields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+
+      formData.append("file", file);
+
+      const uploadRes = await fetch(uploadUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          folder: "excel/interview", // 👈 keep files organized
-        }),
+        body: formData,
       });
 
-      const { uploadUrl, fileUrl } = await presignedRes.json();
+      if (!uploadRes.ok) {
+        throw new Error("S3 upload failed");
+      }
 
-      // Step 2: Upload file to S3
-      await fetch(uploadUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-
-      // Step 3: Tell backend to parse + save
-      const saveRes = await fetch(`${baseURL}/admin-upload-questions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileUrl }),
-      });
+      // ===============================
+      // Step 3: Tell backend to parse Excel
+      // ===============================
+      const saveRes = await fetch(
+        `${baseURL}/admin-upload-questions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileKey }),
+        }
+      );
 
       const data = await saveRes.json();
-      setMessage(data.message);
+      setMessage(data.message || "Upload completed");
     } catch (err) {
       console.error(err);
       setMessage("Upload failed.");
@@ -48,19 +80,24 @@ const InterviewQuestions: React.FC = () => {
   return (
     <div className="p-4">
       <h4>📥 Upload Interview Questions (Excel)</h4>
+
       <Form.Group>
         <Form.Label>Select Excel File (.xlsx)</Form.Label>
         <Form.Control
           type="file"
           accept=".xlsx"
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setFile(e.target.files?.[0] || null)
-          }
+          onChange={(e) => {
+            const input = e.target as HTMLInputElement;
+            setFile(input.files?.[0] || null);
+          }}
         />
+
       </Form.Group>
+
       <Button className="mt-3" onClick={handleUpload}>
         Upload
       </Button>
+
       {message && <Alert className="mt-3">{message}</Alert>}
     </div>
   );
