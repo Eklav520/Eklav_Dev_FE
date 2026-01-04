@@ -108,7 +108,7 @@ const CreateCourseForm = () => {
     return new Promise(async (resolve, reject) => {
       try {
         // 1️⃣ Get presigned POST (NEW PAYLOAD)
-        const { data } = await axios.post(`${baseURL}/s3/generate-presigned-url`, {
+        const { data } = await axios.post(`${baseURL}/s3/presign/course`, {
           fileName: file.name,
           fileType: file.type,
           courseTitle: options.courseTitle,

@@ -18,7 +18,7 @@ const InterviewQuestions: React.FC = () => {
       // Step 1: Get presigned POST data
       // ===============================
       const presignedRes = await fetch(
-        `${baseURL}/s3/generate-presigned-url`,
+        `${baseURL}/s3/presign/interview`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
