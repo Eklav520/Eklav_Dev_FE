@@ -39,46 +39,55 @@ const InterviewModalLayout = () => {
   }
 
   // Enter fullscreen when modal opens (only on desktop)
-  useEffect(() => {
-    if (show && modalRef.current && !document.fullscreenElement && !isMobile) {
-      modalRef.current.requestFullscreen().catch(() => {
-        console.log('Fullscreen request failed')
-      })
-    }
-  }, [show, isMobile])
+  /*  useEffect(() => {
+     if (show && modalRef.current && !document.fullscreenElement && !isMobile) {
+       modalRef.current.requestFullscreen().catch(() => {
+         console.log('Fullscreen request failed')
+       })
+     }
+   }, [show, isMobile]) */
 
   // Exit fullscreen + close modal
-  const handleClose = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen()
-      }
-    } catch (e) {
-      console.warn('Exit fullscreen failed', e)
-    }
+  /*  const handleClose = async () => {
+     try {
+       if (document.fullscreenElement) {
+         await document.exitFullscreen()
+       }
+     } catch (e) {
+       console.warn('Exit fullscreen failed', e)
+     }
+ 
+     setShow(false)
+     setInterviewId(null)
+     setQuestions([])
+     setTitle('')
+   } */
 
+  const handleClose = () => {
     setShow(false)
     setInterviewId(null)
     setQuestions([])
     setTitle('')
   }
 
+
   // Handle escape key to exit fullscreen
-  useEffect(() => {
-    const handleEscKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && document.fullscreenElement) {
-        handleClose()
-      }
-    }
-
-    if (show) {
-      document.addEventListener('keydown', handleEscKey)
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEscKey)
-    }
-  }, [show])
+  /*  useEffect(() => {
+     const handleEscKey = (event: KeyboardEvent) => {
+       if (event.key === 'Escape' && document.fullscreenElement) {
+         handleClose()
+       }
+     }
+ 
+     if (show) {
+       document.addEventListener('keydown', handleEscKey)
+     }
+ 
+     return () => {
+       document.removeEventListener('keydown', handleEscKey)
+     }
+   }, [show])
+  */
 
   return (
     // ✅ OUTER SAFE SPACING CONTAINER

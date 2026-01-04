@@ -52,6 +52,9 @@ const SignIn = () => {
         <button className="btn btn-primary" type="submit" disabled={!captchaValid || loading}>
           {loading ? "Logging in..." : "Login"}
         </button>
+        <span>
+          Don&apos;t have an account? <Link to="/auth/sign-up">Signup here</Link>
+        </span>
       </div>
     </form>
   );
