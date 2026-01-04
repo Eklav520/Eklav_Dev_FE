@@ -62,9 +62,6 @@ const CsvUploadForm = () => {
       // ===============================
       const uploadRes = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'text/csv',
-        },
         body: file,
       })
 
