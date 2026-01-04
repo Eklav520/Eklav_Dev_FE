@@ -100,11 +100,19 @@ const InterviewModalLayout = () => {
             <FaDesktop className="text-white" size={28} />
           </div>
           <div>
-            <h2 className="fw-bold mb-1">AI Interview Practice</h2>
+            <div className="d-flex align-items-center gap-2 mb-1">
+              <h2 className="fw-bold mb-0">AI Interview Practice</h2>
+
+              <span className="badge bg-danger">
+                Premium Version Will get Unlimted Access
+              </span>
+            </div>
+
             <p className="text-muted mb-0">
               Fullscreen interview experience on desktop
             </p>
           </div>
+
         </div>
 
         <p className="text-muted lh-lg">

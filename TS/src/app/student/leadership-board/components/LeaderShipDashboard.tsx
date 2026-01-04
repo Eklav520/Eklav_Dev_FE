@@ -147,12 +147,20 @@ const Leaderboard: React.FC = () => {
     () =>
       students
         .filter((s) => {
+          // ✅ Only show students with score > 0
+          if (s.score <= 0) return false
+
           const q = searchTerm.toLowerCase()
-          return s.name.toLowerCase().includes(q) || s.bio.toLowerCase().includes(q) || s.skills.some((sk) => sk.toLowerCase().includes(q))
+          return (
+            s.name.toLowerCase().includes(q) ||
+            s.bio.toLowerCase().includes(q) ||
+            s.skills.some((sk) => sk.toLowerCase().includes(q))
+          )
         })
         .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)),
     [students, searchTerm],
   )
+
 
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(filteredStudents.length / ITEMS_PER_PAGE))
@@ -189,17 +197,17 @@ const Leaderboard: React.FC = () => {
   const pointsBoxShadow = isDarkMode ? '0 8px 30px rgba(5,8,10,0.6)' : '0 6px 18px rgba(16,24,40,0.06)'
   const topScorerBadgeStyle = isDarkMode
     ? {
-        background: 'linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.10))',
-        color: '#ffd86b',
-        border: '1px solid rgba(255,215,0,0.35)',
-        boxShadow: '0 4px 14px rgba(255,215,0,0.12)',
-      }
+      background: 'linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.10))',
+      color: '#ffd86b',
+      border: '1px solid rgba(255,215,0,0.35)',
+      boxShadow: '0 4px 14px rgba(255,215,0,0.12)',
+    }
     : {
-        background: 'linear-gradient(180deg, #fff7cc, #ffef99)',
-        color: '#7a5a00',
-        border: '1px solid #ffe580',
-        boxShadow: '0 6px 16px rgba(255,215,0,0.18)',
-      }
+      background: 'linear-gradient(180deg, #fff7cc, #ffef99)',
+      color: '#7a5a00',
+      border: '1px solid #ffe580',
+      boxShadow: '0 6px 16px rgba(255,215,0,0.18)',
+    }
 
   return (
     <div style={{ background: pageBg, padding: '12px 8px', borderRadius: 12 }}>
@@ -207,9 +215,19 @@ const Leaderboard: React.FC = () => {
         <CardHeader className="border-0 pb-0 bg-transparent">
           <Row className="align-items-center">
             <Col xs={12} md={6}>
-              <h3 className="mb-1 fw-bold" style={{ color: isDarkMode ? '#2fb0ff' : '#0d6efd', fontSize: 'clamp(1.25rem, 4vw, 1.5rem)' }}>
+              <h3
+                className="mb-1 fw-bold d-flex align-items-center gap-2"
+                style={{
+                  color: isDarkMode ? '#2fb0ff' : '#0d6efd',
+                  fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
+                }}
+              >
                 Leadership Board
+                <Badge bg="warning" text="dark" style={{ fontSize: '0.6rem' }}>
+                  Premium version will enable to attend the exams
+                </Badge>
               </h3>
+
               <small style={{ color: mutedText, fontSize: '0.85rem' }}>Top performing students</small>
             </Col>
 
@@ -338,7 +356,7 @@ const Leaderboard: React.FC = () => {
                                     alt={stu.name}
                                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                                     onError={(e) => {
-                                      ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                                      ; (e.currentTarget as HTMLImageElement).style.display = 'none'
                                       const initialsEl = e.currentTarget.parentElement?.querySelector('.initials') as HTMLElement
                                       if (initialsEl) initialsEl.style.display = 'flex'
                                     }}

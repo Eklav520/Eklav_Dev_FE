@@ -1,6 +1,6 @@
 import { useAuthContext } from '@/context/useAuthContext'
 import React, { useEffect, useState } from 'react'
-import { Button, Card, CardBody, CardHeader, Col, Form, Row } from 'react-bootstrap'
+import { Alert, Button, Card, CardBody, CardHeader, Col, Form, Row } from 'react-bootstrap'
 import { FaAngleLeft, FaAngleRight, FaSearch, FaStar } from 'react-icons/fa'
 import CourseCard from './CourseCard'
 
@@ -61,7 +61,7 @@ const CoursesList = () => {
               const ratingsResponse = await fetch(`${baseURL}/courses/${course._id}/ratings`)
               if (ratingsResponse.ok) {
                 const ratingData: RatingResponse = await ratingsResponse.json()
-                
+
                 return {
                   ...course,
                   averageRating: ratingData.averageRating,
@@ -205,8 +205,16 @@ const CoursesList = () => {
       <CardHeader className="bg-transparent border-bottom">
         <Row className="align-items-center">
           <Col md={6}>
-            <h3 className="mb-0">Available Courses</h3>
+            <div className="d-flex flex-column flex-md-row align-items-md-center gap-2">
+              <h3 className="mb-0">Available Courses</h3>
+
+              <Alert variant="danger" className="mb-0 py-2 px-3">
+                <strong>⛔ Premium Version:</strong>{' '}
+                Enrollment will be enabled
+              </Alert>
+            </div>
           </Col>
+
           <Col md={6}>
             <Form className="rounded position-relative" onSubmit={(e) => e.preventDefault()}>
               <input

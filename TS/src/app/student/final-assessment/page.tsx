@@ -124,7 +124,7 @@ const VIOLATION_WARNINGS = {
     ]
   },
   code: {
-    title: "Code Challenge: Rules & Violation Warnings", 
+    title: "Code Challenge: Rules & Violation Warnings",
     warnings: [
       "🚫 PLAGIARISM PROHIBITED: All code must be your own original work",
       "🔍 Code Similarity Detection: Your code will be checked against existing solutions",
@@ -162,7 +162,7 @@ const VIOLATION_WARNINGS = {
     ]
   },
   hr: {
-    title: "HR Round: Professional Conduct Guidelines", 
+    title: "HR Round: Professional Conduct Guidelines",
     warnings: [
       "🎥 Video Conference Etiquette: Maintain professional appearance and background",
       "🤝 Authentic Responses: Be genuine in your answers - do not memorize responses",
@@ -188,6 +188,8 @@ export default function StudentFinalAssessmentPage() {
   const studentId = (user as any)?._id ?? (user as any)?.id ?? undefined
   const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
   const templateId = 'default'
+  // TEMP: disable starting assessment (enable later)
+  const ENABLE_START_BUTTON = false
 
   const [rounds, setRounds] = useState(initialRounds)
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
@@ -231,15 +233,15 @@ export default function StudentFinalAssessmentPage() {
   // Confirm and start the round after warning
   const handleConfirmStart = () => {
     if (!pendingRound) return
-    
+
     setWarningOpen(false)
     setWarningConfirmed(true)
-    
+
     // Update round status to in_progress
     setRounds((rs) => rs.map((r) => (r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r)))
     setActiveRound(pendingRound)
     setStarted(true)
-    
+
     // Special handling for code challenge
     if (pendingRound === 'code') {
       setStartCodeNow(true)
@@ -346,7 +348,7 @@ export default function StudentFinalAssessmentPage() {
   }
 
   useEffect(() => {
-    ;(async () => {
+    ; (async () => {
       await fetchCodeLatest() // sets Code and may unlock TR → READY
       await fetchTRLatest() // sets TR to server status and may unlock HR
       await fetchHRLatest()
@@ -473,6 +475,7 @@ export default function StudentFinalAssessmentPage() {
   const hrRound = rounds.find((r) => r.key === 'hr')!
 
   const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
+    ENABLE_START_BUTTON &&
     r.status === READY &&
     (r.key !== 'quiz' || statusChecked) &&
     (r.key !== 'tr' || trStatusChecked) &&
@@ -483,8 +486,14 @@ export default function StudentFinalAssessmentPage() {
       <PageMetaData title="Final Assessment" />
 
       <Card className="bg-transparent border rounded-4 p-4 mb-4">
-        <h4 className="mb-3">Final Assessment</h4>
+        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-2">
+          <h4 className="mb-0">Final Assessment</h4>
 
+          <Alert variant="danger" className="mb-0 py-2 px-3">
+            <strong>⚠️ Important:</strong>{' '}
+            Available exclusively in the <b>Premium Version</b>
+          </Alert>  
+        </div>
         <p className="text-muted">
           You will go through four rounds. Each round unlocks only after the previous one is <strong>passed</strong>. After you submit the Quiz it
           will be marked <em>Pending evaluation</em> until the admin reviews it. Once the Quiz is <em>Passed</em>, the Code Challenge will
@@ -492,7 +501,7 @@ export default function StudentFinalAssessmentPage() {
         </p>
 
         <Alert variant="warning" className="mb-4">
-          <strong>⚠️ Important:</strong> All rounds are monitored and recorded. Any violation of assessment rules will result in immediate disqualification. 
+          <strong>⚠️ Important:</strong> All rounds are monitored and recorded. Any violation of assessment rules will result in immediate disqualification.
           Please read all warnings carefully before starting each round.
         </Alert>
 
@@ -617,7 +626,7 @@ export default function StudentFinalAssessmentPage() {
       </Card>
 
       {/* Quiz modal */}
-      {started && activeRound === 'quiz' && <StudentQuiz questionCount={20} onClose={() => handleQuizClose(true)}/>}
+      {started && activeRound === 'quiz' && <StudentQuiz questionCount={20} onClose={() => handleQuizClose(true)} />}
 
       {/* Code challenge (modal-only; no preview in parent) */}
       {started && activeRound === 'code' && (
@@ -722,8 +731,8 @@ export default function StudentFinalAssessmentPage() {
           <Button variant="secondary" onClick={() => setWarningOpen(false)}>
             Cancel
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleConfirmStart}
             disabled={!warningConfirmed}
           >
