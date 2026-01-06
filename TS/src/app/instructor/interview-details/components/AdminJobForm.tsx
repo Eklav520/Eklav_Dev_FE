@@ -70,20 +70,20 @@ const AdminJobForm: React.FC = () => {
   };
 
   const calculateDaysAgo = (dateString: string) => {
-  if (!dateString) return null;
+    if (!dateString) return null;
 
-  const posted = new Date(dateString);
-  const today = new Date();
-  
-  // Set time to midnight for accurate day difference
-  posted.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
+    const posted = new Date(dateString);
+    const today = new Date();
 
-  const diffMs = today.getTime() - posted.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  
-  return diffDays;
-};
+    // Set time to midnight for accurate day difference
+    posted.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const diffMs = today.getTime() - posted.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    return diffDays;
+  };
 
 
   return (
@@ -141,10 +141,29 @@ const AdminJobForm: React.FC = () => {
         </Col>
       </Row>
 
-      <Form.Group className="mb-3">
-        <Form.Label>Description</Form.Label>
-        <Form.Control name="description" as="textarea" rows={3} value={formData.description} onChange={handleChange} />
-      </Form.Group>
+      <Row>
+        <Col md={12}>
+          <Form.Group className="mb-4">
+            <Form.Label className="fw-semibold">
+              Description
+            </Form.Label>
+
+            <Form.Control
+              name="description"
+              as="textarea"
+              rows={6}
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Enter a clear and detailed job description..."
+              style={{
+                resize: 'vertical',
+                minHeight: '160px',
+                lineHeight: '1.6',
+              }}
+            />
+          </Form.Group>
+        </Col>
+      </Row>
 
       <Form.Group className="mb-3">
         <Form.Label>Skills (comma separated)</Form.Label>

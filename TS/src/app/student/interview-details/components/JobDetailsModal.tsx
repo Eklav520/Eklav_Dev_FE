@@ -30,9 +30,9 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
   if (!job) return null
 
   return (
-    <Modal 
-      show={show} 
-      onHide={onHide} 
+    <Modal
+      show={show}
+      onHide={onHide}
       fullscreen="md-down"
       size="lg"
       scrollable
@@ -58,9 +58,9 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
                 </span>
               </div>
             </div>
-            
-            <Button 
-              variant="outline-light" 
+
+            <Button
+              variant="outline-light"
               onClick={onHide}
               className="rounded-circle p-1 position-absolute"
               style={{ top: '1rem', right: '1rem' }}
@@ -93,7 +93,17 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
               <Card className="shadow-sm border-0 mb-3 mb-md-4">
                 <Card.Body className="p-3 p-md-4">
                   <h5 className="fw-bold mb-3">Job Description</h5>
-                  <p className="text-muted mb-0">{job.description}</p>
+                  <div
+                    className="text-muted"
+                    style={{
+                      whiteSpace: 'pre-line',
+                      lineHeight: '1.7',
+                      fontSize: '0.95rem',
+                    }}
+                  >
+                    {job.description}
+                  </div>
+
                 </Card.Body>
               </Card>
 
@@ -138,7 +148,7 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
 
                   <div className="d-grid gap-2">
                     <Button variant="primary" size="lg" className="w-100">
-                      Apply Now
+                      Marked Read
                     </Button>
                     <Button variant="outline-secondary" onClick={onHide} className="w-100">
                       Close
