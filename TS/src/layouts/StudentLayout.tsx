@@ -17,6 +17,9 @@ const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
 const Footer = lazy(() => import('@/components/StudentLayoutComponents/Footer'))
 const TopNavigationBar = lazy(() => import('@/components/StudentLayoutComponents/TopNavigationBar'))
 const ChatBox = lazy(() => import('@/layouts/ChatBox'))
+import TrialWelcomeModal from './TrialWelcomeModal'
+import { getRemainingTrialDays } from '@/utils/trialUtils'
+
 
 type MenuItemTypeLocal = {
   key: string
@@ -40,6 +43,17 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
   const [role, setRole] = useState('Guest')
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [showTrialModal, setShowTrialModal] = useState(false)
+
+  useEffect(() => {
+    const daysLeft = getRemainingTrialDays()
+
+    if (daysLeft >= 0) {
+      setShowTrialModal(true) // show every login
+    }
+  }, [])
+
+
 
   useEffect(() => {
     if (!token) return
@@ -49,7 +63,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
     })
       .then((res) => res.json())
       .then((profile) => setRole(profile.role))
-      .catch(() => {})
+      .catch(() => { })
   }, [token, baseURL])
 
   return (
@@ -57,6 +71,11 @@ const StudentLayout = ({ children }: ChildrenType) => {
       {/* TOP NAVBAR */}
       <Suspense>
         <TopNavigationBar role={role} onToggleMenu={toggleOffCanvasMenu} />
+        <TrialWelcomeModal
+          show={showTrialModal}
+          onClose={() => setShowTrialModal(false)}
+        />
+
       </Suspense>
 
       <main>
