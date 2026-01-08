@@ -1,10 +1,12 @@
-/* JobCard.module.css */
+/* ================= CARD BASE ================= */
 .jobCard {
   border-radius: 12px !important;
   overflow: hidden !important;
   margin-bottom: 1rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-  border: 1px solid #e9ecef !important;
+  background: linear-gradient(180deg, #1f2328, #1b1f24);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+  color: #e9ecef;
 }
 
 .cardBody {
@@ -17,81 +19,85 @@
   }
 }
 
+/* ================= TITLE / COMPANY ================= */
 .title {
-  font-size: 1.1rem !important;
+  font-size: 1.05rem !important;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.35rem;
   line-height: 1.3;
+  color: #ffffff;
 }
 
 .companyText {
-  font-size: 0.875rem;
-  color: #6c757d;
-  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #cfd4da;
+  margin-bottom: 0.6rem;
 }
 
-/* Fix for job details - better mobile wrapping */
+/* ================= JOB DETAILS ================= */
 .jobDetailsContainer {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .detailItem {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.8rem;
-  color: #6c757d;
+  font-size: 0.78rem;
+  color: #dee2e6;
   white-space: nowrap;
 }
 
+.detailItem svg {
+  color: #adb5bd;
+}
+
+/* ================= HIGHLIGHTS ================= */
+.highlights {
+  margin: 8px 0 10px;
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: #f1f3f5;
+}
+
+.highlights li {
+  margin-bottom: 4px;
+}
+
+/* ================= SKILLS ================= */
 .skillsContainer {
-  margin-bottom: 1rem;
-  max-width: 100%;
-}
-
-.skillsLabel {
-  font-size: 0.8rem;
-  color: #6c757d;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.skillsGrid {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  max-width: 100%;
+  gap: 6px;
+  margin-bottom: 0.75rem;
 }
 
 .skillBadge {
   font-size: 0.7rem !important;
   padding: 0.25rem 0.5rem !important;
-  border: 1px solid #dee2e6 !important;
-  background-color: #f8f9fa !important;
-  color: #495057 !important;
+  background-color: #2a2f36 !important;
+  color: #f8f9fa !important;
+  border: 1px solid #343a40 !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 140px;
-  display: inline-block;
   border-radius: 4px !important;
 }
 
 .skillBadgeMore {
   font-size: 0.7rem !important;
   padding: 0.25rem 0.5rem !important;
+  background-color: #495057 !important;
+  color: #ffffff !important;
 }
 
-.dateText {
-  font-size: 0.75rem;
-  color: #6c757d;
-}
-
+/* ================= FOOTER ================= */
 .footer {
-  border-top: 1px solid #e9ecef;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   padding-top: 0.75rem;
   display: flex;
   justify-content: space-between;
@@ -100,110 +106,92 @@
   gap: 0.5rem;
 }
 
+.dateText {
+  font-size: 0.72rem;
+  color: #adb5bd;
+}
+
+/* ================= BUTTON ================= */
 .detailsButton {
-  font-size: 0.8rem !important;
+  font-size: 0.75rem !important;
   padding: 0.25rem 0.75rem !important;
   white-space: nowrap;
+  border-color: #0d6efd;
+  color: #0d6efd;
 }
 
-/* Mobile-specific styles */
+.detailsButton:hover {
+  background-color: #0d6efd;
+  color: #ffffff;
+}
+
+/* ================= MOBILE ================= */
 @media (max-width: 768px) {
   .jobCard {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     margin: 0.5rem 0 !important;
   }
-  
-  .cardBody {
-    padding: 0.875rem !important;
-  }
-  
+
   .title {
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
   }
-  
-  .jobDetailsContainer {
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-  }
-  
+
   .detailItem {
     font-size: 0.75rem;
-    gap: 4px;
-    white-space: normal; /* Allow text to wrap */
-    flex: 1 1 auto; /* Allow items to grow and shrink */
-    min-width: 120px; /* Minimum width before wrapping */
+    white-space: normal;
+    flex: 1 1 auto;
+    min-width: 120px;
   }
-  
+
   .skillBadge {
-    max-width: 100px;
+    max-width: 110px;
     font-size: 0.65rem !important;
-    padding: 0.2rem 0.4rem !important;
   }
-  
-  .skillsLabel {
-    font-size: 0.75rem;
-  }
-  
-  .footer {
-    gap: 0.75rem;
-  }
-  
+
   .dateText {
-    font-size: 0.7rem;
-  }
-  
-  .detailsButton {
-    font-size: 0.75rem !important;
-    padding: 0.2rem 0.6rem !important;
+    font-size: 0.68rem;
   }
 }
 
-/* Prevent text overflow on very small screens */
+/* ================= VERY SMALL SCREENS ================= */
 @media (max-width: 576px) {
-  .jobCard {
-    border-left: none !important;
-    border-right: none !important;
-    border-radius: 0 !important;
-  }
-  
   .jobDetailsContainer {
-    flex-direction: column; /* Stack vertically on very small screens */
+    flex-direction: column;
     gap: 0.4rem;
   }
-  
+
   .detailItem {
     min-width: 100%;
-    white-space: normal;
   }
-  
-  .skillBadge {
-    max-width: 90px;
-    font-size: 0.6rem !important;
-  }
-  
+
   .footer {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .detailsButton {
     align-self: flex-end;
   }
 }
 
-/* For extremely small screens */
 @media (max-width: 360px) {
-  .skillBadge {
-    max-width: 80px;
-    font-size: 0.55rem !important;
-  }
-  
   .title {
-    font-size: 0.9rem !important;
+    font-size: 0.88rem !important;
   }
-  
-  .companyText {
-    font-size: 0.8rem;
+
+  .skillBadge {
+    max-width: 90px;
+    font-size: 0.6rem !important;
+  }
+}
+/* Make modal wider – scoped safely */
+:global(.job-details-modal) {
+  max-width: 90vw;
+}
+
+@media (max-width: 992px) {
+  :global(.job-details-modal) {
+    max-width: 100%;
   }
 }

@@ -1,94 +1,60 @@
-import React, { useState } from 'react';
-import { Form, Button, Row, Col, Badge, Alert } from 'react-bootstrap';
+import React, { useState } from 'react'
+import { Form, Button, Row, Col, Alert } from 'react-bootstrap'
 
 const AdminJobForm: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     company: '',
-    rating: '',
-    reviews: '',
     experience: '',
     salary: '',
     location: '',
-    description: '',
     skills: '',
+    highlights: '',
+    jobType: '',
+    domain: '',
+    expiryDate: '',
     logo: '',
-    postedDate: '',
-    tag: '',
-  });
+    tag: ''
+  })
 
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  const baseURL = import.meta.env.VITE_API_BASE_URL;
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
+  const baseURL = import.meta.env.VITE_API_BASE_URL
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     try {
       const response = await fetch(`${baseURL}/jobs`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          rating: parseFloat(formData.rating),
-          reviews: parseInt(formData.reviews),
-          skills: formData.skills.split(',').map(skill => skill.trim()),
-        }),
-      });
+          skills: formData.skills.split(',').map(s => s.trim()),
+          highlights: formData.highlights.split('\n').map(h => h.trim())
+        })
+      })
 
-      if (!response.ok) {
-        throw new Error('Failed to create job');
-      }
+      if (!response.ok) throw new Error('Failed to create job')
 
-      setSuccessMessage('Job posted successfully!');
-      setErrorMessage('');
-      setFormData({
-        title: '',
-        company: '',
-        rating: '',
-        reviews: '',
-        experience: '',
-        salary: '',
-        location: '',
-        description: '',
-        skills: '',
-        logo: '',
-        postedDate: '',
-        tag: '',
-      });
-    } catch (error: any) {
-      setErrorMessage(error.message);
-      setSuccessMessage('');
+      setSuccessMessage('Job posted successfully')
+      setErrorMessage('')
+    } catch (err: any) {
+      setErrorMessage(err.message)
+      setSuccessMessage('')
     }
-  };
-
-  const calculateDaysAgo = (dateString: string) => {
-    if (!dateString) return null;
-
-    const posted = new Date(dateString);
-    const today = new Date();
-
-    // Set time to midnight for accurate day difference
-    posted.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    const diffMs = today.getTime() - posted.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    return diffDays;
-  };
-
+  }
 
   return (
     <Form onSubmit={handleSubmit} className="p-4 border rounded bg-light">
-      <h4 className="mb-3">Post a New Job</h4>
+      <h4>Post New Job</h4>
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
       {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
@@ -96,85 +62,82 @@ const AdminJobForm: React.FC = () => {
       <Row>
         <Col md={6}>
           <Form.Group className="mb-3">
-            <Form.Label>Title</Form.Label>
-            <Form.Control name="title" value={formData.title} onChange={handleChange} required />
+            <Form.Label>Job Title</Form.Label>
+            <Form.Control name="title" onChange={handleChange} required />
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label>Company</Form.Label>
-            <Form.Control name="company" value={formData.company} onChange={handleChange} required />
+            <Form.Control name="company" onChange={handleChange} required />
           </Form.Group>
+
           <Form.Group className="mb-3">
-            <Form.Label>Rating</Form.Label>
-            <Form.Control name="rating" value={formData.rating} onChange={handleChange} type="number" step="0.1" />
+            <Form.Label>Job Type</Form.Label>
+            <Form.Select name="jobType" onChange={handleChange} required>
+              <option value="">Select</option>
+              <option>Internship</option>
+              <option>Fresher</option>
+              <option>Experienced</option>
+            </Form.Select>
           </Form.Group>
+
           <Form.Group className="mb-3">
-            <Form.Label>Reviews</Form.Label>
-            <Form.Control name="reviews" value={formData.reviews} onChange={handleChange} type="number" />
+            <Form.Label>Domain</Form.Label>
+            <Form.Select name="domain" onChange={handleChange} required>
+              <option value="">Select</option>
+              <option>Tech</option>
+              <option>Non-Tech</option>
+            </Form.Select>
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label>Experience</Form.Label>
-            <Form.Control name="experience" value={formData.experience} onChange={handleChange} />
+            <Form.Control name="experience" placeholder="0-2 years" onChange={handleChange} />
           </Form.Group>
         </Col>
 
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label>Salary</Form.Label>
-            <Form.Control name="salary" value={formData.salary} onChange={handleChange} />
+            <Form.Control name="salary" onChange={handleChange} />
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label>Location</Form.Label>
-            <Form.Control name="location" value={formData.location} onChange={handleChange} />
+            <Form.Control name="location" onChange={handleChange} />
           </Form.Group>
+
           <Form.Group className="mb-3">
-            <Form.Label>Posted Date</Form.Label>
-            <Form.Control type="date" name="postedDate" value={formData.postedDate} onChange={handleChange} />
+            <Form.Label>Expiry Date</Form.Label>
+            <Form.Control type="date" name="expiryDate" onChange={handleChange} required />
           </Form.Group>
+
           <Form.Group className="mb-3">
             <Form.Label>Tag</Form.Label>
-            <Form.Control name="tag" value={formData.tag} onChange={handleChange} placeholder="e.g. Prefers differently-abled" />
-          </Form.Group>
-          <Form.Group className="mb-3">
-            <Form.Label>Logo URL</Form.Label>
-            <Form.Control name="logo" value={formData.logo} onChange={handleChange} />
-          </Form.Group>
-        </Col>
-      </Row>
-
-      <Row>
-        <Col md={12}>
-          <Form.Group className="mb-4">
-            <Form.Label className="fw-semibold">
-              Description
-            </Form.Label>
-
-            <Form.Control
-              name="description"
-              as="textarea"
-              rows={6}
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter a clear and detailed job description..."
-              style={{
-                resize: 'vertical',
-                minHeight: '160px',
-                lineHeight: '1.6',
-              }}
-            />
+            <Form.Control name="tag" placeholder="Women Preferred" onChange={handleChange} />
           </Form.Group>
         </Col>
       </Row>
 
       <Form.Group className="mb-3">
-        <Form.Label>Skills (comma separated)</Form.Label>
-        <Form.Control name="skills" value={formData.skills} onChange={handleChange} placeholder="React, Node, MongoDB" />
+        <Form.Label>Key Highlights (one per line)</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={4}
+          name="highlights"
+          placeholder={`• Immediate Joiner\n• 5 Days Working\n• Free Training`}
+          onChange={handleChange}
+        />
       </Form.Group>
 
-      <Button type="submit" variant="primary">
-        Submit
-      </Button>
+      <Form.Group className="mb-3">
+        <Form.Label>Skills (comma separated)</Form.Label>
+        <Form.Control name="skills" onChange={handleChange} />
+      </Form.Group>
+
+      <Button type="submit">Post Job</Button>
     </Form>
   )
-};
+}
 
-export default AdminJobForm;
+export default AdminJobForm

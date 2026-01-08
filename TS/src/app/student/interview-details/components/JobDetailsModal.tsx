@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Modal, Badge, Button, Container, Row, Col, Card } from 'react-bootstrap'
 import {
   FaBuilding,
@@ -6,109 +6,168 @@ import {
   FaTools,
   FaClock,
   FaBriefcase,
-  FaTimes
+  FaTimes,
+  FaBullseye
 } from 'react-icons/fa'
+import { useAuthContext } from '@/context/useAuthContext'
+import styles from './JobCard.module.css'
 
 interface Job {
+  _id: string
   title: string
   company: string
   experience: string
   salary: string
   location: string
-  description: string
+
   skills: string[]
+  highlights: string[]
+
+  jobType: 'Internship' | 'Fresher' | 'Experienced'
+  domain: 'Tech' | 'Non-Tech'
+
   postedDate: string
+  expiryDate: string
+  isRead: boolean
+  tag?: string
 }
 
 interface Props {
   show: boolean
   onHide: () => void
   job: Job | null
+  onMarkedAsRead: (jobId: string) => void
 }
 
-const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
+const JobDetailsModal: React.FC<Props> = ({
+  show,
+  job,
+  onHide,
+  onMarkedAsRead
+}) => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+  const token = user?.token
+
+  const [isRead, setIsRead] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (job) {
+      setIsRead(job.isRead)
+    }
+  }, [job])
+
   if (!job) return null
+
+  const getExpiryText = () => {
+    const today = new Date()
+    const exp = new Date(job.expiryDate)
+    const diffDays = Math.ceil(
+      (exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    )
+
+    if (diffDays <= 0) return 'Expired'
+    if (diffDays === 1) return 'Expires today'
+    return `Expires in ${diffDays} days`
+  }
+
+  const handleMarkAsRead = async () => {
+    if (isRead || loading || !token) return
+
+    try {
+      setLoading(true)
+
+      const res = await fetch(`${baseURL}/jobs/${job._id}/read`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to mark job as read')
+      }
+
+      setIsRead(true)
+      onMarkedAsRead(job._id) // 🔁 sync parent list
+    } catch (err) {
+      console.error('❌ Mark as read failed:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <Modal
       show={show}
       onHide={onHide}
       fullscreen="md-down"
-      size="lg"
       scrollable
       backdrop="static"
       centered
+      dialogClassName="job-details-modal"
     >
-      {/* ================= HEADER / HERO ================= */}
+      {/* ===== HEADER ===== */}
       <Modal.Header className="bg-dark text-white border-0 position-relative">
         <Container className="px-0">
-          <div className="d-flex justify-content-between align-items-start mb-2">
-            <div className="me-3">
-              <Modal.Title className="fw-bold text-white mb-1 fs-5 fs-md-4">
-                {job.title}
-              </Modal.Title>
-              <div className="text-muted d-flex flex-wrap align-items-center gap-2 gap-md-3 fs-6">
-                <span className="d-flex align-items-center gap-1">
-                  <FaBuilding size={14} />
-                  {job.company}
-                </span>
-                <span className="d-flex align-items-center gap-1">
-                  <FaMapMarkerAlt size={14} />
-                  {job.location}
-                </span>
-              </div>
-            </div>
+          <Modal.Title className="fw-bold fs-5 fs-md-4">
+            {job.title}
+          </Modal.Title>
 
-            <Button
-              variant="outline-light"
-              onClick={onHide}
-              className="rounded-circle p-1 position-absolute"
-              style={{ top: '1rem', right: '1rem' }}
-              size="sm"
-            >
-              <FaTimes size={16} />
-            </Button>
+          <div className="d-flex flex-wrap gap-3 text-muted mt-2">
+            <span className="d-flex align-items-center gap-1">
+              <FaBuilding size={14} /> {job.company}
+            </span>
+            <span className="d-flex align-items-center gap-1">
+              <FaMapMarkerAlt size={14} /> {job.location}
+            </span>
           </div>
 
-          <div className="d-flex flex-wrap gap-2 mt-2">
-            <Badge bg="secondary" className="d-flex align-items-center gap-1 px-2 py-1">
-              <FaBriefcase size={12} />
-              {job.experience}
-            </Badge>
-            <Badge bg="info" className="px-2 py-1">{job.salary}</Badge>
-            <Badge bg="dark" className="border px-2 py-1 d-flex align-items-center gap-1">
-              <FaClock size={12} />
-              Posted {new Date(job.postedDate).toLocaleDateString()}
-            </Badge>
+          <div className="d-flex flex-wrap gap-2 mt-3">
+            <Badge bg="primary">{job.jobType}</Badge>
+            <Badge bg="secondary">{job.domain}</Badge>
+            {job.tag && <Badge bg="success">{job.tag}</Badge>}
+            {isRead && <Badge bg="success">Read</Badge>}
           </div>
+
+          <Button
+            variant="outline-light"
+            onClick={onHide}
+            className="rounded-circle p-1 position-absolute"
+            style={{ top: '1rem', right: '1rem' }}
+            size="sm"
+          >
+            <FaTimes size={16} />
+          </Button>
         </Container>
       </Modal.Header>
 
-      {/* ================= BODY ================= */}
-      <Modal.Body className="bg-light p-0">
-        <Container className="py-3 py-md-4">
-          <Row className="g-3 g-md-4">
+      {/* ===== BODY ===== */}
+      <Modal.Body className="bg-light">
+        <Container>
+          <Row className="g-4">
             {/* LEFT CONTENT */}
             <Col lg={8}>
-              <Card className="shadow-sm border-0 mb-3 mb-md-4">
-                <Card.Body className="p-3 p-md-4">
-                  <h5 className="fw-bold mb-3">Job Description</h5>
-                  <div
-                    className="text-muted"
-                    style={{
-                      whiteSpace: 'pre-line',
-                      lineHeight: '1.7',
-                      fontSize: '0.95rem',
-                    }}
-                  >
-                    {job.description}
-                  </div>
+              <Card className="shadow-sm border-0 mb-4">
+                <Card.Body>
+                  <h5 className="fw-bold mb-3 d-flex align-items-center">
+                    <FaBullseye className="me-2" />
+                    Key Highlights
+                  </h5>
 
+                  <ul className="mb-0 ps-3">
+                    {job.highlights.map((point, idx) => (
+                      <li key={idx} className="mb-2 text-muted">
+                        {point}
+                      </li>
+                    ))}
+                  </ul>
                 </Card.Body>
               </Card>
 
               <Card className="shadow-sm border-0">
-                <Card.Body className="p-3 p-md-4">
+                <Card.Body>
                   <h5 className="fw-bold mb-3 d-flex align-items-center">
                     <FaTools className="me-2" />
                     Required Skills
@@ -116,7 +175,7 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
 
                   <div className="d-flex flex-wrap gap-2">
                     {job.skills.map((skill, idx) => (
-                      <Badge bg="secondary" key={idx} className="px-2 py-1">
+                      <Badge bg="secondary" key={idx}>
                         {skill}
                       </Badge>
                     ))}
@@ -127,30 +186,49 @@ const JobDetailsModal: React.FC<Props> = ({ show, job, onHide }) => {
 
             {/* RIGHT SIDEBAR */}
             <Col lg={4}>
-              <Card className="shadow-sm border-0 sticky-md-top" style={{ top: '1rem' }}>
-                <Card.Body className="p-3 p-md-4">
-                  <h6 className="fw-bold mb-3">Quick Summary</h6>
+              <Card
+                className="shadow-sm border-0 sticky-md-top"
+                style={{ top: '1rem' }}
+              >
+                <Card.Body>
+                  <h6 className="fw-bold mb-3">Job Summary</h6>
 
                   <div className="mb-3">
-                    <div className="fw-semibold mb-1">Company:</div>
-                    <div className="text-muted">{job.company}</div>
+                    <FaBriefcase className="me-2 text-muted" />
+                    {job.experience || 'Any Experience'}
                   </div>
 
-                  <div className="mb-3">
-                    <div className="fw-semibold mb-1">Location:</div>
-                    <div className="text-muted">{job.location}</div>
-                  </div>
+                  {job.salary && (
+                    <div className="mb-3 fw-semibold">{job.salary}</div>
+                  )}
 
-                  <div className="mb-4">
-                    <div className="fw-semibold mb-1">Experience:</div>
-                    <div className="text-muted">{job.experience}</div>
+                  <div className="mb-4 text-muted">
+                    <FaClock className="me-2" />
+                    Posted {new Date(job.postedDate).toLocaleDateString()}
+                    <br />
+                    <strong>{getExpiryText()}</strong>
                   </div>
 
                   <div className="d-grid gap-2">
-                    <Button variant="primary" size="lg" className="w-100">
-                      Marked Read
-                    </Button>
-                    <Button variant="outline-secondary" onClick={onHide} className="w-100">
+                    {!isRead ? (
+                      <Button
+                        variant="primary"
+                        size="lg"
+                        onClick={handleMarkAsRead}
+                        disabled={loading}
+                      >
+                        {loading ? 'Marking…' : 'Mark as Read'}
+                      </Button>
+                    ) : (
+                      <Button variant="success" size="lg" disabled>
+                        ✓ Marked as Read
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="outline-secondary"
+                      onClick={onHide}
+                    >
                       Close
                     </Button>
                   </div>
