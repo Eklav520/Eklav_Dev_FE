@@ -155,14 +155,13 @@ const JobDetailsModal: React.FC<Props> = ({
                     <FaBullseye className="me-2" />
                     Key Highlights
                   </h5>
+                  <div
+                    className="job-description"
+                    dangerouslySetInnerHTML={{
+                      __html: job.highlights?.[0] || ''
+                    }}
+                  />
 
-                  <ul className="mb-0 ps-3">
-                    {job.highlights.map((point, idx) => (
-                      <li key={idx} className="mb-2 text-muted">
-                        {point}
-                      </li>
-                    ))}
-                  </ul>
                 </Card.Body>
               </Card>
 

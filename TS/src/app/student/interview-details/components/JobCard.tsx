@@ -8,6 +8,7 @@ import {
   FaClock
 } from 'react-icons/fa'
 import styles from './JobCard.module.css'
+import DOMPurify from 'dompurify'
 
 export interface Job {
   _id: string
@@ -57,6 +58,13 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
     if (diffDays === 1) return 'Expires today'
     return `Expires in ${diffDays} days`
   }
+
+  const previewText =
+  job.highlights?.length > 0
+    ? DOMPurify.sanitize(job.highlights[0], { ALLOWED_TAGS: [] })
+        .replace(/\s+/g, ' ')
+        .slice(0, 140)
+    : ''
 
   return (
     <Card
@@ -110,13 +118,11 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
         </div>
 
         {/* Highlights */}
-        {job.highlights && job.highlights.length > 0 && (
-          <ul className={styles.highlights}>
-            {job.highlights.slice(0, 2).map((point, idx) => (
-              <li key={idx}>{point}</li>
-            ))}
-          </ul>
-        )}
+        {previewText && (
+  <p className={styles.highlightsPreview}>
+    {previewText}…
+  </p>
+)}
 
         {/* Skills */}
         <div className={styles.skillsContainer}>

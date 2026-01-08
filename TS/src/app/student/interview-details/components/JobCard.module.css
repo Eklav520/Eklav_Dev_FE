@@ -195,3 +195,34 @@
     max-width: 100%;
   }
 }
+
+.job-description h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+.job-description p {
+  margin-bottom: 0.75rem;
+  color: #495057;
+}
+
+.job-description ul,
+.job-description ol {
+  padding-left: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.job-description li {
+  margin-bottom: 0.5rem;
+  color: #6c757d;
+}
+
+.job-description strong {
+  font-weight: 600;
+}
+.highlightsPreview {
+  font-size: 0.9rem;
+  color: #adb5bd;
+  line-height: 1.4;
+}
