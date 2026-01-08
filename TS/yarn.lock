@@ -3414,12 +3414,12 @@ react-mic@^12.4.6:
     prop-types "^15.5.10"
     react-ga "^2.2.0"
 
-react-quill-new@^3.3.3:
-  version "3.3.3"
-  resolved "https://registry.npmjs.org/react-quill-new/-/react-quill-new-3.3.3.tgz"
-  integrity sha512-jxbm1QUJlkuGUpc9/GUgGw5USLHdp43H0M7AufqS3V+zRLng9uqLeVBGjXYqEbUKi8QVOM4SClSV3F7kVNj68w==
+react-quill-new@^3.7.0:
+  version "3.7.0"
+  resolved "https://registry.npmjs.org/react-quill-new/-/react-quill-new-3.7.0.tgz"
+  integrity sha512-i5qz1WukIR84ktJrA2VMcZdkRrfOl/4TAK6ygMTX1/9Grcrgj0NW+LnoanBhuIbHaHJZwcvcWMBvSjUFsxQIQA==
   dependencies:
-    lodash "^4.17.21"
+    lodash-es "^4.17.21"
     quill "~2.0.2"
 
 react-refresh@^0.14.2:
