@@ -44,48 +44,55 @@ const useSignIn = () => {
     }
   }
 
-  const login = handleSubmit(async (values: LoginFormFields) => {
-    try {
-      setLoading(true)
+const login = handleSubmit(async (values: LoginFormFields) => {
+  try {
+    setLoading(true)
 
-      // ✅ Encrypt the password before sending
-      const encryptedPassword = CryptoJS.AES.encrypt(values.password, SECRET_KEY).toString()
-      const payload = {
-        email: values.email,
-        password: encryptedPassword,
-      }
+    const encryptedPassword = CryptoJS.AES.encrypt(values.password, SECRET_KEY).toString()
 
-      const response = await fetch(`${baseURL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        credentials: 'include',
-      })
-
-      if (!response.ok) throw new Error('Login failed')
-
-      const result = await response.json()
-      console.log('Login success:', result)
-
-      if (result.token) {
-        saveSession({
-          ...(result.user ?? {}),
-          token: result.token,
-        })
-        showNotification({ message: 'Successfully logged in. Redirecting....', variant: 'success' })
-        redirectUser(result.user?.role || 'student')
-      } else {
-        throw new Error('Invalid login response')
-      }
-    } catch (e: any) {
-      showNotification({
-        message: e?.message || 'Something went wrong during login.',
-        variant: 'danger',
-      })
-    } finally {
-      setLoading(false)
+    const payload = {
+      email: values.email,
+      password: encryptedPassword,
     }
-  })
+
+    const response = await fetch(`${baseURL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      credentials: 'include',
+    })
+
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result?.message || 'Login failed')
+    }
+
+    if (result.token) {
+      saveSession({
+        ...(result.user ?? {}),
+        token: result.token,
+      })
+
+      showNotification({
+        message: 'Successfully logged in. Redirecting...',
+        variant: 'success',
+      })
+
+      redirectUser(result.user?.role || 'student')
+    } else {
+      throw new Error('Invalid login response')
+    }
+  } catch (e: any) {
+    showNotification({
+      message: e?.message || 'Something went wrong during login.',
+      variant: 'danger',
+    })
+  } finally {
+    setLoading(false)
+  }
+})
+
 
   return { loading, login, control }
 }
