@@ -70,7 +70,9 @@ const SpeakingPractice: React.FC = () => {
   const [isWebView, setIsWebView] = useState(false)
   const [showManualInput, setShowManualInput] = useState(false)
   const [pendingAudioUri, setPendingAudioUri] = useState<string | null>(null)
-  
+  const finalTranscriptRef = useRef('')
+  const sessionIdRef = useRef<string>('')
+
   const isWeeklyLimitReached: boolean = !!history && history.attemptsUsed >= history.weeklyLimit
 
   useEffect(() => {
@@ -78,18 +80,18 @@ const SpeakingPractice: React.FC = () => {
     const checkMobile = () => {
       const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       setIsMobile(isMobileDevice)
-      
+
       // Check if in WebView
       const isInWebView = typeof (window as any).ReactNativeWebView !== 'undefined'
       setIsWebView(isInWebView)
-      
+
       // Show help modal on mobile first visit
       if (isMobileDevice && !localStorage.getItem('mobileHelpShown') && !isInWebView) {
         setTimeout(() => {
           setShowMobileHelp(true)
         }, 1000)
       }
-      
+
       // For WebView, set up message handler
       if (isInWebView) {
         console.log('Running in WebView environment');
@@ -97,9 +99,9 @@ const SpeakingPractice: React.FC = () => {
         (window as any).onNativeAudioReady = handleNativeAudioReady
       }
     }
-    
+
     checkMobile()
-    
+
     // Cleanup on unmount
     return () => {
       stopAllMedia()
@@ -109,25 +111,32 @@ const SpeakingPractice: React.FC = () => {
     }
   }, [])
 
-  // Handle audio URI from native
+  // Handle audio URI from native (WebView)
   const handleNativeAudioReady = (audioUri: string) => {
-    console.log('Received audio URI from native:', audioUri)
-    setPendingAudioUri(audioUri)
-    
-    // If we have a transcript, submit immediately
-    if (transcript || manualTranscript) {
-      submitAudioToBackend(audioUri, transcript || manualTranscript)
+    const currentSession = sessionIdRef.current
+
+    if (!currentSession) return
+
+    // ❌ stale callback → ignore
+    if (currentSession !== sessionIdRef.current) {
+      console.warn('Stale native audio ignored')
+      return
+    }
+
+    if (finalTranscriptRef.current.trim()) {
+      submitAudioToBackend(audioUri, finalTranscriptRef.current)
     } else {
-      // Show manual input for transcript
+      setPendingAudioUri(audioUri)
       setShowManualInput(true)
     }
   }
+
 
   const stopAllMedia = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
     }
-    
+
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
@@ -136,16 +145,16 @@ const SpeakingPractice: React.FC = () => {
         console.log('Speech recognition cleanup:', e)
       }
     }
-    
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop()
     }
-    
+
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach(track => track.stop())
       audioStreamRef.current = null
     }
-    
+
     if (audioContext) {
       audioContext.close()
     }
@@ -155,7 +164,7 @@ const SpeakingPractice: React.FC = () => {
     if (token) {
       fetchJamHistory()
     }
-    
+
     return () => {
       stopAllMedia()
     }
@@ -191,8 +200,17 @@ const SpeakingPractice: React.FC = () => {
       headers: { Authorization: `Bearer ${token}` },
     })
     const data = await res.json()
+
+    // 🆕 NEW SESSION
+    sessionIdRef.current = crypto.randomUUID()
+
+    // 🧹 clear stale refs
+    finalTranscriptRef.current = ''
+    audioChunks.current = []
+
     setPrompt(data)
   }
+
 
   // ⭐ User clicks Start → Load topic only
   const beginPractice = async () => {
@@ -215,9 +233,9 @@ const SpeakingPractice: React.FC = () => {
   }
 
   const checkMediaRecorderSupport = (): boolean => {
-    return typeof MediaRecorder !== 'undefined' && 
-           typeof MediaRecorder.isTypeSupported === 'function' &&
-           MediaRecorder.isTypeSupported('audio/webm')
+    return typeof MediaRecorder !== 'undefined' &&
+      typeof MediaRecorder.isTypeSupported === 'function' &&
+      MediaRecorder.isTypeSupported('audio/webm')
   }
 
   const getSupportedMimeType = (): string | null => {
@@ -231,7 +249,7 @@ const SpeakingPractice: React.FC = () => {
       'audio/wav',
       'audio/mpeg'
     ]
-    
+
     for (const type of types) {
       if (MediaRecorder.isTypeSupported(type)) {
         return type
@@ -256,18 +274,18 @@ const SpeakingPractice: React.FC = () => {
     // 🔴 WEBVIEW MODE: Use native recording
     if (isWebView) {
       console.log('Using native recording via WebView')
-      
+
       // Send message to React Native to start recording
       if ((window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(
-          JSON.stringify({ 
+          JSON.stringify({
             type: "START_AUDIO",
             promptId: prompt?._id || '',
             userId: user?.id || ''
           })
         )
       }
-      
+
       // Start timer
       timerRef.current = setInterval(() => {
         setRecordingTime((prev) => {
@@ -280,20 +298,20 @@ const SpeakingPractice: React.FC = () => {
           return prev + 1
         })
       }, 1000)
-      
+
       setRecording(true)
       return
     }
-    
+
     // 🔵 BROWSER MODE: Use Web APIs
     try {
       // Request microphone permissions
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true
-        } 
+        }
       })
       audioStreamRef.current = stream
 
@@ -310,7 +328,7 @@ const SpeakingPractice: React.FC = () => {
       }
 
       const mimeType = getSupportedMimeType()
-      
+
       // Create MediaRecorder with options for better mobile compatibility
       const options = mimeType ? { mimeType } : {}
       mediaRecorderRef.current = new MediaRecorder(stream, options)
@@ -361,7 +379,9 @@ const SpeakingPractice: React.FC = () => {
 
           let finalTranscript = ''
           recognitionRef.current.onresult = (event: any) => {
+            let finalTranscript = finalTranscriptRef.current
             let interimTranscript = ''
+
             for (let i = event.resultIndex; i < event.results.length; i++) {
               const chunk = event.results[i][0].transcript
               if (event.results[i].isFinal) {
@@ -370,8 +390,11 @@ const SpeakingPractice: React.FC = () => {
                 interimTranscript += chunk
               }
             }
+
+            finalTranscriptRef.current = finalTranscript.trim()
             setTranscript((finalTranscript + ' ' + interimTranscript).trim())
           }
+
 
           recognitionRef.current.onerror = (event: any) => {
             console.log('Speech recognition error:', event.error)
@@ -409,20 +432,20 @@ const SpeakingPractice: React.FC = () => {
 
   const stopRecording = async () => {
     if (timerRef.current) clearInterval(timerRef.current)
-    
+
     setRecording(false)
-    
+
     // 🔴 WEBVIEW MODE: Stop native recording
     if (isWebView) {
       console.log('Stopping native recording via WebView')
-      
+
       // Send message to React Native to stop recording
       if ((window as any).ReactNativeWebView) {
         (window as any).ReactNativeWebView.postMessage(
           JSON.stringify({ type: "STOP_AUDIO" })
         )
       }
-      
+
       // Stop speech recognition if it was running
       if (recognitionRef.current) {
         try {
@@ -431,10 +454,10 @@ const SpeakingPractice: React.FC = () => {
           console.log('Error stopping recognition:', e)
         }
       }
-      
+
       return
     }
-    
+
     // 🔵 BROWSER MODE: Stop web recording
     // Stop speech recognition
     if (recognitionRef.current) {
@@ -444,15 +467,19 @@ const SpeakingPractice: React.FC = () => {
         console.log('Error stopping recognition:', e)
       }
     }
-    
+
     // Stop media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       return new Promise<void>((resolve) => {
-        mediaRecorderRef.current!.onstop = async () => {
-          await processAudioRecording()
-          resolve()
+        mediaRecorderRef.current!.onstop = () => {
+          // ⏳ Allow speech recognition to flush final transcript
+          setTimeout(async () => {
+            await processAudioRecording()
+            resolve()
+          }, 500) // 300–500ms is ideal
         }
         mediaRecorderRef.current!.stop()
+
       })
     } else {
       await processAudioRecording()
@@ -460,31 +487,50 @@ const SpeakingPractice: React.FC = () => {
   }
 
   const processAudioRecording = async () => {
-    // Stop audio tracks
-    if (audioStreamRef.current) {
-      audioStreamRef.current.getTracks().forEach(track => track.stop())
-      audioStreamRef.current = null
-    }
+    const currentSession = sessionIdRef.current
 
     if (audioChunks.current.length === 0) {
-      console.log('No audio recorded')
       setLoading(false)
       return
     }
 
-    // For mobile compatibility, use MP3 if available, otherwise use whatever was recorded
     const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
     const audioBlob = new Blob(audioChunks.current, { type: mimeType })
 
-    await submitAudioToBackend(audioBlob, transcript)
+    // ❌ If session changed → DO NOTHING
+    if (currentSession !== sessionIdRef.current) {
+      console.warn('Stale recording ignored')
+      return
+    }
+
+    await submitAudioToBackend(audioBlob, finalTranscriptRef.current)
   }
 
+
   const submitAudioToBackend = async (audioData: Blob | string, transcriptText: string) => {
+
+    // 🚨 HARD VALIDATION
+    if (!prompt?._id) {
+      setRecordingError('Speaking topic missing. Please retry.')
+      return
+    }
+
+    if (!user?.id) {
+      setRecordingError('User session expired. Please login again.')
+      return
+    }
+
+    if (!transcriptText?.trim()) {
+      // ⛔ DO NOT AUTO SUBMIT
+      setShowManualInput(true)
+      setLoading(false)
+      return
+    }
     setLoading(true)
-    
+
     try {
       const formData = new FormData()
-      
+
       // Handle both Blob (browser) and string URI (native) audio data
       if (audioData instanceof Blob) {
         formData.append('audio', audioData, `speech.webm`)
@@ -494,7 +540,7 @@ const SpeakingPractice: React.FC = () => {
         const audioBlob = await response.blob()
         formData.append('audio', audioBlob, 'speech.mp3')
       }
-      
+
       formData.append('studentId', user?.id || '')
       formData.append('promptId', prompt?._id || '')
       formData.append('transcript', transcriptText || '')
@@ -523,7 +569,7 @@ const SpeakingPractice: React.FC = () => {
         studentAudioUrl: data.studentAudioUrl,
         correctedAudioUrl: data.correctedAudioUrl,
       })
-      
+
       // Clear pending state
       setPendingAudioUri(null)
       setShowManualInput(false)
@@ -540,17 +586,21 @@ const SpeakingPractice: React.FC = () => {
       setRecordingError('No audio recording found')
       return
     }
-    
+
     if (!manualTranscript.trim()) {
       setRecordingError('Please enter what you said during recording')
       return
     }
-    
+
     submitAudioToBackend(pendingAudioUri, manualTranscript)
   }
 
   const resetPractice = async () => {
     stopAllMedia()
+
+    // ❌ invalidate previous session immediately
+    sessionIdRef.current = ''
+
     setTranscript('')
     setManualTranscript('')
     setFeedback(null)
@@ -559,7 +609,15 @@ const SpeakingPractice: React.FC = () => {
     setRecordingError('')
     setShowManualInput(false)
     setPendingAudioUri(null)
-    await fetchPrompt()
+
+    setLoadingPrompt(true)
+    setPrompt(null)
+
+    try {
+      await fetchPrompt()
+    } finally {
+      setLoadingPrompt(false)
+    }
   }
 
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -597,7 +655,7 @@ const SpeakingPractice: React.FC = () => {
             </ul>
             {isWebView && (
               <Alert variant="info" className="mt-2">
-                <strong>App Mode:</strong> You're using the Eklav.in mobile app. 
+                <strong>App Mode:</strong> You're using the Eklav.in mobile app.
                 Audio recording uses native device capabilities.
               </Alert>
             )}
@@ -648,7 +706,7 @@ const SpeakingPractice: React.FC = () => {
         <div className="start-screen-container">
           <Card className="start-screen-card">
             <div className="welcome-icon">🎤</div>
-            
+
             <h2 className="welcome-title">Speaking Practice</h2>
 
             <p className="welcome-description">
@@ -669,20 +727,20 @@ const SpeakingPractice: React.FC = () => {
                 </span>
               ) : null}
             </p>
-            
+
             <Button
               className="start-button"
               onClick={beginPractice}
               disabled={isWeeklyLimitReached}>
               <FaPlay className="me-2" /> Start Speaking Practice
             </Button>
-            
+
             {isWeeklyLimitReached && (
               <Alert variant="warning" className="mt-3">
                 Weekly limit reached. Try again next week!
               </Alert>
             )}
-            
+
             {history && (
               <Card className="history-card">
                 <Card.Body className="history-card-body">
@@ -742,13 +800,13 @@ const SpeakingPractice: React.FC = () => {
 
               <div className="recording-controls">
                 {!recording ? (
-                  <Button 
-                    variant="primary" 
-                    className="record-button" 
+                  <Button
+                    variant="primary"
+                    className="record-button"
                     onClick={startRecording}
                     disabled={isWeeklyLimitReached}
                   >
-                    <FaMicrophone className="me-2" /> 
+                    <FaMicrophone className="me-2" />
                     {isWebView ? 'Start App Recording' : 'Start Speaking'}
                   </Button>
                 ) : (
@@ -762,7 +820,7 @@ const SpeakingPractice: React.FC = () => {
                     ⏱ {formatTime(recordingTime)} / {formatTime(maxDuration)}
                   </Badge>
                 )}
-                
+
                 {recordingError && (
                   <Alert variant="danger" className="mt-2 small p-2">
                     <FaExclamationTriangle className="me-1" />
@@ -770,14 +828,14 @@ const SpeakingPractice: React.FC = () => {
                   </Alert>
                 )}
               </div>
-              
+
               {isWebView && !recording && (
                 <Alert variant="info" className="mt-2 small p-2">
                   <FaMobileAlt className="me-1" />
                   <strong>App Recording:</strong> Uses your device's microphone for best quality.
                 </Alert>
               )}
-              
+
               {!isWebView && isMobile && !recording && (
                 <Alert variant="info" className="mt-2 small p-2">
                   <FaMobileAlt className="me-1" />
@@ -804,9 +862,9 @@ const SpeakingPractice: React.FC = () => {
                             onChange={(e) => setManualTranscript(e.target.value)}
                             placeholder="Type what you said here..."
                           />
-                          <Button 
-                            variant="primary" 
-                            size="sm" 
+                          <Button
+                            variant="primary"
+                            size="sm"
                             className="mt-2"
                             onClick={handleManualSubmit}
                             disabled={!manualTranscript.trim()}
@@ -845,10 +903,10 @@ const SpeakingPractice: React.FC = () => {
                   <h5>Your Score</h5>
                   <div className="score-number">{feedback.score}/10</div>
                   <div className="score-feedback">{getScoreFeedback(feedback.score)}</div>
-                  <ProgressBar 
-                    now={feedback.score * 10} 
-                    variant={getScoreVariant(feedback.score)} 
-                    className="score-progress" 
+                  <ProgressBar
+                    now={feedback.score * 10}
+                    variant={getScoreVariant(feedback.score)}
+                    className="score-progress"
                   />
                 </div>
 
