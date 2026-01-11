@@ -3,11 +3,12 @@ import { BsEnvelopeFill } from 'react-icons/bs'
 import { FaLock } from 'react-icons/fa'
 import useSignUp from '../useSignUp'
 import { useState } from 'react'
+import CaptchaBox from '@/common/CaptchaBox'
 
 const SignUpForm = () => {
   const { signUp, control, register, watch, errors } = useSignUp() // ✅ fixed name
   const [showTerms, setShowTerms] = useState(false)
-
+  const [captchaValid, setCaptchaValid] = useState(false);
   const termsAccepted = watch('terms', false)
 
   return (
@@ -86,6 +87,8 @@ const SignUpForm = () => {
         )}
       </div>
 
+      <CaptchaBox onValidate={setCaptchaValid} />
+
       {/* Terms of Service */}
       <div className="mb-4">
         <div className="form-check">
@@ -142,7 +145,7 @@ const SignUpForm = () => {
           <button
             className="btn btn-primary mb-0"
             type="submit"
-            disabled={!termsAccepted}
+            disabled={!termsAccepted || !captchaValid}
           >
             Sign Up
           </button>
