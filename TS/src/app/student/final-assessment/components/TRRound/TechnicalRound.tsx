@@ -22,9 +22,16 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const [timerActive, setTimerActive] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Topics
-  const [allTopics, setAllTopics] = useState<string[]>([])
-  const [selected, setSelected] = useState<string[]>([])
+  // Resume & Skills
+  const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumeSkills, setResumeSkills] = useState<string[]>([])
+  const [uploadingResume, setUploadingResume] = useState(false)
+  const [resumeAnalysis, setResumeAnalysis] = useState<{
+    skills: string[]
+    summary: string
+    extractedText: string
+  } | null>(null)
+
   const [loadErr, setLoadErr] = useState('')
 
   // Q&A
@@ -69,6 +76,10 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   // Preview refs
   const screenVideoElRef = useRef<HTMLVideoElement | null>(null)
   const camVideoElRef = useRef<HTMLVideoElement | null>(null)
+  const [interviewId, setInterviewId] = useState<string | null>(null)
+
+  // NEW: Loading state for interview panel setup
+  const [startingInterview, setStartingInterview] = useState(false)
 
   // Welcome intro flag
   const welcomePlayedRef = useRef(false)
@@ -134,56 +145,105 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       el.srcObject = stream
       el.muted = true
       el.playsInline = true
-      const tryPlay = () => el.play().catch(() => {})
+      const tryPlay = () => el.play().catch(() => { })
       el.onloadedmetadata = tryPlay
       tryPlay()
-    } catch {}
+    } catch { }
   }
 
-  /* ======================= Load topics ======================= */
-  useEffect(() => {
-    if (!authToken) return
-    ;(async () => {
-      try {
-        const res = await fetch(`${baseURL}/api/tr/topics`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        })
-        const data = await res.json()
-        if (!data?.success) throw new Error(data?.error || 'Failed to load topics')
-        setAllTopics(data.topics || [])
-      } catch (e: any) {
-        setLoadErr(e?.message || 'Failed to load topics')
-      }
-    })()
-  }, [authToken, baseURL])
+  /* ======================= Resume Upload & Analysis ======================= */
+  const uploadResume = async () => {
+    if (!authToken || !resumeFile) {
+      setLoadErr('Please select a resume file')
+      return
+    }
 
-  const toggleTopic = (t: string) => setSelected((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
+    setUploadingResume(true)
+    setLoadErr('')
+    setResumeAnalysis(null)
+    setResumeSkills([])
 
-  /* ======================= Fetch questions ======================= */
-  const fetchQuestions = async () => {
-    if (!authToken || selected.length === 0) return
-    setLoadingQs(true)
     try {
-      // CHANGED: Fetch only 15 questions instead of 25
-      const params = new URLSearchParams({ topics: selected.join(','), count: '15' })
-      const res = await fetch(`${baseURL}/api/tr/questions?${params}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+      const form = new FormData()
+      form.append('resume', resumeFile)
+
+      const res = await fetch(`${baseURL}/api/tr/resume/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: form,
       })
+
       const data = await res.json()
-      if (data?.success) {
-        setQs(data.questions || [])
-        setIdx(0)
-        const init: Record<string, string> = {}
-        ;(data.questions || []).forEach((q: TRQuestion) => (init[q._id] = ''))
-        setTextAnswers(init)
-        interimRef.current = {}
-        welcomePlayedRef.current = false
-        
-        // Start the timer when questions are loaded
-        startTimer()
-      } else {
-        setUiErr(data?.error || 'Failed to load questions')
+
+      if (!data?.interviewId) {
+        throw new Error(data.message || 'Resume analysis failed')
       }
+      setInterviewId(data.interviewId)
+
+      // Store the analysis results
+      setResumeAnalysis({
+        skills: data.skills || [],
+        summary: data.summary || '',
+        extractedText: data.extractedText || ''
+      })
+
+      // Set the skills for question generation
+      setResumeSkills(data.skills || [])
+
+    } catch (e: any) {
+      setLoadErr(e.message || 'Failed to analyze resume')
+    } finally {
+      setUploadingResume(false)
+    }
+  }
+
+  /* ======================= Fetch Questions ======================= */
+  const fetchQuestions = async () => {
+    if (!authToken || !resumeFile) {
+      setUiErr('Please upload and analyze resume first')
+      return
+    }
+
+    if (resumeSkills.length === 0) {
+      setUiErr('No skills extracted from resume. Please upload a different resume.')
+      return
+    }
+
+    setLoadingQs(true)
+    setUiErr('')
+
+    try {
+      const res = await fetch(`${baseURL}/api/tr/resume/start`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!data?.questions || !Array.isArray(data.questions)) {
+        throw new Error(data.message || 'Failed to generate questions')
+      }
+
+      setQs(data.questions || [])
+      setIdx(0)
+
+      // Initialize answers object
+      const init: Record<string, string> = {}
+      data.questions.forEach((q: TRQuestion) => (init[q._id] = ''))
+      setTextAnswers(init)
+
+      // Start timer only when questions are loaded
+      startTimer()
+    } catch (e: any) {
+      setUiErr(e.message || 'Failed to generate questions from resume')
     } finally {
       setLoadingQs(false)
     }
@@ -197,7 +257,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         if (!synth) return resolve()
         try {
           if (synth.paused) synth.resume()
-        } catch {}
+        } catch { }
         synth.cancel()
         const u = new SpeechSynthesisUtterance(text)
         u.rate = 1.0
@@ -301,7 +361,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         recRef.current.onend = null
         recRef.current.stop()
       }
-    } catch {}
+    } catch { }
     recRef.current = null
     if (current) {
       interimRef.current[current._id] = ''
@@ -390,16 +450,16 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
       try {
         combined.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         display.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         camera!.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         mic!.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
 
       combinedStreamRef.current = null
       displayStreamRef.current = null
@@ -423,7 +483,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const stopSession = () => {
     try {
       mediaRecorderRef.current?.stop()
-    } catch {}
+    } catch { }
     setStarted(false)
     disarm()
   }
@@ -444,30 +504,52 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
   /* ======================= Flow control ======================= */
   const handleStartInterview = async () => {
+    if (!resumeFile || resumeSkills.length === 0 || !interviewId) {
+      setUiErr('Please upload and analyze resume first')
+      return
+    }
+
+    setStartingInterview(true) // Start loading indicator
+
     try {
       const synth = window.speechSynthesis
       if (synth) {
         synth.cancel()
         synth.resume()
       }
-    } catch {}
-    // 1) Ask for screen share from user gesture
-    let preDisplay: MediaStream | null = null
+    } catch { }
+
     try {
-      preDisplay = await (navigator.mediaDevices as any).getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-        audio: false,
-      })
-    } catch {
-      setSessionErr('Screen sharing is required to start the interview.')
-      return
+      // 1) Ask for screen share from user gesture
+      let preDisplay: MediaStream | null = null
+      try {
+        preDisplay = await (navigator.mediaDevices as any).getDisplayMedia({
+          video: { cursor: 'always', frameRate: { ideal: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          audio: false,
+        })
+      } catch {
+        setSessionErr('Screen sharing is required to start the interview.')
+        setStartingInterview(false)
+        return
+      }
+
+      // 2) Enter fullscreen from same gesture
+      await enterFullscreenFromUserGesture()
+
+      // 3) Start session with granted display
+      const ok = await startSession(preDisplay!)
+      if (!ok || !mediaRecorderRef.current) {
+        setStartingInterview(false)
+        return
+      }
+
+      // 4) Fetch questions based on resume
+      await fetchQuestions()
+    } catch (error: any) {
+      setUiErr(error.message || 'Failed to start interview')
+    } finally {
+      setStartingInterview(false)
     }
-    // 2) Enter fullscreen from same gesture
-    await enterFullscreenFromUserGesture()
-    // 3) Start session with granted display
-    const ok = await startSession(preDisplay!)
-    if (!ok || !mediaRecorderRef.current) return
-    await fetchQuestions()
   }
 
   const handleNext = () => setIdx((i) => Math.min(i + 1, qs.length - 1))
@@ -478,10 +560,10 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
     const { auto = false, reason } = opts || {}
     if (!authToken || qs.length === 0 || (!allAnswered && !auto)) return
-    
+
     // Stop timer when submitting
     stopTimer()
-    
+
     setSubmitting(true)
     try {
       stopDictation()
@@ -500,7 +582,9 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       }))
 
       const form = new FormData()
-      form.set('topics', JSON.stringify(selected))
+      form.set('interviewId', interviewId || '')
+      form.set('resumeSkills', JSON.stringify(resumeSkills))
+      form.set('resumeSummary', resumeAnalysis?.summary || '')
       form.set('answers', JSON.stringify(answers))
       form.set(
         'proctorMeta',
@@ -508,7 +592,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           autoSubmitted: auto,
           violations: violationCount,
           reason: reason || null,
-          timeLeft: timeLeft, // Include remaining time in submission
+          timeLeft: timeLeft,
         }),
       )
 
@@ -537,17 +621,21 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   }
 
   const handleAutoSubmit = async (why: string) => {
+    console.log('Auto-submitting due to:', why)
     await handleSubmit({ auto: true, reason: why })
   }
 
-  // Auto-submit when violations reach limit
+  // FIXED: Auto-submit when violations reach limit - using useRef to prevent re-renders
+  const autoSubmitTriggeredRef = useRef(false)
+
   useEffect(() => {
     const LIMIT = 2
-    if (violationCount >= LIMIT) {
+    if (violationCount >= LIMIT && !autoSubmitTriggeredRef.current) {
+      autoSubmitTriggeredRef.current = true
+      console.log('Violation limit reached, triggering auto-submit')
       handleAutoSubmit('Auto-submitted due to proctoring violations')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [violationCount])
+  }, [violationCount]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-submit when time expires
   useEffect(() => {
@@ -573,56 +661,69 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopTimer() // Clean up timer
+      stopTimer()
       try {
         recRef.current?.stop()
-      } catch {}
+      } catch { }
       try {
         mediaRecorderRef.current?.stop()
-      } catch {}
+      } catch { }
       try {
         combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         micStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         window.speechSynthesis?.cancel()
-      } catch {}
+      } catch { }
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       disarm()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCloseModal = () => {
-    stopTimer() // Stop timer when closing
+    stopTimer()
     try {
       recRef.current?.stop()
-    } catch {}
+    } catch { }
     try {
       mediaRecorderRef.current?.stop()
-    } catch {}
+    } catch { }
     try {
       combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       micStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     setOpen(false)
     disarm()
     onClose()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setResumeFile(file)
+    // Reset states when new file is selected
+    if (file) {
+      setResumeAnalysis(null)
+      setResumeSkills([])
+      setLoadErr('')
+      setInterviewId(null)
+      autoSubmitTriggeredRef.current = false // Reset auto-submit flag
+    }
   }
 
   const committedValue = (() => (!current ? '' : textAnswers[current._id] || ''))()
@@ -654,7 +755,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         <Modal.Header closeButton className="glass-header">
           <div className="header-content">
             <h1>Technical Interview (TR)</h1>
-            <div className="contact-info">Contact us at Research.3</div>
+            <div className="contact-info">Upload your resume to generate personalized questions</div>
             {/* Timer Display */}
             {timerActive && (
               <div className="timer-display">
@@ -681,32 +782,136 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             </Alert>
           )}
 
-          {/* Topic selection */}
-          {!qs.length && !reviewing && (
+          {/* Resume Upload Section */}
+          {!qs.length && !reviewing && !startingInterview && (
             <div className="topic-selection-container">
               <div className="glass-card">
-                <h3 className="hero-title">Select Your Technologies</h3>
-                <p className="hero-sub">Screen share, camera and mic are required. 15 questions • 45 minutes</p>
-                <div className="topics-grid">
-                  {allTopics.map((t) => (
-                    <button
-                      key={t}
-                      className={`topic-chip ${selected.includes(t) ? 'selected' : ''}`}
-                      onClick={() => toggleTopic(t)}
-                      disabled={proctorLocked}>
-                      {t}
-                    </button>
-                  ))}
+                <h3 className="hero-title">Upload Your Resume</h3>
+                <p className="hero-sub">
+                  Upload your resume (PDF, DOC, DOCX). We'll analyze it and generate personalized interview questions.
+                </p>
+
+                <div className="upload-container mb-4">
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="form-control mb-3"
+                    onChange={handleFileChange}
+                    disabled={uploadingResume}
+                  />
+
+                  {resumeFile && (
+                    <div className="file-info mb-3">
+                      <strong>Selected file:</strong> {resumeFile.name}
+                      <span className="ms-2">({(resumeFile.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                  )}
+
+                  <button
+                    className="analyze-btn mb-3"
+                    onClick={uploadResume}
+                    disabled={!resumeFile || uploadingResume || proctorLocked}
+                  >
+                    {uploadingResume ? (
+                      <>
+                        <Spinner size="sm" className="me-2" />
+                        Analyzing Resume...
+                      </>
+                    ) : 'Analyze Resume'}
+                  </button>
                 </div>
-                <button className="start-interview-btn" disabled={!selected.length || loadingQs || proctorLocked} onClick={handleStartInterview}>
-                  {loadingQs ? <Spinner size="sm" /> : 'Start Interview'}
-                </button>
+
+                {/* Resume Analysis Results */}
+                {resumeAnalysis && (
+                  <div className="analysis-results mb-4">
+                    <h4 style={{ color: '#0f172a', fontWeight: 800 }}>Resume Analysis Results</h4>
+
+                    <div className="skills-section mb-3">
+                      <h5>Extracted Skills:</h5>
+                      <div className="topics-tags">
+                        {resumeSkills.map((skill) => (
+                          <span key={skill} className="topic-tag">{skill}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {resumeAnalysis.summary && (
+                      <div className="summary-section mb-3">
+                        <h5>Resume Summary:</h5>
+                        <div className="summary-text">{resumeAnalysis.summary}</div>
+                      </div>
+                    )}
+
+                    <Alert variant="success" className="mb-3">
+                      ✓ Resume analyzed successfully! {resumeSkills.length} skills detected.
+                      {resumeSkills.length > 0 && (
+                        <div className="mt-2">
+                          <small>We'll generate questions based on: {resumeSkills.slice(0, 5).join(', ')}...</small>
+                        </div>
+                      )}
+                    </Alert>
+                  </div>
+                )}
+
+                {/* Start Interview Button - Only show when resume is analyzed */}
+                {resumeSkills.length > 0 && (
+                  <div className="start-section">
+                    <button
+                      className="start-interview-btn"
+                      disabled={loadingQs || proctorLocked || startingInterview}
+                      onClick={handleStartInterview}
+                    >
+                      {startingInterview ? (
+                        <>
+                          <Spinner size="sm" className="me-2" />
+                          Setting Up Interview...
+                        </>
+                      ) : 'Start Interview'}
+                    </button>
+                    <p className="mt-2 mb-0 text-muted">
+                      15 personalized questions will be generated based on your resume
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Interview */}
-          {!!qs.length && !reviewing && (
+          {/* Loading State for Interview Setup */}
+          {startingInterview && !qs.length && (
+            <div className="topic-selection-container">
+              <div className="glass-card text-center">
+                <h3 className="hero-title">Setting Up Interview</h3>
+                <div className="my-4">
+                  <Spinner animation="border" variant="primary" size="sm" />
+                </div>
+                <p className="hero-sub">
+                  Please wait while we set up your interview session...
+                </p>
+                <div className="loading-steps mt-3">
+                  <div className="loading-step">
+                    <span className="step-icon">✓</span>
+                    <span>Resume Analyzed</span>
+                  </div>
+                  <div className="loading-step">
+                    <span className="step-icon">
+                      {sessionErr ? '✗' : started ? '✓' : '...'}
+                    </span>
+                    <span>Media Setup</span>
+                  </div>
+                  <div className="loading-step">
+                    <span className="step-icon">
+                      {loadingQs ? '...' : qs.length > 0 ? '✓' : '...'}
+                    </span>
+                    <span>Generating Questions</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Interview Section */}
+          {!!qs.length && !reviewing && !startingInterview && (
             <div className="split-screen-grid">
               <div className="left-panel">
                 <div className="question-container">
@@ -718,15 +923,24 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                       <ProgressBar now={progress} className="custom-progress" />
                     </div>
                     <div className="topics-tags">
-                      {selected.map((s) => (
-                        <span key={s} className="topic-tag">
-                          {s}
+                      {resumeSkills.length > 0 ? (
+                        resumeSkills.map((skill) => (
+                          <span key={skill} className="topic-tag">
+                            {skill}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="topic-tag" style={{ opacity: 0.6 }}>
+                          Resume-based questions
                         </span>
-                      ))}
+                      )}
                     </div>
                   </div>
 
                   <div className="question-card glassy" aria-disabled={proctorLocked}>
+                    <div className="question-source-badge">
+                      <small className="text-muted">Generated from your resume</small>
+                    </div>
                     <h3 className="question-text">{current?.question}</h3>
 
                     <div className="answer-section">
@@ -773,15 +987,14 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                       ← Previous
                     </button>
                     <div className="nav-group">
-                      {/* Show "Review Answers" on last question instead of "Next" */}
                       {!isLastQuestion ? (
                         <button className="nav-btn next-btn" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
                           Next →
                         </button>
                       ) : (
-                        <button 
-                          className="submit-btn" 
-                          onClick={() => setReviewing(true)} 
+                        <button
+                          className="submit-btn"
+                          onClick={() => setReviewing(true)}
                           disabled={proctorLocked}
                           title="Review your answers before final submission">
                           Review Answers
@@ -828,13 +1041,26 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                       </div>
                     )}
                   </div>
+
+                  {/* Resume Skills Summary */}
+                  <div className="resume-skills-summary">
+                    <h5>Resume Skills</h5>
+                    <div className="skills-tags-small">
+                      {resumeSkills.slice(0, 8).map((skill) => (
+                        <span key={skill} className="skill-tag-small">{skill}</span>
+                      ))}
+                      {resumeSkills.length > 8 && (
+                        <span className="skill-tag-small">+{resumeSkills.length - 8} more</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Review */}
-          {!!qs.length && reviewing && (
+          {/* Review Section */}
+          {!!qs.length && reviewing && !startingInterview && (
             <div className="left-panel">
               <div className="question-container">
                 <div className="question-header" style={{ marginBottom: '1rem' }}>
@@ -898,7 +1124,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         </Modal.Body>
       </Modal>
 
-      {/* Add timer styles */}
+      {/* Add additional styles */}
       <style>{`
         .timer-display {
           position: absolute;
@@ -938,7 +1164,116 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           font-weight: bold;
         }
 
-        /* Your existing styles remain the same... */
+        .analyze-btn {
+          background: linear-gradient(135deg, #6c757d, #495057);
+          color: white;
+          border: none;
+          padding: 0.6rem 1.2rem;
+          border-radius: 999px;
+          font-weight: 600;
+          cursor: pointer;
+          width: 100%;
+        }
+
+        .analyze-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .file-info {
+          background: rgba(0,0,0,0.05);
+          padding: 0.5rem;
+          border-radius: 8px;
+          font-size: 0.9rem;
+        }
+
+        .analysis-results {
+          background: rgba(255,255,255,0.9);
+          border-radius: 12px;
+          padding: 1rem;
+          border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .skills-section h5, .summary-section h5 {
+          font-size: 0.9rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          color: #495057;
+        }
+
+        .summary-text {
+          background: #f8f9fa;
+          padding: 0.75rem;
+          border-radius: 8px;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          border: 1px solid #dee2e6;
+        }
+
+        .question-source-badge {
+          margin-bottom: 0.5rem;
+        }
+
+        .resume-skills-summary {
+          margin-top: 1rem;
+          padding: 0.75rem;
+          background: rgba(102,126,234,0.1);
+          border-radius: 8px;
+        }
+
+        .resume-skills-summary h5 {
+          font-size: 0.9rem;
+          margin-bottom: 0.5rem;
+          color: #495057;
+        }
+
+        .skills-tags-small {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+        }
+
+        .skill-tag-small {
+          background: rgba(255,255,255,0.9);
+          color: #495057;
+          padding: 0.2rem 0.5rem;
+          border-radius: 999px;
+          font-size: 0.7rem;
+          border: 1px solid #dee2e6;
+        }
+
+        /* Loading steps styles */
+        .loading-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          max-width: 300px;
+          margin: 0 auto;
+        }
+
+        .loading-step {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.75rem;
+          background: rgba(255,255,255,0.8);
+          border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .step-icon {
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: #667eea;
+          color: white;
+          font-weight: bold;
+        }
+
+        /* Your existing styles remain... */
         :root{
           --bg1: rgba(102,126,234,0.12);
           --bg2: rgba(118,75,162,0.12);
@@ -969,30 +1304,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           border-bottom: 1px solid rgba(255,255,255,0.35); 
           position: relative; /* Needed for absolute positioning of timer */
         }
-        :root{
-          --bg1: rgba(102,126,234,0.12);
-          --bg2: rgba(118,75,162,0.12);
-          --glass-bg: rgba(255,255,255,0.18);
-          --glass-stroke: rgba(255,255,255,0.35);
-          --shadow: 0 10px 30px rgba(0,0,0,0.15);
-          --text-primary: #0f172a;
-          --text-secondary: #475569;
-          --brand1: #667eea;
-          --brand2: #764ba2;
-        }
-        .tr-glass-modal .modal-dialog { margin: 0; max-width: 100%; height: 100%; }
-        .tr-glass-content {
-          min-height: 100vh;
-          background:
-            radial-gradient(600px 200px at 50% 90%, rgba(118,75,162,0.18), transparent 60%),
-            radial-gradient(500px 200px at 20% 10%, rgba(102,126,234,0.18), transparent 60%),
-            linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
-          backdrop-filter: blur(18px) saturate(170%);
-          -webkit-backdrop-filter: blur(18px) saturate(170%);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: var(--text-primary);
-        }
-        .glass-header { background: rgba(255,255,255,0.25); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,0.35); }
         .header-content { width: 100%; text-align: center; }
         .header-content h1 { margin: 0; font-size: clamp(1.6rem, 1rem + 1.2vw, 2.2rem); font-weight: 800; background: linear-gradient(135deg, var(--brand1) 0%, var(--brand2) 100%); -webkit-background-clip: text; }
         .contact-info { font-size: .95rem; color: #fff; margin-top: 0.25rem; }
