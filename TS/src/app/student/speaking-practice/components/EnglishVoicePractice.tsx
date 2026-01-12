@@ -5,7 +5,7 @@ import './EnglishVoicePractice.css'
 import { useAuthContext } from '@/context/useAuthContext'
 
 interface Message {
-  sender: 'user' | 'rob'
+  sender: 'user' | 'eklav'
   text: string
   type: 'user' | 'correction' | 'reply'
 }
@@ -236,12 +236,12 @@ const EnglishVoicePractice: React.FC = () => {
       })
 
       if (data.correction && data.correction !== '-') {
-        setMessages((p) => [...p, { sender: 'rob', text: data.correction, type: 'correction' }])
+        setMessages((p) => [...p, { sender: 'eklav', text: data.correction, type: 'correction' }])
         await speak('Correction: ' + data.correction)
       }
 
       if (data.reply) {
-        setMessages((p) => [...p, { sender: 'rob', text: data.reply, type: 'reply' }])
+        setMessages((p) => [...p, { sender: 'eklav', text: data.reply, type: 'reply' }])
         await speak(data.reply)
       }
     } finally {
@@ -269,7 +269,7 @@ const EnglishVoicePractice: React.FC = () => {
     sessionActiveRef.current = true
 
     const res = await axios.post(`${baseURL}/api/english/start`)
-    setMessages([{ sender: 'rob', text: res.data.aiMessage, type: 'reply' }])
+    setMessages([{ sender: 'eklav', text: res.data.aiMessage, type: 'reply' }])
     await speak(res.data.aiMessage)
   }
 
@@ -374,7 +374,7 @@ const EnglishVoicePractice: React.FC = () => {
                 ) : (
                   <>
                     {messages.map((m, i) => (
-                      <div key={i} className={`message-container ${m.sender === 'user' ? 'user-message' : 'rob-message'}`}>
+                      <div key={i} className={`message-container ${m.sender === 'user' ? 'user-message' : 'eklav-message'}`}>
                         {m.sender === 'user' ? (
                           <div className="message-bubble user-bubble">
                             <div className="message-header">
@@ -392,7 +392,7 @@ const EnglishVoicePractice: React.FC = () => {
                               <div className="sender-info">
                                 <span className="correction-avatar">🤖</span>
                                 <div>
-                                  <strong className="sender-name">Rob</strong>
+                                  <strong className="sender-name">Eklav</strong>
                                   <Badge bg="warning" text="dark" className="correction-badge">
                                     Correction
                                   </Badge>
@@ -407,7 +407,7 @@ const EnglishVoicePractice: React.FC = () => {
                             <div className="message-header">
                               <div className="sender-info">
                                 <span className="rob-avatar">🤖</span>
-                                <strong className="sender-name">Rob</strong>
+                                <strong className="sender-name">Eklav</strong>
                               </div>
                               <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
                             </div>
@@ -440,7 +440,7 @@ const EnglishVoicePractice: React.FC = () => {
                           <div className="dot"></div>
                           <div className="dot"></div>
                         </div>
-                        <span className="typing-text">Rob is typing...</span>
+                        <span className="typing-text">Eklav is typing...</span>
                       </div>
                     )}
                   </>
