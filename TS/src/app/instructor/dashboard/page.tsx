@@ -10,20 +10,43 @@ import WritingHistory from './components/WritingHistory'
 import WritingAttendanceChart from './components/WritingAttendanceChart'
 import ResumeInterviewAttendanceChart from './components/ResumeInterviewAttendanceChart'
 import EnglishPracticeAttendanceChart from './components/EnglishPracticeAttendanceChart'
+import ListeningAttendanceChart from './components/ListeningAttendanceChart'
+import SectionProgressDashboard from './components/SectionProgressDashboard'
+import ReadingSectionProgressDashboard from './components/ReadingSectionProgressDashboard'
+import ListeningSectionProgressDashboard from './components/ListeningSectionProgressDashboard'
+import JustAMinuteSectionProgressDashboard from './components/JustAMinuteSectionProgressDashboard'
+import EnglishPracticeSectionProgressDashboard from './components/EnglishPracticeSectionProgressDashboard'
 
 const DashboardPage = () => {
   return (
     <>
       <PageMetaData title="Instructor Dashboard" />
+
       <Counter />
       <Chart />
-      <JAMAttendanceChart/>
-      <SelfInterviewChart/>
+
+      <JAMAttendanceChart />
+      <SelfInterviewChart />
       <SpeakingAttendanceChart />
-      <ReadingAttendanceChart/>
+      <ReadingAttendanceChart />
       <WritingAttendanceChart />
       <ResumeInterviewAttendanceChart />
       <EnglishPracticeAttendanceChart />
+      <ListeningAttendanceChart />
+
+      {/* 🔹 Writing Section Progress */}
+      <SectionProgressDashboard />
+
+      {/* 🔹 Reading Section Progress (NEW) */}
+      <ReadingSectionProgressDashboard />
+
+      <ListeningSectionProgressDashboard/>
+
+      <JustAMinuteSectionProgressDashboard/>
+
+      <EnglishPracticeSectionProgressDashboard />
+
+
       {/* <CourseList /> */}
     </>
   )
