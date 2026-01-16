@@ -7,6 +7,8 @@ import { BsPlus, BsX } from 'react-icons/bs'
 import * as yup from 'yup'
 import { useState, useEffect } from 'react'
 import { useAuthContext } from '@/context/useAuthContext'
+import { BsSearch } from 'react-icons/bs'
+
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
@@ -76,6 +78,13 @@ const EditProfile = () => {
   const [showCollegeList, setShowCollegeList] = useState(false)
   const yearOptions = Array.from({ length: 10 }, (_, i) => 2016 + i) // 2016–2025
   const branchOptions = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'Data Science', 'IoT', 'Biomedical', 'Chemical']
+  const [selectedCollege, setSelectedCollege] = useState<{
+    _id: string
+    name: string
+    address: string
+    pincode: string
+  } | null>(null)
+
 
   useEffect(() => {
     const fetchColleges = async () => {
@@ -163,30 +172,30 @@ const EditProfile = () => {
 
   // Resume change (single)
   const onResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  if (e.target.files && e.target.files[0]) {
-    const file = e.target.files[0];
-    
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    ];
-    const allowedExtensions = ['pdf', 'doc', 'docx'];
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
 
-    const fileType = file.type;
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      ];
+      const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-    if (!allowedTypes.includes(fileType) || !allowedExtensions.includes(fileExtension)) {
-      alert('Please upload PDF/DOC/DOCX files.');
-      // Clear the input so invalid file is removed
-      e.target.value = '';
-      return;
+      const fileType = file.type;
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+
+      if (!allowedTypes.includes(fileType) || !allowedExtensions.includes(fileExtension)) {
+        alert('Please upload PDF/DOC/DOCX files.');
+        // Clear the input so invalid file is removed
+        e.target.value = '';
+        return;
+      }
+
+      // If file is valid, set the state
+      setResumeFile(file);
     }
-
-    // If file is valid, set the state
-    setResumeFile(file);
-  }
-};
+  };
 
 
   // Certs change (multi)
@@ -216,6 +225,11 @@ const EditProfile = () => {
   }
 
   const onSubmit = (data: any) => {
+    if (!selectedCollege) {
+    setToastMessage('Please select a valid college from the list')
+    setShowToast(true)
+    return
+  }
     const formData = new FormData()
     formData.append('fullName', data.fullName)
     formData.append('email', data.email)
@@ -316,68 +330,79 @@ const EditProfile = () => {
             {/*  <TextFormInput name="location" label="Location *" control={control} containerClassName="col-md-6" /> */}
             {/* <TextFormInput name="college" label="College Name *" control={control} containerClassName="col-md-6" /> */}
             {/* ✅ College autocomplete field */}
-            <Col md={6} className="position-relative">
+            <Col md={6}>
               <label className="form-label fw-semibold">College *</label>
+              <div className="position-relative">
+
+              {/* Search icon (shows after 1 char) */}
+              {collegeQuery.length >= 1 && (
+                <span
+                  className="position-absolute top-50 translate-middle-y text-muted"
+                  style={{ left: '12px', zIndex: 2 }}
+                >
+                  <BsSearch />
+                </span>
+              )}
+
               <input
                 type="text"
-                className="form-control"
+                className="form-control ps-5"   // 👈 padding for icon
                 placeholder="Search your college"
                 autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
-                value={collegeQuery || ''}
+                value={collegeQuery}
                 {...register('college')}
                 onChange={(e) => {
                   const val = e.target.value
                   setCollegeQuery(val)
                   setValue('college', val)
+
+                  // invalidate previous selection
+                  setSelectedCollege(null)
                   setShowCollegeList(true)
                 }}
-                onKeyDown={(e) => {
-                  // ✅ allow Enter to select first option directly
-                  if (e.key === 'Enter' && collegeResults.length > 0) {
-                    e.preventDefault()
-                    const college = collegeResults[0]
-                    const display = `${college.name}, ${college.address}, ${college.pincode}`
-                    setValue('college', display)
-                    setCollegeQuery(display)
-                    setShowCollegeList(false)
-                  }
-                }}
                 onBlur={() => {
-                  // ✅ only hide list if the user is not clicking inside dropdown
-                  setTimeout(() => {
-                    setShowCollegeList(false)
-                  }, 250)
+                  setTimeout(() => setShowCollegeList(false), 200)
                 }}
               />
 
-              {/* Dropdown results */}
+              {/* helper text */}
+              {collegeQuery.length === 1 && (
+                <small className="text-muted mt-1 d-block">
+                  Start typing to search and select your college
+                </small>
+              )}
+
+              {/* Dropdown */}
               {showCollegeList && collegeResults.length > 0 && (
-                <ul className="list-group position-absolute w-100 shadow-sm mt-1" style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}>
+                <ul
+                  className="list-group position-absolute w-100 shadow-sm mt-1"
+                  style={{ zIndex: 1050 }}
+                >
                   {collegeResults.map((college) => (
                     <li
                       key={college._id}
-                      className="list-group-item list-group-item-action d-flex align-items-start gap-2"
+                      className="list-group-item list-group-item-action"
                       style={{ cursor: 'pointer' }}
                       onClick={() => {
                         const display = `${college.name}, ${college.address}, ${college.pincode}`
-                        setValue('college', display)
                         setCollegeQuery(display)
+                        setValue('college', display)
+                        setSelectedCollege(college)
                         setShowCollegeList(false)
-                      }}>
-                      {college.logo && <img src={college.logo} alt="" width={30} height={30} className="rounded-circle border" />}
-                      <div className="d-flex flex-column">
-                        <span className="fw-semibold">{college.name}</span>
-                        <small className="text-muted">
-                          {college.address}, {college.pincode}
-                        </small>
-                      </div>
+                      }}
+                    >
+                      <strong>{college.name}</strong>
+                      <br />
+                      <small className="text-muted">
+                        {college.address}, {college.pincode}
+                      </small>
                     </li>
                   ))}
                 </ul>
               )}
+              </div>
             </Col>
+
             {/* Joining Year */}
             <Col md={3}>
               <label className="form-label fw-semibold">Joining Year *</label>
@@ -558,7 +583,7 @@ const EditProfile = () => {
             </Col>
 
             <div className="d-sm-flex justify-content-end">
-              <button type="submit" className="btn btn-primary mb-0">
+              <button type="submit" className="btn btn-primary mb-0"  disabled={!selectedCollege}>
                 Save changes
               </button>
             </div>
