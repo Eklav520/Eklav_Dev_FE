@@ -82,6 +82,8 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const [isListening, setIsListening] = useState(false)
   const [currentExample, setCurrentExample] = useState('')
   const [hasSubmitted, setHasSubmitted] = useState(false)
+  const [loadingFinalFeedback, setLoadingFinalFeedback] = useState(false)
+
 
   // speech synth
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
@@ -107,6 +109,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const analyserRef = useRef<any>(null)
   const dataArrayRef = useRef<any>(null)
   let animationId: number
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false)
+  const isLastQuestion = mainQuestionIndex + 1 === questions.length
+
+
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
@@ -398,12 +404,12 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
   }, [isListening])
 
-  useEffect(() => {
-    // After final question evaluation completed → auto finish
-    if (showFeedback && hasSubmitted && mainQuestionIndex + 1 === questions.length) {
-      setTimeout(() => handleNext(), 500)
-    }
-  }, [showFeedback])
+  /*  useEffect(() => {
+     // After final question evaluation completed → auto finish
+     if (showFeedback && hasSubmitted && mainQuestionIndex + 1 === questions.length) {
+       setTimeout(() => handleNext(), 500)
+     }
+   }, [showFeedback]) */
 
   // eye movement
   useEffect(() => {
@@ -524,7 +530,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       if (listeningHardRef.current) {
         try {
           rec.start()
-        } catch {}
+        } catch { }
       }
     }
 
@@ -663,7 +669,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     // Start recognition
     try {
       rec.start()
-    } catch {}
+    } catch { }
 
     setIsListening(true)
   }
@@ -675,7 +681,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     // Stop speech recognition
     try {
       recognitionRef.current?.stop()
-    } catch {}
+    } catch { }
 
     setIsListening(false)
 
@@ -686,9 +692,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     if (audioContextRef.current) {
       try {
         if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-          audioContextRef.current.close().catch(() => {})
+          audioContextRef.current.close().catch(() => { })
         }
-      } catch {}
+      } catch { }
     }
 
     // Clear canvas
@@ -699,17 +705,17 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
   }
 
-  useEffect(() => {
-    if (interviewFinished && finalFeedback) {
-      downloadPDF() // 🎉 auto triggers once
-    }
-  }, [interviewFinished, finalFeedback])
+  /*   useEffect(() => {
+      if (interviewFinished && finalFeedback) {
+        downloadPDF() // 🎉 auto triggers once
+      }
+    }, [interviewFinished, finalFeedback]) */
 
   useEffect(() => {
     return () => {
       try {
         recognitionRef.current?.stop?.()
-      } catch {}
+      } catch { }
       recognitionRef.current = null
       listeningHardRef.current = false
     }
@@ -719,7 +725,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
      Handlers: evaluate / next / finish
   --------------------------*/
   const handleEvaluate = async () => {
-    if (loadingEvaluation || hasSubmitted) return
+    if (loadingEvaluation || hasSubmitted || showFeedback) return
 
     const theoryFromTyped = currentAnswer.trim()
     const theoryFromVoice = transcript.trim()
@@ -831,12 +837,12 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setAwaitingFollowUp(false)
 
     // ⭐ Final Question → Finish interview
+    // ⭐ Final Question → DO NOT auto-finish
     if (mainQuestionIndex + 1 === questions.length) {
-      const finalList = currentFeedback ? [...answers, currentFeedback] : answers
-
-      finishInterview(finalList)
+      // Just stop here and wait for user to click "Finish Interview"
       return
     }
+
 
     // ➡️ Move to next main question
     const nextMain = questions[mainQuestionIndex + 1]
@@ -844,9 +850,8 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setQuestionsQueue((prev) => [...prev, nextMain])
     setQuestionIndex((p) => p + 1)
   }
-
   const finishInterview = async (finalAnswers: AnswerItem[]) => {
-    setInterviewFinished(true)
+    setLoadingFinalFeedback(true)
     setLoadingEvaluation(true)
     setRobotStatus('processing')
     if (setLoadingFeedback) setLoadingFeedback(true)
@@ -860,21 +865,41 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
         body: JSON.stringify({ interviewId, answers: finalAnswers }),
       })
       const data = await res.json()
-      const merged = finalAnswers.map((ans, i) => ({
-        ...ans,
-        ...(data.feedback?.[i] || {}),
-      }))
+      const merged = finalAnswers.map((ans, i) => {
+        const serverItem = data.feedback?.feedback?.[i] || {}
+
+        return {
+          ...ans,
+          question: ans.question?.trim()
+            ? ans.question
+            : serverItem.question || questions[i], // ⭐ HARD FALLBACK
+          feedback:
+            typeof serverItem.feedback === 'object'
+              ? serverItem.feedback
+              : ans.feedback,
+          idealAnswer: serverItem.idealAnswer ?? ans.idealAnswer,
+          improvementTips: serverItem.improvementTips ?? ans.improvementTips,
+          rating: serverItem.rating ?? ans.rating,
+          exampleProgram: serverItem.exampleProgram ?? ans.exampleProgram,
+        }
+      })
+
       setFinalFeedback(merged)
+
+      // ✅ NOW interview is really finished
+      setInterviewFinished(true)
       setRobotStatus('idle')
     } catch (err) {
       console.error('final feedback', err)
-      setRobotStatus('idle')
       alert('Could not get final feedback.')
+      setRobotStatus('idle')
     } finally {
       setLoadingEvaluation(false)
+      setLoadingFinalFeedback(false)
       if (setLoadingFeedback) setLoadingFeedback(false)
     }
   }
+
 
   // transcript / video callbacks
   const handleTranscriptUpdate = (text: string) => setTranscript(text)
@@ -884,27 +909,23 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const pdfRef = useRef<HTMLDivElement | null>(null)
   // improved downloadPDF - replaces your existing downloadPDF
   const downloadPDF = async () => {
-    if (!pdfRef.current) return
+    if (!pdfRef.current || isDownloadingPdf) return
 
-    // Wait for the browser to paint the final DOM (ensure React rendered everything)
-    await new Promise((resolve) => {
-      // give 2 rAF ticks to be safe
-      requestAnimationFrame(() => requestAnimationFrame(resolve))
-      // fallback timeout if rAF is unavailable / slow
-      setTimeout(resolve, 120)
-    })
+    setIsDownloadingPdf(true) // 🔥 START SPINNER
 
     try {
-      // html2canvas options to improve capture fidelity
+      // Ensure DOM is fully rendered
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve))
+        setTimeout(resolve, 120)
+      })
+
       const canvas = await html2canvas(pdfRef.current as HTMLElement, {
-        scale: 2, // higher scale -> sharper text
-        useCORS: true, // allow cross-origin images if served with CORS
+        scale: 2,
+        useCORS: true,
         allowTaint: false,
         logging: false,
-        backgroundColor: '#ffffff', // make background white (useful if your page uses transparent backgrounds)
-        // you can add `windowWidth` and `windowHeight` if your layout depends on viewport size
-        // windowWidth: document.documentElement.scrollWidth,
-        // windowHeight: document.documentElement.scrollHeight,
+        backgroundColor: '#ffffff',
       })
 
       const imgData = canvas.toDataURL('image/png')
@@ -913,21 +934,17 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = pdf.internal.pageSize.getHeight()
 
-      // calculate image height in PDF units
-      const imgProps = (pdf as any).getImageProperties ? pdf.getImageProperties(imgData) : { width: canvas.width, height: canvas.height }
-      const imgWidthMm = pdfWidth
-      const imgHeightMm = (imgProps.height * imgWidthMm) / imgProps.width
+      const imgProps = pdf.getImageProperties(imgData)
+      const imgHeightMm = (imgProps.height * pdfWidth) / imgProps.width
 
-      // If the content fits on one page, just add it
       if (imgHeightMm <= pdfHeight) {
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidthMm, imgHeightMm)
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, imgHeightMm)
       } else {
-        // Multi-page: slice the canvas into page-sized chunks
         const pageCanvas = document.createElement('canvas')
         const pageCtx = pageCanvas.getContext('2d')!
-        const pxPerMm = canvas.width / imgWidthMm // pixels per mm
-
+        const pxPerMm = canvas.width / pdfWidth
         const pageHeightPx = Math.floor(pdfHeight * pxPerMm)
+
         pageCanvas.width = canvas.width
         pageCanvas.height = pageHeightPx
 
@@ -939,12 +956,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
           pageCtx.drawImage(canvas, 0, y, canvas.width, pageHeightPx, 0, 0, pageCanvas.width, pageCanvas.height)
 
           const pageData = pageCanvas.toDataURL('image/png')
-          if (page === 0) {
-            pdf.addImage(pageData, 'PNG', 0, 0, imgWidthMm, pdfHeight)
-          } else {
-            pdf.addPage()
-            pdf.addImage(pageData, 'PNG', 0, 0, imgWidthMm, pdfHeight)
-          }
+
+          if (page > 0) pdf.addPage()
+          pdf.addImage(pageData, 'PNG', 0, 0, pdfWidth, pdfHeight)
 
           y += pageHeightPx
           page++
@@ -954,7 +968,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       pdf.save('interview-feedback.pdf')
     } catch (err) {
       console.error('PDF generation failed', err)
-      alert('Could not generate PDF. See console for details.')
+      alert('Could not generate PDF.')
+    } finally {
+      setIsDownloadingPdf(false) // ✅ STOP SPINNER
     }
   }
 
@@ -1009,6 +1025,17 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     ...circleBtnBase,
     background: '#0d6efd',
   }
+
+  const canSubmit =
+    !loadingEvaluation &&
+    !showFeedback &&
+    !hasSubmitted &&
+    (
+      transcript.trim().length > 0 ||
+      currentExample.trim().length > 0 ||
+      currentAnswer.trim().length > 0
+    )
+
 
   return (
     <div className="interview-layout-with-logic">
@@ -1268,29 +1295,177 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                   />
                 </div>
                 {/* SUBMIT */}
-                <Button variant="primary" className="fw-bold w-100" disabled={loadingEvaluation || hasSubmitted} onClick={handleEvaluate}>
+                <Button
+                  variant="primary"
+                  className="fw-bold w-100"
+                  disabled={!canSubmit}
+                  onClick={handleEvaluate}
+                >
                   {loadingEvaluation ? (
                     <>
                       <Spinner size="sm" /> Analyzing...
                     </>
-                  ) : mainQuestionIndex + 1 === questions.length ? (
-                    'Finish Interview'
                   ) : (
                     'Submit Answer'
                   )}
                 </Button>
+                {isLastQuestion && showFeedback && currentFeedback && (
+                  <Button
+                    variant="success"
+                    className="fw-bold w-100 mt-2"
+                    onClick={() => finishInterview([...answers, currentFeedback])}
+                  >
+                    Finish Interview
+                  </Button>
+                )}
+
               </Card>
             </Col>
           </Row>
         ) : (
           /* FINAL SUMMARY stays same */
-          <div className="text-center py-4">
-            <h4 className="fw-bold">🎉 Interview Completed!</h4>
-            <Button className="mt-3" onClick={downloadPDF}>
-              Download Feedback PDF
-            </Button>
-          </div>
+          interviewFinished && finalFeedback ? (
+            <div className="text-center py-5">
+              <h4 className="fw-bold mb-4">🎉 Interview Completed!</h4>
+
+              <Button
+                variant="success"
+                className="fw-bold px-5 py-2"
+                disabled={isDownloadingPdf}
+                onClick={downloadPDF}
+              >
+                {isDownloadingPdf ? (
+                  <>
+                    <Spinner size="sm" /> Generating PDF...
+                  </>
+                ) : (
+                  '📄 Download Interview Report'
+                )}
+              </Button>
+            </div>
+          ) : null
         )}
+        {/* 🔽 PDF CONTENT (HIDDEN) */}
+        <div
+          ref={pdfRef}
+          style={{
+            position: 'absolute',
+            left: '-9999px',
+            top: 0,
+            width: '794px', // A4 width @ 96dpi
+            background: '#ffffff',
+            padding: '24px',
+            color: '#000',
+          }}
+        >
+          <h2 style={{ marginBottom: 16 }}>Interview Feedback Report</h2>
+
+          <p><strong>Candidate:</strong> {user?.fullName}</p>
+          <p><strong>Topic:</strong> {title}</p>
+          <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+
+          <hr />
+
+          {finalFeedback?.map((item: any, idx: number) => {
+            return (
+
+              <div key={idx} style={{
+                marginBottom: 32, pageBreakInside: 'avoid',   // 🔥 CRITICAL
+                breakInside: 'avoid',
+              }}>
+                {/* QUESTION */}
+                <h4
+                  style={{
+                    marginBottom: 8,
+                    color: '#000',        // 🔥 FORCE BLACK
+                    fontWeight: 500,
+                  }}
+                >
+                  Q{idx + 1}. {item.question}
+                </h4>
+
+
+
+                {/* USER ANSWER */}
+                <p><strong>Your Answer:</strong></p>
+                <p>{item.answer?.trim() ? item.answer : '— Skipped —'}</p>
+
+                {/* AI FEEDBACK */}
+
+                {item.feedback && (
+                  <>
+                    <p><strong>AI Feedback:</strong></p>
+
+                    {item.feedback.theory && (
+                      <p>
+                        <strong>Theory:</strong><br />
+                        {item.feedback.theory}
+                      </p>
+                    )}
+
+                    {item.feedback.example && (
+                      <p>
+                        <strong>Example:</strong><br />
+                        {item.feedback.example}
+                      </p>
+                    )}
+                  </>
+                )}
+
+
+                {/* IDEAL ANSWER */}
+                {item.idealAnswer && (
+                  <>
+                    <p><strong>Ideal Answer:</strong></p>
+                    <p>{item.idealAnswer}</p>
+                  </>
+                )}
+
+                {/* EXAMPLE PROGRAM */}
+                {item.exampleProgram && (
+                  <>
+                    <p><strong>Example Program:</strong></p>
+                    <pre
+                      style={{
+                        background: '#f5f5f5',
+                        padding: '12px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        overflowX: 'auto',
+                      }}
+                    >
+                      {typeof item.exampleProgram === 'string'
+                        ? item.exampleProgram
+                        : item.exampleProgram.code}
+                    </pre>
+                  </>
+                )}
+
+                {/* IMPROVEMENT TIPS */}
+                {Array.isArray(item.improvementTips) && item.improvementTips.length > 0 && (
+                  <>
+                    <p><strong>Improvement Tips:</strong></p>
+                    <ul>
+                      {item.improvementTips.map((tip: string, i: number) => (
+                        <li key={i}>{tip}</li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+
+                {/* SCORE */}
+                <p style={{ marginTop: 8 }}>
+                  <strong>Score:</strong> {item.rating?.total ?? 0}/10
+                </p>
+
+                <hr />
+              </div>
+            )
+
+          })}
+
+        </div>
+
       </Container>
     </div>
   )
