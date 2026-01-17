@@ -198,7 +198,9 @@ const JobDetailsModal: React.FC<Props> = ({
                   </div>
 
                   {job.salary && (
-                    <div className="mb-3 fw-semibold">{job.salary}</div>
+                    <div className="mb-3 fw-semibold">
+                      Salary: ₹{Number(job.salary).toFixed(2)}
+                    </div>
                   )}
 
                   <div className="mb-4 text-muted">
