@@ -3,6 +3,7 @@ import { Card, Col, Row, Spinner, Table, Form, Button } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import axios from 'axios'
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa'
+import * as XLSX from 'xlsx'
 
 type SelfInterviewRow = {
   _id: string
@@ -45,7 +46,7 @@ const AdminSelfInterviewProgressTable = () => {
       )
 
       setData(res.data)
-      setCurrentPage(1) // 🔁 reset page on filter change
+      setCurrentPage(1) // reset page on filter change
     } catch (err) {
       console.error('Failed to fetch self interview progress', err)
       setData([])
@@ -54,7 +55,35 @@ const AdminSelfInterviewProgressTable = () => {
     }
   }
 
-  // 🔢 Pagination logic
+  // 📊 Excel download
+  const downloadExcel = () => {
+    if (data.length === 0) return
+
+    const formattedData = data.map((row, index) => ({
+      'S.No': index + 1,
+      'Student Name': row.name,
+      College: row.college,
+      Topic: row.topic,
+      Attempts: row.attempts,
+      'Best Score': row.bestScore ?? '-',
+      'Avg Score': row.avgScore ? row.avgScore.toFixed(2) : '-',
+      'Last Attempt': row.lastAttemptDate
+        ? new Date(row.lastAttemptDate).toLocaleString()
+        : '-',
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedData)
+    const workbook = XLSX.utils.book_new()
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Self Interview Progress')
+
+    XLSX.writeFile(
+      workbook,
+      `self-interview-progress${topic ? `-${topic}` : ''}.xlsx`
+    )
+  }
+
+  // 🔢 Pagination
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE)
   const startIndex = (currentPage - 1) * ROWS_PER_PAGE
   const paginatedData = data.slice(startIndex, startIndex + ROWS_PER_PAGE)
@@ -66,21 +95,33 @@ const AdminSelfInterviewProgressTable = () => {
           <Card.Header className="d-flex justify-content-between align-items-center">
             <h5 className="mb-0">Self Interview – Student Progress</h5>
 
-            {/* Topic Filter */}
-            <Form.Select
-              style={{ width: 200 }}
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-            >
-              <option value="">All Topics</option>
-              <option value="Redux">Redux</option>
-              <option value="C">C</option>
-              <option value="Python">Python</option>
-              <option value="Data Science">Data Science</option>
-              <option value="HTML">HTML</option>
-              <option value="AI & ML">AI & ML</option>
-              <option value="JavaScript">JavaScript</option>
-            </Form.Select>
+            <div className="d-flex gap-2">
+              {/* Topic Filter */}
+              <Form.Select
+                style={{ width: 200 }}
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+              >
+                <option value="">All Topics</option>
+                <option value="Redux">Redux</option>
+                <option value="C">C</option>
+                <option value="Python">Python</option>
+                <option value="Data Science">Data Science</option>
+                <option value="HTML">HTML</option>
+                <option value="AI & ML">AI & ML</option>
+                <option value="JavaScript">JavaScript</option>
+              </Form.Select>
+
+              {/* Excel Download */}
+              <Button
+                variant="success"
+                size="sm"
+                onClick={downloadExcel}
+                disabled={data.length === 0}
+              >
+                ⬇ Download Excel
+              </Button>
+            </div>
           </Card.Header>
 
           <Card.Body>
@@ -145,7 +186,6 @@ const AdminSelfInterviewProgressTable = () => {
 
                   <nav aria-label="Page navigation">
                     <ul className="pagination pagination-sm pagination-primary-soft mb-0">
-                      {/* Prev */}
                       <li
                         className={`page-item ${
                           currentPage === 1 ? 'disabled' : ''
@@ -162,7 +202,6 @@ const AdminSelfInterviewProgressTable = () => {
                         </Button>
                       </li>
 
-                      {/* Pages */}
                       {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                         (page) => (
                           <li
@@ -181,7 +220,6 @@ const AdminSelfInterviewProgressTable = () => {
                         )
                       )}
 
-                      {/* Next */}
                       <li
                         className={`page-item ${
                           currentPage === totalPages ? 'disabled' : ''
