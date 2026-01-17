@@ -16,6 +16,7 @@ import ReadingSectionProgressDashboard from './components/ReadingSectionProgress
 import ListeningSectionProgressDashboard from './components/ListeningSectionProgressDashboard'
 import JustAMinuteSectionProgressDashboard from './components/JustAMinuteSectionProgressDashboard'
 import EnglishPracticeSectionProgressDashboard from './components/EnglishPracticeSectionProgressDashboard'
+import AdminSelfInterviewProgressTable from './components/AdminSelfInterviewProgressTable'
 
 const DashboardPage = () => {
   return (
@@ -45,6 +46,8 @@ const DashboardPage = () => {
       <JustAMinuteSectionProgressDashboard/>
 
       <EnglishPracticeSectionProgressDashboard />
+
+      <AdminSelfInterviewProgressTable/>
 
 
       {/* <CourseList /> */}
