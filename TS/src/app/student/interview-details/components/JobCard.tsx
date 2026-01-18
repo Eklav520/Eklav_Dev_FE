@@ -59,22 +59,12 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
     return `Expires in ${diffDays} days`
   }
 
-const decodeHtml = (html: string) => {
-  const txt = document.createElement('textarea')
-  txt.innerHTML = html
-  return txt.value
-}
-
-const previewText =
+  const previewText =
   job.highlights?.length > 0
-    ? decodeHtml(
-        DOMPurify.sanitize(job.highlights[0], { ALLOWED_TAGS: [] })
-      )
+    ? DOMPurify.sanitize(job.highlights[0], { ALLOWED_TAGS: [] })
         .replace(/\s+/g, ' ')
-        .trim()
         .slice(0, 140)
     : ''
-
 
   return (
     <Card
