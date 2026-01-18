@@ -572,24 +572,60 @@ const SectionBlock = React.memo(({
                     </ul>
                   </div>
                 )}
+{type !== 'quiz' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
+  <div className="mt-3">
+    <b>Q&A (latest):</b>
+    <ul className="mb-0">
+      {it.details.qa.map((qa: any, idx: number) => (
+        <li key={idx}>
+          <div>
+            <b>Q:</b> {qa.question}
+          </div>
+          <div>
+            <b>A:</b> {qa.answer}
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
+{type === 'tr' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
+  <div className="mt-3">
+    <b>Technical Round — AI Evaluation</b>
 
-                {type !== 'quiz' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
-                  <div className="mt-3">
-                    <b>Q&A (latest):</b>
-                    <ul className="mb-0">
-                      {it.details.qa.map((qa: any, idx: number) => (
-                        <li key={idx}>
-                          <div>
-                            <b>Q:</b> {qa.question}
-                          </div>
-                          <div>
-                            <b>A:</b> {qa.answer}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+    {it.details.qa.map((qa: any, idx: number) => (
+      <Card key={idx} className="mb-3">
+        <Card.Body>
+          <div className="mb-1">
+            <b>Q:</b> {qa.question}
+          </div>
+
+          <div className="mb-2">
+            <b>A:</b> {qa.answer}
+          </div>
+
+          <div className="d-flex align-items-center gap-2 mb-2">
+            <b>Rating:</b>
+            <StarRating rating={qa.rating ?? 0} readOnly />
+            <span className="text-muted">({qa.rating ?? 0} / 5)</span>
+          </div>
+
+          {qa.feedback && (
+            <Alert variant="info" className="mb-0">
+              <b>AI Feedback:</b> {qa.feedback}
+            </Alert>
+          )}
+        </Card.Body>
+      </Card>
+    ))}
+
+    <Alert variant="secondary" className="mt-2">
+      <b>Note:</b> Ratings and feedback are generated automatically by AI.  
+      Admin action is limited to <b>Pass / Fail</b>.
+    </Alert>
+  </div>
+)}
+
 
                 {(type === 'tr' || type === 'hr') && (!it.details?.qa || it.details.qa.length === 0) && (
                   <Alert variant="info">No questions and answers recorded for this {type.toUpperCase()} round.</Alert>

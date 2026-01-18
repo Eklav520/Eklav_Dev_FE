@@ -189,7 +189,7 @@ export default function StudentFinalAssessmentPage() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
   const templateId = 'default'
   // TEMP: disable starting assessment (enable later)
-  const ENABLE_START_BUTTON = false
+  //const ENABLE_START_BUTTON = false
 
   const [rounds, setRounds] = useState(initialRounds)
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
@@ -474,12 +474,16 @@ export default function StudentFinalAssessmentPage() {
   const trRound = rounds.find((r) => r.key === 'tr')!
   const hrRound = rounds.find((r) => r.key === 'hr')!
 
-  const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
+/*   const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
     ENABLE_START_BUTTON &&
     r.status === READY &&
     (r.key !== 'quiz' || statusChecked) &&
     (r.key !== 'tr' || trStatusChecked) &&
-    (r.key !== 'hr' || hrStatusChecked)
+    (r.key !== 'hr' || hrStatusChecked) */
+
+ const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
+  r.key === 'tr' && trStatusChecked
+
 
   return (
     <>
