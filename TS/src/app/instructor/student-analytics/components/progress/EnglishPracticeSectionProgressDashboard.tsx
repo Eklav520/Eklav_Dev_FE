@@ -21,11 +21,18 @@ const EnglishPracticeSectionProgressDashboard = () => {
           }
         )
 
-        if (!res.ok) throw new Error('Failed to fetch weeks')
+        if (!res.ok) {
+          if (res.status === 404) {
+            setWeeks([])
+            setSelectedWeek(null)
+            return
+          }
+          throw new Error('Failed to fetch weeks')
+        }
 
         const data = await res.json()
-        setWeeks(data)
-        setSelectedWeek(data[data.length - 1]) // latest week
+        setWeeks(data || [])
+        setSelectedWeek(data && data.length > 0 ? data[data.length - 1] : null)
       } catch (err) {
         console.error(err)
       } finally {

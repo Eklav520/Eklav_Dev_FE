@@ -1,11 +1,18 @@
-import { TRIAL_START_DATE, TRIAL_DAYS } from './trialConfig'
-
 export const getRemainingTrialDays = () => {
   const today = new Date()
-  const diff = Math.floor(
-    (today.getTime() - TRIAL_START_DATE.getTime()) / (1000 * 60 * 60 * 24)
+
+  // Last moment of the current month
+  const endOfMonth = new Date(
+    today.getFullYear(),
+    today.getMonth() + 1,
+    0,
+    23,
+    59,
+    59
   )
 
-  const remaining = TRIAL_DAYS - diff
-  return remaining > 0 ? remaining : 0
+  const diffMs = endOfMonth.getTime() - today.getTime()
+  const remainingDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+
+  return remainingDays > 0 ? remainingDays : 0
 }

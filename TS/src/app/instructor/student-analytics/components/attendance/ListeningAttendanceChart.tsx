@@ -8,7 +8,7 @@ type GraphPoint = {
   count: number
 }
 
-const ReadingAttendanceChart = () => {
+const ListeningAttendanceChart = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -54,31 +54,51 @@ const ReadingAttendanceChart = () => {
           : `period=${period}`
 
       const res = await fetch(
-        `${baseURL}/api/adminDashboardCharts/admin/reading/attendance?${query}`,
+        `${baseURL}/api/adminDashboardCharts/admin/listening/attendance?${query}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       )
 
+      if (!res.ok) {
+        if (res.status === 404) {
+          setTotalStudents(0)
+          setAttendedStudents(0)
+          setSeries([{ name: 'Students Attended', data: [] }])
+          setOptions({
+            chart: { type: 'area', toolbar: { show: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            colors: ['#6610f2'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: [] },
+            yaxis: { min: 0, labels: { formatter: (val: number) => Math.round(val) } },
+            tooltip: { y: { formatter: (val: number) => `${val} students` } },
+          })
+          return
+        }
+        throw new Error(`API error: ${res.status}`)
+      }
+
       const data = await res.json()
 
-      setTotalStudents(data.totalStudents)
-      setAttendedStudents(data.attendedStudents)
+      setTotalStudents(data.totalStudents || 0)
+      setAttendedStudents(data.attendedStudents || 0)
 
+      const graphData = data.graph || []
       setSeries([
         {
           name: 'Students Attended',
-          data: data.graph.map((d: GraphPoint) => d.count),
+          data: graphData.map((d: GraphPoint) => d.count || 0),
         },
       ])
 
       setOptions({
         chart: { type: 'area', toolbar: { show: false } },
         stroke: { curve: 'smooth', width: 3 },
-        colors: ['#6f42c1'], // purple for Reading
+        colors: ['#6610f2'], // indigo for Listening
         dataLabels: { enabled: false },
         xaxis: {
-          categories: data.graph.map((d: GraphPoint) =>
+          categories: graphData.map((d: GraphPoint) =>
             formatLabel(d.day)
           ),
         },
@@ -95,7 +115,7 @@ const ReadingAttendanceChart = () => {
         },
       })
     } catch (err) {
-      console.error('Reading chart error', err)
+      console.error('Listening chart error', err)
     } finally {
       setLoading(false)
     }
@@ -108,7 +128,7 @@ const ReadingAttendanceChart = () => {
 
           {/* HEADER */}
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="mb-0">Reading – Attendance</h5>
+            <h5 className="mb-0">Listening – Attendance</h5>
 
             <div className="d-flex align-items-center gap-2">
               <ButtonGroup size="sm">
@@ -164,7 +184,7 @@ const ReadingAttendanceChart = () => {
 
             <Col sm={6} md={4}>
               <span className="badge text-bg-dark">Attended</span>
-              <h4 className="text-purple my-2">{attendedStudents}</h4>
+              <h4 className="text-primary my-2">{attendedStudents}</h4>
             </Col>
 
             <Col sm={6} md={4}>
@@ -196,4 +216,4 @@ const ReadingAttendanceChart = () => {
   )
 }
 
-export default ReadingAttendanceChart
+export default ListeningAttendanceChart

@@ -1,23 +1,30 @@
-import React from 'react';
-import { FaStar } from 'react-icons/fa';
+interface StarRatingProps {
+  rating: number
+  setRating?: (rating: number) => void
+  readOnly?: boolean
+}
 
-const StarRating: React.FC<{
-  rating: number;
-  setRating: (rating: number) => void;
-}> = ({ rating, setRating }) => {
+const StarRating: React.FC<StarRatingProps> = ({ rating, setRating, readOnly = false }) => {
   return (
-    <div className="d-flex">
+    <div>
       {[1, 2, 3, 4, 5].map((star) => (
-        <FaStar
+        <span
           key={star}
-          size={24}
-          style={{ marginRight: 5, cursor: 'pointer' }}
-          color={star <= rating ? '#ffc107' : '#e4e5e9'}
-          onClick={() => setRating(star)}
-        />
+          style={{
+            color: star <= rating ? '#ffc107' : '#e4e5e9',
+            cursor: readOnly ? 'default' : 'pointer',
+            fontSize: 18,
+            marginRight: 4,
+          }}
+          onClick={() => {
+            if (!readOnly && setRating) setRating(star)
+          }}
+        >
+          ★
+        </span>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default StarRating;
+export default StarRating

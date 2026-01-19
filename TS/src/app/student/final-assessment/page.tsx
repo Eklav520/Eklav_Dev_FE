@@ -189,7 +189,7 @@ export default function StudentFinalAssessmentPage() {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
   const templateId = 'default'
   // TEMP: disable starting assessment (enable later)
-  const ENABLE_START_BUTTON = false
+  //const ENABLE_START_BUTTON = false
 
   const [rounds, setRounds] = useState(initialRounds)
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
@@ -385,22 +385,57 @@ export default function StudentFinalAssessmentPage() {
       setTrStatusChecked(true)
       return
     }
+
     try {
       const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      if (!res.ok) return
+
+      // 🔓 TR available for trial users even if no submission yet
+      if (!res.ok) {
+        setRounds((prev) =>
+          prev.map((r) =>
+            r.key === 'tr' && r.status === LOCKED
+              ? { ...r, status: READY }
+              : r
+          )
+        )
+        return
+      }
+
       const data = await res.json()
 
       if (data?.success && data?.hasSubmission && data?.submission) {
         const s = String(data.submission.status || 'pending').toLowerCase()
         const trNext: RoundStatus =
-          s === 'passed' || s === 'evaluated' ? PASSED : s === 'failed' ? FAILED : PENDING
+          s === 'passed' || s === 'evaluated'
+            ? PASSED
+            : s === 'failed'
+              ? FAILED
+              : PENDING
 
-        setRounds((prev) => deriveWithTRStatus(prev, trNext)) // ✅ set TR and maybe unlock HR
+        setRounds((prev) =>
+          prev.map((r) => (r.key === 'tr' ? { ...r, status: trNext } : r))
+        )
+      } else {
+        // ✅ No submission yet → READY
+        setRounds((prev) =>
+          prev.map((r) =>
+            r.key === 'tr' && r.status === LOCKED
+              ? { ...r, status: READY }
+              : r
+          )
+        )
       }
     } catch {
-      /* ignore */
+      // fallback unlock
+      setRounds((prev) =>
+        prev.map((r) =>
+          r.key === 'tr' && r.status === LOCKED
+            ? { ...r, status: READY }
+            : r
+        )
+      )
     } finally {
       setTrStatusChecked(true)
     }
@@ -474,12 +509,18 @@ export default function StudentFinalAssessmentPage() {
   const trRound = rounds.find((r) => r.key === 'tr')!
   const hrRound = rounds.find((r) => r.key === 'hr')!
 
+  /*   const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
+      ENABLE_START_BUTTON &&
+      r.status === READY &&
+      (r.key !== 'quiz' || statusChecked) &&
+      (r.key !== 'tr' || trStatusChecked) &&
+      (r.key !== 'hr' || hrStatusChecked) */
+
   const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
-    ENABLE_START_BUTTON &&
+    r.key === 'tr' &&
     r.status === READY &&
-    (r.key !== 'quiz' || statusChecked) &&
-    (r.key !== 'tr' || trStatusChecked) &&
-    (r.key !== 'hr' || hrStatusChecked)
+    trStatusChecked
+
 
   return (
     <>
@@ -492,7 +533,7 @@ export default function StudentFinalAssessmentPage() {
           <Alert variant="danger" className="mb-0 py-2 px-3">
             <strong>⚠️ Important:</strong>{' '}
             Available exclusively in the <b>Premium Version</b>
-          </Alert>  
+          </Alert>
         </div>
         <p className="text-muted">
           You will go through four rounds. Each round unlocks only after the previous one is <strong>passed</strong>. After you submit the Quiz it

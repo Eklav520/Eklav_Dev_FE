@@ -225,6 +225,13 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'instructor',
   },
   {
+    key: 'student-analytics',
+    label: 'Student Analytics',
+    icon: BsGraphUp,
+    url: '/instructor/student-analytics',
+    parentKey: 'instructor',
+  },
+  {
     key: 'students',
     label: 'Students List',
     icon: BsPeople, // people = students

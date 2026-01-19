@@ -66,6 +66,7 @@ const EditProfile = () => {
 
   // NEW: resume + certifications + skills
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [certFiles, setCertFiles] = useState<File[]>([])
   const [serverResumePath, setServerResumePath] = useState<string | null>(null)
   const [serverCertPaths, setServerCertPaths] = useState<string[]>([])
@@ -223,65 +224,62 @@ const EditProfile = () => {
     setValue('skills', next)
   }
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     if (!selectedCollege) {
-    setToastMessage('Please select a valid college from the list')
-    setShowToast(true)
-    return
+      setToastMessage('Please select a valid college from the list')
+      setShowToast(true)
+      return
+    }
+
+    setIsSaving(true) // 🔥 start spinner
+
+    try {
+      const formData = new FormData()
+      formData.append('fullName', data.fullName)
+      formData.append('email', data.email)
+      formData.append('phoneNo', data.phoneNo)
+      formData.append('college', data.college)
+      formData.append('about', data.about || '')
+      formData.append('joiningYear', data.joiningYear)
+      formData.append('batch', data.batch)
+
+      educationFields.forEach((edu, idx) =>
+        formData.append(`education[${idx}]`, edu)
+      )
+      skills.forEach((sk, idx) =>
+        formData.append(`skills[${idx}]`, sk)
+      )
+
+      if (imageFile) formData.append('profileImage', imageFile)
+      if (resumeFile) formData.append('resume', resumeFile)
+      if (certFiles.length > 0) {
+        certFiles.forEach((f) => formData.append('certifications', f))
+      }
+
+      const res = await fetch(`${baseURL}/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+
+      if (!res.ok) throw new Error('Failed to update profile')
+
+      const result = await res.json()
+
+      setToastMessage('Profile updated successfully!')
+      setShowToast(true)
+
+      setResumeFile(null)
+      setCertFiles([])
+    } catch (err) {
+      console.error(err)
+      setToastMessage('Failed to update profile. Please try again.')
+      setShowToast(true)
+    } finally {
+      setIsSaving(false) // ✅ stop spinner
+    }
   }
-    const formData = new FormData()
-    formData.append('fullName', data.fullName)
-    formData.append('email', data.email)
-    formData.append('phoneNo', data.phoneNo)
-    formData.append('college', data.college)
-    formData.append('about', data.about || '')
-    formData.append('joiningYear', data.joiningYear)
-    formData.append('batch', data.batch)
 
-    educationFields.forEach((edu, idx) => formData.append(`education[${idx}]`, edu))
-    skills.forEach((sk, idx) => formData.append(`skills[${idx}]`, sk))
-
-    if (imageFile) formData.append('profileImage', imageFile)
-    if (resumeFile) formData.append('resume', resumeFile)
-    if (certFiles.length > 0) certFiles.forEach((f) => formData.append('certifications', f))
-
-    fetch(`${baseURL}/profile`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to update profile')
-        return res.json()
-      })
-      .then((res) => {
-        setToastMessage('Profile updated successfully!')
-        setShowToast(true)
-        const p: ProfileResponse = res?.profile || {}
-        if (p.resume) {
-          let pr = p.resume.replace(/\\/g, '/')
-          if (pr.startsWith('/')) pr = pr.substring(1)
-          if (!pr.startsWith('uploads/')) pr = 'uploads/' + pr
-          setServerResumePath(`${baseURL}/${pr}`)
-        }
-        if (Array.isArray(p.certifications)) {
-          const paths = p.certifications.map((c) => {
-            let k = (c || '').replace(/\\/g, '/')
-            if (k.startsWith('/')) k = k.substring(1)
-            if (!k.startsWith('uploads/')) k = 'uploads/' + k
-            return `${baseURL}/${k}`
-          })
-          setServerCertPaths(paths)
-        }
-        setResumeFile(null)
-        setCertFiles([])
-      })
-      .catch((err) => {
-        console.error('Error updating profile:', err)
-        setToastMessage('Failed to update profile. Please try again.')
-        setShowToast(true)
-      })
-  }
 
   return (
     <>
@@ -331,76 +329,89 @@ const EditProfile = () => {
             {/* ✅ College autocomplete field */}
             <Col md={6}>
               <label className="form-label fw-semibold">College *</label>
-              <div className="position-relative">
 
-              {/* Search icon (shows after 1 char) */}
-              {collegeQuery.length >= 1 && (
+              <div className="position-relative">
+                {/* 🔍 Search icon (always visible) */}
                 <span
                   className="position-absolute top-50 translate-middle-y text-muted"
                   style={{ left: '12px', zIndex: 2 }}
                 >
                   <BsSearch />
                 </span>
-              )}
 
-              <input
-                type="text"
-                className="form-control ps-5"   // 👈 padding for icon
-                placeholder="Search your college"
-                autoComplete="off"
-                value={collegeQuery}
-                {...register('college')}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setCollegeQuery(val)
-                  setValue('college', val)
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ paddingLeft: '36px' }}
+                  placeholder="Search your college"
+                  autoComplete="off"
+                  value={collegeQuery}
+                  {...register('college')}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setCollegeQuery(val)
+                    setValue('college', val)
 
-                  // invalidate previous selection
-                  setSelectedCollege(null)
-                  setShowCollegeList(true)
-                }}
-                onBlur={() => {
-                  setTimeout(() => setShowCollegeList(false), 200)
-                }}
-              />
+                    // invalidate previous selection
+                    setSelectedCollege(null)
+                    setShowCollegeList(true)
+                  }}
+                  onFocus={() => {
+                    if (collegeQuery.trim().length >= 1) {
+                      setShowCollegeList(true)
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => setShowCollegeList(false), 150)
+                  }}
+                />
 
-              {/* helper text */}
-              {collegeQuery.length === 1 && (
-                <small className="text-muted mt-1 d-block">
-                  Start typing to search and select your college
-                </small>
-              )}
+                {/* helper text */}
+                {collegeQuery.length === 1 && (
+                  <small className="text-muted mt-1 d-block">
+                    Start typing to search and select your college
+                  </small>
+                )}
 
-              {/* Dropdown */}
-              {showCollegeList && collegeResults.length > 0 && (
-                <ul
-                  className="list-group position-absolute w-100 shadow-sm mt-1"
-                  style={{ zIndex: 1050 }}
-                >
-                  {collegeResults.map((college) => (
-                    <li
-                      key={college._id}
-                      className="list-group-item list-group-item-action"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        const display = `${college.name}, ${college.address}, ${college.pincode}`
-                        setCollegeQuery(display)
-                        setValue('college', display)
-                        setSelectedCollege(college)
-                        setShowCollegeList(false)
-                      }}
-                    >
-                      <strong>{college.name}</strong>
-                      <br />
-                      <small className="text-muted">
-                        {college.address}, {college.pincode}
-                      </small>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                {/* Dropdown */}
+                {showCollegeList && collegeQuery.trim().length >= 1 && (
+                  <ul
+                    className="list-group position-absolute w-100 shadow-sm mt-1"
+                    style={{ zIndex: 1050 }}
+                  >
+                    {collegeResults.length > 0 ? (
+                      collegeResults.map((college) => (
+                        <li
+                          key={college._id}
+                          className="list-group-item list-group-item-action"
+                          style={{ cursor: 'pointer' }}
+                          onMouseDown={(e) => {
+                            e.preventDefault() // 🔥 prevents input blur before selection
+
+                            const display = `${college.name}, ${college.address}, ${college.pincode}`
+                            setCollegeQuery(display)
+                            setValue('college', display)
+                            setSelectedCollege(college)
+                            setShowCollegeList(false)
+                          }}
+                        >
+                          <strong>{college.name}</strong>
+                          <br />
+                          <small className="text-muted">
+                            {college.address}, {college.pincode}
+                          </small>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="list-group-item text-muted text-center">
+                        No colleges found
+                      </li>
+                    )}
+                  </ul>
+                )}
               </div>
             </Col>
+
 
             {/* Joining Year */}
             <Col md={3}>
@@ -582,10 +593,22 @@ const EditProfile = () => {
             </Col>
 
             <div className="d-sm-flex justify-content-end">
-              <button type="submit" className="btn btn-primary mb-0"  disabled={!selectedCollege}>
-                Save changes
+              <button
+                type="submit"
+                className="btn btn-primary mb-0 d-flex align-items-center gap-2"
+                disabled={isSaving}
+              >
+                {isSaving && (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                )}
+                {isSaving ? 'Saving...' : 'Save changes'}
               </button>
             </div>
+
           </form>
         </CardBody>
 

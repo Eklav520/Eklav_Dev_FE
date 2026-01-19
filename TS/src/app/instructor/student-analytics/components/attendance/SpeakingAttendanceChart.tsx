@@ -8,7 +8,7 @@ type GraphPoint = {
   count: number
 }
 
-const EnglishPracticeAttendanceChart = () => {
+const SpeakingAttendanceChart = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -29,21 +29,29 @@ const EnglishPracticeAttendanceChart = () => {
     if (token) fetchData()
   }, [token, period, selectedMonth, selectedYear])
 
+  /* =============================
+     LABEL FORMATTER
+  ============================== */
   const formatLabel = (day: string) => {
     const date = new Date(day)
 
-    if (period === 'week')
+    if (period === 'week') {
       return date.toLocaleDateString('en-IN', { weekday: 'short' })
+    }
 
-    if (period === 'month')
+    if (period === 'month') {
       return date.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
       })
+    }
 
     return date.toLocaleDateString('en-IN')
   }
 
+  /* =============================
+     FETCH DATA
+  ============================== */
   const fetchData = async () => {
     try {
       setLoading(true)
@@ -54,31 +62,60 @@ const EnglishPracticeAttendanceChart = () => {
           : `period=${period}`
 
       const res = await fetch(
-        `${baseURL}/api/adminDashboardCharts/admin/english-practice/attendance?${query}`,
+        `${baseURL}/api/adminDashboardCharts/admin/speaking/attendance?${query}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       )
 
+      if (!res.ok) {
+        if (res.status === 404) {
+          setTotalStudents(0)
+          setAttendedStudents(0)
+          setSeries([{ name: 'Students Attended', data: [] }])
+          setOptions({
+            chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            colors: ['#fd7e14'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: [] },
+            yaxis: { min: 0, labels: { formatter: (val: number) => Math.round(val) } },
+            tooltip: { y: { formatter: (val: number) => `${val} students` } },
+          })
+          return
+        }
+        throw new Error(`API error: ${res.status}`)
+      }
+
       const data = await res.json()
 
-      setTotalStudents(data.totalStudents)
-      setAttendedStudents(data.attendedStudents)
+      setTotalStudents(data.totalStudents || 0)
+      setAttendedStudents(data.attendedStudents || 0)
 
+      const graphData = data.graph || []
       setSeries([
         {
           name: 'Students Attended',
-          data: data.graph.map((d: GraphPoint) => d.count),
+          data: graphData.map((d: GraphPoint) => d.count || 0),
         },
       ])
 
       setOptions({
-        chart: { type: 'area', toolbar: { show: false } },
-        stroke: { curve: 'smooth', width: 3 },
-        colors: ['#0dcaf0'], // cyan for English Practice
-        dataLabels: { enabled: false },
+        chart: {
+          type: 'area',
+          toolbar: { show: false },
+          zoom: { enabled: false },
+        },
+        stroke: {
+          curve: 'smooth',
+          width: 3,
+        },
+        colors: ['#fd7e14'], // orange for Speaking
+        dataLabels: {
+          enabled: false,
+        },
         xaxis: {
-          categories: data.graph.map((d: GraphPoint) =>
+          categories: graphData.map((d: GraphPoint) =>
             formatLabel(d.day)
           ),
         },
@@ -95,7 +132,7 @@ const EnglishPracticeAttendanceChart = () => {
         },
       })
     } catch (err) {
-      console.error('English practice chart error', err)
+      console.error('Speaking attendance fetch failed', err)
     } finally {
       setLoading(false)
     }
@@ -106,56 +143,56 @@ const EnglishPracticeAttendanceChart = () => {
       <Col xs={12}>
         <Card className="card-body border p-4 h-100">
 
-          {/* HEADER */}
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h5 className="mb-0">English Practice – Attendance</h5>
+          {/* ===== HEADER ===== */}
+         <div className="d-flex justify-content-between align-items-center mb-3">
+  <h5 className="mb-0">Speaking – Attendance</h5>
 
-            <div className="d-flex align-items-center gap-2">
-              <ButtonGroup size="sm">
-                {(['today', 'week', 'month'] as const).map(p => (
-                  <Button
-                    key={p}
-                    variant={period === p ? 'primary' : 'outline-primary'}
-                    onClick={() => setPeriod(p)}
-                  >
-                    {p.toUpperCase()}
-                  </Button>
-                ))}
-              </ButtonGroup>
+  <div className="d-flex align-items-center gap-2">
+    <ButtonGroup size="sm">
+      {(['today', 'week', 'month'] as const).map(p => (
+        <Button
+          key={p}
+          variant={period === p ? 'primary' : 'outline-primary'}
+          onClick={() => setPeriod(p)}
+        >
+          {p.toUpperCase()}
+        </Button>
+      ))}
+    </ButtonGroup>
 
-              {period === 'month' && (
-                <>
-                  <select
-                    className="form-select form-select-sm"
-                    value={selectedMonth}
-                    onChange={e => setSelectedMonth(Number(e.target.value))}
-                  >
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <option key={i} value={i + 1}>
-                        {new Date(0, i).toLocaleString('en-IN', {
-                          month: 'long',
-                        })}
-                      </option>
-                    ))}
-                  </select>
+    {/* ===== MONTH & YEAR PICKER ===== */}
+    {period === 'month' && (
+      <>
+        <select
+          className="form-select form-select-sm"
+          value={selectedMonth}
+          onChange={e => setSelectedMonth(Number(e.target.value))}
+        >
+          {Array.from({ length: 12 }).map((_, i) => (
+            <option key={i} value={i + 1}>
+              {new Date(0, i).toLocaleString('en-IN', { month: 'long' })}
+            </option>
+          ))}
+        </select>
 
-                  <select
-                    className="form-select form-select-sm"
-                    value={selectedYear}
-                    onChange={e => setSelectedYear(Number(e.target.value))}
-                  >
-                    {[2024, 2025, 2026].map(y => (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-            </div>
-          </div>
+        <select
+          className="form-select form-select-sm"
+          value={selectedYear}
+          onChange={e => setSelectedYear(Number(e.target.value))}
+        >
+          {[2024, 2025, 2026].map(y => (
+            <option key={y} value={y}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </>
+    )}
+  </div>
+</div>
 
-          {/* SUMMARY */}
+
+          {/* ===== SUMMARY ===== */}
           <Row className="g-4 mb-3">
             <Col sm={6} md={4}>
               <span className="badge text-bg-dark">Total Students</span>
@@ -164,7 +201,7 @@ const EnglishPracticeAttendanceChart = () => {
 
             <Col sm={6} md={4}>
               <span className="badge text-bg-dark">Attended</span>
-              <h4 className="text-info my-2">{attendedStudents}</h4>
+              <h4 className="text-warning my-2">{attendedStudents}</h4>
             </Col>
 
             <Col sm={6} md={4}>
@@ -178,6 +215,7 @@ const EnglishPracticeAttendanceChart = () => {
             </Col>
           </Row>
 
+          {/* ===== CHART ===== */}
           {loading ? (
             <div className="text-center py-5">
               <Spinner animation="border" />
@@ -185,9 +223,9 @@ const EnglishPracticeAttendanceChart = () => {
           ) : (
             <ReactApexChart
               height={320}
-              type="area"
               series={series}
               options={options}
+              type="area"
             />
           )}
         </Card>
@@ -196,4 +234,4 @@ const EnglishPracticeAttendanceChart = () => {
   )
 }
 
-export default EnglishPracticeAttendanceChart
+export default SpeakingAttendanceChart

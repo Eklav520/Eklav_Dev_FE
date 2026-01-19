@@ -71,6 +71,7 @@ const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/pag
 
 //Instructor
 const InstructorDashboard = lazy(() => import('@/app/instructor/dashboard/page'))
+const StudentAnalytics = lazy(() => import('@/app/instructor/student-analytics/page'))
 const InstructorCourses = lazy(() => import('@/app/instructor/manage-course/page'))
 const InstructorCreateCourse = lazy(() => import('@/app/(other)/instructor/create-course/page'))
 const InstructorCourseAdd = lazy(() => import('@/app/(other)/instructor/course-added/page'))
@@ -448,6 +449,11 @@ export const InstructorRoutes: RoutesProps[] = [
     path: '/instructor/dashboard',
     name: 'Dashboard',
     element: <InstructorDashboard />,
+  },
+  {
+    path: '/instructor/student-analytics',
+    name: 'Student Analytics',
+    element: <StudentAnalytics />,
   },
   {
     path: '/instructor/manage-course',
