@@ -1,14 +1,13 @@
-import avatar7 from '@/assets/images/avatar/07.jpg'
-import TextFormInput from '@/components/form/TextFormInput'
-import { yupResolver } from '@hookform/resolvers/yup'
-import { Card, CardBody, CardHeader, Col, Toast, ToastContainer } from 'react-bootstrap'
-import { useForm } from 'react-hook-form'
-import { BsPlus, BsX } from 'react-icons/bs'
-import * as yup from 'yup'
-import { useState, useEffect } from 'react'
-import { useAuthContext } from '@/context/useAuthContext'
-import { BsSearch } from 'react-icons/bs'
 
+import { useState, useEffect } from 'react';
+import { Card, CardBody, CardHeader, Col, Toast, ToastContainer } from 'react-bootstrap';
+import { useForm } from 'react-hook-form';
+import { BsPlus, BsX,BsSearch } from 'react-icons/bs';
+import { useAuthContext } from '@/context/useAuthContext';
+import avatar7 from '@/assets/images/avatar/07.jpg';
+import TextFormInput from '@/components/form/TextFormInput';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
@@ -51,7 +50,7 @@ const EditProfile = () => {
   } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {},
-  })
+  });
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
@@ -74,16 +73,16 @@ const EditProfile = () => {
   const [skillInput, setSkillInput] = useState('')
   // ================= College Search (Auto Suggest) =================
   const [collegeQuery, setCollegeQuery] = useState('')
-  const [collegeResults, setCollegeResults] = useState<{ _id: string; name: string; address: string; pincode: string; logo?: string }[]>([])
-  const [showCollegeList, setShowCollegeList] = useState(false)
-  const yearOptions = Array.from({ length: 10 }, (_, i) => 2016 + i) // 2016–2025
-  const branchOptions = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'AIML', 'Data Science', 'IoT', 'Biomedical', 'Chemical']
+  const [collegeResults, setCollegeResults] = useState<{ _id: string; name: string; address: string; pincode: string; logo?: string }[]>([]);
+  const [showCollegeList, setShowCollegeList] = useState(false);
+  const yearOptions = Array.from({ length: 5 }, (_, i) => 2021 + i); // 2016–2025
+  const branchOptions = ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Information Technology', 'AIML', 'Data Science', 'IoT', 'Biomedical', 'Chemical','MCA','Btech'].sort();
   const [selectedCollege, setSelectedCollege] = useState<{
     _id: string
     name: string
     address: string
     pincode: string
-  } | null>(null)
+  } | null>(null);
 
 
   useEffect(() => {
@@ -105,7 +104,7 @@ const EditProfile = () => {
 
     const delayDebounce = setTimeout(fetchColleges, 400)
     return () => clearTimeout(delayDebounce)
-  }, [collegeQuery, baseURL])
+  }, [collegeQuery, baseURL]);
 
   useEffect(() => {
     if (!token) return

@@ -1,20 +1,56 @@
-import IconTextFormInput from '@/components/form/IconTextFormInput'
-import { BsEnvelopeFill } from 'react-icons/bs'
-import { FaLock } from 'react-icons/fa'
-import useSignUp from '../useSignUp'
-import { useState } from 'react'
-import CaptchaBox from '@/common/CaptchaBox'
+import { useState, useEffect } from 'react';
+import IconTextFormInput from '@/components/form/IconTextFormInput';
+import { BsEnvelopeFill } from 'react-icons/bs';
+import { FaLock } from 'react-icons/fa';
+import useSignUp from '../useSignUp';
+import CaptchaBox from '@/common/CaptchaBox';
+import { Col } from 'react-bootstrap';
+import { BsPlus, BsX, BsSearch } from 'react-icons/bs';
 
 const SignUpForm = () => {
-  const { signUp, control, register, watch, errors } = useSignUp() // ✅ fixed name
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { signUp, control, register, watch, errors, setValue } = useSignUp() // ✅ Get setValue from hook
   const [showTerms, setShowTerms] = useState(false)
   const [captchaValid, setCaptchaValid] = useState(false);
-  const termsAccepted = watch('terms', false)
+  const termsAccepted = watch('terms', false);
+  const yearOptions = Array.from({ length: 5 }, (_, i) => 2021 + i);
+  const branchOptions = ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Information Technology', 'AI ML', 'Data Science', 'IoT', 'Biomedical', 'Chemical','MCA','Btech'].sort();
+  const [selectedCollege, setSelectedCollege] = useState<{
+    _id: string
+    name: string
+    address: string
+    pincode: string
+  } | null>(null);
+  const [collegeQuery, setCollegeQuery] = useState('');
+  const [collegeResults, setCollegeResults] = useState<{ _id: string; name: string; address: string; pincode: string; logo?: string }[]>([]);
+  const [showCollegeList, setShowCollegeList] = useState(false);
+
+  useEffect(() => 
+  {
+    const fetchColleges = async () => {
+      if (collegeQuery.trim().length < 2) {
+        setCollegeResults([])
+        return
+      }
+      try {
+        const res = await fetch(`${baseURL}/api/colleges/search?q=${collegeQuery}`)
+        if (res.ok) {
+          const data = await res.json()
+          setCollegeResults(data)
+        }
+      } catch (err) {
+        console.error('Error fetching college list:', err)
+      }
+    }
+
+    const delayDebounce = setTimeout(fetchColleges, 400)
+    return () => clearTimeout(delayDebounce)
+  }, [collegeQuery]);
 
   return (
-    <form onSubmit={signUp} noValidate> {/* ✅ fixed handler + prevent native validation */}
+    <form onSubmit={signUp} noValidate>
       {/* Full Name */}
-      <div className="mb-4">
+      <div className="mt-3">
         <IconTextFormInput
           control={control}
           icon={BsEnvelopeFill}
@@ -30,7 +66,7 @@ const SignUpForm = () => {
       </div>
 
       {/* Email */}
-      <div className="mb-4">
+      <div className="mt-3">
         <IconTextFormInput
           control={control}
           icon={BsEnvelopeFill}
@@ -44,7 +80,7 @@ const SignUpForm = () => {
       </div>
 
       {/* Password */}
-      <div className="mb-4">
+      <div className="mt-3">
         <IconTextFormInput
           control={control}
           icon={FaLock}
@@ -58,7 +94,7 @@ const SignUpForm = () => {
       </div>
 
       {/* Confirm Password */}
-      <div className="mb-4">
+      <div className="mt-3">
         <IconTextFormInput
           control={control}
           icon={FaLock}
@@ -72,7 +108,7 @@ const SignUpForm = () => {
       </div>
 
       {/* Phone Number */}
-      <div className="mb-4">
+      <div className="mt-3">
         <IconTextFormInput
           control={control}
           icon={BsEnvelopeFill}
@@ -87,10 +123,139 @@ const SignUpForm = () => {
         )}
       </div>
 
-      <CaptchaBox onValidate={setCaptchaValid} />
+       {/* Joining Year */}
+      <Col md={12}>
+        <label className="form-label fw-semibold">Joining Year *</label>
+        <select 
+          className={`form-select ${errors?.joiningYear ? 'is-invalid' : ''}`}
+          {...register('joiningYear')}
+        >
+          <option value="">Select Year</option>
+          {yearOptions.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+        {errors?.joiningYear && (
+          <small className="text-danger d-block mt-1">{errors.joiningYear.message}</small>
+        )}
+      </Col>
+
+      {/* Batch (Department) */}
+      <Col md={12} className="mt-3">
+        <label className="form-label fw-semibold">Batch *</label>
+        <select 
+          className={`form-select ${errors?.batch ? 'is-invalid' : ''}`}
+          {...register('batch')}
+        >
+          <option value="">Select Department</option>
+          {branchOptions.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
+        </select>
+        {errors?.batch && (
+          <small className="text-danger d-block mt-1">{errors.batch.message}</small>
+        )}
+      </Col>
+
+      {/* College - FIXED */}
+      <Col md={12} className="mt-3">
+        <label className="form-label fw-semibold">College *</label>
+        <div className="position-relative">
+
+        {/* Search icon */}
+        {collegeQuery.length >= 1 && (
+          <span
+            className="position-absolute top-50 translate-middle-y text-muted"
+            style={{ left: '12px', zIndex: 2 }}
+          >
+            <BsSearch />
+          </span>
+        )}
+
+        <input
+          type="text"
+          className={`form-control ps-5 ${errors?.college && !selectedCollege ? 'is-invalid' : ''}`}
+          placeholder="Search your college"
+          autoComplete="off"
+          value={collegeQuery}
+          onChange={(e) => {
+            const val = e.target.value
+            setCollegeQuery(val)
+            setValue('college', val, { shouldValidate: true }) // ✅ Trigger validation
+            setSelectedCollege(null)
+            setShowCollegeList(true)
+          }}
+          onFocus={() => {
+            if (collegeQuery.length >= 2) {
+              setShowCollegeList(true)
+            }
+          }}
+          onBlur={() => {
+            setTimeout(() => setShowCollegeList(false), 200)
+          }}
+        />
+
+        {/* Helper text */}
+        {collegeQuery.length === 1 && (
+          <small className="text-muted mt-1 d-block">
+            Start typing to search and select your college
+          </small>
+        )}
+
+        {/* Error message - only show if no college selected */}
+        {errors?.college && !selectedCollege && (
+          <small className="text-danger d-block mt-1">{errors.college.message}</small>
+        )}
+
+        {/* Success indicator */}
+        {selectedCollege && (
+          <small className="text-success d-block mt-1">
+            ✓ College selected
+          </small>
+        )}
+
+        {/* Dropdown */}
+        {showCollegeList && collegeResults.length > 0 && (
+          <ul
+            className="list-group position-absolute w-100 shadow-sm mt-1"
+            style={{ zIndex: 1050, maxHeight: '200px', overflowY: 'auto' }}
+          >
+            {collegeResults.map((college) => (
+              <li
+                key={college._id}
+                className="list-group-item list-group-item-action"
+                style={{ cursor: 'pointer' }}
+                onMouseDown={(e) => {
+                  e.preventDefault() // ✅ Prevent input blur
+                  const display = `${college.name}, ${college.address}, ${college.pincode}`
+                  setCollegeQuery(display)
+                  setValue('college', display, { shouldValidate: true }) // ✅ Clear validation error
+                  setSelectedCollege(college)
+                  setShowCollegeList(false)
+                }}
+              >
+                <strong>{college.name}</strong>
+                <br />
+                <small className="text-muted">
+                  {college.address}, {college.pincode}
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+        </div>
+      </Col>
+
+      <div className="mt-3">
+        <CaptchaBox onValidate={setCaptchaValid} />
+      </div>
 
       {/* Terms of Service */}
-      <div className="mb-4">
+      <div className="mt-3">
         <div className="form-check">
           <input
             type="checkbox"
