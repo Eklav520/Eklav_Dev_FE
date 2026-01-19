@@ -20,6 +20,7 @@ import AdminSelfInterviewProgressTable from './components/AdminSelfInterviewProg
 import EnglishPracticeLeaderboard from './components/EnglishPracticeLeaderboard'
 import EnglishPracticeLeaderboardDashboard from './components/EnglishPracticeLeaderboardDashboard'
 import JustAMinuteLeaderboardDashboard from './components/JustAMinuteLeaderboardDashboard'
+import ListeningLeaderboardDashboard from './components/ListeningLeaderboardDashboard'
 
 const DashboardPage = () => {
   return (
@@ -54,6 +55,7 @@ const DashboardPage = () => {
 
       <EnglishPracticeLeaderboardDashboard/>
       <JustAMinuteLeaderboardDashboard/>
+      <ListeningLeaderboardDashboard/>
 
 
       {/* <CourseList /> */}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Button, Card, CardBody, CardHeader, Col, Row, Spinner, Badge, ButtonGroup, Modal, Form, Alert } from 'react-bootstrap'
-import { FaMapMarkerAlt, FaRegEnvelope, FaSearch, FaCode, FaExclamationTriangle } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaClipboardCheck , FaSearch, FaCode, FaExclamationTriangle } from 'react-icons/fa'
 import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
 import StarRating from './StarRating'
@@ -124,7 +124,7 @@ const StudentTableRow = React.memo(({
           className="btn-round me-2 mb-0"
           title="Review & Feedback"
           onClick={() => onReviewClick(student)}>
-          <FaRegEnvelope />
+          <FaClipboardCheck  />
         </Button>
       </td>
     </tr>
@@ -930,7 +930,7 @@ const StudentListPage: React.FC = () => {
                   <th>College</th>
                   <th>Phone Number</th>
                   <th>Email</th>
-                  <th>Feedback</th>
+                  <th>View Final Assessment</th>
                 </tr>
               </thead>
               <tbody>
