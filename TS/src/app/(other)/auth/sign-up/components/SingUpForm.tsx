@@ -124,7 +124,7 @@ const SignUpForm = () => {
       </div>
 
        {/* Joining Year */}
-      <Col md={12}>
+      <Col md={12} className="mt-3">
         <label className="form-label fw-semibold">Joining Year *</label>
         <select 
           className={`form-select ${errors?.joiningYear ? 'is-invalid' : ''}`}
@@ -138,7 +138,7 @@ const SignUpForm = () => {
           ))}
         </select>
         {errors?.joiningYear && (
-          <small className="text-danger d-block mt-1">{errors.joiningYear.message}</small>
+          <small className="text-danger d-block mt-1">{`Joining Year is Required`}</small>
         )}
       </Col>
 
