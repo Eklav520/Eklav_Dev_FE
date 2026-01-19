@@ -557,57 +557,91 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
   const allAnswered = qs.length > 0 && qs.every((q) => (textAnswers[q._id] || '').trim().length > 0)
 
+  const uploadSessionToS3 = async (blob: Blob): Promise<string> => {
+    if (!authToken) throw new Error('Auth required')
+
+    // 1️⃣ Get presigned URL
+    const presignRes = await fetch(`${baseURL}/api/tr/presign/session`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: `session_${Date.now()}.webm`,
+        fileType: blob.type || 'video/webm',
+      }),
+    })
+
+    const presignData = await presignRes.json()
+    if (!presignData.uploadUrl || !presignData.fileUrl) {
+      throw new Error('Failed to get upload URL')
+    }
+
+    // 2️⃣ Upload directly to S3
+    await fetch(presignData.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': blob.type || 'video/webm' },
+      body: blob,
+    })
+
+    return presignData.fileUrl // ✅ final S3 URL
+  }
+
   const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
     const { auto = false, reason } = opts || {}
     if (!authToken || qs.length === 0 || (!allAnswered && !auto)) return
 
-    // Stop timer when submitting
     stopTimer()
-
     setSubmitting(true)
+
     try {
       stopDictation()
 
-      let blobToSend: Blob | null = null
+      let finalBlob: Blob | null = null
       if (started && mediaRecorderRef.current) {
-        blobToSend = await stopSessionAsync()
+        finalBlob = await stopSessionAsync()
       } else {
-        blobToSend = sessionBlob
+        finalBlob = sessionBlob
       }
 
+      // 1️⃣ Upload session video to S3 (if exists)
+      let sessionMediaUrl = ''
+      if (finalBlob && finalBlob.size > 0) {
+        sessionMediaUrl = await uploadSessionToS3(
+          new Blob([finalBlob], { type: 'video/webm' })
+        )
+      }
+
+      // 2️⃣ Prepare answers
       const answers = qs.map((q) => ({
         qid: q._id,
         questionText: q.question,
         textAnswer: (textAnswers[q._id] || '').trim(),
       }))
 
-      const form = new FormData()
-      form.set('interviewId', interviewId || '')
-      form.set('resumeSkills', JSON.stringify(resumeSkills))
-      form.set('resumeSummary', resumeAnalysis?.summary || '')
-      form.set('answers', JSON.stringify(answers))
-      form.set(
-        'proctorMeta',
-        JSON.stringify({
-          autoSubmitted: auto,
-          violations: violationCount,
-          reason: reason || null,
-          timeLeft: timeLeft,
-        }),
-      )
-
-      if (blobToSend && blobToSend.size > 0) {
-        const fixedBlob = new Blob([blobToSend], { type: 'video/webm' })
-        form.append('media_session', fixedBlob, `session_${Date.now()}.webm`)
-      } else {
-        console.warn('⚠️ No session blob to upload')
-      }
-
+      // 3️⃣ Submit JSON ONLY (small payload)
       const res = await fetch(`${baseURL}/api/tr/submit`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${authToken}` },
-        body: form,
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId,
+          resumeSkills,
+          resumeSummary: resumeAnalysis?.summary || '',
+          answers,
+          proctorMeta: {
+            autoSubmitted: auto,
+            violations: violationCount,
+            reason: reason || null,
+            timeLeft,
+          },
+          sessionMediaUrl, // ✅ S3 URL only
+        }),
       })
+
       const data = await res.json()
       if (data?.success) {
         setOpen(false)
@@ -615,10 +649,13 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       } else {
         setUiErr(data?.error || 'Submit failed')
       }
+    } catch (e: any) {
+      setUiErr(e.message || 'Submission failed')
     } finally {
       setSubmitting(false)
     }
   }
+
 
   const handleAutoSubmit = async (why: string) => {
     console.log('Auto-submitting due to:', why)
