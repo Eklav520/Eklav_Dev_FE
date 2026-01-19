@@ -67,6 +67,7 @@ const EditProfile = () => {
 
   // NEW: resume + certifications + skills
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const [certFiles, setCertFiles] = useState<File[]>([])
   const [serverResumePath, setServerResumePath] = useState<string | null>(null)
   const [serverCertPaths, setServerCertPaths] = useState<string[]>([])
@@ -224,65 +225,62 @@ const EditProfile = () => {
     setValue('skills', next)
   }
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     if (!selectedCollege) {
       setToastMessage('Please select a valid college from the list')
       setShowToast(true)
       return
     }
-    const formData = new FormData()
-    formData.append('fullName', data.fullName)
-    formData.append('email', data.email)
-    formData.append('phoneNo', data.phoneNo)
-    formData.append('college', data.college)
-    formData.append('about', data.about || '')
-    formData.append('joiningYear', data.joiningYear)
-    formData.append('batch', data.batch)
 
-    educationFields.forEach((edu, idx) => formData.append(`education[${idx}]`, edu))
-    skills.forEach((sk, idx) => formData.append(`skills[${idx}]`, sk))
+    setIsSaving(true) // 🔥 start spinner
 
-    if (imageFile) formData.append('profileImage', imageFile)
-    if (resumeFile) formData.append('resume', resumeFile)
-    if (certFiles.length > 0) certFiles.forEach((f) => formData.append('certifications', f))
+    try {
+      const formData = new FormData()
+      formData.append('fullName', data.fullName)
+      formData.append('email', data.email)
+      formData.append('phoneNo', data.phoneNo)
+      formData.append('college', data.college)
+      formData.append('about', data.about || '')
+      formData.append('joiningYear', data.joiningYear)
+      formData.append('batch', data.batch)
 
-    fetch(`${baseURL}/profile`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error('Failed to update profile')
-        return res.json()
+      educationFields.forEach((edu, idx) =>
+        formData.append(`education[${idx}]`, edu)
+      )
+      skills.forEach((sk, idx) =>
+        formData.append(`skills[${idx}]`, sk)
+      )
+
+      if (imageFile) formData.append('profileImage', imageFile)
+      if (resumeFile) formData.append('resume', resumeFile)
+      if (certFiles.length > 0) {
+        certFiles.forEach((f) => formData.append('certifications', f))
+      }
+
+      const res = await fetch(`${baseURL}/profile`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       })
-      .then((res) => {
-        setToastMessage('Profile updated successfully!')
-        setShowToast(true)
-        const p: ProfileResponse = res?.profile || {}
-        if (p.resume) {
-          let pr = p.resume.replace(/\\/g, '/')
-          if (pr.startsWith('/')) pr = pr.substring(1)
-          if (!pr.startsWith('uploads/')) pr = 'uploads/' + pr
-          setServerResumePath(`${baseURL}/${pr}`)
-        }
-        if (Array.isArray(p.certifications)) {
-          const paths = p.certifications.map((c) => {
-            let k = (c || '').replace(/\\/g, '/')
-            if (k.startsWith('/')) k = k.substring(1)
-            if (!k.startsWith('uploads/')) k = 'uploads/' + k
-            return `${baseURL}/${k}`
-          })
-          setServerCertPaths(paths)
-        }
-        setResumeFile(null)
-        setCertFiles([])
-      })
-      .catch((err) => {
-        console.error('Error updating profile:', err)
-        setToastMessage('Failed to update profile. Please try again.')
-        setShowToast(true)
-      })
+
+      if (!res.ok) throw new Error('Failed to update profile')
+
+      const result = await res.json()
+
+      setToastMessage('Profile updated successfully!')
+      setShowToast(true)
+
+      setResumeFile(null)
+      setCertFiles([])
+    } catch (err) {
+      console.error(err)
+      setToastMessage('Failed to update profile. Please try again.')
+      setShowToast(true)
+    } finally {
+      setIsSaving(false) // ✅ stop spinner
+    }
   }
+
 
   return (
     <>
@@ -596,10 +594,22 @@ const EditProfile = () => {
             </Col>
 
             <div className="d-sm-flex justify-content-end">
-              <button type="submit" className="btn btn-primary mb-0" disabled={!selectedCollege}>
-                Save changes
+              <button
+                type="submit"
+                className="btn btn-primary mb-0 d-flex align-items-center gap-2"
+                disabled={isSaving}
+              >
+                {isSaving && (
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                )}
+                {isSaving ? 'Saving...' : 'Save changes'}
               </button>
             </div>
+
           </form>
         </CardBody>
 
