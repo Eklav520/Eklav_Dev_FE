@@ -3,7 +3,7 @@ import { Card, Form, Spinner } from 'react-bootstrap'
 import SectionStudentProgressTable from './SectionStudentProgressTable'
 import { useAuthContext } from '@/context/useAuthContext'
 
-const ListeningSectionProgressDashboard = () => {
+const ReadingSectionProgressDashboard = () => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
@@ -23,11 +23,18 @@ const ListeningSectionProgressDashboard = () => {
           }
         )
 
-        if (!res.ok) throw new Error('Failed to fetch weeks')
+        if (!res.ok) {
+          if (res.status === 404) {
+            setWeeks([])
+            setSelectedWeek(null)
+            return
+          }
+          throw new Error('Failed to fetch weeks')
+        }
 
         const data = await res.json()
-        setWeeks(data)
-        setSelectedWeek(data[data.length - 1]) // auto-select latest week
+        setWeeks(data || [])
+        setSelectedWeek(data && data.length > 0 ? data[data.length - 1] : null)
       } catch (err) {
         console.error(err)
       } finally {
@@ -43,7 +50,7 @@ const ListeningSectionProgressDashboard = () => {
   return (
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">Listening Section Progress</h5>
+        <h5 className="mb-0">Reading Section Progress</h5>
 
         <Form.Select
           style={{ width: 150 }}
@@ -62,7 +69,7 @@ const ListeningSectionProgressDashboard = () => {
         {selectedWeek && (
           <SectionStudentProgressTable
             weekKey={selectedWeek}
-            apiType="listening"
+            apiType="reading"
           />
         )}
       </Card.Body>
@@ -70,4 +77,4 @@ const ListeningSectionProgressDashboard = () => {
   )
 }
 
-export default ListeningSectionProgressDashboard
+export default ReadingSectionProgressDashboard

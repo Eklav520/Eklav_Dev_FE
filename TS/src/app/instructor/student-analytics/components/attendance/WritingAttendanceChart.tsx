@@ -60,15 +60,35 @@ const WritingAttendanceChart = () => {
         }
       )
 
+      if (!res.ok) {
+        if (res.status === 404) {
+          setTotalStudents(0)
+          setAttendedStudents(0)
+          setSeries([{ name: 'Students Attended', data: [] }])
+          setOptions({
+            chart: { type: 'area', toolbar: { show: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            colors: ['#20c997'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: [] },
+            yaxis: { min: 0, labels: { formatter: (val: number) => Math.round(val) } },
+            tooltip: { y: { formatter: (val: number) => `${val} students` } },
+          })
+          return
+        }
+        throw new Error(`API error: ${res.status}`)
+      }
+
       const data = await res.json()
 
-      setTotalStudents(data.totalStudents)
-      setAttendedStudents(data.attendedStudents)
+      setTotalStudents(data.totalStudents || 0)
+      setAttendedStudents(data.attendedStudents || 0)
 
+      const graphData = data.graph || []
       setSeries([
         {
           name: 'Students Attended',
-          data: data.graph.map((d: GraphPoint) => d.count),
+          data: graphData.map((d: GraphPoint) => d.count || 0),
         },
       ])
 
@@ -78,7 +98,7 @@ const WritingAttendanceChart = () => {
         colors: ['#20c997'], // teal for Writing
         dataLabels: { enabled: false },
         xaxis: {
-          categories: data.graph.map((d: GraphPoint) =>
+          categories: graphData.map((d: GraphPoint) =>
             formatLabel(d.day)
           ),
         },

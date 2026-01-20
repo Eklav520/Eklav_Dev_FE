@@ -45,7 +45,7 @@ const AdminSelfInterviewProgressTable = () => {
         }
       )
 
-      setData(res.data)
+      setData(res.data || [])
       setCurrentPage(1) // reset page on filter change
     } catch (err) {
       console.error('Failed to fetch self interview progress', err)

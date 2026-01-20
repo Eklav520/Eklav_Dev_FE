@@ -34,11 +34,21 @@ const WritingHistory = () => {
         }
       )
 
+      if (!res.ok) {
+        if (res.status === 404) {
+          setData([])
+          setPage(1)
+          setTotalPages(1)
+          return
+        }
+        throw new Error(`API error: ${res.status}`)
+      }
+
       const result = await res.json()
 
-      setData(result.data)
-      setPage(result.page)
-      setTotalPages(result.totalPages)
+      setData(result.data || [])
+      setPage(result.page || 1)
+      setTotalPages(result.totalPages || 1)
     } catch (err) {
       console.error('Failed to load writing history', err)
     } finally {

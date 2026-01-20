@@ -62,15 +62,35 @@ const SelfInterviewChart = () => {
         }
       )
 
+      if (!res.ok) {
+        if (res.status === 404) {
+          setTotalStudents(0)
+          setAttended(0)
+          setSeries([{ name: 'Students Attended', data: [] }])
+          setOptions({
+            chart: { type: 'area', toolbar: { show: false }, zoom: { enabled: false } },
+            stroke: { curve: 'smooth', width: 3 },
+            colors: ['#0d6efd'],
+            dataLabels: { enabled: false },
+            xaxis: { categories: [] },
+            yaxis: { min: 0, labels: { formatter: (val: number) => Math.round(val) } },
+            tooltip: { y: { formatter: (val: number) => `${val} students` } },
+          })
+          return
+        }
+        throw new Error(`API error: ${res.status}`)
+      }
+
       const data = await res.json()
 
-      setTotalStudents(data.totalStudents)
-      setAttended(data.attendedStudents)
+      setTotalStudents(data.totalStudents || 0)
+      setAttended(data.attendedStudents || 0)
 
+      const graphData = data.graph || []
       setSeries([
         {
           name: 'Students Attended',
-          data: data.graph.map((d: GraphPoint) => d.count),
+          data: graphData.map((d: GraphPoint) => d.count || 0),
         },
       ])
 
@@ -89,7 +109,7 @@ const SelfInterviewChart = () => {
           enabled: false,
         },
         xaxis: {
-          categories: data.graph.map((d: GraphPoint) =>
+          categories: graphData.map((d: GraphPoint) =>
             formatLabel(d.day)
           ),
         },

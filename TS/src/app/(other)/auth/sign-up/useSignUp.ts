@@ -18,6 +18,16 @@ const schema = yup.object({
   fullname: yup.string().required('Full name is required'),
   phoneNo: yup.string().required('Phone number is required'),
   terms: yup.boolean().oneOf([true], 'Accept terms'),
+  joiningYear: yup
+    .number()
+    .transform((value, originalValue) => {
+      // Convert empty string to undefined so validation can catch it
+      return originalValue === '' ? undefined : value
+    })
+    .required('Joining year is required')
+    .typeError('Joining year is required'),
+  batch: yup.string().required('Batch is required'),
+  college: yup.string().required('College is required'),
 })
 
 type SignFormFields = yup.InferType<typeof schema>
@@ -34,6 +44,8 @@ const useSignUp = () => {
     handleSubmit,
     register,
     watch,
+    setValue,
+    clearErrors,
     formState: { errors },
   } = useForm<SignFormFields>({ resolver: yupResolver(schema) })
 
@@ -47,7 +59,6 @@ const useSignUp = () => {
     try {
       setLoading(true)
 
-      // ✅ Coerce to string for type safety
       const encryptedPassword = CryptoJS.AES.encrypt(
         values.password || '',
         SECRET_KEY
@@ -92,7 +103,7 @@ const useSignUp = () => {
     }
   })
 
-  return { loading, signUp, control, register, watch, errors }
+  return { loading, signUp, control, register, watch, setValue, clearErrors, errors }
 }
 
 export default useSignUp
