@@ -103,7 +103,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       captureFullscreenExit: true,
     },
     {
-      onViolation: () => {},
+      onViolation: () => { },
       onMaxReached: async (count: any, reason: any) => {
         if (!submitLockRef.current && submissionStatus === 'not_submitted') {
           await submitQuiz(true, `Auto-submitted due to proctoring violations (${count}): ${reason}`)
@@ -142,6 +142,38 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     return () => cleanupRecording()
   }, [])
 
+  const uploadQuizRecordingToS3 = async (blob: Blob, submissionId: string) => {
+    const presignRes = await fetch(`${baseURL}/api/student/presign/quiz-recording`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        submissionId,
+        fileName: `recording_${submissionId}.webm`,
+        fileType: blob.type || 'video/webm',
+      }),
+    })
+
+    if (!presignRes.ok) throw new Error('Presign failed')
+
+    const { uploadUrl, key } = await presignRes.json()
+
+    const putRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': blob.type || 'video/webm' },
+      body: blob,
+    })
+
+    if (!putRes.ok) {
+      throw new Error(`S3 upload failed: ${putRes.status}`)
+    }
+
+    return key
+  }
+
+
   const startStatusPolling = (tplId: string, tok: string) => {
     stopStatusPolling()
     statusPollRef.current = window.setInterval(async () => {
@@ -158,7 +190,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
             stopStatusPolling()
           }
         }
-      } catch {}
+      } catch { }
     }, 15000) as unknown as number
   }
   const stopStatusPolling = () => {
@@ -238,7 +270,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     const a = arr.slice()
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
-      ;[a[i], a[j]] = [a[j], a[i]]
+        ;[a[i], a[j]] = [a[j], a[i]]
     }
     return a
   }
@@ -246,11 +278,11 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
   const attachStreamToVideo = (videoEl: HTMLVideoElement | null, stream: MediaStream | null) => {
     if (!videoEl) return
     try {
-      ;(videoEl as any).srcObject = stream
+      ; (videoEl as any).srcObject = stream
       videoEl.muted = true
       videoEl.playsInline = true
       videoEl.autoplay = true
-      videoEl.play().catch(() => {})
+      videoEl.play().catch(() => { })
     } catch (e) {
       console.warn('attachStreamToVideo failed', e)
     }
@@ -329,11 +361,11 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         try {
           mediaRecorderRef.current.stop()
-        } catch {}
+        } catch { }
       }
       if (combinedStreamRef.current) {
         combinedStreamRef.current.getTracks().forEach((t) => {
-          try { t.stop() } catch {}
+          try { t.stop() } catch { }
         })
         combinedStreamRef.current = null
       }
@@ -474,23 +506,31 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       try {
         const blob = getRecordingBlob()
         if (blob) {
-          const fd = new FormData()
-          fd.append('submissionId', jres.submissionId)
-          fd.append('recording', blob, `recording_${jres.submissionId}.webm`)
-          await fetch(`${baseURL}/api/student/upload-recording`, {
+          const recordingUrl = await uploadQuizRecordingToS3(
+            blob,
+            jres.submissionId
+          )
+
+          setRecordingState('uploaded')
+
+          // (optional) update DB if needed
+          await fetch(`${baseURL}/api/student/quiz-recording-linked`, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-            body: fd,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              submissionId: jres.submissionId,
+              s3Key: recordingUrl, // ✅ backend expects s3Key
+            }),
           })
-            .then((r) => {
-              if (!r.ok) throw new Error('Recording upload failed')
-              setRecordingState('uploaded')
-            })
-            .catch((e) => console.warn('Recording upload failed:', e))
+
         }
       } catch (e) {
         console.warn('Recording upload error', e)
       }
+
 
       setLatestSubmission({
         _id: jres.submissionId,
@@ -826,9 +866,9 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
                       ? '✅ Pending Evaluation'
                       : 'Evaluated'
                     : (submissionStatus === 'not_submitted' && 'Not Submitted') ||
-                      (submissionStatus === 'submitting' && 'Submitting...') ||
-                      (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
-                      (submissionStatus === 'evaluated' && 'Evaluated')}
+                    (submissionStatus === 'submitting' && 'Submitting...') ||
+                    (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
+                    (submissionStatus === 'evaluated' && 'Evaluated')}
                 </div>
               </div>
 

@@ -123,10 +123,10 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       el.srcObject = stream
       el.muted = true
       el.playsInline = true
-      const tryPlay = () => el.play().catch(() => {})
+      const tryPlay = () => el.play().catch(() => { })
       el.onloadedmetadata = tryPlay
       tryPlay()
-    } catch {}
+    } catch { }
   }
 
   const enterFullscreenFromUserGesture = async (): Promise<boolean> => {
@@ -193,9 +193,9 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       setTimeout(() => {
         try {
           synth.speak(u)
-        } catch {}
+        } catch { }
       }, 60)
-    } catch {}
+    } catch { }
   }
 
   const speakSequence = async (texts: string[]) => {
@@ -214,7 +214,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       u.onend = playNext
       try {
         synth.speak(u)
-      } catch {}
+      } catch { }
     }
     playNext()
   }
@@ -222,16 +222,16 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
   /* ======================= Load topics ======================= */
   useEffect(() => {
     if (!authToken) return
-    ;(async () => {
-      try {
-        const res = await fetch(`${baseURL}/api/hr/topics`, { headers: { Authorization: `Bearer ${authToken}` } })
-        const data = await res.json()
-        if (!data?.success) throw new Error(data?.error || 'Failed to load HR topics')
-        setAllTopics(data.topics || [])
-      } catch (e: any) {
-        setLoadErr(e?.message || 'Failed to load HR topics')
-      }
-    })()
+      ; (async () => {
+        try {
+          const res = await fetch(`${baseURL}/api/hr/topics`, { headers: { Authorization: `Bearer ${authToken}` } })
+          const data = await res.json()
+          if (!data?.success) throw new Error(data?.error || 'Failed to load HR topics')
+          setAllTopics(data.topics || [])
+        } catch (e: any) {
+          setLoadErr(e?.message || 'Failed to load HR topics')
+        }
+      })()
   }, [authToken, baseURL])
 
   const toggleTopic = (t: string) => setSelected((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
@@ -253,7 +253,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         arr.forEach((q) => (init[q._id] = ''))
         setTextAnswers(init)
         interimRef.current = {}
-        
+
         // Start timer when questions are loaded
         startTimer()
         return arr
@@ -337,7 +337,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         recRef.current.onend = null
         recRef.current.stop()
       }
-    } catch {}
+    } catch { }
     recRef.current = null
     if (current) {
       interimRef.current[current._id] = ''
@@ -411,16 +411,16 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       setSessionBlob(blob)
       try {
         combined.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         display.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         camera!.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         mic!.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       combinedStreamRef.current = null
       displayStreamRef.current = null
       cameraStreamRef.current = null
@@ -442,7 +442,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
   const stopSession = () => {
     try {
       mediaRecorderRef.current?.stop()
-    } catch {}
+    } catch { }
     setStarted(false)
     disarm() // disarm when recording ends
   }
@@ -485,7 +485,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         await ensureVoices()
         s.resume?.()
       }
-    } catch {}
+    } catch { }
 
     // 4) Start session with granted display stream
     const ok = await startSession(preDisplay!)
@@ -504,43 +504,85 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
   const allAnswered = qs.length > 0 && qs.every((q) => (textAnswers[q._id] || '').trim().length > 0)
 
+  const uploadHRSessionToS3 = async (blob: Blob): Promise<string> => {
+    if (!authToken) throw new Error('Auth required')
+
+    const presignRes = await fetch(`${baseURL}/api/hr/presign/session`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fileName: `session_${Date.now()}.webm`,
+        fileType: blob.type || 'video/webm',
+      }),
+    })
+
+    const { uploadUrl, fileUrl } = await presignRes.json()
+    if (!uploadUrl || !fileUrl) throw new Error('Failed to get upload URL')
+
+    await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': blob.type || 'video/webm' },
+      body: blob,
+    })
+
+    return fileUrl
+  }
+
+
   // Submit (supports auto-submit when violations cap reached)
   const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
     const { auto = false, reason } = opts || {}
     if (!authToken || qs.length === 0 || (!allAnswered && !auto)) return
-    
-    // Stop timer when submitting
+
     stopTimer()
-    
     setSubmitting(true)
+
     try {
       stopDictation()
-      let blobToSend: Blob | null = sessionBlob
-      if (started && mediaRecorderRef.current) blobToSend = await stopSessionAsync()
 
-      const answers = qs.map((q) => ({ qid: q._id, questionText: q.question, textAnswer: (textAnswers[q._id] || '').trim() }))
-
-      const form = new FormData()
-      form.append('topics', JSON.stringify(selected))
-      form.append('answers', JSON.stringify(answers))
-      form.append(
-        'proctorMeta',
-        JSON.stringify({
-          autoSubmitted: auto,
-          violations: violationCount,
-          reason: reason || null,
-          timeLeft: timeLeft, // Include remaining time in submission
-        }),
-      )
-      if (blobToSend && blobToSend.size > 0) {
-        // enforce correct mime type before sending
-        const fixedBlob = new Blob([blobToSend], { type: 'video/webm' })
-        form.append('media_session', fixedBlob, `session_${Date.now()}.webm`)
-      } else {
-        console.warn('⚠️ No session blob to upload')
+      let finalBlob: Blob | null = sessionBlob
+      if (started && mediaRecorderRef.current) {
+        finalBlob = await stopSessionAsync()
       }
 
-      const res = await fetch(`${baseURL}/api/hr/submit`, { method: 'POST', headers: { Authorization: `Bearer ${authToken}` }, body: form })
+      // 1️⃣ Upload HR session video to S3
+      let sessionMediaUrl = ''
+      if (finalBlob && finalBlob.size > 0) {
+        sessionMediaUrl = await uploadHRSessionToS3(
+          new Blob([finalBlob], { type: 'video/webm' })
+        )
+      }
+
+      // 2️⃣ Prepare answers
+      const answers = qs.map((q) => ({
+        qid: q._id,
+        questionText: q.question,
+        textAnswer: (textAnswers[q._id] || '').trim(),
+      }))
+
+      // 3️⃣ Submit JSON only
+      const res = await fetch(`${baseURL}/api/hr/submit`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          topics: selected,
+          answers,
+          sessionMediaUrl,
+          proctorMeta: {
+            autoSubmitted: auto,
+            violations: violationCount,
+            reason: reason || null,
+            timeLeft,
+          },
+        }),
+      })
+
       const data = await res.json()
       if (data?.success) {
         setOpen(false)
@@ -548,10 +590,13 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       } else {
         setUiErr(data?.error || 'Submit failed')
       }
+    } catch (e: any) {
+      setUiErr(e.message || 'Submission failed')
     } finally {
       setSubmitting(false)
     }
   }
+
 
   const handleAutoSubmit = async (why: string) => {
     await handleSubmit({ auto: true, reason: why })
@@ -588,25 +633,25 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       stopTimer() // Clean up timer
       try {
         recRef.current?.stop()
-      } catch {}
+      } catch { }
       try {
         mediaRecorderRef.current?.stop()
-      } catch {}
+      } catch { }
       try {
         combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         micStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch {}
+      } catch { }
       try {
         window.speechSynthesis?.cancel()
-      } catch {}
+      } catch { }
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       disarm()
     }
@@ -616,22 +661,22 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     stopTimer() // Stop timer when closing
     try {
       recRef.current?.stop()
-    } catch {}
+    } catch { }
     try {
       mediaRecorderRef.current?.stop()
-    } catch {}
+    } catch { }
     try {
       combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     try {
       micStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     setOpen(false)
     disarm()
     onClose()
@@ -807,9 +852,9 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
                           Next →
                         </button>
                       ) : (
-                        <button 
-                          className="submit-btn" 
-                          onClick={() => setReviewing(true)} 
+                        <button
+                          className="submit-btn"
+                          onClick={() => setReviewing(true)}
                           disabled={proctorLocked}
                           title="Review your answers before final submission">
                           Review Answers
