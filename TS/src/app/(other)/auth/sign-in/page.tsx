@@ -70,41 +70,44 @@ const SignInPage = () => {
       `}</style>
 
       <AuthLayout>
-        <Col xs={12} lg={6} className="m-auto">
-          <Row className="my-5">
-            <Col sm={10} xl={8} className="m-auto">
 
-              <h1 className="fs-2 fw-bold d-flex align-items-center gap-2">
-                Login into Learning Path <span>👋</span>
-              </h1>
+        <h1 className="fs-2 fw-bold mb-2">
+          Login into Learning Path <span>👋</span>
+        </h1>
 
-              <p className="text-muted mb-4">Welcome back! Continue your learning journey 🚀</p>
+        <p className="text-muted mb-4">
+          Welcome back! Continue your learning journey 🚀
+        </p>
 
-              <SignIn />
+        {/* Card */}
+        <div className="card border-0 shadow-sm w-100">
+          <div className="card-body p-4 p-lg-5">
+            <SignIn />
+          </div>
+        </div>
 
-              <div className="text-center mt-3">
-                <span>
-                  Need a subscription plan?{" "}
-                  <span
-                    className="text-primary fw-bold"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => setShowForm(true)}
-                  >
-                    Request Access
-                  </span>
-                </span>
-              </div>
+        {/* Request Access */}
+        <div className="text-center mt-4">
+          <span className="text-muted">
+            Need a subscription plan?{" "}
+            <span
+              className="text-primary fw-bold"
+              style={{ cursor: "pointer" }}
+              onClick={() => setShowForm(true)}
+            >
+              Request Access
+            </span>
+          </span>
+        </div>
 
-            </Col>
-          </Row>
-        </Col>
       </AuthLayout>
+
 
       {/* Contact Popup Form */}
       {showForm && (
         <div className="popup-overlay" onClick={() => setShowForm(false)}>
           <div className="popup-card" onClick={(e) => e.stopPropagation()}>
-            
+
             <span className="close-btn" onClick={() => setShowForm(false)}>✖</span>
             <h4 className="text-center text-white mb-3">Get in Touch</h4>
 

@@ -56,7 +56,8 @@ const AuthLayout = ({ children }: ChildrenType) => {
         `}
       </style>
 
-      <section className="p-0 d-flex align-items-center position-relative overflow-hidden">
+      <section className="p-0 position-relative overflow-hidden">
+
         <Container fluid>
           <Row>
             {/* -------- LEFT SECTION -------- */}
@@ -96,7 +97,20 @@ const AuthLayout = ({ children }: ChildrenType) => {
             </Col>
 
             {/* -------- RIGHT / LOGIN -------- */}
-            {children}
+            {/* -------- RIGHT / AUTH FORM -------- */}
+            <Col
+              xs={12}
+              lg={6}
+              className="d-flex justify-content-center bg-body"
+            >
+              <div
+                className="w-100 px-3 px-md-4 pt-4 pt-lg-5"
+                style={{ maxWidth: "720px" }}
+              >
+                {children}
+              </div>
+            </Col>
+
           </Row>
         </Container>
       </section>
