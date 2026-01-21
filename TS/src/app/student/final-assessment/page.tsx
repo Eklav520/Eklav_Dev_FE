@@ -6,6 +6,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import StudentCodeChallengeComponent from './components/codeChallenge/StudentCodeChallengeComponent'
 import TechnicalRound from './components/TRRound/TechnicalRound'
 import HRRound from './HRRound/HRRound'
+import StarRating from '@/app/instructor/final-assessment/components/StarRating'
 
 type RoundKey = 'quiz' | 'code' | 'tr' | 'hr'
 type RoundStatus = 'locked' | 'ready' | 'in_progress' | 'pending' | 'passed' | 'failed'
@@ -250,6 +251,7 @@ export default function StudentFinalAssessmentPage() {
 
   const openReview = async (kind: RoundKey) => {
     if (!token) return
+
     setReviewKind(kind)
     setReviewOpen(true)
     setReviewLoading(true)
@@ -257,6 +259,7 @@ export default function StudentFinalAssessmentPage() {
     setReviewData(null)
 
     try {
+      /* -------- Submission API -------- */
       let url = ''
       switch (kind) {
         case 'quiz':
@@ -273,27 +276,50 @@ export default function StudentFinalAssessmentPage() {
           break
       }
 
-      let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      let res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
-      // Fallback to status-only endpoints if details route isn't present yet
       if (!res.ok && (kind === 'tr' || kind === 'hr')) {
-        const fallback = `${API_BASE}/api/${kind}/status/latest`
-        res = await fetch(fallback, { headers: { Authorization: `Bearer ${token}` } })
+        res = await fetch(`${API_BASE}/api/${kind}/status/latest`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
       }
+
       if (!res.ok) throw new Error('Failed to load review')
 
       const data = await res.json()
-      const sub = data?.submission || null
-      const statusRaw =
-        (sub?.status || data?.status || '').toString().toLowerCase() as RoundStatus
+      const submission = data?.submission ?? null
 
+      const statusRaw =
+        (submission?.status || data?.status || 'pending')
+          .toString()
+          .toLowerCase() as RoundStatus
+
+      /* -------- Profile API (Admin Feedback) -------- */
+      let latestProfileFeedback = null
+
+      const profileRes = await fetch(`${API_BASE}/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (profileRes.ok) {
+        const profileJson = await profileRes.json()
+        const fb = Array.isArray(profileJson?.feedback)
+          ? profileJson.feedback
+          : []
+
+        latestProfileFeedback = fb.length ? fb[fb.length - 1] : null
+      }
+
+      /* -------- Final State -------- */
       setReviewData({
-        raw: data,
-        submission: sub,
+        submission,
         status: statusRaw,
-        feedback: coerceFeedback(sub),
-        ...coerceScore(sub),
-        answers: sub?.answers || null, // per-question list (TR/HR/Code) if your API returns it
+        feedback: coerceFeedback(submission),
+        ...coerceScore(submission),
+        answers: submission?.answers || null,
+        profileFeedback: latestProfileFeedback,
       })
     } catch (e: any) {
       setReviewError(e?.message || 'Failed to load review')
@@ -301,6 +327,8 @@ export default function StudentFinalAssessmentPage() {
       setReviewLoading(false)
     }
   }
+
+
 
   // ----- QUIZ STATUS -----
   const fetchQuizStatus = async () => {
@@ -516,10 +544,28 @@ export default function StudentFinalAssessmentPage() {
       (r.key !== 'tr' || trStatusChecked) &&
       (r.key !== 'hr' || hrStatusChecked) */
 
-  const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
-    r.key === 'tr' &&
-    r.status === READY &&
-    trStatusChecked
+  const canStart = (r: { key: RoundKey; status: RoundStatus }) => {
+    if (r.status !== READY) return false
+
+    if (r.key === 'quiz') {
+      return statusChecked
+    }
+
+    if (r.key === 'code') {
+      const quiz = rounds.find((x) => x.key === 'quiz')
+      return quiz?.status === PASSED
+    }
+
+    if (r.key === 'tr') {
+      return trStatusChecked
+    }
+
+    if (r.key === 'hr') {
+      return hrStatusChecked
+    }
+
+    return false
+  }
 
 
   return (
@@ -828,8 +874,40 @@ export default function StudentFinalAssessmentPage() {
                 <div className="text-muted small mb-3">No general feedback provided.</div>
               )}
 
+              {/* ---------- Latest Profile Feedback (ALWAYS VISIBLE) ---------- */}
+              {reviewData.profileFeedback ? (
+                <Card className="mb-3 border-primary">
+                  <Card.Body>
+                    <div className="fw-semibold mb-1">Admin Feedback</div>
+
+                    {reviewData.profileFeedback.rating != null && (
+                      <div className="d-flex align-items-center gap-2 mb-2">
+                        <span className="text-muted small">Rating:</span>
+                        <StarRating rating={reviewData.profileFeedback.rating} readOnly />
+                        <span className="text-muted small">
+                          ({reviewData.profileFeedback.rating}/5)
+                        </span>
+                      </div>
+                    )}
+
+                    <div style={{ whiteSpace: 'pre-wrap' }}>
+                      {reviewData.profileFeedback.text}
+                    </div>
+
+                    <div className="text-muted small mt-2">
+                      {new Date(reviewData.profileFeedback.date).toLocaleString()}
+                    </div>
+                  </Card.Body>
+                </Card>
+              ) : (
+                <div className="text-muted small mb-3">
+                  No profile feedback provided yet.
+                </div>
+              )}
+
+              {/* ---------- Per-question review (ONLY IF EXISTS) ---------- */}
               {Array.isArray(reviewData.answers) && reviewData.answers.length > 0 && (
-                <div>
+                <>
                   <div className="fw-semibold mb-2">Per-question review</div>
                   <ListGroup variant="flush">
                     {reviewData.answers.map((a: any, i: number) => (
@@ -837,17 +915,18 @@ export default function StudentFinalAssessmentPage() {
                         <div className="fw-semibold mb-1">
                           Q{i + 1} {a.topic ? <span className="text-muted">· {a.topic}</span> : null}
                         </div>
+
                         {a.questionText && (
-                          <div className="text-muted" style={{ marginBottom: 6 }}>
-                            {a.questionText}
-                          </div>
+                          <div className="text-muted mb-1">{a.questionText}</div>
                         )}
+
                         <div className="small">
                           <span className="text-muted">Rating: </span>
                           <strong>{a.rating ?? '—'}</strong>
                         </div>
+
                         {a.feedback && (
-                          <div className="small mt-1" style={{ whiteSpace: 'pre-wrap' }}>
+                          <div className="small mt-1">
                             <span className="text-muted">Feedback: </span>
                             {a.feedback}
                           </div>
@@ -855,8 +934,9 @@ export default function StudentFinalAssessmentPage() {
                       </ListGroup.Item>
                     ))}
                   </ListGroup>
-                </div>
+                </>
               )}
+
             </>
           )}
         </Modal.Body>
