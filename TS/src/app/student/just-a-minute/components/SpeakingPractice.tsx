@@ -632,6 +632,41 @@ const SpeakingPractice: React.FC = () => {
     localStorage.setItem('mobileHelpShown', 'true')
   }
 
+const highlightFeedbackText = (text: string) => {
+  if (!text) return text
+
+  let quoteIndex = 0
+
+  return text.split(/('.*?')/g).map((part, index) => {
+    if (part.startsWith("'") && part.endsWith("'")) {
+      const content = part.replace(/'/g, '')
+      const isIncorrect = quoteIndex % 2 === 0
+      quoteIndex++
+
+      return (
+        <span
+          key={index}
+          style={{
+            backgroundColor: isIncorrect ? '#fee2e2' : '#dcfce7',
+            color: isIncorrect ? '#991b1b' : '#065f46',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontWeight: 600,
+            margin: '0 4px',
+            display: 'inline-block',
+          }}
+        >
+          {content}
+        </span>
+      )
+    }
+
+    return <span key={index}>{part}</span>
+  })
+}
+
+
+
   return (
     <Container fluid className="speaking-practice-container">
       {/* Mobile Help Modal */}
@@ -948,21 +983,26 @@ const SpeakingPractice: React.FC = () => {
 
                 <div className="feedback-grid">
                   <div className="feedback-item grammar">
-                    <strong>📚 Grammar:</strong> {feedback.grammar}
+                    <strong>📚 Grammar:</strong>{' '}
+                    {highlightFeedbackText(feedback.grammar)}
                   </div>
 
                   <div className="feedback-item fluency">
-                    <strong>🔄 Fluency:</strong> {feedback.fluency}
+                    <strong>🔄 Fluency:</strong>{' '}
+                    {highlightFeedbackText(feedback.fluency)}
                   </div>
 
                   <div className="feedback-item vocabulary">
-                    <strong>💎 Vocabulary:</strong> {feedback.vocabulary}
+                    <strong>💎 Vocabulary:</strong>{' '}
+                    {highlightFeedbackText(feedback.vocabulary)}
                   </div>
 
                   <div className="feedback-item pronunciation">
-                    <strong>🔊 Pronunciation:</strong> {feedback.pronunciation}
+                    <strong>🔊 Pronunciation:</strong>{' '}
+                    {highlightFeedbackText(feedback.pronunciation)}
                   </div>
                 </div>
+
 
                 <Alert variant="warning" className="recommendations-alert">
                   <FaLightbulb className="me-2" />
