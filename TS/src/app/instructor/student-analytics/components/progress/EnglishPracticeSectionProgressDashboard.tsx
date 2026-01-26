@@ -1,78 +1,36 @@
-import { useEffect, useState } from 'react'
-import { Card, Form, Spinner } from 'react-bootstrap'
+import { Card } from 'react-bootstrap'
 import SectionStudentProgressTable from './SectionStudentProgressTable'
-import { useAuthContext } from '@/context/useAuthContext'
 
-const EnglishPracticeSectionProgressDashboard = () => {
-  const { user } = useAuthContext()
-  const baseURL = import.meta.env.VITE_API_BASE_URL
-
-  const [weeks, setWeeks] = useState<string[]>([])
-  const [selectedWeek, setSelectedWeek] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchWeeks = async () => {
-      try {
-        const res = await fetch(
-          `${baseURL}/api/adminDashboardHistoryTable/admin/weeks`,
-          {
-            headers: { Authorization: `Bearer ${user?.token}` }
-          }
-        )
-
-        if (!res.ok) {
-          if (res.status === 404) {
-            setWeeks([])
-            setSelectedWeek(null)
-            return
-          }
-          throw new Error('Failed to fetch weeks')
-        }
-
-        const data = await res.json()
-        setWeeks(data || [])
-        setSelectedWeek(data && data.length > 0 ? data[data.length - 1] : null)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchWeeks()
-  }, [baseURL, user?.token])
-
-  if (loading) return <Spinner animation="border" />
-
-  return (
-    <Card>
-      <Card.Header className="d-flex justify-content-between align-items-center">
-        <h5 className="mb-0">English Practice (Speaking) Section Progress</h5>
-
-        <Form.Select
-          style={{ width: 150 }}
-          value={selectedWeek ?? ''}
-          onChange={(e) => setSelectedWeek(e.target.value)}
-        >
-          {weeks.map((w) => (
-            <option key={w} value={w}>
-              {w}
-            </option>
-          ))}
-        </Form.Select>
-      </Card.Header>
-
-      <Card.Body>
-        {selectedWeek && (
-          <SectionStudentProgressTable
-            weekKey={selectedWeek}
-            apiType="englishPractice"
-          />
-        )}
-      </Card.Body>
-    </Card>
-  )
+type Props = {
+  year: number
+  month: number
+  week: string | null
+  registerDownload?: (fn: () => void) => void
 }
+
+const EnglishPracticeSectionProgressDashboard = ({
+  week,
+  registerDownload,
+}: Props) => (
+  <Card>
+    <Card.Header>
+      <h5 className="mb-0">Speaking Section Progress</h5>
+    </Card.Header>
+
+    <Card.Body>
+      {week ? (
+        <SectionStudentProgressTable
+          weekKey={week}
+          apiType="englishPractice"
+          registerDownload={registerDownload}
+        />
+      ) : (
+        <p className="text-center text-muted mb-0">
+          Select a week in the filters above to view Speaking progress.
+        </p>
+      )}
+    </Card.Body>
+  </Card>
+)
 
 export default EnglishPracticeSectionProgressDashboard

@@ -1,5 +1,5 @@
 import { Table, Spinner, Badge, Button } from 'react-bootstrap'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuthContext } from '@/context/useAuthContext'
 import * as XLSX from 'xlsx'
 import { FaAngleLeft, FaAngleRight } from 'react-icons/fa'
@@ -19,9 +19,11 @@ const ROWS_PER_PAGE = 10
 const SectionStudentProgressTable = ({
   weekKey,
   apiType = 'writing',
+  registerDownload,
 }: {
   weekKey: string
-  apiType?: 'writing' | 'reading' | 'listening' | 'justaMinute' | 'englishPractice'
+  apiType?: 'writing' | 'reading' | 'listening' | 'justaMinute' | 'englishPractice' | 'speaking'
+  registerDownload?: (fn: () => void) => void
 }) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -42,8 +44,10 @@ const SectionStudentProgressTable = ({
             ? 'listening-section-progress'
             : apiType === 'justaMinute'
             ? 'justaMinute-section-progress'
+            : apiType === 'speaking'
+            ? 'speaking-section-progress'
             : apiType === 'englishPractice'
-            ? 'english-practice-section-progress'
+            ? 'speaking-section-progress' // fallback to speaking route
             : 'section-progress'
 
         const res = await fetch(
@@ -72,7 +76,7 @@ const SectionStudentProgressTable = ({
     fetchProgress()
   }, [weekKey, apiType, baseURL, user?.token])
 
-  const downloadExcel = () => {
+  const downloadExcel = useCallback(() => {
     if (data.length === 0) return
 
     const formattedData = data.map((s, index) => ({
@@ -92,7 +96,13 @@ const SectionStudentProgressTable = ({
 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Student Progress')
     XLSX.writeFile(workbook, `student-progress-${apiType}-${weekKey}.xlsx`)
-  }
+  }, [data, apiType, weekKey])
+
+  useEffect(() => {
+    if (registerDownload) {
+      registerDownload(downloadExcel)
+    }
+  }, [registerDownload, downloadExcel])
 
   if (loading) return <Spinner animation="border" />
 
