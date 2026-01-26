@@ -1,6 +1,7 @@
 // StudentCodeChallengeComponent.tsx
 import { useAuthContext } from '@/context/useAuthContext'
 import React, { useEffect, useRef, useState } from 'react'
+import Editor from '@monaco-editor/react'
 
 /**
  * Behavior:
@@ -87,31 +88,31 @@ function useChallengeLoader(baseURL: string, eventId: string) {
   const [challenge, setChallenge] = useState<Challenge | null>(null)
   useEffect(() => {
     let mounted = true
-    ;(async () => {
-      try {
-        const res = await fetch(`${baseURL}/api/events/${eventId}/codechallenges`)
-        if (!res.ok) throw new Error(`Fetch failed ${res.status}`)
-        const arr: Challenge[] = await res.json()
-        if (!mounted) return
-        if (arr && arr.length > 0) setChallenge(arr[Math.floor(Math.random() * arr.length)])
-        else
+      ; (async () => {
+        try {
+          const res = await fetch(`${baseURL}/api/events/${eventId}/codechallenges`)
+          if (!res.ok) throw new Error(`Fetch failed ${res.status}`)
+          const arr: Challenge[] = await res.json()
+          if (!mounted) return
+          if (arr && arr.length > 0) setChallenge(arr[Math.floor(Math.random() * arr.length)])
+          else
+            setChallenge({
+              _id: 'demo-1',
+              title: 'Demo challenge',
+              description: 'Write a function that reverses a string.',
+              timeLimitSeconds: 15 * 60,
+            })
+        } catch (e) {
+          console.warn('fetch failed', e)
+          if (!mounted) return
           setChallenge({
             _id: 'demo-1',
             title: 'Demo challenge',
             description: 'Write a function that reverses a string.',
             timeLimitSeconds: 15 * 60,
           })
-      } catch (e) {
-        console.warn('fetch failed', e)
-        if (!mounted) return
-        setChallenge({
-          _id: 'demo-1',
-          title: 'Demo challenge',
-          description: 'Write a function that reverses a string.',
-          timeLimitSeconds: 15 * 60,
-        })
-      }
-    })()
+        }
+      })()
     return () => {
       mounted = false
     }
@@ -133,33 +134,33 @@ function useScreenRecorder() {
     try {
       const mr = mediaRecorderRef.current
       if (mr && mr.state !== 'inactive') mr.stop()
-    } catch {}
+    } catch { }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current)
       animationFrameRef.current = null
     }
     try {
       combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch {}
+    } catch { }
     combinedStreamRef.current = null
 
     try {
       if (screenVideoRef.current && screenVideoRef.current.srcObject) {
-        ;(screenVideoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
+        ; (screenVideoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
         screenVideoRef.current.srcObject = null
       }
-    } catch {}
+    } catch { }
 
     try {
       if (camVideoRef.current && camVideoRef.current.srcObject) {
-        ;(camVideoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
+        ; (camVideoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop())
         camVideoRef.current.srcObject = null
       }
-    } catch {}
+    } catch { }
 
     try {
       if (audioContextRef.current) audioContextRef.current.close()
-    } catch {}
+    } catch { }
     audioContextRef.current = null
     recordedChunksRef.current = []
     mediaRecorderRef.current = null
@@ -264,6 +265,67 @@ function unescapeText(s: unknown): string {
     .replace(/\\t/g, '\t')
 }
 
+const renderDescription = (text: string) => {
+  const lines = text.split('\n')
+
+  return lines.map((line, i) => {
+    const isHeading = [
+      'Input Format',
+      'Output Format',
+      'Constraints',
+      'Example',
+      'Input',
+      'Output'
+    ].includes(line.trim())
+
+    if (isHeading) {
+      return (
+        <h4 key={i} style={{
+          marginTop: 20,
+          marginBottom: 8,
+          color: '#93c5fd',
+          fontSize: 15,
+          fontWeight: 600,
+        }}>
+          {line}
+        </h4>
+      )
+    }
+
+    if (line.trim() === '') {
+      return <div key={i} style={{ height: 8 }} />
+    }
+
+    // Code-like lines
+    if (/^[a-zA-Z0-9 ]+$/.test(line) && line.length < 40) {
+      return (
+        <pre key={i} style={{
+          background: '#020617',
+          padding: '8px 12px',
+          borderRadius: 6,
+          color: '#e5e7eb',
+          fontSize: 13,
+          margin: '6px 0',
+        }}>
+          {line}
+        </pre>
+      )
+    }
+
+    return (
+      <p key={i} style={{
+        fontSize: 14,
+        lineHeight: 1.6,
+        color: '#d1d5db',
+        margin: '6px 0',
+      }}>
+        {line}
+      </p>
+    )
+  })
+}
+
+
 // small helper for date formatting (currently unused but kept)
 function formatDate(iso?: string) {
   if (!iso) return '—'
@@ -295,7 +357,7 @@ const ViolationAlert: React.FC<{ show: boolean; violations: number; maxViolation
         textAlign: 'center',
         fontSize: '16px',
         fontWeight: '600',
-        backdropFilter: 'blur(10px)',
+        backdropFilter: 'blur(10px) saturate(120%)',
         animation: 'shake 0.5s ease-in-out',
       }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
@@ -325,7 +387,7 @@ const ViolationAlert: React.FC<{ show: boolean; violations: number; maxViolation
 const ChallengeDescription: React.FC<{ challenge: Challenge }> = ({ challenge }) => {
   const desc = String(challenge?.description ?? '').replace(/\\n/g, '\n')
   return (
-    <div style={{ padding: 20, background: 'linear-gradient(180deg,#071125,#081827)', color: '#e6eef8', overflow: 'auto' }}>
+    <div style={{ padding: 20, background: 'linear-gradient(180deg,#071125,#081827)', color: '#e6eef8', overflow: 'auto', height: '100%' }}>
       <h3 style={{ color: '#93c5fd', marginTop: 0, marginBottom: 10, fontSize: 18 }}>{challenge.title}</h3>
       <div style={{ fontSize: 13, color: '#d1d5db', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{desc}</div>
       <div
@@ -357,28 +419,123 @@ const ChallengeDescription: React.FC<{ challenge: Challenge }> = ({ challenge })
 }
 
 const LanguageSelector: React.FC<{ language: string; onLanguageChange: (l: string) => void }> = ({ language, onLanguageChange }) => (
-  <div style={{ marginTop: 16, padding: 20 }}>
+  <div style={{ padding: 20, position: 'relative' }}>
     <label style={{ display: 'block', marginBottom: 8, color: '#cbd5e1' }}>Select Language</label>
-    <select
-      value={language}
-      onChange={(e) => onLanguageChange(e.target.value)}
-      style={{
-        width: '100%',
-        padding: '8px 10px',
-        borderRadius: 6,
-        background: '#071122',
-        color: '#fff',
-        border: '1px solid rgba(255,255,255,0.04)',
+    <div style={{ position: 'relative' }}>
+      <select
+        value={language}
+        onChange={(e) => onLanguageChange(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '10px 12px 10px 40px',
+          borderRadius: 8,
+          background: '#0f172a',
+          color: '#fff',
+          border: '1px solid rgba(255,255,255,0.2)',
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          MozAppearance: 'none',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: '500',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        }}
+      >
+        {LANGUAGES.map((l) => (
+          <option
+            key={l.id}
+            value={l.id}
+            style={{
+              background: '#0f172a',
+              color: '#fff',
+              padding: '12px',
+              fontSize: '14px',
+            }}>
+            {l.name}
+          </option>
+        ))}
+      </select>
+      <div style={{
+        position: 'absolute',
+        left: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        fontSize: '18px',
+        color: '#60a5fa',
       }}>
-      {LANGUAGES.map((l) => (
-        <option key={l.id} value={l.id}>
-          {l.name}
-        </option>
-      ))}
-    </select>
+        💬
+      </div>
+      <div style={{
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        pointerEvents: 'none',
+        fontSize: '12px',
+        color: '#94a3b8',
+      }}>
+        ▼
+      </div>
+    </div>
+    <style>
+      {`
+        /* Global dropdown fixes */
+        select, select:focus, select:hover {
+          background-color: #0f172a !important;
+          color: white !important;
+        }
+        
+        select option {
+          background-color: #0f172a !important;
+          color: white !important;
+          padding: 12px !important;
+        }
+        
+        select option:checked,
+        select option:hover,
+        select option:focus {
+          background-color: #1e293b !important;
+          color: white !important;
+        }
+        
+        /* Remove default dropdown arrow in IE */
+        select::-ms-expand {
+          display: none;
+        }
+        
+        /* Firefox dropdown styling */
+        @-moz-document url-prefix() {
+          select {
+            color: white !important;
+            text-shadow: 0 0 0 white !important;
+            background: #0f172a url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>") no-repeat right 12px center !important;
+          }
+          select option {
+            background: #0f172a !important;
+            color: white !important;
+          }
+        }
+        
+        /* Safari/Chrome specific */
+        @media not all and (min-resolution:.001dpcm) { 
+          @supports (-webkit-appearance:none) {
+            select {
+              background: #0f172a !important;
+              color: white !important;
+            }
+            select option {
+              background: #0f172a !important;
+              color: white !important;
+            }
+          }
+        }
+      `}
+    </style>
   </div>
 )
 
+/* ---------- Enhanced CodeEditor with Monaco ---------- */
 const CodeEditor: React.FC<{
   code: string
   onCodeChange: (c: string) => void
@@ -388,7 +545,81 @@ const CodeEditor: React.FC<{
   onCancel: () => void
   allPassed: boolean
   isRunning: boolean
-}> = ({ code, onCodeChange, timeLeft, onRunTests, onSubmit, onCancel, allPassed, isRunning }) => {
+  language: string
+}> = ({ code, onCodeChange, timeLeft, onRunTests, onSubmit, onCancel, allPassed, isRunning, language }) => {
+
+  // Map language IDs to Monaco editor language IDs
+  const getMonacoLanguage = (lang: string) => {
+    switch (lang) {
+      case 'javascript': return 'javascript';
+      case 'python': return 'python';
+      case 'java': return 'java';
+      case 'cpp': return 'cpp';
+      default: return 'javascript';
+    }
+  };
+
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    // Focus the editor
+    editor.focus();
+
+    // Add useful shortcuts using monaco.KeyCode
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      onRunTests();
+    });
+
+    // Add Alt+Enter for submit
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, () => {
+      onSubmit();
+    });
+  };
+
+  const editorTheme = {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
+      { token: 'string', foreground: 'CE9178' },
+      { token: 'number', foreground: 'B5CEA8' },
+      { token: 'function', foreground: 'DCDCAA' },
+      { token: 'variable', foreground: '9CDCFE' },
+      { token: 'type', foreground: '4EC9B0' },
+      { token: 'operator', foreground: 'D4D4D4' },
+      { token: 'delimiter', foreground: 'D4D4D4' },
+      { token: 'identifier', foreground: '9CDCFE' },
+    ],
+    colors: {
+      'editor.background': '#0f172a',
+      'editor.foreground': '#e2e8f0',
+      'editor.lineHighlightBackground': '#1e293b',
+      'editorLineNumber.foreground': '#475569',
+      'editorLineNumber.activeForeground': '#94a3b8',
+      'editor.selectionBackground': '#334155',
+      'editor.inactiveSelectionBackground': '#1e293b',
+      'editorCursor.foreground': '#60a5fa',
+      'editorWhitespace.foreground': '#475569',
+      'editorIndentGuide.background': '#1e293b',
+      'editorIndentGuide.activeBackground': '#334155',
+      'editorBracketMatch.background': '#1e293b',
+      'editorBracketMatch.border': '#60a5fa',
+      'editorSuggestWidget.background': '#0f172a',
+      'editorSuggestWidget.border': '#1e293b',
+      'editorSuggestWidget.selectedBackground': '#1e293b',
+      'editorWidget.background': '#0f172a',
+      'editorWidget.border': '#1e293b',
+      'scrollbar.shadow': '#000000',
+      'scrollbarSlider.background': '#475569',
+      'scrollbarSlider.hoverBackground': '#64748b',
+      'scrollbarSlider.activeBackground': '#94a3b8',
+    }
+  };
+
+  // Define theme for Monaco
+  const defineTheme = (monaco: any) => {
+    monaco.editor.defineTheme('custom-dark', editorTheme);
+  };
+
   return (
     <div
       style={{
@@ -398,56 +629,147 @@ const CodeEditor: React.FC<{
         position: 'relative',
         overflow: 'hidden',
         background: 'rgba(255,255,255,0.02)',
+        height: '100%',
       }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ color: '#e6eef8' }}>🧾 Write Your Code</div>
-        <div style={{ color: '#bfcbd8', fontSize: 13 }}>
-          Time left:{' '}
-          {timeLeft === null
-            ? '--:--'
-            : `${Math.floor(timeLeft / 60)
-                .toString()
-                .padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ color: '#e6eef8', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '20px' }}>💻</span>
+          Write Your Code
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ color: '#bfcbd8', fontSize: 13, background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: 6 }}>
+            Language: <span style={{ color: '#60a5fa', fontWeight: 600 }}>{LANGUAGES.find(l => l.id === language)?.name || 'JavaScript'}</span>
+          </div>
+          <div style={{ color: '#bfcbd8', fontSize: 13, background: 'rgba(255,255,255,0.05)', padding: '4px 10px', borderRadius: 6 }}>
+            Time left:{' '}
+            <span style={{ color: timeLeft && timeLeft < 300 ? '#f87171' : '#34d399', fontWeight: 600 }}>
+              {timeLeft === null
+                ? '--:--'
+                : `${Math.floor(timeLeft / 60)
+                  .toString()
+                  .padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-        <div
-          style={{
-            height: '100%',
-            borderRadius: 8,
-            overflow: 'hidden',
-            border: '1px solid rgba(255,255,255,0.04)',
-            background: 'rgba(16,24,32,0.9)',
-          }}>
-          <textarea
-            value={code}
-            onChange={(e) => onCodeChange(e.target.value)}
-            placeholder="// Write your solution here"
-            style={{
-              width: '100%',
-              height: '100%',
-              minHeight: 500,
-              padding: 16,
-              border: 'none',
-              outline: 'none',
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, monospace',
-              fontSize: 14,
-              color: '#e6eef8',
-              background: 'transparent',
-              resize: 'none',
-            }}
-          />
-        </div>
+      <div style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: 'hidden',
+        borderRadius: 8,
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: '#0f172a'
+      }}>
+        <Editor
+          height="100%"
+          language={getMonacoLanguage(language)}
+          value={code}
+          onChange={(value) => onCodeChange(value || '')}
+          onMount={handleEditorDidMount}
+          theme="custom-dark"
+          beforeMount={defineTheme}
+          options={{
+            minimap: {
+              enabled: true,
+              maxColumn: 80,
+              renderCharacters: true,
+              size: 'proportional'
+            },
+            fontSize: 14,
+            fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Menlo', 'Monaco', 'Consolas', monospace",
+            lineNumbers: 'on',
+            roundedSelection: false,
+            scrollBeyondLastLine: false,
+            readOnly: false,
+            automaticLayout: true,
+            wordWrap: 'on',
+            wrappingIndent: 'indent',
+            scrollbar: {
+              vertical: 'visible',
+              horizontal: 'visible',
+              useShadows: false,
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+            },
+            padding: { top: 12, bottom: 12 },
+            renderLineHighlight: 'all',
+            renderWhitespace: 'boundary',
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            bracketPairColorization: {
+              enabled: true,
+              independentColorPoolPerBracketType: true,
+            },
+            guides: {
+              bracketPairs: 'active',
+              bracketPairsHorizontal: 'active',
+              highlightActiveBracketPair: true,
+              indentation: true,
+            },
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnEnter: 'on',
+            tabCompletion: 'on',
+            snippetSuggestions: 'inline',
+            overviewRulerLanes: 3,
+            folding: true,
+            foldingHighlight: true,
+            foldingStrategy: 'auto',
+            showFoldingControls: 'mouseover',
+            matchBrackets: 'always',
+            renderIndentGuides: true,
+            mouseWheelZoom: true,
+            smoothScrolling: true,
+            colorDecorators: true,
+            contextmenu: true,
+            formatOnPaste: true,
+            formatOnType: true,
+            links: true,
+            wordBasedSuggestions: true,
+            quickSuggestions: { other: true, comments: true, strings: true },
+            parameterHints: { enabled: true, cycle: true },
+            autoClosingBrackets: 'always',
+            autoClosingQuotes: 'always',
+            autoSurround: 'brackets',
+            dragAndDrop: true,
+            accessibilitySupport: 'auto',
+          }}
+        />
       </div>
 
-      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={onRunTests}
             disabled={isRunning}
-            style={{ padding: '10px 14px', background: '#0ea5e9', color: '#fff', border: 'none', borderRadius: 8 }}>
-            {isRunning ? 'Running...' : 'Run tests'}
+            style={{
+              padding: '10px 18px',
+              background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              opacity: isRunning ? 0.7 : 1,
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(14, 165, 233, 0.25)',
+            }}
+            onMouseEnter={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(0)')}>
+            {isRunning ? (
+              <>
+                <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                Running...
+              </>
+            ) : (
+              <>
+                <span>▶️</span>
+                Run Tests
+              </>
+            )}
           </button>
 
           <button
@@ -455,25 +777,75 @@ const CodeEditor: React.FC<{
             disabled={isRunning}
             title="Submit to admin (you can submit even if tests fail or you didn't run tests)"
             style={{
-              padding: '10px 14px',
-              background: '#ef4444',
+              padding: '10px 18px',
+              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
               color: '#fff',
               border: 'none',
               borderRadius: 8,
-            }}>
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              opacity: isRunning ? 0.7 : 1,
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+            }}
+            onMouseEnter={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(0)')}>
+            <span>🚀</span>
             Final Submit
           </button>
 
           <button
             onClick={onCancel}
             disabled={isRunning}
-            style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.06)', color: '#e6eef8', border: 'none', borderRadius: 8 }}>
+            style={{
+              padding: '10px 18px',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+              color: '#e6eef8',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8,
+              fontWeight: 600,
+              cursor: isRunning ? 'not-allowed' : 'pointer',
+              opacity: isRunning ? 0.7 : 1,
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(-2px)')}
+            onMouseLeave={(e) => !isRunning && (e.currentTarget.style.transform = 'translateY(0)')}>
             Cancel
           </button>
         </div>
 
-        <div style={{ color: '#9fb1c8', fontSize: 13 }}>{allPassed ? 'All tests passed ✅' : 'No results / tests pending'}</div>
+        <div style={{
+          color: allPassed ? '#34d399' : '#9fb1c8',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '8px 14px',
+          background: allPassed ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255,255,255,0.03)',
+          borderRadius: 8,
+          border: allPassed ? '1px solid rgba(52, 211, 153, 0.2)' : '1px solid rgba(255,255,255,0.06)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          {allPassed ? '✅ All tests passed' : '⏳ No results / tests pending'}
+        </div>
       </div>
+
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `}
+      </style>
     </div>
   )
 }
@@ -483,22 +855,20 @@ const DraggableWebcam: React.FC<{
   position: WebcamPosition
   onDragStart: (e: React.MouseEvent) => void
 }> = ({ camPreviewRef, position, onDragStart }) => (
-  <div style={{ position: 'absolute', right: position.right, bottom: position.bottom, touchAction: 'none', zIndex: 30 }}>
+  <div style={{ position: 'absolute', right: position.right, bottom: position.bottom, zIndex: 30 }}>
     <video
       ref={camPreviewRef}
-      playsInline
-      muted
       autoPlay
-      onCanPlay={() => camPreviewRef.current?.play().catch(() => {})}
+      muted
+      playsInline
       onMouseDown={onDragStart}
       style={{
-        width: 180,
-        height: 135,
+        width: 160,
+        height: 120,
         borderRadius: 8,
-        border: '3px solid rgba(255,255,255,0.9)',
-        boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
-        cursor: 'grab',
         background: '#000',
+        cursor: 'move',
+        border: '2px solid rgba(255,255,255,0.3)',
       }}
     />
   </div>
@@ -508,7 +878,7 @@ const DraggableWebcam: React.FC<{
 const ChallengePanel: React.FC<{
   challenge: Challenge
   openModalAndStart: () => void
-  onRunSample: (input: string, name?: string) => void
+  onRunSample: (input: string, name?: string, expected?: string) => Promise<void>
 }> = ({ challenge, openModalAndStart, onRunSample }) => {
   const spec = challenge.testSpec
 
@@ -527,14 +897,17 @@ const ChallengePanel: React.FC<{
             onClick={openModalAndStart}
             style={{
               padding: '8px 14px',
-              background: '#2563eb',
+              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
               color: '#fff',
               border: 'none',
               borderRadius: 8,
               fontWeight: 600,
               boxShadow: '0 8px 20px rgba(37,99,235,0.12)',
               cursor: 'pointer',
-            }}>
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
             Start Challenge
           </button>
 
@@ -620,7 +993,7 @@ const ChallengePanel: React.FC<{
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 110 }}>
                         <button
                           onClick={() => {
-                            navigator.clipboard?.writeText(unescapeText(t.input)).catch(() => {})
+                            navigator.clipboard?.writeText(unescapeText(t.input)).catch(() => { })
                           }}
                           title="Copy input"
                           style={{
@@ -635,7 +1008,7 @@ const ChallengePanel: React.FC<{
                         </button>
 
                         <button
-                          onClick={() => onRunSample(String(t.input), `positive-${t._id}`)}
+                          onClick={() => onRunSample(unescapeText(t.input), `positive-${t._id}`, unescapeText(t.expectedOutput))}
                           style={{
                             padding: '8px 10px',
                             borderRadius: 8,
@@ -709,7 +1082,7 @@ const ChallengePanel: React.FC<{
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 110 }}>
                         <button
                           onClick={() => {
-                            navigator.clipboard?.writeText(unescapeText(t.input)).catch(() => {})
+                            navigator.clipboard?.writeText(unescapeText(t.input)).catch(() => { })
                           }}
                           title="Copy input"
                           style={{
@@ -724,7 +1097,7 @@ const ChallengePanel: React.FC<{
                         </button>
 
                         <button
-                          onClick={() => onRunSample(String(t.input), `negative-${t._id}`)}
+                          onClick={() => onRunSample(unescapeText(t.input), `negative-${t._id}`, unescapeText(t.expectedOutput))}
                           style={{
                             padding: '8px 10px',
                             borderRadius: 8,
@@ -755,7 +1128,7 @@ const OutputPanel: React.FC<{
   showRawJson: boolean
   onToggleRawJson: () => void
   challenge: Challenge
-  onRunSample: (input: string, name?: string) => Promise<void>
+  onRunSample: (input: string, name?: string, expected?: string) => Promise<void>
   onRunAllTests: () => Promise<void>
   isRunning: boolean
 }> = ({ statusMessage, runningResult, showRawJson, onToggleRawJson, challenge, onRunSample, onRunAllTests, isRunning }) => {
@@ -811,7 +1184,7 @@ const OutputPanel: React.FC<{
                       const allTests = [...(challenge.testSpec?.positiveTests ?? []), ...(challenge.testSpec?.negativeTests ?? [])]
                       const testCase = allTests[index]
                       if (testCase) {
-                        onRunSample(testCase.input, test.name || `test-${index}`)
+                        onRunSample(testCase.input, test.name || `test-${index}`, testCase.expectedOutput)
                         return
                       }
                       onRunSample('', test.name || `test-${index}`)
@@ -919,7 +1292,7 @@ const OutputPanel: React.FC<{
                       </pre>
                     </div>
                     <button
-                      onClick={() => onRunSample(String(t.input), `positive-${i}`)}
+                      onClick={() => onRunSample(String(t.input), `positive-${i}`, String(t.expectedOutput))}
                       disabled={isRunning}
                       style={{
                         padding: '6px 12px',
@@ -983,7 +1356,7 @@ const OutputPanel: React.FC<{
                       </pre>
                     </div>
                     <button
-                      onClick={() => onRunSample(String(t.input), `negative-${i}`)}
+                      onClick={() => onRunSample(String(t.input), `negative-${i}`, String(t.expectedOutput))}
                       disabled={isRunning}
                       style={{
                         padding: '6px 12px',
@@ -1038,7 +1411,7 @@ const OutputPanel: React.FC<{
                 } else {
                   try {
                     window.prompt('Copy output', runningResult.stdout || '')
-                  } catch {}
+                  } catch { }
                 }
               }}
               style={{
@@ -1194,6 +1567,463 @@ const OutputPanel: React.FC<{
   )
 }
 
+/* ---------- Collapsible Output Panel ---------- */
+const CollapsibleOutputPanel: React.FC<{
+  statusMessage: string | null
+  runningResult: JudgeResult | null
+  showRawJson: boolean
+  onToggleRawJson: () => void
+  challenge: Challenge
+  onRunSample: (input: string, name?: string, expected?: string) => Promise<void>
+  onRunAllTests: () => Promise<void>
+  isRunning: boolean
+  isExpanded: boolean
+  onToggleExpand: () => void
+}> = ({ statusMessage, runningResult, showRawJson, onToggleRawJson, challenge, onRunSample, onRunAllTests, isRunning, isExpanded, onToggleExpand }) => {
+  const total = runningResult?.tests?.length ?? 0
+  const passed = runningResult?.tests?.filter((t) => t.passed).length ?? 0
+
+  const renderMainOutput = () => {
+    if (!runningResult) {
+      return <div style={{ color: '#94a3af', textAlign: 'center', padding: 20 }}>No output yet — run tests to see results</div>
+    }
+
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, fontSize: 16, color: '#dbeafe' }}>Execution Output</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => {
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                  navigator.clipboard.writeText(runningResult.stdout || '').catch(() => window.alert('Could not copy to clipboard'))
+                } else {
+                  try {
+                    window.prompt('Copy output', runningResult.stdout || '')
+                  } catch { }
+                }
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: 12,
+                borderRadius: 6,
+                border: 'none',
+                background: '#3b82f6',
+                color: '#fff',
+                cursor: 'pointer',
+              }}>
+              Copy Output
+            </button>
+            <button
+              onClick={onToggleRawJson}
+              style={{
+                padding: '6px 12px',
+                fontSize: 12,
+                borderRadius: 6,
+                border: 'none',
+                background: '#6b7280',
+                color: '#fff',
+                cursor: 'pointer',
+              }}>
+              {showRawJson ? 'Hide JSON' : 'View JSON'}
+            </button>
+          </div>
+        </div>
+
+        {!showRawJson ? (
+          <>
+            {runningResult.stdout && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 8 }}>Standard Output:</div>
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    background: 'rgba(0,0,0,0.3)',
+                    padding: 12,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    maxHeight: 150,
+                    overflow: 'auto',
+                  }}>
+                  {runningResult.stdout || '(empty)'}
+                </pre>
+              </div>
+            )}
+
+            {runningResult.stderr && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 14, color: '#fb7185', marginBottom: 8 }}>Standard Error:</div>
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    background: 'rgba(239,68,68,0.06)',
+                    padding: 12,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    maxHeight: 150,
+                    overflow: 'auto',
+                    color: '#fca5a5',
+                  }}>
+                  {runningResult.stderr}
+                </pre>
+              </div>
+            )}
+
+            <div
+              style={{
+                padding: 12,
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: 6,
+                marginBottom: 16,
+              }}>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Exit Code:</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{runningResult.exitCode}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#9ca3af' }}>Status:</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: runningResult.success ? '#10b981' : '#ef4444' }}>
+                    {runningResult.success ? 'Success' : 'Failed'}
+                  </div>
+                </div>
+                <div style={{ marginLeft: 'auto', fontSize: 12, color: '#9ca3af' }}>
+                  Passed <strong style={{ color: '#10b981' }}>{passed}</strong> / {total}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div style={{ marginTop: 8 }}>
+            <pre
+              style={{
+                maxHeight: 200,
+                overflow: 'auto',
+                background: 'rgba(0,0,0,0.5)',
+                padding: 12,
+                borderRadius: 6,
+                fontSize: 12,
+              }}>
+              {JSON.stringify(runningResult, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderTestCases = () => {
+    if (!runningResult || !runningResult.tests || runningResult.tests.length === 0) {
+      return null
+    }
+
+    return (
+      <div style={{ marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontWeight: 600, color: '#dbeafe', fontSize: 16 }}>Test Results</div>
+          <div style={{ fontSize: 12, color: '#9ca3af' }}>
+            Passed <strong style={{ color: '#10b981' }}>{passed}</strong> / {total}
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 12 }}>
+          {runningResult.tests.map((test, index) => (
+            <div
+              key={index}
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                background: test.passed ? 'rgba(34, 197, 94, 0.06)' : 'rgba(239, 68, 68, 0.06)',
+                border: `1px solid ${test.passed ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)'}`,
+              }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: '50%',
+                      background: test.passed ? '#10b981' : '#ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      color: 'white',
+                    }}>
+                    {test.passed ? '✓' : '✗'}
+                  </div>
+                  <span style={{ fontWeight: 600, color: test.passed ? '#10b981' : '#ef4444' }}>{test.name || `Test ${index + 1}`}</span>
+                </div>
+
+                {challenge.testSpec && (
+                  <button
+                    onClick={() => {
+                      const allTests = [...(challenge.testSpec?.positiveTests ?? []), ...(challenge.testSpec?.negativeTests ?? [])]
+                      const testCase = allTests[index]
+                      if (testCase) {
+                        onRunSample(testCase.input, test.name || `test-${index}`, testCase.expectedOutput)
+                        return
+                      }
+                      onRunSample('', test.name || `test-${index}`)
+                    }}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 12,
+                      borderRadius: 6,
+                      border: 'none',
+                      background: '#3b82f6',
+                      color: '#fff',
+                      cursor: 'pointer',
+                    }}>
+                    Run This Test
+                  </button>
+                )}
+              </div>
+
+              {test.stdout && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Output:</div>
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      background: 'rgba(0,0,0,0.3)',
+                      padding: 8,
+                      borderRadius: 4,
+                      fontSize: 12,
+                      margin: 0,
+                    }}>
+                    {test.stdout}
+                  </pre>
+                </div>
+              )}
+
+              {!test.passed && test.expected && test.actual && (
+                <div style={{ fontSize: 12 }}>
+                  <div style={{ color: '#9ca3af', marginBottom: 4 }}>Expected:</div>
+                  <div style={{ color: '#10b981', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 4 }}>{test.expected}</div>
+
+                  <div style={{ color: '#9ca3af', marginBottom: 4, marginTop: 8 }}>Actual:</div>
+                  <div style={{ color: '#ef4444', background: 'rgba(0,0,0,0.3)', padding: 4, borderRadius: 4 }}>{test.actual}</div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!isExpanded) {
+    return (
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: 'linear-gradient(180deg,#071122,#081122)',
+        borderTop: '1px solid rgba(255,255,255,0.1)',
+        padding: '8px 16px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        cursor: 'pointer',
+        zIndex: 10,
+        boxShadow: '0 -4px 12px rgba(0,0,0,0.2)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontWeight: 600, color: '#c7d2fe', fontSize: 14 }}>
+            Output {runningResult && (
+              <span style={{ color: '#9ca3af', fontSize: 12 }}>
+                ({passed}/{total} passed)
+              </span>
+            )}
+          </div>
+          {statusMessage && (
+            <div style={{ color: '#9ca3af', fontSize: 12 }}>
+              {statusMessage}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onToggleExpand}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#60a5fa',
+            fontSize: 14,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+          <span>Expand</span>
+          <span style={{ transform: 'rotate(0deg)', transition: 'transform 0.2s' }}>▼</span>
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(180deg,#071122,#081122)',
+      borderTop: '1px solid rgba(255,255,255,0.1)',
+      height: '40vh',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 10,
+      boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 16px',
+        background: 'rgba(15,23,42,0.95)',
+        borderBottom: '1px solid rgba(255,255,255,0.1)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexShrink: 0,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ fontWeight: 600, color: '#c7d2fe', fontSize: 16 }}>
+            Output & Results
+          </div>
+          {statusMessage && (
+            <div style={{ color: '#9ca3af', fontSize: 12 }}>
+              {statusMessage}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {runningResult && (
+            <div style={{ fontSize: 12, color: '#9ca3af' }}>
+              Passed <strong style={{ color: '#10b981' }}>{passed}</strong> / {total}
+            </div>
+          )}
+          <button
+            onClick={onToggleExpand}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#60a5fa',
+              fontSize: 14,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+            <span>Collapse</span>
+            <span style={{ transform: 'rotate(180deg)', transition: 'transform 0.2s' }}>▼</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div style={{
+        flex: 1,
+        overflow: 'auto',
+        padding: 16,
+      }}>
+        {runningResult ? (
+          <>
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 8,
+              padding: 16,
+              marginBottom: 20,
+            }}>
+              {renderMainOutput()}
+              {renderTestCases()}
+            </div>
+
+            {/* Sample Tests Section */}
+            {challenge.testSpec && (
+              <div style={{ marginTop: 24 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, color: '#dbeafe', fontSize: 16 }}>Sample Tests</div>
+                  <button
+                    onClick={onRunAllTests}
+                    disabled={isRunning}
+                    style={{
+                      padding: '8px 12px',
+                      fontSize: 14,
+                      borderRadius: 6,
+                      background: '#06b6d4',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}>
+                    {isRunning ? 'Running...' : 'Run All Tests'}
+                  </button>
+                </div>
+
+                {Array.isArray(challenge.testSpec.positiveTests) && challenge.testSpec.positiveTests.length > 0 && (
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontSize: 14, color: '#93c5fd', marginBottom: 12, fontWeight: 600 }}>Positive Tests (Should Pass)</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {challenge.testSpec.positiveTests.slice(0, 2).map((t, i) => (
+                        <div
+                          key={`p-${i}`}
+                          style={{
+                            padding: 12,
+                            background: 'rgba(255,255,255,0.03)',
+                            borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.1)',
+                          }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                            <div>
+                              <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 4 }}>Input:</div>
+                              <pre
+                                style={{
+                                  whiteSpace: 'pre-wrap',
+                                  margin: 0,
+                                  padding: 8,
+                                  background: 'rgba(0,0,0,0.3)',
+                                  borderRadius: 4,
+                                  fontSize: 12,
+                                }}>
+                                {String(t.input).replace(/\\n/g, '\n')}
+                              </pre>
+                            </div>
+                            <button
+                              onClick={() => onRunSample(String(t.input), `positive-${i}`, String(t.expectedOutput))}
+                              disabled={isRunning}
+                              style={{
+                                padding: '6px 12px',
+                                fontSize: 12,
+                                borderRadius: 6,
+                                border: 'none',
+                                background: '#0ea5e9',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}>
+                              Run Test
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ color: '#94a3af', textAlign: 'center', padding: 40 }}>
+            No output yet — run tests to see results
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---------- Main component ---------- */
 /* ---------- Main component ---------- */
 export default function StudentCodeChallengeComponent({
   baseURL = (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) || '',
@@ -1222,7 +2052,7 @@ export default function StudentCodeChallengeComponent({
 
   const [modalOpen, setModalOpen] = useState(false)
   const [language, setLanguage] = useState(LANGUAGES[0].id)
-  const [code, setCode] = useState('')
+  const [code, setCode] = useState('function main(){\n    console.log("Welcome")\n}')
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
 
   const [runningResult, setRunningResult] = useState<JudgeResult | null>(null)
@@ -1230,6 +2060,7 @@ export default function StudentCodeChallengeComponent({
   const [autoSubmitting, setAutoSubmitting] = useState(false)
   const [showRawJson, setShowRawJson] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
+  const [outputExpanded, setOutputExpanded] = useState(false)
 
   // webcam drag state
   const [dragging, setDragging] = useState(false)
@@ -1237,6 +2068,9 @@ export default function StudentCodeChallengeComponent({
   const [camPos, setCamPos] = useState<WebcamPosition>({ right: 20, bottom: 20 })
   const modalRef = useRef<HTMLDivElement | null>(null)
   const camPreviewRef = useRef<HTMLVideoElement | null>(null)
+  const recordingPreviewRef = useRef<HTMLVideoElement | null>(null)
+  const submittingRef = useRef(false)
+  const [showOnlyProgramOutput, setShowOnlyProgramOutput] = useState(false)
 
   // recording
   const {
@@ -1258,6 +2092,106 @@ export default function StudentCodeChallengeComponent({
     handleFinalSubmit(true)
   })
 
+  // Map language IDs to Monaco editor language IDs
+  const getMonacoLanguage = (lang: string) => {
+    switch (lang) {
+      case 'javascript': return 'javascript';
+      case 'python': return 'python';
+      case 'java': return 'java';
+      case 'cpp': return 'cpp';
+      default: return 'javascript';
+    }
+  };
+
+  // Define editor theme
+  const editorTheme = {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6A9955', fontStyle: 'italic' },
+      { token: 'keyword', foreground: '569CD6', fontStyle: 'bold' },
+      { token: 'string', foreground: 'CE9178' },
+      { token: 'number', foreground: 'B5CEA8' },
+      { token: 'function', foreground: 'DCDCAA' },
+      { token: 'variable', foreground: '9CDCFE' },
+      { token: 'type', foreground: '4EC9B0' },
+      { token: 'operator', foreground: 'D4D4D4' },
+      { token: 'delimiter', foreground: 'D4D4D4' },
+      { token: 'identifier', foreground: '9CDCFE' },
+    ],
+    colors: {
+      'editor.background': '#0f172a',
+      'editor.foreground': '#e2e8f0',
+      'editor.lineHighlightBackground': '#1e293b',
+      'editorLineNumber.foreground': '#475569',
+      'editorLineNumber.activeForeground': '#94a3b8',
+      'editor.selectionBackground': '#334155',
+      'editor.inactiveSelectionBackground': '#1e293b',
+      'editorCursor.foreground': '#60a5fa',
+      'editorWhitespace.foreground': '#475569',
+      'editorIndentGuide.background': '#1e293b',
+      'editorIndentGuide.activeBackground': '#334155',
+      'editorBracketMatch.background': '#1e293b',
+      'editorBracketMatch.border': '#60a5fa',
+      'editorSuggestWidget.background': '#0f172a',
+      'editorSuggestWidget.border': '#1e293b',
+      'editorSuggestWidget.selectedBackground': '#1e293b',
+      'editorWidget.background': '#0f172a',
+      'editorWidget.border': '#1e293b',
+      'scrollbar.shadow': '#000000',
+      'scrollbarSlider.background': '#475569',
+      'scrollbarSlider.hoverBackground': '#64748b',
+      'scrollbarSlider.activeBackground': '#94a3b8',
+    }
+  };
+
+  // Define theme for Monaco - THIS IS THE MISSING FUNCTION
+  const defineTheme = (monaco: any) => {
+    monaco.editor.defineTheme('custom-dark', editorTheme);
+  };
+
+  // Add editor mount handler for keyboard shortcuts
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    // Focus the editor
+    editor.focus();
+
+    // Add useful shortcuts using monaco.KeyCode
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      runAllTests();
+    });
+
+    // Add Alt+Enter for submit
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, () => {
+      handleFinalSubmit(false);
+    });
+  };
+
+  // --- Add the missing functions that were in CodeEditor component ---
+  // These functions are needed for the editor in the modal
+  const handleEditorDidMountModal = (editor: any, monaco: any) => {
+    // Focus the editor
+    editor.focus();
+
+    // Add useful shortcuts using monaco.KeyCode
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      runAllTests();
+    });
+
+    // Add Alt+Enter for submit
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, () => {
+      handleFinalSubmit(false);
+    });
+  };
+
+  useEffect(() => {
+    if (modalOpen && combinedStreamRef.current && recordingPreviewRef.current) {
+      recordingPreviewRef.current.srcObject = combinedStreamRef.current
+      recordingPreviewRef.current.muted = true
+      recordingPreviewRef.current.play().catch(() => { })
+    }
+  }, [modalOpen])
+
+
   // Timer
   useEffect(() => {
     if (timeLeft === null) return
@@ -1277,7 +2211,8 @@ export default function StudentCodeChallengeComponent({
       try {
         stopRecordingAndCleanup()
         resetViolations()
-      } catch {}
+        setOutputExpanded(false)
+      } catch { }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modalOpen])
@@ -1366,24 +2301,28 @@ export default function StudentCodeChallengeComponent({
   async function openModalAndStart() {
     if (!challenge) return
 
-    // First start screen sharing
+    // 1️⃣ Open modal first
+    setModalOpen(true)
+
+    // wait one paint so refs exist
+    await new Promise((r) => requestAnimationFrame(r))
+
+    // 2️⃣ Start recording AFTER modal renders
     const ok = await startScreenAndCamRecording()
     if (!ok) {
-      setStatusMessage('Screen share permission is required to start the challenge.')
+      setStatusMessage('Screen share permission is required.')
+      setModalOpen(false)
       return
     }
 
-    // Then open modal and enter fullscreen
-    setModalOpen(true)
     setTimeLeft(challenge.timeLimitSeconds ?? 30 * 60)
     setCamPos({ right: 20, bottom: 20 })
     resetViolations()
+    setOutputExpanded(false)
 
-    // Enter fullscreen after a short delay to ensure modal is rendered
-    setTimeout(() => {
-      enterFullscreen()
-    }, 500)
+    setTimeout(enterFullscreen, 300)
   }
+
 
   // auto-open when parent asks (also gated)
   useEffect(() => {
@@ -1398,7 +2337,8 @@ export default function StudentCodeChallengeComponent({
       stopRecordingAndCleanup()
       exitFullscreen()
       resetViolations()
-    } catch {}
+      setOutputExpanded(false)
+    } catch { }
     setModalOpen(false)
     onClose?.()
   }
@@ -1419,7 +2359,7 @@ export default function StudentCodeChallengeComponent({
           previewEl.muted = true
           previewEl.playsInline = true
           previewEl.autoplay = true
-          previewEl.onloadedmetadata = () => previewEl.play().catch(() => {})
+          previewEl.onloadedmetadata = () => previewEl.play().catch(() => { })
         }
         if (!camStream.getVideoTracks().length) camStream = null
       } catch (camErr) {
@@ -1513,7 +2453,7 @@ export default function StudentCodeChallengeComponent({
           camVideo.addEventListener('loadedmetadata', onMeta)
           setTimeout(resolve, 800)
         }),
-      ]).catch(() => {})
+      ]).catch(() => { })
 
       const dpr = window.devicePixelRatio || 1
       const vw = screenVideo?.videoWidth || 1280
@@ -1571,6 +2511,15 @@ export default function StudentCodeChallengeComponent({
       if (screenAudio) out.addTrack(screenAudio)
 
       combinedStreamRef.current = out
+      if (recordingPreviewRef.current) {
+        recordingPreviewRef.current.srcObject = out
+        recordingPreviewRef.current.muted = true
+        recordingPreviewRef.current.playsInline = true
+        recordingPreviewRef.current
+          .play()
+          .catch(() => console.warn('Recording preview autoplay blocked'))
+      }
+
       recordedChunksRef.current = []
 
       let options: MediaRecorderOptions = {}
@@ -1582,8 +2531,8 @@ export default function StudentCodeChallengeComponent({
       mr.ondataavailable = (e) => e.data && e.data.size && recordedChunksRef.current.push(e.data)
       mr.start(1000)
 
-      Promise.resolve(screenVideo?.play()).catch(() => {})
-      if (camStream) Promise.resolve(camVideo?.play()).catch(() => {})
+      Promise.resolve(screenVideo?.play()).catch(() => { })
+      if (camStream) Promise.resolve(camVideo?.play()).catch(() => { })
 
       screenStream.getVideoTracks().forEach((t: any) => {
         t.onended = () => {
@@ -1618,14 +2567,165 @@ export default function StudentCodeChallengeComponent({
     return r.tests.every((t) => t.passed === true)
   }
 
+  // --- Enhanced test runner with detailed comparison ---
   async function runAllTests() {
-    setStatusMessage('Running all tests...')
-    setRunningResult(null)
+    setOutputExpanded(true);
+    setShowOnlyProgramOutput(false);
     setShowRawJson(false)
-    setIsRunning(true)
+
+    if (!challenge) {
+      setStatusMessage('No challenge loaded');
+      return;
+    }
+    if (!challenge) return
+    setStatusMessage('Running tests...');
+    setRunningResult(null);
+    setShowRawJson(false);
+    setIsRunning(true);
 
     try {
-      const payload: any = { language, code, challengeId: challenge?._id }
+      // Get all test cases from the challenge
+      const spec = challenge.testSpec;
+      const allTestCases: Array<{ input: string; expected: string; name: string; isPositive: boolean }> = [];
+
+      // Collect positive tests
+      if (spec?.positiveTests) {
+        spec.positiveTests.forEach((test, index) => {
+          allTestCases.push({
+            input: unescapeText(test.input),
+            expected: unescapeText(test.expectedOutput),
+            name: `Positive Test ${index + 1}`,
+            isPositive: true
+          });
+        });
+      }
+
+      // Collect negative tests
+      if (spec?.negativeTests) {
+        spec.negativeTests.forEach((test, index) => {
+          allTestCases.push({
+            input: unescapeText(test.input),
+            expected: unescapeText(test.expectedOutput),
+            name: `Negative Test ${index + 1}`,
+            isPositive: false
+          });
+        });
+      }
+
+      // If no test cases in spec, run a basic test
+      if (allTestCases.length === 0) {
+        setStatusMessage('No test cases defined for this challenge');
+        setIsRunning(false);
+        return;
+      }
+
+      const testResults: TestCaseResult[] = [];
+      let passedCount = 0;
+
+      // Run each test case
+      for (const testCase of allTestCases) {
+        try {
+          const payload = {
+            language,
+            code,
+            challengeId: challenge._id,
+            stdin: testCase.input
+          };
+
+          const res = await fetch(`${baseURL}/api/judge/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          if (!res.ok) {
+            const body = await res.text().catch(() => '');
+            testResults.push({
+              name: testCase.name,
+              passed: false,
+              stdout: `Error: ${res.status} ${res.statusText}`,
+              expected: testCase.expected,
+              actual: 'Execution failed'
+            });
+            continue;
+          }
+
+          const text = await res.text();
+          let actualOutput = '';
+          let executionSuccess = true;
+
+          try {
+            const parsed = JSON.parse(text) as JudgeResult;
+            actualOutput = parsed.stdout || '';
+            executionSuccess = parsed.success;
+          } catch {
+            actualOutput = text;
+          }
+
+          // Clean and normalize outputs for comparison
+          const cleanExpected = testCase.expected.trim();
+          const cleanActual = actualOutput.trim();
+
+          // Simple comparison (can be enhanced based on matchType)
+          const passed = executionSuccess && cleanActual === cleanExpected;
+
+          if (passed) passedCount++;
+
+          testResults.push({
+            name: testCase.name,
+            passed,
+            stdout: actualOutput,
+            expected: cleanExpected,
+            actual: cleanActual
+          });
+
+        } catch (err: any) {
+          testResults.push({
+            name: testCase.name,
+            passed: false,
+            stdout: `Error: ${err?.message || 'Unknown error'}`,
+            expected: testCase.expected,
+            actual: 'Test execution failed'
+          });
+        }
+      }
+
+      // Create final result
+      const finalResult: JudgeResult = {
+        success: passedCount === allTestCases.length,
+        stdout: `Tests completed: ${passedCount}/${allTestCases.length} passed`,
+        stderr: '',
+        exitCode: passedCount === allTestCases.length ? 0 : 1,
+        tests: testResults
+      };
+
+      setRunningResult(finalResult);
+      setStatusMessage(`Tests completed: ${passedCount}/${allTestCases.length} passed`);
+
+    } catch (err: any) {
+      console.error('Test execution error:', err);
+      setStatusMessage(`Failed to run tests: ${err?.message || 'Unknown error'}`);
+      setRunningResult(null);
+    } finally {
+      setIsRunning(false);
+    }
+  }
+
+  async function runProgramOnly() {
+    setOutputExpanded(true)
+    setShowOnlyProgramOutput(true)
+    setShowRawJson(false)
+    setIsRunning(true)
+    setStatusMessage('Running program...')
+
+    try {
+      const payload = {
+        language,
+        code,
+        challengeId: challenge?._id,
+        stdin: '' // 👈 NO TEST INPUT
+      }
+
       const res = await fetch(`${baseURL}/api/judge/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1633,122 +2733,188 @@ export default function StudentCodeChallengeComponent({
       })
 
       if (!res.ok) {
-        const body = await res.text().catch(() => '')
-        setStatusMessage(`Judge returned ${res.status} ${res.statusText}${body ? ` — ${body}` : ''}`)
-        setRunningResult(null)
-        setIsRunning(false)
+        const text = await res.text().catch(() => '')
+        setRunningResult({
+          success: false,
+          stdout: '',
+          stderr: text || 'Execution failed',
+          exitCode: 1,
+          tests: [],
+        })
         return
       }
 
       const text = await res.text()
+
+      let parsed: JudgeResult
+
       try {
-        const parsed = JSON.parse(text) as JudgeResult
-        if (!parsed.tests) parsed.tests = []
-        setRunningResult(parsed)
-        const passed = parsed.tests.filter((t) => t.passed).length
-        setStatusMessage(passed === parsed.tests.length ? 'All tests passed' : `Some tests failed (${passed}/${parsed.tests.length})`)
+        parsed = JSON.parse(text) as JudgeResult
       } catch {
-        setRunningResult({ success: res.ok, stdout: text, stderr: '', exitCode: res.ok ? 0 : 1, tests: [] })
-        setStatusMessage('Judge produced unstructured output')
+        parsed = {
+          success: true,
+          stdout: text,
+          stderr: '',
+          exitCode: 0,
+          tests: [],
+        }
       }
+
+      // 👇 IMPORTANT: store ONLY program output
+      setRunningResult((prev) => {
+        const previousTests = prev?.tests ?? []
+
+        return {
+          success: parsed.success,
+          stdout: parsed.stdout || '',
+          stderr: parsed.stderr || '',
+          exitCode: parsed.exitCode ?? 0,
+          tests: previousTests,
+        }
+      })
+
+
+      setStatusMessage('Program executed')
+
     } catch (err: any) {
-      console.error('Network/runAllTests error:', err)
-      setStatusMessage(`Network error: ${err?.message ?? err}. Check API URL / CORS / server.`)
-      setRunningResult(null)
+      setRunningResult({
+        success: false,
+        stdout: '',
+        stderr: err?.message || 'Execution error',
+        exitCode: 1,
+        tests: [],
+      })
     } finally {
       setIsRunning(false)
     }
   }
 
-  // --- Run a single sample
-  async function runSingleSample(input: string, name?: string) {
-    setStatusMessage(`Running sample${name ? ` (${name})` : ''}...`)
-    setRunningResult(null)
-    setShowRawJson(false)
-    setIsRunning(true)
+
+  // --- Run a single test case ---
+  async function runSingleSample(input: string, name?: string, expected?: string) {
+    setStatusMessage(`Running test${name ? ` (${name})` : ''}...`);
+    setIsRunning(true);
+
     try {
-      const payload: any = { language, code, challengeId: challenge?._id, stdin: input }
+      const payload = {
+        language,
+        code,
+        challengeId: challenge?._id,
+        stdin: input
+      };
+
       const res = await fetch(`${baseURL}/api/judge/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      })
+      });
 
       if (!res.ok) {
-        const body = await res.text().catch(() => '')
-        setStatusMessage(`Judge sample run failed: ${res.status} ${res.statusText}${body ? ` — ${body}` : ''}`)
-        setIsRunning(false)
-        return
+        const body = await res.text().catch(() => '');
+        setStatusMessage(`Test failed: ${res.status} ${res.statusText}`);
+        setIsRunning(false);
+        return;
       }
 
-      const text = await res.text()
+      const text = await res.text();
+      let actualOutput = '';
+      let executionSuccess = true;
+
       try {
-        const parsed = JSON.parse(text) as JudgeResult
-        if (!parsed.tests) parsed.tests = []
-        setRunningResult(parsed)
-        setStatusMessage('Sample run complete')
+        const parsed = JSON.parse(text) as JudgeResult;
+        actualOutput = parsed.stdout || '';
+        executionSuccess = parsed.success;
       } catch {
-        setRunningResult({ success: res.ok, stdout: text, stderr: '', exitCode: res.ok ? 0 : 1, tests: [] })
-        setStatusMessage('Sample run produced unstructured output')
+        actualOutput = text;
       }
+
+      // If expected value provided, compare
+      if (expected) {
+        const cleanExpected = expected.trim();
+        const cleanActual = actualOutput.trim();
+        const passed = executionSuccess && cleanActual === cleanExpected;
+
+        const testResult: JudgeResult = {
+          success: passed,
+          stdout: actualOutput,
+          stderr: '',
+          exitCode: passed ? 0 : 1,
+          tests: [{
+            name: name || 'Sample Test',
+            passed,
+            stdout: actualOutput,
+            expected: cleanExpected,
+            actual: cleanActual
+          }]
+        };
+
+        setRunningResult(testResult);
+        setStatusMessage(passed ? 'Test passed!' : 'Test failed');
+      } else {
+        setRunningResult({
+          success: executionSuccess,
+          stdout: actualOutput,
+          stderr: '',
+          exitCode: executionSuccess ? 0 : 1,
+          tests: []
+        });
+        setStatusMessage('Test executed');
+      }
+
     } catch (err: any) {
-      setStatusMessage('Run sample failed: ' + (err?.message ?? String(err)))
+      setStatusMessage(`Test failed: ${err?.message || 'Unknown error'}`);
     } finally {
-      setIsRunning(false)
+      setIsRunning(false);
     }
   }
 
   // --- Final submit (allowed anytime; auto-submit still happens on timeout) ---
   async function handleFinalSubmit(isAuto = false) {
+    if (submittingRef.current) {
+      console.warn('Submission already in progress – ignoring duplicate call')
+      return
+    }
+
+    submittingRef.current = true   // 🔒 LOCK
+
     setStatusMessage('Submitting...')
     setIsRunning(true)
 
-    const videoBlob = await stopRecordingAndGetBlob()
-
-    const total = runningResult?.tests?.length ?? 0
-    const passed = runningResult?.tests?.filter((t) => t.passed).length ?? 0
-    const judgeJson = runningResult ? JSON.stringify(runningResult) : '{}'
-
-    const fd = new FormData()
-    if (challenge?._id && challenge._id !== 'demo-1') {
-      fd.append('challengeId', challenge._id)
-    }
-    fd.append('language', language)
-    fd.append('code', code)
-    fd.append('autoSubmitted', String(isAuto))
-    fd.append('testsPassed', String(passed))
-    fd.append('testsTotal', String(total))
-    fd.append('judgeResult', judgeJson)
-    if (studentId) fd.append('studentId', studentId)
-    if (videoBlob) fd.append('recording', videoBlob, `recording-${Date.now()}.webm`)
-
     try {
+      const videoBlob = await stopRecordingAndGetBlob()
+
+      const total = runningResult?.tests?.length ?? 0
+      const passed = runningResult?.tests?.filter((t) => t.passed).length ?? 0
+      const judgeJson = runningResult ? JSON.stringify(runningResult) : '{}'
+
+      const fd = new FormData()
+      fd.append('challengeId', challenge!._id)
+      fd.append('language', language)
+      fd.append('code', code)
+      fd.append('autoSubmitted', String(isAuto))
+      fd.append('testsPassed', String(passed))
+      fd.append('testsTotal', String(total))
+      fd.append('judgeResult', judgeJson)
+      if (studentId) fd.append('studentId', studentId)
+      if (videoBlob) fd.append('recording', videoBlob, `recording-${Date.now()}.webm`)
+
       const res = await fetch(`${baseURL}/api/challenges/submit`, {
         method: 'POST',
         headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
         body: fd,
       })
 
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '')
-        setStatusMessage(`Submit failed: ${res.status} ${res.statusText}${txt ? ` — ${txt}` : ''}`)
-        setIsRunning(false)
-        if (isAuto) closeModalAndCleanup() // ✅ force close
-        return
-      }
-
-      const json = await res.json().catch(() => ({}))
-      setStatusMessage('Submitted: ' + (json?.message ?? 'OK'))
+      if (!res.ok) throw new Error('Submit failed')
 
       onSubmitted?.(challenge?._id)
       closeModalAndCleanup()
-    } catch (err: any) {
-      setStatusMessage('Submit failed: ' + (err?.message ?? String(err)))
-      if (isAuto) closeModalAndCleanup() // ✅ force close
+    } catch (err) {
+      console.error(err)
     } finally {
       setIsRunning(false)
     }
   }
+
 
   // --- drag handlers for webcam preview ---
   useEffect(() => {
@@ -1796,16 +2962,15 @@ export default function StudentCodeChallengeComponent({
   // --- Render UI ---
   return (
     <div style={{ padding: 16 }}>
-      <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>Code Challenge</h2>
-
+      <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12, color: '#fff' }}>Code Challenge</h2>
       {!hidePreview &&
         !modalOpen &&
         (challenge ? (
           <ChallengePanel challenge={challenge} openModalAndStart={openModalAndStart} onRunSample={runSingleSample} />
         ) : (
-          <div>Loading challenge...</div>
+          <div style={{ color: '#9ca3af', padding: 20, textAlign: 'center' }}>Loading challenge...</div>
         ))}
-
+      {/* Modal */}
       {modalOpen && challenge && (
         <div
           style={{
@@ -1815,7 +2980,7 @@ export default function StudentCodeChallengeComponent({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'rgba(8,10,14,0.55)',
+            background: 'rgba(8,10,14,0.85)',
             backdropFilter: 'blur(8px) saturate(120%)',
             WebkitBackdropFilter: 'blur(8px) saturate(120%)',
             padding: 24,
@@ -1833,48 +2998,734 @@ export default function StudentCodeChallengeComponent({
               maxHeight: '98vh',
               borderRadius: 12,
               overflow: 'hidden',
-              display: 'grid',
-              gridTemplateColumns: '20% 60% 20%',
-              boxShadow: '0 20px 60px rgba(2,6,23,0.6)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              background: 'linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(2,6,23,0.8)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'linear-gradient(180deg, rgba(15,23,42,0.95), rgba(8,18,39,0.95))',
+              position: 'relative',
             }}>
-            {/* left */}
-            <div>
-              <ChallengeDescription challenge={challenge} />
-              <LanguageSelector language={language} onLanguageChange={setLanguage} />
-              <div style={{ marginTop: 14, color: '#9ca3af', fontSize: 13, padding: 20 }}>
-                Tip: share a different Window/Application (e.g. your code editor) so the screen capture doesn't mirror this page.
+
+            {/* Top Header Bar - Like LeetCode */}
+            <div style={{
+              padding: '12px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(15,23,42,0.9)',
+              flexShrink: 0,
+            }}>
+              {/* Left: Challenge title and status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8
+                }}>
+                  <span style={{ fontSize: '20px' }}>💻</span>
+                  {challenge.title}
+                </h3>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  fontSize: 14,
+                  color: '#94a3b8'
+                }}>
+                  <div>
+                    Time:{' '}
+                    <span style={{
+                      color: timeLeft && timeLeft < 300 ? '#f87171' : '#34d399',
+                      fontWeight: 600
+                    }}>
+                      {timeLeft === null ? '--:--' :
+                        `${Math.floor(timeLeft / 60).toString().padStart(2, '0')}:${(timeLeft % 60).toString().padStart(2, '0')}`
+                      }
+                    </span>
+                  </div>
+                  {runningResult && (
+                    <div>
+                      Passed:{' '}
+                      <span style={{ color: '#10b981', fontWeight: 600 }}>
+                        {runningResult.tests.filter(t => t.passed).length}/{runningResult.tests.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right: Language selector and action buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                {/* Language Selector */}
+                <div style={{ position: 'relative', minWidth: 150 }}>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 16px 8px 40px',
+                      borderRadius: 6,
+                      background: 'rgba(15, 23, 42, 0.9)',
+                      color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.25)',
+                      fontSize: 14,
+                      fontWeight: 500,
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                    }}
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option
+                        key={l.id}
+                        value={l.id}
+                        style={{
+                          background: '#0f172a',
+                          color: '#fff',
+                          padding: '12px',
+                        }}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 16,
+                    pointerEvents: 'none',
+                  }}>
+                    💬
+                  </span>
+                  <span style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    fontSize: 10,
+                    color: '#94a3b8',
+                    pointerEvents: 'none',
+                  }}>
+                    ▼
+                  </span>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={runAllTests}
+                    disabled={isRunning}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: isRunning ? 'not-allowed' : 'pointer',
+                      opacity: isRunning ? 0.7 : 1,
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    {isRunning ? (
+                      <>
+                        <span style={{ animation: 'spin 1s linear infinite' }}>⏳</span>
+                        Running...
+                      </>
+                    ) : (
+                      <>
+                        <span>▶️</span>
+                        Run
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => handleFinalSubmit(false)}
+                    disabled={isRunning}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'linear-gradient(135deg, #10b981, #059669)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: isRunning ? 'not-allowed' : 'pointer',
+                      opacity: isRunning ? 0.7 : 1,
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span>🚀</span>
+                    Submit
+                  </button>
+
+                  <button
+                    onClick={closeModalAndCleanup}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: '#94a3b8',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* center */}
-            <div style={{ position: 'relative' }}>
-              <CodeEditor
-                code={code}
-                onCodeChange={setCode}
-                timeLeft={timeLeft}
-                onRunTests={runAllTests}
-                onSubmit={() => handleFinalSubmit(false)}
-                onCancel={closeModalAndCleanup}
-                allPassed={allTestsPassed(runningResult)}
-                isRunning={isRunning}
-              />
-              <DraggableWebcam camPreviewRef={camPreviewRef} position={camPos} onDragStart={onPreviewMouseDown} />
+            {/* Main Content Area */}
+            <div style={{
+              display: 'flex',
+              flex: 1,
+              overflow: 'hidden',
+              position: 'relative'
+            }}>
+              {/* Left Panel: Challenge Description */}
+              <div style={{
+                width: '40%',
+                overflow: 'auto',
+                padding: 20,
+                background: 'linear-gradient(180deg, #071125, #081827)',
+                borderRight: '1px solid rgba(255,255,255,0.1)',
+              }}>
+                <div style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: '#93c5fd',
+                  marginBottom: 16,
+                  paddingBottom: 12,
+                  borderBottom: '1px solid rgba(255,255,255,0.1)'
+                }}>
+                  Description
+                </div>
+                <div style={{
+                  color: '#d1d5db',
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {renderDescription(unescapeText(challenge.description))}
+                </div>
+
+                {/* Sample test cases if available */}
+                {challenge.testSpec && (
+                  <div style={{ marginTop: 24 }}>
+                    <div style={{
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: '#93c5fd',
+                      marginBottom: 12
+                    }}>
+                      Example Test Cases
+                    </div>
+                    {(challenge.testSpec.positiveTests || []).slice(0, 2).map((test, index) => (
+                      <div key={index} style={{
+                        marginBottom: 16,
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: 8,
+                        padding: 12,
+                        border: '1px solid rgba(255,255,255,0.06)'
+                      }}>
+                        <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 4 }}>Input:</div>
+                        <pre style={{
+                          background: 'rgba(0,0,0,0.3)',
+                          padding: 8,
+                          borderRadius: 4,
+                          fontSize: 13,
+                          color: '#e2e8f0',
+                          margin: 0,
+                          overflow: 'auto'
+                        }}>
+                          {unescapeText(test.input)}
+                        </pre>
+                        <div style={{ fontSize: 14, color: '#9ca3af', marginBottom: 4, marginTop: 8 }}>Output:</div>
+                        <pre style={{
+                          background: 'rgba(0,0,0,0.3)',
+                          padding: 8,
+                          borderRadius: 4,
+                          fontSize: 13,
+                          color: '#86efac',
+                          margin: 0,
+                          overflow: 'auto'
+                        }}>
+                          {unescapeText(test.expectedOutput)}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Panel: Code Editor */}
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden'
+              }}>
+                {/* Editor */}
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <Editor
+                    height="100%"
+                    language={getMonacoLanguage(language)}
+                    value={code}
+                    onChange={(value) => setCode(value || '')}
+                    onMount={handleEditorDidMountModal}
+                    theme="custom-dark"
+                    beforeMount={defineTheme}
+                    options={{
+                      minimap: { enabled: true },
+                      fontSize: 14,
+                      fontFamily: "'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace",
+                      lineNumbers: 'on',
+                      scrollBeyondLastLine: false,
+                      automaticLayout: true,
+                      wordWrap: 'on',
+                      padding: { top: 16, bottom: 16 },
+                      renderLineHighlight: 'all',
+                      cursorBlinking: 'smooth',
+                      bracketPairColorization: { enabled: true },
+                      readOnly: isRunning || submittingRef.current,
+                    }}
+                  />
+                </div>
+
+                {/* Draggable Webcam */}
+                <DraggableWebcam
+                  camPreviewRef={camPreviewRef}
+                  position={camPos}
+                  onDragStart={onPreviewMouseDown}
+                />
+              </div>
             </div>
 
-            {/* right */}
-            <OutputPanel
-              statusMessage={statusMessage}
-              runningResult={runningResult}
-              showRawJson={showRawJson}
-              onToggleRawJson={() => setShowRawJson((s) => !s)}
-              challenge={challenge}
-              onRunSample={runSingleSample}
-              onRunAllTests={runAllTests}
-              isRunning={isRunning}
+            {/* Recording preview (canvas output) */}
+            <video
+              ref={recordingPreviewRef}
+              autoPlay
+              muted
+              playsInline
+              style={{
+                position: 'absolute',
+                top: 70,
+                right: 16,
+                width: 220,
+                height: 140,
+                background: '#000',
+                borderRadius: 8,
+                border: '2px solid #10b981',
+                zIndex: 25,
+              }}
             />
+
+
+            {/* Collapsible Console/Terminal at Bottom */}
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              background: 'linear-gradient(180deg, #071122, #081122)',
+              height: outputExpanded ? '40vh' : '40px',
+              transition: 'height 0.3s ease',
+              display: 'flex',
+              flexDirection: 'column',
+              flexShrink: 0,
+            }}>
+              {/* Console Header */}
+              <div style={{
+                padding: '8px 16px',
+                background: 'rgba(15,23,42,0.9)',
+                borderBottom: outputExpanded ? '1px solid rgba(255,255,255,0.1)' : 'none',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                cursor: 'pointer',
+                height: 40,
+                flexShrink: 0,
+              }}
+                onClick={() => {
+                  setOutputExpanded(!outputExpanded)
+
+                  // 👇 RESET CONSOLE MODE WHEN CLOSING
+                  if (outputExpanded) {
+                    setShowOnlyProgramOutput(false)
+                    setShowRawJson(false)
+                  }
+                }}
+
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ color: '#60a5fa', fontSize: 16 }}>🖥️</span>
+                  <span style={{ color: '#cbd5e1', fontWeight: 600, fontSize: 14 }}>
+                    Console
+                    {runningResult && (
+                      <span style={{ marginLeft: 8, color: '#94a3b8', fontSize: 13 }}>
+                        ({runningResult.tests.filter(t => t.passed).length}/{runningResult.tests.length} tests passed)
+                      </span>
+                    )}
+                  </span>
+                  {statusMessage && (
+                    <span style={{ color: '#94a3b8', fontSize: 13, marginLeft: 12 }}>
+                      {statusMessage}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {outputExpanded && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowOnlyProgramOutput(false)
+                          // if you are still toggling raw internally, keep this
+                          setShowRawJson(false)
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 12,
+                          background: 'rgba(255,255,255,0.05)',
+                          color: '#94a3b8',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        View Results
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          runProgramOnly()   // ✅ THIS IS THE FIX
+                        }}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: 12,
+                          background: 'rgba(15,23,42,0.8)',
+                          color: '#60a5fa',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Program Output
+                      </button>
+
+
+                    </>
+                  )}
+                  <span style={{
+                    transform: `rotate(${outputExpanded ? '180deg' : '0deg'})`,
+                    transition: 'transform 0.3s',
+                    color: '#94a3b8',
+                    fontSize: 12,
+                  }}>
+                    ▼
+                  </span>
+                </div>
+              </div>
+
+              {/* Console Content */}
+              {outputExpanded && (
+                <div
+                  style={{
+                    flex: 1,
+                    overflow: 'auto',
+                    padding: 16,
+                  }}
+                >
+                  {!runningResult ? (
+                    <div
+                      style={{
+                        textAlign: 'center',
+                        color: '#94a3b8',
+                        padding: 40,
+                        fontSize: 14,
+                      }}
+                    >
+                      Click "Run" to execute your code and see results here
+                    </div>
+                  ) : showOnlyProgramOutput ? (
+                    /* ================= PROGRAM OUTPUT ONLY ================= */
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: 12,
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        color: '#e2e8f0',
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: '100%',
+                        overflow: 'auto',
+                      }}
+                    >
+                      {runningResult.stdout || 'No output'}
+                    </pre>
+                  ) : showRawJson ? (
+                    /* ================= RAW JSON VIEW ================= */
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: 12,
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        color: '#e2e8f0',
+                        overflow: 'auto',
+                        maxHeight: '100%',
+                      }}
+                    >
+                      {JSON.stringify(runningResult, null, 2)}
+                    </pre>
+                  ) : (
+                    /* ================= NORMAL VIEW (Execution + Tests) ================= */
+                    <>
+                      {/* Execution Output */}
+                      <div style={{ marginBottom: 16 }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: '#cbd5e1',
+                            marginBottom: 8,
+                          }}
+                        >
+                          Execution Result
+                        </div>
+
+                        {runningResult.stdout && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 4 }}>
+                              Output:
+                            </div>
+                            <pre
+                              style={{
+                                margin: 0,
+                                padding: 8,
+                                background: 'rgba(0,0,0,0.3)',
+                                borderRadius: 4,
+                                fontSize: 13,
+                                color: '#e2e8f0',
+                                whiteSpace: 'pre-wrap',
+                                maxHeight: 120,
+                                overflow: 'auto',
+                              }}
+                            >
+                              {runningResult.stdout}
+                            </pre>
+                          </div>
+                        )}
+
+                        {runningResult.stderr && (
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: 13, color: '#fca5a5', marginBottom: 4 }}>
+                              Error:
+                            </div>
+                            <pre
+                              style={{
+                                margin: 0,
+                                padding: 8,
+                                background: 'rgba(239,68,68,0.1)',
+                                borderRadius: 4,
+                                fontSize: 13,
+                                color: '#fca5a5',
+                                whiteSpace: 'pre-wrap',
+                                maxHeight: 120,
+                                overflow: 'auto',
+                              }}
+                            >
+                              {runningResult.stderr}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Test Results */}
+                      {runningResult.tests && runningResult.tests.length > 0 && (
+                        <div>
+                          <div
+                            style={{
+                              fontSize: 14,
+                              fontWeight: 600,
+                              color: '#cbd5e1',
+                              marginBottom: 8,
+                            }}
+                          >
+                            Test Results
+                          </div>
+
+                          <div style={{ display: 'grid', gap: 8 }}>
+                            {runningResult.tests.map((test, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  padding: 12,
+                                  background: test.passed
+                                    ? 'rgba(34,197,94,0.1)'
+                                    : 'rgba(239,68,68,0.1)',
+                                  borderRadius: 6,
+                                  border: `1px solid ${test.passed
+                                    ? 'rgba(34,197,94,0.2)'
+                                    : 'rgba(239,68,68,0.2)'
+                                    }`,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    marginBottom: 8,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      width: 20,
+                                      height: 20,
+                                      borderRadius: '50%',
+                                      background: test.passed ? '#10b981' : '#ef4444',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      fontSize: 12,
+                                      color: 'white',
+                                    }}
+                                  >
+                                    {test.passed ? '✓' : '✗'}
+                                  </div>
+                                  <span
+                                    style={{
+                                      fontWeight: 600,
+                                      color: test.passed ? '#10b981' : '#ef4444',
+                                      fontSize: 14,
+                                    }}
+                                  >
+                                    {test.name || `Test Case ${index + 1}`}
+                                  </span>
+                                </div>
+
+                                {!test.passed && test.expected && test.actual && (
+                                  <div style={{ fontSize: 13 }}>
+                                    <div
+                                      style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '1fr 1fr',
+                                        gap: 12,
+                                      }}
+                                    >
+                                      <div>
+                                        <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                          Expected:
+                                        </div>
+                                        <div
+                                          style={{
+                                            color: '#10b981',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            padding: 6,
+                                            borderRadius: 4,
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          {test.expected}
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                          Got:
+                                        </div>
+                                        <div
+                                          style={{
+                                            color: '#ef4444',
+                                            background: 'rgba(0,0,0,0.3)',
+                                            padding: 6,
+                                            borderRadius: 4,
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          {test.actual}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+            </div>
           </div>
+          {/* 🔒 SUBMITTING OVERLAY */}
+          {(isRunning && submittingRef.current) && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 10000,
+                background: 'rgba(2,6,23,0.75)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(6px)',
+              }}
+            >
+              <div
+                style={{
+                  padding: 24,
+                  borderRadius: 12,
+                  background: '#020617',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+                  textAlign: 'center',
+                  color: '#e5e7eb',
+                  minWidth: 220,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    border: '4px solid rgba(255,255,255,0.2)',
+                    borderTopColor: '#22c55e',
+                    borderRadius: '50%',
+                    margin: '0 auto 16px',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+                <div style={{ fontWeight: 600 }}>Submitting…</div>
+                <div style={{ fontSize: 13, color: '#94a3b8', marginTop: 4 }}>
+                  Please don’t close the window
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
     </div>
