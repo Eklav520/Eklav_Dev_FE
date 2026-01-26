@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { Button, Card, CardBody, CardHeader, Col, Row, Spinner, Badge, ButtonGroup, Modal, Form, Alert } from 'react-bootstrap'
-import { FaMapMarkerAlt, FaClipboardCheck , FaSearch, FaCode, FaExclamationTriangle } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaClipboardCheck, FaSearch, FaCode, FaExclamationTriangle } from 'react-icons/fa'
 import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
 import StarRating from './StarRating'
@@ -18,36 +18,47 @@ interface Student {
 }
 
 // Extract VideoPlayer component to prevent re-renders
-const VideoPlayer = React.memo(({ videoPath, getVideoUrl }: { videoPath: string; getVideoUrl: (path: string) => string }) => {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  
-  return (
-    <video
-      ref={videoRef}
-      src={getVideoUrl(videoPath)}
-      controls
-      style={{
-        width: '100%',
-        maxHeight: 260,
-        borderRadius: 12,
-        marginBottom: 12,
-        objectFit: 'contain',
-      }}
-      onError={(e) => {
-        console.error('Video failed to load:', e)
-      }}
-    />
-  )
-})
+const VideoPlayer = React.memo(
+  ({ videoPath, getVideoUrl }: { videoPath: string; getVideoUrl: (path: string) => string }) => {
+    const videoRef = useRef<HTMLVideoElement>(null)
+
+    return (
+      <video
+        ref={videoRef}
+        src={getVideoUrl(videoPath)}
+        controls
+        preload="metadata"        // ✅ REQUIRED FOR SEEK
+        controlsList="nodownload" // optional
+        style={{
+          width: '100%',
+          maxHeight: 260,
+          borderRadius: 12,
+          marginBottom: 12,
+          objectFit: 'contain',
+          background: '#000',
+        }}
+        onLoadedMetadata={() => {
+          // Force browser to calculate duration
+          if (videoRef.current) {
+            videoRef.current.currentTime = 0
+          }
+        }}
+        onError={(e) => {
+          console.error('Video failed to load:', e)
+        }}
+      />
+    )
+  }
+)
 
 VideoPlayer.displayName = 'VideoPlayer'
 
 // Extract Search Component
-const SearchComponent = React.memo(({ 
-  searchTerm, 
-  setSearchTerm, 
-  setCurrentPage 
-}: { 
+const SearchComponent = React.memo(({
+  searchTerm,
+  setSearchTerm,
+  setCurrentPage
+}: {
   searchTerm: string
   setSearchTerm: (term: string) => void
   setCurrentPage: (page: number) => void
@@ -56,7 +67,7 @@ const SearchComponent = React.memo(({
     setSearchTerm(e.target.value)
     setCurrentPage(1)
   }, [setSearchTerm, setCurrentPage])
-  
+
   return (
     <form className="rounded position-relative">
       <input
@@ -80,11 +91,11 @@ const SearchComponent = React.memo(({
 SearchComponent.displayName = 'SearchComponent'
 
 // Extract Student Table Row Component
-const StudentTableRow = React.memo(({ 
-  student, 
-  baseURL, 
-  onReviewClick 
-}: { 
+const StudentTableRow = React.memo(({
+  student,
+  baseURL,
+  onReviewClick
+}: {
   student: Student
   baseURL: string
   onReviewClick: (student: Student) => void
@@ -100,9 +111,9 @@ const StudentTableRow = React.memo(({
               className="rounded"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).onerror = null
-                ;(e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-                  student.fullName || 'User',
-                )}`
+                  ; (e.currentTarget as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                    student.fullName || 'User',
+                  )}`
               }}
             />
           </div>
@@ -124,7 +135,7 @@ const StudentTableRow = React.memo(({
           className="btn-round me-2 mb-0"
           title="Review & Feedback"
           onClick={() => onReviewClick(student)}>
-          <FaClipboardCheck  />
+          <FaClipboardCheck />
         </Button>
       </td>
     </tr>
@@ -134,14 +145,14 @@ const StudentTableRow = React.memo(({
 StudentTableRow.displayName = 'StudentTableRow'
 
 // DecisionControls Component
-const DecisionControls = React.memo(({ 
-  type, 
-  item, 
-  onChanged 
-}: { 
+const DecisionControls = React.memo(({
+  type,
+  item,
+  onChanged
+}: {
   type: 'quiz' | 'code' | 'tr' | 'hr'
   item: any
-  onChanged?: () => void 
+  onChanged?: () => void
 }) => {
   const [saving, setSaving] = useState(false)
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -212,19 +223,19 @@ const DecisionControls = React.memo(({
 DecisionControls.displayName = 'DecisionControls'
 
 // ScoreInput Component with proper state handling
-const ScoreInput = React.memo(({ 
-  label, 
-  value, 
-  onChange, 
-  max 
-}: { 
+const ScoreInput = React.memo(({
+  label,
+  value,
+  onChange,
+  max
+}: {
   label: string
   value: number
   onChange: (n: number) => void
-  max: number 
+  max: number
 }) => {
   const [inputValue, setInputValue] = useState(value.toString())
-  
+
   // Update local state when prop changes
   useEffect(() => {
     setInputValue(value.toString())
@@ -233,7 +244,7 @@ const ScoreInput = React.memo(({
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value
     setInputValue(newValue)
-    
+
     // Only update parent when we have a valid number
     if (newValue === '') {
       onChange(0)
@@ -326,12 +337,12 @@ const FeedbackForm = React.memo(({
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3">
             <Form.Label>Feedback</Form.Label>
-            <Form.Control 
-              as="textarea" 
-              rows={4} 
-              value={feedbackText} 
-              onChange={(e) => setFeedbackText(e.target.value)} 
-              required 
+            <Form.Control
+              as="textarea"
+              rows={4}
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              required
             />
           </Form.Group>
           <Form.Group className="mb-3">
@@ -572,59 +583,59 @@ const SectionBlock = React.memo(({
                     </ul>
                   </div>
                 )}
-{type !== 'quiz' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
-  <div className="mt-3">
-    <b>Q&A (latest):</b>
-    <ul className="mb-0">
-      {it.details.qa.map((qa: any, idx: number) => (
-        <li key={idx}>
-          <div>
-            <b>Q:</b> {qa.question}
-          </div>
-          <div>
-            <b>A:</b> {qa.answer}
-          </div>
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
-{type === 'tr' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
-  <div className="mt-3">
-    <b>Technical Round — AI Evaluation</b>
+                {type !== 'quiz' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
+                  <div className="mt-3">
+                    <b>Q&A (latest):</b>
+                    <ul className="mb-0">
+                      {it.details.qa.map((qa: any, idx: number) => (
+                        <li key={idx}>
+                          <div>
+                            <b>Q:</b> {qa.question}
+                          </div>
+                          <div>
+                            <b>A:</b> {qa.answer}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {type === 'tr' && Array.isArray(it.details?.qa) && it.details.qa.length > 0 && (
+                  <div className="mt-3">
+                    <b>Technical Round — AI Evaluation</b>
 
-    {it.details.qa.map((qa: any, idx: number) => (
-      <Card key={idx} className="mb-3">
-        <Card.Body>
-          <div className="mb-1">
-            <b>Q:</b> {qa.question}
-          </div>
+                    {it.details.qa.map((qa: any, idx: number) => (
+                      <Card key={idx} className="mb-3">
+                        <Card.Body>
+                          <div className="mb-1">
+                            <b>Q:</b> {qa.question}
+                          </div>
 
-          <div className="mb-2">
-            <b>A:</b> {qa.answer}
-          </div>
+                          <div className="mb-2">
+                            <b>A:</b> {qa.answer}
+                          </div>
 
-          <div className="d-flex align-items-center gap-2 mb-2">
-            <b>Rating:</b>
-            <StarRating rating={qa.rating ?? 0} readOnly />
-            <span className="text-muted">({qa.rating ?? 0} / 5)</span>
-          </div>
+                          <div className="d-flex align-items-center gap-2 mb-2">
+                            <b>Rating:</b>
+                            <StarRating rating={qa.rating ?? 0} readOnly />
+                            <span className="text-muted">({qa.rating ?? 0} / 5)</span>
+                          </div>
 
-          {qa.feedback && (
-            <Alert variant="info" className="mb-0">
-              <b>AI Feedback:</b> {qa.feedback}
-            </Alert>
-          )}
-        </Card.Body>
-      </Card>
-    ))}
+                          {qa.feedback && (
+                            <Alert variant="info" className="mb-0">
+                              <b>AI Feedback:</b> {qa.feedback}
+                            </Alert>
+                          )}
+                        </Card.Body>
+                      </Card>
+                    ))}
 
-    <Alert variant="secondary" className="mt-2">
-      <b>Note:</b> Ratings and feedback are generated automatically by AI.  
-      Admin action is limited to <b>Pass / Fail</b>.
-    </Alert>
-  </div>
-)}
+                    <Alert variant="secondary" className="mt-2">
+                      <b>Note:</b> Ratings and feedback are generated automatically by AI.
+                      Admin action is limited to <b>Pass / Fail</b>.
+                    </Alert>
+                  </div>
+                )}
 
 
                 {(type === 'tr' || type === 'hr') && (!it.details?.qa || it.details.qa.length === 0) && (
@@ -696,31 +707,31 @@ const ModalContent = React.memo(({
   return (
     <Row className="g-4">
       <Col lg={8}>
-        <SectionBlock 
-          title="Quiz" 
-          type="quiz" 
-          items={overview?.attended?.quiz} 
+        <SectionBlock
+          title="Quiz"
+          type="quiz"
+          items={overview?.attended?.quiz}
           onRefresh={refreshOverview}
           getVideoUrl={getVideoUrl}
         />
-        <SectionBlock 
-          title="Code Challenge" 
-          type="code" 
-          items={overview?.attended?.code} 
+        <SectionBlock
+          title="Code Challenge"
+          type="code"
+          items={overview?.attended?.code}
           onRefresh={refreshOverview}
           getVideoUrl={getVideoUrl}
         />
-        <SectionBlock 
-          title="Technical Round" 
-          type="tr" 
-          items={overview?.attended?.tr} 
+        <SectionBlock
+          title="Technical Round"
+          type="tr"
+          items={overview?.attended?.tr}
           onRefresh={refreshOverview}
           getVideoUrl={getVideoUrl}
         />
-        <SectionBlock 
-          title="HR Round" 
-          type="hr" 
-          items={overview?.attended?.hr} 
+        <SectionBlock
+          title="HR Round"
+          type="hr"
+          items={overview?.attended?.hr}
           onRefresh={refreshOverview}
           getVideoUrl={getVideoUrl}
         />
@@ -781,7 +792,7 @@ const StudentListPage: React.FC = () => {
 
   const filteredStudents = useMemo(() => {
     let sortedStudents = [...students]
-    
+
     if (sortOption === 'college') {
       sortedStudents.sort((a, b) => {
         const collegeA = a.college?.toLowerCase() || ''
@@ -790,16 +801,16 @@ const StudentListPage: React.FC = () => {
       })
     }
 
-    return sortedStudents.filter((student) => {
-      const name = student.fullName?.toLowerCase() || ''
-      const email = student.email?.toLowerCase() || ''
-      const location = student.location?.toLowerCase() || ''
-      const college = student.college?.toLowerCase() || ''
+    const term = searchTerm.toLowerCase()
 
-      const term = searchTerm.toLowerCase()
-      return name.includes(term) || email.includes(term) || location.includes(term) || college.includes(term)
-    })
+    return sortedStudents.filter(student =>
+      student.fullName?.toLowerCase().includes(term) ||
+      student.email?.toLowerCase().includes(term) ||
+      student.phoneNo?.includes(term) ||
+      student.college?.toLowerCase().includes(term)
+    )
   }, [students, sortOption, searchTerm])
+
 
   const currentStudents = useMemo(() => {
     const indexOfLastStudent = currentPage * studentsPerPage
@@ -812,16 +823,20 @@ const StudentListPage: React.FC = () => {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await fetch(`${baseURL}/adminProfiles`, { credentials: 'include' })
-        if (!response.ok) throw new Error('Failed to fetch students')
-        const data: Student[] = await response.json()
-        setStudents(data)
-      } catch (error) {
-        console.error('Error fetching students:', error)
+        const res = await fetch(`${baseURL}/api/tr/attended-students`)
+        const json = await res.json()
+
+        if (json.success && Array.isArray(json.students)) {
+          setStudents(json.students)
+        }
+      } catch (e) {
+        console.error('Failed to fetch TR-attended students', e)
       }
     }
+
     fetchStudents()
   }, [baseURL])
+
 
   const refreshOverview = useCallback(async () => {
     if (!selectedStudent) return
@@ -901,8 +916,8 @@ const StudentListPage: React.FC = () => {
         <CardBody>
           <Row className="g-3 align-items-center justify-content-between mb-4">
             <Col md={8}>
-              <SearchComponent 
-                searchTerm={searchTerm} 
+              <SearchComponent
+                searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 setCurrentPage={setCurrentPage}
               />
@@ -937,12 +952,19 @@ const StudentListPage: React.FC = () => {
                 {students.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center">
-                      No students found.
+                      <Spinner />
+                    </td>
+                  </tr>
+                ) : filteredStudents.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center">
+                      No TR-attended students found.
                     </td>
                   </tr>
                 ) : (
+
                   currentStudents.map((student) => (
-                    <StudentTableRow 
+                    <StudentTableRow
                       key={student._id}
                       student={student}
                       baseURL={baseURL}

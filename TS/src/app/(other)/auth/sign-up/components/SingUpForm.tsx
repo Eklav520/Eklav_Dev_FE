@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { Col, Row, Alert, ProgressBar } from 'react-bootstrap'
-import { 
-  FaEnvelope, 
-  FaLock, 
-  FaUser, 
-  FaPhone, 
+import {
+  FaEnvelope,
+  FaLock,
+  FaUser,
+  FaPhone,
   FaGraduationCap,
   FaCalendarAlt,
   FaBuilding,
-  FaCheckCircle 
+  FaCheckCircle
 } from 'react-icons/fa'
 import FormInput from './FormInput'
 import useSignUp from '../useSignUp'
@@ -19,17 +19,17 @@ import CollegeSearch from './CollegeSearch'
 import './SignUpForm.css'
 
 const SignUpForm = () => {
-  const { 
-    signUp, 
-    control, 
-    register, 
-    watch, 
-    errors, 
-    loading, 
+  const {
+    signUp,
+    control,
+    register,
+    watch,
+    errors,
+    loading,
     setValue,
-    clearErrors 
+    clearErrors
   } = useSignUp()
-  
+
   const [step, setStep] = useState(1)
   const [showTermsModal, setShowTermsModal] = useState(false)
   const [captchaValid, setCaptchaValid] = useState(false)
@@ -75,9 +75,15 @@ const SignUpForm = () => {
   const prevStep = () => {
     setStep(step - 1)
   }
+  const handleCollegeSelect = (college: any | null) => {
+    if (!college) {
+      setValue('college', '', { shouldValidate: true })
+      return
+    }
 
-  const handleCollegeSelect = (college: any) => {
-    setValue('college', college.name, { shouldValidate: true })
+    const fullValue = `${college.name}, ${college.address}, ${college.pincode}`
+
+    setValue('college', fullValue, { shouldValidate: true })
     clearErrors('college')
   }
 
@@ -97,9 +103,9 @@ const SignUpForm = () => {
             {step === 1 ? 'Account Details' : 'Academic Details'}
           </span>
         </div>
-        <ProgressBar 
-          now={getProgress()} 
-          variant="primary" 
+        <ProgressBar
+          now={getProgress()}
+          variant="primary"
           className="mb-3"
           style={{ height: '4px' }}
         />
@@ -153,7 +159,7 @@ const SignUpForm = () => {
                 error={errors.password}
               />
               {password && (
-                <PasswordStrengthMeter 
+                <PasswordStrengthMeter
                   password={password}
                   onScoreChange={setPasswordScore}
                 />
