@@ -6,17 +6,19 @@ import AddToQuestion from './AddToQuestion'
 import FeatureInput from './FeatureInput'
 
 const Step4 = ({
-  stepperInstance,
+ stepperInstance,
   formData,
   setFormData,
   handleSubmit,
+  retryFailedVideos,
   uploadProgress,
-  uploadedVideoCount, // ✅ FIX
+  uploadedVideoCount,
 }: {
   stepperInstance: Stepper | undefined
   formData: any
   setFormData: React.Dispatch<React.SetStateAction<any>>
   handleSubmit: any
+  retryFailedVideos: () => void   // 👈 declared here
   uploadProgress: number
   uploadedVideoCount: number
 }) => {
@@ -135,6 +137,23 @@ const Step4 = ({
               </div>
             </div>
           )}
+
+          {formData.videos.map((v: any, i: number) => (
+            <div key={i} className="small">
+              {v.status === 'uploading' && <span>Uploading video {i + 1}...</span>}
+              {v.status === 'success' && <span className="text-success">Video {i + 1} uploaded</span>}
+              {v.status === 'failed' && (
+                <button
+                  className="btn btn-warning btn-sm"
+                  onClick={() => retryFailedVideos()}
+
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          ))}
+
 
           <div className="text-md-end">
             <button type="button" className="btn btn-success mb-2" onClick={handleSubmit}>

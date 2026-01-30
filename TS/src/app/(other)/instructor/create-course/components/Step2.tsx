@@ -19,7 +19,7 @@ const Step2 = ({
     stepperInstance?.next()
   }
   const [tempUrl, setTempUrl] = useState('')
-const [tempDesc, setTempDesc] = useState('')
+  const [tempDesc, setTempDesc] = useState('')
   return (
     <form id="step-2" onSubmit={goToNextStep} role="tabpanel" className="content fade" aria-labelledby="steppertrigger2">
       <h4>Course media</h4>
@@ -147,7 +147,15 @@ const [tempDesc, setTempDesc] = useState('')
                     onAddVideo={(vid) =>
                       setFormData((prev: any) => ({
                         ...prev,
-                        videos: [...(prev.videos || []), vid],
+                        videos: [
+                          ...prev.videos,
+                          {
+                            ...vid,
+                            status: 'pending',
+                            progress: 0,
+                          },
+                        ]
+
                       }))
                     }
                   />
@@ -158,7 +166,12 @@ const [tempDesc, setTempDesc] = useState('')
                       <div className="bg-body p-3 p-sm-4 border rounded">
                         <div className="d-sm-flex justify-content-sm-between align-items-center mb-2">
                           <h6 className="mb-0">
-                            <video width="300" controls src={`/uploads/${vid.video}`} />
+                            <video
+                              width="300"
+                              controls
+                              src={URL.createObjectURL(vid.videos)}
+                            />
+
                           </h6>
                           <div className="align-middle">
                             <button

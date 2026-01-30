@@ -18,7 +18,13 @@ type VideoUpload = {
     expectedOutput: string
     boilerplate: string
   } | null
+
+  // ✅ NEW
+  status?: 'pending' | 'uploading' | 'success' | 'failed'
+  progress?: number
+  s3Key?: string
 }
+
 
 type UploadVideoPayload = {
   video: string
@@ -85,6 +91,8 @@ const CreateCourseForm = () => {
     features: [],
     quizFile: null,
   })
+  const [courseId, setCourseId] = useState<string | null>(null)
+
 
   useEffect(() => {
     stepperInstance?.to(2)
@@ -150,106 +158,159 @@ const CreateCourseForm = () => {
     })
   }
 
+  const createCourseOnly = async (
+    imageKey: string | null,
+    previewKey: string | null,
+    quizKey: string | null
+  ) => {
+    const res = await axios.post(`${baseURL}/courses`, {
+      title: formData.title,
+      shortDescription: formData.shortDescription,
+      category: formData.category,
+      level: formData.level,
+      language: formData.language,
+      isFeatured: formData.isFeatured,
+      duration: formData.duration,
+      totalLectures: formData.totalLectures,
+      price: formData.price,
+      discountPrice: formData.discountPrice,
+      description: formData.description,
+      image: imageKey,
+      previewVideo: previewKey,
+      quizKey,
+      videoUrl: formData.videoUrl,
+      addFAQ: formData.addFAQ,
+      features: formData.features,
+    })
+
+    return res.data.course._id
+  }
+
+  const uploadSingleLessonVideo = async (
+    video: VideoUpload,
+    index: number,
+    courseId: string
+  ) => {
+    try {
+      setFormData(prev => {
+        const list = [...prev.videos]
+        list[index].status = 'uploading'
+        return { ...prev, videos: list }
+      })
+
+      const s3Key = await uploadToS3WithProgress(
+        video.videos,
+        { courseTitle: formData.title, assetType: 'video' },
+        (percent) => {
+          setFormData(prev => {
+            const list = [...prev.videos]
+            list[index].progress = percent
+            return { ...prev, videos: list }
+          })
+        }
+      )
+
+      await axios.post(`${baseURL}/courses/${courseId}/video`, {
+        videoKey: s3Key,
+        description: video.description,
+        caseStudy: video.caseStudy || null,
+      })
+
+      setFormData(prev => {
+        const list = [...prev.videos]
+        list[index].status = 'success'
+        list[index].s3Key = s3Key
+        return { ...prev, videos: list }
+      })
+
+      setUploadedVideoCount(c => c + 1)
+      return true
+    } catch {
+      setFormData(prev => {
+        const list = [...prev.videos]
+        list[index].status = 'failed'
+        return { ...prev, videos: list }
+      })
+      return false
+    }
+  }
+  const uploadLessonVideosSequentially = async (courseId: string) => {
+    for (let i = 0; i < formData.videos.length; i++) {
+      const v = formData.videos[i]
+      if (v.status === 'success') continue
+
+      const ok = await uploadSingleLessonVideo(v, i, courseId)
+      if (!ok) break
+    }
+  }
+
+  const retryFailedVideos = async () => {
+    if (!courseId) return
+    await uploadLessonVideosSequentially(courseId)
+  }
+
+
+
+
   const handleSubmit = async () => {
     try {
-      setUploadProgress(0)
-      setUploadedVideoCount(0)
 
-      // ======================
-      // Upload lesson videos
-      // ======================
-      const uploadedVideos: UploadVideoPayload[] = []
-
-      for (let i = 0; i < formData.videos.length; i++) {
-        const videoObj = formData.videos[i]
-        const file = videoObj.videos
-
-        const videoKey = await uploadToS3WithProgress(
-          file,
-          {
-            courseTitle: formData.title, // ✅ auto folder from title
-            assetType: 'video',
-          },
-          (percent) => setUploadProgress(percent),
-        )
-
-        setUploadedVideoCount((prev) => prev + 1)
-
-        uploadedVideos.push({
-          video: videoKey,
-          description: videoObj.description,
-          caseStudy: videoObj.caseStudy || null,
+      if (courseId) {
+        showNotification({
+          message: 'Course already created. Use Retry if needed.',
+          variant: 'info',
         })
+        return
       }
 
-      // ======================
-      // Upload course image
-      // ======================
-      let uploadedImageKey: string | null = null
+      if (!courseId) {
+        setUploadedVideoCount(0)
+      }
+
+      setUploadProgress(0)
+
+      // 1️⃣ Upload image
+      let imageKey = null
       if (formData.image) {
-        uploadedImageKey = await uploadToS3WithProgress(
+        imageKey = await uploadToS3WithProgress(
           formData.image,
-          {
-            courseTitle: formData.title,
-            assetType: 'image',
-          },
-          setUploadProgress,
+          { courseTitle: formData.title, assetType: 'image' },
+          setUploadProgress
         )
       }
 
-      // ======================
-      // Upload preview video
-      // ======================
-      let uploadedPreviewVideoKey: string | null = null
+      // 2️⃣ Upload preview video
+      let previewKey = null
       if (formData.previewVideo) {
-        uploadedPreviewVideoKey = await uploadToS3WithProgress(
+        previewKey = await uploadToS3WithProgress(
           formData.previewVideo,
-          {
-            courseTitle: formData.title,
-            assetType: 'preview',
-          },
-          setUploadProgress,
+          { courseTitle: formData.title, assetType: 'preview' },
+          setUploadProgress
         )
       }
 
-      // ======================
-      // Upload quiz file
-      // ======================
-      let uploadedQuizKey: string | null = null
+      // 3️⃣ Upload quiz
+      let quizKey = null
       if (formData.quizFile) {
-        uploadedQuizKey = await uploadToS3WithProgress(
+        quizKey = await uploadToS3WithProgress(
           formData.quizFile,
-          {
-            courseTitle: formData.title,
-            assetType: 'quiz',
-          },
-          setUploadProgress,
+          { courseTitle: formData.title, assetType: 'quiz' },
+          setUploadProgress
         )
       }
 
-      // ======================
-      // Submit course metadata
-      // ======================
-      await axios.post(`${baseURL}/courses`, {
-        ...formData,
-        image: uploadedImageKey,
-        previewVideo: uploadedPreviewVideoKey,
-        quizKey: uploadedQuizKey,
-        addVideo: uploadedVideos,
-      })
+      // 4️⃣ Create course FIRST
+      const createdCourseId = await createCourseOnly(imageKey, previewKey, quizKey)
+      setCourseId(createdCourseId)
 
-      showNotification({
-        message: 'Course created successfully',
-        variant: 'success',
-      })
 
+      // 5️⃣ Upload lesson videos SEQUENTIALLY
+      await uploadLessonVideosSequentially(createdCourseId)
+
+      showNotification({ message: 'Course created successfully', variant: 'success' })
       navigate('/instructor/manage-course')
     } catch (err) {
-      console.error(err)
-      showNotification({
-        message: 'Upload failed',
-        variant: 'danger',
-      })
+      showNotification({ message: 'Upload failed', variant: 'danger' })
     }
   }
 
@@ -305,6 +366,7 @@ const CreateCourseForm = () => {
                   formData={formData}
                   setFormData={setFormData}
                   handleSubmit={handleSubmit}
+                  retryFailedVideos={retryFailedVideos}
                   uploadProgress={uploadProgress}
                   uploadedVideoCount={uploadedVideoCount} // ✅ ADD
                 />
