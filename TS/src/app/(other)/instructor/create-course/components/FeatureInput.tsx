@@ -31,7 +31,7 @@ const FeatureInput: React.FC<FeatureInputProps> = ({ onFeaturesChange }) => {
   return (
     <Col xs={12}>
       <div className="bg-light border rounded p-4">
-        <h5 className="mb-0">Features</h5>
+        <h5 className="mb-0 text-muted">Features</h5>
         <Form.Group className="mt-3">
           <Form.Control
             type="text"
