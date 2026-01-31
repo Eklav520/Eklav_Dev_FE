@@ -5,6 +5,14 @@ import ResumeInterviewSelection from './ResumeInterviewSelection'
 import InterviewUILayoutWithLogic from './InterviewUILayoutWithLogic'
 import { FaLaptopCode, FaFileAlt, FaTimes, FaInfoCircle, FaDesktop } from 'react-icons/fa'
 
+
+type InterviewMeta = {
+  interviewType: 'topic' | 'resume'
+  attemptId?: string
+  attemptNumber?: number
+}
+
+
 const InterviewModalLayout = () => {
   const [show, setShow] = useState(false)
   const [interviewId, setInterviewId] = useState<string | null>(null)
@@ -13,6 +21,7 @@ const InterviewModalLayout = () => {
 
   const modalRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [meta, setMeta] = useState<InterviewMeta | undefined>(undefined)
 
   // Check if mobile view
   useEffect(() => {
@@ -30,13 +39,20 @@ const InterviewModalLayout = () => {
     id: string,
     questions: string[],
     totalQuestions: number,
-    title: string
+    title: string,
+    options?: {
+      interviewType: 'topic' | 'resume'
+      attemptId?: string
+      attemptNumber?: number
+    }
   ) => {
     setInterviewId(id)
     setQuestions(questions)
     setTitle(title)
+    setMeta(options)
     setShow(true)
   }
+
 
   // Enter fullscreen when modal opens (only on desktop)
   /*  useEffect(() => {
@@ -68,7 +84,9 @@ const InterviewModalLayout = () => {
     setInterviewId(null)
     setQuestions([])
     setTitle('')
+   setMeta(undefined)
   }
+
 
 
   // Handle escape key to exit fullscreen
@@ -311,7 +329,9 @@ const InterviewModalLayout = () => {
                 questions={questions}
                 title={title}
                 isFullscreen={!isMobile}
+                meta={meta}
               />
+
             )}
           </div>
         </Modal.Body>

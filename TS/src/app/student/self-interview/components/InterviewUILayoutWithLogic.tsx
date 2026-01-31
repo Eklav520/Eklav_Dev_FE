@@ -32,19 +32,25 @@ type AnswerItem = {
   exampleProgram?: { title: string; language: string; code: string } | null
   fixedExampleCode?: string
 }
-
 interface Props {
   interviewId: string
   questions: string[]
-  title: string // ⬅ Add this
+  title: string
   setLoadingFeedback?: React.Dispatch<React.SetStateAction<boolean>>
   isFullscreen?: boolean
+
+  meta?: {
+    interviewType: 'topic' | 'resume'
+    attemptId?: string
+    attemptNumber?: number
+  }
 }
+
 
 const FOLLOW_UP_THRESHOLD = 4
 const MAX_FOLLOW_UPS = 1
 
-const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback }) => {
+const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback,meta }) => {
   const { user } = useAuthContext()
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
@@ -900,6 +906,34 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
   }
 
+  const submitResumeScoreIfNeeded = async (finalAnswers: AnswerItem[]) => {
+  if (meta?.interviewType !== 'resume') return
+  if (meta.attemptNumber !== 1) return // 🔒 only first attempt
+  if (!meta.attemptId) return
+
+  const scores = finalAnswers.map((a, idx) => ({
+    question: a.question,
+    score: a.rating ?? 0,
+  }))
+
+  try {
+    await fetch(`${baseURL}/api/resume-based-interview/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        attemptId: meta.attemptId,
+        scores,
+      }),
+    })
+  } catch (err) {
+    console.error('Resume score submit failed', err)
+  }
+}
+
+
 
   // transcript / video callbacks
   const handleTranscriptUpdate = (text: string) => setTranscript(text)
@@ -1313,7 +1347,12 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                   <Button
                     variant="success"
                     className="fw-bold w-100 mt-2"
-                    onClick={() => finishInterview([...answers, currentFeedback])}
+                    onClick={async () => {
+  const finalAnswers = [...answers, currentFeedback]
+  await finishInterview(finalAnswers)
+  await submitResumeScoreIfNeeded(finalAnswers)
+}}
+
                   >
                     Finish Interview
                   </Button>

@@ -3,8 +3,19 @@ import { Form, Button, Card, Spinner } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 
 interface Props {
-  onStart: (interviewId: string, questions: string[], totalQuestions: number, title: string) => void
+  onStart: (
+    interviewId: string,
+    questions: string[],
+    totalQuestions: number,
+    title: string,
+    options?: {
+      interviewType: 'resume'
+      attemptId: string
+      attemptNumber: number
+    }
+  ) => void
 }
+
 
 const ResumeInterviewSelection = ({ onStart }: Props) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -87,7 +98,18 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
 
-      onStart(data.interviewId, data.questions, data.totalQuestions, data.title)
+   onStart(
+  data.interviewId,
+  data.questions,
+  data.totalQuestions,
+  data.title,
+  {
+    interviewType: 'resume',
+    attemptId: data.attemptId,
+    attemptNumber: data.attemptNumber,
+  }
+)
+
       if (typeof data.remaining === 'number') {
         setRemaining(data.remaining)
       }
