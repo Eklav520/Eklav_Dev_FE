@@ -1,6 +1,6 @@
-import { Card, Row, Col, Badge, ProgressBar } from 'react-bootstrap'
-import { BsPatchCheckFill } from 'react-icons/bs'
-
+import { Card, Row, Col, Button, ProgressBar } from 'react-bootstrap'
+import avatarFallback from '@/assets/images/avatar/09.jpg'
+import { Link } from "react-router-dom";
 /* ================= TYPES ================= */
 
 type Props = {
@@ -8,110 +8,102 @@ type Props = {
     name: string
     completion: number
     subtitle?: string
+    avatar?: string
   }
-}
-
-/* ================= UTILS ================= */
-
-// Get initials from name (Jagadeesh Kumar → JK)
-const getInitials = (name?: string) => {
-  if (!name) return 'U'
-
-  const words = name.trim().split(/\s+/)
-
-  if (words.length >= 2) {
-    return (words[0][0] + words[words.length - 1][0]).toUpperCase()
-  }
-
-  return words[0][0].toUpperCase()
-}
-
-// Generate consistent avatar color from name
-const getAvatarGradient = (name?: string) => {
-  const gradients = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    'linear-gradient(135deg, #30cfd0 0%, #330867 100%)',
-  ]
-
-  if (!name) return gradients[0]
-
-  const index = name.charCodeAt(0) % gradients.length
-  return gradients[index]
 }
 
 /* ================= COMPONENT ================= */
 
-const HeroSection = ({ student }: Props) => (
-  <Card
-    className="border-0 shadow-lg mb-4"
-    style={{
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white',
-    }}
-  >
-    <Card.Body className="p-3 p-md-4">
-      <Row className="align-items-center">
-        {/* Avatar */}
-        <Col
-          xs="auto"
-          className="mb-3 mb-md-0 d-flex justify-content-center justify-content-md-start"
-        >
-          <div className="position-relative d-inline-block">
-            <div
-              className="avatar-wrapper"
-              style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: getAvatarGradient(student?.name),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '36px',
-                fontWeight: 600,
-                color: 'white',
-                userSelect: 'none',
-              }}
-            >
-              {getInitials(student?.name)}
+const HeroSection = ({ student }: Props) => {
+  const firstName = student.name.split(' ')[0]
+  
+  return (
+    <Card
+      className="border-0 mb-4"
+      style={{
+        background: '#1e293b',
+        color: 'white',
+        borderRadius: '12px',
+      }}
+    >
+      <Card.Body className="p-3 p-md-4">
+        <Row className="align-items-center">
+          {/* Avatar & Greeting */}
+          <Col xs={12} md={6} className="mb-3 mb-md-0">
+            <div className="d-flex align-items-center">
+              
+              <div>
+                <h3 className="fw-bold mb-1" style={{ fontSize: '1.5rem' }}>
+                  Hello, {firstName} !
+                </h3>
+                <p className="mb-0" style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
+                  {student.subtitle || "Let's pick up where you left off"}
+                </p>
+              </div>
             </div>
+          </Col>
 
-            <Badge
-              bg="success"
-              className="position-absolute bottom-0 end-0"
-              style={{ fontSize: '10px' }}
-            >
-              <BsPatchCheckFill /> Active
-            </Badge>
-          </div>
-        </Col>
-
-        {/* User Info */}
-        <Col xs={12} md={6} className="mb-3 mb-md-0">
-          <h4 className="fw-bold mb-1">{student.name}</h4>
-          <small className="opacity-75">
-            {student.subtitle || 'Student'}
-          </small>
-
-          <div className="mt-3">
-            <div className="d-flex justify-content-between mb-1">
-              <span>Profile Completion</span>
-              <span>{student.completion}%</span>
+          {/* Profile Completion & Button */}
+          <Col xs={12} md={6}>
+            <div className="d-flex align-items-center justify-content-md-end gap-3">
+              <div style={{ minWidth: '200px' }}>
+                <div className="d-flex justify-content-between mb-2">
+                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                    Profile Completion
+                  </span>
+                  <span className="fw-bold" style={{ fontSize: '1.1rem' }}>
+                    {student.completion}%
+                  </span>
+                </div>
+                <ProgressBar
+                  now={student.completion}
+                  style={{ 
+                    height: '8px', 
+                    borderRadius: '10px',
+                    background: '#334155'
+                  }}
+                  className="custom-progress"
+                />
+              </div>
+              <Link to="/student/edit-profile"><div
+                style={{
+                  background: '#06b6d4',
+                  border: 'none',
+                  padding: '10px 24px',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  fontSize: '0.9rem',
+                  whiteSpace: 'nowrap',
+                  color: 'white',
+                }}
+                className="hover-lift"
+              >
+                Finish Setup
+              </div></Link>
+              
             </div>
+          </Col>
+        </Row>
+      </Card.Body>
 
-            <ProgressBar
-              now={student.completion}
-              style={{ height: '8px', borderRadius: '5px' }}
-              variant="success"
-            />
-          </div>
-        </Col>
-      </Row>
-    </Card.Body>
-  </Card>
-)
+      <style>{`
+        .custom-progress .progress-bar {
+          background: #6366f1 !important;
+          border-radius: 10px;
+        }
+        
+        .hover-lift {
+          transition: all 0.2s ease;
+        }
+        
+        .hover-lift:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+          background: #0891b2 !important;
+        }
+      `}</style>
+    </Card>
+  )
+}
 
 export default HeroSection

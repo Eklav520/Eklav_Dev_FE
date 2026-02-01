@@ -7,25 +7,25 @@ const QuickStats = () => {
       label: 'Current Streak',
       value: '5 days',
       icon: FaFire,
-      color: '#FF6B6B',
+      color: '#ef4444',
     },
     {
       label: 'Avg Daily Time',
       value: '2.4 hrs',
       icon: FaClock,
-      color: '#4ECDC4',
+      color: '#06b6d4',
     },
     {
       label: 'Peer Rank',
       value: 'Top 15%',
       icon: FaUsers,
-      color: '#45B7D1',
+      color: '#3b82f6',
     },
     {
       label: 'Accuracy Trend',
       value: '↑ 12%',
       icon: FaChartLine,
-      color: '#96CEB4',
+      color: '#8b5cf6',
     },
   ]
 
@@ -36,32 +36,32 @@ const QuickStats = () => {
         return (
           <Col xs={12} sm={6} md={3} key={i}>
             <Card
-              className="border-0 shadow-sm h-100"
-              style={{ background: '#111417' }}
+              className="border-0 h-100"
+              style={{ background: '#1e293b', borderRadius: '12px' }}
             >
-              <Card.Body className="d-flex align-items-center p-3">
-                {/* ICON */}
-                <div
-                  className="d-flex align-items-center justify-content-center me-3 rounded-circle"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    background: 'rgba(255,255,255,0.05)',
-                    color: stat.color,
-                  }}
-                >
-                  <Icon size={18} />
+              <Card.Body className="p-3">
+                <div className="d-flex align-items-center mb-2">
+                  <div
+                    className="d-flex align-items-center justify-content-center me-2 rounded-circle"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: 'rgba(255,255,255,0.05)',
+                      color: stat.color,
+                    }}
+                  >
+                    <Icon size={14} />
+                  </div>
+                  <div className="text-muted" style={{ fontSize: '0.8rem' }}>
+                    {stat.label}
+                  </div>
                 </div>
 
-                {/* TEXT */}
-                <div>
-                  <div
-                    className="fw-bold"
-                    style={{ color: stat.color, lineHeight: 1.2 }}
-                  >
-                    {stat.value}
-                  </div>
-                  <small className="text-muted">{stat.label}</small>
+                <div
+                  className="fw-bold"
+                  style={{ color: stat.color, fontSize: '1.25rem' }}
+                >
+                  {stat.value}
                 </div>
               </Card.Body>
             </Card>
