@@ -65,7 +65,7 @@ const ReadingLeaderboardDashboard = ({
       <Card.Header className="d-flex justify-content-between align-items-center">
         <h5 className="mb-0">Reading Leaderboard</h5>
 
-        {user?.role === 'admin' && week && (
+        {(user?.role === 'admin' || user?.role === 'collegeAdmin') && week && (
           <Button
             size="sm"
             variant="primary"
