@@ -164,6 +164,7 @@ const handleSelect = (college: College) => {
                     {results.map((college) => (
                         <button
                             type="button"
+                            key={college._id}
                             className="dropdown-item text-start py-2"
                             onMouseDown={(e) => {
                                 e.preventDefault()

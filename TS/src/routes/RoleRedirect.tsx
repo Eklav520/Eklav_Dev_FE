@@ -6,8 +6,9 @@ const RoleRedirect = () => {
   const { user } = useAuthContext()
 
   if (!user) return <Navigate to="/login" />
+  console.log("user.role",user.role)
 
-  if (user.role === 'admin') {
+  if (user.role === 'admin' || user.role === "collegeAdmin") {
     return <Navigate to="/instructor/dashboard" />
   } else {
     return <Navigate to="/student/dashboard" />

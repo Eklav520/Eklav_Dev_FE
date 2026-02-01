@@ -130,7 +130,7 @@ const VerticalMenu = ({ role }: { role?: string }) => {
     const items = INSTRUCTOR_MENU_ITEMS as unknown as MenuItemTypeLocal[]
 
     // ✅ collegeAdmin → only first 3 menu sections
-    if (role === 'student') {
+    if (role === 'collegeAdmin') {
       return items.slice(0, 3)
     }
 
