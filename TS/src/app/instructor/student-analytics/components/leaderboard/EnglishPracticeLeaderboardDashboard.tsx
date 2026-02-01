@@ -1,17 +1,19 @@
-import { useState } from "react"
-import { Card, Button } from "react-bootstrap"
+import { useState } from 'react'
+import { Card, Button } from 'react-bootstrap'
 
-import EnglishPracticeLeaderboard from "../../../dashboard/components/EnglishPracticeLeaderboard"
-import { useAuthContext } from "@/context/useAuthContext"
+import EnglishPracticeLeaderboard from '../../../dashboard/components/EnglishPracticeLeaderboard'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type EnglishPracticeLeaderboardDashboardProps = {
   year: number
   month: number
   week: string | null
+  college?: string | null
 }
 
 const EnglishPracticeLeaderboardDashboard = ({
   week,
+  college,
 }: EnglishPracticeLeaderboardDashboardProps) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -25,32 +27,39 @@ const EnglishPracticeLeaderboardDashboard = ({
     try {
       setGenerating(true)
 
+      const body: any = {
+        section: 'ENGLISH_PRACTICE',
+        subSection: 'SPEAKING',
+        weekKey: week,
+      }
+
+      // ✅ pass college if present
+      if (college) {
+        body.college = college
+      }
+
       const res = await fetch(
         `${baseURL}/api/englishPracticeRanking/weekly`,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${user?.token}`
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${user?.token}`,
           },
-          body: JSON.stringify({
-            section: "ENGLISH_PRACTICE",
-            subSection: "SPEAKING",
-            weekKey: week
-          })
+          body: JSON.stringify(body),
         }
       )
 
       if (!res.ok) {
         const err = await res.json()
-        throw new Error(err.message || "Failed to generate ranking")
+        throw new Error(err.message || 'Failed to generate ranking')
       }
 
-      // Refresh leaderboard without page reload
+      // refresh leaderboard without reload
       setRefreshKey(prev => prev + 1)
     } catch (err: any) {
-      console.error("Generate ranking failed:", err)
-      alert(err.message || "Failed to generate ranking")
+      console.error('Generate ranking failed:', err)
+      alert(err.message || 'Failed to generate ranking')
     } finally {
       setGenerating(false)
     }
@@ -61,14 +70,14 @@ const EnglishPracticeLeaderboardDashboard = ({
       <Card.Header className="d-flex justify-content-between align-items-center">
         <h5 className="mb-0">English Practice Leaderboard</h5>
 
-        {user?.role === "admin" && week && (
+        {user?.role === 'admin' && week && (
           <Button
             size="sm"
             variant="primary"
             disabled={generating}
             onClick={generateRanking}
           >
-            {generating ? "Generating..." : "Generate Ranking"}
+            {generating ? 'Generating...' : 'Generate Ranking'}
           </Button>
         )}
       </Card.Header>
@@ -84,6 +93,7 @@ const EnglishPracticeLeaderboardDashboard = ({
             section="ENGLISH_PRACTICE"
             subSection="SPEAKING"
             weekKey={week}
+            college={college}   
           />
         )}
       </Card.Body>

@@ -5,11 +5,13 @@ type JustAMinuteSectionProgressDashboardProps = {
   year: number
   month: number
   week: string | null
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const JustAMinuteSectionProgressDashboard = ({
   week,
+  college,
   registerDownload,
 }: JustAMinuteSectionProgressDashboardProps) => (
   <Card>
@@ -22,6 +24,7 @@ const JustAMinuteSectionProgressDashboard = ({
         <SectionStudentProgressTable
           weekKey={week}
           apiType="justaMinute"
+          college={college}        
           registerDownload={registerDownload}
         />
       ) : (

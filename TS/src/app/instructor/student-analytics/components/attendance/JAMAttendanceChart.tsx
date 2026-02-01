@@ -8,12 +8,18 @@ type GraphPoint = {
   count: number
 }
 
-const JAMAttendanceChart = () => {
+type JAMAttendanceChartProps = {
+  college: string | null
+  role?: string | null // kept optional, not used
+}
+
+const JAMAttendanceChart = ({ college }: JAMAttendanceChartProps) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
 
   const now = new Date()
+  console.log('college:', college)
 
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week')
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
@@ -27,7 +33,8 @@ const JAMAttendanceChart = () => {
 
   useEffect(() => {
     if (token) fetchAttendance()
-  }, [token, period, selectedMonth, selectedYear])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, period, selectedMonth, selectedYear, college])
 
   /* =============================
      LABEL FORMATTER
@@ -56,15 +63,22 @@ const JAMAttendanceChart = () => {
     try {
       setLoading(true)
 
-      const query =
+      let query =
         period === 'month'
           ? `period=month&month=${selectedMonth}&year=${selectedYear}`
           : `period=${period}`
 
+      // ✅ ALWAYS append college if present
+      if (college) {
+        query += `&college=${encodeURIComponent(college)}`
+      }
+
       const res = await fetch(
         `${baseURL}/api/adminDashboardCharts/admin/jam/attendance?${query}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       )
 
@@ -96,9 +110,7 @@ const JAMAttendanceChart = () => {
 
       const graphData = data.graph || []
       const counts = graphData.map((d: GraphPoint) => d.count || 0)
-      const labels = graphData.map((d: GraphPoint) =>
-        formatLabel(d.day)
-      )
+      const labels = graphData.map((d: GraphPoint) => formatLabel(d.day))
 
       setSeries([
         {
@@ -172,7 +184,6 @@ const JAMAttendanceChart = () => {
                 ))}
               </ButtonGroup>
 
-              {/* ===== MONTH & YEAR PICKER ===== */}
               {period === 'month' && (
                 <>
                   <select

@@ -5,11 +5,13 @@ type ListeningSectionProgressDashboardProps = {
   year: number
   month: number
   week: string | null
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const ListeningSectionProgressDashboard = ({
   week,
+  college,
   registerDownload,
 }: ListeningSectionProgressDashboardProps) => (
   <Card>
@@ -22,6 +24,7 @@ const ListeningSectionProgressDashboard = ({
         <SectionStudentProgressTable
           weekKey={week}
           apiType="listening"
+          college={college}         
           registerDownload={registerDownload}
         />
       ) : (

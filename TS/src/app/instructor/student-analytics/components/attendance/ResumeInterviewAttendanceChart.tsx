@@ -8,7 +8,13 @@ type GraphPoint = {
   count: number
 }
 
-const ResumeInterviewAttendanceChart = () => {
+type ResumeInterviewAttendanceChartProps = {
+  college: string | null
+}
+
+const ResumeInterviewAttendanceChart = ({
+  college,
+}: ResumeInterviewAttendanceChartProps) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -27,8 +33,12 @@ const ResumeInterviewAttendanceChart = () => {
 
   useEffect(() => {
     if (token) fetchData()
-  }, [token, period, selectedMonth, selectedYear])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, period, selectedMonth, selectedYear, college])
 
+  /* =============================
+     LABEL FORMATTER
+  ============================== */
   const formatLabel = (day: string) => {
     const date = new Date(day)
 
@@ -44,19 +54,29 @@ const ResumeInterviewAttendanceChart = () => {
     return date.toLocaleDateString('en-IN')
   }
 
+  /* =============================
+     FETCH DATA
+  ============================== */
   const fetchData = async () => {
     try {
       setLoading(true)
 
-      const query =
+      let query =
         period === 'month'
           ? `period=month&month=${selectedMonth}&year=${selectedYear}`
           : `period=${period}`
 
+      // ✅ ALWAYS append college if present
+      if (college) {
+        query += `&college=${encodeURIComponent(college)}`
+      }
+
       const res = await fetch(
         `${baseURL}/api/adminDashboardCharts/admin/resume-interview/attendance?${query}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       )
 
@@ -71,8 +91,13 @@ const ResumeInterviewAttendanceChart = () => {
             colors: ['#dc3545'],
             dataLabels: { enabled: false },
             xaxis: { categories: [] },
-            yaxis: { min: 0, labels: { formatter: (val: number) => Math.round(val) } },
-            tooltip: { y: { formatter: (val: number) => `${val} students` } },
+            yaxis: {
+              min: 0,
+              labels: { formatter: (val: number) => Math.round(val) },
+            },
+            tooltip: {
+              y: { formatter: (val: number) => `${val} students` },
+            },
           })
           return
         }
@@ -85,6 +110,7 @@ const ResumeInterviewAttendanceChart = () => {
       setAttendedStudents(data.attendedStudents || 0)
 
       const graphData = data.graph || []
+
       setSeries([
         {
           name: 'Students Attended',
@@ -125,8 +151,7 @@ const ResumeInterviewAttendanceChart = () => {
     <Row className="mt-4">
       <Col xs={12}>
         <Card className="card-body border p-4 h-100">
-
-          {/* HEADER */}
+          {/* ===== HEADER ===== */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="mb-0">Resume-Based Interview – Attendance</h5>
 
@@ -175,7 +200,7 @@ const ResumeInterviewAttendanceChart = () => {
             </div>
           </div>
 
-          {/* SUMMARY */}
+          {/* ===== SUMMARY ===== */}
           <Row className="g-4 mb-3">
             <Col sm={6} md={4}>
               <span className="badge text-bg-dark">Total Students</span>
@@ -198,6 +223,7 @@ const ResumeInterviewAttendanceChart = () => {
             </Col>
           </Row>
 
+          {/* ===== CHART ===== */}
           {loading ? (
             <div className="text-center py-5">
               <Spinner animation="border" />
@@ -217,4 +243,3 @@ const ResumeInterviewAttendanceChart = () => {
 }
 
 export default ResumeInterviewAttendanceChart
-

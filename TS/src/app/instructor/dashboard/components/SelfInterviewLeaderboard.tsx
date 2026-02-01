@@ -31,7 +31,12 @@ const rankEmoji = (rank: number) => {
   return null
 }
 
-const SelfInterviewLeaderboard = ({ weekKey }: { weekKey: string }) => {
+type Props = {
+  weekKey: string
+  college?: string | null
+}
+
+const SelfInterviewLeaderboard = ({ weekKey, college }: Props) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
@@ -44,12 +49,19 @@ const SelfInterviewLeaderboard = ({ weekKey }: { weekKey: string }) => {
       try {
         setLoading(true)
 
+        let query = `weekKey=${encodeURIComponent(weekKey)}`
+
+        // ✅ append college if passed
+        if (college) {
+          query += `&college=${encodeURIComponent(college)}`
+        }
+
         const res = await fetch(
-          `${baseURL}/api/selfInterviewRanking/weekly?weekKey=${weekKey}`,
+          `${baseURL}/api/selfInterviewRanking/weekly?${query}`,
           {
             headers: {
-              Authorization: `Bearer ${user?.token}`
-            }
+              Authorization: `Bearer ${user?.token}`,
+            },
           }
         )
 
@@ -68,7 +80,7 @@ const SelfInterviewLeaderboard = ({ weekKey }: { weekKey: string }) => {
     }
 
     fetchRanking()
-  }, [weekKey, baseURL, user?.token])
+  }, [weekKey, college, baseURL, user?.token])
 
   if (loading) return <Spinner animation="border" />
   if (error) return <Alert variant="danger">{error}</Alert>
@@ -96,10 +108,7 @@ const SelfInterviewLeaderboard = ({ weekKey }: { weekKey: string }) => {
             const isMe = row.student?.userId === user?.id
 
             return (
-              <tr
-                key={row.rank}
-                className={isMe ? "table-primary" : ""}
-              >
+              <tr key={row.rank} className={isMe ? "table-primary" : ""}>
                 <td>
                   <strong>{rankEmoji(row.rank) ?? row.rank}</strong>
                 </td>

@@ -8,12 +8,17 @@ type GraphPoint = {
   count: number
 }
 
-const SpeakingAttendanceChart = () => {
+type SpeakingAttendanceChartProps = {
+  college: string | null
+}
+
+const SpeakingAttendanceChart = ({ college }: SpeakingAttendanceChartProps) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
 
   const now = new Date()
+  console.log('college:', college)
 
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week')
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
@@ -27,7 +32,8 @@ const SpeakingAttendanceChart = () => {
 
   useEffect(() => {
     if (token) fetchData()
-  }, [token, period, selectedMonth, selectedYear])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, period, selectedMonth, selectedYear, college])
 
   /* =============================
      LABEL FORMATTER
@@ -56,15 +62,22 @@ const SpeakingAttendanceChart = () => {
     try {
       setLoading(true)
 
-      const query =
+      let query =
         period === 'month'
           ? `period=month&month=${selectedMonth}&year=${selectedYear}`
           : `period=${period}`
 
+      // ✅ ALWAYS append college if present
+      if (college) {
+        query += `&college=${encodeURIComponent(college)}`
+      }
+
       const res = await fetch(
         `${baseURL}/api/adminDashboardCharts/admin/speaking/attendance?${query}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       )
 
@@ -93,6 +106,7 @@ const SpeakingAttendanceChart = () => {
       setAttendedStudents(data.attendedStudents || 0)
 
       const graphData = data.graph || []
+
       setSeries([
         {
           name: 'Students Attended',
@@ -110,7 +124,7 @@ const SpeakingAttendanceChart = () => {
           curve: 'smooth',
           width: 3,
         },
-        colors: ['#fd7e14'], // orange for Speaking
+        colors: ['#fd7e14'],
         dataLabels: {
           enabled: false,
         },
@@ -144,53 +158,51 @@ const SpeakingAttendanceChart = () => {
         <Card className="card-body border p-4 h-100">
 
           {/* ===== HEADER ===== */}
-         <div className="d-flex justify-content-between align-items-center mb-3">
-  <h5 className="mb-0">Speaking – Attendance</h5>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5 className="mb-0">Speaking – Attendance</h5>
 
-  <div className="d-flex align-items-center gap-2">
-    <ButtonGroup size="sm">
-      {(['today', 'week', 'month'] as const).map(p => (
-        <Button
-          key={p}
-          variant={period === p ? 'primary' : 'outline-primary'}
-          onClick={() => setPeriod(p)}
-        >
-          {p.toUpperCase()}
-        </Button>
-      ))}
-    </ButtonGroup>
+            <div className="d-flex align-items-center gap-2">
+              <ButtonGroup size="sm">
+                {(['today', 'week', 'month'] as const).map(p => (
+                  <Button
+                    key={p}
+                    variant={period === p ? 'primary' : 'outline-primary'}
+                    onClick={() => setPeriod(p)}
+                  >
+                    {p.toUpperCase()}
+                  </Button>
+                ))}
+              </ButtonGroup>
 
-    {/* ===== MONTH & YEAR PICKER ===== */}
-    {period === 'month' && (
-      <>
-        <select
-          className="form-select form-select-sm"
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(Number(e.target.value))}
-        >
-          {Array.from({ length: 12 }).map((_, i) => (
-            <option key={i} value={i + 1}>
-              {new Date(0, i).toLocaleString('en-IN', { month: 'long' })}
-            </option>
-          ))}
-        </select>
+              {period === 'month' && (
+                <>
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedMonth}
+                    onChange={e => setSelectedMonth(Number(e.target.value))}
+                  >
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <option key={i} value={i + 1}>
+                        {new Date(0, i).toLocaleString('en-IN', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
 
-        <select
-          className="form-select form-select-sm"
-          value={selectedYear}
-          onChange={e => setSelectedYear(Number(e.target.value))}
-        >
-          {[2024, 2025, 2026].map(y => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-      </>
-    )}
-  </div>
-</div>
-
+                  <select
+                    className="form-select form-select-sm"
+                    value={selectedYear}
+                    onChange={e => setSelectedYear(Number(e.target.value))}
+                  >
+                    {[2024, 2025, 2026].map(y => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
+          </div>
 
           {/* ===== SUMMARY ===== */}
           <Row className="g-4 mb-3">

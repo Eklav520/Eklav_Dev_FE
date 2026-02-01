@@ -16,15 +16,19 @@ type StudentProgress = {
 
 const ROWS_PER_PAGE = 10
 
+type SectionStudentProgressTableProps = {
+  weekKey: string
+  apiType?: 'writing' | 'reading' | 'listening' | 'justaMinute' | 'englishPractice' | 'speaking'
+  college: string | null
+  registerDownload?: (fn: () => void) => void
+}
+
 const SectionStudentProgressTable = ({
   weekKey,
   apiType = 'writing',
+  college,
   registerDownload,
-}: {
-  weekKey: string
-  apiType?: 'writing' | 'reading' | 'listening' | 'justaMinute' | 'englishPractice' | 'speaking'
-  registerDownload?: (fn: () => void) => void
-}) => {
+}: SectionStudentProgressTableProps) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
@@ -47,11 +51,20 @@ const SectionStudentProgressTable = ({
             : apiType === 'speaking'
             ? 'speaking-section-progress'
             : apiType === 'englishPractice'
-            ? 'speaking-section-progress' // fallback to speaking route
+            ? 'speaking-section-progress'
             : 'section-progress'
 
+        const params = new URLSearchParams({
+          weekKey,
+        })
+
+        // ✅ always append college if present
+        if (college) {
+          params.append('college', college)
+        }
+
         const res = await fetch(
-          `${baseURL}/api/adminDashboardHistoryTable/admin/${endpoint}?weekKey=${weekKey}`,
+          `${baseURL}/api/adminDashboardHistoryTable/admin/${endpoint}?${params.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${user?.token}`,
@@ -64,7 +77,7 @@ const SectionStudentProgressTable = ({
 
         const result = await res.json()
         setData(result)
-        setCurrentPage(1) // 🔁 reset page on reload
+        setCurrentPage(1)
       } catch (err) {
         console.error(err)
         setData([])
@@ -74,7 +87,7 @@ const SectionStudentProgressTable = ({
     }
 
     fetchProgress()
-  }, [weekKey, apiType, baseURL, user?.token])
+  }, [weekKey, apiType, college, baseURL, user?.token])
 
   const downloadExcel = useCallback(() => {
     if (data.length === 0) return
@@ -106,14 +119,13 @@ const SectionStudentProgressTable = ({
 
   if (loading) return <Spinner animation="border" />
 
-  // 🔢 Pagination logic
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE)
   const startIndex = (currentPage - 1) * ROWS_PER_PAGE
   const paginatedData = data.slice(startIndex, startIndex + ROWS_PER_PAGE)
 
   return (
     <>
-      {/* Download Button */}
+      {/* Download */}
       <div className="d-flex justify-content-end mb-3">
         <Button
           variant="success"
@@ -145,7 +157,7 @@ const SectionStudentProgressTable = ({
             </tr>
           )}
 
-          {paginatedData.map((s) => (
+          {paginatedData.map(s => (
             <tr key={s._id}>
               <td>{s.name}</td>
               <td>{s.college}</td>
@@ -166,47 +178,39 @@ const SectionStudentProgressTable = ({
         </tbody>
       </Table>
 
-      {/* Pagination Footer (same style as your example) */}
+      {/* Pagination */}
       {data.length > 0 && (
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 pt-2 border-top">
           <p className="mb-2 mb-sm-0 text-secondary small">
             Showing{' '}
-            <strong>
-              {Math.min(currentPage * ROWS_PER_PAGE, data.length)}
-            </strong>{' '}
+            <strong>{Math.min(currentPage * ROWS_PER_PAGE, data.length)}</strong>{' '}
             of <strong>{data.length}</strong> student
             {data.length !== 1 ? 's' : ''}
           </p>
 
           <nav aria-label="Page navigation">
             <ul className="pagination pagination-sm pagination-primary-soft mb-0">
-              {/* Prev */}
               <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
                 <Button
                   className="page-link"
-                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   <FaAngleLeft />
                 </Button>
               </li>
 
-              {/* Pages */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                 <li
                   key={page}
                   className={`page-item ${currentPage === page ? 'active' : ''}`}
                 >
-                  <Button
-                    className="page-link"
-                    onClick={() => setCurrentPage(page)}
-                  >
+                  <Button className="page-link" onClick={() => setCurrentPage(page)}>
                     {page}
                   </Button>
                 </li>
               ))}
 
-              {/* Next */}
               <li
                 className={`page-item ${
                   currentPage === totalPages ? 'disabled' : ''
@@ -215,7 +219,7 @@ const SectionStudentProgressTable = ({
                 <Button
                   className="page-link"
                   onClick={() =>
-                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                    setCurrentPage(p => Math.min(p + 1, totalPages))
                   }
                   disabled={currentPage === totalPages}
                 >

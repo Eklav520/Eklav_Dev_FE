@@ -5,11 +5,13 @@ type Props = {
   year: number
   month: number
   week: string | null
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const EnglishPracticeSectionProgressDashboard = ({
   week,
+  college,
   registerDownload,
 }: Props) => (
   <Card>
@@ -22,6 +24,7 @@ const EnglishPracticeSectionProgressDashboard = ({
         <SectionStudentProgressTable
           weekKey={week}
           apiType="englishPractice"
+          college={college}        
           registerDownload={registerDownload}
         />
       ) : (

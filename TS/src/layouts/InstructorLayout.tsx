@@ -21,9 +21,10 @@ import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
 import { ChildrenType } from '@/types/component-props'
 import { FaSignOutAlt } from 'react-icons/fa'
+import TrialWelcomeModal from './TrialWelcomeModal'
 
 // lazy parts
-const Banner = lazy(() => import('@/components/InstructorLayoutComponents/Banner'))
+const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
 const Footer = lazy(() => import('@/components/InstructorLayoutComponents/Footer'))
 const TopNavigationBar = lazy(() => import('@/components/InstructorLayoutComponents/TopNavigationBar'))
 
@@ -50,56 +51,52 @@ const InstructorLayout = ({ children }: ChildrenType) => {
   const [role, setRole] = useState('Guest')
   const [email, setEmail] = useState('')
 
+  useEffect(() => {
+    if (!token) return
+    fetch(`${baseURL}/profile`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error('Failed to fetch profile')
+        return res.json()
+      })
+      .then((profile) => {
+        console.log("profile", profile)
+        setName(profile.fullName || 'Guest')
+        setRole(profile.role)
 
-
-  
-     useEffect(() => {
-        if (!token) return
-    
-        fetch(`${baseURL}/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error('Failed to fetch profile')
-            return res.json()
-          })
-          .then((profile) => {
-            console.log("profile",profile)
-            setName(profile.fullName || 'Guest')
-            setRole(profile.role)
-    
-            if (profile.email) {
-              setEmail(profile.email)
-            }
-          })
-          .catch((err) => {
-            console.error('Error fetching profile:', err)
-          })
-      }, [token])
+        if (profile.email) {
+          setEmail(profile.email)
+        }
+      })
+      .catch((err) => {
+        console.error('Error fetching profile:', err)
+      })
+  }, [token])
 
   return (
     <>
       <Suspense>
-        <TopNavigationBar role={role}/>
+        <TopNavigationBar role={role} />
       </Suspense>
 
       <main>
-        {/* <Banner toggleOffCanvas={toggleOffCanvasMenu} /> */}
+        <Banner toggleOffCanvas={toggleOffCanvasMenu} />
         <section className="pt-0 mt-3 mt-md-4">
           <Container fluid>
             <Row className="g-3 g-xl-4">
               <Col xl={2}>
                 {width >= 1200 ? (
-                  <VerticalMenu />
+                  <VerticalMenu role={role} />
                 ) : (
                   <Offcanvas show={isOffCanvasMenuOpen} placement="end" onHide={toggleOffCanvasMenu}>
                     <OffcanvasHeader className="bg-light" closeButton>
                       <OffcanvasTitle>Menu</OffcanvasTitle>
                     </OffcanvasHeader>
                     <OffcanvasBody className="p-3 p-xl-0">
-                      <VerticalMenu />
+                      <VerticalMenu role={role} />
                     </OffcanvasBody>
                   </Offcanvas>
                 )}
@@ -124,15 +121,22 @@ const InstructorLayout = ({ children }: ChildrenType) => {
 
 /* -------- VerticalMenu (same mechanics as Student layout) -------- */
 
-const VerticalMenu = () => {
+const VerticalMenu = ({ role }: { role?: string }) => {
   const { pathname } = useLocation()
   const { removeSession } = useAuthContext()
 
   // 1) Memoize source menu for stability
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
-    // If INSTRUCTOR_MENU_ITEMS is already nested, we keep as-is.
-    return INSTRUCTOR_MENU_ITEMS as unknown as MenuItemTypeLocal[]
-  }, [])
+    const items = INSTRUCTOR_MENU_ITEMS as unknown as MenuItemTypeLocal[]
+
+    // ✅ collegeAdmin → only first 3 menu sections
+    if (role === 'student') {
+      return items.slice(0, 3)
+    }
+
+    return items
+  }, [role])
+
 
   // 2) Build a tree from baseMenu if needed (handles flat lists using parentKey)
   const tree = useMemo(() => {

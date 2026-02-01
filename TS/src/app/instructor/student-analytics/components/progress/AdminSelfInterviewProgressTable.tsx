@@ -22,11 +22,13 @@ type AdminSelfInterviewProgressTableProps = {
   year: number
   month: number
   week: string | null
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const AdminSelfInterviewProgressTable = ({
   week,
+  college,
   registerDownload,
 }: AdminSelfInterviewProgressTableProps) => {
   const { user } = useAuthContext()
@@ -49,7 +51,10 @@ const AdminSelfInterviewProgressTable = ({
       const res = await axios.get<SelfInterviewRow[]>(
         `${baseURL}/api/adminDashboardHistoryTable/admin/self-interview-progress`,
         {
-          params: { weekKey: week },
+          params: {
+            weekKey: week,
+            ...(college ? { college } : {}), // ✅ pass college
+          },
           headers: {
             Authorization: `Bearer ${user?.token}`,
           },
@@ -64,12 +69,15 @@ const AdminSelfInterviewProgressTable = ({
     } finally {
       setLoading(false)
     }
-  }, [baseURL, user?.token, week])
+  }, [baseURL, user?.token, week, college])
 
   useEffect(() => {
     fetchProgress()
   }, [fetchProgress])
 
+  /* =============================
+     DOWNLOAD EXCEL
+  ============================== */
   const downloadExcel = useCallback(() => {
     if (!week || data.length === 0) return
 
@@ -98,6 +106,9 @@ const AdminSelfInterviewProgressTable = ({
     }
   }, [registerDownload, downloadExcel])
 
+  /* =============================
+     PAGINATION
+  ============================== */
   const totalPages = Math.ceil(data.length / ROWS_PER_PAGE)
   const startIndex = (currentPage - 1) * ROWS_PER_PAGE
   const paginatedData = data.slice(startIndex, startIndex + ROWS_PER_PAGE)
@@ -106,7 +117,6 @@ const AdminSelfInterviewProgressTable = ({
     <Card>
       <Card.Header className="d-flex justify-content-between align-items-center">
         <h5 className="mb-0">Self Interview – Student Progress</h5>
-
         <Badge bg={week ? 'info' : 'secondary'}>{week || 'No week selected'}</Badge>
       </Card.Header>
 
@@ -159,53 +169,52 @@ const AdminSelfInterviewProgressTable = ({
               </tbody>
             </Table>
 
-            {data.length > 0 && (
-              <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 pt-2 border-top">
-                <p className="mb-2 mb-sm-0 text-secondary small">
-                  Showing{' '}
-                  <strong>{Math.min(currentPage * ROWS_PER_PAGE, data.length)}</strong>{' '}
-                  of <strong>{data.length}</strong> student
-                  {data.length !== 1 ? 's' : ''}
-                </p>
+            {/* PAGINATION */}
+            <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 pt-2 border-top">
+              <p className="mb-2 mb-sm-0 text-secondary small">
+                Showing{' '}
+                <strong>{Math.min(currentPage * ROWS_PER_PAGE, data.length)}</strong>{' '}
+                of <strong>{data.length}</strong> student
+                {data.length !== 1 ? 's' : ''}
+              </p>
 
-                <nav aria-label="Page navigation">
-                  <ul className="pagination pagination-sm pagination-primary-soft mb-0">
-                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                      <Button
-                        className="page-link"
-                        onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <FaAngleLeft />
-                      </Button>
-                    </li>
-
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                      <li
-                        key={page}
-                        className={`page-item ${currentPage === page ? 'active' : ''}`}
-                      >
-                        <Button className="page-link" onClick={() => setCurrentPage(page)}>
-                          {page}
-                        </Button>
-                      </li>
-                    ))}
-
-                    <li
-                      className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}
+              <nav aria-label="Page navigation">
+                <ul className="pagination pagination-sm pagination-primary-soft mb-0">
+                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                    <Button
+                      className="page-link"
+                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                      disabled={currentPage === 1}
                     >
-                      <Button
-                        className="page-link"
-                        onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <FaAngleRight />
+                      <FaAngleLeft />
+                    </Button>
+                  </li>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <li
+                      key={page}
+                      className={`page-item ${currentPage === page ? 'active' : ''}`}
+                    >
+                      <Button className="page-link" onClick={() => setCurrentPage(page)}>
+                        {page}
                       </Button>
                     </li>
-                  </ul>
-                </nav>
-              </div>
-            )}
+                  ))}
+
+                  <li
+                    className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}
+                  >
+                    <Button
+                      className="page-link"
+                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <FaAngleRight />
+                    </Button>
+                  </li>
+                </ul>
+              </nav>
+            </div>
           </>
         )}
       </Card.Body>

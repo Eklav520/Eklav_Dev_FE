@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-import { Table, Spinner, Alert, Badge } from "react-bootstrap"
-import { useAuthContext } from "@/context/useAuthContext"
+import { useEffect, useState } from 'react'
+import { Table, Spinner, Alert, Badge } from 'react-bootstrap'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type StudentProfile = {
   _id: string
@@ -25,50 +25,64 @@ type RankingResponse = {
 }
 
 const rankEmoji = (rank: number) => {
-  if (rank === 1) return "🥇"
-  if (rank === 2) return "🥈"
-  if (rank === 3) return "🥉"
+  if (rank === 1) return '🥇'
+  if (rank === 2) return '🥈'
+  if (rank === 3) return '🥉'
   return null
 }
 
-const JustAMinuteLeaderboard = ({ weekKey }: { weekKey: string }) => {
+type JustAMinuteLeaderboardProps = {
+  weekKey: string
+  college?: string | null
+}
+
+const JustAMinuteLeaderboard = ({
+  weekKey,
+  college,
+}: JustAMinuteLeaderboardProps) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
   const [data, setData] = useState<RankingResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchRanking = async () => {
       try {
         setLoading(true)
+        setError('')
+
+        let query = `weekKey=${encodeURIComponent(weekKey)}`
+        if (college) {
+          query += `&college=${encodeURIComponent(college)}`
+        }
 
         const res = await fetch(
-          `${baseURL}/api/justAMinuteRanking/weekly?weekKey=${weekKey}`,
+          `${baseURL}/api/justAMinuteRanking/weekly?${query}`,
           {
             headers: {
-              Authorization: `Bearer ${user?.token}`
-            }
+              Authorization: `Bearer ${user?.token}`,
+            },
           }
         )
 
         if (!res.ok) {
           const err = await res.json()
-          throw new Error(err.message || "Failed to load leaderboard")
+          throw new Error(err.message || 'Failed to load leaderboard')
         }
 
         const json = await res.json()
         setData(json)
       } catch (err: any) {
-        setError(err.message || "Failed to load leaderboard")
+        setError(err.message || 'Failed to load leaderboard')
       } finally {
         setLoading(false)
       }
     }
 
     fetchRanking()
-  }, [weekKey, baseURL, user?.token])
+  }, [weekKey, college, baseURL, user?.token])
 
   if (loading) return <Spinner animation="border" />
   if (error) return <Alert variant="danger">{error}</Alert>
@@ -78,7 +92,13 @@ const JustAMinuteLeaderboard = ({ weekKey }: { weekKey: string }) => {
   return (
     <div>
       <h6 className="mb-3">
-        Weekly Leaderboard <Badge bg="secondary">{weekKey}</Badge>
+        Weekly Leaderboard{' '}
+        <Badge bg="secondary">{weekKey}</Badge>
+        {college && (
+          <Badge bg="info" className="ms-2">
+            {college}
+          </Badge>
+        )}
       </h6>
 
       <Table striped bordered hover responsive>
@@ -98,14 +118,14 @@ const JustAMinuteLeaderboard = ({ weekKey }: { weekKey: string }) => {
             return (
               <tr
                 key={row.rank}
-                className={isMe ? "table-primary" : ""}
+                className={isMe ? 'table-primary' : ''}
               >
                 <td>
                   <strong>{rankEmoji(row.rank) ?? row.rank}</strong>
                 </td>
 
                 <td>
-                  <div>{row.student?.fullName || "—"}</div>
+                  <div>{row.student?.fullName || '—'}</div>
                   {row.student?.college && (
                     <div className="text-muted small">
                       {row.student.college}

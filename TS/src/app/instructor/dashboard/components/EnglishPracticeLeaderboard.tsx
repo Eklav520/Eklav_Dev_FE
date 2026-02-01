@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react"
-import { Table, Spinner, Alert, Badge } from "react-bootstrap"
-import axios from "axios"
-import { useAuthContext } from "@/context/useAuthContext"
+import { useEffect, useState } from 'react'
+import { Table, Spinner, Alert, Badge } from 'react-bootstrap'
+import axios from 'axios'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type StudentProfile = {
   _id: string
@@ -28,59 +28,70 @@ type RankingResponse = {
 }
 
 const rankEmoji = (rank: number) => {
-  if (rank === 1) return "🥇"
-  if (rank === 2) return "🥈"
-  if (rank === 3) return "🥉"
+  if (rank === 1) return '🥇'
+  if (rank === 2) return '🥈'
+  if (rank === 3) return '🥉'
   return null
 }
 
 const EnglishPracticeLeaderboard = ({
   section,
   subSection,
-  weekKey
+  weekKey,
+  college,
 }: {
   section: string
   subSection: string
   weekKey: string
+  college?: string | null
 }) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
   const [data, setData] = useState<RankingResponse | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [error, setError] = useState('')
 
   useEffect(() => {
     const fetchRanking = async () => {
       try {
+        setLoading(true)
+
         const res = await axios.get(
           `${baseURL}/api/englishPracticeRanking/weekly`,
           {
-            params: { section, subSection, weekKey },
+            params: {
+              section,
+              subSection,
+              weekKey,
+              ...(college ? { college } : {}), // ✅ college filter
+            },
             headers: {
-              Authorization: `Bearer ${user?.token}`
-            }
+              Authorization: `Bearer ${user?.token}`,
+            },
           }
         )
+
         setData(res.data)
       } catch (err: any) {
-        setError(err.response?.data?.message || "Failed to load ranking")
+        setError(err.response?.data?.message || 'Failed to load ranking')
       } finally {
         setLoading(false)
       }
     }
 
     fetchRanking()
-  }, [section, subSection, weekKey, user?.token])
+  }, [section, subSection, weekKey, college, baseURL, user?.token])
 
   if (loading) return <Spinner animation="border" />
   if (error) return <Alert variant="danger">{error}</Alert>
-  if (!data) return null
+  if (!data || !data.leaderboard.length)
+    return <Alert variant="info">No ranking available</Alert>
 
   return (
     <div>
       <h5 className="mb-3">
-        Weekly Leaderboard{" "}
+        Weekly Leaderboard{' '}
         <Badge bg="secondary">{weekKey}</Badge>
       </h5>
 
@@ -95,33 +106,33 @@ const EnglishPracticeLeaderboard = ({
           </tr>
         </thead>
         <tbody>
-          {data.leaderboard.map(row => (
-            <tr
-              key={row.rank}
-              className={
-                row.student?.userId === user?.id ? "table-primary" : ""
-              }
-            >
-              <td>
-                <strong>
-                  {rankEmoji(row.rank) ?? row.rank}
-                </strong>
-              </td>
+          {data.leaderboard.map(row => {
+            const isMe = row.student?.userId === user?.id
 
-              <td>
-                {row.student?.fullName || "—"}
-                {row.student?.college && (
-                  <div className="text-muted small">
-                    {row.student.college}
-                  </div>
-                )}
-              </td>
+            return (
+              <tr
+                key={row.rank}
+                className={isMe ? 'table-primary' : ''}
+              >
+                <td>
+                  <strong>{rankEmoji(row.rank) ?? row.rank}</strong>
+                </td>
 
-              <td>{row.bestScore}</td>
-              <td>{row.avgScore.toFixed(1)}</td>
-              <td>{row.attemptCount}</td>
-            </tr>
-          ))}
+                <td>
+                  <div>{row.student?.fullName || '—'}</div>
+                  {row.student?.college && (
+                    <div className="text-muted small">
+                      {row.student.college}
+                    </div>
+                  )}
+                </td>
+
+                <td>{row.bestScore}</td>
+                <td>{row.avgScore.toFixed(1)}</td>
+                <td>{row.attemptCount}</td>
+              </tr>
+            )
+          })}
         </tbody>
       </Table>
 

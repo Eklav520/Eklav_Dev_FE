@@ -5,11 +5,13 @@ type SectionProgressDashboardProps = {
   year: number
   month: number
   week: string | null
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const SectionProgressDashboard = ({
   week,
+  college,
   registerDownload,
 }: SectionProgressDashboardProps) => (
   <Card>
@@ -21,6 +23,7 @@ const SectionProgressDashboard = ({
       {week ? (
         <WritingUnifiedProgressTable
           weekKey={week}
+          college={college}        
           registerDownload={registerDownload}
         />
       ) : (

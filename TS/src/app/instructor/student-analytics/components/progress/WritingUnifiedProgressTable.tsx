@@ -20,11 +20,13 @@ const ROWS_PER_PAGE = 10
 
 type WritingUnifiedProgressTableProps = {
   weekKey: string
+  college: string | null
   registerDownload?: (fn: () => void) => void
 }
 
 const WritingUnifiedProgressTable = ({
   weekKey,
+  college,
   registerDownload,
 }: WritingUnifiedProgressTableProps) => {
   const { user } = useAuthContext()
@@ -35,6 +37,18 @@ const WritingUnifiedProgressTable = ({
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
+  const buildQuery = (page: number) => {
+    let query = `page=${page}&limit=${ROWS_PER_PAGE}&weekKey=${encodeURIComponent(
+      weekKey
+    )}`
+
+    if (college) {
+      query += `&college=${encodeURIComponent(college)}`
+    }
+
+    return query
+  }
+
   useEffect(() => {
     const fetchWriting = async () => {
       try {
@@ -42,8 +56,8 @@ const WritingUnifiedProgressTable = ({
         setCurrentPage(1)
 
         const res = await fetch(
-          `${baseURL}/api/adminDashboardCharts/admin/writing/history?page=1&limit=${ROWS_PER_PAGE}&weekKey=${encodeURIComponent(
-            weekKey
+          `${baseURL}/api/adminDashboardCharts/admin/writing/history?${buildQuery(
+            1
           )}`,
           {
             headers: {
@@ -68,7 +82,8 @@ const WritingUnifiedProgressTable = ({
     }
 
     if (weekKey) fetchWriting()
-  }, [weekKey, baseURL, user?.token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekKey, college, baseURL, user?.token])
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -76,8 +91,8 @@ const WritingUnifiedProgressTable = ({
         setLoading(true)
 
         const res = await fetch(
-          `${baseURL}/api/adminDashboardCharts/admin/writing/history?page=${currentPage}&limit=${ROWS_PER_PAGE}&weekKey=${encodeURIComponent(
-            weekKey
+          `${baseURL}/api/adminDashboardCharts/admin/writing/history?${buildQuery(
+            currentPage
           )}`,
           {
             headers: {
@@ -102,7 +117,8 @@ const WritingUnifiedProgressTable = ({
     }
 
     if (weekKey) fetchPage()
-  }, [currentPage, weekKey, baseURL, user?.token])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, weekKey, college, baseURL, user?.token])
 
   const downloadExcel = useCallback(() => {
     if (data.length === 0) return
@@ -124,8 +140,11 @@ const WritingUnifiedProgressTable = ({
     const worksheet = XLSX.utils.json_to_sheet(formatted)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Writing Progress')
-    XLSX.writeFile(workbook, `writing-progress-${weekKey}-p${currentPage}.xlsx`)
-  }, [data, weekKey, currentPage])
+    XLSX.writeFile(
+      workbook,
+      `writing-progress-${weekKey}-${college || 'all'}-p${currentPage}.xlsx`
+    )
+  }, [data, weekKey, currentPage, college])
 
   useEffect(() => {
     if (registerDownload) {
@@ -196,7 +215,8 @@ const WritingUnifiedProgressTable = ({
       {totalPages > 1 && (
         <div className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 pt-2 border-top">
           <p className="mb-2 mb-sm-0 text-secondary small">
-            Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+            Page <strong>{currentPage}</strong> of{' '}
+            <strong>{totalPages}</strong>
           </p>
 
           <nav aria-label="Page navigation">
@@ -216,16 +236,25 @@ const WritingUnifiedProgressTable = ({
                   key={page}
                   className={`page-item ${currentPage === page ? 'active' : ''}`}
                 >
-                  <Button className="page-link" onClick={() => setCurrentPage(page)}>
+                  <Button
+                    className="page-link"
+                    onClick={() => setCurrentPage(page)}
+                  >
                     {page}
                   </Button>
                 </li>
               ))}
 
-              <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+              <li
+                className={`page-item ${
+                  currentPage === totalPages ? 'disabled' : ''
+                }`}
+              >
                 <Button
                   className="page-link"
-                  onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage(p => Math.min(p + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   <FaAngleRight />
