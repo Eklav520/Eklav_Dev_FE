@@ -1,59 +1,127 @@
 import { CounterType } from '@/types/other'
-import { Col, Row } from 'react-bootstrap'
+import { Col, Row, Spinner } from 'react-bootstrap'
 import CountUp from 'react-countup'
-import { counterData } from '../data'
 import { useEffect, useState } from 'react'
-import {Spinner } from 'react-bootstrap'
 import { FaUserGraduate, FaBookOpen, FaVideo } from 'react-icons/fa'
+import { useAuthContext } from '@/context/useAuthContext'
 
-const CounterCard = ({ count, title, icon: Icon, suffix, variant }: CounterType) => {
+const CounterCard = ({
+  count,
+  title,
+  icon: Icon,
+  suffix,
+  variant,
+}: CounterType) => {
   return (
-    <div className={`d-flex justify-content-center align-items-center p-4 bg-${variant} bg-opacity-15 rounded-3`}>
-    <span className={`display-6 text-${variant} mb-0`}>
-      {Icon && <Icon size={56} className="fa-fw" />}
-    </span>
-    <div className="ms-4">
-      <div className="d-flex">
-        <h5 className="mb-0 fw-bold">
-          <CountUp end={count} suffix={suffix} delay={0.5} />
-        </h5>
+    <div
+      className={`d-flex justify-content-center align-items-center p-4 bg-${variant} bg-opacity-15 rounded-3`}
+    >
+      <span className={`display-6 text-${variant} mb-0`}>
+        {Icon && <Icon size={56} className="fa-fw" />}
+      </span>
+      <div className="ms-4">
+        <div className="d-flex">
+          <h5 className="mb-0 fw-bold">
+            <CountUp end={count} suffix={suffix} delay={0.5} />
+          </h5>
+        </div>
+        <span className="mb-0 h6 fw-light">{title}</span>
       </div>
-      <span className="mb-0 h6 fw-light">{title}</span>
     </div>
-  </div>
   )
 }
 
 const Counter = () => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+
   const [counts, setCounts] = useState({
     studentCount: 0,
     courseCount: 0,
-    classCount: 0
+    classCount: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [college, setCollege] = useState<string | null>(null)
 
-  const baseURL = import.meta.env.VITE_API_BASE_URL;
+  /* ============================
+     FETCH PROFILE (college)
+  ============================ */
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch(`${baseURL}/profile`, {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      })
+
+      if (!res.ok) throw new Error('Failed to fetch profile')
+
+      const data = await res.json()
+      setCollege(data.college || null)
+    } catch (err) {
+      console.error('Failed to load profile', err)
+    }
+  }
+
+  /* ============================
+     FETCH COUNTS (college based)
+  ============================ */
+  const fetchCounts = async (collegeName: string) => {
+    try {
+      const res = await fetch(
+        `${baseURL}/dashboardAdmin?college=${encodeURIComponent(collegeName)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      )
+
+      if (!res.ok) throw new Error('Failed to fetch dashboard counts')
+
+      const data = await res.json()
+      setCounts(data)
+    } catch (err) {
+      console.error('Failed to fetch admin counts:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* ============================
+     INITIAL LOAD
+  ============================ */
+  useEffect(() => {
+    if (user?.token) {
+      fetchProfile()
+    }
+  }, [user?.token])
 
   useEffect(() => {
-    const fetchCounts = async () => {
-      try {
-        const res = await fetch(`${baseURL}/dashboardAdmin`)
-        const data = await res.json()
-        setCounts(data)
-      } catch (err) {
-        console.error('Failed to fetch admin counts:', err)
-      } finally {
-        setLoading(false)
-      }
+    if (college) {
+      fetchCounts(college)
     }
+  }, [college])
 
-    fetchCounts()
-  }, [])
-
-   const data = [
-    { count: counts.studentCount, title: 'Students Available', icon: FaUserGraduate, variant: 'success' },
-    { count: counts.courseCount, title: 'Courses Available', icon: FaBookOpen, variant: 'info' },
-    { count: counts.classCount, title: 'Live Classes Scheduled', icon: FaVideo, variant: 'warning' }
+  const data = [
+    {
+      count: counts.studentCount,
+      title: 'Students Available',
+      icon: FaUserGraduate,
+      variant: 'success',
+    },
+    {
+      count: counts.courseCount,
+      title: 'Courses Available',
+      icon: FaBookOpen,
+      variant: 'info',
+    },
+    {
+      count: counts.classCount,
+      title: 'Live Classes Scheduled',
+      icon: FaVideo,
+      variant: 'warning',
+    },
   ]
 
   if (loading) {
