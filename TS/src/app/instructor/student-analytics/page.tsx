@@ -277,6 +277,19 @@ const StudentAnalyticsPage = () => {
 
         {activeTab === 'leaderboard' && (
           <>
+           <ProgressAnalyticsFilters
+              year={selectedYear}
+              month={selectedMonth}
+              week={selectedWeek}
+              yearOptions={yearOptions}
+              monthOptions={monthOptions}
+              weekOptions={weekOptions}
+              onYearChange={setSelectedYear}
+              onMonthChange={setSelectedMonth}
+              onWeekChange={setSelectedWeek}
+              onDownload={() => downloadHandlerRef.current?.()}
+              downloadDisabled={!downloadEnabled}
+            />
             {selectedSection === 'justAMinute' && <JustAMinuteLeaderboardDashboard year={selectedYear} month={selectedMonth} week={selectedWeek} college={college} />}
             {selectedSection === 'speaking' && <EnglishPracticeLeaderboardDashboard year={selectedYear} month={selectedMonth} week={selectedWeek} college={college} />}
             {selectedSection === 'reading' && <ReadingLeaderboardDashboard year={selectedYear} month={selectedMonth} week={selectedWeek} college={college}/>}
