@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Card, Col, Container, Row, Modal } from 'react-bootstrap'
 import { FaStar, FaSlidersH as Sliders, FaCrown, FaAward, FaMedal } from 'react-icons/fa'
-import { Icon } from '@iconify/react'
 import avatarFallback from '@/assets/images/avatar/09.jpg'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -150,11 +149,7 @@ const Banner = ({ toggleOffCanvas }: BannerProps) => {
   const renderSponsorIcon = (sponsor: Sponsor) => {
     const color = getSponsorColor(sponsor)
 
-    if (sponsor.icon) {
-      return <Icon icon={sponsor.icon} width="20" height="20" className="sponsor-icon" style={{ color }} />
-    }
-
-    // Fallback: Use first two letters of the company name with colored background
+    // Use first two letters of the company name with colored background
     const initials = sponsor.name.replace(/[^A-Z]/g, '').slice(0, 2) || sponsor.name.slice(0, 2)
     return (
       <div
