@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
-import 'react-quill-new/dist/quill.snow.css'
+import 'quill/dist/quill.snow.css'
 
 
 const AdminJobForm: React.FC = () => {
