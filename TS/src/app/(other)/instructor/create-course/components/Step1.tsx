@@ -2,7 +2,7 @@ import Stepper from 'bs-stepper'
 import { FormEvent } from 'react'
 import { Col, Row } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
-import 'react-quill-new/dist/quill.snow.css'
+import 'quill/dist/quill.snow.css'
 
 const Step1 = ({
   stepperInstance,

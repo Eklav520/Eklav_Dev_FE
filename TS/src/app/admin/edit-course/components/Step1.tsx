@@ -4,7 +4,7 @@ import { FormEvent, useState } from 'react'
 import { Col, Row } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
 // import ReactQuill from 'react-quill'
-import 'react-quill-new/dist/quill.snow.css'
+import 'quill/dist/quill.snow.css'
 
 const Step1 = ({ stepperInstance }: { stepperInstance: Stepper | undefined }) => {
   const goToNextStep = (e: FormEvent<HTMLFormElement>) => {
