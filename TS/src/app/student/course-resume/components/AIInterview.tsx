@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition'
-import { ReactMic } from 'react-mic'
+import AudioVisualizer from '../../../../components/AudioVisualizer'
 import Lottie from 'lottie-react'
 import avatarAnimation from '../../../../assets/data/Avatar.json'
 
@@ -91,13 +91,11 @@ const AIInterview = () => {
       <h4 className="mt-3">🧠 Question:</h4>
       <p className="lead">{currentQuestion}</p>
 
-      <ReactMic
-        record={recording}
-        className="sound-wave"
-        onStop={() => {}}
+      <AudioVisualizer
+        recording={recording}
         strokeColor="#0d6efd"
         backgroundColor="#f8f9fa"
-        mimeType="audio/webm"
+        className="sound-wave"
       />
 
       <div className="my-3">
