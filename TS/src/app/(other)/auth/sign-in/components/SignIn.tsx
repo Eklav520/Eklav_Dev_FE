@@ -23,7 +23,7 @@ const SignIn = () => {
           control={control}
           icon={BsEnvelopeFill}
           placeholder="E-mail"
-          label="Email address *"
+          label="Email Address *"
           name="email"
         />
       </div>

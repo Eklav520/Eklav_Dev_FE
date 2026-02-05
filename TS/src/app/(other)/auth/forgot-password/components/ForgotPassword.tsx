@@ -123,7 +123,7 @@ const ForgotPassword = () => {
               control={control}
               icon={BsEnvelopeFill}
               placeholder="E-mail"
-              label="Email address *"
+              label="Email Address *"
               name="email"
             />
             <small className="text-danger">{errors.email?.message}</small>
