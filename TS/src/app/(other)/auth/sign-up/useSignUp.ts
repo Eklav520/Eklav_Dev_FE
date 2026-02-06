@@ -80,7 +80,7 @@ const useSignUp = () => {
   const redirectUser = () => {
     const redirectLink = searchParams.get('redirectTo')
     if (redirectLink) navigate(redirectLink)
-    else navigate('/dashboard')
+    else navigate('/auth/sign-in')
   }
 
   const signUp = handleSubmit(async (values) => {
