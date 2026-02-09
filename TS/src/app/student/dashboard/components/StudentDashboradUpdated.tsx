@@ -41,6 +41,9 @@ const StudentDashboardUpdated: React.FC = () => {
   const [summaryLoading, setSummaryLoading] = useState(true)
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
   const [enrollmentsLoading, setEnrollmentsLoading] = useState(true)
+  const [allCourses, setAllCourses] = useState<any[]>([])
+  const [coursesLoading, setCoursesLoading] = useState(true)
+
 
 
   /* ================= EFFECT (ALWAYS RUNS) ================= */
@@ -59,43 +62,66 @@ const StudentDashboardUpdated: React.FC = () => {
   }, [user?.token, baseURL])
 
   useEffect(() => {
-  if (!user?.token) return
-
-  setEnrollmentsLoading(true)
-
-  fetch(`${baseURL}/enrollments/me`, {
-    headers: {
-      Authorization: `Bearer ${user.token}`,
-    },
-  })
+  fetch(`${baseURL}/courses`)
     .then(res => res.json())
-    .then(data => {
-      // Map backend enrollments → CourseProgress format
-      const mapped = data.map((enroll: any, index: number) => {
-        const progress = Number(enroll.courseProgress || 0)
+    .then(setAllCourses)
+    .catch(() => setAllCourses([]))
+    .finally(() => setCoursesLoading(false))
+}, [baseURL])
 
-        return {
-          id: enroll.courseId._id,
-          name: enroll.courseId.title,
-          progress,
-          status:
-            progress === 0
-              ? 'Not Started'
-              : progress === 100
-              ? 'Completed'
-              : 'In Progress',
-          color:
-            index % 2 === 0
-              ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-              : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
-        }
-      })
 
-      setEnrolledCourses(mapped)
+  useEffect(() => {
+    if (!user?.token) return
+
+    setEnrollmentsLoading(true)
+
+    fetch(`${baseURL}/enrollments/me`, {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
     })
-    .catch(() => setEnrolledCourses([]))
-    .finally(() => setEnrollmentsLoading(false))
-}, [user?.token, baseURL])
+      .then(res => res.json())
+      .then(data => {
+        // Map backend enrollments → CourseProgress format
+        const mapped = data.map((enroll: any, index: number) => {
+          const progress = Number(enroll.courseProgress || 0)
+
+          return {
+            id: enroll.courseId._id,
+            name: enroll.courseId.title,
+            progress,
+            status:
+              progress === 0
+                ? 'Not Started'
+                : progress === 100
+                  ? 'Completed'
+                  : 'In Progress',
+            color:
+              index % 2 === 0
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+          }
+        })
+
+        setEnrolledCourses(mapped)
+      })
+      .catch(() => setEnrolledCourses([]))
+      .finally(() => setEnrollmentsLoading(false))
+  }, [user?.token, baseURL])
+
+  // ===== DERIVED: remaining courses =====
+const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id))
+
+const remainingCourses = allCourses
+  .filter(course => !enrolledCourseIds.has(course._id))
+  .map(course => ({
+    id: course._id,
+    name: course.title,
+    progress: 0,
+    status: 'Not Enrolled',
+    color: '#64748b',
+  }))
+
 
 
   /* ================= RENDER GUARDS (SAFE) ================= */
@@ -147,7 +173,7 @@ const StudentDashboardUpdated: React.FC = () => {
     },
     {
       label: 'Rank',
-      value: '#',
+      value: dashboardSummary.rank.value,
       icon: FaTrophy,
       color: 'info',
       bgColor: 'rgba(13,202,240,.1)',
@@ -170,18 +196,23 @@ const StudentDashboardUpdated: React.FC = () => {
 
       <Row className="g-3 mb-4">
         <Col xs={12} lg={4}>
-          <CourseProgress courses={enrolledCourses} />
+         <CourseProgress
+  enrolledCourses={enrolledCourses}
+  remainingCourses={remainingCourses}
+/>
+
+
 
         </Col>
         <Col xs={12} lg={4}>
-          <EnglishSkills/>
+          <EnglishSkills />
         </Col>
         <Col xs={12} lg={4}>
-          <SelfPreparation/>
+          <SelfPreparation />
         </Col>
       </Row>
 
-     {/*  <Row className="g-3 mb-4">
+      {/*  <Row className="g-3 mb-4">
         <Col xs={12} lg={8}>
           <WeeklyAnalytics data={weeklyProgressData} />
         </Col>
