@@ -57,6 +57,24 @@ const StudentListPage: React.FC = () => {
     }
   }
 
+  const fetchAllStudents = async () => {
+  try {
+    const res = await fetch(`${baseURL}/adminProfiles`, {
+      headers: {
+        Authorization: `Bearer ${user?.token}`,
+      },
+    })
+
+    if (!res.ok) throw new Error('Failed to fetch students')
+
+    const data: Student[] = await res.json()
+    setStudents(data)
+  } catch (error) {
+    console.error('Error fetching all students:', error)
+  }
+}
+
+
   /* ============================
      FETCH STUDENTS (by college)
   ============================ */
@@ -89,11 +107,22 @@ const StudentListPage: React.FC = () => {
     }
   }, [user?.token])
 
-  useEffect(() => {
-    if (college) {
-      fetchStudents(college)
-    }
-  }, [college])
+ useEffect(() => {
+  if (!user?.token) return
+
+  // College Admin → only their college students
+  if (college) {
+    fetchStudents(college)
+  }
+
+  console.log("role",role)
+
+  // Admin / Super Admin → all students
+  if (role === 'admin' || role === 'super_admin') {
+    fetchAllStudents()
+  }
+}, [role, college, user?.token])
+
 
   /* ============================
      SORT + FILTER + PAGINATION
