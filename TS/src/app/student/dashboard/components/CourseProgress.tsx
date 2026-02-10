@@ -36,7 +36,7 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
         display: 'flex',
         flexDirection: 'column',
       }}
-    >
+    > 
       {/* ================= HEADER (UNCHANGED) ================= */}
       <div style={{ flexShrink: 0 }}>
         <Card.Header

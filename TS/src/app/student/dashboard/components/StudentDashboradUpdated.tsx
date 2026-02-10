@@ -192,17 +192,14 @@ const remainingCourses = allCourses
       }}>
       <HeroSection student={student} />
       <KPISection kpis={kpis} />
-      <QuickStats />
+      
 
       <Row className="g-3 mb-4">
         <Col xs={12} lg={4}>
-         <CourseProgress
-  enrolledCourses={enrolledCourses}
-  remainingCourses={remainingCourses}
-/>
-
-
-
+          <CourseProgress
+            enrolledCourses={enrolledCourses}
+            remainingCourses={remainingCourses}
+          />
         </Col>
         <Col xs={12} lg={4}>
           <EnglishSkills />
@@ -211,6 +208,7 @@ const remainingCourses = allCourses
           <SelfPreparation />
         </Col>
       </Row>
+      <MonthlyReport/>
 
       {/*  <Row className="g-3 mb-4">
         <Col xs={12} lg={8}>
