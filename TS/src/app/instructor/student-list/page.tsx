@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap'
-import { FaMapMarkerAlt, FaRegEnvelope, FaSearch } from 'react-icons/fa'
+import { FaMapMarkerAlt, FaRegEnvelope, FaSearch, FaDownload } from 'react-icons/fa'
 import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
 import { Modal, Form } from 'react-bootstrap'
 import StarRating from './components/StarRating'
 import { useAuthContext } from '@/context/useAuthContext'
+import * as XLSX from 'xlsx'
 
 interface Student {
   _id: string
@@ -37,7 +38,7 @@ const StudentListPage: React.FC = () => {
   const studentsPerPage = 5
 
   /* ============================
-     FETCH PROFILE (college)
+     FETCH PROFILE
   ============================ */
   const fetchProfile = async () => {
     try {
@@ -57,28 +58,30 @@ const StudentListPage: React.FC = () => {
     }
   }
 
+  /* ============================
+     FETCH STUDENTS (ADMIN)
+  ============================ */
   const fetchAllStudents = async () => {
-  try {
-    const res = await fetch(`${baseURL}/adminProfiles`, {
-      headers: {
-        Authorization: `Bearer ${user?.token}`,
-      },
-    })
+    try {
+      const res = await fetch(`${baseURL}/adminProfiles`, {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      })
 
-    if (!res.ok) throw new Error('Failed to fetch students')
+      if (!res.ok) throw new Error('Failed to fetch students')
 
-    const data: Student[] = await res.json()
-    setStudents(data)
-  } catch (error) {
-    console.error('Error fetching all students:', error)
+      const data: Student[] = await res.json()
+      setStudents(data)
+    } catch (error) {
+      console.error('Error fetching all students:', error)
+    }
   }
-}
-
 
   /* ============================
-     FETCH STUDENTS (by college)
+     FETCH STUDENTS (COLLEGE)
   ============================ */
-  const fetchStudents = async (collegeName: string) => {
+  const fetchStudentsByCollege = async (collegeName: string) => {
     try {
       const res = await fetch(
         `${baseURL}/adminProfiles?college=${encodeURIComponent(collegeName)}`,
@@ -102,32 +105,26 @@ const StudentListPage: React.FC = () => {
      INITIAL LOAD
   ============================ */
   useEffect(() => {
-    if (user?.token) {
-      fetchProfile()
-    }
+    if (user?.token) fetchProfile()
   }, [user?.token])
 
- useEffect(() => {
-  if (!user?.token) return
+  useEffect(() => {
+    if (!user?.token || !role) return
 
-  // College Admin → only their college students
-  if (college) {
-    fetchStudents(college)
-  }
+    if (role === 'college_admin' && college) {
+      fetchStudentsByCollege(college)
+    }
 
-  console.log("role",role)
-
-  // Admin / Super Admin → all students
-  if (role === 'admin' || role === 'super_admin') {
-    fetchAllStudents()
-  }
-}, [role, college, user?.token])
-
+    if (role === 'admin' || role === 'super_admin') {
+      fetchAllStudents()
+    }
+  }, [role, college, user?.token])
 
   /* ============================
-     SORT + FILTER + PAGINATION
+     SORT + FILTER
   ============================ */
   let sortedStudents = [...students]
+
   if (sortOption === 'college') {
     sortedStudents.sort((a, b) =>
       (a.college || '').localeCompare(b.college || '')
@@ -137,13 +134,16 @@ const StudentListPage: React.FC = () => {
   const filteredStudents = sortedStudents.filter(student => {
     const term = searchTerm.toLowerCase()
     return (
-      student.fullName?.toLowerCase().includes(term) ||
-      student.email?.toLowerCase().includes(term) ||
-      student.location?.toLowerCase().includes(term) ||
+      student.fullName.toLowerCase().includes(term) ||
+      student.email.toLowerCase().includes(term) ||
+      student.location.toLowerCase().includes(term) ||
       student.college?.toLowerCase().includes(term)
     )
   })
 
+  /* ============================
+     PAGINATION
+  ============================ */
   const indexOfLastStudent = currentPage * studentsPerPage
   const indexOfFirstStudent = indexOfLastStudent - studentsPerPage
   const currentStudents = filteredStudents.slice(
@@ -152,13 +152,49 @@ const StudentListPage: React.FC = () => {
   )
   const totalPages = Math.ceil(filteredStudents.length / studentsPerPage)
 
+  /* ============================
+     DOWNLOAD EXCEL
+  ============================ */
+  const handleDownloadExcel = () => {
+    if (!filteredStudents.length) return
+
+    const excelData = filteredStudents.map((student, index) => ({
+      'S.No': index + 1,
+      'Student Name': student.fullName,
+      Email: student.email,
+      Phone: student.phoneNo,
+      Location: student.location,
+      College: student.college || '-',
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
+
+    const fileName =
+      role === 'college_admin' && college
+        ? `Students_${college}.xlsx`
+        : 'All_Students.xlsx'
+
+    XLSX.writeFile(workbook, fileName)
+  }
+
   return (
     <>
       <PageMetaData title="Student List" />
 
       <Card className="border bg-transparent rounded-3">
-        <CardHeader className="bg-transparent border-bottom">
+        <CardHeader className="bg-transparent border-bottom d-flex justify-content-between align-items-center">
           <h3 className="mb-0">My Students List</h3>
+
+          <Button
+            variant="outline-success"
+            onClick={handleDownloadExcel}
+            disabled={filteredStudents.length === 0}
+          >
+            <FaDownload className="me-2" />
+            Download Excel
+          </Button>
         </CardHeader>
 
         <CardBody>

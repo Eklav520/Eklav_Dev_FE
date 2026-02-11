@@ -1754,6 +1754,158 @@
   }
 }
 
+/* RobotAssistant.css */
+
+/* Professional AI Assistant Indicator */
+.robot-assistant-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+}
+
+.robot-assistant-container-mobile {
+  top: 12px;
+  right: 12px;
+}
+
+.robot-main-circle {
+  width: 100px;
+  height: 100px;
+  background-color: rgba(30, 30, 40, 0.9);
+  border: 2px solid rgba(100, 100, 120, 0.4);
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.robot-main-circle-mobile {
+  width: 48px;
+  height: 48px;
+}
+
+.robot-main-circle-listening {
+  border-color: #20c997;
+}
+
+.robot-inner-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 30%, rgba(60, 60, 80, 0.3), transparent 70%);
+}
+
+.robot-avatar-container {
+  position: relative;
+  z-index: 2;
+  filter: none;
+  transition: filter 0.3s ease;
+}
+
+.robot-avatar-container-listening {
+  filter: drop-shadow(0 0 6px rgba(32, 201, 151, 0.4));
+}
+
+/* Animated rings */
+.robot-pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(32, 201, 151, 0.3);
+  border-radius: 50%;
+  animation: pulseRing1 2s infinite;
+}
+
+.robot-pulse-ring-delayed {
+  border: 1px solid rgba(32, 201, 151, 0.2);
+  animation: pulseRing2 2s infinite 0.5s;
+}
+
+/* Status label */
+.robot-status-label {
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+}
+
+.robot-status-label-mobile {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+}
+
+.robot-status-label-idle {
+  background-color: rgba(100, 100, 120, 0.15);
+  border: 1px solid rgba(100, 100, 120, 0.2);
+  color: rgba(35, 35, 223, 0.9);
+}
+
+.robot-status-label-listening {
+  background-color: rgba(32, 201, 151, 0.15);
+  border: 1px solid rgba(32, 201, 151, 0.3);
+  color: #20c997;
+}
+
+/* Status dot */
+.robot-status-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 4px currentColor;
+}
+
+.robot-status-dot-idle {
+  background-color: #000000;
+}
+
+.robot-status-dot-listening {
+  background-color: #20c997;
+}
+
+/* Animations */
+@keyframes pulseRing1 {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulseRing2 {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
 /* If you use custom fonts, consider using a web-safe fallback or ensure fonts are loaded before capture */
 
 

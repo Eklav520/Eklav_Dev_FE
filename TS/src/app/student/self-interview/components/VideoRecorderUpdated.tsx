@@ -1,117 +1,138 @@
+// VideoRecorderUpdated.tsx - Fixed version
 import React, { useEffect, useRef, useState } from 'react';
 
-interface VideoRecorderProps {
+interface VideoRecorderUpdatedProps {
   interviewId: string;
   token?: string;
-  stopRecording: boolean;
-  onRecordingError?: (error: string) => void;
+  stopRecording: boolean; // When true, stops recording and uploads
   onVideoUpload?: (url: string) => void;
+  onRecordingError?: (error: string) => void;
 }
 
-const VideoRecorder: React.FC<VideoRecorderProps> = ({
+const VideoRecorderUpdated: React.FC<VideoRecorderUpdatedProps> = ({
   interviewId,
   token,
-  stopRecording,
-  onRecordingError,
+  stopRecording: shouldStopRecording, // Renamed to avoid conflict
   onVideoUpload,
+  onRecordingError,
 }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const chunks = useRef<Blob[]>([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const chunksRef = useRef<Blob[]>([]);
   const [isRecording, setIsRecording] = useState(false);
   const [hasPermission, setHasPermission] = useState(true);
+  const [error, setError] = useState<string>('');
+  const questionCountRef = useRef(0);
 
-  useEffect(() => {
-    let localStream: MediaStream;
+  // Initialize stream only once
+  const initStream = async () => {
+    try {
+      console.log('Initializing video stream...');
+      
+      // Get user media
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: 'user'
+        },
+        audio: true
+      });
 
-    async function startStream() {
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+      streamRef.current = stream;
+      
+      // Set up video element
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.play().catch(e => console.warn('Video play error:', e));
+      }
 
-        streamRef.current = localStream;
+      // Setup media recorder
+      const options = { 
+        mimeType: 'video/webm; codecs=vp8,opus',
+        audioBitsPerSecond: 128000,
+        videoBitsPerSecond: 2500000
+      };
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = localStream;
+      let mediaRecorder;
+      if (MediaRecorder.isTypeSupported('video/webm; codecs=vp8,opus')) {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } else {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
+      mediaRecorderRef.current = mediaRecorder;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
         }
+      };
 
-        const mediaRecorder = new MediaRecorder(localStream, {
-          mimeType: 'video/webm; codecs=vp8,opus',
-        });
+      mediaRecorder.onstop = async () => {
+        console.log('MediaRecorder stopped, uploading...');
+        if (chunksRef.current.length > 0) {
+          const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+          await uploadVideo(blob);
+          chunksRef.current = [];
+        }
+      };
 
-        mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.onerror = (event) => {
+        console.error('MediaRecorder error:', event);
+        setError('Recording error occurred');
+      };
 
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            chunks.current.push(event.data);
-          }
-        };
+      // Start recording immediately
+      startRecordingSession();
 
-        mediaRecorder.onstop = async () => {
-          const fullBlob = new Blob(chunks.current, { type: 'video/webm' });
-          await uploadFinalVideo(fullBlob);
-          chunks.current = [];
-        };
+    } catch (err) {
+      console.error('Failed to initialize stream:', err);
+      setHasPermission(false);
+      setError('Camera/microphone access denied');
+      onRecordingError?.('Camera/microphone access denied');
+    }
+  };
 
-        mediaRecorder.start();
+  const startRecordingSession = () => {
+    if (!mediaRecorderRef.current || isRecording) return;
+    
+    try {
+      if (mediaRecorderRef.current.state === 'inactive') {
+        mediaRecorderRef.current.start(1000); // Timeslice of 1 second
         setIsRecording(true);
-      } catch (err) {
-        console.error('Could not start media recording', err);
-        setHasPermission(false);
-        onRecordingError?.(
-          'Could not start recording. Please allow camera and microphone access.'
-        );
+        console.log('Recording started');
       }
+    } catch (err) {
+      console.error('Failed to start recording:', err);
     }
+  };
 
-    startStream();
-
-    return () => {
-      if (mediaRecorderRef.current?.state === 'recording') {
+  const stopRecordingSession = () => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+    
+    try {
+      if (mediaRecorderRef.current.state === 'recording') {
         mediaRecorderRef.current.stop();
+        setIsRecording(false);
+        console.log('Recording stopped');
       }
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (
-      stopRecording &&
-      mediaRecorderRef.current?.state === 'recording'
-    ) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    } catch (err) {
+      console.error('Failed to stop recording:', err);
     }
-  }, [stopRecording]);
+  };
 
-  const uploadFinalVideo = async (blob: Blob) => {
+  const uploadVideo = async (blob: Blob) => {
     try {
       const formData = new FormData();
       formData.append('interviewId', interviewId);
-      formData.append('video', blob, `interview-${Date.now()}.webm`);
+      formData.append('questionIndex', questionCountRef.current.toString());
+      formData.append('video', blob, `interview-${interviewId}-q${questionCountRef.current}.webm`);
 
-      const response = await fetch(`${baseURL}/upload-final-video`, {
+      const response = await fetch(`${baseURL}/upload-video`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -119,42 +140,112 @@ const VideoRecorder: React.FC<VideoRecorderProps> = ({
         body: formData,
       });
 
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.status}`);
+      }
 
-      if (result?.videoUrl && onVideoUpload) {
+      const result = await response.json();
+      console.log('Video uploaded:', result);
+
+      if (result.videoUrl && onVideoUpload) {
         onVideoUpload(result.videoUrl);
       }
-    } catch (error) {
-      console.error('Failed to upload final video:', error);
+
+      questionCountRef.current += 1;
+
+      // Immediately start recording for next question
+      setTimeout(() => {
+        if (streamRef.current && mediaRecorderRef.current) {
+          startRecordingSession();
+        }
+      }, 100);
+
+    } catch (err) {
+      console.error('Upload error:', err);
+      setError('Failed to upload video');
     }
   };
 
+  const cleanup = () => {
+    console.log('Cleaning up video recorder...');
+    stopRecordingSession();
+    
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+      });
+      streamRef.current = null;
+    }
+    
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    
+    mediaRecorderRef.current = null;
+  };
+
+  // Initialize on mount
+  useEffect(() => {
+    initStream();
+    
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  // Handle shouldStopRecording prop changes
+  useEffect(() => {
+    console.log('stopRecording prop changed:', shouldStopRecording);
+    
+    if (shouldStopRecording && isRecording) {
+      stopRecordingSession();
+    } else if (!shouldStopRecording && !isRecording && streamRef.current) {
+      // Start recording again if stream exists
+      setTimeout(() => {
+        startRecordingSession();
+      }, 300);
+    }
+  }, [shouldStopRecording]);
+
   if (!hasPermission) {
     return (
-      <p style={{ color: 'red' }}>
-        ⚠️ Please allow access to your camera and microphone to record the interview.
-      </p>
+      <div className="video-fallback">
+        <div className="camera-icon">📷</div>
+        <p>Camera access required</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="btn btn-sm btn-primary"
+        >
+          Reload & Grant Access
+        </button>
+      </div>
     );
   }
 
-return (
-  <div className="video-wrapper">
-
-    {/* 🔴 Recording Dot */}
-    {isRecording && (
-      <div className="record-dot"></div>
-    )}
-
-    <video
-      ref={videoRef}
-      autoPlay
-      muted
-      playsInline
-      className="interview-video-feed"
-    />
-  </div>
-);
-
+  return (
+    <div className="video-container">
+      <video
+        ref={videoRef}
+        autoPlay
+        muted
+        playsInline
+        className="video-feed"
+      />
+      
+      {isRecording && (
+        <div className="recording-indicator">
+          <div className="recording-dot"></div>
+          <span>Recording...</span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="error-overlay">
+          <small>{error}</small>
+        </div>
+      )}
+    </div>
+  );
 };
 
-export default VideoRecorder;
+export default VideoRecorderUpdated;
