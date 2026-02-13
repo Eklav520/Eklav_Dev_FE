@@ -683,9 +683,12 @@ const WritingPractice: React.FC = () => {
           border-radius: 20px;
           box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
           background: #ffffff;
-          height: auto; /* Remove fixed height */
-          min-height: 500px; /* Minimum height but can grow with content */
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-height: 500px;
         }
+
 
         .feedback-header {
           background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
@@ -699,7 +702,13 @@ const WritingPractice: React.FC = () => {
 
         .feedback-body {
           padding: 2rem;
-          height: auto; /* Let content determine height */
+          flex: 1;
+          overflow-y: auto;
+          min-height: 0; /* 🔴 VERY IMPORTANT */
+        }
+        
+        .feedback-content {
+          min-height: 0;
         }
 
         .empty-feedback {

@@ -134,7 +134,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
       setEnrolledCourseIds([])
       return
     }
-    ;(async () => {
+    ; (async () => {
       try {
         const res = await fetch(`${baseURL}/enrollments/me`, { headers: { Authorization: `Bearer ${token}` } })
         const data = await res.json()
@@ -194,6 +194,12 @@ const CourseCard = ({ course }: { course: CourseType }) => {
       </div>
     )
   }
+
+  const cleanDescription = (description ?? '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 
   return (
     <>
@@ -439,8 +445,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                               className="w-100 mt-3"
                               onClick={() => handleEnroll(_id)}
                               disabled={true}
-                              //disabled={enrolledCourseIds.includes(_id) || enrolledCourseIds.length >= 5}
-                              >
+                            //disabled={enrolledCourseIds.includes(_id) || enrolledCourseIds.length >= 5}
+                            >
                               {enrolledCourseIds.includes(_id)
                                 ? 'Already Enrolled'
                                 : enrolledCourseIds.length >= 5
@@ -476,7 +482,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                             <h5 className="mb-3">About this course</h5>
                             <div className="cc-desc">
                               {description ? (
-                                <div dangerouslySetInnerHTML={{ __html: description }} />
+                                <div dangerouslySetInnerHTML={{ __html: cleanDescription }} />
                               ) : (
                                 <p className="text-muted">{shortDescription || 'No description available.'}</p>
                               )}

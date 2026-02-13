@@ -1,7 +1,7 @@
 import Stepper from 'bs-stepper'
 import { FormEvent, useState } from 'react'
 import { Col, Row } from 'react-bootstrap'
-import { FaCloudUploadAlt, FaTimes, FaVideo, FaLink } from 'react-icons/fa'
+import { FaCloudUploadAlt, FaTimes, FaVideo, FaLink, FaPlay, FaList, FaCheck } from 'react-icons/fa'
 import AddVideos from './AddVideos'
 
 const Step2 = ({
@@ -24,6 +24,49 @@ const Step2 = ({
   
   const [tempUrl, setTempUrl] = useState('')
   const [tempDesc, setTempDesc] = useState('')
+
+  const handlePreviewVideo = (videoFile: File) => {
+    const videoElement = document.createElement('video')
+    videoElement.src = URL.createObjectURL(videoFile)
+    videoElement.controls = true
+    videoElement.style.maxWidth = '90vw'
+    videoElement.style.maxHeight = '90vh'
+    
+    const modal = document.createElement('div')
+    modal.style.position = 'fixed'
+    modal.style.top = '0'
+    modal.style.left = '0'
+    modal.style.width = '100vw'
+    modal.style.height = '100vh'
+    modal.style.backgroundColor = 'rgba(0,0,0,0.8)'
+    modal.style.display = 'flex'
+    modal.style.alignItems = 'center'
+    modal.style.justifyContent = 'center'
+    modal.style.zIndex = '9999'
+    
+    const closeButton = document.createElement('button')
+    closeButton.innerHTML = '×'
+    closeButton.style.position = 'absolute'
+    closeButton.style.top = '20px'
+    closeButton.style.right = '20px'
+    closeButton.style.background = 'none'
+    closeButton.style.border = 'none'
+    closeButton.style.color = 'white'
+    closeButton.style.fontSize = '40px'
+    closeButton.style.cursor = 'pointer'
+    closeButton.style.zIndex = '10000'
+    closeButton.onclick = () => document.body.removeChild(modal)
+    
+    modal.appendChild(videoElement)
+    modal.appendChild(closeButton)
+    modal.onclick = (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal)
+      }
+    }
+    
+    document.body.appendChild(modal)
+  }
 
   return (
     <form 
@@ -246,6 +289,11 @@ const Step2 = ({
             color: #6c757d !important;
           }
           
+          .step2-form .badge.bg-success.bg-opacity-10 {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+            color: #198754 !important;
+          }
+          
           /* Case study border */
           .step2-form .border-top {
             border-color: #dee2e6 !important;
@@ -268,6 +316,94 @@ const Step2 = ({
           
           .step2-form .btn-link.text-danger:hover {
             color: #b02a37 !important;
+          }
+
+          /* Video preview thumbnail */
+          .video-thumbnail {
+            position: relative;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 100px;
+            background: #000;
+          }
+          
+          .video-thumbnail video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          
+          .video-thumbnail-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+          }
+          
+          .video-thumbnail:hover .video-thumbnail-overlay {
+            opacity: 1;
+          }
+          
+          .play-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            transition: all 0.3s ease;
+          }
+          
+          .play-button:hover {
+            background: white;
+            transform: scale(1.1);
+          }
+
+          /* Stats panel */
+          .stats-panel {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+          }
+          
+          .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+          }
+          
+          .stats-item:last-child {
+            border-bottom: none;
+          }
+          
+          .stats-label {
+            font-size: 14px;
+            color: #6b7280;
+          }
+          
+          .stats-value {
+            font-weight: 600;
+            color: #1a1a1a;
+          }
+
+          /* Video item enhancements */
+          .video-meta {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 8px;
           }
         `}
       </style>
@@ -447,30 +583,82 @@ const Step2 = ({
           <span className="bg-white px-3 text-muted fw-medium">OR</span>
         </div>
         
-        {/* Upload Videos Section */}
+        {/* Upload Videos Section - UPDATED */}
         <Col xs={12}>
           <div className="form-section">
             <div className="d-flex align-items-center justify-content-between mb-4">
               <div className="d-flex align-items-center">
                 <FaVideo className="text-primary me-2" />
-                <h5 className="fw-bold mb-0">Upload Course Videos</h5>
+                <div>
+                  <h5 className="fw-bold mb-0">Upload Course Videos</h5>
+                  {formData.videos && formData.videos.length > 0 && (
+                    <small className="text-muted">
+                      {formData.videos.length} video(s) added • Total: {(
+                        formData.videos.reduce((acc: number, vid: any) => acc + vid.videos.size, 0) / 
+                        (1024 * 1024)
+                      ).toFixed(2)} MB
+                    </small>
+                  )}
+                </div>
               </div>
               <AddVideos
-                onAddVideo={(vid) =>
+                onAddVideos={(newVideos) => {
+                  const formattedVideos = newVideos.map(vid => ({
+                    videos: vid.file,
+                    description: vid.description,
+                    caseStudy: vid.caseStudy,
+                    status: 'pending',
+                    progress: 0,
+                  }))
+                  
                   setFormData((prev: any) => ({
                     ...prev,
-                    videos: [
-                      ...(prev.videos || []),
-                      {
-                        ...vid,
-                        status: 'pending',
-                        progress: 0,
-                      }
-                    ]
+                    videos: [...(prev.videos || []), ...formattedVideos]
                   }))
-                }
+                }}
               />
             </div>
+            
+            {/* Video Statistics Panel */}
+            {(formData.videos || []).length > 0 && (
+              <div className="stats-panel mb-4">
+                <div className="row">
+                  <div className="col-md-3">
+                    <div className="stats-item">
+                      <span className="stats-label">Total Videos</span>
+                      <span className="stats-value">{formData.videos.length}</span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="stats-item">
+                      <span className="stats-label">With Case Studies</span>
+                      <span className="stats-value">
+                        {formData.videos.filter((v: any) => v.caseStudy).length}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="stats-item">
+                      <span className="stats-label">Total Size</span>
+                      <span className="stats-value">
+                        {(
+                          formData.videos.reduce((acc: number, vid: any) => acc + vid.videos.size, 0) / 
+                          (1024 * 1024)
+                        ).toFixed(2)} MB
+                      </span>
+                    </div>
+                  </div>
+                  <div className="col-md-3">
+                    <div className="stats-item">
+                      <span className="stats-label">Status</span>
+                      <span className="stats-value text-success">
+                        <FaCheck className="me-1" /> Ready
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {/* Video Uploads List */}
             <div className="row g-4">
@@ -478,92 +666,101 @@ const Step2 = ({
                 <Col xs={12} key={index}>
                   <div className="video-item p-4">
                     <div className="row align-items-center">
-                      <Col md={3} className="mb-3 mb-md-0">
-                        <div className="position-relative rounded overflow-hidden bg-dark">
+                      <Col md={2} className="mb-3 mb-md-0">
+                        <div className="video-thumbnail">
                           <video
-                            className="w-100"
                             src={URL.createObjectURL(vid.videos)}
-                            style={{ height: '120px', objectFit: 'cover' }}
+                            muted
                           />
-                          <div className="position-absolute top-50 start-50 translate-middle">
+                          <div className="video-thumbnail-overlay">
                             <button 
                               type="button"
-                              className="btn btn-light btn-sm rounded-circle shadow-sm"
-                              onClick={() => {
-                                const videoElement = document.createElement('video')
-                                videoElement.src = URL.createObjectURL(vid.videos)
-                                videoElement.controls = true
-                                videoElement.style.maxWidth = '90vw'
-                                videoElement.style.maxHeight = '90vh'
-                                
-                                const modal = document.createElement('div')
-                                modal.style.position = 'fixed'
-                                modal.style.top = '0'
-                                modal.style.left = '0'
-                                modal.style.width = '100vw'
-                                modal.style.height = '100vh'
-                                modal.style.backgroundColor = 'rgba(0,0,0,0.8)'
-                                modal.style.display = 'flex'
-                                modal.style.alignItems = 'center'
-                                modal.style.justifyContent = 'center'
-                                modal.style.zIndex = '9999'
-                                
-                                modal.appendChild(videoElement)
-                                modal.onclick = () => document.body.removeChild(modal)
-                                
-                                document.body.appendChild(modal)
-                              }}
+                              className="play-button"
+                              onClick={() => handlePreviewVideo(vid.videos)}
                             >
-                              <i className="fas fa-play"></i>
+                              <FaPlay />
                             </button>
                           </div>
                         </div>
                       </Col>
                       
                       <Col md={6} className="mb-3 mb-md-0">
-                        <div className="mb-2">
-                          <h6 className="fw-medium mb-1">Video {index + 1}</h6>
+                        <div>
+                          <h6 className="fw-medium mb-1">{vid.videos.name}</h6>
                           <p className="small text-muted mb-2">{vid.description || 'No description provided'}</p>
-                          {vid.caseStudy && (
-                            <span className="badge bg-info bg-opacity-10 text-info badge-video me-2">
-                              Includes Case Study
+                          <div className="video-meta">
+                            {vid.caseStudy && (
+                              <span className="badge bg-info bg-opacity-10 text-info badge-video">
+                                <FaList className="me-1" /> Case Study
+                              </span>
+                            )}
+                            <span className="badge bg-secondary bg-opacity-10 text-secondary badge-video">
+                              {(vid.videos.size / (1024 * 1024)).toFixed(2)} MB
                             </span>
-                          )}
-                          <span className="badge bg-secondary bg-opacity-10 text-secondary badge-video">
-                            {(vid.videos.size / (1024 * 1024)).toFixed(2)} MB
-                          </span>
+                            <span className="badge bg-success bg-opacity-10 text-success badge-video">
+                              Video {index + 1}
+                            </span>
+                          </div>
                         </div>
                       </Col>
                       
-                      <Col md={3} className="text-md-end">
-                        <button
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() =>
-                            setFormData((prev: any) => ({
-                              ...prev,
-                              videos: (prev.videos || []).filter((_: any, i: number) => i !== index),
-                            }))
-                          }
-                        >
-                          <FaTimes className="me-1" /> Remove
-                        </button>
+                      <Col md={4} className="text-md-end">
+                        <div className="d-flex gap-2 justify-content-end">
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handlePreviewVideo(vid.videos)}
+                          >
+                            <FaPlay className="me-1" /> Preview
+                          </button>
+                          <button
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={() =>
+                              setFormData((prev: any) => ({
+                                ...prev,
+                                videos: (prev.videos || []).filter((_: any, i: number) => i !== index),
+                              }))
+                            }
+                          >
+                            <FaTimes className="me-1" /> Remove
+                          </button>
+                        </div>
                       </Col>
                     </div>
                     
                     {/* Case Study Details */}
                     {vid.caseStudy && (
                       <div className="mt-3 pt-3 border-top">
-                        <h6 className="fw-medium mb-2">Case Study Details</h6>
+                        <h6 className="fw-medium mb-2">
+                          <FaList className="me-2" />
+                          Case Study: {vid.caseStudy.title}
+                        </h6>
                         <Row>
                           <Col md={6}>
-                            <p className="small mb-1"><strong>Title:</strong> {vid.caseStudy.title}</p>
-                            <p className="small mb-1"><strong>Description:</strong> {vid.caseStudy.description}</p>
+                            <p className="small mb-1">
+                              <strong>Description:</strong> {vid.caseStudy.description}
+                            </p>
                           </Col>
-                          <Col md={6}>
-                            <p className="small mb-1"><strong>Input Example:</strong> {vid.caseStudy.inputExample}</p>
-                            <p className="small mb-1"><strong>Expected Output:</strong> {vid.caseStudy.expectedOutput}</p>
+                          <Col md={3}>
+                            <p className="small mb-1">
+                              <strong>Input Example:</strong> {vid.caseStudy.inputExample}
+                            </p>
+                          </Col>
+                          <Col md={3}>
+                            <p className="small mb-1">
+                              <strong>Expected Output:</strong> {vid.caseStudy.expectedOutput}
+                            </p>
                           </Col>
                         </Row>
+                        {vid.caseStudy.boilerplate && (
+                          <div className="mt-2">
+                            <p className="small mb-1">
+                              <strong>Boilerplate Code:</strong>
+                            </p>
+                            <pre className="bg-light p-2 rounded small">
+                              {vid.caseStudy.boilerplate}
+                            </pre>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -575,7 +772,7 @@ const Step2 = ({
                   <div className="text-center py-5">
                     <FaVideo className="text-muted mb-3" size={48} />
                     <h5 className="fw-medium text-muted">No videos added yet</h5>
-                    <p className="text-muted mb-0">Click the "Add Video" button above to upload your first video</p>
+                    <p className="text-muted mb-0">Click "Add Videos" to select and upload multiple videos at once</p>
                   </div>
                 </Col>
               )}

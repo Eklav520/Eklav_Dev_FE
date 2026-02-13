@@ -1,6 +1,5 @@
-import { useState } from 'react'
-import { Card, Badge, ProgressBar } from 'react-bootstrap'
-import { FaGraduationCap } from 'react-icons/fa'
+import { Card, ProgressBar } from 'react-bootstrap'
+import { FaGraduationCap, FaBookOpen, FaClock, FaCheckCircle } from 'react-icons/fa'
 
 type CourseProgressItem = {
   id: string
@@ -11,86 +10,224 @@ type CourseProgressItem = {
 }
 
 type Props = {
-  courses: CourseProgressItem[]
+  enrolledCourses: CourseProgressItem[]
+  remainingCourses: CourseProgressItem[]
 }
 
-const CourseProgress = ({ courses }: Props) => {
-  const [activeCourseIndex, setActiveCourseIndex] = useState(0)
+const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
+  const totalCourses = enrolledCourses.length + remainingCourses.length
+  const completedCourses = enrolledCourses.filter(c => c.progress === 100).length
 
-  if (!courses || courses.length === 0) {
-    return (
-      <Card className="border-0 shadow-sm h-100">
-        <Card.Header
-          className="border-0 text-white py-3"
-          style={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          }}>
-          <h5 className="mb-0 fw-bold">
-            <FaGraduationCap className="me-2" />
-            Course Progress
-          </h5>
-        </Card.Header>
-
-        <Card.Body className="text-center text-muted">No enrolled courses yet</Card.Body>
-      </Card>
-    )
-  }
-
-  const activeCourse = courses[activeCourseIndex]
+  const avgProgress =
+    enrolledCourses.length > 0
+      ? Math.round(
+          enrolledCourses.reduce((sum, c) => sum + c.progress, 0) /
+            enrolledCourses.length
+        )
+      : 0
 
   return (
-    <Card className="border-0 shadow-sm h-100">
-      <Card.Header
-        className="border-0 text-white py-3"
-        style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        }}>
-        <h5 className="mb-0 fw-bold">
-          <FaGraduationCap className="me-2" />
-          Course Progress
-        </h5>
-      </Card.Header>
-
-      <Card.Body className="p-3">
-        {/* COURSE SWITCHER */}
-        <div className="d-flex gap-2 mb-3 flex-wrap">
-          {courses.map((course, index) => (
-            <Badge
-              key={course.id}
-              bg={index === activeCourseIndex ? 'primary' : 'secondary'}
-              pill
-              style={{ cursor: 'pointer' }}
-              onClick={() => setActiveCourseIndex(index)}>
-              {course.name}
-            </Badge>
-          ))}
-        </div>
-
-        {/* ACTIVE COURSE */}
-        <div className="text-center mb-4">
-          <div className="rounded p-3 text-white" style={{ background: activeCourse.color }}>
-            <h6 className="fw-bold mb-1">{activeCourse.name}</h6>
-            <Badge
-              pill
-              className="px-3 py-1 fw-semibold"
-              bg={activeCourse.status === 'Completed' ? 'success' : activeCourse.status === 'In Progress' ? 'warning' : 'secondary'}
-              text={activeCourse.status === 'In Progress' ? 'dark' : 'light'}>
-              {activeCourse.status}
-            </Badge>
+    <Card
+      className="border-0 shadow-lg overflow-hidden"
+      style={{
+        borderRadius: '16px',
+        background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+        height: '600px',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    > 
+      {/* ================= HEADER (UNCHANGED) ================= */}
+      <div style={{ flexShrink: 0 }}>
+        <Card.Header
+          className="border-0 text-white px-4 py-4"
+          style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+          }}
+        >
+          <div className="d-flex align-items-start mb-3">
+            <div
+              className="p-2 rounded-circle me-3"
+              style={{ background: 'rgba(255, 255, 255, 0.2)' }}
+            >
+              <FaGraduationCap className="fs-5" />
+            </div>
+            <div>
+              <h1
+                className="mb-0 fw-bold"
+                style={{ fontSize: '1.75rem', lineHeight: '1.2' }}
+              >
+                <span className="d-block">Course Progress</span>
+              </h1>
+              <small className="opacity-75 mt-1 d-block">
+                Track your learning journey
+              </small>
+            </div>
           </div>
-        </div>
 
-        {/* PROGRESS */}
-        <div className="mb-2 d-flex justify-content-between">
-          <small className="text-muted">Progress</small>
-          <small className="fw-bold">{activeCourse.progress}%</small>
-        </div>
+          <div className="d-flex justify-content-start gap-3">
+            <div
+              className="d-flex align-items-center p-3 rounded-3"
+              style={{
+                background: 'rgba(37, 99, 235, 0.15)',
+                border: '1px solid rgba(37, 99, 235, 0.3)',
+                minWidth: '150px',
+              }}
+            >
+              <div
+                className="rounded-circle p-2 flex-shrink-0 me-3"
+                style={{
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  width: '42px',
+                  height: '42px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FaBookOpen className="text-white" size={18} />
+              </div>
+              <div>
+                <div className="text-white-75 small mb-1">Avg Progress</div>
+                <div className="fw-bold text-white fs-4">
+                  {avgProgress}%
+                </div>
+              </div>
+            </div>
 
-        <ProgressBar
-          now={activeCourse.progress}
-          variant={activeCourse.progress === 100 ? 'success' : activeCourse.progress >= 50 ? 'info' : 'warning'}
-          style={{ height: 8 }}
-        />
+            <div
+              className="d-flex align-items-center p-3 rounded-3"
+              style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                minWidth: '150px',
+              }}
+            >
+              <div
+                className="rounded-circle p-2 flex-shrink-0 me-3"
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  width: '42px',
+                  height: '42px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FaCheckCircle className="text-white" size={18} />
+              </div>
+              <div>
+                <div className="text-white-75 small mb-1">Completed</div>
+                <div className="fw-bold text-white fs-4">
+                  {completedCourses}/{totalCourses}
+                </div>
+              </div>
+            </div>
+          </div>
+        </Card.Header>
+      </div>
+
+      {/* ================= BODY ================= */}
+      <Card.Body
+        className="p-4"
+        style={{
+          background: '#1e293b',
+          flex: 1,
+          overflowY: 'auto',
+        }}
+      >
+        {/* ================= ENROLLED COURSES ================= */}
+        <h2 className="text-white fw-bold mb-4" style={{ fontSize: '1.25rem' }}>
+          Enrolled Courses
+        </h2>
+
+        {enrolledCourses.length === 0 && (
+          <small className="text-white-50">No enrolled courses</small>
+        )}
+
+        {enrolledCourses.map(course => (
+          <div
+            key={course.id}
+            className="mb-4 pb-3"
+            style={{
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+            }}
+          >
+            {/* EXISTING COURSE UI — UNCHANGED */}
+            <div className="d-flex justify-content-between align-items-start mb-3">
+              <div className="d-flex align-items-center">
+                <div className="me-3">
+                  <div
+                    className="rounded-circle p-2"
+                    style={{
+                      background: course.color + '20',
+                      width: '40px',
+                      height: '40px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <FaBookOpen className="fs-5" style={{ color: course.color }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="fw-bold text-white mb-1">
+                    {course.name}
+                  </div>
+                  <span className="text-white-50 small">
+                    <FaClock size={12} className="me-1" />
+                    {course.status}
+                  </span>
+                </div>
+              </div>
+              <div className="text-end">
+                <div className="fw-bold text-white">{course.progress}%</div>
+                <small className="text-white-50">Progress</small>
+              </div>
+            </div>
+
+            <ProgressBar
+              now={course.progress}
+              style={{
+                height: '8px',
+                borderRadius: '4px',
+                backgroundColor: 'rgba(255,255,255,0.1)',
+              }}
+              variant="info"
+            />
+          </div>
+        ))}
+
+        {/* ================= REMAINING COURSES ================= */}
+        <h2
+          className="text-white fw-bold mt-4 mb-3"
+          style={{ fontSize: '1.25rem' }}
+        >
+          Remaining Courses
+        </h2>
+
+        {remainingCourses.length === 0 && (
+          <small className="text-white-50">No remaining courses</small>
+        )}
+
+        {remainingCourses.map(course => (
+          <div
+            key={course.id}
+            className="d-flex justify-content-between align-items-center mb-3 p-3"
+            style={{
+              border: '1px dashed rgba(255,255,255,0.2)',
+              borderRadius: '10px',
+              background: 'rgba(255,255,255,0.05)',
+            }}
+          >
+            <div className="text-white fw-semibold">
+              {course.name}
+            </div>
+            <small className="text-white-50">Not Enrolled</small>
+          </div>
+        ))}
       </Card.Body>
     </Card>
   )

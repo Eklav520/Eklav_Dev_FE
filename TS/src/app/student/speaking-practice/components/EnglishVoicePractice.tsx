@@ -47,6 +47,14 @@ const EnglishVoicePractice: React.FC = () => {
   const canNewSession = sessionEnded
   const isWeeklyLimitReached = history && history.attemptsUsed >= history.weeklyLimit
   const canStart = !sessionStarted && !isWeeklyLimitReached
+  const silenceTimerRef = useRef<any>(null)
+  const noResponseCountRef = useRef(0)
+  const manualStopRef = useRef(false)
+
+
+  const MAX_NO_RESPONSE = 3
+  const SILENCE_TIMEOUT = 6000 // 6 seconds
+
 
   // 🔐 TTS TURN CONTROL
   const ttsCountRef = useRef(0)
@@ -84,6 +92,37 @@ const EnglishVoicePractice: React.FC = () => {
       setLoadingHistory(false)
     }
   }
+
+  const clearSilenceTimer = () => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+  }
+
+  const startSilenceTimer = () => {
+    clearSilenceTimer()
+
+    silenceTimerRef.current = setTimeout(async () => {
+      if (!sessionActiveRef.current) return
+      if (ttsCountRef.current > 0) return // ⛔ AI is speaking
+
+      noResponseCountRef.current += 1
+
+      if (noResponseCountRef.current <= MAX_NO_RESPONSE) {
+        const msg = 'Are you there? Please respond.'
+        setMessages((p) => [...p, { sender: 'eklav', text: msg, type: 'reply' }])
+        await speak(msg)
+        startSilenceTimer()
+      } else {
+        const msg = 'Sorry, closing the session. Have a nice day.'
+        setMessages((p) => [...p, { sender: 'eklav', text: msg, type: 'reply' }])
+        await speak(msg)
+        handleEndSession()
+      }
+    }, SILENCE_TIMEOUT)
+  }
+
 
   useEffect(() => {
     if (token) {
@@ -125,7 +164,7 @@ const EnglishVoicePractice: React.FC = () => {
 
     try {
       recognitionRef.current?.abort()
-    } catch {}
+    } catch { }
 
     const rec = new SR()
     rec.lang = 'en-US'
@@ -136,16 +175,11 @@ const EnglishVoicePractice: React.FC = () => {
       setIsListening(true)
       setIsUserSpeaking(true)
       setLiveSpeech('')
-    }
-
-    rec.onend = () => {
-      setIsListening(false)
-      setIsUserSpeaking(false)
-      setTimeout(() => setLiveSpeech(''), 500)
+      startSilenceTimer()
     }
 
     rec.onresult = async (e: any) => {
-      if (!sessionActiveRef.current) return
+      clearSilenceTimer()
 
       let interim = ''
       let final = ''
@@ -155,19 +189,40 @@ const EnglishVoicePractice: React.FC = () => {
         e.results[i].isFinal ? (final += txt) : (interim += txt)
       }
 
-      if (interim.trim()) setLiveSpeech(interim.trim())
+      if (interim.trim()) {
+        noResponseCountRef.current = 0
+        setLiveSpeech(interim.trim())
+      }
 
       if (final.trim()) {
+        noResponseCountRef.current = 0
         const text = final.trim()
+
         if (text === lastUserRef.current) return
         lastUserRef.current = text
 
         setLiveSpeech('')
         setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
         transcriptRef.current += `You: ${text}\n`
+
         await sendToRob(text)
       }
+
+      startSilenceTimer()
     }
+
+    rec.onend = () => {
+      setIsListening(false)
+      setIsUserSpeaking(false)
+
+      if (!manualStopRef.current) {
+        startSilenceTimer()
+      }
+
+      manualStopRef.current = false
+    }
+
+
 
     recognitionRef.current = rec
     rec.start()
@@ -176,7 +231,7 @@ const EnglishVoicePractice: React.FC = () => {
   const stopListening = () => {
     try {
       recognitionRef.current?.abort()
-    } catch {}
+    } catch { }
   }
 
   /* ===================== TTS CONTROL ===================== */
@@ -251,6 +306,9 @@ const EnglishVoicePractice: React.FC = () => {
 
   /* ===================== SESSION ===================== */
   const resetSessionState = () => {
+    noResponseCountRef.current = 0
+    clearSilenceTimer()
+
     transcriptRef.current = ''
     lastUserRef.current = ''
     recognitionRef.current = null
@@ -274,6 +332,11 @@ const EnglishVoicePractice: React.FC = () => {
   }
 
   const handleEndSession = async () => {
+    if (!sessionActiveRef.current) return
+    clearSilenceTimer()
+    noResponseCountRef.current = 0
+    sessionActiveRef.current = false
+
     sessionActiveRef.current = false
     stopListening()
     speechSynthesis.cancel()
@@ -449,13 +512,35 @@ const EnglishVoicePractice: React.FC = () => {
             </Card.Body>
 
             <Card.Footer className="session-controls">
+              {sessionStarted && !sessionEnded && noResponseCountRef.current > 0 && (
+                <div className="text-center mb-2">
+                  <small className="text-muted">
+                    ⏳ Waiting for response ({noResponseCountRef.current}/{MAX_NO_RESPONSE})
+                  </small>
+                </div>
+              )}
+
               {sessionStarted && !sessionEnded && (
-                <div className="progress-section">
-                  <div className="progress-info">
-                    <small>Session Progress</small>
-                    <small>{formatTime(timeLeft)} remaining</small>
-                  </div>
-                  <ProgressBar now={(timeLeft / 120) * 100} variant={timeLeft > 60 ? 'success' : timeLeft > 30 ? 'warning' : 'danger'} />
+                <div className="control-buttons mt-2">
+                  <Button
+                    variant={isListening ? 'outline-secondary' : 'info'}
+                    disabled={isListening || ttsCountRef.current > 0}
+                    onClick={startListening}
+                  >
+                    🎙 Start Speaking
+                  </Button>
+
+                  <Button
+                    variant="outline-danger"
+                    disabled={!isListening}
+                    onClick={() => {
+                      manualStopRef.current = true
+                      stopListening()
+                      clearSilenceTimer()
+                    }}
+                  >
+                    ⏹ Stop Speaking
+                  </Button>
                 </div>
               )}
 

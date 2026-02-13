@@ -124,22 +124,22 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, loading }) => {
 
   useEffect(() => {
     const fetchProgress = async () => {
-  if (!course || !token) return;
-  const res = await fetch(`${baseURL}/userProgress/${course._id}`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  const data = await res.json();
+      if (!course || !token) return;
+      const res = await fetch(`${baseURL}/userProgress/${course._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
 
-  if (data.progress) {
-    setVideoProgressMap(data.progress);
-  }
+      if (data.progress) {
+        setVideoProgressMap(data.progress);
+      }
 
-  if (data.caseStudies) {
-    setCaseStudyMap(
-      Object.fromEntries(Object.entries(data.caseStudies))
-    );
-  }
-};
+      if (data.caseStudies) {
+        setCaseStudyMap(
+          Object.fromEntries(Object.entries(data.caseStudies))
+        );
+      }
+    };
     fetchProgress()
   }, [course?._id, token])
 
@@ -334,16 +334,17 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, loading }) => {
                   className="p-0"
                   style={{
                     maxHeight: needsScroll ? '400px' : undefined,
-                    height: needsScroll ? '400px' : undefined,
-                  }}>
+                    overflowY: needsScroll ? 'auto' : undefined,
+                  }}
+                >
                   <Curriculum
                     videos={
                       course?.videos?.length
                         ? course.videos.map((v: any) => ({
-                            ...v,
-                            progress: videoProgressMap[String(v._id)] || 0,
-                            caseStudyCompleted: caseStudyMap[v._id] || false,
-                          }))
+                          ...v,
+                          progress: videoProgressMap[String(v._id)] || 0,
+                          caseStudyCompleted: caseStudyMap[v._id] || false,
+                        }))
                         : course?.videoUrl || []
                     }
                     courseId={course._id}

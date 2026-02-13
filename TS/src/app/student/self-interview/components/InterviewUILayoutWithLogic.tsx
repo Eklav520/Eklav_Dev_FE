@@ -50,7 +50,7 @@ interface Props {
 const FOLLOW_UP_THRESHOLD = 4
 const MAX_FOLLOW_UPS = 1
 
-const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback,meta }) => {
+const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback, meta }) => {
   const { user } = useAuthContext()
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
@@ -89,6 +89,8 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const [currentExample, setCurrentExample] = useState('')
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [loadingFinalFeedback, setLoadingFinalFeedback] = useState(false)
+  const [stopRecording, setStopRecording] = useState(false);
+  const [isRecordingActive, setIsRecordingActive] = useState(true);
 
 
   // speech synth
@@ -681,36 +683,38 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   }
 
   // STOP fast listening
-  const stopListening = () => {
-    listeningHardRef.current = false
+ const stopListening = () => {
+  listeningHardRef.current = false;
 
-    // Stop speech recognition
+  // Stop speech recognition
+  try {
+    recognitionRef.current?.stop();
+  } catch { }
+
+  setIsListening(false);
+  
+  // Stop video recording temporarily
+  setStopRecording(true);
+
+  // Stop waveform animation
+  cancelAnimationFrame(animationId);
+
+  // Close audio context
+  if (audioContextRef.current) {
     try {
-      recognitionRef.current?.stop()
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => { });
+      }
     } catch { }
-
-    setIsListening(false)
-
-    // Stop waveform animation
-    cancelAnimationFrame(animationId)
-
-    // Close audio context
-    if (audioContextRef.current) {
-      try {
-        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-          audioContextRef.current.close().catch(() => { })
-        }
-      } catch { }
-    }
-
-    // Clear canvas
-    const canvas = canvasRef.current
-    if (canvas) {
-      const ctx = canvas.getContext('2d')
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height)
-    }
   }
 
+  // Clear canvas
+  const canvas = canvasRef.current;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+};
   /*   useEffect(() => {
       if (interviewFinished && finalFeedback) {
         downloadPDF() // 🎉 auto triggers once
@@ -806,6 +810,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       alert('Please submit your answer first.')
       return
     }
+
+    setStopRecording(false);
+  setIsRecordingActive(true);
 
     // 🔇 Stop mic completely so user cannot speak after feedback
     stopListening()
@@ -907,31 +914,31 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   }
 
   const submitResumeScoreIfNeeded = async (finalAnswers: AnswerItem[]) => {
-  if (meta?.interviewType !== 'resume') return
-  if (meta.attemptNumber !== 1) return // 🔒 only first attempt
-  if (!meta.attemptId) return
+    if (meta?.interviewType !== 'resume') return
+    if (meta.attemptNumber !== 1) return // 🔒 only first attempt
+    if (!meta.attemptId) return
 
-  const scores = finalAnswers.map((a, idx) => ({
-    question: a.question,
-    score: a.rating ?? 0,
-  }))
+    const scores = finalAnswers.map((a, idx) => ({
+      question: a.question,
+      score: a.rating ?? 0,
+    }))
 
-  try {
-    await fetch(`${baseURL}/api/resume-based-interview/submit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({
-        attemptId: meta.attemptId,
-        scores,
-      }),
-    })
-  } catch (err) {
-    console.error('Resume score submit failed', err)
+    try {
+      await fetch(`${baseURL}/api/resume-based-interview/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          attemptId: meta.attemptId,
+          scores,
+        }),
+      })
+    } catch (err) {
+      console.error('Resume score submit failed', err)
+    }
   }
-}
 
 
 
@@ -1113,15 +1120,14 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                     minHeight: isMobile ? 240 : 400, // ⭐ INCREASED
                     maxHeight: isMobile ? 260 : 420, // ⭐ INCREASED
                   }}>
-                  <VideoRecorderUpdated interviewId={interviewId} token={token} stopRecording={false} onVideoUpload={handleVideoUpload} />
+                  <VideoRecorderUpdated interviewId={interviewId} token={token} stopRecording={stopRecording || !isRecordingActive} onVideoUpload={handleVideoUpload} />
                   {/* ROBOT */}
                   <div
                     className="position-absolute d-flex align-items-center justify-content-center"
                     style={{
-                      /* 📍 POSITION */
-                      top: isMobile ? 8 : 'auto',
-                      right: isMobile ? 8 : 14,
-                      bottom: isMobile ? 'auto' : 16,
+                      /* 📍 POSITION - MOVED TO TOP-LEFT CORNER */
+                      top: isMobile ? 8 : 16,
+                      left: isMobile ? 8 : 14,
 
                       /* 📐 SIZE */
                       width: isMobile ? 64 : 170,
@@ -1141,155 +1147,113 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                   </div>
                 </div>
 
-                {/* MIC VISUAL */}
-                {isListening && (
-                  <div className="d-flex justify-content-center my-2">
-                    <GlowMic listening size={isMobile ? 42 : 58} />
+                {/* GRID CONTAINER */}
+                <div className="bg-dark bg-opacity-75 rounded-4 p-3 my-3 border border-secondary">
+                  <div className="row align-items-center">
+
+                    {/* LEFT: Status Indicators */}
+                    <div className="col-md-4">
+                      <div className="d-flex align-items-center gap-3">
+                        {/* Timer */}
+                        {/* <div className="text-center">
+                          <div className={`fw-bold ${timeLeft < 10 ? 'text-danger' : 'text-success'}`}
+                            style={{ fontSize: '2rem', lineHeight: '1' }}>
+                            {timeLeft}
+                          </div>
+                          <small className="text-light-emphasis">seconds</small>
+                        </div> */}
+
+                        {/* Mic Status */}
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="position-relative">
+                            {isListening ? (
+                              <>
+                                <div className="position-absolute top-50 start-50 translate-middle"
+                                  style={{
+                                    width: '28px',
+                                    height: '28px',
+                                    border: '2px solid #0dcaf0',
+                                    borderRadius: '50%',
+                                    animation: 'pulse 1.5s infinite',
+                                    opacity: '0.5',
+                                  }}
+                                ></div>
+                                <GlowMic listening size={20} />
+                              </>
+                            ) : (
+                              <i className="bi bi-mic text-secondary fs-5"></i>
+                            )}
+                          </div>
+                          <div>
+                            <small className={`fw-medium ${isListening ? 'text-info' : 'text-light-emphasis'}`}>
+                              {isListening ? 'Recording' : 'Ready'}
+                            </small>
+                            {isListening && (
+                              <div className="text-info" style={{ fontSize: '0.7rem' }}>
+                                <i className="bi bi-circle-fill me-1"></i>
+                                Live
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CENTER: Divider (visible on desktop) */}
+                    <div className="col-md-1 d-none d-md-block">
+                      <div className="border-start border-secondary h-100"></div>
+                    </div>
+
+                    {/* RIGHT: Action Buttons */}
+                    <div className="col-md-7">
+                      <div className="d-flex align-items-center justify-content-end gap-3">
+
+                        {/* Record/Stop Button - FIXED: Toggle between start/stop */}
+                        <Button
+                          onClick={isListening ? stopListening : startListening}
+                          disabled={showFeedback || hasSubmitted}
+                          variant={isListening ? "danger" : "success"}
+                          className={`rounded-pill d-flex align-items-center gap-2 px-4 py-2 ${showFeedback || hasSubmitted ? 'opacity-50' : ''
+                            }`}
+                          style={{
+                            minWidth: '120px',
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          {isListening ? (
+                            <>
+                              <i className="bi bi-stop-fill"></i>
+                              Stop Recording
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-mic-fill"></i>
+                              Start Recording
+                            </>
+                          )}
+                        </Button>
+
+                        {/* Next Button */}
+                        <Button
+                          onClick={handleNext}
+                          disabled={!showFeedback}
+                          variant={showFeedback ? "primary" : "secondary"}
+                          className="rounded-pill d-flex align-items-center gap-2 px-4 py-2"
+                          style={{
+                            minWidth: '120px',
+                            opacity: showFeedback ? 1 : 0.5,
+                            transition: 'all 0.2s ease',
+                          }}
+                        >
+                          <i className="bi bi-arrow-right"></i>
+                          Next Question
+                        </Button>
+
+                      </div>
+                    </div>
+
                   </div>
-                )}
-
-                {/* FLEX SPACER – pushes buttons down */}
-                <div className="flex-grow-1" />
-
-                {/* ACTION BUTTONS */}
-                <div className="d-flex justify-content-center gap-3 mt-3">
-                  <Button
-                    onClick={startListening}
-                    disabled={showFeedback || hasSubmitted}
-                    style={{
-                      ...circleBtnStyleGreen,
-                      width: isMobile ? 46 : 60, // ⭐ slightly bigger
-                      height: isMobile ? 46 : 60,
-                      fontSize: isMobile ? 13 : 15,
-                    }}>
-                    Start
-                  </Button>
-
-                  <Button
-                    onClick={handleNext}
-                    disabled={!showFeedback}
-                    style={{
-                      ...circleBtnStyleBlue,
-                      width: isMobile ? 46 : 60,
-                      height: isMobile ? 46 : 60,
-                      fontSize: isMobile ? 13 : 15,
-                      opacity: showFeedback ? 1 : 0.4,
-                    }}>
-                    Next
-                  </Button>
                 </div>
-
-                {/* TIMER */}
-                <div className="text-center mt-2">
-                  {isListening ? (
-                    <small className="fw-bold" style={{ color: timeLeft < 10 ? 'red' : '#28a745' }}>
-                      ⏳ {timeLeft}s
-                    </small>
-                  ) : (
-                    <small className="text-light opacity-75">Tap Start to answer</small>
-                  )}
-                </div>
-                {/* ================= AI FEEDBACK ================= */}
-                {showFeedback && currentFeedback && (
-                  <Card className="mt-3 p-3 rounded-4 bg-dark border border-warning">
-                    <h6 className="fw-bold text-warning mb-3">📊 AI Evaluation</h6>
-
-                    {/* THEORY FEEDBACK */}
-                    {currentFeedback.feedback?.theory && (
-                      <div className="mb-3">
-                        <small className="text-info fw-semibold">📝 Theory Feedback</small>
-                        <p className="text-light mb-0">{currentFeedback.feedback.theory}</p>
-                        <hr className="border-secondary my-2" />
-                      </div>
-                    )}
-
-                    {/* EXAMPLE FEEDBACK */}
-                    {currentFeedback.feedback?.example && (
-                      <div className="mb-3">
-                        <small className="text-info fw-semibold">⚙️ Example Feedback</small>
-                        <p className="text-light mb-0">{currentFeedback.feedback.example}</p>
-                        <hr className="border-secondary my-2" />
-                      </div>
-                    )}
-
-                    {/* IDEAL ANSWER */}
-                    {currentFeedback.idealAnswer && (
-                      <div className="mb-3 p-3 rounded bg-black border border-success">
-                        <small className="text-success fw-semibold">✅ Ideal Answer</small>
-                        <p className="text-light mb-0 mt-1">{currentFeedback.idealAnswer}</p>
-                      </div>
-                    )}
-
-                    {/* FIXED EXAMPLE CODE */}
-                    {currentFeedback.fixedExampleCode && (
-                      <div className="mb-3">
-                        <small className="text-info fw-semibold">🔧 Corrected Example Code</small>
-                        <div className="mt-2 rounded overflow-hidden border border-secondary">
-                          <CodeMirror
-                            value={currentFeedback.fixedExampleCode}
-                            height="160px"
-                            theme={oneDark}
-                            extensions={[javascript()]}
-                            editable={false}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* FULL EXAMPLE PROGRAM */}
-                    {currentFeedback.exampleProgram && (
-                      <div className="mb-3">
-                        <div className="d-flex align-items-center mb-1">
-                          <small className="text-info fw-semibold">📦 Example Program — {currentFeedback.exampleProgram.title}</small>
-                          <Badge bg="secondary" className="ms-2">
-                            {currentFeedback.exampleProgram.language.toUpperCase()}
-                          </Badge>
-                        </div>
-
-                        <div className="mt-2 rounded overflow-hidden border border-secondary">
-                          <CodeMirror
-                            value={currentFeedback.exampleProgram.code}
-                            height="220px"
-                            theme={oneDark}
-                            extensions={[javascript()]}
-                            editable={false}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* IMPROVEMENT TIPS */}
-                    {Array.isArray(currentFeedback.improvementTips) && currentFeedback.improvementTips.length > 0 && (
-                      <div className="mb-3">
-                        <small className="text-info fw-semibold">🚀 Improvement Tips</small>
-                        <ul className="text-light ps-3 mb-0 mt-1">
-                          {currentFeedback.improvementTips.map((tip, i) => (
-                            <li key={i}>{tip}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* FOLLOW-UP QUESTION */}
-                    {(currentFeedback as any)?.followUpQuestion && (
-                      <Alert variant="warning" className="mt-3 mb-2 py-2 px-3 rounded-3">
-                        <strong>🤔 Follow-up Question</strong>
-                        <div className="mt-1">{(currentFeedback as any).followUpQuestion}</div>
-                      </Alert>
-                    )}
-
-                    {/* SCORE */}
-                    {typeof currentFeedback.rating === 'number' && (
-                      <div className="text-end mt-2">
-                        <Badge
-                          bg={currentFeedback.rating >= 7 ? 'success' : currentFeedback.rating >= 4 ? 'warning' : 'danger'}
-                          className="px-3 py-2">
-                          Score: {currentFeedback.rating}/10
-                        </Badge>
-                      </div>
-                    )}
-                  </Card>
-                )}
               </Card>
             </Col>
 
@@ -1300,9 +1264,16 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 <div className="mb-3 p-3 rounded-3 bg-dark border border-secondary">
                   <h6 className="fw-bold text-info mb-2">🎯 Interview Question</h6>
 
-                  <p className="mb-0 text-light">{currentQuestion}</p>
+                  <p className="mb-0 fs-5 fw-bold lh-base"
+                    style={{
+                      fontFamily: "'Poppins', sans-serif",
+                      color: '#ffa726',
+                      letterSpacing: '0.3px',
+                      textShadow: '0 1px 3px rgba(255, 167, 38, 0.2)'
+                    }}>
+                    {currentQuestion}
+                  </p>
                 </div>
-
                 {/* TRANSCRIPT */}
                 <div className="mb-3">
                   <small className="text-muted">🎤 Voice Transcript</small>
@@ -1348,10 +1319,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                     variant="success"
                     className="fw-bold w-100 mt-2"
                     onClick={async () => {
-  const finalAnswers = [...answers, currentFeedback]
-  await finishInterview(finalAnswers)
-  await submitResumeScoreIfNeeded(finalAnswers)
-}}
+                      const finalAnswers = [...answers, currentFeedback]
+                      await finishInterview(finalAnswers)
+                      await submitResumeScoreIfNeeded(finalAnswers)
+                    }}
 
                   >
                     Finish Interview
@@ -1505,6 +1476,177 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
         </div>
 
+        {/* ================= AI FEEDBACK ================= */}
+        {showFeedback && currentFeedback && (
+          <Card className="mt-4 p-4 rounded-3 border border-warning-subtle shadow-lg bg-dark bg-gradient">
+            {/* Header with better visual hierarchy */}
+            <div className="d-flex align-items-start justify-content-between mb-4">
+              <div className="d-flex align-items-center">
+                <div className="bg-warning bg-opacity-20 p-2 rounded-circle me-3">
+                  <span className="text-warning fs-5">📊</span>
+                </div>
+                <div>
+                  <h5 className="fw-bold text-light mb-1">AI Evaluation</h5>
+                  <small className="text-light-emphasis">Detailed feedback and analysis</small>
+                </div>
+              </div>
+
+              {/* Score badge positioned in header */}
+              {typeof currentFeedback.rating === 'number' && (
+                <Badge
+                  bg={currentFeedback.rating >= 7 ? 'success' : currentFeedback.rating >= 4 ? 'warning' : 'danger'}
+                  className="px-3 py-2 fw-bold rounded-pill shadow-sm"
+                >
+                  {currentFeedback.rating}/10
+                </Badge>
+              )}
+            </div>
+
+            {/* Content area with better spacing */}
+            <div className="d-flex flex-column gap-4">
+
+              {/* THEORY FEEDBACK */}
+              {currentFeedback.feedback?.theory && (
+                <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
+                  <div className="d-flex align-items-center mb-2">
+                    <span className="text-info me-2 fs-5">📝</span>
+                    <h6 className="text-info fw-bold mb-0">Theory Feedback</h6>
+                  </div>
+                  <p className="text-light mb-0 mt-2 lh-base fs-6">
+                    {currentFeedback.feedback.theory}
+                  </p>
+                </div>
+              )}
+
+              {/* EXAMPLE FEEDBACK */}
+              {currentFeedback.feedback?.example && (
+                <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
+                  <div className="d-flex align-items-center mb-2">
+                    <span className="text-info me-2 fs-5">⚙️</span>
+                    <h6 className="text-info fw-bold mb-0">Example Feedback</h6>
+                  </div>
+                  <p className="text-light mb-0 mt-2 lh-base fs-6">
+                    {currentFeedback.feedback.example}
+                  </p>
+                </div>
+              )}
+
+              {/* IDEAL ANSWER - More prominent */}
+              {currentFeedback.idealAnswer && (
+                <div className="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-2">
+                  <div className="d-flex align-items-center mb-2">
+                    <div className="bg-success bg-opacity-25 p-1 rounded-2 me-2">
+                      <span className="text-success fs-5">✅</span>
+                    </div>
+                    <h6 className="text-success fw-bold mb-0">Ideal Answer</h6>
+                  </div>
+                  <p className="text-light mb-0 mt-2 lh-base fs-6">
+                    {currentFeedback.idealAnswer}
+                  </p>
+                </div>
+              )}
+
+              {/* FIXED EXAMPLE CODE */}
+              {currentFeedback.fixedExampleCode && (
+                <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center">
+                      <span className="text-info me-2 fs-5">🔧</span>
+                      <h6 className="text-info fw-bold mb-0">Corrected Example Code</h6>
+                    </div>
+                    <Badge bg="dark" className="px-2 py-1">JavaScript</Badge>
+                  </div>
+                  <div className="mt-2 rounded-2 overflow-hidden border border-dark">
+                    <CodeMirror
+                      value={currentFeedback.fixedExampleCode}
+                      height="180px"
+                      theme={oneDark}
+                      extensions={[javascript()]}
+                      editable={false}
+                      basicSetup={{
+                        lineNumbers: true,
+                        highlightActiveLineGutter: false,
+                        foldGutter: false,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* FULL EXAMPLE PROGRAM */}
+              {currentFeedback.exampleProgram && (
+                <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
+                  <div className="d-flex align-items-center justify-content-between mb-2">
+                    <div className="d-flex align-items-center">
+                      <span className="text-info me-2 fs-5">📦</span>
+                      <div>
+                        <h6 className="text-info fw-bold mb-0">Example Program</h6>
+                        <small className="text-light-emphasis">{currentFeedback.exampleProgram.title}</small>
+                      </div>
+                    </div>
+                    <Badge bg="secondary" className="px-2 py-1">
+                      {currentFeedback.exampleProgram.language.toUpperCase()}
+                    </Badge>
+                  </div>
+                  <div className="mt-2 rounded-2 overflow-hidden border border-dark">
+                    <CodeMirror
+                      value={currentFeedback.exampleProgram.code}
+                      height="240px"
+                      theme={oneDark}
+                      extensions={[javascript()]}
+                      editable={false}
+                      basicSetup={{
+                        lineNumbers: true,
+                        highlightActiveLineGutter: false,
+                        foldGutter: false,
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* IMPROVEMENT TIPS */}
+              {Array.isArray(currentFeedback.improvementTips) && currentFeedback.improvementTips.length > 0 && (
+                <div className="p-3 rounded-3 bg-info bg-opacity-10 border-start border-3 border-info">
+                  <div className="d-flex align-items-center mb-2">
+                    <span className="text-info me-2 fs-5">🚀</span>
+                    <h6 className="text-info fw-bold mb-0">Improvement Tips</h6>
+                  </div>
+                  <ul className="text-light ps-3 mb-0 mt-2">
+                    {currentFeedback.improvementTips.map((tip, i) => (
+                      <li key={i} className="mb-2 lh-base fs-6">
+                        <span className="text-info me-2">•</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* FOLLOW-UP QUESTION */}
+              {(currentFeedback as any)?.followUpQuestion && (
+                <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning">
+                  <div className="d-flex align-items-start">
+                    <div className="bg-warning bg-opacity-20 p-1 rounded-2 me-3 mt-1">
+                      <span className="text-warning fs-5">🤔</span>
+                    </div>
+                    <div>
+                      <h6 className="text-warning fw-bold mb-1">Follow-up Question</h6>
+                      <p className="text-light mb-0 mt-2 lh-base fs-6">
+                        {(currentFeedback as any).followUpQuestion}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Optional: Footer with timestamp or additional info */}
+            <div className="text-end mt-4 pt-3 border-top border-secondary-subtle">
+              <small className="text-light-emphasis">AI-generated feedback • Refresh to see updates</small>
+            </div>
+          </Card>
+        )}
       </Container>
     </div>
   )

@@ -2,7 +2,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import React, { useState, useEffect } from 'react'
 import { Container, Form, Button, Alert, Row, Col, Table, Modal, Spinner } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
-import 'react-quill-new/dist/quill.snow.css'
+import 'quill/dist/quill.snow.css'
 
 const AdminManageChallenges: React.FC = () => {
   const [form, setForm] = useState({

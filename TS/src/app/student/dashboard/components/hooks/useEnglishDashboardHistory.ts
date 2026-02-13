@@ -15,7 +15,7 @@ export type EnglishAttempt = {
 }
 
 export type EnglishSectionHistory = {
-  weeklyLimit: number
+  monthlyLimit: number
   attemptsUsed: number
   remainingAttempts: number
   summary: {
@@ -25,6 +25,7 @@ export type EnglishSectionHistory = {
   }
   attempts: EnglishAttempt[]
 }
+
 
 export type EnglishDashboardHistory = Record<
   EnglishSection,

@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react'
 import { FaUserGraduate, FaBookOpen, FaVideo } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
+/* ============================
+   COUNTER CARD
+============================ */
 const CounterCard = ({
   count,
   title,
@@ -19,18 +22,20 @@ const CounterCard = ({
       <span className={`display-6 text-${variant} mb-0`}>
         {Icon && <Icon size={56} className="fa-fw" />}
       </span>
+
       <div className="ms-4">
-        <div className="d-flex">
-          <h5 className="mb-0 fw-bold">
-            <CountUp end={count} suffix={suffix} delay={0.5} />
-          </h5>
-        </div>
+        <h5 className="mb-0 fw-bold">
+          <CountUp end={count} suffix={suffix} delay={0.5} />
+        </h5>
         <span className="mb-0 h6 fw-light">{title}</span>
       </div>
     </div>
   )
 }
 
+/* ============================
+   COUNTER COMPONENT
+============================ */
 const Counter = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
@@ -40,11 +45,13 @@ const Counter = () => {
     courseCount: 0,
     classCount: 0,
   })
+
   const [loading, setLoading] = useState(true)
   const [college, setCollege] = useState<string | null>(null)
+  const [role, setRole] = useState<string | null>(null)
 
   /* ============================
-     FETCH PROFILE (college)
+     FETCH PROFILE
   ============================ */
   const fetchProfile = async () => {
     try {
@@ -58,15 +65,17 @@ const Counter = () => {
 
       const data = await res.json()
       setCollege(data.college || null)
+      setRole(data.role || null)
     } catch (err) {
       console.error('Failed to load profile', err)
+      setLoading(false)
     }
   }
 
   /* ============================
-     FETCH COUNTS (college based)
+     FETCH COUNTS (COLLEGE)
   ============================ */
-  const fetchCounts = async (collegeName: string) => {
+  const fetchCollegeCounts = async (collegeName: string) => {
     try {
       const res = await fetch(
         `${baseURL}/dashboardAdmin?college=${encodeURIComponent(collegeName)}`,
@@ -82,7 +91,29 @@ const Counter = () => {
       const data = await res.json()
       setCounts(data)
     } catch (err) {
-      console.error('Failed to fetch admin counts:', err)
+      console.error('Failed to fetch college dashboard counts:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /* ============================
+     FETCH COUNTS (ALL COLLEGES)
+  ============================ */
+  const fetchAllCounts = async () => {
+    try {
+      const res = await fetch(`${baseURL}/dashboardAdmin`, {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      })
+
+      if (!res.ok) throw new Error('Failed to fetch dashboard counts')
+
+      const data = await res.json()
+      setCounts(data)
+    } catch (err) {
+      console.error('Failed to fetch global dashboard counts:', err)
     } finally {
       setLoading(false)
     }
@@ -97,12 +128,26 @@ const Counter = () => {
     }
   }, [user?.token])
 
+  /* ============================
+     ROLE-BASED COUNTS FETCH
+  ============================ */
   useEffect(() => {
-    if (college) {
-      fetchCounts(college)
-    }
-  }, [college])
+    if (!role) return
 
+    // College Admin → college-specific dashboard
+    if (role === 'college_admin' && college) {
+      fetchCollegeCounts(college)
+    }
+
+    // Admin / Super Admin → global dashboard
+    if (role === 'admin' || role === 'super_admin') {
+      fetchAllCounts()
+    }
+  }, [role, college])
+
+  /* ============================
+     UI DATA
+  ============================ */
   const data = [
     {
       count: counts.studentCount,
@@ -124,6 +169,9 @@ const Counter = () => {
     },
   ]
 
+  /* ============================
+     LOADING STATE
+  ============================ */
   if (loading) {
     return (
       <div className="text-center my-4">
@@ -132,6 +180,9 @@ const Counter = () => {
     )
   }
 
+  /* ============================
+     RENDER
+  ============================ */
   return (
     <Row className="g-4">
       {data.map((item, idx) => (
