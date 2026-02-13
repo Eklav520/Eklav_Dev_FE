@@ -63,7 +63,7 @@ const SignUpForm = () => {
   }
 
   const validateStep2 = () => {
-    return !errors.phoneNo && !errors.joiningYear && !errors.batch && !errors.college
+    return !errors.phoneNo && !errors.joiningYear && !errors.department && !errors.college
   }
 
   const nextStep = () => {
@@ -247,8 +247,8 @@ const SignUpForm = () => {
                   Department *
                 </label>
                 <select
-                  className={`form-select ${errors?.batch ? 'is-invalid' : ''}`}
-                  {...register('batch')}
+                  className={`form-select ${errors?.department ? 'is-invalid' : ''}`}
+                  {...register('department')}
                 >
                   <option value="">Select Department</option>
                   {departmentOptions.map((dept) => (
@@ -257,8 +257,8 @@ const SignUpForm = () => {
                     </option>
                   ))}
                 </select>
-                {errors?.batch && (
-                  <small className="text-danger mt-1">{errors.batch.message}</small>
+                {errors?.department && (
+                  <small className="text-danger mt-1">{errors.department.message}</small>
                 )}
               </div>
             </Col>
