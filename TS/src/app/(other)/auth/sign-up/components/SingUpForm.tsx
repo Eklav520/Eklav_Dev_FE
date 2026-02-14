@@ -43,19 +43,19 @@ const SignUpForm = () => {
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
   const departmentOptions = [
-    'Computer Science',
-    'Electronics & Communication',
-    'Electrical Engineering',
+    'Computer Science and Engineering',
+    'Electronics and Communication Engineering',
+    'Electrical and Electronics Engineering',
     'Mechanical Engineering',
     'Civil Engineering',
     'Information Technology',
-    'Artificial Intelligence & ML',
+    'Artificial Intelligence and Machine Learning',
     'Data Science',
     'Internet of Things',
     'Biomedical Engineering',
     'Chemical Engineering',
-    'MCA',
-    'B.Tech'
+    'Master of Computer Applications',
+    'Bachelor of Technology'
   ].sort()
 
   const validateStep1 = () => {

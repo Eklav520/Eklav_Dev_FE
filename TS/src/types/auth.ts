@@ -12,7 +12,7 @@ export type UserType = {
   profileImage?: string
 
   joiningYear?: string
-  batch?: string
+  department?: string
   college?: string
 
   role: string

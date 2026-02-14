@@ -18,7 +18,7 @@ const schema = yup.object().shape({
   education: yup.array().of(yup.string()),
   skills: yup.array().of(yup.string().trim()).max(50, 'Too many skills'),
   joiningYear: yup.string().nullable(),
-  batch: yup.string().nullable(),
+  department: yup.string().nullable(),
 })
 
 type ProfileResponse = {
@@ -33,7 +33,7 @@ type ProfileResponse = {
   certifications?: string[]
   skills?: string[]
   joiningYear?: string
-  batch?: string
+  department?: string
 }
 
 const EditProfile = () => {
@@ -76,8 +76,8 @@ const EditProfile = () => {
   const [collegeQuery, setCollegeQuery] = useState('')
   const [collegeResults, setCollegeResults] = useState<{ _id: string; name: string; address: string; pincode: string; logo?: string }[]>([]);
   const [showCollegeList, setShowCollegeList] = useState(false);
-  const yearOptions = Array.from({ length: 5 }, (_, i) => 2021 + i); // 2016–2025
-  const branchOptions = ['CSE', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Information Technology', 'AIML', 'Data Science', 'IoT', 'Biomedical', 'Chemical','MCA','Btech'].sort();
+  const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
+  const departmentOptions = ['Computer Science and Engineering', 'Electronics and Communication Engineering', 'Electrical and Electronics Engineering', 'Mechanical Engineering', 'Civil Engineering', 'Information Technology', 'Artificial Intelligence and Machine Learning', 'Data Science', 'Internet of Things', 'Biomedical Engineering', 'Chemical Engineering', 'Master of Computer Applications', 'Bachelor of Technology'].sort();
   const [selectedCollege, setSelectedCollege] = useState<{
     _id: string
     name: string
@@ -127,7 +127,7 @@ const EditProfile = () => {
           education: profile.education || [],
           skills: profile.skills || [],
           joiningYear: profile.joiningYear || '',
-          batch: profile.batch || '',
+          department: profile.department || '',
         })
 
         setCollegeQuery(profile.college || '')
@@ -241,7 +241,7 @@ const EditProfile = () => {
       formData.append('college', data.college)
       formData.append('about', data.about || '')
       formData.append('joiningYear', data.joiningYear)
-      formData.append('batch', data.batch)
+      formData.append('department', data.department)
 
       educationFields.forEach((edu, idx) =>
         formData.append(`education[${idx}]`, edu)
@@ -426,12 +426,12 @@ const EditProfile = () => {
               </select>
             </Col>
 
-            {/* Batch (Department) */}
+            {/* Department */}
             <Col md={3}>
-              <label className="form-label fw-semibold">Batch *</label>
-              <select className="form-select" {...register('batch')}>
+              <label className="form-label fw-semibold">Department *</label>
+              <select className="form-select" {...register('department')}>
                 <option value="">Select Department</option>
-                {branchOptions.map((b) => (
+                {departmentOptions.map((b) => (
                   <option key={b} value={b}>
                     {b}
                   </option>
