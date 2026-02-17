@@ -43,19 +43,19 @@ const SignUpForm = () => {
 
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i)
   const departmentOptions = [
-    'Computer Science',
-    'Electronics & Communication',
-    'Electrical Engineering',
+    'Computer Science and Engineering',
+    'Electronics and Communication Engineering',
+    'Electrical and Electronics Engineering',
     'Mechanical Engineering',
     'Civil Engineering',
     'Information Technology',
-    'Artificial Intelligence & ML',
+    'Artificial Intelligence and Machine Learning',
     'Data Science',
     'Internet of Things',
     'Biomedical Engineering',
     'Chemical Engineering',
-    'MCA',
-    'B.Tech'
+    'Master of Computer Applications',
+    'Bachelor of Technology'
   ].sort()
 
   const validateStep1 = () => {
@@ -63,7 +63,7 @@ const SignUpForm = () => {
   }
 
   const validateStep2 = () => {
-    return !errors.phoneNo && !errors.joiningYear && !errors.batch && !errors.college
+    return !errors.phoneNo && !errors.joiningYear && !errors.department && !errors.college
   }
 
   const nextStep = () => {
@@ -259,8 +259,8 @@ const SignUpForm = () => {
                   Department *
                 </label>
                 <select
-                  className={`form-select ${errors?.batch ? 'is-invalid' : ''}`}
-                  {...register('batch')}
+                  className={`form-select ${errors?.department ? 'is-invalid' : ''}`}
+                  {...register('department')}
                 >
                   <option value="">Select Department</option>
                   {departmentOptions.map((dept) => (
@@ -269,8 +269,8 @@ const SignUpForm = () => {
                     </option>
                   ))}
                 </select>
-                {errors?.batch && (
-                  <small className="text-danger mt-1">{errors.batch.message}</small>
+                {errors?.department && (
+                  <small className="text-danger mt-1">{errors.department.message}</small>
                 )}
               </div>
             </Col>

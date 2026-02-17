@@ -48,7 +48,7 @@ const schema = yup.object({
     .required('Joining year is required')
     .min(2000, 'Year must be after 2000')
     .max(new Date().getFullYear(), 'Year cannot be in the future'),
-  batch: yup.string().required('Please select your department'),
+  department: yup.string().required('Please select your department'),
   college: yup.string().required('Please select your college'),
 })
 
