@@ -130,7 +130,10 @@ const CourseData = ({
       <td>{totalLectures}</td>
       <td>
         <div className="mb-1">{progressPercent}%</div>
-        <div className="progress" style={{ height: '8px' }}>
+        <div className="progress" style={{
+          width: `${progressPercent}%`,
+          backgroundColor: '#ff7a00', height: '8px'
+        }}>
           <div
             className={`progress-bar ${progressPercent === 100 ? 'bg-success' : progressPercent >= 50 ? 'bg-info' : 'bg-warning'}`}
             role="progressbar"
@@ -141,7 +144,10 @@ const CourseData = ({
         </div>
       </td>
 
-      <td>{status}</td>
+      <td style={{ color: '#ff7a00', fontWeight: 500 }}>
+        {status}
+      </td>
+
 
       {/* Your Rating Column */}
       <td>
@@ -159,8 +165,20 @@ const CourseData = ({
           </div>
         ) : (
           <Button
-            variant="outline-primary"
             size="sm"
+            style={{
+              borderColor: '#ff7a00',
+              color: '#ff7a00',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#ff7a00'
+              e.currentTarget.style.color = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#ff7a00'
+            }}
             onClick={() => onRateCourse({ _id, name, image, totalLectures, completedLectures, userRating, courseRating })}>
             Rate Course
           </Button>
@@ -169,7 +187,14 @@ const CourseData = ({
 
       <td>
         <a href={`/pages/course/detail-adv/${_id}`} target="_blank" rel="noopener noreferrer">
-          <Button variant="primary-soft" size="sm" className="me-1 mb-1 mb-md-0 icons-center">
+          <Button
+            size="sm"
+            style={{
+              backgroundColor: '#ff7a00',
+              borderColor: '#ff7a00',
+              color: '#fff'
+            }}
+            className="me-1 mb-1 mb-md-0 icons-center">
             <BsPlayCircle className="me-1" /> Play
           </Button>
         </a>
@@ -454,7 +479,7 @@ const CourseListPage = () => {
                 <button
                   className="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0 text-primary-hover text-reset"
                   type="submit">
-                  <FaSearch className="fs-6" />
+                  <FaSearch className="fs-6" style={{ color: '#ff7a00' }} />
                 </button>
               </form>
             </Col>
@@ -511,27 +536,48 @@ const CourseListPage = () => {
                 <p className="mb-0 text-center text-sm-start">Showing {filteredCourses.length} entries</p>
 
                 <nav>
-                  <ul className="pagination pagination-sm pagination-primary-soft mb-0">
-                    <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage - 1)}>
-                        <FaAngleLeft />
-                      </button>
-                    </li>
+                  <nav>
+                    <ul className="pagination pagination-sm pagination-primary-soft mb-0">
 
-                    {[...Array(totalPages)].map((_, idx) => (
-                      <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                        <button className="page-link" onClick={() => setCurrentPage(idx + 1)}>
-                          {idx + 1}
+                      <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                        <button
+                          className="page-link bg-dark text-white border-0"
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                        >
+                          <FaAngleLeft />
                         </button>
                       </li>
-                    ))}
 
-                    <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                      <button className="page-link" onClick={() => setCurrentPage(currentPage + 1)}>
-                        <FaAngleRight />
-                      </button>
-                    </li>
-                  </ul>
+                      {[...Array(totalPages)].map((_, idx) => (
+                        <li
+                          key={idx}
+                          className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}
+                        >
+                          <button
+                            className="page-link border-0"
+                            style={{
+                              backgroundColor: currentPage === idx + 1 ? '#ff7a00' : '#1c1c1c',
+                              color: currentPage === idx + 1 ? '#fff' : '#fff'
+                            }}
+                            onClick={() => setCurrentPage(idx + 1)}
+                          >
+                            {idx + 1}
+                          </button>
+                        </li>
+                      ))}
+
+                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                        <button
+                          className="page-link bg-dark text-white border-0"
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                        >
+                          <FaAngleRight />
+                        </button>
+                      </li>
+
+                    </ul>
+                  </nav>
+
                 </nav>
               </div>
             </>

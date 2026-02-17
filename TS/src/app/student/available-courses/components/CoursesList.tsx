@@ -191,7 +191,10 @@ const CoursesList = () => {
     return (
       <Card className="bg-transparent border rounded-3">
         <CardBody className="text-center py-5">
-          <div className="spinner-border text-primary" role="status">
+          <div
+            className="spinner-border"
+            style={{ color: '#ff7a00' }}
+            role="status">
             <span className="visually-hidden">Loading...</span>
           </div>
           <p className="mt-3 mb-0">Loading courses...</p>
@@ -207,11 +210,6 @@ const CoursesList = () => {
           <Col md={6}>
             <div className="d-flex flex-column flex-md-row align-items-md-center gap-2">
               <h3 className="mb-0">Available Courses</h3>
-
-              <Alert variant="danger" className="mb-0 py-2 px-3">
-                <strong>⛔ Premium Version:</strong>{' '}
-                Enrollment will be enabled
-              </Alert>
             </div>
           </Col>
 
@@ -228,7 +226,8 @@ const CoursesList = () => {
                 }}
               />
               <button
-                className="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0 text-primary-hover text-reset"
+                className="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0"
+                style={{ color: '#ff7a00' }}
                 type="submit">
                 <FaSearch />
               </button>
@@ -273,43 +272,76 @@ const CoursesList = () => {
             Showing <strong>{filteredCourses.length}</strong> course{filteredCourses.length !== 1 ? 's' : ''}
           </p>
 
-          <p className="mb-2 mb-sm-0 text-secondary small">
+         {/*  <p className="mb-2 mb-sm-0 text-secondary small">
             You can enroll in <strong>{5 - enrolledCourseIds.length}</strong> more course
             {5 - enrolledCourseIds.length !== 1 ? 's' : ''}.
-          </p>
+          </p> */}
 
           <nav aria-label="Page navigation">
             <ul className="pagination pagination-sm pagination-primary-soft mb-0">
+
+              {/* Previous */}
               <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
                 <Button
                   className="page-link"
+                  style={{
+                    color: '#ff7a00',
+                    borderColor: '#ff7a00',
+                  }}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                 >
                   <FaAngleLeft />
                 </Button>
               </li>
+
+              {/* Page Numbers */}
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <li key={page} className={`page-item ${currentPage === page ? 'active' : ''}`}>
+                <li
+                  key={page}
+                  className={`page-item ${currentPage === page ? 'active' : ''}`}
+                >
                   <Button
                     className="page-link"
+                    style={
+                      currentPage === page
+                        ? {
+                          backgroundColor: '#ff7a00',
+                          borderColor: '#ff7a00',
+                          color: '#ffffff',
+                        }
+                        : {
+                          color: '#ff7a00',
+                          borderColor: '#ff7a00',
+                        }
+                    }
                     onClick={() => setCurrentPage(page)}
                   >
                     {page}
                   </Button>
                 </li>
               ))}
+
+              {/* Next */}
               <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                 <Button
                   className="page-link"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  style={{
+                    color: '#ff7a00',
+                    borderColor: '#ff7a00',
+                  }}
+                  onClick={() =>
+                    setCurrentPage(prev => Math.min(prev + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                 >
                   <FaAngleRight />
                 </Button>
               </li>
+
             </ul>
           </nav>
+
         </div>
       </CardBody>
     </Card>

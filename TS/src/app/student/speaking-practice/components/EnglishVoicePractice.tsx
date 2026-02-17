@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, ProgressBar, Button, Row, Col, Spinner, Container, Badge } from 'react-bootstrap'
 import axios from 'axios'
-import './EnglishVoicePractice.css'
 import { useAuthContext } from '@/context/useAuthContext'
 
 interface Message {
@@ -82,7 +81,7 @@ const EnglishVoicePractice: React.FC = () => {
       // ✅ extract only what UI needs
       setHistory({
         highestScore: data.summary?.bestScore ?? null,
-        attemptsText: `${data.attemptsUsed} / ${data.weeklyLimit}`,
+        attemptsText: `${data.attemptsUsed} / ${data.weeklyLimit ?? 0}`,
         attemptsUsed: data.attemptsUsed,
         weeklyLimit: data.weeklyLimit,
       })
@@ -214,13 +213,9 @@ const EnglishVoicePractice: React.FC = () => {
     rec.onend = () => {
       setIsListening(false)
       setIsUserSpeaking(false)
-
-      if (!manualStopRef.current) {
-        startSilenceTimer()
-      }
-
       manualStopRef.current = false
     }
+
 
 
 
@@ -252,10 +247,19 @@ const EnglishVoicePractice: React.FC = () => {
 
   const onTTSEnd = () => {
     ttsCountRef.current -= 1
+
     if (ttsCountRef.current === 0 && sessionActiveRef.current) {
       startListening()
+
+      // Start timer ONLY after mic restarts
+      setTimeout(() => {
+        if (sessionActiveRef.current) {
+          startSilenceTimer()
+        }
+      }, 500)
     }
   }
+
 
   const speak = (text: string) =>
     new Promise<void>(async (resolve) => {
@@ -306,12 +310,16 @@ const EnglishVoicePractice: React.FC = () => {
 
   /* ===================== SESSION ===================== */
   const resetSessionState = () => {
-    noResponseCountRef.current = 0
     clearSilenceTimer()
+    noResponseCountRef.current = 0
+    manualStopRef.current = false
+    ttsCountRef.current = 0
+
+    stopListening()
+    speechSynthesis.cancel()
 
     transcriptRef.current = ''
     lastUserRef.current = ''
-    recognitionRef.current = null
 
     setMessages([])
     setFeedback('')
@@ -321,6 +329,7 @@ const EnglishVoicePractice: React.FC = () => {
     setLiveSpeech('')
     setIsUserSpeaking(false)
   }
+
 
   const handleStartSession = async () => {
     resetSessionState()
@@ -394,14 +403,14 @@ const EnglishVoicePractice: React.FC = () => {
   /* ===================== UI ===================== */
   return (
     <Container fluid className="english-practice-container">
-      <Row className="g-3">
+      <Row className="g-3 align-items-stretch">
         {/* PRACTICE SESSION CARD */}
-        <Col xs={12} lg={6} className="mb-3">
+        <Col xs={12} lg={6} >
           <Card className="shadow-sm h-100">
             <Card.Header className="practice-header">
               <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
                 <div className="flex-grow-1 header-text">
-                  <h5 className="fw-bold mb-1">🗣 AI English Practice</h5>
+                  <h5 className="fw-bold mb-1">🗣 Speak with Eklav</h5>
                   {history && (
                     <p className="mb-0 attempts-text">
                       Attempts: <strong>{history.attemptsText}</strong>
@@ -412,7 +421,10 @@ const EnglishVoicePractice: React.FC = () => {
                   {history && history.highestScore !== null && (
                     <div className="me-3 text-end">
                       <small className="text-muted d-block">Best Score</small>
-                      <strong className="text-success fs-5">{history.highestScore}</strong>
+                      <strong className="best-score-value">
+                        {history.highestScore}
+                      </strong>
+
                     </div>
                   )}
 
@@ -430,8 +442,8 @@ const EnglishVoicePractice: React.FC = () => {
               <div ref={chatBodyRef} className="chat-messages">
                 {!sessionStarted ? (
                   <div className="welcome-screen">
-                    <div className="welcome-icon">🎯</div>
-                    <h5 className="welcome-title">Ready to Practice English?</h5>
+                    <div className="welcome-icon">🤖</div>
+                    <h5 className="welcome-title">Let’s Start Speaking with Eklav!</h5>
                     <p className="welcome-text">Click Start to begin your session</p>
                   </div>
                 ) : (
@@ -691,7 +703,7 @@ const EnglishVoicePractice: React.FC = () => {
         
         /* Header Styles */
         .practice-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%) !important;
           color: white !important;
           padding: 1rem !important;
         }
@@ -740,7 +752,7 @@ const EnglishVoicePractice: React.FC = () => {
         }
         
         .mic-icon.listening {
-          color: #ffc107 !important;
+          color: #ff7a00 !important;
           animation: pulse 1.5s infinite;
         }
         
@@ -806,10 +818,11 @@ const EnglishVoicePractice: React.FC = () => {
         }
         
         .user-bubble {
-          background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-          border: 1px solid #bbdefb;
+          background: linear-gradient(135deg, #fff4e6 0%, #ffe0c2 100%);
+          border: 1px solid #ff7a00;
+          box-shadow: 0 2px 8px rgba(255, 122, 0, 0.15);
           border-radius: 1rem 1rem 0.25rem 1rem;
-          box-shadow: 0 2px 8px rgba(33, 150, 243, 0.15);
+         
         }
         
         .rob-bubble {
@@ -852,7 +865,7 @@ const EnglishVoicePractice: React.FC = () => {
         }
         
         .user-avatar {
-          background: linear-gradient(135deg, #2196f3 0%, #0d47a1 100%);
+          background: linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%);
           color: white;
         }
         
@@ -895,7 +908,7 @@ const EnglishVoicePractice: React.FC = () => {
         .pulsating-dot {
           width: 10px;
           height: 10px;
-          background-color: #2196f3;
+          background-color: #ff7a00;
           border-radius: 50%;
           animation: pulse 1.5s infinite ease-in-out;
         }
@@ -956,11 +969,61 @@ const EnglishVoicePractice: React.FC = () => {
           color: #212529;
         }
         
-        .control-buttons {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
+       /* ===== CLEAN PROFESSIONAL BUTTON ALIGNMENT ===== */
+
+.session-controls {
+  background: #000; /* keep your dark look */
+  padding: 1.5rem !important;
+}
+
+/* Both rows wrapper */
+.control-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+/* Make all buttons equal height */
+.control-buttons .btn {
+  min-width: 140px;   /* reduced */
+  height: 42px;       /* reduced */
+  padding: 0 16px;    /* tighter */
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.control-btn {
+  flex: 0 0 auto;
+  min-width: 150px;   /* reduced */
+}
+
+.control-buttons .btn {
+  min-width: 120px;
+  height: 38px;
+  font-size: 0.85rem;
+}
+
+
+/* Mobile */
+@media (max-width: 768px) {
+  .control-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control-buttons .btn {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
         
         @media (min-width: 576px) {
           .control-buttons {
@@ -974,38 +1037,36 @@ const EnglishVoicePractice: React.FC = () => {
           white-space: nowrap;
         }
         
-        /* Feedback Card */
         .feedback-header {
-          background: white;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%) !important;
+          color: white !important;
           padding: 1rem !important;
-          border-bottom: 1px solid #dee2e6 !important;
+          border-bottom: none !important;
         }
-        
+
         .feedback-header h5 {
-          color: #212529 !important;
+          color: white !important;
           margin: 0 !important;
         }
-        
+
         .feedback-icon {
-          color: #ff9800;
-          margin-right: 0.5rem;
+          color: #fff !important;
         }
-        
         .feedback-body {
-          min-height: 300px;
-          padding: 0 !important;
+        padding: 0 !important;
         }
+
         
         .empty-feedback,
         .loading-feedback {
-          height: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 2rem;
+          padding: 3rem 2rem;
           text-align: center;
         }
+
         
         .empty-icon {
           font-size: 4rem;
@@ -1036,7 +1097,7 @@ const EnglishVoicePractice: React.FC = () => {
         /* Feedback Content */
         .feedback-content {
           padding: 1.5rem;
-          max-height: 400px;
+          max-height: 500px;
           overflow-y: auto;
         }
         
@@ -1363,6 +1424,7 @@ const EnglishVoicePractice: React.FC = () => {
       font-size: 0.75rem;
     }
   }
+
   
   /* Very small mobile: Stack vertically */
   @media (max-width: 360px) {
@@ -1391,6 +1453,31 @@ const EnglishVoicePractice: React.FC = () => {
       font-size: 0.875rem;
     }
   }
+  /* ORANGE BUTTON STYLE */
+    .control-btn.btn-success,
+    .control-btn.btn-primary,
+    .control-btn.btn-danger {
+      background: #ff7a00 !important;
+      border-color: #ff7a00 !important;
+      color: #fff !important;
+    }
+
+    .control-btn.btn-success:hover,
+    .control-btn.btn-primary:hover,
+    .control-btn.btn-danger:hover {
+      background: #e96d00 !important;
+      border-color: #e96d00 !important;
+    }
+
+    .best-score-value {
+      color: #ffffff !important;
+      font-size: 1.6rem;
+      font-weight: 700;
+      text-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+  
+
       `}</style>
     </Container>
   )

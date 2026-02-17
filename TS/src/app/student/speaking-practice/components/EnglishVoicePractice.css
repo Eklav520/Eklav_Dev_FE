@@ -491,6 +491,37 @@ html, body, #root {
 .chat-card .card-header small {
   font-size: 0.8rem;
 }
+/* Remove unwanted Bootstrap focus styles */
+.btn-primary:focus,
+.btn-primary:active,
+.btn-success:focus,
+.btn-success:active,
+.btn-danger:focus,
+.btn-danger:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Keep gradient even when active */
+.btn-primary:hover,
+.btn-primary:active,
+.btn-primary:focus {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+}
+
+.btn-success:hover,
+.btn-success:active,
+.btn-success:focus {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.btn-danger:hover,
+.btn-danger:active,
+.btn-danger:focus {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+
+
 
 
 

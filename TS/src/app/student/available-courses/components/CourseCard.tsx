@@ -254,24 +254,47 @@ const CourseCard = ({ course }: { course: CourseType }) => {
             <div className="mb-2 text-muted small">No ratings yet</div>
           )}
 
-          <div className="d-flex justify-content-between align-items-center mt-auto flex-wrap gap-2">
-            <div className="small text-secondary me-2">
-              <FaRegClock className="me-1 text-primary" />
-              {duration || 'N/A'}
+          <div className="d-flex align-items-center mt-auto gap-3 flex-wrap">
+
+            {/* Duration */}
+            <div className="d-flex align-items-center gap-1 small text-secondary">
+              <FaRegClock size={14} style={{ color: '#ff7a00' }} />
+              <span className="lh-1">{duration || 'N/A'}</span>
             </div>
-            <div className="small text-secondary me-2">
-              <FaTable className="me-1 text-success" />
-              {totalLectures || videos.length || 0} lectures
+
+            {/* Lectures */}
+            <div className="d-flex align-items-center gap-1 small text-secondary">
+              <FaTable size={14} style={{ color: '#ff7a00' }} />
+              <span className="lh-1">
+                {totalLectures || videos.length || 0} lectures
+              </span>
             </div>
+
+            {/* Button */}
             <Button
-              variant="outline-primary"
               size="sm"
+              className="ms-auto d-flex align-items-center gap-2"
+              style={{
+                borderColor: '#ff7a00',
+                color: '#ff7a00',
+                backgroundColor: 'transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ff7a00'
+                e.currentTarget.style.color = '#fff'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#ff7a00'
+              }}
               onClick={() => setShowDetails(true)}
-              className="ms-auto d-inline-flex align-items-center gap-2">
-              <FaInfoCircle size={14} className="mb-0" />
-              <span>View Details</span>
+            >
+              <FaInfoCircle size={14} />
+              View Details
             </Button>
+
           </div>
+
         </CardBody>
       </Card>
 
@@ -441,7 +464,11 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                             )}
 
                             <Button
-                              variant="success"
+                              style={{
+                                backgroundColor: '#ff7a00',
+                                borderColor: '#ff7a00',
+                                color: '#fff',
+                              }}
                               className="w-100 mt-3"
                               onClick={() => handleEnroll(_id)}
                               //disabled={true}
@@ -520,7 +547,14 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                                 <div className="d-flex align-items-center gap-3">
                                   {typeof video.progress === 'number' && (
                                     <div style={{ minWidth: 160 }}>
-                                      <ProgressBar now={video.progress} label={`${video.progress}%`} />
+                                      <ProgressBar
+                                        now={video.progress}
+                                        style={{
+                                          backgroundColor: '#2a2a2a',
+                                        }}
+                                        variant=""
+                                        className="orange-progress"
+                                        label={`${video.progress}%`} />
                                     </div>
                                   )}
                                   <span className="badge rounded-pill bg-dark-subtle text-body d-inline-flex align-items-center gap-1 px-3 py-2">
@@ -731,8 +765,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   overflow-y: auto;
 }
 .cc-card{ 
-  background:rgba(255,255,255,.04); 
-  border:1px solid rgba(255,255,255,.08); 
+ background-color: #0f0f0f;
+  border: 1px solid rgba(255, 122, 0, 0.15);
   border-radius:14px; 
 }
 .cc-desc p{ margin-bottom:.8rem; color:#e5e7eb; }
@@ -783,9 +817,9 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   }
 }
   .cc-card {
-  background-color: #111; /* match your theme */
+   background-color: #0f0f0f;
+  border: 1px solid rgba(255, 122, 0, 0.15);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .cc-card ul li:hover {
@@ -850,6 +884,11 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   padding-left: 1rem;
   padding-right: 1rem;
 }
+
+.orange-progress .progress-bar {
+  background-color: #ff7a00 !important;
+}
+
 
 
 
