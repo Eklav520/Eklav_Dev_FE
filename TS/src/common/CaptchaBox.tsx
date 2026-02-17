@@ -38,12 +38,19 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
   return (
     <div className="mb-3">
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+
         <input
           className="form-control"
           placeholder="Enter Captcha"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value.toUpperCase())}
           disabled={verified}
+          style={{
+            borderColor: verified ? "#fd692a" : undefined,
+            boxShadow: verified
+              ? "0 0 0 0.2rem rgba(253,105,42,.25)"
+              : undefined,
+          }}
         />
 
         <div
@@ -56,31 +63,48 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
             fontWeight: "bold",
             borderRadius: 8,
             userSelect: "none",
-            color: "#066ac9",
+            color: "#fd692a",
+            border: "1px solid rgba(253,105,42,.4)",
           }}
         >
           {captchaText}
         </div>
 
-       {verified ? <FaCheckCircle color="green" size={26} />: <img
-          src={RefreshIcon}
-          alt="Refresh Captcha"
-          onClick={() => {
-            regenerateCaptcha();
-            setVerified(false);
-            setError("");
-            onValidate?.(false);
-          }}
-          style={{ width: 28, height: 28, cursor: "pointer", marginTop: 8 }}
-        />
-        }
+        {verified ? (
+          <FaCheckCircle color="#fd692a" size={26} />
+        ) : (
+          <img
+            src={RefreshIcon}
+            alt="Refresh Captcha"
+            onClick={() => {
+              regenerateCaptcha();
+              setVerified(false);
+              setError("");
+              onValidate?.(false);
+            }}
+            style={{
+              width: 28,
+              height: 28,
+              cursor: "pointer",
+              marginTop: 8,
+              filter:
+                "invert(52%) sepia(94%) saturate(1550%) hue-rotate(346deg) brightness(101%) contrast(101%)",
+            }}
+          />
+        )}
       </div>
 
       <div className="d-flex align-items-center gap-2 mt-3">
-        {!verified && error && <><FaTimesCircle color="red" size={26} />{error}</>}
+        {!verified && error && (
+          <>
+            <FaTimesCircle color="#fd692a" size={22} />
+            <span style={{ color: "#fd692a" }}>{error}</span>
+          </>
+        )}
       </div>
     </div>
   );
+
 };
 
 export default CaptchaBox;

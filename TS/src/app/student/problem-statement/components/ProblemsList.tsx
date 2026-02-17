@@ -173,29 +173,31 @@ const ProblemsList = ({ selectedId, completedIds, onSelect }: Props) => {
               key={p._id}
               action
               onClick={() => onSelect(p)}
-              className={`d-flex align-items-center gap-3 ${
-                isActive ? 'bg-primary bg-opacity-10' : ''
-              }`}
+              className={`d-flex align-items-center gap-3 ${isActive ? 'bg-primary bg-opacity-10' : ''
+                }`}
               style={{
                 borderLeft: isActive
                   ? '4px solid #0d6efd'
                   : '4px solid transparent',
               }}
             >
-              <span
-                className={`rounded-circle bg-${
-                  isCompleted ? 'success' : 'secondary'
-                }`}
-                style={{ width: 8, height: 8 }}
-              />
-
-              <div className="flex-grow-1 text-truncate">
-                <span className="fw-medium">
+              {/* Title */}
+              <div
+                style={{
+                  flex: 1,
+                  minWidth: 0,     // 🔥 important for truncation
+                }}
+              >
+                <span className="fw-medium text-truncate d-block">
                   {p.id}. {p.title}
                 </span>
               </div>
 
-              <div className="d-flex align-items-center gap-1 small text-muted">
+              {/* Difficulty */}
+              <div
+                className="d-flex align-items-center gap-1 small text-muted"
+                style={{ flexShrink: 0 }}  // 🔥 VERY IMPORTANT
+              >
                 <span
                   className={`rounded-circle bg-${difficultyColor[p.difficulty]}`}
                   style={{ width: 6, height: 6 }}
@@ -203,6 +205,7 @@ const ProblemsList = ({ selectedId, completedIds, onSelect }: Props) => {
                 {p.difficulty}
               </div>
             </ListGroup.Item>
+
           )
         })}
       </ListGroup>

@@ -105,10 +105,17 @@ const SignUpForm = () => {
         </div>
         <ProgressBar
           now={getProgress()}
-          variant="primary"
+          style={{
+            backgroundColor: 'rgba(253,105,42,.15)'
+          }}
           className="mb-3"
-          style={{ height: '4px' }}
-        />
+        >
+          <ProgressBar
+            now={getProgress()}
+            style={{ backgroundColor: '#fd692a' }}
+          />
+        </ProgressBar>
+
       </div>
 
       {/* Step 1: Account Details */}
@@ -127,7 +134,6 @@ const SignUpForm = () => {
                 label="Full Name"
                 placeholder="Enter your full name"
                 icon={<FaUser />}
-                maxLength={50}
                 required
                 error={errors.fullname}
               />
@@ -183,7 +189,13 @@ const SignUpForm = () => {
           <div className="d-flex justify-content-end mt-4">
             <button
               type="button"
-              className="btn btn-primary px-4"
+              className="btn px-4"
+              style={{
+                backgroundColor: '#fd692a',
+                borderColor: '#fd692a',
+                color: '#fff'
+              }}
+
               onClick={nextStep}
               disabled={!validateStep1() || passwordScore < 3}
             >
@@ -296,7 +308,9 @@ const SignUpForm = () => {
                 I agree to the{' '}
                 <button
                   type="button"
-                  className="btn-link text-decoration-none p-0 border-0 bg-transparent"
+                  className="text-decoration-none p-0 border-0 bg-transparent"
+                  style={{ color: '#fd692a' }}
+
                   onClick={() => setShowTermsModal(true)}
                 >
                   Terms of Service
@@ -304,7 +318,9 @@ const SignUpForm = () => {
                 and{' '}
                 <button
                   type="button"
-                  className="btn-link text-decoration-none p-0 border-0 bg-transparent"
+                  className="text-decoration-none p-0 border-0 bg-transparent"
+                  style={{ color: '#fd692a' }}
+
                   onClick={() => setShowTermsModal(true)}
                 >
                   Privacy Policy
@@ -322,7 +338,13 @@ const SignUpForm = () => {
           <div className="d-flex justify-content-between align-items-center mt-5">
             <button
               type="button"
-              className="btn btn-outline-secondary"
+              className="btn"
+              style={{
+                borderColor: '#fd692a',
+                color: '#fd692a',
+                background: 'transparent'
+              }}
+
               onClick={prevStep}
             >
               <i className="fas fa-arrow-left me-2"></i>
@@ -331,12 +353,22 @@ const SignUpForm = () => {
 
             <button
               type="submit"
-              className="btn btn-primary px-5"
+              className="btn px-5"
+              style={{
+                backgroundColor: '#fd692a',
+                borderColor: '#fd692a',
+                color: '#fff'
+              }}
+
               disabled={loading || !termsAccepted || !captchaValid}
             >
               {loading ? (
                 <>
-                  <span className="spinner-border spinner-border-sm me-2"></span>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    style={{ color: '#fff' }}
+                  ></span>
+
                   Creating Account...
                 </>
               ) : (

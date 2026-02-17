@@ -49,11 +49,23 @@ const SignIn = () => {
       <CaptchaBox onValidate={setCaptchaValid} />
 
       <div className="d-grid">
-        <button className="btn btn-primary" type="submit" disabled={!captchaValid || loading}>
+        <button
+          className="btn orange-btn"
+          type="submit"
+          disabled={!captchaValid || loading}
+          style={{
+            backgroundColor: '#fd692a',
+            borderColor: '#fd692a',
+            color: '#fff'
+          }}
+        >
+
           {loading ? "Logging in..." : "Login"}
         </button>
         <span>
-          Don&apos;t have an account? <Link to="/auth/sign-up">Signup here</Link>
+          Don&apos;t have an account ? <Link to="/auth/sign-up" style={{ color: '#fd692a' }}>
+            Signup here
+          </Link>
         </span>
       </div>
     </form>

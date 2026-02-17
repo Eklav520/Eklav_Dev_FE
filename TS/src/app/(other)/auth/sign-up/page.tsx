@@ -12,7 +12,10 @@ const SignUpPage = () => {
       <PageMetaData title="Sign Up" />
       <AuthLayout>
         {/* Heading */}
-        <h2 className="mb-1 text-center">Create your account</h2>
+        <h2 className="mb-1 text-center">
+          <span style={{ color: '#fd692a' }}>Create</span> your account
+        </h2>
+
         <p className="text-muted mb-4 text-center">
           Join us and start your learning journey 🚀
         </p>
@@ -23,7 +26,11 @@ const SignUpPage = () => {
             <Suspense
               fallback={
                 <div className="text-center py-5">
-                  <Spinner animation="border" variant="primary" />
+                  <Spinner
+                    animation="border"
+                    style={{ color: '#fd692a' }}
+                  />
+
                   <p className="mt-3 text-muted">Loading form...</p>
                 </div>
               }
@@ -34,7 +41,12 @@ const SignUpPage = () => {
             <div className="text-center mt-4">
               <p className="mb-0 text-muted">
                 Already have an account?{' '}
-                <Link to="/auth/sign-in" className="fw-semibold">
+                <Link
+                  to="/auth/sign-in"
+                  className="fw-semibold"
+                  style={{ color: '#fd692a' }}
+                >
+
                   Sign In
                 </Link>
               </p>

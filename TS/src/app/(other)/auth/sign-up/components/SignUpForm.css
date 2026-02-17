@@ -69,3 +69,12 @@
     padding: 1rem;
   }
 }
+
+.form-check-input:checked {
+  background-color: #fd692a;
+  border-color: #fd692a;
+}
+
+.form-check-input:focus {
+  box-shadow: 0 0 0 .2rem rgba(253,105,42,.25);
+}

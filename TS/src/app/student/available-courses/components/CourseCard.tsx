@@ -444,8 +444,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                               variant="success"
                               className="w-100 mt-3"
                               onClick={() => handleEnroll(_id)}
-                              disabled={true}
-                            //disabled={enrolledCourseIds.includes(_id) || enrolledCourseIds.length >= 5}
+                              //disabled={true}
+                              disabled={enrolledCourseIds.includes(_id) || enrolledCourseIds.length >= 5}
                             >
                               {enrolledCourseIds.includes(_id)
                                 ? 'Already Enrolled'
