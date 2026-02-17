@@ -104,7 +104,6 @@ const VocabularyPractice: React.FC = () => {
               with meanings, examples, and interactive quizzes to expand your English vocabulary.
             </p>
             <Button
-              variant="primary"
               size="lg"
               className="start-button"
               onClick={startVocabulary}
@@ -898,6 +897,29 @@ const VocabularyPractice: React.FC = () => {
             align-self: flex-end;
           }
         }
+
+        .start-button {
+        background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%) !important;
+        border: none !important;
+        color: white !important;
+        padding: 1rem 2.5rem;
+        border-radius: 14px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        transition: all 0.25s ease;
+      }
+
+      .start-button:hover {
+        background: linear-gradient(135deg, #e55f00 0%, #ff8c1a 100%) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(255, 122, 0, 0.35);
+      }
+
+      .start-button:active {
+        transform: translateY(0);
+        box-shadow: none;
+      }
+
       `}</style>
     </Container>
   )

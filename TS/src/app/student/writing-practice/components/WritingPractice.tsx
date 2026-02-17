@@ -10,6 +10,7 @@ interface WritingFeedbackResult {
 }
 
 interface WritingHistoryUI {
+  monthlyLimit: number
   attemptsUsed: number
   weeklyLimit: number
   attemptsLeft: number
@@ -97,6 +98,7 @@ const WritingPractice: React.FC = () => {
       if (!Array.isArray(data) || data.length === 0) {
         setHistory({
           attemptsUsed: 0,
+          monthlyLimit: 30,
           weeklyLimit: 5,
           attemptsLeft: 5,
           bestScore: null,
@@ -109,6 +111,7 @@ const WritingPractice: React.FC = () => {
 
       const attemptsUsed = attempts.length
       const weeklyLimit = latest.weeklyLimit ?? 5
+      const monthlyLimit = latest.monthlyLimit ?? 30
       const attemptsLeft = Math.max(weeklyLimit - attemptsUsed, 0)
 
       // Prefer backend summary, fallback to computation
@@ -116,6 +119,7 @@ const WritingPractice: React.FC = () => {
 
       setHistory({
         attemptsUsed,
+        monthlyLimit,
         weeklyLimit,
         attemptsLeft,
         bestScore,
@@ -212,13 +216,19 @@ const WritingPractice: React.FC = () => {
             </p>
 
             <div className="mode-selection mb-4">
-              <Form.Select value={mode} onChange={(e) => setMode(e.target.value as ModeType)} className="mode-selector">
-                <option value="essay">📝 Essay Writing</option>
-                <option value="email">📧 Email Writing</option>
-                <option value="summary">📄 Summary Writing</option>
-              </Form.Select>
+              <label className="mode-label">Choose Writing Mode</label>
+              <div className="mode-select-wrapper">
+                <Form.Select
+                  value={mode}
+                  onChange={(e) => setMode(e.target.value as ModeType)}
+                  className="mode-selector"
+                >
+                  <option value="essay">📝 Essay Writing</option>
+                  <option value="email">📧 Email Writing</option>
+                  <option value="summary">📄 Summary Writing</option>
+                </Form.Select>
+              </div>
             </div>
-
             <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isWeeklyLimitReached} className="start-button">
               {fetchingPrompt ? (
                 <>
@@ -232,15 +242,24 @@ const WritingPractice: React.FC = () => {
                 </>
               )}
             </Button>
-            {history && (
-              <div className="mt-3 d-flex flex-column gap-2 align-items-center">
-                <Badge bg={!isWeeklyLimitReached ? 'info' : 'danger'}>
-                  Attempts: {history.attemptsUsed} / {history.weeklyLimit}
-                </Badge>
+           {history && (
+  <div className="writing-stats mt-4">
+    <div className={`stat-box attempts ${isWeeklyLimitReached ? 'limit-reached' : ''}`}>
+      <div className="stat-label">Monthly Attempts</div>
+      <div className="stat-value">
+        {history.attemptsUsed} / {history.monthlyLimit}
+      </div>
+    </div>
 
-                {history.bestScore !== null && <Badge bg="success">Best Score: {history.bestScore}/10 ⭐</Badge>}
-              </div>
-            )}
+    <div className="stat-box score">
+      <div className="stat-label">Best Score</div>
+      <div className="stat-value">
+        {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
+      </div>
+    </div>
+  </div>
+)}
+
           </div>
         </div>
       ) : (
@@ -495,33 +514,60 @@ const WritingPractice: React.FC = () => {
           margin-bottom: 2.5rem;
         }
 
-        .mode-selection {
-          max-width: 300px;
+       .mode-selection {
+          max-width: 320px;
           margin: 0 auto 2rem;
+          text-align: left;
+        }
+
+        .mode-label {
+          display: block;
+          font-weight: 600;
+          font-size: 0.95rem;
+          color: #4a5568;
+          margin-bottom: 0.5rem;
+        }
+        
+        .mode-select-wrapper {
+          position: relative;
         }
 
         .mode-selector {
-          border-radius: 12px;
-          border: 2px solid #e2e8f0;
-          padding: 0.75rem 1rem;
-          font-size: 1.1rem;
+          border-radius: 14px !important;
+          border: 2px solid #ffe0cc !important;
+          padding: 0.85rem 1rem !important;
+          font-size: 1.05rem;
           font-weight: 500;
+          background-color: #fff8f3 !important;
+          transition: all 0.25s ease;
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.05);
+        }
+
+        .mode-selector:focus {
+          border-color: #ff7a00 !important;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
+          background-color: #ffffff !important;
+        }
+
+        .mode-selector:hover {
+          border-color: #ff9a3c !important;
         }
 
         .start-button {
-          padding: 1.2rem 3rem;
-          border-radius: 12px;
-          font-size: 1.2rem;
-          font-weight: 600;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          border: none;
-          transition: all 0.3s ease;
+            padding: 1.2rem 3rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+            border: none;
+            transition: all 0.3s ease;
+          }
+
+          .start-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 122, 0, 0.35);
         }
 
-        .start-button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-        }
 
         /* Practice Container */
         .practice-container {
@@ -567,7 +613,7 @@ const WritingPractice: React.FC = () => {
           background: #f8fafc;
           padding: 2rem;
           border-radius: 16px;
-          border-left: 6px solid #667eea;
+         border-left: 6px solid #ff7a00;
         }
 
         .question-text {
@@ -599,7 +645,7 @@ const WritingPractice: React.FC = () => {
         }
 
         .writing-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           font-size: 1.3rem;
           font-weight: 600;
@@ -639,8 +685,8 @@ const WritingPractice: React.FC = () => {
         }
 
         .writing-textarea:focus {
-          border-color: #667eea;
-          box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+          border-color: #ff7a00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
         }
 
         /* Action Buttons */
@@ -656,27 +702,23 @@ const WritingPractice: React.FC = () => {
           border: none;
           transition: all 0.3s ease;
         }
+          .submit-button {
+            background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+          }
 
-        .submit-button {
-          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-        }
-
-        .submit-button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(72, 187, 120, 0.3);
-        }
+          .submit-button:hover:not(:disabled) {
+            box-shadow: 0 8px 25px rgba(255, 122, 0, 0.35);
+          }
 
         .restart-button {
-          border: 2px solid #667eea;
-          color: #667eea;
+          border: 2px solid #ff7a00;
+          color: #ff7a00;
         }
 
         .restart-button:hover {
-          background: #667eea;
+          background: #ff7a00;
           color: white;
-          transform: translateY(-2px);
         }
-
         /* Feedback Card */
         .feedback-card {
           border: none;
@@ -691,7 +733,7 @@ const WritingPractice: React.FC = () => {
 
 
         .feedback-header {
-          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           font-size: 1.3rem;
           font-weight: 600;
@@ -748,7 +790,8 @@ const WritingPractice: React.FC = () => {
         }
 
         .score-circle {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+          box-shadow: 0 10px 30px rgba(255, 122, 0, 0.4);
           color: white;
           width: 130px;
           height: 130px;
@@ -936,6 +979,52 @@ const WritingPractice: React.FC = () => {
             height: 110px;
           }
         }
+        
+        .writing-stats {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.stat-box {
+  background: #fff7f0;
+  border: 2px solid #ffe0cc;
+  padding: 0.9rem 1.5rem;
+  border-radius: 14px;
+  min-width: 170px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.15);
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #9a3412;
+  margin-bottom: 0.3rem;
+}
+
+.stat-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ff6a00;
+}
+
+/* If limit reached */
+.stat-box.limit-reached {
+  background: #fff1f2;
+  border-color: #fecaca;
+}
+
+.stat-box.limit-reached .stat-value {
+  color: #dc2626;
+}
+
       `}</style>
     </Container>
   )

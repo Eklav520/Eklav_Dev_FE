@@ -29,6 +29,7 @@ type ApiResponse = {
 }
 
 type ListeningHistory = {
+  monthlyLimit: number
   weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
@@ -179,29 +180,42 @@ const ListeningPractice: React.FC = () => {
               </p>
 
               <div className="start-button-container">
-                <Button variant="primary" className="start-button" onClick={startPractice} disabled={history?.remainingAttempts === 0}>
+                <Button
+                  className="start-button"
+                  onClick={startPractice}
+                  disabled={history?.remainingAttempts === 0}
+                >
                   <FaPlay className="me-2" />
-                  {history?.remainingAttempts === 0 ? 'Weekly Limit Reached' : 'Start Practice'}
+                  {history?.remainingAttempts === 0 ? 'Monthly Limit Reached' : 'Start Practice'}
                 </Button>
+
               </div>
 
               {!historyLoading && history && (
                 <div className="stats-container">
+                  {/* Attempts */}
                   <div className="stat-card attempts">
-                    <div className="stat-label">Attempts Left</div>
+                    <div className="stat-label">Monthly Attempts</div>
                     <div className="stat-value">
-                      {history.remainingAttempts} / {history.weeklyLimit}
+                      {history.remainingAttempts ?? 0} / {history.monthlyLimit ?? 0}
                     </div>
                   </div>
 
-                  {history.summary?.bestScore !== null && (
-                    <div className="stat-card best-score">
-                      <div className="stat-label">Best Score</div>
-                      <div className="stat-value">{history.summary.bestScore}%</div>
+                  {/* Best Score */}
+                  <div className="stat-card best-score">
+                    <div className="stat-label">Best Score</div>
+                    <div
+                      className={`stat-value ${history.summary?.bestScore == null ? "empty-score" : ""
+                        }`}
+                    >
+                      {history.summary?.bestScore != null
+                        ? `${history.summary.bestScore}%`
+                        : "No attempts yet"}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
+
             </Card.Body>
           </Card>
         </div>
@@ -403,7 +417,7 @@ const ListeningPractice: React.FC = () => {
 
         .main-icon {
           font-size: 3rem;
-          color: #667eea;
+          color: #ff7a00;
         }
 
         .start-title {
@@ -424,17 +438,6 @@ const ListeningPractice: React.FC = () => {
           margin-bottom: 2rem;
         }
 
-        .start-button {
-          padding: 0.875rem 2rem;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 1rem;
-          width: 100%;
-          max-width: 300px;
-          margin: 0 auto;
-          display: block;
-        }
-
         .stats-container {
           display: flex;
           justify-content: center;
@@ -451,13 +454,18 @@ const ListeningPractice: React.FC = () => {
         }
 
         .attempts {
-          background: #ebf4ff;
-          border: 1px solid #bee3f8;
+          background: #fff4e6;
+          border: 1px solid #ffd8b0;
         }
 
+        .attempts .stat-value {
+          color: #ff7a00;
+        }
+
+
         .best-score {
-          background: #f0fff4;
-          border: 1px solid #c6f6d5;
+          background: #fff4e6;
+          border: 1px solid #ffd8b0;
         }
 
         .stat-label {
@@ -472,11 +480,11 @@ const ListeningPractice: React.FC = () => {
         }
 
         .attempts .stat-value {
-          color: #2b6cb0;
+          color: #ff7a00;
         }
 
         .best-score .stat-value {
-          color: #2f855a;
+          color: #ff7a00;
         }
 
         /* Practice Layout */
@@ -498,7 +506,7 @@ const ListeningPractice: React.FC = () => {
         }
 
         .challenge-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--orange-gradient);
           color: white;
           padding: 1.25rem 1.5rem;
           border-bottom: none;
@@ -603,8 +611,8 @@ const ListeningPractice: React.FC = () => {
         }
 
         .option-item:hover {
-          border-color: #667eea;
-          background: #f0f4ff;
+          border-color: #ff7a00;
+          background: #fff4e6;
         }
 
         .option-item:last-child {
@@ -708,7 +716,7 @@ const ListeningPractice: React.FC = () => {
         }
 
         .feedback-header {
-          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           font-size: 1.25rem;
           font-weight: 600;
@@ -747,7 +755,7 @@ const ListeningPractice: React.FC = () => {
         }
 
         .score-circle {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           width: 100px;
           height: 100px;
@@ -931,6 +939,33 @@ const ListeningPractice: React.FC = () => {
           }
         }
 
+                .start-button {
+          background: #ff7a00 !important;
+          border: none !important;
+          color: #ffffff !important;
+          padding: 0.875rem 2rem;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 1rem;
+          width: 100%;
+          max-width: 300px;
+          margin: 0 auto;
+          display: block;
+          transition: all 0.2s ease;
+        }
+
+        .start-button:hover:not(:disabled) {
+          background: #e96d00 !important;
+          box-shadow: 0 6px 18px rgba(255, 122, 0, 0.25);
+          transform: translateY(-1px);
+        }
+
+        .start-button:disabled {
+          background: #ffd8b0 !important;
+          color: white !important;
+        }
+
+
         @media (max-width: 400px) {
           .listening-practice-container {
             padding: 0.5rem;
@@ -973,7 +1008,65 @@ const ListeningPractice: React.FC = () => {
           .feedback-item-text {
             font-size: 0.8125rem;
           }
+
+       .start-button {
+          background: #ff7a00 !important;
+          border: none !important;
+          color: #ffffff !important;
+          padding: 0.875rem 2rem;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 1rem;
+          width: 100%;
+          max-width: 300px;
+          margin: 0 auto;
+          display: block;
+          transition: all 0.2s ease;
         }
+
+        .start-button:hover:not(:disabled) {
+          background: #e96d00 !important;
+          box-shadow: 0 6px 18px rgba(255, 122, 0, 0.25);
+          transform: translateY(-1px);
+        }
+
+        .start-button:disabled {
+          background: #ffd8b0 !important;
+          color: white !important;
+        }
+
+        }
+
+        .nav-button.btn-primary,
+        .submit-button.btn-success {
+          background: #ff7a00 !important;
+          border-color: #ff7a00 !important;
+        }
+
+        .nav-button.btn-primary:hover,
+        .submit-button.btn-success:hover {
+          background: #e96d00 !important;
+          border-color: #e96d00 !important;
+        }
+
+        .nav-button.btn-outline-primary,
+        .try-again-button.btn-outline-primary {
+          color: #ff7a00 !important;
+          border-color: #ff7a00 !important;
+        }
+
+        .nav-button.btn-outline-primary:hover,
+        .try-again-button.btn-outline-primary:hover {
+          background: #ff7a00 !important;
+          color: white !important;
+        }
+
+        .empty-score {
+          color: #cbd5e0;
+          font-style: italic;
+        }
+
+
       `}</style>
     </Container>
   )

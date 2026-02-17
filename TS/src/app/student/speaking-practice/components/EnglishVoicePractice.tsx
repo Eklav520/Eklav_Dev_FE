@@ -81,9 +81,9 @@ const EnglishVoicePractice: React.FC = () => {
       // ✅ extract only what UI needs
       setHistory({
         highestScore: data.summary?.bestScore ?? null,
-        attemptsText: `${data.attemptsUsed} / ${data.weeklyLimit ?? 0}`,
+        attemptsText: `${data.attemptsUsed} / ${data.monthlyLimit ?? 0}`,
         attemptsUsed: data.attemptsUsed,
-        weeklyLimit: data.weeklyLimit,
+        monthlyLimit: data.monthlyLimit,
       })
     } catch (error) {
       console.error('Speaking history error:', error)

@@ -21,6 +21,7 @@ type Feedback = {
 }
 
 type JamHistory = {
+  monthlyLimit: number
   weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
@@ -777,24 +778,35 @@ const highlightFeedbackText = (text: string) => {
             )}
 
             {history && (
-              <Card className="history-card">
-                <Card.Body className="history-card-body">
-                  <div className="history-stats">
-                    <div className="stat-item">
-                      <h6 className="stat-label">🕒 Weekly Attempts</h6>
-                      <small className="stat-value">
-                        {history.attemptsUsed} / {history.weeklyLimit} used
-                      </small>
+              <Card className="history-card-modern">
+                <Card.Body>
+                  <div className="history-grid">
+
+                    <div className="history-box">
+                      <div className="history-icon">🕒</div>
+                      <div>
+                        <div className="history-label">Monthly Attempts</div>
+                        <div className="history-value">
+                          {history.attemptsUsed} / {history.monthlyLimit}
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="stat-item best-score">
-                      <h6 className="stat-label">⭐ Best Score</h6>
-                      <div className="score-value">{history.summary.bestScore ?? '--'} / 10</div>
+                    <div className="history-box">
+                      <div className="history-icon">⭐</div>
+                      <div>
+                        <div className="history-label">Best Score</div>
+                        <div className="history-value highlight">
+                          {history.summary.bestScore ?? '--'} / 10
+                        </div>
+                      </div>
                     </div>
+
                   </div>
                 </Card.Body>
               </Card>
             )}
+
           </Card>
         </div>
       )}
@@ -1083,7 +1095,7 @@ const highlightFeedbackText = (text: string) => {
         
         .start-button {
           border-radius: 12px;
-          background: #006ADC;
+          background: #ff7a00;
           border: none;
           padding: 0.75rem 2rem;
           font-weight: 600;
@@ -1092,7 +1104,7 @@ const highlightFeedbackText = (text: string) => {
         }
         
         .start-button:hover:not(:disabled) {
-          background: #0056b3;
+          background: #e96d00;
           transform: translateY(-2px);
           transition: all 0.3s ease;
         }
@@ -1179,7 +1191,7 @@ const highlightFeedbackText = (text: string) => {
         }
         
         .practice-title {
-          color: #006ADC;
+          color: #ff7a00;
           font-weight: bold;
           margin: 0;
           display: flex;
@@ -1215,12 +1227,12 @@ const highlightFeedbackText = (text: string) => {
           padding: 1.5rem;
           border-radius: 16px;
           background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          border-left: 5px solid #006ADC;
+          border-left: 5px solid #ff7a00;
           margin-bottom: 1.5rem;
         }
         
         .topic-title {
-          color: #006ADC;
+          color: #ff7a00;
           font-weight: bold;
           margin-bottom: 1rem;
           font-size: 1.1rem;
@@ -1282,7 +1294,7 @@ const highlightFeedbackText = (text: string) => {
         }
         
         .transcript-title {
-          color: #006ADC;
+          color: #ff7a00;
           font-weight: bold;
           margin-bottom: 1rem;
           font-size: 1.1rem;
@@ -1339,7 +1351,7 @@ const highlightFeedbackText = (text: string) => {
         .score-number {
           font-size: 3rem;
           font-weight: bold;
-          color: #006ADC;
+          color: #ff7a00;
           margin: 0.5rem 0;
         }
         
@@ -1405,7 +1417,7 @@ const highlightFeedbackText = (text: string) => {
         }
         
         .grammar {
-          border-left-color: #006ADC;
+          border-left-color: #ff7a00;
         }
         
         .fluency {
@@ -1568,6 +1580,64 @@ const highlightFeedbackText = (text: string) => {
             line-height: 1.8;
           }
         }
+      .record-button {
+        background: #ff7a00 !important;
+        border-color: #ff7a00 !important;
+      }
+
+      .record-button:hover {
+        background: #e96d00 !important;
+        border-color: #e96d00 !important;
+      }
+
+      .history-card-modern {
+          margin-top: 1.5rem;
+          border: none;
+          border-radius: 18px;
+          background: linear-gradient(135deg, #fff8f1 0%, #ffe8d1 100%);
+          box-shadow: 0 8px 20px rgba(255, 122, 0, 0.15);
+        }
+
+        .history-grid {
+          display: flex;
+          justify-content: space-between;
+          gap: 1.5rem;
+          flex-wrap: wrap;
+        }
+
+        .history-box {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex: 1;
+          min-width: 150px;
+          background: white;
+          padding: 1rem;
+          border-radius: 14px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-icon {
+          font-size: 1.8rem;
+        }
+
+        .history-label {
+          font-size: 0.85rem;
+          color: #6c757d;
+          margin-bottom: 2px;
+        }
+
+        .history-value {
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #212529;
+        }
+
+        .history-value.highlight {
+          color: #ff7a00;
+        }
+
+
       `}</style>
     </Container>
   )

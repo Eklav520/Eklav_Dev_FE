@@ -159,7 +159,7 @@ const CategoryGrid: React.FC = () => {
         <Row xs={1} sm={2} md={3} className="g-4 my-1">
           {loading ? (
             <div className="text-center w-100">
-              <Spinner animation="border" variant="primary" />
+              <Spinner animation="border" style={{ color: '#ff7a00' }} />
             </div>
           ) : error ? (
             <Alert variant="danger" className="w-100">
@@ -171,8 +171,8 @@ const CategoryGrid: React.FC = () => {
                 <Card className="shadow-sm h-100">
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start">
-                      <h5 className="text-success fw-bold mb-3">{category.title}</h5>
-                      <Button size="sm" variant="outline-primary" onClick={() => openQuizForCategory(category)}>
+                      <h5 className="fw-bold mb-3 text-orange">{category.title}</h5>
+                      <Button size="sm" className="btn-eklav-orange" onClick={() => openQuizForCategory(category)}>
                         Take Quiz
                       </Button>
                     </div>
@@ -305,7 +305,7 @@ const CategoryGrid: React.FC = () => {
             </Button>
             {previewTopic?.questions?.length ? (
               <Button
-                variant="primary"
+                className="btn-eklav-orange"
                 onClick={() => {
                   setTopicPreviewOpen(false)
                   const chosen = shuffle(previewTopic.questions).slice(0, COUNT)
@@ -328,7 +328,12 @@ const CategoryGrid: React.FC = () => {
           <Modal.Header closeButton>
             <div className="w-100">
               <Modal.Title>{quizTitle}</Modal.Title>
-              <ProgressBar now={progress} label={`${progress}%`} className="mt-2" />
+              <ProgressBar
+                now={progress}
+                label={`${progress}%`}
+                className="mt-2 orange-progress"
+              />
+
             </div>
           </Modal.Header>
 
@@ -438,7 +443,7 @@ const CategoryGrid: React.FC = () => {
                         </div>
 
                         <div className="mt-auto">
-                          <Button variant="success" className="w-100 mb-2" onClick={handleSubmitQuiz} disabled={quizQuestions.length === 0}>
+                          <Button className="btn-eklav-orange w-100 mb-2" onClick={handleSubmitQuiz} disabled={quizQuestions.length === 0}>
                             Submit & See Results
                           </Button>
                         </div>
@@ -451,7 +456,7 @@ const CategoryGrid: React.FC = () => {
                         </h4>
                         <h5 className="text-muted">{results.length ? Math.round((score / results.length) * 100) : 0}%</h5>
                         <div className="mt-auto d-grid gap-2">
-                          <Button variant="outline-primary" onClick={retake}>
+                          <Button className="btn-eklav-orange-outline" onClick={retake}>
                             Retake
                           </Button>
                           <Button variant="secondary" onClick={closeQuiz}>
@@ -497,6 +502,85 @@ const CategoryGrid: React.FC = () => {
           </Modal.Body>
         </Modal>
       </CardBody>
+      <style>
+        {`
+
+        .btn-eklav-orange.btn {
+          background: #ff7a00 !important;
+          border: none !important;
+          color: #ffffff !important;
+          font-weight: 600;
+          padding: 0.35rem 0.9rem;
+          border-radius: 8px;
+          transition: all 0.25s ease;
+        }
+
+        .btn-eklav-orange.btn:hover {
+          background: #e96d00 !important;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 18px rgba(255, 122, 0, 0.35);
+        }
+          .btn-eklav-orange-outline.btn {
+            background: transparent !important;
+            border: 2px solid #ff7a00 !important;
+            color: #ff7a00 !important;
+            font-weight: 600;
+          }
+
+          .btn-eklav-orange-outline.btn:hover {
+            background: #ff7a00 !important;
+            color: white !important;
+          }
+
+        .orange-progress .progress-bar {
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%) !important;
+        }
+
+        .list-group-item.active {
+          background-color: #ff7a00 !important;
+          border-color: #ff7a00 !important;
+        }
+
+        .text-orange {
+          color: #ff7a00 !important;
+        }
+
+        /* Accordion header */
+          .accordion-button {
+            background-color: #1f2933 !important; /* dark */
+            color: #ffffff !important;
+            font-weight: 600;
+          }
+
+          .accordion-button:not(.collapsed) {
+            background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%) !important;
+            color: #ffffff !important;
+          }
+
+          /* Remove blue focus */
+          .accordion-button:focus {
+            box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
+          }
+
+          /* Accordion body - FIX HERE */
+          .accordion-body {
+            background-color: #111827 !important; /* dark background */
+            color: #e5e7eb !important;            /* light readable text */
+          }
+
+          /* Make strong text white */
+          .accordion-body strong {
+            color: #ffffff !important;
+          }
+
+          /* Arrow icon white when open */
+          .accordion-button::after {
+            filter: brightness(0) invert(1);
+          }
+
+
+        `}
+      </style>
     </Card>
   )
 }

@@ -23,6 +23,7 @@ type Feedback = {
 }
 
 type ReadingHistory = {
+  monthlyLimit: number
   weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
@@ -158,37 +159,35 @@ const ReadingPractice: React.FC = () => {
             <p className="description">
               Sharpen your comprehension skills with AI-powered reading passages and interactive quizzes designed to improve your reading abilities.
             </p>
-            <Button variant="primary" size="lg" className="start-button" onClick={startPractice} disabled={history?.remainingAttempts === 0}>
+            <Button size="lg" className="start-button" onClick={startPractice} disabled={history?.remainingAttempts === 0}>
               <FaPlay className="me-2" />
               {history?.remainingAttempts === 0 ? 'Weekly Limit Reached' : 'Start Practice'}
             </Button>
             {!historyLoading && history && (
-              <div className="mt-3 d-flex justify-content-center gap-3 flex-wrap">
-                <div
-                  style={{
-                    background: '#ebf4ff',
-                    color: '#2b6cb0',
-                    padding: '0.6rem 1.2rem',
-                    borderRadius: '999px',
-                    fontWeight: 600,
-                  }}>
-                  Attempts Left: {history.remainingAttempts}/{history.weeklyLimit}
+              <div className="stats-container">
+                {/* Monthly Attempts */}
+                <div className="stat-box attempts-box">
+                  <div className="stat-title">Monthly Attempts</div>
+                  <div className="stat-value">
+                    {history.remainingAttempts}/{history.monthlyLimit}
+                  </div>
                 </div>
 
-                {history.summary?.bestScore !== null && (
+                {/* Best Score */}
+                <div className="stat-box score-box">
+                  <div className="stat-title">Best Score</div>
                   <div
-                    style={{
-                      background: '#f0fff4',
-                      color: '#2f855a',
-                      padding: '0.6rem 1.2rem',
-                      borderRadius: '999px',
-                      fontWeight: 600,
-                    }}>
-                    🏆 Best Score: {history.summary.bestScore}%
+                    className={`stat-value ${history.summary?.bestScore == null ? "empty" : ""
+                      }`}
+                  >
+                    {history.summary?.bestScore != null
+                      ? `${history.summary.bestScore}%`
+                      : "No attempts yet"}
                   </div>
-                )}
+                </div>
               </div>
             )}
+
           </div>
         </div>
       ) : (
@@ -419,20 +418,28 @@ const ReadingPractice: React.FC = () => {
         }
 
         .start-button {
-          padding: 1rem 2.5rem;
-          border-radius: 12px;
-          font-size: 1.1rem;
-          font-weight: 600;
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%) !important;
+          border: none !important;
+          color: white !important;
         }
+
+        .start-button:hover:not(:disabled) {
+          background: linear-gradient(135deg, #e55f00 0%, #ff8c1a 100%) !important;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(255, 122, 0, 0.3);
+        }
+
 
         /* Practice Layout */
         .practice-layout {
           display: flex;
           flex-direction: column;
           gap: 2rem;
-          max-width: 1000px;
+          max-width: 1400px;   /* wider */
+          width: 95%;          /* responsive */
           margin: 0 auto;
         }
+
 
         /* Challenge Section */
         .challenge-section {
@@ -448,7 +455,7 @@ const ReadingPractice: React.FC = () => {
         }
 
         .challenge-header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           font-size: 1.3rem;
           font-weight: 600;
@@ -470,7 +477,7 @@ const ReadingPractice: React.FC = () => {
         }
 
         .challenge-body {
-          padding: 2.5rem;
+          padding: 2rem 3rem;
           background: #ffffff;
         }
 
@@ -501,8 +508,10 @@ const ReadingPractice: React.FC = () => {
           padding: 1.5rem;
           border-radius: 12px;
           border-left: 4px solid #667eea;
-          max-height: 300px;
-          overflow-y: auto;
+          min-height: 400px;  
+          max-height: none; 
+          font-size: 1.15rem;
+          overflow: visible; 
           line-height: 1.6;
           color: #4a5568;
         }
@@ -547,9 +556,8 @@ const ReadingPractice: React.FC = () => {
           display: grid;
           gap: 1rem;
           margin-bottom: 2.5rem;
-          max-width: 600px;
-          margin-left: auto;
-          margin-right: auto;
+          max-width: 900px;
+          margin: 0 auto 2.5rem;
         }
 
         .option-item {
@@ -576,8 +584,8 @@ const ReadingPractice: React.FC = () => {
         }
 
         .custom-radio :global(.form-check-input:checked) {
-          background-color: #667eea;
-          border-color: #667eea;
+          background-color: #ff7a00;
+          border-color: #ff7a00;
         }
 
         .custom-radio :global(.form-check-label) {
@@ -605,7 +613,7 @@ const ReadingPractice: React.FC = () => {
         }
 
         .nav-button {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
         }
 
         .nav-button:hover:not(:disabled) {
@@ -614,7 +622,7 @@ const ReadingPractice: React.FC = () => {
         }
 
         .submit-button {
-          background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
         }
 
         .submit-button:hover:not(:disabled) {
@@ -680,7 +688,7 @@ const ReadingPractice: React.FC = () => {
         }
 
         .score-circle {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
           width: 120px;
           height: 120px;
@@ -933,6 +941,88 @@ const ReadingPractice: React.FC = () => {
             align-items: flex-start;
           }
         }
+
+        @media (min-width: 992px) {
+          .challenge-body {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 3rem;
+            align-items: start;
+          }
+
+          .passage-section {
+            margin-bottom: 0;
+          }
+
+          .questions-section {
+            margin-top: 0;
+          }
+        }
+
+        .stats-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1.5rem;
+          margin-top: 1.5rem;
+          max-width: 600px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .stat-box {
+          background: white;
+          padding: 1.2rem 1.5rem;
+          border-radius: 16px;
+          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+          text-align: center;
+          transition: all 0.25s ease;
+          background: #fff4e6;
+        }
+
+        .stat-box:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 30px rgba(255, 122, 0, 0.15);
+        }
+
+        .stat-title {
+          font-size: 0.9rem;
+          color: #718096;
+          margin-bottom: 0.5rem;
+          font-weight: 500;
+        }
+
+        .stat-value {
+          font-size: 1.6rem;
+          font-weight: 700;
+          color: #ff7a00;
+        }
+        .attempts .stat-value {
+          color: #ff7a00;
+        }
+
+        .attempts .stat-value {
+          color: #ff7a00;
+        }
+
+        .score-box .stat-value {
+          color: #e96d00;
+          back
+        }
+
+        .empty {
+          color: #cbd5e0;
+          font-size: 1rem;
+          font-style: italic;
+        }
+
+        /* Mobile */
+        @media (max-width: 576px) {
+          .stats-container {
+            grid-template-columns: 1fr;
+          }
+        }
+
+
       `}</style>
     </Container>
   )

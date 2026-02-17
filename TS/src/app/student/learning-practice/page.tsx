@@ -126,12 +126,6 @@ const EnglishPractice = () => {
               </button>
             ))}
           </div>
-          
-          <div className="sidebar-footer">
-            <p className="help-text">
-              Need help? <a href="/help" className="help-link">Visit our help center</a>
-            </p>
-          </div>
         </div>
         
         {/* Main Content Area */}
@@ -150,6 +144,15 @@ const EnglishPractice = () => {
       </div>
 
       <style>{`
+
+        :root {
+          --orange-primary: #ff7a00;
+          --orange-dark: #e96d00;
+          --orange-light: #fff4e6;
+          --orange-soft: #ffe8cc;
+          --orange-gradient: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+        }
+
         .english-practice-container {
           padding: 0 !important;
           font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -164,7 +167,7 @@ const EnglishPractice = () => {
           left: 0;
           right: 0;
           z-index: 1000;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: var(--orange-gradient);
           color: white;
           padding: 0.75rem 1rem;
           display: flex;
@@ -235,7 +238,7 @@ const EnglishPractice = () => {
         /* Sidebar */
         .sidebar {
           width: 300px;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+           background: var(--orange-gradient);
           display: flex;
           flex-direction: column;
           z-index: 900;
@@ -322,16 +325,18 @@ const EnglishPractice = () => {
         }
         
         .tab-button:hover {
-          background: rgba(255, 255, 255, 0.1);
           color: #ffffff;
-          border-left-color: rgba(255, 255, 255, 0.3);
+          background: rgba(255, 255, 255, 0.15);
+          border-left-color: rgba(255, 255, 255, 0.4);
         }
         
-        .tab-button.active {
-          background: rgba(255, 255, 255, 0.95);
-          border-left-color: #764ba2;
+       .tab-button.active {
+          background: white;
+          border-left-color: var(--orange-primary);
           color: #2d3748;
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
         }
+
         
         .tab-button.active:hover {
           background: rgba(255, 255, 255, 0.95);
@@ -393,7 +398,7 @@ const EnglishPractice = () => {
         }
         
         .help-link:hover {
-          color: #e2e8f0;
+          color: #ffe8cc;
         }
         
         /* Content Area */
@@ -541,7 +546,7 @@ const EnglishPractice = () => {
         
         /* Accessibility improvements */
         .tab-button:focus {
-          outline: 2px solid #667eea;
+          outline: 2px solid var(--orange-primary);
           outline-offset: 2px;
         }
         
