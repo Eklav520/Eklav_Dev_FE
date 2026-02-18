@@ -204,7 +204,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   return (
     <>
       {/* CARD */}
-      <Card className="shadow-sm border-0 h-100 d-flex flex-column overflow-hidden">
+      <Card className="course-card h-100 d-flex flex-column overflow-hidden">
         <div className="position-relative">
           <img
             src={
@@ -888,6 +888,22 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 .orange-progress .progress-bar {
   background-color: #ff7a00 !important;
 }
+
+/* ===== Course Card Border Enhancement ===== */
+.course-card {
+  background-color: #111111;
+  border: 1px solid rgba(255, 122, 0, 0.18);
+  border-radius: 14px;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.course-card:hover {
+  border-color: #ff7a00;
+  box-shadow: 0 8px 24px rgba(255, 122, 0, 0.25);
+  transform: translateY(-4px);
+}
+
 
 
 
