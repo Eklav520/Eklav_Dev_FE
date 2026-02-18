@@ -337,17 +337,17 @@ const Banner = ({ toggleOffCanvas }: BannerProps) => {
 
         /* Color definitions for tier icons */
         .text-platinum { color: #e5e4e2 !important; }
-        .text-gold { color: #ffd700 !important; }
+        .text-gold { color: #ff7a00 !important; }
         .text-silver { color: #c0c0c0 !important; }
 
         /* Platinum Bar */
         .platinum-bar {
           background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-          border-bottom: 3px solid #FFD700;
+          border-bottom: 3px solid #ff7a00;
         }
 
         .tier-icon.platinum {
-          color: #FFD700;
+          color: #ff7a00;
         }
 
         .section-label {
