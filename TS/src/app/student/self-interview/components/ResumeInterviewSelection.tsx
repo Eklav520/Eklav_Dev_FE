@@ -98,17 +98,17 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
 
-   onStart(
-  data.interviewId,
-  data.questions,
-  data.totalQuestions,
-  data.title,
-  {
-    interviewType: 'resume',
-    attemptId: data.attemptId,
-    attemptNumber: data.attemptNumber,
-  }
-)
+      onStart(
+        data.interviewId,
+        data.questions,
+        data.totalQuestions,
+        data.title,
+        {
+          interviewType: 'resume',
+          attemptId: data.attemptId,
+          attemptNumber: data.attemptNumber,
+        }
+      )
 
       if (typeof data.remaining === 'number') {
         setRemaining(data.remaining)
@@ -127,50 +127,102 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
   /* ================= UI ================= */
 
   return (
-    <Card className="bg-body text-body border rounded-4 p-4">
-      <h5 className="mb-2">🎯 Upload Latest Resume</h5>
-      <Form.Control
-        type="file"
-        accept=".pdf,.doc,.docx"
-        className="mt-2"
-        disabled={uploading || remaining === 0}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-          const file = e.target.files?.[0]
-          if (file) uploadResume(file)
-        }}
-      />
+    <Card
+      className="border-0 rounded-4 shadow-sm"
+      style={{
+        border: '1px solid rgba(255,122,0,0.15)',
+      }}
+    >
+      <Card.Body className="p-4">
 
-      {uploading && (
-        <div className="mt-3 text-center">
-          <Spinner size="sm" /> Uploading resume...
-        </div>
-      )}
+        {/* Title */}
+        <h5 className="fw-semibold mb-3">
+          🎯 Upload Latest Resume
+        </h5>
 
-      {interviewId && <div className="mt-3 text-success text-center">✅ Resume uploaded & analyzed</div>}
+        {/* File Upload */}
+        <Form.Control
+          type="file"
+          accept=".pdf,.doc,.docx"
+          className="mt-2"
+          style={{
+            borderRadius: '8px',
+            border: '1px solid rgba(255,122,0,0.3)',
+          }}
+          disabled={uploading || remaining === 0}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0]
+            if (file) uploadResume(file)
+          }}
+        />
 
-      {!loadingLimit && remaining !== null && (
-        <div className="text-center small mt-2">
-          <span className="text-muted">Monthly Attempts Left:</span>{' '}
-          <strong className={remaining === 0 ? 'text-danger' : 'text-success'}>{remaining} / 5</strong>
-        </div>
-      )}
-
-      <Button
-        className="mt-4 w-100"
-        size="lg"
-        variant="success"
-        disabled={!interviewId || uploading || starting || remaining === 0}
-        onClick={startResumeInterview}>
-        {starting ? (
-          <>
-            <Spinner size="sm" /> Starting Interview...
-          </>
-        ) : (
-          '🎤 Start Interview'
+        {/* Uploading Spinner */}
+        {uploading && (
+          <div className="mt-3 text-center">
+            <Spinner
+              size="sm"
+              style={{ color: '#ff7a00' }}
+            />{' '}
+            Uploading resume...
+          </div>
         )}
-      </Button>
+
+        {/* Upload Success */}
+        {interviewId && (
+          <div
+            className="mt-3 text-center fw-semibold"
+            style={{ color: '#ff7a00' }}
+          >
+            ✅ Resume uploaded & analyzed
+          </div>
+        )}
+
+        {/* Remaining Attempts */}
+        {!loadingLimit && remaining !== null && (
+          <div className="text-center small mt-3">
+            <span className="text-muted">Monthly Attempts Left:</span>{' '}
+            <strong
+              style={{
+                color: remaining === 0 ? '#999' : '#ff7a00',
+              }}
+            >
+              {remaining} / 5
+            </strong>
+          </div>
+        )}
+
+        {/* Start Button */}
+        <Button
+          className="mt-4 w-100 fw-semibold"
+          size="lg"
+          disabled={!interviewId || uploading || starting || remaining === 0}
+          onClick={startResumeInterview}
+          style={{
+            backgroundColor: '#ff7a00',
+            border: 'none',
+            borderRadius: '10px',
+            padding: '12px',
+            transition: 'all 0.3s ease',
+            opacity: remaining === 0 ? 0.6 : 1,
+          }}
+        >
+          {starting ? (
+            <>
+              <Spinner
+                size="sm"
+                style={{ marginRight: 6 }}
+              />
+              Starting Interview...
+            </>
+          ) : (
+            '🎤 Start Interview'
+          )}
+        </Button>
+
+      </Card.Body>
     </Card>
   )
+
 }
 
 export default ResumeInterviewSelection

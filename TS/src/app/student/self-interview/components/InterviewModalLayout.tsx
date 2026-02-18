@@ -53,241 +53,267 @@ const InterviewModalLayout = () => {
     setShow(true)
   }
 
-
-  // Enter fullscreen when modal opens (only on desktop)
-  /*  useEffect(() => {
-     if (show && modalRef.current && !document.fullscreenElement && !isMobile) {
-       modalRef.current.requestFullscreen().catch(() => {
-         console.log('Fullscreen request failed')
-       })
-     }
-   }, [show, isMobile]) */
-
-  // Exit fullscreen + close modal
-  /*  const handleClose = async () => {
-     try {
-       if (document.fullscreenElement) {
-         await document.exitFullscreen()
-       }
-     } catch (e) {
-       console.warn('Exit fullscreen failed', e)
-     }
- 
-     setShow(false)
-     setInterviewId(null)
-     setQuestions([])
-     setTitle('')
-   } */
-
   const handleClose = () => {
     setShow(false)
     setInterviewId(null)
     setQuestions([])
     setTitle('')
-   setMeta(undefined)
+    setMeta(undefined)
   }
 
-
-
-  // Handle escape key to exit fullscreen
-  /*  useEffect(() => {
-     const handleEscKey = (event: KeyboardEvent) => {
-       if (event.key === 'Escape' && document.fullscreenElement) {
-         handleClose()
-       }
-     }
- 
-     if (show) {
-       document.addEventListener('keydown', handleEscKey)
-     }
- 
-     return () => {
-       document.removeEventListener('keydown', handleEscKey)
-     }
-   }, [show])
-  */
 
   return (
     // ✅ OUTER SAFE SPACING CONTAINER
     <div className="px-3 px-md-4 px-lg-5 py-4">
-
       {/* ================= Interview Selection Header ================= */}
-      <div className="mb-4 mb-md-5">
-        <div className="d-flex align-items-center mb-3">
-          <div className="bg-primary rounded-circle p-3 me-3">
-            <FaDesktop className="text-white" size={28} />
-          </div>
-          <div>
-            <div className="d-flex align-items-center gap-2 mb-1">
-              <h2 className="fw-bold mb-0">AI Interview Practice</h2>
+      <div className="mb-5">
 
-              <span className="badge bg-danger">
-                Premium Version Will get Unlimted Access
-              </span>
-            </div>
-
-            <p className="text-muted mb-0">
-              Fullscreen interview experience on desktop
-            </p>
-          </div>
-
+        {/* Top Label */}
+        <div className="mb-2">
+          <span
+            style={{
+              color: '#ff7a00',
+              fontSize: 13,
+              fontWeight: 600,
+              letterSpacing: 1,
+              textTransform: 'uppercase'
+            }}
+          >
+            AI Powered Practice
+          </span>
         </div>
 
-        <p className="text-muted lh-lg">
-          Choose between topic-based technical interviews or resume-based interviews tailored to your background.
-          Practice with AI-powered feedback and improve your interview skills. On desktop, interviews open in immersive fullscreen mode.
+        {/* Main Title Row */}
+        <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+          <div className="d-flex align-items-center gap-3">
+
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                backgroundColor: '#ff7a00'
+              }}
+            >
+              <FaDesktop className="text-white" size={20} />
+            </div>
+
+            <h2 className="fw-bold mb-0">
+              AI Interview Practice
+            </h2>
+          </div>
+
+          <Badge
+            className="text-white px-3 py-2"
+            style={{
+              backgroundColor: '#ff7a00',
+              fontWeight: 500,
+              fontSize: 13
+            }}
+          >
+            Premium Access
+          </Badge>
+        </div>
+
+        {/* Description */}
+        <p
+          className="text-muted mt-3 mb-0"
+          style={{ maxWidth: 1300 }}
+        >
+          Choose between topic-based technical interviews or resume-based simulations tailored to your background. Experience real-time AI feedback in a structured and immersive environment.
         </p>
       </div>
 
-      {/* ================= Fullscreen Info Banner ================= */}
-      {!isMobile && (
-        <div className="alert alert-info border-0 rounded-4 px-4 py-3 mb-4">
-          <div className="d-flex align-items-center">
-            <FaDesktop className="me-3" size={24} />
-            <div>
-              <h6 className="fw-bold mb-1">🖥️ Fullscreen Desktop Experience</h6>
-              <p className="mb-0 small">
-                Interviews will open in fullscreen mode on desktop/laptop for an immersive experience.
-                Press <kbd>Esc</kbd> or click the close button to exit.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ================= Interview Selection Cards ================= */}
-      <Row className="g-3 g-md-4">
+      <Row className="g-4">
+        {/* ---------------- Topic Card ---------------- */}
         <Col xs={12} md={6}>
-          <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-            <div className="bg-primary bg-opacity-10 p-4 pb-2">
-              <div className="d-flex align-items-start justify-content-between mb-3">
-                <div className="bg-primary rounded-circle p-3 d-inline-flex">
-                  <FaLaptopCode className="text-white" size={24} />
+          <Card
+            className="h-100 border-0 rounded-4 shadow-sm"
+            style={{
+              border: '1px solid rgba(255,122,0,0.15)',
+              transition: 'all 0.25s ease'
+            }}
+          >
+            <div
+              className="px-4 pt-4 pb-3"
+              style={{ backgroundColor: 'rgba(255,122,0,0.05)' }}
+            >
+              <div className="d-flex align-items-center justify-content-between">
+
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: '50%',
+                      backgroundColor: '#ff7a00',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <FaLaptopCode className="text-white" size={18} />
+                  </div>
+
+                  <h5 className="fw-semibold mb-0">
+                    Topic-Based Interview
+                  </h5>
                 </div>
-                <Badge bg="primary" className="px-3 py-2">
+
+                <Badge
+                  bg=""
+                  className="px-3 py-2 text-white"
+                  style={{
+                    backgroundColor: '#ff7a00',
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
                   Tech Stack
                 </Badge>
+
               </div>
 
-              <h4 className="fw-bold mb-2">Topic-Based AI Interview</h4>
-              <p className="text-muted mb-0">
-                Practice technical interviews on React, JavaScript, HTML, CSS, Node.js and more.
-                Perfect for software developers and tech roles.
+              <p className="text-muted small mt-3 mb-0">
+                Practice interviews on React, JavaScript, Node.js and more.
               </p>
             </div>
 
-            <Card.Body className="p-4">
+            <Card.Body className="p-4 pt-3">
               <TopicSelection onStart={handleStart} />
-
-              {/* Mobile info */}
-              <div className="d-block d-md-none mt-3">
-                <div className="bg-light rounded-3 p-3">
-                  <div className="d-flex align-items-center mb-2">
-                    <FaInfoCircle className="text-primary me-2" />
-                    <span className="fw-semibold">📱 Mobile Tips:</span>
-                  </div>
-                  <ul className="small mb-0 ps-3">
-                    <li>Ensure good lighting for video recording</li>
-                    <li>Use headphones for better audio quality</li>
-                    <li>Find a quiet environment</li>
-                  </ul>
-                </div>
-              </div>
             </Card.Body>
           </Card>
         </Col>
 
+
+        {/* ---------------- Resume Card ---------------- */}
         <Col xs={12} md={6}>
-          <Card className="h-100 border-0 shadow-sm rounded-4 overflow-hidden">
-            <div className="bg-success bg-opacity-10 p-4 pb-2">
-              <div className="d-flex align-items-start justify-content-between mb-3">
-                <div className="bg-success rounded-circle p-3 d-inline-flex">
-                  <FaFileAlt className="text-white" size={24} />
+          <Card
+            className="h-100 border-0 rounded-4 shadow-sm"
+            style={{
+              border: '1px solid rgba(255,122,0,0.15)',
+              transition: 'all 0.25s ease'
+            }}
+          >
+            <div
+              className="px-4 pt-4 pb-3"
+              style={{ backgroundColor: 'rgba(255,122,0,0.05)' }}
+            >
+              <div className="d-flex align-items-center justify-content-between">
+
+                <div className="d-flex align-items-center gap-3">
+                  <div
+                    style={{
+                      width: 42,
+                      height: 42,
+                      borderRadius: '50%',
+                      backgroundColor: '#ff7a00',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <FaFileAlt className="text-white" size={18} />
+                  </div>
+
+                  <h5 className="fw-semibold mb-0">
+                    Resume-Based Interview
+                  </h5>
                 </div>
-                <Badge bg="success" className="px-3 py-2">
+                <Badge
+                  bg=""
+                  className="px-3 py-2 text-white"
+                  style={{
+                    backgroundColor: '#ff7a00',
+                    fontSize: 12,
+                    fontWeight: 500,
+                  }}
+                >
                   Core Branch
                 </Badge>
               </div>
 
-              <h4 className="fw-bold mb-2">Resume-Based AI Interview</h4>
-              <p className="text-muted mb-0">
-                For ECE, EEE, Mechanical, Civil & Other Departments. Upload your resume for
-                personalized interview questions based on your experience.
+              <p className="text-muted small mt-3 mb-0">
+                Upload your resume and get personalized interview questions.
               </p>
             </div>
 
-            <Card.Body className="p-4">
+            <Card.Body className="p-4 pt-3">
               <ResumeInterviewSelection onStart={handleStart} />
             </Card.Body>
           </Card>
         </Col>
       </Row>
 
-      {/* ================= Statistics / Info Section ================= */}
-      <Row className="mt-4 mt-md-5">
-        <Col xs={12}>
-          <Card className="border-0 shadow-sm rounded-4 bg-light">
-            <Card.Body className="p-4">
-              <Row className="g-3 text-center">
-                <Col xs={6} md={3}>
-                  <div className="p-3">
-                    <div className="display-6 fw-bold text-primary mb-1">∞</div>
-                    <div className="text-muted small">Practice Topics</div>
-                  </div>
-                </Col>
-                <Col xs={6} md={3}>
-                  <div className="p-3">
-                    <div className="display-6 fw-bold text-primary mb-1">AI</div>
-                    <div className="text-muted small">Real-time Feedback</div>
-                  </div>
-                </Col>
-                <Col xs={6} md={3}>
-                  <div className="p-3">
-                    <div className="display-6 fw-bold text-primary mb-1">5</div>
-                    <div className="text-muted small">Monthly Attempts</div>
-                  </div>
-                </Col>
-                <Col xs={6} md={3}>
-                  <div className="p-3">
-                    <div className="display-6 fw-bold text-primary mb-1">🖥️</div>
-                    <div className="text-muted small">Fullscreen on Desktop</div>
-                  </div>
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-
       {/* ================= How it works ================= */}
-      <Row className="mt-4 mt-md-5">
+      <Row className="mt-5 pt-4">
+        <Col xs={12} className="text-center mb-4">
+          <h3 className="fw-bold mb-2">How It Works</h3>
+          <p className="text-muted mb-0" style={{ maxWidth: 600, margin: '0 auto' }}>
+            A simple 3-step process to simulate real interview experience and
+            receive AI-powered feedback.
+          </p>
+        </Col>
+
         <Col xs={12}>
-          <h4 className="fw-bold mb-4">How It Works</h4>
-          <Row className="g-3">
-            {['Choose Interview Type', isMobile ? 'Mobile Interview' : 'Fullscreen Practice', 'Get AI Feedback'].map(
-              (title, index) => (
-                <Col xs={12} md={4} key={index}>
-                  <Card className="border-0 shadow-sm h-100">
-                    <Card.Body className="p-4">
-                      <div className="bg-primary bg-opacity-10 rounded-circle p-3 mb-3 d-inline-flex">
-                        <span className="fw-bold text-primary">{index + 1}</span>
-                      </div>
-                      <h5 className="fw-bold mb-2">{title}</h5>
-                      <p className="text-muted mb-0">
-                        {index === 0 &&
-                          'Select between topic-based or resume-based interviews.'}
-                        {index === 1 &&
-                          (isMobile
-                            ? 'Answer questions on your mobile device.'
-                            : 'Immersive fullscreen experience on desktop.')}
-                        {index === 2 &&
-                          'Receive instant AI feedback and performance scores.'}
-                      </p>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              )
-            )}
+          <Row className="g-4">
+            {[
+              {
+                title: 'Choose Interview Type',
+                desc: 'Select between topic-based or resume-based interviews based on your preparation needs.'
+              },
+              {
+                title: isMobile ? 'Mobile Interview' : 'Fullscreen Practice',
+                desc: isMobile
+                  ? 'Answer questions directly from your mobile device with video recording.'
+                  : 'Experience an immersive fullscreen interview environment on desktop.'
+              },
+              {
+                title: 'Get AI Feedback',
+                desc: 'Receive instant AI-generated feedback, ratings, and improvement suggestions.'
+              }
+            ].map((step, index) => (
+              <Col xs={12} md={4} key={index}>
+                <Card
+                  className="h-100 border-0 shadow-sm rounded-4"
+                  style={{
+                    transition: 'all 0.3s ease',
+                    border: '1px solid rgba(255,122,0,0.15)'
+                  }}
+                >
+                  <Card.Body className="p-4 text-center">
+
+                    {/* Step Number */}
+                    <div
+                      className="mx-auto mb-3 d-flex align-items-center justify-content-center"
+                      style={{
+                        width: 60,
+                        height: 60,
+                        borderRadius: '50%',
+                        backgroundColor: '#ff7a00',
+                        color: '#fff',
+                        fontSize: 20,
+                        fontWeight: 700
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+
+                    <h5 className="fw-semibold mb-2">
+                      {step.title}
+                    </h5>
+
+                    <p className="text-muted mb-0 small">
+                      {step.desc}
+                    </p>
+
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
           </Row>
         </Col>
       </Row>

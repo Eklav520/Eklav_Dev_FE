@@ -119,69 +119,86 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
     onStart(data.interviewId, data.questions, data.totalQuestions, topic)
   }
 
- return (
-  <Form>
-    {/* ⬇️ Push content slightly down to match resume card */}
-    <div className="mt-2">
-      <Form.Group className="mb-3">
-        <Form.Label className="fw-medium mb-2">
-          Choose Topic
-        </Form.Label>
+  return (
+    <Form>
+      <div className="mt-2">
 
-        {/* ✅ Slightly smaller select (matches file input height) */}
-        <Form.Select
-          value={topic}
-          onChange={(e) => setTopic(e.target.value)}
-        >
-          {topics.length === 0 ? (
-            <option>Loading topics...</option>
-          ) : (
-            topics.map((t) => {
-              const limit = limits[t] || {
-                remaining: MAX_ATTEMPTS,
-                earliestAttempt: null,
-              }
-              const used = MAX_ATTEMPTS - limit.remaining
-              const countdownMs = countdowns[t] || 0
-              const isDisabled = limit.remaining <= 0 && countdownMs > 0
+        {/* Topic Label */}
+        <Form.Group className="mb-3">
+          <Form.Label className="fw-semibold mb-2">
+            Choose Topic
+          </Form.Label>
 
-              return (
-                <option key={t} value={t} disabled={isDisabled}>
-                  {t.toUpperCase()} — Used {used}/{MAX_ATTEMPTS}
-                  {isDisabled
-                    ? ` (Retry in ${formatTime(countdownMs)})`
-                    : ''}
-                </option>
-              )
-            })
-          )}
-        </Form.Select>
-      </Form.Group>
+          {/* Select */}
+          <Form.Select
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            style={{
+              borderRadius: '8px',
+              border: '1px solid rgba(255,122,0,0.3)',
+              boxShadow: 'none'
+            }}
+          >
+            {topics.length === 0 ? (
+              <option>Loading topics...</option>
+            ) : (
+              topics.map((t) => {
+                const limit = limits[t] || {
+                  remaining: MAX_ATTEMPTS,
+                  earliestAttempt: null,
+                }
+                const used = MAX_ATTEMPTS - limit.remaining
+                const countdownMs = countdowns[t] || 0
+                const isDisabled =
+                  limit.remaining <= 0 && countdownMs > 0
 
-      {/* ✅ Tighter helper text */}
-      <p className="text-body-secondary small mb-4">
-        Max 5 attempts per topic in 30 days. Attempts reset 30 days after your
-        first attempt.
-      </p>
+                return (
+                  <option key={t} value={t} disabled={isDisabled}>
+                    {t.toUpperCase()} — Used {used}/{MAX_ATTEMPTS}
+                    {isDisabled
+                      ? ` (Retry in ${formatTime(countdownMs)})`
+                      : ''}
+                  </option>
+                )
+              })
+            )}
+          </Form.Select>
+        </Form.Group>
 
-      {/* ✅ Button aligned with resume button */}
-      <div className="d-grid">
-        <Button
-          variant="primary"
-          size="lg"
-          onClick={startInterview}
-          disabled={
-            !topic ||
-            (limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
-          }
-        >
-          🚀 Start Interview
-        </Button>
+        {/* Helper Text */}
+        <p className="small mb-4" style={{ color: '#6c757d' }}>
+          Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.
+        </p>
+
+        {/* Start Button */}
+        <div className="d-grid">
+          <Button
+            size="lg"
+            onClick={startInterview}
+            disabled={
+              !topic ||
+              (limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+            }
+            style={{
+              backgroundColor: '#ff7a00',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '12px',
+              fontWeight: 600,
+              transition: 'all 0.3s ease',
+              opacity:
+                (limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+                  ? 0.6
+                  : 1,
+            }}
+          >
+            🚀 Start Interview
+          </Button>
+        </div>
+
       </div>
-    </div>
-  </Form>
-)
-
+    </Form>
+  )
 }
 
 export default TopicSelection
