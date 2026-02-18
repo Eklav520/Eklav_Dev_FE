@@ -483,45 +483,74 @@ const WritingPractice: React.FC = () => {
 
         .start-card {
           background: white;
-          padding: 4rem;
-          border-radius: 25px;
+          padding: 1.5rem;
+          border-radius: 14px;
           box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
           text-align: center;
           max-width: 600px;
           width: 100%;
         }
 
-        .icon-wrapper {
-          margin-bottom: 2.5rem;
+       .icon-wrapper {
+          width: 50px;
+          height: 50px;
+          margin: 0 auto 1rem auto;   /* 🔥 CENTER FIX */
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
+
         .main-icon {
-          font-size: 5rem;
-          color: #667eea;
+          font-size: 22px;
+          color: #ff7a00;
         }
 
         .start-card h2 {
           color: #2d3748;
-          margin-bottom: 1.5rem;
+          margin-bottom: 0.75rem;
           font-weight: 700;
-          font-size: 2.5rem;
+          font-size: 2rem;
         }
 
         .description {
-          color: #4a5568;
-          font-size: 1.2rem;
-          line-height: 1.7;
-          margin-bottom: 2.5rem;
+          font-size: 1rem;
+          margin-bottom: 1.5rem;
+          max-width: 520px;
+          margin-left: auto;
+          margin-right: auto;
         }
 
+
        .mode-selection {
-          max-width: 320px;
-          margin: 0 auto 2rem;
-          text-align: left;
+        max-width: 380px;
+        margin: 0 auto 1.5rem;
+        text-align: center;   /* 🔥 Fix */
         }
+
+        .start-button {
+        width: 260px;   /* cleaner */
+        margin: 0 auto;
+        display: block;
+        }
+
+        .writing-stats {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+          margin-top: 1.5rem;
+        }
+
+        .stat-box {
+          padding: 0.8rem 1.2rem;
+        }
+
+
+
 
         .mode-label {
           display: block;
+          text-align: center;
           font-weight: 600;
           font-size: 0.95rem;
           color: #4a5568;
