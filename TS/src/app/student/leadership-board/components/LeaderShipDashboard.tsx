@@ -186,7 +186,7 @@ const Leaderboard: React.FC = () => {
   const nameColor = isDarkMode ? '#ffffff' : '#0f1724'
   const metaColor = isDarkMode ? 'rgba(255,255,255,0.75)' : 'rgba(15,23,36,0.6)'
   const mutedText = isDarkMode ? 'rgba(255,255,255,0.55)' : 'rgba(15,23,36,0.45)'
-  const scoreColor = isDarkMode ? '#63c2ff' : '#0d6efd'
+  const scoreColor = '#ff7a00'
   const badgePrimary = isDarkMode ? { backgroundColor: '#0b74d6', color: '#fff' } : { backgroundColor: '#0d6efd', color: '#fff' }
   const badgeSecondary = isDarkMode ? { backgroundColor: '#6c6f73', color: '#fff' } : { backgroundColor: '#8b8f95', color: '#fff' }
   const skillChipStyle = isDarkMode
@@ -196,18 +196,19 @@ const Leaderboard: React.FC = () => {
   const pointsBoxBorder = isDarkMode ? subtleBorderDark : subtleBorderLight
   const pointsBoxShadow = isDarkMode ? '0 8px 30px rgba(5,8,10,0.6)' : '0 6px 18px rgba(16,24,40,0.06)'
   const topScorerBadgeStyle = isDarkMode
-    ? {
-      background: 'linear-gradient(180deg, rgba(255,215,0,0.18), rgba(255,215,0,0.10))',
-      color: '#ffd86b',
-      border: '1px solid rgba(255,215,0,0.35)',
-      boxShadow: '0 4px 14px rgba(255,215,0,0.12)',
+  ? {
+      background: 'linear-gradient(180deg, rgba(255,122,0,0.25), rgba(255,122,0,0.12))',
+      color: '#ffb066',
+      border: '1px solid rgba(255,122,0,0.5)',
+      boxShadow: '0 4px 14px rgba(255,122,0,0.25)',
     }
-    : {
-      background: 'linear-gradient(180deg, #fff7cc, #ffef99)',
-      color: '#7a5a00',
-      border: '1px solid #ffe580',
-      boxShadow: '0 6px 16px rgba(255,215,0,0.18)',
+  : {
+      background: 'linear-gradient(180deg, #fff2e6, #ffd9bf)',
+      color: '#cc5200',
+      border: '1px solid #ffb380',
+      boxShadow: '0 6px 16px rgba(255,122,0,0.2)',
     }
+
 
   return (
     <div style={{ background: pageBg, padding: '12px 8px', borderRadius: 12 }}>
@@ -218,7 +219,7 @@ const Leaderboard: React.FC = () => {
               <h3
                 className="mb-1 fw-bold d-flex align-items-center gap-2"
                 style={{
-                  color: isDarkMode ? '#2fb0ff' : '#0d6efd',
+                  color: '#ff7a00',
                   fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
                 }}
               >
@@ -305,13 +306,13 @@ const Leaderboard: React.FC = () => {
                       return (
                         <div
                           key={stu.id}
-                          className="student-row leaderboard-row d-flex flex-column align-items-start justify-content-between mb-3 p-3 rounded-4"
+                          className="student-row leaderboard-row d-flex flex-column mb-2 p-3 rounded-4"
                           style={{
                             background: rowBg,
                             borderLeft: `6px solid ${leftBorderColor}`,
                             transition: 'transform 0.15s ease',
                             border: `1px solid ${isDarkMode ? subtleBorderDark : subtleBorderLight}`,
-                            gap: '10px',
+                            gap: '6px',
                             position: 'relative',
                             overflow: 'hidden',
                           }}
@@ -321,7 +322,19 @@ const Leaderboard: React.FC = () => {
                           <div className="d-flex align-items-center justify-content-between w-100">
                             <div className="d-flex align-items-center flex-grow-1" style={{ minWidth: 0 }}>
                               {/* Rank Icon */}
-                              <div className="rank-icon me-2" style={{ minWidth: 28, textAlign: 'center', color: leftBorderColor, flexShrink: 0 }}>
+                              <div
+                                className="rank-icon"
+                                style={{
+                                  width: 30,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: leftBorderColor,
+                                  flexShrink: 0,
+                                  marginRight: 10,
+                                }}
+                              >
+
                                 {rank <= 3 ? (
                                   getRankIcon(rank)
                                 ) : (
@@ -395,10 +408,10 @@ const Leaderboard: React.FC = () => {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '6px 10px',
+                                padding: '4px 8px',
                                 borderRadius: 8,
                                 minWidth: 80,
-                                height: 54,
+                                height: 50,
                                 boxShadow: pointsBoxShadow,
                                 border: `1px solid ${pointsBoxBorder}`,
                                 background: pointsBoxBg,
@@ -700,6 +713,22 @@ const Leaderboard: React.FC = () => {
         .leaderboard-row {
           box-sizing: border-box;
         }
+        .pagination .page-item.active .page-link {
+          background-color: #ff7a00 !important;
+          border-color: #ff7a00 !important;
+          color: #fff !important;
+        }
+
+        .pagination .page-link:hover {
+          color: #ff7a00;
+        }
+    .form-control:focus {
+      border-color: #ff7a00 !important;
+      box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
+    }
+
+
+
       `}</style>
     </div>
   )
