@@ -80,9 +80,11 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
     <Card
       className={`border-0 shadow-sm ${styles.jobCard}`}
       style={{
-        opacity: job.isRead ? 0.85 : 1   // 🔹 subtle hint (optional)
+        opacity: job.isRead ? 0.85 : 1,
+        borderLeft: '4px solid #ff7a00'
       }}
     >
+
       <Card.Body className={styles.cardBody}>
         {/* Header */}
         <div className="d-flex justify-content-between align-items-start mb-2">
@@ -91,18 +93,50 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
             <div className={styles.companyText}>{job.company}</div>
 
             <div className="d-flex gap-2 mt-1 flex-wrap">
-              <Badge bg="primary" pill>
+
+              <span
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '50px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: '#ff7a00',
+                  color: '#fff'
+                }}
+              >
                 {job.jobType}
-              </Badge>
-              <Badge bg="secondary" pill>
+              </span>
+
+              <span
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '50px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  backgroundColor: '#ff7a00',
+                  color: '#fff',
+                  opacity: 0.85
+                }}
+              >
                 {job.domain}
-              </Badge>
+              </span>
 
               {job.tag && (
-                <Badge bg="success" pill>
+                <span
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '50px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    backgroundColor: '#ff7a00',
+                    color: '#fff',
+                    opacity: 0.7
+                  }}
+                >
                   {job.tag}
-                </Badge>
+                </span>
               )}
+
             </div>
           </div>
         </div>
@@ -129,21 +163,38 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
 
         {/* Highlights */}
         {previewText && (
-  <p className={styles.highlightsPreview}>
-    {previewText}…
-  </p>
-)}
+          <p className={styles.highlightsPreview}>
+            {previewText}…
+          </p>
+        )}
 
         {/* Skills */}
         <div className={styles.skillsContainer}>
           {job.skills?.slice(0, 4).map((skill, idx) => (
-            <Badge key={idx} className={styles.skillBadge}>
+            <Badge
+              key={idx}
+              className={styles.skillBadge}
+              style={{
+                backgroundColor: '#fff3e6',
+                color: '#a54d00',
+                border: '1px solid #ff7a00'
+              }}
+            >
+
               {skill}
             </Badge>
           ))}
 
           {job.skills?.length > 4 && (
-            <Badge bg="light" text="dark" className={styles.skillBadge}>
+            <Badge
+              className={styles.skillBadge}
+              style={{
+                backgroundColor: '#fff3e6',
+                color: '#a54d00',
+                border: '1px solid #ff7a00'
+              }}
+            >
+
               +{job.skills.length - 4} more
             </Badge>
           )}
@@ -160,13 +211,33 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
 
           <div className="d-flex align-items-center gap-2">
             {job.isRead && (
-              <Badge bg="success" pill>
+              <Badge
+                pill
+                style={{
+                  backgroundColor: '#ff7a00',
+                  color: '#fff'
+                }}
+              >
+
                 Marked as Read
               </Badge>
             )}
 
             <Button
-              variant="outline-primary"
+              style={{
+                backgroundColor: 'transparent',
+                borderColor: '#ff7a00',
+                color: '#ff7a00'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#ff7a00'
+                e.currentTarget.style.color = '#fff'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent'
+                e.currentTarget.style.color = '#ff7a00'
+              }}
+
               size="sm"
               onClick={() => onViewDetails(job)}
               className={styles.detailsButton}

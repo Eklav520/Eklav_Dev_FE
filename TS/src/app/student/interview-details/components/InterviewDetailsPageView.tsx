@@ -87,8 +87,8 @@ const InterviewDetailsPageView = () => {
         : true
       const skillsMatch = skills
         ? job.skills.some(skill =>
-            skill.toLowerCase().includes(skills.toLowerCase())
-          )
+          skill.toLowerCase().includes(skills.toLowerCase())
+        )
         : true
 
       return domainMatch && typeMatch && locationMatch && skillsMatch
@@ -112,7 +112,9 @@ const InterviewDetailsPageView = () => {
 
   return (
     <Container className="py-3 py-md-4">
-      <h4 className="mb-3">Available Jobs</h4>
+      <h4 className="mb-3" style={{ color: '#ff7a00' }}>
+        Available Jobs
+      </h4>
 
       {/* 🔍 FILTER BAR */}
       <Form className="mb-4">
@@ -154,7 +156,20 @@ const InterviewDetailsPageView = () => {
         <div className="mt-2 text-end">
           <Button
             size="sm"
-            variant="outline-secondary"
+            style={{
+              backgroundColor: 'transparent',
+              borderColor: '#ff7a00',
+              color: '#ff7a00'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#ff7a00'
+              e.currentTarget.style.color = '#fff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent'
+              e.currentTarget.style.color = '#ff7a00'
+            }}
+
             onClick={() => {
               setDomain('')
               setJobType('')
@@ -200,6 +215,10 @@ const InterviewDetailsPageView = () => {
               <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
                 <Button
                   className="page-link"
+                  style={{
+                    color: '#ff7a00',
+                    borderColor: '#ff7a00'
+                  }}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
                 >
@@ -214,7 +233,11 @@ const InterviewDetailsPageView = () => {
                   className={`page-item ${currentPage === page ? 'active' : ''}`}
                 >
                   <Button
-                    className="page-link"
+                    style={{
+                      color: currentPage === page ? '#fff' : '#ff7a00',
+                      backgroundColor: currentPage === page ? '#ff7a00' : 'transparent',
+                      borderColor: '#ff7a00'
+                    }}
                     onClick={() => setCurrentPage(page)}
                   >
                     {page}
@@ -226,6 +249,7 @@ const InterviewDetailsPageView = () => {
               <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                 <Button
                   className="page-link"
+
                   onClick={() =>
                     setCurrentPage(prev => Math.min(prev + 1, totalPages))
                   }

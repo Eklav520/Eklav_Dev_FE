@@ -125,11 +125,70 @@ const JobDetailsModal: React.FC<Props> = ({
           </div>
 
           <div className="d-flex flex-wrap gap-2 mt-3">
-            <Badge bg="primary">{job.jobType}</Badge>
-            <Badge bg="secondary">{job.domain}</Badge>
-            {job.tag && <Badge bg="success">{job.tag}</Badge>}
-            {isRead && <Badge bg="success">Read</Badge>}
+
+            <span
+              style={{
+                padding: '6px 14px',
+                borderRadius: '50px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: 'rgba(255,122,0,0.25)',
+                backdropFilter: 'blur(6px)',
+                border: '1px solid rgba(255,122,0,0.4)',
+                color: '#ffb066'
+              }}
+            >
+              {job.jobType}
+            </span>
+
+            <span
+              style={{
+                padding: '6px 14px',
+                borderRadius: '50px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: 'rgba(255,122,0,0.18)',
+                border: '1px solid rgba(255,122,0,0.35)',
+                color: '#ffb066'
+              }}
+            >
+              {job.domain}
+            </span>
+
+            {job.tag && (
+              <span
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '50px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  background: 'rgba(255,122,0,0.15)',
+                  border: '1px solid rgba(255,122,0,0.3)',
+                  color: '#ffb066'
+                }}
+              >
+                {job.tag}
+              </span>
+            )}
+
+            {isRead && (
+              <span
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '50px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  background: 'rgba(0,200,150,0.15)',
+                  border: '1px solid rgba(0,200,150,0.3)',
+                  color: '#5effc4'
+                }}
+              >
+                Read
+              </span>
+            )}
+
           </div>
+
 
           <Button
             variant="outline-light"
@@ -211,7 +270,11 @@ const JobDetailsModal: React.FC<Props> = ({
                   <div className="d-grid gap-2">
                     {!isRead ? (
                       <Button
-                        variant="primary"
+                        style={{
+                          backgroundColor: '#ff7a00',
+                          borderColor: '#ff7a00'
+                        }}
+
                         size="lg"
                         onClick={handleMarkAsRead}
                         disabled={loading}
@@ -225,7 +288,19 @@ const JobDetailsModal: React.FC<Props> = ({
                     )}
 
                     <Button
-                      variant="outline-secondary"
+                      style={{
+                        borderColor: '#ff7a00',
+                        color: '#ff7a00'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#ff7a00'
+                        e.currentTarget.style.color = '#fff'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                        e.currentTarget.style.color = '#ff7a00'
+                      }}
+
                       onClick={onHide}
                     >
                       Close
