@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Col, Toast, ToastContainer } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { BsPlus, BsX,BsSearch } from 'react-icons/bs';
+import { BsPlus, BsX, BsSearch } from 'react-icons/bs';
 import { useAuthContext } from '@/context/useAuthContext';
 import avatar7 from '@/assets/images/avatar/07.jpg';
 import TextFormInput from '@/components/form/TextFormInput';
@@ -284,7 +284,12 @@ const EditProfile = () => {
   return (
     <>
       <Card className="bg-transparent border rounded-3">
-        <CardHeader className="bg-transparent border-bottom">
+        <CardHeader
+          className="border-bottom text-white"
+          style={{
+            background: 'linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%)',
+          }}
+        >
           <h3 className="card-header-title mb-0">Update Profile</h3>
         </CardHeader>
         <CardBody>
@@ -313,7 +318,13 @@ const EditProfile = () => {
                     </button>
                   )}
                 </label>
-                <label className="btn btn-primary-soft mb-0">
+                <label className="btn"
+                  style={{
+                    background: '#ff7a00',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 600,
+                  }}>
                   Change
                   <input className="form-control d-none" type="file" accept="image/*" onChange={onImageChange} />
                 </label>
@@ -570,7 +581,12 @@ const EditProfile = () => {
                     if (skillInput.trim()) addSkill()
                   }}
                 />
-                <button type="button" className="btn btn-sm btn-secondary" onClick={addSkill}>
+                <button type="button" className="btn btn-sm"
+                  style={{
+                    background: '#ff7a00',
+                    color: '#fff',
+                    border: 'none'
+                  }} onClick={addSkill}>
                   Add
                 </button>
               </div>
@@ -595,7 +611,13 @@ const EditProfile = () => {
             <div className="d-sm-flex justify-content-end">
               <button
                 type="submit"
-                className="btn btn-primary mb-0 d-flex align-items-center gap-2"
+                className="btn d-flex align-items-center gap-2"
+                style={{
+                  background: '#ff7a00',
+                  border: 'none',
+                  color: '#fff',
+                  fontWeight: 600,
+                }}
                 disabled={isSaving}
               >
                 {isSaving && (
@@ -711,8 +733,9 @@ const EditProfile = () => {
   border-radius: 0.375rem; /* same as TextFormInput */
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
-  .list-group-item:hover {
-  background-color: rgba(99, 102, 241, 0.08);
+.list-group-item:hover {
+  background-color: rgba(255,122,0,0.1);
+  border-left: 3px solid #ff7a00;
 }
 
       `}</style>
