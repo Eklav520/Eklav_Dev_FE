@@ -1,7 +1,5 @@
-import { Card, Row, Col, Button, ProgressBar } from 'react-bootstrap'
-import avatarFallback from '@/assets/images/avatar/09.jpg'
+import { Card, Row, Col, ProgressBar } from 'react-bootstrap'
 import { Link } from "react-router-dom";
-/* ================= TYPES ================= */
 
 type Props = {
   student: {
@@ -12,94 +10,109 @@ type Props = {
   }
 }
 
-/* ================= COMPONENT ================= */
-
 const HeroSection = ({ student }: Props) => {
   const firstName = student.name.split(' ')[0]
-  
+
   return (
     <Card
       className="border-0 mb-4"
       style={{
-        background: '#1e293b',
+        background: 'linear-gradient(135deg, #ff7a00 0%, #ff9a3c 1%, #1e293b 100%)', // 🔥 Dark dashboard color
         color: 'white',
-        borderRadius: '12px',
+        borderRadius: '16px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.4)',
       }}
     >
       <Card.Body className="p-3 p-md-4">
         <Row className="align-items-center">
-          {/* Avatar & Greeting */}
+
+          {/* Greeting */}
           <Col xs={12} md={6} className="mb-3 mb-md-0">
-            <div className="d-flex align-items-center">
-              
-              <div>
-                <h3 className="fw-bold mb-1" style={{ fontSize: '1.5rem' }}>
-                  Hello, {firstName} !
-                </h3>
-                <p className="mb-0" style={{ color: '#94a3b8', fontSize: '0.9rem' }}>
-                  {student.subtitle || "Let's pick up where you left off"}
-                </p>
-              </div>
+            <div>
+              <h3 className="fw-bold mb-1" style={{ fontSize: '1.6rem' }}>
+                Hello, {firstName} !
+              </h3>
+              <p
+                className="mb-0"
+                style={{
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: '0.95rem',
+                }}
+              >
+                {student.subtitle || "Let's pick up where you left off"}
+              </p>
             </div>
           </Col>
 
-          {/* Profile Completion & Button */}
+          {/* Completion */}
           <Col xs={12} md={6}>
             <div className="d-flex align-items-center justify-content-md-end gap-3">
-              <div style={{ minWidth: '200px' }}>
+              <div style={{ minWidth: '220px' }}>
                 <div className="d-flex justify-content-between mb-2">
-                  <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                  <span
+                    style={{
+                      color: 'rgba(255,255,255,0.85)',
+                      fontSize: '0.9rem',
+                    }}
+                  >
                     Profile Completion
                   </span>
-                  <span className="fw-bold" style={{ fontSize: '1.1rem' }}>
+                  <span
+                    className="fw-bold"
+                    style={{ fontSize: '1.2rem' }}
+                  >
                     {student.completion}%
                   </span>
                 </div>
+
                 <ProgressBar
                   now={student.completion}
-                  style={{ 
-                    height: '8px', 
-                    borderRadius: '10px',
-                    background: '#334155'
+                  style={{
+                    height: '8px',
+                    borderRadius: '20px',
+                    background: 'rgba(255,255,255,0.3)',
                   }}
-                  className="custom-progress"
                 />
+
               </div>
-              <Link to="/student/edit-profile"><div
-                style={{
-                  background: '#06b6d4',
-                  border: 'none',
-                  padding: '10px 24px',
-                  borderRadius: '8px',
-                  fontWeight: '600',
-                  fontSize: '0.9rem',
-                  whiteSpace: 'nowrap',
-                  color: 'white',
-                }}
-                className="hover-lift"
-              >
-                Finish Setup
-              </div></Link>
-              
+
+              <Link to="/student/edit-profile">
+                <div
+                  style={{
+                    background: '#ffffff',
+                    color: '#ff7a00',
+                    padding: '10px 24px',
+                    borderRadius: '10px',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 6px 18px rgba(0,0,0,0.15)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow =
+                      '0 8px 22px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow =
+                      '0 6px 18px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  Finish Setup
+                </div>
+              </Link>
             </div>
           </Col>
         </Row>
       </Card.Body>
 
       <style>{`
-        .custom-progress .progress-bar {
-          background: #6366f1 !important;
-          border-radius: 10px;
-        }
-        
-        .hover-lift {
-          transition: all 0.2s ease;
-        }
-        
-        .hover-lift:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
-          background: #0891b2 !important;
+        .progress-bar {
+          background: #ffffff !important;
+          border-radius: 20px;
         }
       `}</style>
     </Card>

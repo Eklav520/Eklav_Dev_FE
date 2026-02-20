@@ -62,12 +62,12 @@ const StudentDashboardUpdated: React.FC = () => {
   }, [user?.token, baseURL])
 
   useEffect(() => {
-  fetch(`${baseURL}/courses`)
-    .then(res => res.json())
-    .then(setAllCourses)
-    .catch(() => setAllCourses([]))
-    .finally(() => setCoursesLoading(false))
-}, [baseURL])
+    fetch(`${baseURL}/courses`)
+      .then(res => res.json())
+      .then(setAllCourses)
+      .catch(() => setAllCourses([]))
+      .finally(() => setCoursesLoading(false))
+  }, [baseURL])
 
 
   useEffect(() => {
@@ -96,10 +96,7 @@ const StudentDashboardUpdated: React.FC = () => {
                 : progress === 100
                   ? 'Completed'
                   : 'In Progress',
-            color:
-              index % 2 === 0
-                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                : 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+            color: 'linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%)',
           }
         })
 
@@ -110,17 +107,17 @@ const StudentDashboardUpdated: React.FC = () => {
   }, [user?.token, baseURL])
 
   // ===== DERIVED: remaining courses =====
-const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id))
+  const enrolledCourseIds = new Set(enrolledCourses.map(c => c.id))
 
-const remainingCourses = allCourses
-  .filter(course => !enrolledCourseIds.has(course._id))
-  .map(course => ({
-    id: course._id,
-    name: course.title,
-    progress: 0,
-    status: 'Not Enrolled',
-    color: '#64748b',
-  }))
+  const remainingCourses = allCourses
+    .filter(course => !enrolledCourseIds.has(course._id))
+    .map(course => ({
+      id: course._id,
+      name: course.title,
+      progress: 0,
+      status: 'Not Enrolled',
+      color: '#ff7a00',
+    }))
 
 
 
@@ -128,13 +125,24 @@ const remainingCourses = allCourses
   if (loading || summaryLoading || enrollmentsLoading) {
     return (
       <div className="text-center py-5">
-        <Spinner animation="border" />
+        <Spinner
+          animation="border"
+          style={{ color: '#ff7a00' }}
+        />
       </div>
     )
   }
 
   if (!profile || !dashboardSummary) {
-    return <Alert variant="danger">Failed to load dashboard</Alert>
+    return <Alert
+      style={{
+        backgroundColor: 'rgba(255,122,0,0.1)',
+        border: '1px solid #ff7a00',
+        color: '#ff7a00',
+      }}
+    >
+      Failed to load dashboard
+    </Alert>
   }
 
   /* ================= DERIVED DATA ================= */
@@ -151,32 +159,32 @@ const remainingCourses = allCourses
       label: 'Courses Available',
       value: dashboardSummary.coursesAvailable.value,
       icon: FaClock,
-      color: 'primary',
-      bgColor: 'rgba(13,110,253,.1)',
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary.coursesAvailable.trend,
     },
     {
       label: 'Enrolled Courses',
       value: dashboardSummary.enrolledCourses.value,
       icon: FaBookOpen,
-      color: 'success',
-      bgColor: 'rgba(25,135,84,.1)',
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary.enrolledCourses.trend,
     },
     {
       label: 'Accuracy',
       value: dashboardSummary.accuracy.value,
       icon: FaBullseye,
-      color: 'warning',
-      bgColor: 'rgba(255,193,7,.1)',
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary.accuracy.trend,
     },
     {
       label: 'Rank',
       value: dashboardSummary.rank.value,
       icon: FaTrophy,
-      color: 'info',
-      bgColor: 'rgba(13,202,240,.1)',
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary.rank.trend,
     },
   ]
@@ -187,12 +195,13 @@ const remainingCourses = allCourses
       fluid
       className="p-3 p-md-4"
       style={{
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        background: '#ffffff',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
         minHeight: '100svh',
       }}>
       <HeroSection student={student} />
       <KPISection kpis={kpis} />
-      
+
 
       <Row className="g-3 mb-4">
         <Col xs={12} lg={4}>
@@ -208,31 +217,7 @@ const remainingCourses = allCourses
           <SelfPreparation />
         </Col>
       </Row>
-      <MonthlyReport/>
-
-      {/*  <Row className="g-3 mb-4">
-        <Col xs={12} lg={8}>
-          <WeeklyAnalytics data={weeklyProgressData} />
-        </Col>
-        <Col xs={12} lg={4}>
-          <UpdatesAndStats updates={adminUpdates} />
-        </Col>
-      </Row>
-
-      <Row className="g-3 mt-3">
-        <Col xs={12} lg={8}>
-          <MonthlyReport />
-        </Col>
-        <Col xs={12} lg={4}>
-          <AttendanceCalendar
-            selectedYear={selectedYear}
-            selectedMonth={selectedMonth}
-            setSelectedYear={setSelectedYear}
-            setSelectedMonth={setSelectedMonth}
-            attendanceByMonth={attendanceByMonth}
-          />
-        </Col>
-      </Row> */}
+      {/*   <MonthlyReport /> */}
     </Container>
   )
 }

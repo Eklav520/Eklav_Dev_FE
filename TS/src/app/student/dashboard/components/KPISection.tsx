@@ -16,28 +16,37 @@ const KPISection = ({ kpis }: Props) => (
             className="border-0 h-100"
             style={{
               background: '#1e293b',
-              borderRadius: '12px',
+              borderRadius: '16px',
+              boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
             }}
           >
             <Card.Body className="p-3">
-              <div className="d-flex align-items-start justify-content-between mb-2">
+              <div className="d-flex align-items-start justify-content-between mb-3">
+
+                {/* Icon Circle */}
                 <div
                   className="p-2 rounded-circle"
                   style={{
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    color: `var(--bs-${k.color})`,
+                    background: 'rgba(255,122,0,0.15)',
+                    color: '#ff7a00',
                   }}
                 >
                   <Icon size={18} />
                 </div>
 
+                {/* Trend Badge */}
                 {k.trend && (
                   <Badge
+                    bg=""
+                    className=""
                     style={{
-                      background: '#10b981',
-                      border: 'none',
+                      backgroundColor: 'transparent',
+                      color: '#ff7a00',
+                      border: '1px solid #ff7a00',
                       fontSize: '0.75rem',
-                      padding: '4px 8px',
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      boxShadow: 'none',
                     }}
                   >
                     {k.trend}
@@ -46,10 +55,22 @@ const KPISection = ({ kpis }: Props) => (
               </div>
 
               <div>
-                <div className="text-muted mb-1" style={{ fontSize: '0.85rem' }}>
+                <div
+                  style={{
+                    color: '#94a3b8',
+                    fontSize: '0.85rem',
+                  }}
+                >
                   {k.label}
                 </div>
-                <h3 className="fw-bold mb-0" style={{ color: 'white' }}>
+
+                <h3
+                  className="fw-bold mb-0"
+                  style={{
+                    color: 'white',
+                    fontSize: '1.7rem',
+                  }}
+                >
                   {k.value}
                 </h3>
               </div>

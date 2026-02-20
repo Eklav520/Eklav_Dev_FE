@@ -21,9 +21,9 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
   const avgProgress =
     enrolledCourses.length > 0
       ? Math.round(
-          enrolledCourses.reduce((sum, c) => sum + c.progress, 0) /
-            enrolledCourses.length
-        )
+        enrolledCourses.reduce((sum, c) => sum + c.progress, 0) /
+        enrolledCourses.length
+      )
       : 0
 
   return (
@@ -31,19 +31,22 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
       className="border-0 shadow-lg overflow-hidden"
       style={{
         borderRadius: '16px',
-        background: 'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)',
+        background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)', // 🔥 orange
         height: '600px',
         display: 'flex',
         flexDirection: 'column',
       }}
-    > 
-      {/* ================= HEADER (UNCHANGED) ================= */}
+    >
       <div style={{ flexShrink: 0 }}>
         <Card.Header
           className="border-0 text-white px-4 py-4"
           style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.15)',
+            background: 'rgba(255,255,255,0.1)',
+            borderBottom: '1px solid rgba(255,255,255,0.2)',
+            minHeight: '200px',   // 🔥 FORCE SAME HEIGHT
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
           }}
         >
           <div className="d-flex align-items-start mb-3">
@@ -54,11 +57,8 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
               <FaGraduationCap className="fs-5" />
             </div>
             <div>
-              <h1
-                className="mb-0 fw-bold"
-                style={{ fontSize: '1.75rem', lineHeight: '1.2' }}
-              >
-                <span className="d-block">Course Progress</span>
+              <h1 className="mb-0 fw-bold" style={{ fontSize: '1.75rem' }}>
+                Course Progress
               </h1>
               <small className="opacity-75 mt-1 d-block">
                 Track your learning journey
@@ -66,19 +66,22 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
             </div>
           </div>
 
+          {/* STAT BOXES */}
           <div className="d-flex justify-content-start gap-3">
+            {/* Avg Progress */}
             <div
               className="d-flex align-items-center p-3 rounded-3"
               style={{
-                background: 'rgba(37, 99, 235, 0.15)',
-                border: '1px solid rgba(37, 99, 235, 0.3)',
-                minWidth: '150px',
+                background: 'rgba(255,122,0,0.15)',
+                border: '1px solid rgba(255,122,0,0.4)',
+                width: '180px',
+                height: '90px',
               }}
             >
               <div
                 className="rounded-circle p-2 flex-shrink-0 me-3"
                 style={{
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  background: 'linear-gradient(135deg, #ff7a00 0%, #e96d00 100%)',
                   width: '42px',
                   height: '42px',
                   display: 'flex',
@@ -96,18 +99,20 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
               </div>
             </div>
 
+            {/* Completed */}
             <div
               className="d-flex align-items-center p-3 rounded-3"
               style={{
-                background: 'rgba(245, 158, 11, 0.15)',
-                border: '1px solid rgba(245, 158, 11, 0.3)',
-                minWidth: '150px',
+                background: 'rgba(255,122,0,0.15)',
+                border: '1px solid rgba(255,122,0,0.4)',
+                width: '180px',
+                height: '90px',
               }}
             >
               <div
                 className="rounded-circle p-2 flex-shrink-0 me-3"
                 style={{
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  background: 'linear-gradient(135deg, #ff7a00 0%, #e96d00 100%)',
                   width: '42px',
                   height: '42px',
                   display: 'flex',
@@ -128,7 +133,6 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
         </Card.Header>
       </div>
 
-      {/* ================= BODY ================= */}
       <Card.Body
         className="p-4"
         style={{
@@ -137,31 +141,25 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
           overflowY: 'auto',
         }}
       >
-        {/* ================= ENROLLED COURSES ================= */}
         <h2 className="text-white fw-bold mb-4" style={{ fontSize: '1.25rem' }}>
           Enrolled Courses
         </h2>
-
-        {enrolledCourses.length === 0 && (
-          <small className="text-white-50">No enrolled courses</small>
-        )}
 
         {enrolledCourses.map(course => (
           <div
             key={course.id}
             className="mb-4 pb-3"
             style={{
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              borderBottom: '1px solid rgba(255,122,0,0.2)',
             }}
           >
-            {/* EXISTING COURSE UI — UNCHANGED */}
             <div className="d-flex justify-content-between align-items-start mb-3">
               <div className="d-flex align-items-center">
                 <div className="me-3">
                   <div
                     className="rounded-circle p-2"
                     style={{
-                      background: course.color + '20',
+                      background: 'rgba(255,122,0,0.15)',
                       width: '40px',
                       height: '40px',
                       display: 'flex',
@@ -169,7 +167,7 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
                       justifyContent: 'center',
                     }}
                   >
-                    <FaBookOpen className="fs-5" style={{ color: course.color }} />
+                    <FaBookOpen className="fs-5" style={{ color: '#ff7a00' }} />
                   </div>
                 </div>
                 <div>
@@ -195,12 +193,10 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
                 borderRadius: '4px',
                 backgroundColor: 'rgba(255,255,255,0.1)',
               }}
-              variant="info"
             />
           </div>
         ))}
 
-        {/* ================= REMAINING COURSES ================= */}
         <h2
           className="text-white fw-bold mt-4 mb-3"
           style={{ fontSize: '1.25rem' }}
@@ -208,18 +204,14 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
           Remaining Courses
         </h2>
 
-        {remainingCourses.length === 0 && (
-          <small className="text-white-50">No remaining courses</small>
-        )}
-
         {remainingCourses.map(course => (
           <div
             key={course.id}
             className="d-flex justify-content-between align-items-center mb-3 p-3"
             style={{
-              border: '1px dashed rgba(255,255,255,0.2)',
+              border: '1px dashed rgba(255,122,0,0.4)',
               borderRadius: '10px',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'rgba(255,122,0,0.05)',
             }}
           >
             <div className="text-white fw-semibold">
@@ -229,6 +221,12 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
           </div>
         ))}
       </Card.Body>
+
+      <style>{`
+        .progress-bar {
+          background-color: #ff7a00 !important;
+        }
+      `}</style>
     </Card>
   )
 }

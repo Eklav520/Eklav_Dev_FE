@@ -12,11 +12,7 @@ const DashboardPage = () => {
   return (
     <>
       <PageMetaData title="Student Dashboard" />
-      
-
       <StudentDashboardUpdated/> 
-
-     
     </>
   )
 }
