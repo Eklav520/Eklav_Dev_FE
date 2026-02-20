@@ -1,0 +1,148 @@
+/* Update these selectors to target Bootstrap's generated classes */
+.book-modal .modal-header {
+  background-color: #1a1a1a;
+  border-bottom: 2px solid #ff7a00;
+  padding: 1rem 1.5rem;
+}
+
+.book-modal .modal-header .modal-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.book-modal .modal-header .btn-close {
+  background-color: transparent;
+  opacity: 0.8;
+  filter: invert(1) brightness(2);
+  transition: all 0.2s ease;
+}
+
+.book-modal .modal-header .btn-close:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.book-modal .modal-body {
+  height: calc(100vh - 70px);
+  overflow-y: auto;
+  background-color: #111111;
+  padding: 0 !important; /* Override Bootstrap's padding */
+}
+/* Modal Footer Styles */
+.book-modal-footer {
+  background: linear-gradient(to right, #1a1a1a, #0f172a);
+  border-top: 2px solid #ff7a00;
+  padding: 10px 20px;
+  border-radius: 0;
+}
+
+.footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  color: #ffffff;
+}
+
+.footer-left, .footer-center, .footer-right {
+  flex: 1;
+}
+
+.footer-left {
+  text-align: left;
+}
+
+.footer-center {
+  text-align: center;
+}
+
+.footer-right {
+  text-align: right;
+}
+
+.book-info {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.book-info strong {
+  color: #ff7a00;
+  margin-right: 4px;
+}
+
+.book-progress {
+  background: rgba(255, 122, 0, 0.15);
+  color: #ff7a00;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 122, 0, 0.3);
+  display: inline-block;
+}
+
+.footer-close-btn {
+  background: transparent;
+  border: 1px solid #ff7a00;
+  color: #ff7a00;
+  padding: 6px 16px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footer-close-btn:hover {
+  background: #ff7a00;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 122, 0, 0.3);
+}
+
+.footer-close-btn span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Responsive footer */
+@media (max-width: 768px) {
+  .footer-content {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .footer-left, .footer-center, .footer-right {
+    text-align: center;
+    width: 100%;
+  }
+  
+  .book-modal-footer {
+    padding: 8px 16px;
+  }
+  
+  .footer-close-btn {
+    padding: 4px 14px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .book-info {
+    font-size: 12px;
+  }
+  
+  .book-progress {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+  
+  .footer-close-btn {
+    padding: 3px 12px;
+    font-size: 11px;
+  }
+}

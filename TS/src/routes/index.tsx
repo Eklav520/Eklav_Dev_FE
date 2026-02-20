@@ -2,6 +2,7 @@ import AdminCreateProblem from '@/app/student/payment-info/components/AdminCreat
 import { lazy } from 'react'
 import { Navigate, type RouteProps } from 'react-router-dom'
 import RoleRedirect from './RoleRedirect'
+import { Material } from 'three/src/Three.Core.js'
 
 
 // Demos Pages
@@ -120,6 +121,7 @@ const StudentDeleteAccount = lazy(() => import('@/app/student/delete-account/pag
 const SelfInterview = lazy(() => import('@/app/student/self-interview/page'))
 const StudentFinalAssessment = lazy(() => import('@/app/student/final-assessment/page'))
 const AvailableCourses = lazy(() => import('@/app/student/available-courses/page'))
+const Materials = lazy(() => import('@/app/student/materials/page'))
 const InterviewDetails = lazy(() => import('@/app/student/interview-details/page'))
 const Aptitude = lazy(() => import('@/app/student/Aptitude Preparation/page'))
 const Resume = lazy(() => import('@/app/student/resume-preparation/page'))
@@ -622,6 +624,11 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/available-courses',
     name: 'Available Courses',
     element: <AvailableCourses />,
+  },
+  {
+    path: '/student/materials',
+    name: 'Materials',
+    element: <Materials />,
   },
   {
     path: '/student/course-list',

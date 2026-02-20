@@ -521,6 +521,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         url: '/student/interview-details',
       },
       /* {
+        key: 'materials',
+        label: 'Materials',
+        icon: FaBriefcase, // 💼 jobs
+        url: '/student/materials',
+      }, */
+      /* {
         key: 'blog',
         label: 'Blog',
         icon: FaBlog, // 📝 blog
