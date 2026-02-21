@@ -24,7 +24,6 @@ type Feedback = {
 
 type ReadingHistory = {
   monthlyLimit: number
-  weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
   summary: {
@@ -48,6 +47,8 @@ const ReadingPractice: React.FC = () => {
   const [submittedData, setSubmittedData] = useState<any>(null)
   const [history, setHistory] = useState<ReadingHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
+  const isMonthlyLimitReached =
+    !!history && history.attemptsUsed >= history.monthlyLimit
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -82,7 +83,9 @@ const ReadingPractice: React.FC = () => {
       })
       if (res.status === 429) {
         const data = await res.json()
-        alert(`Weekly limit reached.\n\nAttempts used: ${data.attemptsUsed}\nTry again next week.`)
+        alert(
+          `Monthly limit reached.\n\nAttempts used: ${data.attemptsUsed}/${data.monthlyLimit}\nTry again next month.`
+        )
         setStarted(false)
         return
       }
@@ -159,10 +162,23 @@ const ReadingPractice: React.FC = () => {
             <p className="description">
               Sharpen your comprehension skills with AI-powered reading passages and interactive quizzes designed to improve your reading abilities.
             </p>
-            <Button size="lg" className="start-button" onClick={startPractice} disabled={history?.remainingAttempts === 0}>
+            <Button
+              size="lg"
+              className="start-button"
+              onClick={startPractice}
+              disabled={isMonthlyLimitReached}
+            >
               <FaPlay className="me-2" />
-              {history?.remainingAttempts === 0 ? 'Weekly Limit Reached' : 'Start Practice'}
+              {isMonthlyLimitReached
+                ? 'Monthly Limit Reached'
+                : 'Start Practice'}
             </Button>
+
+            {isMonthlyLimitReached && (
+              <div className="mt-3 text-danger fw-semibold">
+                ⚠ You have reached your monthly reading limit.
+              </div>
+            )}
             {!historyLoading && history && (
               <div className="stats-container">
                 {/* Monthly Attempts */}
@@ -1006,7 +1022,6 @@ const ReadingPractice: React.FC = () => {
 
         .score-box .stat-value {
           color: #e96d00;
-          back
         }
 
         .empty {

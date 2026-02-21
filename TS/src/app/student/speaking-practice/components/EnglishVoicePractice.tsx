@@ -27,7 +27,7 @@ const EnglishVoicePractice: React.FC = () => {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isListening, setIsListening] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(120)
+  const [timeLeft, setTimeLeft] = useState(180)
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
 
   const [liveSpeech, setLiveSpeech] = useState('')
@@ -44,13 +44,11 @@ const EnglishVoicePractice: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
-  const isWeeklyLimitReached = history && history.attemptsUsed >= history.weeklyLimit
-  const canStart = !sessionStarted && !isWeeklyLimitReached
+  const isMonthlyLimitReached = history && history.attemptsUsed >= history.monthlyLimit
+  const canStart = !sessionStarted && !isMonthlyLimitReached
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
-
-  console.log("isWeeklyLimitReached",isWeeklyLimitReached)
 
 
   const MAX_NO_RESPONSE = 3
@@ -327,7 +325,7 @@ const EnglishVoicePractice: React.FC = () => {
     setFeedback('')
     setSessionStarted(true)
     setSessionEnded(false)
-    setTimeLeft(120)
+    setTimeLeft(180)
     setLiveSpeech('')
     setIsUserSpeaking(false)
   }
@@ -415,7 +413,12 @@ const EnglishVoicePractice: React.FC = () => {
                   <h5 className="fw-bold mb-1">🗣 Speak with Eklav</h5>
                   {history && (
                     <p className="mb-0 attempts-text">
-                      Attempts: <strong>{history.attemptsText}</strong>
+                      Monthly Attempts: <strong>{history.attemptsText}</strong>
+                      {isMonthlyLimitReached && (
+                        <p className="text-danger mt-1 mb-0 small">
+                          ⚠ Monthly attempt limit reached. Try again next month.
+                        </p>
+                      )}
                     </p>
                   )}
                 </div>

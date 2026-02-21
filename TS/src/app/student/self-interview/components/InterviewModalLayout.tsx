@@ -266,10 +266,8 @@ const InterviewModalLayout = () => {
                 desc: 'Select between topic-based or resume-based interviews based on your preparation needs.'
               },
               {
-                title: isMobile ? 'Mobile Interview' : 'Fullscreen Practice',
-                desc: isMobile
-                  ? 'Answer questions directly from your mobile device with video recording.'
-                  : 'Experience an immersive fullscreen interview environment on desktop.'
+                title: 'Realistic Interview Experience',
+                desc: 'Simulate real-world interview scenarios and sharpen your answers in a structured, distraction-free virtual setup.'
               },
               {
                 title: 'Get AI Feedback',

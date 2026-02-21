@@ -471,14 +471,11 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                               }}
                               className="w-100 mt-3"
                               onClick={() => handleEnroll(_id)}
-                              //disabled={true}
-                              disabled={enrolledCourseIds.includes(_id) || enrolledCourseIds.length >= 5}
+                              disabled={enrolledCourseIds.includes(_id)}
                             >
                               {enrolledCourseIds.includes(_id)
                                 ? 'Already Enrolled'
-                                : enrolledCourseIds.length >= 5
-                                  ? 'Enrollment Limit Reached'
-                                  : 'Enroll Now'}
+                                : 'Enroll Now'}
                             </Button>
                           </div>
                           {courseFeatures.length > 0 && (

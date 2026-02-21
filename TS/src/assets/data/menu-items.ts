@@ -59,6 +59,7 @@ import {
   FaBasketballBall,
   FaBlog,
   FaBook,
+  FaBookOpen,
   FaBriefcase,
   FaChalkboardTeacher,
   FaChartBar,
@@ -415,7 +416,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'materials',
         label: 'Materials',
-        icon: FaBook,
+        icon: FaBookOpen,
         url: '/student/materials',
       }
       /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */

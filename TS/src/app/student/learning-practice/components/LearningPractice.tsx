@@ -30,7 +30,6 @@ type ApiResponse = {
 
 type ListeningHistory = {
   monthlyLimit: number
-  weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
   summary: {
@@ -56,6 +55,8 @@ const ListeningPractice: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const isMonthlyLimitReached =
+    !!history && history.attemptsUsed >= history.monthlyLimit
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -94,7 +95,9 @@ const ListeningPractice: React.FC = () => {
 
       if (res.status === 429) {
         const data = await res.json()
-        alert(`Weekly limit reached.\n\nAttempts used: ${data.attemptsUsed}\nTry again next week.`)
+        alert(
+          `Monthly limit reached.\n\nAttempts used: ${data.attemptsUsed}/${data.monthlyLimit}\nTry again next month.`
+        )
         setStarted(false)
         return
       }
@@ -183,11 +186,19 @@ const ListeningPractice: React.FC = () => {
                 <Button
                   className="start-button"
                   onClick={startPractice}
-                  disabled={history?.remainingAttempts === 0}
+                  disabled={isMonthlyLimitReached}
                 >
                   <FaPlay className="me-2" />
-                  {history?.remainingAttempts === 0 ? 'Monthly Limit Reached' : 'Start Practice'}
+                  {isMonthlyLimitReached
+                    ? 'Monthly Limit Reached'
+                    : 'Start Practice'}
                 </Button>
+
+                {isMonthlyLimitReached && (
+                  <div className="mt-3 text-danger fw-semibold">
+                    ⚠ You have reached your monthly listening limit.
+                  </div>
+                )}
 
               </div>
 

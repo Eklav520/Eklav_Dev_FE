@@ -443,8 +443,62 @@ const CourseListPage = () => {
     }
   }, [token, baseURL])
 
-  if (loading) return <p>Loading enrolled courses...</p>
-  if (error) return <p>Error: {error}</p>
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
+        <div className="text-center">
+          <div
+            className="spinner-border"
+            role="status"
+            style={{
+              width: '3rem',
+              height: '3rem',
+              color: '#ff7a00'
+            }}
+          >
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-3 text-muted">Loading enrolled courses...</p>
+        </div>
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
+        <div className="text-center">
+          <div
+            className="mb-3"
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: '50%',
+              background: 'rgba(220, 53, 69, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto',
+            }}
+          >
+            <span style={{ fontSize: 36, color: '#dc3545' }}>⚠</span>
+          </div>
+
+          <h5 className="text-danger mb-2">Something went wrong</h5>
+          <p className="text-muted">{error}</p>
+
+          <Button
+            style={{
+              backgroundColor: '#ff7a00',
+              borderColor: '#ff7a00',
+            }}
+            onClick={() => fetchEnrolledCourses()}
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>

@@ -22,7 +22,6 @@ type Feedback = {
 
 type JamHistory = {
   monthlyLimit: number
-  weeklyLimit: number
   attemptsUsed: number
   remainingAttempts: number
   summary: {
@@ -74,7 +73,8 @@ const SpeakingPractice: React.FC = () => {
   const finalTranscriptRef = useRef('')
   const sessionIdRef = useRef<string>('')
 
-  const isWeeklyLimitReached: boolean = !!history && history.attemptsUsed >= history.weeklyLimit
+  const isMonthlyLimitReached: boolean =
+  !!history && history.attemptsUsed >= history.monthlyLimit
 
   useEffect(() => {
     // Check if mobile device
@@ -767,13 +767,13 @@ const highlightFeedbackText = (text: string) => {
             <Button
               className="start-button"
               onClick={beginPractice}
-              disabled={isWeeklyLimitReached}>
+              disabled={isMonthlyLimitReached}>
               <FaPlay className="me-2" /> Start Speaking Practice
             </Button>
 
-            {isWeeklyLimitReached && (
+            {isMonthlyLimitReached && (
               <Alert variant="warning" className="mt-3">
-                Weekly limit reached. Try again next week!
+                Monthly limit reached. Try again next month!
               </Alert>
             )}
 
@@ -851,7 +851,7 @@ const highlightFeedbackText = (text: string) => {
                     variant="primary"
                     className="record-button"
                     onClick={startRecording}
-                    disabled={isWeeklyLimitReached}
+                    disabled={isMonthlyLimitReached}
                   >
                     <FaMicrophone className="me-2" />
                     {isWebView ? 'Start App Recording' : 'Start Speaking'}

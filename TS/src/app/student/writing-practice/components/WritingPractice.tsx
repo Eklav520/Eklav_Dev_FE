@@ -12,8 +12,7 @@ interface WritingFeedbackResult {
 interface WritingHistoryUI {
   monthlyLimit: number
   attemptsUsed: number
-  weeklyLimit: number
-  attemptsLeft: number
+  remainingAttempts: number
   bestScore: number | null
 }
 
@@ -52,10 +51,8 @@ const WritingPractice: React.FC = () => {
   const [history, setHistory] = useState<WritingHistoryUI | null>(null)
 
   const [loadingHistory, setLoadingHistory] = useState(false)
-
-  const isWeeklyLimitReached = !!history && history.attemptsUsed >= history.weeklyLimit
-
-  const canStart = !started && !isWeeklyLimitReached
+  const isMonthlyLimitReached =
+    !!history && history.attemptsUsed >= history.monthlyLimit
 
   const startWriting = async () => {
     setStarted(true)
@@ -99,8 +96,7 @@ const WritingPractice: React.FC = () => {
         setHistory({
           attemptsUsed: 0,
           monthlyLimit: 30,
-          weeklyLimit: 5,
-          attemptsLeft: 5,
+          remainingAttempts: 30,
           bestScore: null,
         })
         return
@@ -110,9 +106,8 @@ const WritingPractice: React.FC = () => {
       const attempts = latest.attempts || []
 
       const attemptsUsed = attempts.length
-      const weeklyLimit = latest.weeklyLimit ?? 5
       const monthlyLimit = latest.monthlyLimit ?? 30
-      const attemptsLeft = Math.max(weeklyLimit - attemptsUsed, 0)
+      const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
 
       // Prefer backend summary, fallback to computation
       const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
@@ -120,8 +115,7 @@ const WritingPractice: React.FC = () => {
       setHistory({
         attemptsUsed,
         monthlyLimit,
-        weeklyLimit,
-        attemptsLeft,
+        remainingAttempts,
         bestScore,
       })
     } catch (err) {
@@ -229,7 +223,7 @@ const WritingPractice: React.FC = () => {
                 </Form.Select>
               </div>
             </div>
-            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isWeeklyLimitReached} className="start-button">
+            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isMonthlyLimitReached} className="start-button">
               {fetchingPrompt ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
@@ -242,23 +236,23 @@ const WritingPractice: React.FC = () => {
                 </>
               )}
             </Button>
-           {history && (
-  <div className="writing-stats mt-4">
-    <div className={`stat-box attempts ${isWeeklyLimitReached ? 'limit-reached' : ''}`}>
-      <div className="stat-label">Monthly Attempts</div>
-      <div className="stat-value">
-        {history.attemptsUsed} / {history.monthlyLimit}
-      </div>
-    </div>
+            {history && (
+              <div className="writing-stats mt-4">
+                <div className={`stat-box attempts ${isMonthlyLimitReached ? 'limit-reached' : ''}`}>
+                  <div className="stat-label">Monthly Attempts</div>
+                  <div className="stat-value">
+                    {history.attemptsUsed} / {history.monthlyLimit}
+                  </div>
+                </div>
 
-    <div className="stat-box score">
-      <div className="stat-label">Best Score</div>
-      <div className="stat-value">
-        {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
-      </div>
-    </div>
-  </div>
-)}
+                <div className="stat-box score">
+                  <div className="stat-label">Best Score</div>
+                  <div className="stat-value">
+                    {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
@@ -320,7 +314,7 @@ const WritingPractice: React.FC = () => {
                         <Button
                           variant="success"
                           size="lg"
-                          disabled={loading || !text.trim() || isWeeklyLimitReached}
+                          disabled={loading || !text.trim() || isMonthlyLimitReached}
                           onClick={handleSubmit}
                           className="w-100 submit-button">
                           {loading ? (

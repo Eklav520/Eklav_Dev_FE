@@ -40,7 +40,7 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
         })
 
         const data = await res.json()
-        setRemaining(data.remaining)
+        setRemaining(data.used)
       } catch (err) {
         console.error('Remaining fetch failed', err)
       } finally {
@@ -136,9 +136,26 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
       <Card.Body className="p-4">
 
         {/* Title */}
-        <h5 className="fw-semibold mb-3">
-          🎯 Upload Latest Resume
-        </h5>
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="fw-semibold mb-0">
+            🎯 Upload Latest Resume
+          </h5>
+
+          {!loadingLimit && remaining !== null && (
+            <div
+              className="px-3 py-1 rounded-pill small fw-semibold"
+              style={{
+                background: remaining === 0
+                  ? 'rgba(200,200,200,0.2)'
+                  : 'rgba(255,122,0,0.1)',
+                color: remaining === 0 ? '#999' : '#ff7a00',
+                border: '1px solid rgba(255,122,0,0.3)',
+              }}
+            >
+              Monthly Attempts: {remaining} / 5
+            </div>
+          )}
+        </div>
 
         {/* File Upload */}
         <Form.Control
@@ -177,45 +194,36 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
           </div>
         )}
 
-        {/* Remaining Attempts */}
-        {!loadingLimit && remaining !== null && (
-          <div className="text-center small mt-3">
-            <span className="text-muted">Monthly Attempts Left:</span>{' '}
-            <strong
-              style={{
-                color: remaining === 0 ? '#999' : '#ff7a00',
-              }}
-            >
-              {remaining} / 5
-            </strong>
-          </div>
-        )}
-
         {/* Start Button */}
         <Button
           className="mt-4 w-100 fw-semibold"
           size="lg"
-          disabled={!interviewId || uploading || starting || remaining === 0}
+          disabled={
+            !interviewId ||
+            uploading ||
+            starting ||
+            !remaining ||
+            remaining <= 0
+          }
           onClick={startResumeInterview}
           style={{
-            backgroundColor: '#ff7a00',
+            backgroundColor: remaining && remaining > 0 ? '#ff7a00' : '#ccc',
             border: 'none',
             borderRadius: '10px',
             padding: '12px',
             transition: 'all 0.3s ease',
-            opacity: remaining === 0 ? 0.6 : 1,
+            cursor: remaining && remaining > 0 ? 'pointer' : 'not-allowed',
           }}
         >
           {starting ? (
             <>
-              <Spinner
-                size="sm"
-                style={{ marginRight: 6 }}
-              />
+              <Spinner size="sm" style={{ marginRight: 6 }} />
               Starting Interview...
             </>
-          ) : (
+          ) : remaining && remaining > 0 ? (
             '🎤 Start Interview'
+          ) : (
+            '🚫 Monthly Limit Reached'
           )}
         </Button>
 
