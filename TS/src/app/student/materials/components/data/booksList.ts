@@ -22,6 +22,7 @@ export const booksList = [
   { id: "html", title: "HTML Essentials", image: htmlBook },
   { id: "css", title: "CSS Design", image: cssBook },
   { id: "javascript", title: "JavaScript Deep Dive", image: jsBook },
+  { id: "csharp", title: "C# Programming", image: csharpBook },
   /* { id: "mysql", title: "MySQL Databases", image: mysqlBook },
   { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
   { id: "genai", title: "Generative AI", image: genAiBook },

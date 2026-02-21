@@ -50,6 +50,8 @@ const EnglishVoicePractice: React.FC = () => {
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
 
+  console.log("isWeeklyLimitReached",isWeeklyLimitReached)
+
 
   const MAX_NO_RESPONSE = 3
   const SILENCE_TIMEOUT = 6000 // 6 seconds

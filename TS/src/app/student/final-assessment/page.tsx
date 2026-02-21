@@ -408,66 +408,49 @@ export default function StudentFinalAssessmentPage() {
   }
 
   // ----- TR STATUS (and HR unlock) -----
-  const fetchTRLatest = async () => {
-    if (!token) {
-      setTrStatusChecked(true)
+const fetchTRLatest = async () => {
+  if (!token) {
+    setTrStatusChecked(true)
+    return
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!res.ok) {
+      // ❌ DO NOT UNLOCK TR HERE
       return
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    const data = await res.json()
 
-      // 🔓 TR available for trial users even if no submission yet
-      if (!res.ok) {
-        setRounds((prev) =>
-          prev.map((r) =>
-            r.key === 'tr' && r.status === LOCKED
-              ? { ...r, status: READY }
-              : r
-          )
-        )
-        return
-      }
+    if (data?.success && data?.hasSubmission && data?.submission) {
+      const s = String(data.submission.status || 'pending').toLowerCase()
 
-      const data = await res.json()
+      const trNext: RoundStatus =
+        s === 'passed' || s === 'evaluated'
+          ? PASSED
+          : s === 'failed'
+          ? FAILED
+          : PENDING
 
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        const s = String(data.submission.status || 'pending').toLowerCase()
-        const trNext: RoundStatus =
-          s === 'passed' || s === 'evaluated'
-            ? PASSED
-            : s === 'failed'
-              ? FAILED
-              : PENDING
-
-        setRounds((prev) =>
-          prev.map((r) => (r.key === 'tr' ? { ...r, status: trNext } : r))
-        )
-      } else {
-        // ✅ No submission yet → READY
-        setRounds((prev) =>
-          prev.map((r) =>
-            r.key === 'tr' && r.status === LOCKED
-              ? { ...r, status: READY }
-              : r
-          )
-        )
-      }
-    } catch {
-      // fallback unlock
+      // ✅ Only update TR status from server
       setRounds((prev) =>
         prev.map((r) =>
-          r.key === 'tr' && r.status === LOCKED
-            ? { ...r, status: READY }
-            : r
+          r.key === 'tr' ? { ...r, status: trNext } : r
         )
       )
-    } finally {
-      setTrStatusChecked(true)
     }
+
+    // ❌ REMOVE the "no submission → READY" block
+  } catch {
+    // ❌ Do NOT unlock TR here
+  } finally {
+    setTrStatusChecked(true)
   }
+}
 
   const fetchHRLatest = async () => {
     if (!token) {

@@ -6,8 +6,8 @@ import { python } from '@codemirror/lang-python'
 import { rust } from '@codemirror/lang-rust'
 import { go } from '@codemirror/lang-go'
 import { php } from '@codemirror/lang-php'
-import { sql } from '@codemirror/lang-sql'
 import { Extension } from '@codemirror/state'
+import { EditorView, keymap } from '@codemirror/view'
 
 type Language =
   | 'cpp'
@@ -45,7 +45,6 @@ const languageExtensions: Record<Language, Extension | null> = {
   rust: rust(),
   php: php(),
 
-  // fallback
   csharp: null,
   kotlin: null,
   swift: null,
@@ -57,10 +56,42 @@ const languageExtensions: Record<Language, Extension | null> = {
 const CodeEditor = ({ language, value, onChange }: Props) => {
   const extension = languageExtensions[language]
 
+  /* 🚫 Disable copy / paste / cut / select all */
+  const blockShortcuts = keymap.of([
+    { key: 'Mod-c', run: () => true },
+    { key: 'Mod-v', run: () => true },
+    { key: 'Mod-x', run: () => true },
+    { key: 'Mod-a', run: () => true },
+  ])
+
+  /* 🚫 Disable right-click + clipboard events */
+  const blockDomEvents = EditorView.domEventHandlers({
+    paste: (event) => {
+      event.preventDefault()
+      return true
+    },
+    copy: (event) => {
+      event.preventDefault()
+      return true
+    },
+    cut: (event) => {
+      event.preventDefault()
+      return true
+    },
+    contextmenu: (event) => {
+      event.preventDefault()
+      return true
+    },
+  })
+
   return (
     <CodeMirror
       value={value}
-      extensions={extension ? [extension] : []}
+      extensions={[
+        ...(extension ? [extension] : []),
+        blockShortcuts,
+        blockDomEvents,
+      ]}
       onChange={onChange}
       height="100%"
       basicSetup={{
@@ -72,7 +103,7 @@ const CodeEditor = ({ language, value, onChange }: Props) => {
       }}
       style={{
         height: '100%',
-        backgroundColor: '#fff', // ✅ force white
+        backgroundColor: '#fff',
         border: '1px solid #ddd',
         borderRadius: '6px',
       }}
