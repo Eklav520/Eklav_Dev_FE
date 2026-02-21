@@ -916,8 +916,12 @@ const SubscriptionPage = () => {
                 <Row className="mt-5 pt-4">
                     <Col xs={12} className="text-center mb-4">
                         <div className="features-header-section px-4">
-                            <h2 className="section-title">Everything you get</h2>
-                            <p className="section-subtitle">All premium plans include these core features</p>
+                            <h2 className="section-title fw-bold mb-2">
+                                Everything You Get
+                            </h2>
+                            <p className="section-subtitle text mb-0">
+                                All premium plans include these core features
+                            </p>
                         </div>
                     </Col>
 
