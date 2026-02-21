@@ -44,8 +44,8 @@ export interface Book {
 }
 
 export const javascriptBook: Book = {
-  id: "javascript-mastery-2024",
-  title: "JavaScript Mastery 2024",
+  id: "javascript-mastery",
+  title: "JavaScript Mastery",
   subtitle: "From Fundamentals to Advanced Concepts with Real Examples",
   author: "Frontend Experts Team",
 

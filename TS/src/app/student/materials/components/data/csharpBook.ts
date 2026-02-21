@@ -44,8 +44,8 @@ export interface Book {
   finalAssessment?: Quiz[]; // Comprehensive final quiz
 }
 export const csharpBook: Book = {
-  id: "csharp-mastery-2024",
-  title: "C# Mastery 2024",
+  id: "csharp-mastery",
+  title: "C# Mastery",
   subtitle: "Complete Guide from Beginner to Professional .NET Developer",
   author: "C# Development Experts",
 

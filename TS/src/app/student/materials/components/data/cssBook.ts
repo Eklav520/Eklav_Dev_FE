@@ -40,8 +40,8 @@ export interface Book {
 }
 
 export const cssBook: Book = {
-  id: "css-mastery-2024",
-  title: "CSS Mastery 2024",
+  id: "css-mastery",
+  title: "CSS Mastery",
   subtitle: "Complete Guide from Basics to Advanced Layouts & Animations",
   author: "Frontend Experts Team",
 

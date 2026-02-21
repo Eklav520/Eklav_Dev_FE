@@ -43,8 +43,8 @@ export interface Book {
   finalAssessment?: Quiz[]; // Comprehensive final quiz
 }
 export const htmlBook: Book = {
-  id: "html-mastery-2024",
-  title: "HTML Mastery 2024",
+  id: "html-mastery",
+  title: "HTML Mastery",
   subtitle: "Complete Guide from Beginner to Professional Web Structure Expert",
   author: "Web Development Experts",
 

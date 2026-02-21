@@ -44,8 +44,8 @@ export interface Book {
 }
 
 export const javaBook: Book = {
-  id: "java-mastery-2024",
-  title: "Java Mastery 2024",
+  id: "java-mastery",
+  title: "Java Mastery",
   subtitle: "Complete Guide from Core Java to Advanced Concepts",
   author: "Enterprise Engineering Experts",
 

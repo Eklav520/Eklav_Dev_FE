@@ -44,8 +44,8 @@ export interface Book {
 }
 
 export const cBook: Book = {
-  id: "c-mastery-2024",
-  title: "C Programming Mastery 2024",
+  id: "c-mastery",
+  title: "C Programming Mastery",
   subtitle: "Complete Guide from Fundamentals to Advanced Memory Concepts",
   author: "Systems Programming Experts",
 

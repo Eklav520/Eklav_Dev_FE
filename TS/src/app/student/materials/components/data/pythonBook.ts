@@ -44,8 +44,8 @@ export interface Book {
 }
 
 export const pythonBook: Book = {
-  id: "python-mastery-2024",
-  title: "Python Mastery 2024",
+  id: "python-mastery",
+  title: "Python Mastery",
   subtitle: "Complete Guide from Fundamentals to Advanced Programming",
   author: "Software Engineering Experts",
 

@@ -48,8 +48,8 @@ export interface Book {
 // ===============================
 
 export const reactBook: Book = {
-  id: "react-mastery-2024",
-  title: "React Mastery 2024",
+  id: "react-mastery",
+  title: "React Mastery",
   subtitle: "Complete Guide from Zero to Hero with Practical Examples",
   author: "React Experts Team",
 
