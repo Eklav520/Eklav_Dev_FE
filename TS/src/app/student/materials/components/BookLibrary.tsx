@@ -38,15 +38,13 @@ const BookLibrary = ({ onSelectBook }: Props) => {
                 
                 {/* Title centered with proper spacing */}
                 <h5 className="fw-semibold text-white mb-3 text-center">
-                  {book.title}
-                </h5>
-
-                <Button
+                  <Button
                   className="mt-auto material-btn"
                   onClick={() => onSelectBook(book.id)}
                 >
-                  Open Book
+                   {book.title} Book
                 </Button>
+                </h5>
               </div>
             </Card>
 

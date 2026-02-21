@@ -169,7 +169,7 @@ const ReadingPractice: React.FC = () => {
                 <div className="stat-box attempts-box">
                   <div className="stat-title">Monthly Attempts</div>
                   <div className="stat-value">
-                    {history.remainingAttempts}/{history.monthlyLimit}
+                    {history.attemptsUsed}/{history.monthlyLimit}
                   </div>
                 </div>
 

@@ -404,6 +404,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     children: [
       { key: 'availableCourses', label: 'Available Courses', icon: BsGridFill, url: '/student/available-courses', parentKey: 'courses' },
       { key: 'enrolledCourses', label: 'Enrolled Courses', icon: FaUserGraduate, url: '/student/course-list', parentKey: 'courses' },
+        {
+        key: 'materials',
+        label: 'Materials',
+        icon: FaBriefcase, // 💼 jobs
+        url: '/student/materials',
+      },
       /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
       /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
     ],
@@ -520,12 +526,6 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         icon: FaBriefcase, // 💼 jobs
         url: '/student/interview-details',
       },
-      /* {
-        key: 'materials',
-        label: 'Materials',
-        icon: FaBriefcase, // 💼 jobs
-        url: '/student/materials',
-      }, */
       /* {
         key: 'blog',
         label: 'Blog',

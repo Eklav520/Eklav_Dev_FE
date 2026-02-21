@@ -197,7 +197,7 @@ const ListeningPractice: React.FC = () => {
                   <div className="stat-card attempts">
                     <div className="stat-label">Monthly Attempts</div>
                     <div className="stat-value">
-                      {history.remainingAttempts ?? 0} / {history.monthlyLimit ?? 0}
+                      {history.attemptsUsed ?? 0} / {history.monthlyLimit ?? 0}
                     </div>
                   </div>
 

@@ -114,12 +114,12 @@ const SignInPage = () => {
 
         <div className="text-center mb-4">
           <h1 className="fw-bold mb-2" style={{ fontSize: '28px', color:'#fd692a' }}>
-            Welcome Back 👋
+            Welcome To Eklav 👋
           </h1>
 
-          <p className="mb-0" style={{ color: '#9ca3af' }}>
+          <h5 className="mb-0" style={{ color: '#9ca3af' }}>
             Sign in to continue your learning journey
-          </p>
+          </h5>
 
           <div
             style={{

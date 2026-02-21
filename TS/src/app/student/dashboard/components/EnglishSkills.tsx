@@ -249,13 +249,14 @@ const EnglishSkills = () => {
                     backgroundColor: 'rgba(255, 255, 255, 0.1)',
                     overflow: 'hidden'
                   }}
-                  variant="info"
                 >
-                  <ProgressBar
+                  <div
                     style={{
+                      width: `${progress}%`,
                       backgroundColor: '#ff7a00',
-                      borderRadius: '4px',
-                      transition: 'width 0.6s ease'
+                      height: '100%',
+                      transition: 'width 0.6s ease',
+                      borderRadius: '4px'
                     }}
                   />
                 </ProgressBar>

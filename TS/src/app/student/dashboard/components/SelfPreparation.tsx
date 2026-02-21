@@ -212,7 +212,7 @@ const SelfPreparation = () => {
             Performance Breakdown
           </h2>
           <div className="text-white-50 small">
-            Weekly Statistics
+            Monthly Statistics
           </div>
         </div>
 
