@@ -62,11 +62,11 @@ const SignIn = () => {
 
           {loading ? "Logging in..." : "Login"}
         </button>
-        <span>
+       {/*  <span>
           Don&apos;t have an account ? <Link to="/auth/sign-up" style={{ color: '#fd692a' }}>
             Signup here
           </Link>
-        </span>
+        </span> */}
       </div>
     </form>
   );

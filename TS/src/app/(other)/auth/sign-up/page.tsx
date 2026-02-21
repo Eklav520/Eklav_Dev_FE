@@ -38,7 +38,7 @@ const SignUpPage = () => {
               <SignUpForm />
             </Suspense>
             {/* Sign In Link */}
-            <div className="text-center mt-4">
+           {/*  <div className="text-center mt-4">
               <p className="mb-0 text-muted">
                 Already have an account?{' '}
                 <Link
@@ -51,7 +51,7 @@ const SignUpPage = () => {
                 </Link>
               </p>
             </div>
-
+ */}
           </div>
         </div>
 

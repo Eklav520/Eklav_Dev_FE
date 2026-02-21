@@ -88,7 +88,7 @@ const TopNavigationBar: FC = memo(() => {
             {authType === "signin" ? <SignInForm /> : <SignUpForm />}
           </Suspense>
 
-          <div className="text-center mt-4">
+          {/* <div className="text-center mt-4">
             {authType === "signin" ? (
               <p className="mb-0 text-muted">
                 Don’t have an account?{" "}
@@ -110,7 +110,7 @@ const TopNavigationBar: FC = memo(() => {
                 </span>
               </p>
             )}
-          </div>
+          </div> */}
         </Modal.Body>
       </Modal>
 
