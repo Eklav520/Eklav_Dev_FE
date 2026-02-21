@@ -405,6 +405,8 @@ const ProblemStatement = () => {
     }
   }
 
+  const passPercent = aiResult?.summary?.passPercentage || 0
+
   /* ---------------- UI ---------------- */
 
   return (
@@ -473,7 +475,21 @@ const ProblemStatement = () => {
                   <h4 className="fw-bold">
                     {selectedProblem.id}. {selectedProblem.title}
                   </h4>
-                  <Badge bg={selectedProblem.difficulty === 'Easy' ? 'success' : selectedProblem.difficulty === 'Medium' ? 'warning' : 'danger'}>
+                  <Badge
+                    style={{
+                      backgroundColor:
+                        selectedProblem.difficulty === 'Medium'
+                          ? '#ff7a00'
+                          : undefined,
+                    }}
+                    bg={
+                      selectedProblem.difficulty === 'Easy'
+                        ? 'success'
+                        : selectedProblem.difficulty === 'Hard'
+                          ? 'danger'
+                          : undefined
+                    }
+                  >
                     {selectedProblem.difficulty}
                   </Badge>
 
@@ -501,9 +517,17 @@ const ProblemStatement = () => {
             <div className="border-bottom px-3 py-2 d-flex justify-content-between align-items-center">
               <div className="d-flex align-items-center gap-2">
                 <h6 className="m-0">Code Editor</h6>
-
-                <span className="badge bg-danger">
-                  Premium Version – Unlimited Access
+                <span
+                  className="badge"
+                  style={{
+                    backgroundColor: '#ff7a00',
+                    color: '#fff',
+                    fontWeight: 600,
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                  }}
+                >
+                  🔒 Submit unlocks at {PASS_THRESHOLD}% pass rate
                 </span>
               </div>
 
@@ -575,26 +599,45 @@ const ProblemStatement = () => {
             )}
 
             {/* Footer */}
+            {/* Footer */}
             <div className="border-top px-3 py-2 d-flex justify-content-between align-items-center">
+
+              {/* Left Side - Status */}
               <div>
                 {aiResult && (
-                  <span
-                    className={`badge ${aiResult.feedback?.verdict === 'ACCEPTED'
-                        ? 'bg-success'
-                        : aiResult.feedback?.verdict === 'PARTIALLY_ACCEPTED'
-                          ? 'bg-warning'
-                          : 'bg-danger'
-                      }`}>
-                    {aiResult.summary?.passPercentage || 0}% {aiResult.feedback?.verdict || 'NOT RUN'}
-                  </span>
+                  <>
+                    <span
+                      className="badge"
+                      style={{
+                        backgroundColor:
+                          aiResult.summary?.passPercentage >= PASS_THRESHOLD
+                            ? '#198754'   // green when unlocked
+                            : '#ff7a00',  // orange until unlocked
+                        color: '#fff',
+                      }}
+                    >
+                      {aiResult.summary?.passPercentage || 0}%{' '}
+                      {aiResult.feedback?.verdict || 'NOT RUN'}
+                    </span>
+
+                    {/* 🔥 ADD THIS HERE */}
+                    {aiResult && !canSubmit && (
+                      <div>
+                        <small style={{ color: '#ff7a00', fontWeight: 500 }}>
+                          You need at least {PASS_THRESHOLD}% test cases to enable Submit.
+                        </small>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
+              {/* Right Side - Buttons */}
               <div className="d-flex gap-2">
                 <Button variant="secondary" onClick={handleRun} disabled={loading}>
                   {loading ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      <span className="spinner-border spinner-border-sm me-2" />
                       Running…
                     </>
                   ) : (
@@ -603,13 +646,16 @@ const ProblemStatement = () => {
                 </Button>
 
                 <Button
-                  variant="success"
+                  style={{
+                    backgroundColor: canSubmit ? '#ff7a00' : '#ffc999',
+                    border: 'none',
+                  }}
                   disabled={!canSubmit || submitting}
                   onClick={handleSubmit}
-                  title={!canSubmit ? `Need ${PASS_THRESHOLD}% to submit` : ''}>
+                >
                   {submitting ? (
                     <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      <span className="spinner-border spinner-border-sm me-2" />
                       Submitting…
                     </>
                   ) : (
