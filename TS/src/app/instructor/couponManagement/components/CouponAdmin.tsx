@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Card, Button, Form, Row, Col, Table, Modal, Spinner, Alert, Badge } from 'react-bootstrap'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type Coupon = {
   _id: string
@@ -35,6 +36,7 @@ const emptyForm: CouponForm = {
 }
 
 const CouponAdmin: React.FC = () => {
+  const { user } = useAuthContext()
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [form, setForm] = useState<CouponForm>({ ...emptyForm })
   const [editing, setEditing] = useState<Coupon | null>(null)
@@ -46,10 +48,14 @@ const CouponAdmin: React.FC = () => {
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
+  const authHeaders = {
+    headers: { Authorization: `Bearer ${user?.token}` },
+  }
+
   const fetchCoupons = async () => {
     try {
       setLoading(true)
-      const res = await axios.get(`${baseURL}/api/coupons`)
+      const res = await axios.get(`${baseURL}/api/coupons`, authHeaders)
       const data = Array.isArray(res.data) ? res.data : res.data.coupons || []
       setCoupons(data)
       setError(null)
@@ -88,10 +94,10 @@ const CouponAdmin: React.FC = () => {
       }
 
       if (editing) {
-        await axios.put(`${baseURL}/api/coupons/${editing._id}`, payload)
+        await axios.put(`${baseURL}/api/coupons/${editing._id}`, payload, authHeaders)
         setSuccess('Coupon updated successfully!')
       } else {
-        await axios.post(`${baseURL}/api/coupons`, payload)
+        await axios.post(`${baseURL}/api/coupons`, payload, authHeaders)
         setSuccess('Coupon created successfully!')
       }
 
@@ -112,7 +118,7 @@ const CouponAdmin: React.FC = () => {
   const handleDelete = async (id: string) => {
     try {
       setLoading(true)
-      await axios.delete(`${baseURL}/api/coupons/${id}`)
+      await axios.delete(`${baseURL}/api/coupons/${id}`, authHeaders)
       setSuccess('Coupon deleted successfully!')
       fetchCoupons()
       setTimeout(() => setSuccess(null), 3000)
@@ -143,7 +149,7 @@ const CouponAdmin: React.FC = () => {
     try {
       await axios.put(`${baseURL}/api/coupons/${coupon._id}`, {
         isActive: !coupon.isActive,
-      })
+      }, authHeaders)
       fetchCoupons()
     } catch (err) {
       console.error('Error toggling coupon:', err)
