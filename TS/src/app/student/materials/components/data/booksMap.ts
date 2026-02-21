@@ -4,6 +4,7 @@ import { javaBook } from "./javaBook"
 import {cssBook } from "./cssBook"
 import { javascriptBook } from "./javascriptBook"
 import { cBook } from "./cBook"
+import { htmlBook } from "./htmlBook"
 
 export const booksMap: Record<string, any> = {
   react: reactBook,
@@ -11,5 +12,6 @@ export const booksMap: Record<string, any> = {
   java: javaBook,
   css: cssBook,
   javascript: javascriptBook,
-  c: cBook
+  c: cBook,
+  html: htmlBook,
 }
