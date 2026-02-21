@@ -354,6 +354,13 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'instructor',
   },
   {
+    key: 'couponManagement',
+    label: 'Manage Coupons',
+    icon: BsCreditCard2Front,
+    url: '/instructor/coupon-management',
+    parentKey: 'instructor',
+  },
+  {
     key: 'profile',
     label: 'Edit Profile',
     icon: BsPencilSquare, // edit/profile
