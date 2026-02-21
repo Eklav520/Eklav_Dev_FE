@@ -15,19 +15,20 @@ import csharpBook from "../images/csharp-book.png";
 import cBook from "../images/c-book.png";
 
 export const booksList = [
+  { id: "c", title: "C Programming", image: cBook },
   { id: "react", title: "React Mastery", image: reactBook },
   { id: "python", title: "Python Programming", image: pythonBook },
   { id: "java", title: "Java Programming", image: javaBook },
-  { id: "mysql", title: "MySQL Databases", image: mysqlBook },
-  { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
-  { id: "genai", title: "Generative AI", image: genAiBook },
   { id: "html", title: "HTML Essentials", image: htmlBook },
   { id: "css", title: "CSS Design", image: cssBook },
   { id: "javascript", title: "JavaScript Deep Dive", image: jsBook },
+  /* { id: "mysql", title: "MySQL Databases", image: mysqlBook },
+  { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
+  { id: "genai", title: "Generative AI", image: genAiBook },
   { id: "dsa", title: "Data Structures & Algorithms", image: dsaBook },
   { id: "datascience", title: "Data Science Foundations", image: dataScienceBook },
   { id: "wordpress", title: "WordPress Development", image: wordpressBook },
   { id: "uiux", title: "UI/UX Design", image: uiuxBook },
-  { id: "csharp", title: "C# Programming", image: csharpBook },
-  { id: "c", title: "C Programming", image: cBook }
+  { id: "csharp", title: "C# Programming", image: csharpBook }, */
+  
 ];
