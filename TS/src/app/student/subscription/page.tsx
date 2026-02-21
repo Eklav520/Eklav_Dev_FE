@@ -10,6 +10,8 @@ import {
   BsShieldCheck,
   BsTagFill,
   BsXCircleFill,
+  BsClipboard,
+  BsClipboardCheck,
 } from 'react-icons/bs'
 
 declare global {
@@ -85,6 +87,10 @@ const SubscriptionPage = () => {
   const [couponResult, setCouponResult] = useState<CouponResult | null>(null)
   const [appliedCoupon, setAppliedCoupon] = useState<CouponResult | null>(null)
 
+  // Universal coupons
+  const [universalCoupons, setUniversalCoupons] = useState<{ code: string; discountPercent: number; endDate: string }[]>([])
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
+
   // Fetch plans, subscription status, and profile in parallel
   useEffect(() => {
     if (!token) return
@@ -98,11 +104,13 @@ const SubscriptionPage = () => {
       fetch(`${baseURL}/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       }).then((r) => r.json()),
+      fetch(`${baseURL}/api/coupons/universal`).then((r) => r.json()),
     ])
-      .then(([plansData, subData, profileData]) => {
+      .then(([plansData, subData, profileData, universalData]) => {
         setPlans(plansData.plans || [])
         setSubscription(subData)
         setProfile(profileData)
+        setUniversalCoupons(Array.isArray(universalData) ? universalData : [])
         setLoading(false)
       })
       .catch((err) => {
@@ -415,6 +423,53 @@ const SubscriptionPage = () => {
         {!subscription?.isActive && (
           <Row className="justify-content-center mb-4">
             <Col xs={12} md={10} lg={9} xl={8}>
+              {/* Available Coupons */}
+              {universalCoupons.length > 0 && !appliedCoupon && (
+                <div className="mb-3">
+                  <div className="d-flex align-items-center mb-2">
+                    <BsTagFill style={{ color: THEME.primary }} className="me-2" />
+                    <span className="fw-semibold">Available Coupons</span>
+                    <span className="ms-2 text-muted small fst-italic">— Hurry! Limited time offers, grab yours before they expire!</span>
+                  </div>
+                  <div className="d-flex flex-wrap gap-2">
+                    {universalCoupons.map((uc) => (
+                      <div
+                        key={uc.code}
+                        className="d-inline-flex align-items-center px-3 py-2 rounded-pill"
+                        style={{
+                          background: THEME.light,
+                          border: `1px dashed ${THEME.primary}`,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(uc.code)
+                          setCopiedCode(uc.code)
+                          setCouponCode(uc.code)
+                          setTimeout(() => setCopiedCode(null), 2000)
+                        }}
+                        title="Click to copy & apply"
+                      >
+                        <span className="fw-bold me-2" style={{ color: THEME.primary, letterSpacing: '1px' }}>
+                          {uc.code}
+                        </span>
+                        <Badge
+                          className="me-2"
+                          style={{ background: THEME.gradient, border: 'none', color: '#fff' }}
+                        >
+                          {uc.discountPercent}% OFF
+                        </Badge>
+                        {copiedCode === uc.code ? (
+                          <BsClipboardCheck style={{ color: THEME.dark }} />
+                        ) : (
+                          <BsClipboard style={{ color: THEME.primary }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <Card className="border shadow-sm" style={{ borderColor: appliedCoupon ? THEME.primary : undefined }}>
                 <Card.Body className="p-3">
                   <div className="d-flex align-items-center mb-2">
@@ -436,9 +491,6 @@ const SubscriptionPage = () => {
                         <span className="ms-2 fw-semibold" style={{ color: THEME.dark }}>
                           {appliedCoupon.discountPercent}% OFF
                         </span>
-                        <div className="text-muted small mt-1">
-                          Valid for {appliedCoupon.college}
-                        </div>
                       </div>
                       <Button
                         variant="link"
@@ -533,7 +585,18 @@ const SubscriptionPage = () => {
                         <span className="text-muted ms-1">/ {plan.duration.toLowerCase()}</span>
                       </div>
                       {discountedPrice !== null && (
-                        <Badge className="mt-2" style={{ background: THEME.light, color: THEME.dark, border: `1px solid ${THEME.soft}` }}>
+                        <Badge
+                          className="mt-2 px-3 py-2 rounded-pill d-inline-flex align-items-center"
+                          style={{
+                            background: THEME.gradient,
+                            border: 'none',
+                            color: '#fff',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.3px',
+                          }}
+                        >
+                          <BsTagFill className="me-1" />
                           {appliedCoupon?.discountPercent}% OFF with {appliedCoupon?.code}
                         </Badge>
                       )}

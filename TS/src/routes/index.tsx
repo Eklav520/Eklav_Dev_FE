@@ -101,6 +101,7 @@ const SelfInterviewEvaluation = lazy(() => import('@/app/instructor/self-intervi
 const StudentQuizResult = lazy(() => import('@/app/instructor/studentQuizresult/page'))
 const AdminChatbox = lazy(() => import('@/app/instructor/adminChatPanel/page'))
 const AdminCollegeDetails = lazy(() => import('@/app/instructor/collegeDetails/pages'))
+const AdminCouponManagement = lazy(() => import('@/app/instructor/couponManagement/pages'))
 
 //Student
 const LeadershipBoard = lazy(() => import('@/app/student/leadership-board/page'))
@@ -586,6 +587,11 @@ export const InstructorRoutes: RoutesProps[] = [
     path: '/instructor/college-details',
     name: 'College Details',
     element: <AdminCollegeDetails />,
+  },
+  {
+    path: '/instructor/coupon-management',
+    name: 'Coupon Management',
+    element: <AdminCouponManagement />,
   },
   {
     path: '/instructor/admin-chatbox',
