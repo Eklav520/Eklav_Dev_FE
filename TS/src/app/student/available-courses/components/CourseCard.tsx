@@ -256,9 +256,17 @@ const CourseCard = ({ course }: { course: CourseType }) => {
               {badge.text}
             </Badge>
           )}
-          <button aria-label="wishlist" className="cc-heart-btn" onClick={toggle}>
-            {isWishlisted ? <FaHeart className="text-danger" /> : <FaRegHeart />}
-          </button>
+          <div className="cc-top-actions">
+            {/* Course Type Badge */}
+            <span className="cc-type-badge">
+              {courseType === 'paid' ? 'PREMIUM' : 'FREE'}
+            </span>
+
+            {/* Wishlist Button */}
+        {/*     <button aria-label="wishlist" className="cc-heart-btn" onClick={toggle}>
+              {isWishlisted ? <FaHeart className="text-danger" /> : <FaRegHeart />}
+            </button> */}
+          </div>
         </div>
 
         <CardBody className="pb-3 d-flex flex-column">
@@ -933,6 +941,27 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   border-color: #ff7a00;
   box-shadow: 0 8px 24px rgba(255, 122, 0, 0.25);
   transform: translateY(-4px);
+}
+  /* ===== Top Right Actions (Badge + Heart) ===== */
+.cc-top-actions {
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  z-index: 3;
+}
+
+.cc-type-badge {
+  background-color: #ff7a00;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: .3rem .6rem;
+  border-radius: 999px;
+  letter-spacing: .5px;
+  box-shadow: 0 4px 10px rgba(255, 122, 0, 0.4);
 }
 
 
