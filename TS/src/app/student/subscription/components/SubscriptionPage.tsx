@@ -630,6 +630,96 @@ const SubscriptionPage = () => {
             align-self: flex-start;
           }
         }
+          /* Coupon Section Improvements */
+
+            .coupon-title {
+            color: #ff7a00;
+            letter-spacing: 0.5px;
+            }
+
+            .coupon-chip {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 30px;
+            padding: 8px 18px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            }
+
+            .coupon-chip:hover {
+            transform: translateY(-2px);
+            border-color: #ff7a00;
+            box-shadow: 0 6px 16px rgba(255,122,0,0.15);
+            }
+
+            .coupon-code {
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #ff7a00;
+            }
+
+            .coupon-badge {
+            background: linear-gradient(135deg,#ff6a00 0%,#ff9a3c 100%);
+            font-weight: 600;
+            }
+
+            .coupon-icon {
+            color: #9ca3af;
+            }
+
+            .coupon-icon.success {
+            color: #10b981;
+            }
+
+            .coupon-input-card {
+            border-radius: 16px;
+            background: #ffffff;
+            }
+
+            .coupon-heading {
+            color: #ff7a00;
+            }
+
+            .coupon-tag-icon {
+            color: #ff7a00;
+            }
+
+            .coupon-input {
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border-radius: 10px 0 0 10px !important;
+            }
+
+            .coupon-apply-btn {
+            background: linear-gradient(135deg,#ff6a00 0%,#ff9a3c 100%);
+            border: none;
+            border-radius: 0 10px 10px 0 !important;
+            font-weight: 600;
+            }
+
+            .applied-coupon-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            border-radius: 12px;
+            background: #fff4e6;
+            }
+
+            .applied-code {
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #ff7a00;
+            }
+
+            .applied-discount {
+            font-weight: 600;
+            color: #10b981;
+            }
       `}</style>
 
             <Container className="py-4">
@@ -709,34 +799,34 @@ const SubscriptionPage = () => {
                 {/* Coupon Section */}
                 {!subscription?.isActive && (
                     <Row className="justify-content-center mb-5">
-                        <Col xs={12} md={10} lg={8}>
+                        <Col xs={12} md={8} lg={6}>
+
                             {/* Available Coupons */}
                             {universalCoupons.length > 0 && !appliedCoupon && (
-                                <div className="mb-4">
-                                    <h6
-                                        className="fw-semibold mb-3"
-                                        style={{ color: '#ff7a00', fontSize: '1rem' }}
-                                    >
+                                <div className="text-center mb-4">
+                                    <h6 className="fw-bold mb-3 coupon-title">
                                         Available Coupons
                                     </h6>
-                                    <div className="d-flex flex-wrap gap-3">
+
+                                    <div className="d-flex justify-content-center flex-wrap gap-3">
                                         {universalCoupons.map((coupon) => (
                                             <div
                                                 key={coupon.code}
                                                 className="coupon-chip"
                                                 onClick={() => copyToClipboard(coupon.code)}
-                                                title="Click to copy and apply"
                                             >
-                                                <span className="fw-bold" style={{ color: THEME.primary }}>
+                                                <span className="coupon-code">
                                                     {coupon.code}
                                                 </span>
-                                                <Badge style={{ background: THEME.gradient }}>
+
+                                                <Badge className="coupon-badge">
                                                     {coupon.discountPercent}% OFF
                                                 </Badge>
+
                                                 {copiedCode === coupon.code ? (
-                                                    <BsClipboardCheck style={{ color: THEME.success }} />
+                                                    <BsClipboardCheck className="coupon-icon success" />
                                                 ) : (
-                                                    <BsClipboard style={{ color: THEME.text.light }} />
+                                                    <BsClipboard className="coupon-icon" />
                                                 )}
                                             </div>
                                         ))}
@@ -744,22 +834,34 @@ const SubscriptionPage = () => {
                                 </div>
                             )}
 
-                            {/* Coupon Input */}
-                            <Card className="border-0 shadow-sm">
+                            {/* Coupon Input Card */}
+                            <Card className="coupon-input-card shadow-sm border-0">
                                 <Card.Body className="p-4">
-                                    <div className="d-flex align-items-center mb-3">
-                                        <BsTagFill style={{ color: THEME.primary }} className="me-2" />
-                                        <span className="fw-semibold" style={{ color: '#ff7a00' }}>Have a coupon code?</span>
+
+                                    <div className="text-center mb-3">
+                                        <BsTagFill className="me-2 coupon-tag-icon" />
+                                        <span className="fw-semibold coupon-heading">
+                                            Have a coupon code?
+                                        </span>
                                     </div>
 
                                     {appliedCoupon?.valid ? (
-                                        <div className="d-flex align-items-center justify-content-between p-3 rounded-3" style={{ background: THEME.light }}>
+                                        <div className="applied-coupon-box">
                                             <div>
-                                                <span className="fw-bold" style={{ color: THEME.primary }}>{appliedCoupon.code}</span>
-                                                <span className="mx-2 text-muted-custom">—</span>
-                                                <span className="fw-semibold" style={{ color: THEME.success }}>{appliedCoupon.discountPercent}% OFF</span>
+                                                <span className="applied-code">
+                                                    {appliedCoupon.code}
+                                                </span>
+                                                <span className="mx-2 text-muted">—</span>
+                                                <span className="applied-discount">
+                                                    {appliedCoupon.discountPercent}% OFF
+                                                </span>
                                             </div>
-                                            <Button variant="link" className="text-danger p-0" onClick={removeCoupon}>
+
+                                            <Button
+                                                variant="link"
+                                                className="text-danger p-0"
+                                                onClick={removeCoupon}
+                                            >
                                                 <BsXCircleFill size={20} />
                                             </Button>
                                         </div>
@@ -768,34 +870,34 @@ const SubscriptionPage = () => {
                                             <InputGroup>
                                                 <Form.Control
                                                     type="text"
-                                                    placeholder="Enter coupon code"
+                                                    placeholder="ENTER COUPON CODE"
                                                     value={couponCode}
                                                     onChange={(e) => {
                                                         setCouponCode(e.target.value.toUpperCase());
                                                         if (couponResult) setCouponResult(null);
                                                     }}
-                                                    onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
-                                                    style={{
-                                                        textTransform: 'uppercase',
-                                                        backgroundColor: '#ffffff',
-                                                        color: '#111827',
-                                                        border: '1px solid #e5e7eb',
-                                                        fontWeight: '700',        // ✅ Makes text bold
-                                                        letterSpacing: '1px'      // 🔥 Optional: looks more like coupon code
-                                                    }}
+                                                    onKeyDown={(e) =>
+                                                        e.key === 'Enter' && validateCoupon()
+                                                    }
+                                                    className="coupon-input"
                                                     disabled={couponLoading}
                                                 />
+
                                                 <Button
-                                                    className="btn-primary-custom"
+                                                    className="coupon-apply-btn"
                                                     onClick={() => validateCoupon()}
                                                     disabled={!couponCode.trim() || couponLoading}
                                                 >
-                                                    {couponLoading ? <Spinner animation="border" size="sm" /> : 'Apply'}
+                                                    {couponLoading ? (
+                                                        <Spinner animation="border" size="sm" />
+                                                    ) : (
+                                                        'Apply'
+                                                    )}
                                                 </Button>
                                             </InputGroup>
 
                                             {couponResult && !couponResult.valid && (
-                                                <div className="text-danger small mt-2">
+                                                <div className="text-danger small mt-2 text-center">
                                                     <BsXCircleFill className="me-1" />
                                                     {couponResult.error}
                                                 </div>
@@ -897,7 +999,7 @@ const SubscriptionPage = () => {
                                         ) : plan.isFree ? (
                                             <Button
                                                 className="w-100 btn-outline-custom"
-                                                onClick={() => window.location.href = '/signup'}
+                                                onClick={() => window.location.href = '/student/dashboard'}
                                                 disabled={subscription?.isActive}
                                             >
                                                 {subscription?.isActive ? 'Already Subscribed' : 'Start Free Trial'}
