@@ -470,17 +470,18 @@ const SubscriptionPage = () => {
           flex-shrink: 0;
         }
         .coupon-chip {
-          background: ${THEME.light};
-          border: 1px solid ${THEME.border};
-          border-radius: 2rem;
-          padding: 0.5rem 1.25rem;
-          cursor: pointer;
-          transition: all 0.2s;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.75rem;
-          color: ${THEME.text.secondary};
-        }
+            background: #ffffff;
+            border: 1px solid ${THEME.border};
+            border-radius: 2rem;
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: #ff7a00;
+            font-weight: 600;
+            }
         .coupon-chip:hover {
           border-color: ${THEME.primary};
           background: white;
@@ -712,7 +713,12 @@ const SubscriptionPage = () => {
                             {/* Available Coupons */}
                             {universalCoupons.length > 0 && !appliedCoupon && (
                                 <div className="mb-4">
-                                    <h6 className="fw-semibold mb-3" style={{ color: THEME.text.primary }}>Available Coupons</h6>
+                                    <h6
+                                        className="fw-semibold mb-3"
+                                        style={{ color: '#ff7a00', fontSize: '1rem' }}
+                                    >
+                                        Available Coupons
+                                    </h6>
                                     <div className="d-flex flex-wrap gap-3">
                                         {universalCoupons.map((coupon) => (
                                             <div
@@ -743,7 +749,7 @@ const SubscriptionPage = () => {
                                 <Card.Body className="p-4">
                                     <div className="d-flex align-items-center mb-3">
                                         <BsTagFill style={{ color: THEME.primary }} className="me-2" />
-                                        <span className="fw-semibold" style={{ color: THEME.text.primary }}>Have a coupon code?</span>
+                                        <span className="fw-semibold" style={{ color: '#ff7a00' }}>Have a coupon code?</span>
                                     </div>
 
                                     {appliedCoupon?.valid ? (
@@ -769,7 +775,14 @@ const SubscriptionPage = () => {
                                                         if (couponResult) setCouponResult(null);
                                                     }}
                                                     onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
-                                                    style={{ textTransform: 'uppercase', color: THEME.text.primary }}
+                                                    style={{
+                                                        textTransform: 'uppercase',
+                                                        backgroundColor: '#ffffff',
+                                                        color: '#111827',
+                                                        border: '1px solid #e5e7eb',
+                                                        fontWeight: '700',        // ✅ Makes text bold
+                                                        letterSpacing: '1px'      // 🔥 Optional: looks more like coupon code
+                                                    }}
                                                     disabled={couponLoading}
                                                 />
                                                 <Button

@@ -34,21 +34,20 @@ const TopNavigationBar: FC = memo(() => {
           <LogoBox height={36} width={140} />
 
           <div className="d-flex align-items-center gap-3">
-            <Button
-              variant="link"
-              className="text-white text-decoration-none fw-medium"
-              onClick={() => handleOpen("signin")}
-            >
-              Login
-            </Button>
+           <Button
+  variant="link"
+  className="fw-semibold text-decoration-none nav-login-btn"
+  onClick={() => handleOpen("signin")}
+>
+  Login
+</Button>
 
-            <Button
-              variant="outline-light"
-              className="rounded-pill px-4"
-              onClick={() => handleOpen("signup")}
-            >
-              Sign Up
-            </Button>
+<Button
+  className="rounded-pill px-4 nav-signup-btn"
+  onClick={() => handleOpen("signup")}
+>
+  Sign Up
+</Button>
           </div>
         </Container>
       </TopNavbar>
@@ -179,6 +178,28 @@ const TopNavigationBar: FC = memo(() => {
           from { opacity: 0; transform: scale(.94); }
           to { opacity: 1; transform: scale(1); }
         }
+          .nav-login-btn {
+  color: #fd692a;
+  font-weight: 600;
+}
+
+.nav-login-btn:hover {
+  color: #ff8a50;
+  text-decoration: underline;
+}
+
+.nav-signup-btn {
+  background: linear-gradient(135deg, #fd692a 0%, #ff8a50 100%);
+  border: none;
+  color: #ffffff;
+  font-weight: 600;
+  transition: all .25s ease;
+}
+
+.nav-signup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(253,105,42,0.35);
+}
       `}</style>
     </>
   );
