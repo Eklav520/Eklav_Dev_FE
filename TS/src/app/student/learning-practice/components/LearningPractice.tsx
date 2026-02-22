@@ -42,6 +42,8 @@ type ListeningHistory = {
 const ListeningPractice: React.FC = () => {
   const { user } = useAuthContext()
   const status = user?.status?.toLowerCase()
+  const TRIAL_LIMIT = 5
+  const isTrialUser = status === 'pending'
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
@@ -58,12 +60,11 @@ const ListeningPractice: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
 
-  const maxAllowedAttempts =
-    status === 'pending'
-      ? 5
-      : history?.monthlyLimit ?? 0
+  const maxAllowedAttempts = isTrialUser
+    ? TRIAL_LIMIT
+    : history?.monthlyLimit ?? 0
 
-  const isMonthlyLimitReached =
+  const isLimitReached =
     !!history && history.attemptsUsed >= maxAllowedAttempts
 
   useEffect(() => {
@@ -201,15 +202,15 @@ const ListeningPractice: React.FC = () => {
                 <Button
                   className="start-button"
                   onClick={startPractice}
-                  disabled={isMonthlyLimitReached}
+                  disabled={isLimitReached}
                 >
                   <FaPlay className="me-2" />
-                  {isMonthlyLimitReached
+                  {isLimitReached
                     ? 'Limit Reached'
                     : 'Start Practice'}
                 </Button>
 
-                {isMonthlyLimitReached && (
+                {isLimitReached && (
                   <div className="trial-limit-box-modern">
                     🔒 {status === 'pending'
                       ? 'Upgrade to unlock unlimited listening practice.'

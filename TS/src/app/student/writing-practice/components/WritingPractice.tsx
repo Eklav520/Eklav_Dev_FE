@@ -117,11 +117,11 @@ const WritingPractice: React.FC = () => {
 
       const monthlyLimit = isTrial ? TRIAL_LIMIT : backendLimit
 
-      const attemptsUsed = isTrial
-        ? Math.min(rawAttemptsUsed, TRIAL_LIMIT)
-        : rawAttemptsUsed
+      // 🔥 DO NOT clamp trial attempts
+      const attemptsUsed = rawAttemptsUsed
 
       const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
+
 
       // Prefer backend summary, fallback to computation
       const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
@@ -145,8 +145,9 @@ const WritingPractice: React.FC = () => {
     }
   }, [token, user?.id])
 
-  const maxAllowedAttempts =
-    history?.monthlyLimit ?? (isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT)
+  const maxAllowedAttempts = isTrial
+    ? TRIAL_LIMIT
+    : history?.monthlyLimit ?? PREMIUM_DEFAULT
 
   const isLimitReached =
     !!history && history.attemptsUsed >= maxAllowedAttempts
@@ -278,8 +279,8 @@ const WritingPractice: React.FC = () => {
 
                 {/* 👇 ADD HERE */}
                 {isTrial && isLimitReached && (
-                  <div className="mt-3 text-danger fw-semibold">
-                    Trial limit reached. Upgrade to continue writing practice.
+                  <div className="trial-limit-box-modern mt-3">
+                    🔒 Trial limit reached. Upgrade to continue writing practice.
                   </div>
                 )}
               </>

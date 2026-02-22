@@ -48,10 +48,12 @@ const EnglishVoicePractice: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
-  const isMonthlyLimitReached = history && history.attemptsUsed >= history.monthlyLimit
+  //const isMonthlyLimitReached = history && history.attemptsUsed >= history.monthlyLimit
   //const canStart = !sessionStarted && !isMonthlyLimitReached
+  const TRIAL_LIMIT = 5
+
   const maxAllowedAttempts = isTrialUser
-    ? 5
+    ? TRIAL_LIMIT
     : history?.monthlyLimit ?? 0
 
   const isLimitReached =
@@ -430,20 +432,22 @@ const EnglishVoicePractice: React.FC = () => {
                       </span>
                     )}
                   </h5>
-                    {history && (
-                      <p className="mb-0 attempts-text">
-                        {isTrialUser ? 'Free Attempts' : 'Monthly Attempts'}:{' '}
-                        <strong>{history.attemptsUsed} / {maxAllowedAttempts}</strong>
+                  {history && (
+                    <p className="mb-0 attempts-text">
+                      {isTrialUser ? 'Free Attempts' : 'Monthly Attempts'}:{' '}
+                      <strong>
+                        {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
+                      </strong>
 
-                        {isLimitReached && (
-                          <p className="trial-warning mt-1 mb-0 small">
-                            {isTrialUser
-                              ? 'Trial limit reached. Upgrade to continue practicing.'
-                              : 'Monthly limit reached. Try again next month.'}
-                          </p>
-                        )}
-                      </p>
-                    )}
+                      {isLimitReached && (
+                        <p className="trial-warning mt-1 mb-0 small">
+                          {isTrialUser
+                            ? 'Trial limit reached. Upgrade to continue practicing.'
+                            : 'Monthly limit reached. Try again next month.'}
+                        </p>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <div className="d-flex align-items-center stats-container">
                   {history && history.highestScore !== null && (

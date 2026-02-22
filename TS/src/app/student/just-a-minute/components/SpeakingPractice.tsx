@@ -38,7 +38,8 @@ type JamHistory = {
 const SpeakingPractice: React.FC = () => {
   const { user } = useAuthContext()
   const status = user?.status?.toLowerCase()
-  console.log("sttaus", status)
+  const TRIAL_LIMIT = 5
+  const isTrialUser = status === 'pending'
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
@@ -75,18 +76,14 @@ const SpeakingPractice: React.FC = () => {
   const finalTranscriptRef = useRef('')
   const sessionIdRef = useRef<string>('')
 
-  const isMonthlyLimitReached: boolean =
-    !!history && history.attemptsUsed >= history.monthlyLimit
+  //const isMonthlyLimitReached: boolean = !!history && history.attemptsUsed >= history.monthlyLimit
 
-  const maxAllowedAttempts =
-    status === 'pending'
-      ? 5
-      : history?.monthlyLimit ?? 0
+ const maxAllowedAttempts = isTrialUser
+  ? TRIAL_LIMIT
+  : history?.monthlyLimit ?? 0
 
   const isLimitReached =
     !!history && history.attemptsUsed >= maxAllowedAttempts
-
-  console.log("isLimitReached", isLimitReached)
 
   useEffect(() => {
     // Check if mobile device
@@ -759,7 +756,7 @@ const SpeakingPractice: React.FC = () => {
               Speaking Practice
               {status === 'pending' && (
                 <span className="trial-badge-modern">
-                  Trial
+                  Trial 
                 </span>
               )}
             </h2>
@@ -874,7 +871,7 @@ const SpeakingPractice: React.FC = () => {
                     variant="primary"
                     className="record-button"
                     onClick={startRecording}
-                    disabled={isMonthlyLimitReached}
+                    disabled={isLimitReached}
                   >
                     <FaMicrophone className="me-2" />
                     {isWebView ? 'Start App Recording' : 'Start Speaking'}
