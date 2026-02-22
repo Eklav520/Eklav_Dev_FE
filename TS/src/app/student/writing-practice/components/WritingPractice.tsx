@@ -40,6 +40,12 @@ const WritingPractice: React.FC = () => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
+  const status = user?.status?.toLowerCase()
+
+  const TRIAL_LIMIT = 5
+  const PREMIUM_DEFAULT = 30
+
+  const isTrial = status === 'pending'
 
   const [started, setStarted] = useState(false)
   const [mode, setMode] = useState<ModeType>('essay')
@@ -51,8 +57,8 @@ const WritingPractice: React.FC = () => {
   const [history, setHistory] = useState<WritingHistoryUI | null>(null)
 
   const [loadingHistory, setLoadingHistory] = useState(false)
-  const isMonthlyLimitReached =
-    !!history && history.attemptsUsed >= history.monthlyLimit
+  //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
+
 
   const startWriting = async () => {
     setStarted(true)
@@ -95,8 +101,8 @@ const WritingPractice: React.FC = () => {
       if (!Array.isArray(data) || data.length === 0) {
         setHistory({
           attemptsUsed: 0,
-          monthlyLimit: 30,
-          remainingAttempts: 30,
+          monthlyLimit: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT,
+          remainingAttempts: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT,
           bestScore: null,
         })
         return
@@ -105,8 +111,16 @@ const WritingPractice: React.FC = () => {
       const latest = data[0]
       const attempts = latest.attempts || []
 
-      const attemptsUsed = attempts.length
-      const monthlyLimit = latest.monthlyLimit ?? 30
+      const rawAttemptsUsed = attempts.length
+
+      const backendLimit = latest.monthlyLimit ?? PREMIUM_DEFAULT
+
+      const monthlyLimit = isTrial ? TRIAL_LIMIT : backendLimit
+
+      const attemptsUsed = isTrial
+        ? Math.min(rawAttemptsUsed, TRIAL_LIMIT)
+        : rawAttemptsUsed
+
       const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
 
       // Prefer backend summary, fallback to computation
@@ -130,6 +144,12 @@ const WritingPractice: React.FC = () => {
       fetchWritingHistory()
     }
   }, [token, user?.id])
+
+  const maxAllowedAttempts =
+    history?.monthlyLimit ?? (isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT)
+
+  const isLimitReached =
+    !!history && history.attemptsUsed >= maxAllowedAttempts
 
   const handleSubmit = async () => {
     if (!text.trim()) return alert('Please write your response first!')
@@ -223,7 +243,7 @@ const WritingPractice: React.FC = () => {
                 </Form.Select>
               </div>
             </div>
-            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isMonthlyLimitReached} className="start-button">
+            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isLimitReached} className="start-button">
               {fetchingPrompt ? (
                 <>
                   <Spinner animation="border" size="sm" className="me-2" />
@@ -237,21 +257,32 @@ const WritingPractice: React.FC = () => {
               )}
             </Button>
             {history && (
-              <div className="writing-stats mt-4">
-                <div className={`stat-box attempts ${isMonthlyLimitReached ? 'limit-reached' : ''}`}>
-                  <div className="stat-label">Monthly Attempts</div>
-                  <div className="stat-value">
-                    {history.attemptsUsed} / {history.monthlyLimit}
+              <>
+                <div className="writing-stats mt-4">
+                  <div className={`stat-box attempts ${isLimitReached ? 'limit-reached' : ''}`}>
+                    <div className="stat-label">
+                      {isTrial ? 'Trial Attempts' : 'Monthly Attempts'}
+                    </div>
+                    <div className="stat-value">
+                      {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
+                    </div>
+                  </div>
+
+                  <div className="stat-box score">
+                    <div className="stat-label">Best Score</div>
+                    <div className="stat-value">
+                      {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
+                    </div>
                   </div>
                 </div>
 
-                <div className="stat-box score">
-                  <div className="stat-label">Best Score</div>
-                  <div className="stat-value">
-                    {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
+                {/* 👇 ADD HERE */}
+                {isTrial && isLimitReached && (
+                  <div className="mt-3 text-danger fw-semibold">
+                    Trial limit reached. Upgrade to continue writing practice.
                   </div>
-                </div>
-              </div>
+                )}
+              </>
             )}
 
           </div>
@@ -314,7 +345,7 @@ const WritingPractice: React.FC = () => {
                         <Button
                           variant="success"
                           size="lg"
-                          disabled={loading || !text.trim() || isMonthlyLimitReached}
+                          disabled={loading || !text.trim() || isLimitReached}
                           onClick={handleSubmit}
                           className="w-100 submit-button">
                           {loading ? (
@@ -561,9 +592,23 @@ const WritingPractice: React.FC = () => {
           padding: 0.85rem 1rem !important;
           font-size: 1.05rem;
           font-weight: 500;
-          background-color: #fff8f3 !important;
+          background-color: white !important;
+          color: black;
           transition: all 0.25s ease;
           box-shadow: 0 4px 12px rgba(255, 122, 0, 0.05);
+        }
+
+        /* Make select dropdown arrow black */
+        .mode-selector {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+
+          background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M5.516 7.548a.625.625 0 0 1 .884-.032L10 10.89l3.6-3.374a.625.625 0 1 1 .852.916l-4.026 3.774a.625.625 0 0 1-.852 0L5.548 8.432a.625.625 0 0 1-.032-.884z'/></svg>");
+          
+          background-repeat: no-repeat;
+          background-position: right 1rem center;
+          background-size: 18px;
         }
 
         .mode-selector:focus {

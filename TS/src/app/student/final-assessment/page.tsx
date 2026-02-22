@@ -32,9 +32,13 @@ const initialRounds: { key: RoundKey; label: string; status: RoundStatus }[] = [
 const statusBadge = (s: RoundStatus) => {
   switch (s) {
     case READY:
-      return <Badge bg="primary">Ready</Badge>
+      return <Badge style={{ backgroundColor: '#ff7a00' }}>
+        Ready
+      </Badge>
     case IN_PROGRESS:
-      return <Badge bg="info">In progress</Badge>
+      return <Badge style={{ backgroundColor: '#ff9a3c' }}>
+        In Progress
+      </Badge>
     case PENDING:
       return <Badge bg="warning">Pending evaluation</Badge>
     case PASSED:
@@ -408,49 +412,49 @@ export default function StudentFinalAssessmentPage() {
   }
 
   // ----- TR STATUS (and HR unlock) -----
-const fetchTRLatest = async () => {
-  if (!token) {
-    setTrStatusChecked(true)
-    return
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-
-    if (!res.ok) {
-      // ❌ DO NOT UNLOCK TR HERE
+  const fetchTRLatest = async () => {
+    if (!token) {
+      setTrStatusChecked(true)
       return
     }
 
-    const data = await res.json()
+    try {
+      const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
-    if (data?.success && data?.hasSubmission && data?.submission) {
-      const s = String(data.submission.status || 'pending').toLowerCase()
+      if (!res.ok) {
+        // ❌ DO NOT UNLOCK TR HERE
+        return
+      }
 
-      const trNext: RoundStatus =
-        s === 'passed' || s === 'evaluated'
-          ? PASSED
-          : s === 'failed'
-          ? FAILED
-          : PENDING
+      const data = await res.json()
 
-      // ✅ Only update TR status from server
-      setRounds((prev) =>
-        prev.map((r) =>
-          r.key === 'tr' ? { ...r, status: trNext } : r
+      if (data?.success && data?.hasSubmission && data?.submission) {
+        const s = String(data.submission.status || 'pending').toLowerCase()
+
+        const trNext: RoundStatus =
+          s === 'passed' || s === 'evaluated'
+            ? PASSED
+            : s === 'failed'
+              ? FAILED
+              : PENDING
+
+        // ✅ Only update TR status from server
+        setRounds((prev) =>
+          prev.map((r) =>
+            r.key === 'tr' ? { ...r, status: trNext } : r
+          )
         )
-      )
-    }
+      }
 
-    // ❌ REMOVE the "no submission → READY" block
-  } catch {
-    // ❌ Do NOT unlock TR here
-  } finally {
-    setTrStatusChecked(true)
+      // ❌ REMOVE the "no submission → READY" block
+    } catch {
+      // ❌ Do NOT unlock TR here
+    } finally {
+      setTrStatusChecked(true)
+    }
   }
-}
 
   const fetchHRLatest = async () => {
     if (!token) {
@@ -557,7 +561,9 @@ const fetchTRLatest = async () => {
 
       <Card className="bg-transparent border rounded-4 p-4 mb-4">
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-2">
-          <h4 className="mb-0">Final Assessment</h4>
+          <h4 className="mb-0" style={{ color: '#ff7a00' }}>
+            Final Assessment
+          </h4>
 
           <Alert variant="danger" className="mb-0 py-2 px-3">
             <strong>⚠️ Important:</strong>{' '}
@@ -570,7 +576,13 @@ const fetchTRLatest = async () => {
           automatically become <em>Ready</em>. When Code Challenge is <em>Passed</em>, the Technical Round (TR) will unlock.
         </p>
 
-        <Alert variant="warning" className="mb-4">
+        <Alert
+          style={{
+            backgroundColor: 'rgba(255,122,0,0.08)',
+            borderColor: '#ff7a00',
+            color: '#ff7a00',
+          }}
+        >
           <strong>⚠️ Important:</strong> All rounds are monitored and recorded. Any violation of assessment rules will result in immediate disqualification.
           Please read all warnings carefully before starting each round.
         </Alert>
@@ -588,17 +600,25 @@ const fetchTRLatest = async () => {
                     key={r.key}
                     className="d-flex justify-content-between align-items-start"
                     style={{
-                      background: r.status === LOCKED ? 'rgba(255,255,255,0.02)' : undefined,
+                      background:
+                        r.status === LOCKED
+                          ? 'rgba(255,255,255,0.02)'
+                          : r.status === READY
+                            ? 'rgba(255,122,0,0.06)'
+                            : undefined,
+
                       borderLeft:
-                        r.key === 'quiz'
-                          ? '3px solid rgba(13,110,253,0.7)'
-                          : r.key === 'code'
-                            ? '3px solid rgba(25,135,84,0.5)'
-                            : r.key === 'tr'
-                              ? '3px solid rgba(255,193,7,0.5)'
-                              : r.key === 'hr'
-                                ? '3px solid rgba(108,117,125,0.5)'
-                                : undefined,
+                        r.status === READY
+                          ? '3px solid #ff7a00'     // 🟠 Ready → Orange
+                          : r.status === PASSED
+                            ? '3px solid #22c55e'   // 🟢 Passed → Green
+                            : r.status === FAILED
+                              ? '3px solid #dc3545' // 🔴 Failed → Red
+                              : r.status === PENDING
+                                ? '3px solid #ffb347' // 🟡 Pending → Soft orange
+                                : '3px solid rgba(255,255,255,0.08)',
+
+                      transition: 'all 0.25s ease',
                     }}>
                     <div className="ms-2 me-auto">
                       <div className="fw-semibold">{r.label}</div>
@@ -652,7 +672,13 @@ const fetchTRLatest = async () => {
                         r.status !== PENDING &&
                         r.status !== PASSED &&
                         r.status !== FAILED && (
-                          <Button size="sm" variant="outline-secondary" disabled>
+                          <Button
+                            size="sm"
+                            style={{
+                              backgroundColor: '#ff7a00',
+                              borderColor: '#ff7a00',
+                            }}
+                          >
                             Start
                           </Button>
                         )}
@@ -802,9 +828,12 @@ const fetchTRLatest = async () => {
             Cancel
           </Button>
           <Button
-            variant="primary"
             onClick={handleConfirmStart}
             disabled={!warningConfirmed}
+            style={{
+              backgroundColor: warningConfirmed ? '#ff7a00' : '#ccc',
+              borderColor: warningConfirmed ? '#ff7a00' : '#ccc',
+            }}
           >
             I Understand - Start Assessment
           </Button>
