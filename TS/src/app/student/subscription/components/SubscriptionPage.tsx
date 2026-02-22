@@ -847,7 +847,7 @@ const SubscriptionPage = () => {
                                                         ) : (
                                                             <span className="price-tag">₹{plan.price}</span>
                                                         )}
-                                                        <span className="price-period ms-2">/{plan.duration.toLowerCase()} + GST(included) </span>
+                                                        <span className="price-period ms-2">/{plan.duration.toLowerCase()} + GST(Included) </span>
                                                     </>
                                                 )}
                                             </div>
