@@ -27,12 +27,28 @@ const Faqs: React.FC<CourseDetailsProps> = ({ course }) => {
 
   return (
     <Card className="mt-4 border-0 shadow-lg bg-dark text-light rounded-4">
-      <Card.Body className="p-4">
-        <div className="d-flex align-items-center mb-4">
-          <FaQuestionCircle className="me-2 text-info" size={22} />
-          <h4 className="mb-0 fw-bold">Interview Questions & Answers</h4>
+      {/* HEADER */}
+      <div
+        className="px-4 py-3 border-bottom"
+        style={{
+          background: "#12121c",
+          borderColor: "rgba(255,255,255,0.08)",
+        }}
+      >
+        <div className="d-flex align-items-center">
+          <FaQuestionCircle className="me-2 text-info" size={20} />
+          <h5 className="mb-0 fw-bold">Interview Questions & Answers</h5>
         </div>
+      </div>
 
+      {/* SCROLLABLE BODY */}
+      <Card.Body
+        className="p-4 faq-scroll"
+        style={{
+          maxHeight: "400px",   // 👈 FIXED HEIGHT
+          overflowY: "auto",
+        }}
+      >
         {course.addFAQ.map((faq: any, index: number) => {
           const isOpen = openIndex === index;
 
@@ -43,14 +59,10 @@ const Faqs: React.FC<CourseDetailsProps> = ({ course }) => {
               style={{
                 background: "#1e1e2f",
                 border: "1px solid rgba(255,255,255,0.08)",
-                transition: "all 0.2s ease",
               }}
             >
-              {/* Question */}
               <div
-                onClick={() =>
-                  setOpenIndex(isOpen ? null : index)
-                }
+                onClick={() => setOpenIndex(isOpen ? null : index)}
                 className="p-3 d-flex justify-content-between align-items-center"
                 style={{ cursor: "pointer" }}
               >
@@ -62,16 +74,8 @@ const Faqs: React.FC<CourseDetailsProps> = ({ course }) => {
                 </span>
               </div>
 
-              {/* Answer */}
               {isOpen && (
-                <div
-                  className="px-3 pb-3 text-light"
-                  style={{
-                    fontSize: "0.95rem",
-                    lineHeight: "1.6",
-                    color: "#cfcfcf",
-                  }}
-                >
+                <div className="px-3 pb-3 text-light" style={{ fontSize: "0.95rem" }}>
                   {faq.answer}
                 </div>
               )}
@@ -493,6 +497,28 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, loading }) => {
         .curriculum-scroll::-webkit-scrollbar-thumb:hover {
           background: #a0aec0;
         }
+          .faq-scroll {
+        scrollbar-width: thin;
+        scrollbar-color: #2f80ed #1e1e2f;
+      }
+
+      .faq-scroll::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .faq-scroll::-webkit-scrollbar-track {
+        background: #1e1e2f;
+        border-radius: 8px;
+      }
+
+      .faq-scroll::-webkit-scrollbar-thumb {
+        background: #2f80ed;
+        border-radius: 8px;
+      }
+
+      .faq-scroll::-webkit-scrollbar-thumb:hover {
+        background: #1c5fd4;
+      }
       `}</style>
     </div>
   )
