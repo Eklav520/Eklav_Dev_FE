@@ -7,6 +7,8 @@ import PricingAndTags from './PricingAndTags'
 import { SetStateAction, useEffect, useRef, useState } from 'react'
 import { useAuthContext } from '@/context/useAuthContext'
 import TakeQuiz from './TakeQuiz'
+import { Accordion } from "react-bootstrap";
+import { FaQuestionCircle } from "react-icons/fa";
 
 interface CourseDetailsProps {
   course: any | null
@@ -19,23 +21,67 @@ interface QuizResult {
 }
 
 const Faqs: React.FC<CourseDetailsProps> = ({ course }) => {
-  if (!course?.addFAQ?.length) return null
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  if (!course?.addFAQ?.length) return null;
+
   return (
-    <Card className="mt-4">
-      <CardHeader className="bg-light">
-        <h4 className="mb-0">Interview Asked Questions</h4>
-      </CardHeader>
-      <CardBody>
-        {course.addFAQ.map((faq: any, index: number) => (
-          <div key={faq._id || faq.question} className={`pb-3 ${index !== course.addFAQ.length - 1 ? 'border-bottom mb-3' : ''}`}>
-            <h6 className="text-primary">❓ {faq.question}</h6>
-            <p className="mb-0 text-muted">{faq.answer}</p>
-          </div>
-        ))}
-      </CardBody>
+    <Card className="mt-4 border-0 shadow-lg bg-dark text-light rounded-4">
+      <Card.Body className="p-4">
+        <div className="d-flex align-items-center mb-4">
+          <FaQuestionCircle className="me-2 text-info" size={22} />
+          <h4 className="mb-0 fw-bold">Interview Questions & Answers</h4>
+        </div>
+
+        {course.addFAQ.map((faq: any, index: number) => {
+          const isOpen = openIndex === index;
+
+          return (
+            <div
+              key={faq._id || index}
+              className="mb-3 rounded-3"
+              style={{
+                background: "#1e1e2f",
+                border: "1px solid rgba(255,255,255,0.08)",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {/* Question */}
+              <div
+                onClick={() =>
+                  setOpenIndex(isOpen ? null : index)
+                }
+                className="p-3 d-flex justify-content-between align-items-center"
+                style={{ cursor: "pointer" }}
+              >
+                <span className="fw-semibold text-info">
+                  {faq.question}
+                </span>
+                <span style={{ fontSize: "18px" }}>
+                  {isOpen ? "−" : "+"}
+                </span>
+              </div>
+
+              {/* Answer */}
+              {isOpen && (
+                <div
+                  className="px-3 pb-3 text-light"
+                  style={{
+                    fontSize: "0.95rem",
+                    lineHeight: "1.6",
+                    color: "#cfcfcf",
+                  }}
+                >
+                  {faq.answer}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </Card.Body>
     </Card>
-  )
-}
+  );
+};
 
 const CourseDetails: React.FC<CourseDetailsProps> = ({ course, loading }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
