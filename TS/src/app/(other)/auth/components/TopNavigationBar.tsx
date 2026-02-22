@@ -67,7 +67,7 @@ const TopNavigationBar: FC = memo(() => {
         <div className="auth-modal-header">
           <h4 className="mb-0 fw-bold text-white">
             {authType === "signin"
-              ? "Welcome Back 👋"
+              ? "Welcome To Eklav 👋"
               : "Create Your Account 🚀"}
           </h4>
 

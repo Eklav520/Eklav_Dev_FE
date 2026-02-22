@@ -47,6 +47,7 @@ type CourseType = {
   isFeatured?: string
   averageRating?: number
   totalRatings?: number
+  courseType?: 'free' | 'paid'
 }
 
 const CourseCard = ({ course }: { course: CourseType }) => {
@@ -57,6 +58,18 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   const { user } = useAuthContext()
   const token = user?.token
   const [showPreview, setShowPreview] = useState(false)
+  const status = user?.status?.toLowerCase()
+  const courseType = course?.courseType?.toLowerCase()
+
+  const isApproved = status === 'approved'
+  const isPending = status === 'pending'
+
+  const canEnroll =
+    courseType === 'free'
+      ? true // free course always allowed
+      : courseType === 'paid'
+        ? isApproved // paid only allowed if approved
+        : true
 
   const {
     duration,
@@ -149,15 +162,31 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   // actions
   const handleEnroll = async (courseId: string) => {
     if (!token) return alert('Please log in to enroll.')
-    if (enrolledCourseIds.length >= 5) return alert('You can only enroll in up to 5 courses.')
+
+    if (!canEnroll) {
+      if (courseType === 'paid' && isPending) {
+        return alert('Upgrade to Premium to enroll in paid courses.')
+      }
+      return alert('You are not allowed to enroll in this course.')
+    }
+
+    if (enrolledCourseIds.length >= 5)
+      return alert('You can only enroll in up to 5 courses.')
+
     try {
       const response = await fetch(`${baseURL}/enroll`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ courseId }),
       })
+
       const data = await response.json()
-      if (response.ok) setEnrolledCourseIds((prev) => [...prev, courseId])
+
+      if (response.ok)
+        setEnrolledCourseIds((prev) => [...prev, courseId])
       else alert('Enroll failed: ' + data.message)
     } catch {
       alert('Error enrolling')
@@ -465,17 +494,22 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
                             <Button
                               style={{
-                                backgroundColor: '#ff7a00',
-                                borderColor: '#ff7a00',
+                                backgroundColor: canEnroll ? '#ff7a00' : '#ccc',
+                                borderColor: canEnroll ? '#ff7a00' : '#ccc',
                                 color: '#fff',
                               }}
                               className="w-100 mt-3"
                               onClick={() => handleEnroll(_id)}
-                              disabled={enrolledCourseIds.includes(_id)}
+                              disabled={
+                                enrolledCourseIds.includes(_id) ||
+                                !canEnroll
+                              }
                             >
                               {enrolledCourseIds.includes(_id)
                                 ? 'Already Enrolled'
-                                : 'Enroll Now'}
+                                : !canEnroll && courseType === 'paid' && isPending
+                                  ? 'Premium Required'
+                                  : 'Enroll Now'}
                             </Button>
                           </div>
                           {courseFeatures.length > 0 && (
