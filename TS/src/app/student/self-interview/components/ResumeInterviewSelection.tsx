@@ -33,14 +33,7 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
 
   const maxAllowed =
     status === 'pending' ? TRIAL_MAX : MAX_MONTHLY
-
-  // Convert backend used (out of 5) to correct used for trial
-  const getUsed = (backendUsed: number) => {
-    if (status !== 'pending') return backendUsed
-    return Math.min(backendUsed, TRIAL_MAX)
-  }
-
-  const remaining = Math.max(maxAllowed - getUsed(used), 0)
+  const remaining = Math.max(maxAllowed - used, 0)
 
   useEffect(() => {
     if (!token) return
@@ -185,8 +178,8 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
               }}
             >
               {status === 'pending'
-                ? `Trial Attempts: ${getUsed(used)} / ${TRIAL_MAX}`
-                : `Monthly Attempts: ${getUsed(used)} / ${MAX_MONTHLY}`}
+                ? `Trial Attempts: ${used} / ${TRIAL_MAX}`
+                : `Monthly Attempts: ${used} / ${MAX_MONTHLY}`}
             </div>
           )}
         </div>

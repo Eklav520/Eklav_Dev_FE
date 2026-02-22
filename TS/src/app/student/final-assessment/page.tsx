@@ -7,6 +7,7 @@ import StudentCodeChallengeComponent from './components/codeChallenge/StudentCod
 import TechnicalRound from './components/TRRound/TechnicalRound'
 import HRRound from './HRRound/HRRound'
 import StarRating from '@/app/instructor/final-assessment/components/StarRating'
+import AssessmentCompaniesMarquee from './AssessmentCompaniesMarquee'
 
 type RoundKey = 'quiz' | 'code' | 'tr' | 'hr'
 type RoundStatus = 'locked' | 'ready' | 'in_progress' | 'pending' | 'passed' | 'failed'
@@ -193,6 +194,11 @@ export default function StudentFinalAssessmentPage() {
   const studentId = (user as any)?._id ?? (user as any)?.id ?? undefined
   const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
   const templateId = 'default'
+  const ASSESSMENT_DAY = 20
+  const START_HOUR = 19   // 10 AM
+  const END_HOUR = 20
+  const END_MINUTE = 30   // 1 PM
+  const status = user?.status?.toLowerCase()
   // TEMP: disable starting assessment (enable later)
   //const ENABLE_START_BUTTON = false
 
@@ -219,6 +225,7 @@ export default function StudentFinalAssessmentPage() {
   const [warningOpen, setWarningOpen] = useState(false)
   const [pendingRound, setPendingRound] = useState<RoundKey | null>(null)
   const [warningConfirmed, setWarningConfirmed] = useState(false)
+  const [trialUsed, setTrialUsed] = useState(false)
 
   const labelFor = (k: RoundKey) => (rounds.find((r) => r.key === k)?.label) || k.toUpperCase()
   const coerceScore = (sub: any) => {
@@ -227,6 +234,27 @@ export default function StudentFinalAssessmentPage() {
     return { score, max }
   }
   const coerceFeedback = (sub: any) => sub?.feedback ?? sub?.comments ?? sub?.notes ?? ''
+
+  const isAssessmentWindow = () => {
+    const now = new Date()
+
+    if (now.getDate() !== ASSESSMENT_DAY) return false
+
+    const hour = now.getHours()
+    const minute = now.getMinutes()
+
+    const afterStart =
+      hour > START_HOUR ||
+      hour === START_HOUR
+
+    const beforeEnd =
+      hour < END_HOUR ||
+      (hour === END_HOUR && minute < END_MINUTE)
+
+    return afterStart && beforeEnd
+  }
+
+
 
   // Open warning modal before starting any round
   const handleStartWithWarning = (roundKey: RoundKey) => {
@@ -351,6 +379,9 @@ export default function StudentFinalAssessmentPage() {
       const data = await res.json()
       let quizNext: RoundStatus = READY
       if (data?.success && data?.hasSubmission && data?.submission) {
+        if (status === 'pending') {
+          setTrialUsed(true)
+        }
         const s = String(data.submission.status || '').toLowerCase()
         if (s === 'passed' || s === 'evaluated') quizNext = PASSED
         else if (s === 'failed') quizNext = FAILED
@@ -534,22 +565,24 @@ export default function StudentFinalAssessmentPage() {
   const canStart = (r: { key: RoundKey; status: RoundStatus }) => {
     if (r.status !== READY) return false
 
+    if (status === 'pending' && trialUsed) return false
+
+    if (status !== 'approved' && status !== 'pending') return false
+
+    // ⏳ Time restriction ONLY for quiz
     if (r.key === 'quiz') {
+      if (!isAssessmentWindow()) return false
       return statusChecked
     }
 
+    // 🔓 Code unlock only if quiz passed
     if (r.key === 'code') {
       const quiz = rounds.find((x) => x.key === 'quiz')
       return quiz?.status === PASSED
     }
 
-    if (r.key === 'tr') {
-      return trStatusChecked
-    }
-
-    if (r.key === 'hr') {
-      return hrStatusChecked
-    }
+    if (r.key === 'tr') return trStatusChecked
+    if (r.key === 'hr') return hrStatusChecked
 
     return false
   }
@@ -589,11 +622,26 @@ export default function StudentFinalAssessmentPage() {
 
         <div style={{ display: 'flex', gap: 24 }}>
           <div style={{ width: 420 }}>
+            <Alert variant="warning">
+              Final Assessment is available only on 20th of Every Month between 7:00 PM – 8:30 PM.
+            </Alert>
+
+            {status === 'pending' && trialUsed && (
+              <Alert variant="danger">
+                🚫 Trial users are allowed only one Final Assessment attempt.
+                Please upgrade to Premium.
+              </Alert>
+            )}
             <ListGroup as="ol" numbered>
               {rounds.map((r, idx) => {
                 const isQuiz = r.key === 'quiz'
                 const startable = canStart(r)
+                let displayStatus = r.status
 
+                // ⏳ Only quiz should appear locked outside allowed time
+                if (r.key === 'quiz' && r.status === READY && !isAssessmentWindow()) {
+                  displayStatus = LOCKED
+                }
                 return (
                   <ListGroup.Item
                     as="li"
@@ -626,17 +674,27 @@ export default function StudentFinalAssessmentPage() {
                     </div>
 
                     <div className="d-flex align-items-center gap-2">
-                      {statusBadge(r.status)}
+                      {statusBadge(displayStatus)}
 
                       {startable && (
                         <Button
                           size="sm"
+                          disabled={!startable}
                           onClick={() => {
+                            if (!startable) return
+
                             if (r.key === 'quiz') handleStartQuiz()
                             else if (r.key === 'code') handleStartCode()
                             else if (r.key === 'tr') handleStartTR()
                             else if (r.key === 'hr') handleStartHR()
-                          }}>
+                          }}
+                          style={{
+                            backgroundColor: startable ? '#ff7a00' : '#555',
+                            borderColor: startable ? '#ff7a00' : '#555',
+                            cursor: startable ? 'pointer' : 'not-allowed',
+                            opacity: startable ? 1 : 0.6,
+                          }}
+                        >
                           Start
                         </Button>
                       )}
@@ -667,21 +725,26 @@ export default function StudentFinalAssessmentPage() {
                         </Button>
                       )}
 
-                      {!startable &&
-                        !(isQuiz && !statusChecked && r.status === READY) &&
-                        r.status !== PENDING &&
-                        r.status !== PASSED &&
-                        r.status !== FAILED && (
-                          <Button
-                            size="sm"
-                            style={{
-                              backgroundColor: '#ff7a00',
-                              borderColor: '#ff7a00',
-                            }}
-                          >
-                            Start
-                          </Button>
-                        )}
+                      <Button
+                        size="sm"
+                        disabled={!startable}
+                        onClick={() => {
+                          if (!startable) return
+
+                          if (r.key === 'quiz') handleStartQuiz()
+                          else if (r.key === 'code') handleStartCode()
+                          else if (r.key === 'tr') handleStartTR()
+                          else if (r.key === 'hr') handleStartHR()
+                        }}
+                        style={{
+                          backgroundColor: startable ? '#ff7a00' : '#444',
+                          borderColor: startable ? '#ff7a00' : '#444',
+                          cursor: startable ? 'pointer' : 'not-allowed',
+                          opacity: startable ? 1 : 0.5,
+                        }}
+                      >
+                        Start
+                      </Button>
                     </div>
                   </ListGroup.Item>
                 )
@@ -689,32 +752,55 @@ export default function StudentFinalAssessmentPage() {
             </ListGroup>
           </div>
 
-          <div style={{ flex: 1 }}>
-            <Card className="p-3">
-              <h6>Round details</h6>
-              <p className="text-muted small mb-2">
-                <strong>Quiz:</strong> Records screen + webcam. After submit it becomes <em>Pending</em> until admin marks it.
-              </p>
-              <p className="text-muted small">
-                <strong>Code Challenge:</strong> Unlocks after Quiz is <em>Passed</em>. Passing Code unlocks <strong>TR</strong>; passing TR unlocks{' '}
-                <strong>HR</strong>.
-              </p>
-
-              <div className="mt-3">
-                <strong>Current Quiz Status:</strong> <span className="ms-2">{statusBadge(quizRound.status)}</span>
-              </div>
-              <div className="mt-2">
-                <strong>Current Code Status:</strong> <span className="ms-2">{statusBadge(codeRound.status)}</span>
-              </div>
-              <div className="mt-2">
-                <strong>Current TR Status:</strong> <span className="ms-2">{statusBadge(trRound.status)}</span>
-              </div>
-              <div className="mt-2">
-                <strong>Current HR Status:</strong> <span className="ms-2">{statusBadge(hrRound.status)}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Card
+              className="p-4"
+              style={{
+                overflow: "hidden",
+                position: "relative",
+                borderRadius: 16,
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  marginBottom: 20,
+                  color: "#ff7a00",
+                }}
+              >
+                Industry-Level Interviews
               </div>
 
-              <Alert variant="danger" className="mt-3 small">
-                <strong>🚫 Violation Policy:</strong> Cheating, plagiarism, or any form of misconduct will result in immediate failure and may lead to permanent ban from future assessments.
+              {/* Process Info */}
+              <div
+                style={{
+                  background: "rgba(255,122,0,0.06)",
+                  padding: 16,
+                  borderRadius: 12,
+                  marginBottom: 24,
+                }}
+              >
+                <p className="small mb-2">
+                  <strong>Quiz:</strong> Screen & webcam monitored. After submission it becomes{" "}
+                  <em>Pending</em> until admin review.
+                </p>
+                <p className="small mb-0">
+                  <strong>Code Challenge:</strong> Unlocks after Quiz is{" "}
+                  <em>Passed</em>. Passing Code unlocks <strong>TR</strong>, then <strong>HR</strong>.
+                </p>
+              </div>
+
+              {/* Marquee */}
+              <div style={{ marginBottom: 24 }}>
+                <AssessmentCompaniesMarquee />
+              </div>
+
+              {/* Violation Alert */}
+              <Alert variant="danger" className="small mb-0">
+                <strong>🚫 Violation Policy:</strong> Cheating, plagiarism, or misconduct
+                will result in immediate failure and possible permanent ban.
               </Alert>
             </Card>
           </div>
