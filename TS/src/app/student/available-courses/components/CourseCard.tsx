@@ -48,6 +48,7 @@ type CourseType = {
   averageRating?: number
   totalRatings?: number
   courseType?: 'free' | 'paid'
+  courseStatus?: 'active' | 'comingsoon'
 }
 
 const CourseCard = ({ course }: { course: CourseType }) => {
@@ -63,6 +64,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
   const isApproved = status === 'approved'
   const isPending = status === 'pending'
+  const courseStatus = course?.courseStatus?.toLowerCase()
+  const isComingSoon = courseStatus === 'comingsoon'
 
   const canEnroll =
     courseType === 'free'
@@ -234,7 +237,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
     <>
       {/* CARD */}
       <Card className="course-card h-100 d-flex flex-column overflow-hidden">
-        <div className="position-relative">
+        <div className="position-relative cc-image-wrapper">
           <img
             src={
               image
@@ -257,15 +260,22 @@ const CourseCard = ({ course }: { course: CourseType }) => {
             </Badge>
           )}
           <div className="cc-top-actions">
-            {/* Course Type Badge */}
-            <span className="cc-type-badge">
-              {courseType === 'paid' ? 'PREMIUM' : 'FREE'}
+            <span
+              className="cc-type-badge"
+              style={{
+                backgroundColor: isComingSoon
+                  ? '#6c757d'
+                  : courseType === 'paid'
+                    ? '#ff7a00'
+                    : '#ff7a00'
+              }}
+            >
+              {isComingSoon
+                ? 'COMING SOON'
+                : courseType === 'paid'
+                  ? 'PREMIUM'
+                  : 'FREE'}
             </span>
-
-            {/* Wishlist Button */}
-        {/*     <button aria-label="wishlist" className="cc-heart-btn" onClick={toggle}>
-              {isWishlisted ? <FaHeart className="text-danger" /> : <FaRegHeart />}
-            </button> */}
           </div>
         </div>
 
@@ -291,52 +301,52 @@ const CourseCard = ({ course }: { course: CourseType }) => {
             <div className="mb-2 text-muted small">No ratings yet</div>
           )}
 
-          <div className="d-flex align-items-center mt-auto gap-3 flex-wrap">
+          <div className="mt-auto pt-2">
 
-            {/* Duration */}
-            <div className="d-flex align-items-center gap-1 small text-secondary">
-              <FaRegClock size={14} style={{ color: '#ff7a00' }} />
-              <span className="lh-1">{duration || 'N/A'}</span>
+            {/* Row 1: Duration & Lectures */}
+            <div className="d-flex justify-content-between align-items-center small text-secondary mb-2">
+
+              <div className="d-flex align-items-center gap-1">
+                <FaRegClock size={14} style={{ color: '#ff7a00' }} />
+                <span>{duration || 'N/A'} Duration</span>
+              </div>
+
+              <div className="d-flex align-items-center gap-1">
+                <FaTable size={14} style={{ color: '#ff7a00' }} />
+                <span>{totalLectures || videos.length || 0} lectures</span>
+              </div>
+
             </div>
 
-            {/* Lectures */}
-            <div className="d-flex align-items-center gap-1 small text-secondary">
-              <FaTable size={14} style={{ color: '#ff7a00' }} />
-              <span className="lh-1">
-                {totalLectures || videos.length || 0} lectures
-              </span>
-            </div>
-
-            {/* Button */}
+            {/* Row 2: View Details Button */}
             <Button
               size="sm"
-              className="ms-auto d-flex align-items-center gap-2"
-              style={{
-                borderColor: '#ff7a00',
-                color: '#ff7a00',
-                backgroundColor: 'transparent'
+              disabled={isComingSoon}
+              className={`cc-details-btn d-flex align-items-center gap-2 ${isComingSoon ? 'cc-disabled-btn' : ''}`}
+              onClick={() => {
+                if (isComingSoon) return;
+                setShowDetails(true);
               }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#ff7a00'
-                e.currentTarget.style.color = '#fff'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#ff7a00'
-              }}
-              onClick={() => setShowDetails(true)}
             >
-              <FaInfoCircle size={14} />
-              View Details
+              {isComingSoon ? (
+                <>
+                  <IoLockClosedOutline size={14} />
+                  Coming Soon
+                </>
+              ) : (
+                <>
+                  <FaInfoCircle size={14} />
+                  View Details
+                </>
+              )}
             </Button>
 
           </div>
-
         </CardBody>
       </Card>
 
       {/* MODAL */}
-      <Modal show={showDetails} onHide={() => setShowDetails(false)} size="xl" fullscreen scrollable className="cc-modal-fullscreen">
+      <Modal show={!isComingSoon && showDetails} onHide={() => setShowDetails(false)} size="xl" fullscreen scrollable className="cc-modal-fullscreen">
         {/* Floating Close Button */}
         <button type="button" className="cc-close-btn" onClick={() => setShowDetails(false)} aria-label="Close">
           ×
@@ -791,7 +801,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   flex: 0 0 auto;
 }
 .cc-tabs-wrap .container-xxl{ padding-left:1rem; padding-right:1rem; }
-.cc-tabs.nav-tabs{ border-bottom:none; display:flex; gap:1rem; align-items:center; padding:.25rem 0; }
+.cc-tabs.nav-tabs{ border-bottom:none; display:flex; gap:0.5rem; align-items:center; padding:.25rem 0; }
 .cc-tabs .nav-link{ color:#cbd5e1; font-weight:600; border:none; padding:.5rem .7rem; border-bottom:2px solid transparent; font-size:0.9rem; }
 .cc-tabs .nav-link:hover{ color:#fff; }
 .cc-tabs .nav-link.active{ color:#fff; background:transparent; border-bottom-color:#3b82f6; }
@@ -838,6 +848,13 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
 /* Card thumbnail */
 .course-thumb{ width:100%; aspect-ratio: 16/14; object-fit: cover; }
+
+.cc-image-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
 
 /* Utilities */
 .top-2{ top:.5rem; } .start-2{ left:.5rem; }
@@ -945,29 +962,49 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   /* ===== Top Right Actions (Badge + Heart) ===== */
 .cc-top-actions {
   position: absolute;
-  top: .75rem;
-  right: .75rem;
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  z-index: 3;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
 }
 
 .cc-type-badge {
   background-color: #ff7a00;
   color: #fff;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  padding: .3rem .6rem;
-  border-radius: 999px;
-  letter-spacing: .5px;
-  box-shadow: 0 4px 10px rgba(255, 122, 0, 0.4);
+  padding: 6px 12px;
+  border-radius: 50px;
+  letter-spacing: 0.6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+}
+ 
+/* Normal button */
+.cc-details-btn {
+  padding: 6px 14px !important;
+  font-size: 0.8rem !important;
+  border-radius: 8px !important;
+  border: 1px solid #ff7a00;
+  color: #ff7a00;
+  background: transparent;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
+/* Hover */
+.cc-details-btn:hover:not(:disabled) {
+  background: #ff7a00;
+}
 
-
-
-
+/* Disabled Coming Soon style */
+.cc-disabled-btn,
+.cc-details-btn:disabled {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: rgba(255, 255, 255, 0.45) !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important; /* override bootstrap fade */
+}
       `}</style>
     </>
   )

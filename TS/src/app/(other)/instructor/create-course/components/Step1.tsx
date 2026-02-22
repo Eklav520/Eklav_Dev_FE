@@ -568,6 +568,39 @@ const Step1 = ({
                   </div>
                 </div>
               </Col>
+              <Col md={6}>
+                <div className="mb-4">
+                  <label className="form-label">Course Type</label>
+                  <select
+                    className="form-select"
+                    value={formData.courseType}
+                    onChange={(e) =>
+                      setFormData({ ...formData, courseType: e.target.value as 'free' | 'paid' })
+                    }
+                  >
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+              </Col>
+              <Col md={6}>
+                <div className="mb-4">
+                  <label className="form-label">Course Status</label>
+                  <select
+                    className="form-select"
+                    value={formData.courseStatus}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        courseStatus: e.target.value as 'active' | 'coming-soon'
+                      })
+                    }
+                  >
+                    <option value="active">Active</option>
+                    <option value="coming-soon">Coming Soon</option>
+                  </select>
+                </div>
+              </Col>
             </Row>
           </div>
         </Col>

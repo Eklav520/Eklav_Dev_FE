@@ -47,6 +47,8 @@ type CourseFormData = {
   isFeatured: boolean
   duration: string
   totalLectures: string
+  courseType: 'free' | 'paid'
+  courseStatus: 'active' | 'coming-soon'
   price: string
   discountPrice: string
   description: string
@@ -79,6 +81,8 @@ const CreateCourseForm = () => {
     isFeatured: false,
     duration: '',
     totalLectures: '',
+    courseType: 'free',
+    courseStatus: 'active',
     price: '',
     discountPrice: '',
     description: '',
@@ -172,6 +176,8 @@ const CreateCourseForm = () => {
       isFeatured: formData.isFeatured,
       duration: formData.duration,
       totalLectures: formData.totalLectures,
+      courseType: formData.courseType,
+      courseStatus: formData.courseStatus,
       price: formData.price,
       discountPrice: formData.discountPrice,
       description: formData.description,
