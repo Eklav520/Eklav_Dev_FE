@@ -24,6 +24,7 @@ const EnglishVoicePractice: React.FC = () => {
   const isTrialUser = status === 'pending'
   const isSubscribedUser = status === 'approved'
   const token = user?.token
+  console.log('status0',status)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')

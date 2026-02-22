@@ -149,8 +149,8 @@ export default function Curriculum({
     p >= 95
       ? "outline-secondary"
       : p > 0
-      ? "outline-warning"
-      : "outline-success";
+        ? "outline-warning"
+        : "outline-success";
 
   /* ----------------------------------------------- */
   return (
@@ -165,64 +165,80 @@ export default function Curriculum({
               return (
                 <ListGroup.Item
                   key={video._id}
-                  className="py-3 px-2 d-flex justify-content-between align-items-start gap-3"
+                  className="py-3 px-3 d-flex justify-content-between align-items-center gap-3"
                 >
+                  {/* LEFT SIDE */}
                   <div
-                    className="d-flex gap-2 flex-grow-1"
+                    className="d-flex gap-3 flex-grow-1 align-items-start"
                     onClick={() => onSelectVideo(video)}
                     style={{ cursor: "pointer" }}
                   >
-                    <Button variant="danger" size="sm" className="rounded-circle p-1" style={{ width: 32, height: 32 }}>
-                      <FaPlay size={12} />
-                    </Button>
+                    {/* Play Circle */}
+                    <div className="d-flex align-items-start">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        className="rounded-circle p-0 d-flex align-items-center justify-content-center"
+                        style={{ width: 36, height: 36 }}
+                      >
+                        <FaPlay size={14} />
+                      </Button>
+                    </div>
 
+                    {/* Text Section */}
                     <div className="flex-grow-1">
-                      <strong>{video.description}</strong>
-                      <br />
+                      <div className="fw-semibold">{video.description}</div>
                       <small className="text-muted">{video.duration}</small>
 
-                      {/* ⭐ RESTORED PROGRESS BAR */}
                       {progress > 0 && (
-                        <div className="mt-1">
-                          <div className="progress" style={{ height: 5 }}>
+                        <div className="mt-2">
+                          <div className="progress" style={{ height: 6 }}>
                             <div
-                              className={`progress-bar ${
-                                progress >= 95 ? "bg-success" : "bg-primary"
-                              }`}
+                              className={`progress-bar ${progress >= 95 ? "bg-success" : "bg-primary"
+                                }`}
                               style={{ width: `${progress}%` }}
                             />
                           </div>
-                          <small className="text-muted">{Math.round(progress)}%</small>
+                          <small className="text-muted">
+                            {Math.round(progress)}%
+                          </small>
                         </div>
                       )}
 
-                      {/* ⭐ CASE STUDY BUTTON WITH TICK ON RIGHT */}
                       {video.caseStudy && (
                         <Button
                           size="sm"
                           variant="outline-primary"
-                          className="mt-2 d-flex align-items-center gap-2"
+                          className="mt-2 d-inline-flex align-items-center gap-2"
                           onClick={(e) => {
                             e.stopPropagation();
                             openCaseStudy(video.caseStudy!, video._id);
                           }}
                         >
                           Attempt Case Study
-                          {isCaseDone && <FaCheckCircle className="text-success" />}
+                          {isCaseDone && (
+                            <FaCheckCircle className="text-success" />
+                          )}
                         </Button>
                       )}
                     </div>
                   </div>
 
-                  <OverlayTrigger placement="left" overlay={<Tooltip>{actionLabel(progress)}</Tooltip>}>
-                    <Button
-                      size="sm"
-                      variant={actionVariant(progress)}
-                      onClick={() => onSelectVideo(video, { force: true })}
+                  {/* RIGHT SIDE ACTION BUTTON */}
+                  <div className="d-flex align-items-center">
+                    <OverlayTrigger
+                      placement="left"
+                      overlay={<Tooltip>{actionLabel(progress)}</Tooltip>}
                     >
-                      {actionLabel(progress)}
-                    </Button>
-                  </OverlayTrigger>
+                      <Button
+                        size="sm"
+                        variant={actionVariant(progress)}
+                        onClick={() => onSelectVideo(video, { force: true })}
+                      >
+                        {actionLabel(progress)}
+                      </Button>
+                    </OverlayTrigger>
+                  </div>
                 </ListGroup.Item>
               );
             })}
