@@ -111,7 +111,7 @@ const FREE_TRIAL: Plan = {
     features: [
         'Limited Access',
         'Basic features included',
-        'No credit card required',
+        'No payment required',
         'Access to sample courses',
         'Community support'
     ],
