@@ -16,31 +16,50 @@ interface Props {
   ) => void
 }
 
+const MAX_MONTHLY = 5
+const TRIAL_MAX = 2
 
 const ResumeInterviewSelection = ({ onStart }: Props) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
+  const status = user?.status?.toLowerCase()
 
   const [interviewId, setInterviewId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [starting, setStarting] = useState(false)
-  const [remaining, setRemaining] = useState<number | null>(null)
+  const [used, setUsed] = useState<number>(0)
   const [loadingLimit, setLoadingLimit] = useState(true)
+
+  const maxAllowed =
+    status === 'pending' ? TRIAL_MAX : MAX_MONTHLY
+
+  // Convert backend used (out of 5) to correct used for trial
+  const getUsed = (backendUsed: number) => {
+    if (status !== 'pending') return backendUsed
+    return Math.min(backendUsed, TRIAL_MAX)
+  }
+
+  const remaining = Math.max(maxAllowed - getUsed(used), 0)
 
   useEffect(() => {
     if (!token) return
 
     const fetchRemaining = async () => {
       try {
-        const res = await fetch(`${baseURL}/api/resume-based-interview/remaining`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+        const res = await fetch(
+          `${baseURL}/api/resume-based-interview/remaining`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        )
 
         const data = await res.json()
-        setRemaining(data.used)
+
+        // assuming backend sends { used: number }
+        setUsed(data.used || 0)
       } catch (err) {
         console.error('Remaining fetch failed', err)
       } finally {
@@ -60,13 +79,16 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
     formData.append('resume', file)
 
     try {
-      const res = await fetch(`${baseURL}/api/resume-based-interview/upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      })
+      const res = await fetch(
+        `${baseURL}/api/resume-based-interview/upload`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      )
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
@@ -83,17 +105,30 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
 
   const startResumeInterview = async () => {
     if (!interviewId) return
+
+    if (remaining <= 0) {
+      alert(
+        status === 'pending'
+          ? 'You have used your 2 free trial attempts. Please upgrade to continue.'
+          : 'You have reached your monthly resume interview limit.'
+      )
+      return
+    }
+
     setStarting(true)
 
     try {
-      const res = await fetch(`${baseURL}/api/resume-based-interview/start`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ interviewId }),
-      })
+      const res = await fetch(
+        `${baseURL}/api/resume-based-interview/start`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ interviewId }),
+        }
+      )
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.message)
@@ -110,15 +145,12 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
         }
       )
 
-      if (typeof data.remaining === 'number') {
-        setRemaining(data.remaining)
+      // update used count from backend
+      if (typeof data.used === 'number') {
+        setUsed(data.used)
       }
     } catch (err: any) {
       alert(err.message || 'Failed to start interview')
-
-      if (err.message?.includes('limit')) {
-        setRemaining(0)
-      }
     } finally {
       setStarting(false)
     }
@@ -141,7 +173,7 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
             🎯 Upload Latest Resume
           </h5>
 
-          {!loadingLimit && remaining !== null && (
+          {!loadingLimit && (
             <div
               className="px-3 py-1 rounded-pill small fw-semibold"
               style={{
@@ -152,7 +184,9 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
                 border: '1px solid rgba(255,122,0,0.3)',
               }}
             >
-              Monthly Attempts: {remaining} / 5
+              {status === 'pending'
+                ? `Trial Attempts: ${getUsed(used)} / ${TRIAL_MAX}`
+                : `Monthly Attempts: ${getUsed(used)} / ${MAX_MONTHLY}`}
             </div>
           )}
         </div>
@@ -166,25 +200,19 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
             borderRadius: '8px',
             border: '1px solid rgba(255,122,0,0.3)',
           }}
-          disabled={uploading || remaining === 0}
+          disabled={uploading || remaining <= 0}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0]
             if (file) uploadResume(file)
           }}
         />
 
-        {/* Uploading Spinner */}
         {uploading && (
           <div className="mt-3 text-center">
-            <Spinner
-              size="sm"
-              style={{ color: '#ff7a00' }}
-            />{' '}
-            Uploading resume...
+            <Spinner size="sm" style={{ color: '#ff7a00' }} /> Uploading resume...
           </div>
         )}
 
-        {/* Upload Success */}
         {interviewId && (
           <div
             className="mt-3 text-center fw-semibold"
@@ -202,17 +230,16 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
             !interviewId ||
             uploading ||
             starting ||
-            !remaining ||
             remaining <= 0
           }
           onClick={startResumeInterview}
           style={{
-            backgroundColor: remaining && remaining > 0 ? '#ff7a00' : '#ccc',
+            backgroundColor:
+              remaining > 0 ? '#ff7a00' : '#ccc',
             border: 'none',
             borderRadius: '10px',
             padding: '12px',
-            transition: 'all 0.3s ease',
-            cursor: remaining && remaining > 0 ? 'pointer' : 'not-allowed',
+            cursor: remaining > 0 ? 'pointer' : 'not-allowed',
           }}
         >
           {starting ? (
@@ -220,17 +247,18 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
               <Spinner size="sm" style={{ marginRight: 6 }} />
               Starting Interview...
             </>
-          ) : remaining && remaining > 0 ? (
+          ) : remaining > 0 ? (
             '🎤 Start Interview'
           ) : (
-            '🚫 Monthly Limit Reached'
+            status === 'pending'
+              ? '🚫 Free Limit Reached'
+              : '🚫 Monthly Limit Reached'
           )}
         </Button>
 
       </Card.Body>
     </Card>
   )
-
 }
 
 export default ResumeInterviewSelection

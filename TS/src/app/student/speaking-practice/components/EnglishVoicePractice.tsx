@@ -19,6 +19,10 @@ declare global {
 const EnglishVoicePractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
+  const status = user?.status?.toLowerCase()
+
+  const isTrialUser = status === 'pending'
+  const isSubscribedUser = status === 'approved'
   const token = user?.token
 
   const [messages, setMessages] = useState<Message[]>([])
@@ -45,7 +49,15 @@ const EnglishVoicePractice: React.FC = () => {
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
   const isMonthlyLimitReached = history && history.attemptsUsed >= history.monthlyLimit
-  const canStart = !sessionStarted && !isMonthlyLimitReached
+  //const canStart = !sessionStarted && !isMonthlyLimitReached
+  const maxAllowedAttempts = isTrialUser
+    ? 5
+    : history?.monthlyLimit ?? 0
+
+  const isLimitReached =
+    !!history && history.attemptsUsed >= maxAllowedAttempts
+
+  const canStart = !sessionStarted && !isLimitReached
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
@@ -410,17 +422,28 @@ const EnglishVoicePractice: React.FC = () => {
             <Card.Header className="practice-header">
               <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
                 <div className="flex-grow-1 header-text">
-                  <h5 className="fw-bold mb-1">🗣 Speak with Eklav</h5>
-                  {history && (
-                    <p className="mb-0 attempts-text">
-                      Monthly Attempts: <strong>{history.attemptsText}</strong>
-                      {isMonthlyLimitReached && (
-                        <p className="text-danger mt-1 mb-0 small">
-                          ⚠ Monthly attempt limit reached. Try again next month.
-                        </p>
-                      )}
-                    </p>
-                  )}
+                  <h5 className="fw-bold mb-1 d-flex align-items-center">
+                    🗣 Speak with Eklav
+                    {isTrialUser && (
+                      <span className="trial-badge ms-2">
+                        Trial
+                      </span>
+                    )}
+                  </h5>
+                    {history && (
+                      <p className="mb-0 attempts-text">
+                        {isTrialUser ? 'Free Attempts' : 'Monthly Attempts'}:{' '}
+                        <strong>{history.attemptsUsed} / {maxAllowedAttempts}</strong>
+
+                        {isLimitReached && (
+                          <p className="trial-warning mt-1 mb-0 small">
+                            {isTrialUser
+                              ? 'Trial limit reached. Upgrade to continue practicing.'
+                              : 'Monthly limit reached. Try again next month.'}
+                          </p>
+                        )}
+                      </p>
+                    )}
                 </div>
                 <div className="d-flex align-items-center stats-container">
                   {history && history.highestScore !== null && (
@@ -1480,6 +1503,41 @@ const EnglishVoicePractice: React.FC = () => {
       font-weight: 700;
       text-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
+
+    .trial-warning {
+        color: #5c3d00;   /* deep brown for contrast */
+        font-weight: 600;
+      }
+
+      .trial-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+.attempts-wrapper {
+  margin-top: 6px;
+}
+
+.attempts-text {
+  color: rgba(255,255,255,0.95);
+  font-size: 0.9rem;
+}
+
+.trial-limit-box {
+  margin-top: 6px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  display: inline-block;
+}
 
   
 

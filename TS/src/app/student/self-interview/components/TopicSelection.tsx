@@ -21,6 +21,7 @@ interface Limits {
 }
 
 const MAX_ATTEMPTS = 5
+const TRIAL_MAX_ATTEMPTS = 2
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 const formatTime = (ms: number) => {
@@ -33,13 +34,27 @@ const formatTime = (ms: number) => {
 
 const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+  const token = user?.token
+  const status = user?.status?.toLowerCase()
+
   const [topics, setTopics] = useState<string[]>([])
   const [topic, setTopic] = useState<string>('')
   const [limits, setLimits] = useState<Limits>({})
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
-  const { user } = useAuthContext()
-  const token = user?.token
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const maxAllowed =
+    status === 'pending' ? TRIAL_MAX_ATTEMPTS : MAX_ATTEMPTS
+
+  // Convert backend remaining (always based on 5) into correct remaining
+  const getRemaining = (backendRemaining: number) => {
+    if (status !== 'pending') return backendRemaining
+
+    const usedFromBackend = MAX_ATTEMPTS - backendRemaining
+    const trialRemaining = Math.max(TRIAL_MAX_ATTEMPTS - usedFromBackend, 0)
+    return trialRemaining
+  }
 
   useEffect(() => {
     if (!token) return
@@ -97,10 +112,14 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
   const startInterview = async () => {
     if (!topic) return alert('Please select a topic')
 
-    const remaining = limits[topic]?.remaining ?? MAX_ATTEMPTS
+    const backendRemaining = limits[topic]?.remaining ?? MAX_ATTEMPTS
+    const remaining = getRemaining(backendRemaining)
+
     if (remaining <= 0) {
       return alert(
-        `You have reached the max attempts for ${topic}. Please wait until the cooldown expires.`
+        status === 'pending'
+          ? 'You have used your 2 free trial attempts. Please upgrade to continue.'
+          : `You have reached the max attempts for ${topic}. Please wait until cooldown expires.`
       )
     }
 
@@ -123,13 +142,11 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
     <Form>
       <div className="mt-2">
 
-        {/* Topic Label */}
         <Form.Group className="mb-3">
           <Form.Label className="fw-semibold mb-2">
             Choose Topic
           </Form.Label>
 
-          {/* Select */}
           <Form.Select
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
@@ -143,18 +160,19 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
               <option>Loading topics...</option>
             ) : (
               topics.map((t) => {
-                const limit = limits[t] || {
-                  remaining: MAX_ATTEMPTS,
-                  earliestAttempt: null,
-                }
-                const used = MAX_ATTEMPTS - limit.remaining
+                const backendRemaining =
+                  limits[t]?.remaining ?? MAX_ATTEMPTS
+
+                const remaining = getRemaining(backendRemaining)
+                const used = maxAllowed - remaining
+
                 const countdownMs = countdowns[t] || 0
                 const isDisabled =
-                  limit.remaining <= 0 && countdownMs > 0
+                  remaining <= 0 && countdownMs > 0
 
                 return (
                   <option key={t} value={t} disabled={isDisabled}>
-                    {t.toUpperCase()} — Used {used}/{MAX_ATTEMPTS}
+                    {t.toUpperCase()} — Used {used}/{maxAllowed}
                     {isDisabled
                       ? ` (Retry in ${formatTime(countdownMs)})`
                       : ''}
@@ -165,19 +183,19 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
           </Form.Select>
         </Form.Group>
 
-        {/* Helper Text */}
         <p className="small mb-4" style={{ color: '#6c757d' }}>
-          Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.
+          {status === 'pending'
+            ? 'Trial users can attempt only 2 interviews per topic.'
+            : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
         </p>
 
-        {/* Start Button */}
         <div className="d-grid">
           <Button
             size="lg"
             onClick={startInterview}
             disabled={
               !topic ||
-              (limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+              getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
             }
             style={{
               backgroundColor: '#ff7a00',
@@ -187,7 +205,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
               fontWeight: 600,
               transition: 'all 0.3s ease',
               opacity:
-                (limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+                getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
                   ? 0.6
                   : 1,
             }}

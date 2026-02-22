@@ -18,7 +18,7 @@ const Footer = () => {
           </Col>
           <Col md={4} className="mb-3 mb-md-0">
             <div className="text-center text-white text-primary-hover">
-              Copyrights ©2025 Eklav. All rights reserved
+              Copyrights ©2026 Eklav. All rights reserved
               {/* <Link to={developedByLink} target="_blank" className="text-white">
                 {developedBy}
               </Link>

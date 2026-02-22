@@ -37,6 +37,8 @@ type JamHistory = {
 
 const SpeakingPractice: React.FC = () => {
   const { user } = useAuthContext()
+  const status = user?.status?.toLowerCase()
+  console.log("sttaus", status)
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
@@ -74,7 +76,17 @@ const SpeakingPractice: React.FC = () => {
   const sessionIdRef = useRef<string>('')
 
   const isMonthlyLimitReached: boolean =
-  !!history && history.attemptsUsed >= history.monthlyLimit
+    !!history && history.attemptsUsed >= history.monthlyLimit
+
+  const maxAllowedAttempts =
+    status === 'pending'
+      ? 5
+      : history?.monthlyLimit ?? 0
+
+  const isLimitReached =
+    !!history && history.attemptsUsed >= maxAllowedAttempts
+
+  console.log("isLimitReached", isLimitReached)
 
   useEffect(() => {
     // Check if mobile device
@@ -633,38 +645,38 @@ const SpeakingPractice: React.FC = () => {
     localStorage.setItem('mobileHelpShown', 'true')
   }
 
-const highlightFeedbackText = (text: string) => {
-  if (!text) return text
+  const highlightFeedbackText = (text: string) => {
+    if (!text) return text
 
-  let quoteIndex = 0
+    let quoteIndex = 0
 
-  return text.split(/('.*?')/g).map((part, index) => {
-    if (part.startsWith("'") && part.endsWith("'")) {
-      const content = part.replace(/'/g, '')
-      const isIncorrect = quoteIndex % 2 === 0
-      quoteIndex++
+    return text.split(/('.*?')/g).map((part, index) => {
+      if (part.startsWith("'") && part.endsWith("'")) {
+        const content = part.replace(/'/g, '')
+        const isIncorrect = quoteIndex % 2 === 0
+        quoteIndex++
 
-      return (
-        <span
-          key={index}
-          style={{
-            backgroundColor: isIncorrect ? '#fee2e2' : '#dcfce7',
-            color: isIncorrect ? '#991b1b' : '#065f46',
-            padding: '2px 6px',
-            borderRadius: '4px',
-            fontWeight: 600,
-            margin: '0 4px',
-            display: 'inline-block',
-          }}
-        >
-          {content}
-        </span>
-      )
-    }
+        return (
+          <span
+            key={index}
+            style={{
+              backgroundColor: isIncorrect ? '#fee2e2' : '#dcfce7',
+              color: isIncorrect ? '#991b1b' : '#065f46',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              fontWeight: 600,
+              margin: '0 4px',
+              display: 'inline-block',
+            }}
+          >
+            {content}
+          </span>
+        )
+      }
 
-    return <span key={index}>{part}</span>
-  })
-}
+      return <span key={index}>{part}</span>
+    })
+  }
 
 
 
@@ -743,7 +755,14 @@ const highlightFeedbackText = (text: string) => {
           <Card className="start-screen-card">
             <div className="welcome-icon">🎤</div>
 
-            <h2 className="welcome-title">Speaking Practice</h2>
+            <h2 className="welcome-title d-flex align-items-center justify-content-center gap-2">
+              Speaking Practice
+              {status === 'pending' && (
+                <span className="trial-badge-modern">
+                  Trial
+                </span>
+              )}
+            </h2>
 
             <p className="welcome-description">
               Test your speaking skills with AI-powered evaluation.
@@ -767,14 +786,16 @@ const highlightFeedbackText = (text: string) => {
             <Button
               className="start-button"
               onClick={beginPractice}
-              disabled={isMonthlyLimitReached}>
+              disabled={isLimitReached}>
               <FaPlay className="me-2" /> Start Speaking Practice
             </Button>
 
-            {isMonthlyLimitReached && (
-              <Alert variant="warning" className="mt-3">
-                Monthly limit reached. Try again next month!
-              </Alert>
+            {isLimitReached && (
+              <div className="trial-limit-box-modern">
+                🔒 {status === 'pending'
+                  ? 'Upgrade to unlock unlimited speaking practice.'
+                  : 'Monthly limit reached. Try again next month.'}
+              </div>
             )}
 
             {history && (
@@ -785,9 +806,11 @@ const highlightFeedbackText = (text: string) => {
                     <div className="history-box">
                       <div className="history-icon">🕒</div>
                       <div>
-                        <div className="history-label">Monthly Attempts</div>
+                        <div className="history-label">
+                          {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
+                        </div>
                         <div className="history-value">
-                          {history.attemptsUsed} / {history.monthlyLimit}
+                          {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
                         </div>
                       </div>
                     </div>
@@ -1635,6 +1658,27 @@ const highlightFeedbackText = (text: string) => {
 
         .history-value.highlight {
           color: #ff7a00;
+        }
+          .trial-badge-modern {
+          background: rgba(255, 122, 0, 0.15);
+          color: #ff7a00;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          border: 1px solid rgba(255, 122, 0, 0.4);
+        }
+
+        .trial-limit-box-modern {
+          margin-top: 14px;
+          background: linear-gradient(135deg, #fff3e6 0%, #ffe0c2 100%);
+          color: #8a4b00;
+          padding: 10px 16px;
+          border-radius: 12px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          display: inline-block;
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
         }
 
 

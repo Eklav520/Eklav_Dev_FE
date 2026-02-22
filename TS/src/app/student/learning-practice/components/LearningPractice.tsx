@@ -41,6 +41,7 @@ type ListeningHistory = {
 
 const ListeningPractice: React.FC = () => {
   const { user } = useAuthContext()
+  const status = user?.status?.toLowerCase()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
@@ -55,8 +56,15 @@ const ListeningPractice: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
+
+  const maxAllowedAttempts =
+    status === 'pending'
+      ? 5
+      : history?.monthlyLimit ?? 0
+
   const isMonthlyLimitReached =
-    !!history && history.attemptsUsed >= history.monthlyLimit
+    !!history && history.attemptsUsed >= maxAllowedAttempts
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -177,7 +185,14 @@ const ListeningPractice: React.FC = () => {
               <div className="icon-wrapper">
                 <FaVolumeUp className="main-icon" />
               </div>
-              <h1 className="start-title">Listening Practice</h1>
+              <h1 className="start-title d-flex align-items-center justify-content-center gap-2">
+                Listening Practice
+                {status === 'pending' && (
+                  <span className="trial-badge-modern">
+                    Trial
+                  </span>
+                )}
+              </h1>
               <p className="start-description">
                 Test your listening skills with AI-powered audio challenges. Click start to begin your journey to better English comprehension.
               </p>
@@ -190,13 +205,15 @@ const ListeningPractice: React.FC = () => {
                 >
                   <FaPlay className="me-2" />
                   {isMonthlyLimitReached
-                    ? 'Monthly Limit Reached'
+                    ? 'Limit Reached'
                     : 'Start Practice'}
                 </Button>
 
                 {isMonthlyLimitReached && (
-                  <div className="mt-3 text-danger fw-semibold">
-                    ⚠ You have reached your monthly listening limit.
+                  <div className="trial-limit-box-modern">
+                    🔒 {status === 'pending'
+                      ? 'Upgrade to unlock unlimited listening practice.'
+                      : 'Monthly limit reached. Try again next month.'}
                   </div>
                 )}
 
@@ -206,12 +223,13 @@ const ListeningPractice: React.FC = () => {
                 <div className="stats-container">
                   {/* Attempts */}
                   <div className="stat-card attempts">
-                    <div className="stat-label">Monthly Attempts</div>
+                    <div className="stat-label">
+                      {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
+                    </div>
                     <div className="stat-value">
-                      {history.attemptsUsed ?? 0} / {history.monthlyLimit ?? 0}
+                      {Math.min(history.attemptsUsed ?? 0, maxAllowedAttempts)} / {maxAllowedAttempts}
                     </div>
                   </div>
-
                   {/* Best Score */}
                   <div className="stat-card best-score">
                     <div className="stat-label">Best Score</div>
@@ -1075,6 +1093,28 @@ const ListeningPractice: React.FC = () => {
         .empty-score {
           color: #cbd5e0;
           font-style: italic;
+        }
+
+        .trial-badge-modern {
+          background: rgba(255, 122, 0, 0.15);
+          color: #ff7a00;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          border: 1px solid rgba(255, 122, 0, 0.4);
+        }
+
+        .trial-limit-box-modern {
+          margin-top: 14px;
+          background: linear-gradient(135deg, #fff3e6 0%, #ffe0c2 100%);
+          color: #8a4b00;
+          padding: 10px 16px;
+          border-radius: 12px;
+          font-size: 0.9rem;
+          font-weight: 600;
+          display: inline-block;
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
         }
 
 

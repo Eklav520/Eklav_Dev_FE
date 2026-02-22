@@ -35,6 +35,8 @@ type ReadingHistory = {
 
 const ReadingPractice: React.FC = () => {
   const { user } = useAuthContext()
+  const status = user?.status?.toLowerCase()
+
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
@@ -47,8 +49,15 @@ const ReadingPractice: React.FC = () => {
   const [submittedData, setSubmittedData] = useState<any>(null)
   const [history, setHistory] = useState<ReadingHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
+  const maxAllowedAttempts =
+    status === 'pending'
+      ? 5
+      : history?.monthlyLimit ?? 0
+
   const isMonthlyLimitReached =
-    !!history && history.attemptsUsed >= history.monthlyLimit
+    !!history && history.attemptsUsed >= maxAllowedAttempts
+
+  //const isMonthlyLimitReached =!!history && history.attemptsUsed >= history.monthlyLimit
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -158,7 +167,14 @@ const ReadingPractice: React.FC = () => {
             <div className="icon-wrapper">
               <FaBookOpen className="main-icon" />
             </div>
-            <h2>Reading Practice</h2>
+            <h2 className="d-flex align-items-center justify-content-center gap-2">
+              Reading Practice
+              {status === 'pending' && (
+                <span className="trial-badge-modern">
+                  Trial
+                </span>
+              )}
+            </h2>
             <p className="description">
               Sharpen your comprehension skills with AI-powered reading passages and interactive quizzes designed to improve your reading abilities.
             </p>
@@ -170,22 +186,26 @@ const ReadingPractice: React.FC = () => {
             >
               <FaPlay className="me-2" />
               {isMonthlyLimitReached
-                ? 'Monthly Limit Reached'
+                ? 'Limit Reached'
                 : 'Start Practice'}
             </Button>
 
             {isMonthlyLimitReached && (
-              <div className="mt-3 text-danger fw-semibold">
-                ⚠ You have reached your monthly reading limit.
+              <div className="trial-limit-box-modern">
+                🔒 {status === 'pending'
+                  ? 'Upgrade to unlock unlimited reading practice.'
+                  : 'Monthly limit reached. Try again next month.'}
               </div>
             )}
             {!historyLoading && history && (
               <div className="stats-container">
                 {/* Monthly Attempts */}
                 <div className="stat-box attempts-box">
-                  <div className="stat-title">Monthly Attempts</div>
+                  <div className="stat-title">
+                    {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
+                  </div>
                   <div className="stat-value">
-                    {history.attemptsUsed}/{history.monthlyLimit}
+                    {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
                   </div>
                 </div>
 
@@ -1036,6 +1056,28 @@ const ReadingPractice: React.FC = () => {
             grid-template-columns: 1fr;
           }
         }
+        
+        .trial-badge-modern {
+        background: rgba(255, 122, 0, 0.15);
+        color: #ff7a00;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        border: 1px solid rgba(255, 122, 0, 0.4);
+      }
+
+      .trial-limit-box-modern {
+        margin-top: 14px;
+        background: linear-gradient(135deg, #fff3e6 0%, #ffe0c2 100%);
+        color: #8a4b00;
+        padding: 10px 16px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-block;
+        box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
+      }
 
 
       `}</style>

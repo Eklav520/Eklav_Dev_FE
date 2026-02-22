@@ -16,7 +16,7 @@ export type UserType = {
   college?: string
 
   role: string
-  status?: 'pending' | 'approved' | 'rejected' | 'Approved'
+  status?: 'pending' | 'approved' | 'rejected'
 
   token: string
 }

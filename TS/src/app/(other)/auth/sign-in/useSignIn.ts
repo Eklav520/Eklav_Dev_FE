@@ -72,8 +72,12 @@ const useSignIn = () => {
       }
 
       if (result.token) {
+        const normalizedStatus =
+          result.user?.status?.toLowerCase?.() || 'pending'
+
         saveSession({
           ...(result.user ?? {}),
+          status: normalizedStatus,   // ✅ normalized
           token: result.token,
         })
 
