@@ -64,7 +64,7 @@ const StudentListPage: React.FC = () => {
   ============================ */
   const fetchAllStudents = async () => {
     try {
-      const res = await fetch(`${baseURL}/adminProfiles`, {
+      const res = await fetch(`${baseURL}/adminProfiles/admin`, {
         headers: {
           Authorization: `Bearer ${user?.token}`,
         },
@@ -75,7 +75,7 @@ const StudentListPage: React.FC = () => {
       const data = await res.json()
 
       if (Array.isArray(data)) {
-        setStudents(data)
+      setStudents(data)
       } else if (Array.isArray(data.students)) {
         setStudents(data.students)
       } else if (Array.isArray(data.data)) {
@@ -95,7 +95,7 @@ const StudentListPage: React.FC = () => {
   const fetchStudentsByCollege = async (collegeName: string) => {
     try {
       const res = await fetch(
-        `${baseURL}/adminProfiles?college=${encodeURIComponent(collegeName)}`,
+        `${baseURL}/adminProfiles/admin?college=${encodeURIComponent(collegeName)}`,
         {
           headers: {
             Authorization: `Bearer ${user?.token}`,
@@ -323,7 +323,7 @@ const StudentListPage: React.FC = () => {
                   if (!selectedStudent) return
 
                   await fetch(
-                    `${baseURL}/adminProfiles/${selectedStudent._id}/feedback`,
+                    `${baseURL}/adminProfiles/admin/${selectedStudent._id}/feedback`,
                     {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },

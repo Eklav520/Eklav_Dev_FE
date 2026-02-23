@@ -45,7 +45,7 @@ export default function SelfInterviewEvaluation() {
     const fetchAllData = async () => {
       try {
         const [studentsRes, interviewsRes] = await Promise.all([
-          fetch(`${baseURL}/adminProfiles`),
+          fetch(`${baseURL}/adminProfiles/admin`),
           fetch(`${baseURL}/admin/all-self-interviews`),
         ])
 
