@@ -6,7 +6,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import StudentCodeChallengeComponent from './components/codeChallenge/StudentCodeChallengeComponent'
 import TechnicalRound from './components/TRRound/TechnicalRound'
 import HRRound from './HRRound/HRRound'
-import StarRating from '@/app/instructor/final-assessment/components/StarRating'
+import StarRating from '@/app/eklavadmin/final-assessment-details/components/StarRating'
 import AssessmentCompaniesMarquee from './AssessmentCompaniesMarquee'
 
 type RoundKey = 'quiz' | 'code' | 'tr' | 'hr'

@@ -422,7 +422,16 @@ const EnglishVoicePractice: React.FC = () => {
     <Container fluid className="english-practice-container">
       <Row className="g-3 align-items-stretch">
         {/* PRACTICE SESSION CARD */}
-        <Col xs={12} lg={6} >
+        <Col xs={12} lg={4}>
+          <Card className="shadow-sm h-100">
+            <RoboAvatar
+              isTyping={isTyping}
+              isListening={isListening}
+              isSpeaking={ttsCountRef.current > 0}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} lg={8} >
           <Card className="shadow-sm h-100">
             <Card.Header className="practice-header">
               <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center">
@@ -618,15 +627,6 @@ const EnglishVoicePractice: React.FC = () => {
                 </Button>
               </div>
             </Card.Footer>
-          </Card>
-        </Col>
-        <Col xs={12} lg={6}>
-          <Card className="shadow-sm h-100">
-            <RoboAvatar
-              isTyping={isTyping}
-              isListening={isListening}
-              isSpeaking={ttsCountRef.current > 0}
-            />
           </Card>
         </Col>
         {/* FEEDBACK CARD */}
