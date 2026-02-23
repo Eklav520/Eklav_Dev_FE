@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes, type RouteProps } from 'react-router-dom'
-import { adminRoutes, appRoutes, authRoutes, InstructorRoutes, shopRoutes, studentRoutes } from '@/routes/index'
+import { adminRoutes, appRoutes, authRoutes, EklavAdminRoutes, shopRoutes, studentRoutes } from '@/routes/index'
 import AdminLayout from '@/layouts/AdminLayout'
 import ShopLayout from '@/layouts/ShopLayout'
 import InstructorLayout from '@/layouts/InstructorLayout'
@@ -51,7 +51,7 @@ const AppRouter = (props: RouteProps) => {
           }
         />
       ))}
-      {(InstructorRoutes || []).map((route, idx) => (
+      {(EklavAdminRoutes || []).map((route:any, idx:any) => (
         <Route
           key={idx + route.name}
           path={route.path}

@@ -24,7 +24,7 @@ const LogoBox = ({ height, width, role }: LogoBoxProps) => {
         return '/student/dashboard'
       case 'admin':
       case 'instructor':
-        return '/instructor/dashboard'
+        return '/eklavadmin/dashboard'
       default:
         return '/'
     }

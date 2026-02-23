@@ -71,38 +71,38 @@ const SignUp = lazy(() => import('@/app/(other)/auth/sign-up/page'))
 const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/page'))
 
 //Instructor
-const InstructorDashboard = lazy(() => import('@/app/instructor/dashboard/page'))
-const StudentAnalytics = lazy(() => import('@/app/instructor/student-analytics/page'))
-const InstructorCourses = lazy(() => import('@/app/instructor/manage-course/page'))
+const InstructorDashboard = lazy(() => import('@/app/eklavadmin/dashboard/page'))
+const StudentAnalytics = lazy(() => import('@/app/eklavadmin/student-analytics/page'))
+const InstructorCourses = lazy(() => import('@/app/eklavadmin/manage-course/page'))
 const InstructorCreateCourse = lazy(() => import('@/app/(other)/instructor/create-course/page'))
 const InstructorCourseAdd = lazy(() => import('@/app/(other)/instructor/course-added/page'))
-const InstructorCodeChallenge = lazy(() => import('@/app/instructor/codeChallenge/page'))
-const AdminChallengeDetail = lazy(() => import('@/app/instructor/codeChallenge/components/AdminChallengeDetail'));
-const AdminFinalAssessmentUpload = lazy(() => import('@/app/instructor/final-assessment/page'))
-const AdminFinalAssessmentDetails = lazy(() => import('@/app/instructor/final-assessment-details/page'))
-const Quiz = lazy(() => import('@/app/instructor/quiz/page'))
-const Earnings = lazy(() => import('@/app/instructor/earning/page'))
-const StudentsList = lazy(() => import('@/app/instructor/student-list/page'))
-const Orders = lazy(() => import('@/app/instructor/order/page'))
-const InstructorReviews = lazy(() => import('@/app/instructor/review/page'))
-const Payout = lazy(() => import('@/app/instructor/payout/page'))
-const EditProfile = lazy(() => import('@/app/instructor/edit-profile/page'))
-const Settings = lazy(() => import('@/app/instructor/setting/page'))
-const DeleteAccount = lazy(() => import('@/app/instructor/delete-account/page'))
-const MockInterview = lazy(() => import('@/app/instructor/course-resume/page'))
-const CommunicationSkills = lazy(() => import('@/app/instructor/communication-skills/page'))
-const ProblemStatement = lazy(() => import('@/app/instructor/problem-statement/page'))
-const ProblemStatementScore = lazy(() => import('@/app/instructor/dailyChallengeScore/page'))
-const AdminSelfInterview = lazy(() => import('@/app/instructor/self-interview/page'))
-const AdminCompanyInterview = lazy(() => import('@/app/instructor/company-interviews/page'))
-const AdminInterviewDetails = lazy(() => import('@/app/instructor/interview-details/page'))
-const ScheduleOnlineClasses = lazy(()=> import('@/app/instructor/online-classes/page'))
-const AptitudeQuestionsUpload = lazy(()=> import('@/app/instructor/aptitudeQuestionsUpload/page'))
-const SelfInterviewEvaluation = lazy(() => import('@/app/instructor/self-interview-evaluation/page'))
-const StudentQuizResult = lazy(() => import('@/app/instructor/studentQuizresult/page'))
-const AdminChatbox = lazy(() => import('@/app/instructor/adminChatPanel/page'))
-const AdminCollegeDetails = lazy(() => import('@/app/instructor/collegeDetails/pages'))
-const AdminCouponManagement = lazy(() => import('@/app/instructor/couponManagement/pages'))
+const InstructorCodeChallenge = lazy(() => import('@/app/eklavadmin/codeChallenge/page'))
+const AdminChallengeDetail = lazy(() => import('@/app/eklavadmin/codeChallenge/components/AdminChallengeDetail'))
+const AdminFinalAssessmentUpload = lazy(() => import('@/app/eklavadmin/final-assessment/page'))
+const AdminFinalAssessmentDetails = lazy(() => import('@/app/eklavadmin/final-assessment-details/page'))
+const Quiz = lazy(() => import('@/app/eklavadmin/quiz/page'))
+const Earnings = lazy(() => import('@/app/eklavadmin/earning/page'))
+const StudentsList = lazy(() => import('@/app/eklavadmin/student-list/page'))
+const Orders = lazy(() => import('@/app/eklavadmin/order/page'))
+const InstructorReviews = lazy(() => import('@/app/eklavadmin/review/page'))
+const Payout = lazy(() => import('@/app/eklavadmin/payout/page'))
+const EditProfile = lazy(() => import('@/app/eklavadmin/edit-profile/page'))
+const Settings = lazy(() => import('@/app/eklavadmin/setting/page'))
+const DeleteAccount = lazy(() => import('@/app/eklavadmin/delete-account/page'))
+const MockInterview = lazy(() => import('@/app/eklavadmin/course-resume/page'))
+const CommunicationSkills = lazy(() => import('@/app/eklavadmin/communication-skills/page'))
+const ProblemStatement = lazy(() => import('@/app/eklavadmin/problem-statement/page'))
+const ProblemStatementScore = lazy(() => import('@/app/eklavadmin/dailyChallengeScore/page'))
+const AdminSelfInterview = lazy(() => import('@/app/eklavadmin/self-interview/page'))
+const AdminCompanyInterview = lazy(() => import('@/app/eklavadmin/company-interviews/page'))
+const AdminInterviewDetails = lazy(() => import('@/app/eklavadmin/interview-details/page'))
+const ScheduleOnlineClasses = lazy(() => import('@/app/eklavadmin/online-classes/page'))
+const AptitudeQuestionsUpload = lazy(() => import('@/app/eklavadmin/aptitudeQuestionsUpload/page'))
+const SelfInterviewEvaluation = lazy(() => import('@/app/eklavadmin/self-interview-evaluation/page'))
+const StudentQuizResult = lazy(() => import('@/app/eklavadmin/studentQuizresult/page'))
+const AdminChatbox = lazy(() => import('@/app/eklavadmin/adminChatPanel/page'))
+const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/pages'))
+const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
 
 //Student
 const LeadershipBoard = lazy(() => import('@/app/student/leadership-board/page'))
@@ -448,159 +448,154 @@ export const authRoutes: RoutesProps[] = [
   },
 ]
 
-export const InstructorRoutes: RoutesProps[] = [
+export const EklavAdminRoutes: RoutesProps[] = [
   {
-    path: '/instructor/dashboard',
+    path: '/eklavadmin/dashboard',
     name: 'Dashboard',
     element: <InstructorDashboard />,
   },
   {
-    path: '/instructor/student-analytics',
+    path: '/eklavadmin/student-analytics',
     name: 'Student Analytics',
     element: <StudentAnalytics />,
   },
   {
-    path: '/instructor/manage-course',
+    path: '/eklavadmin/manage-course',
     name: 'Courses',
     element: <InstructorCourses />,
   },
   {
-    path: '/instructor/course-added',
+    path: '/eklavadmin/course-added',
     name: 'Course Added',
     element: <InstructorCourseAdd />,
   },
   {
-    path: '/instructor/quiz',
+    path: '/eklavadmin/quiz',
     name: 'Quiz',
     element: <Quiz />,
   },
   {
-    path: '/instructor/aptitude-questions-upload',
+    path: '/eklavadmin/aptitude-questions-upload',
     name: 'Aptitude Question Upload',
     element: <AptitudeQuestionsUpload />,
   },
   {
-    path: '/instructor/code-challenge',
+    path: '/eklavadmin/code-challenge',
     name: 'Code Challenge',
     element: <InstructorCodeChallenge />,
   },
   {
-    path: '/instructor/challenges/:id',
+    path: '/eklavadmin/challenges/:id',
     name: 'Challenge Detail',
     element: <AdminChallengeDetail />,
   },
   {
-    path: '/instructor/finalassessmentupload',
+    path: '/eklavadmin/finalassessmentupload',
     name: 'Admin Final Assessment',
     element: <AdminFinalAssessmentUpload />,
   },
   {
-    path: '/instructor/final-assessment-details',
+    path: '/eklavadmin/final-assessment-details',
     name: 'Admin Final Assessment Details',
     element: <AdminFinalAssessmentDetails />,
   },
-  /* {
-    path: '/instructor/earning',
-    name: 'Earnings',
-    element: <Earnings />,
-  }, */
   {
-    path: '/instructor/student-list',
+    path: '/eklavadmin/student-list',
     name: 'Students List',
     element: <StudentsList />,
   },
   {
-    path: '/instructor/student-quiz-result',
+    path: '/eklavadmin/student-quiz-result',
     name: 'Students Quiz Result',
     element: <StudentQuizResult />,
   },
   {
-    path: '/instructor/online-classes',
+    path: '/eklavadmin/online-classes',
     name: 'Schedule OnlineClasses',
     element: <ScheduleOnlineClasses />,
   },
   {
-    path: '/instructor/order',
+    path: '/eklavadmin/order',
     name: 'Orders',
     element: <Orders />,
   },
   {
-    path: '/instructor/review',
+    path: '/eklavadmin/review',
     name: 'Reviews',
     element: <InstructorReviews />,
   },
   {
-    path: '/instructor/payout',
+    path: '/eklavadmin/payout',
     name: 'Payout',
     element: <Payout />,
   },
   {
-    path: '/instructor/edit-profile',
+    path: '/eklavadmin/edit-profile',
     name: 'Edit Profile',
     element: <EditProfile />,
   },
   {
-    path: '/instructor/setting',
+    path: '/eklavadmin/setting',
     name: 'Settings',
     element: <Settings />,
   },
   {
-    path: '/instructor/delete-account',
+    path: '/eklavadmin/delete-account',
     name: 'Admin',
     element: <DeleteAccount />,
   },
   {
-    path: '/instructor/course-resume',
+    path: '/eklavadmin/course-resume',
     name: 'Course Resume',
     element: <MockInterview />,
   },
   {
-    path: '/instructor/communication-skills',
+    path: '/eklavadmin/communication-skills',
     name: 'Communication Skills',
     element: <CommunicationSkills />,
   },
   {
-    path: '/instructor/problem-statement',
+    path: '/eklavadmin/problem-statement',
     name: 'Daily Challenge',
     element: <ProblemStatement />,
   },
   {
-    path: '/instructor/problem-statement-score',
+    path: '/eklavadmin/problem-statement-score',
     name: 'Daily Challenge Score',
     element: <ProblemStatementScore />,
   },
   {
-    path: '/instructor/self-interview',
+    path: '/eklavadmin/self-interview',
     name: 'Self Interview',
     element: <AdminSelfInterview />,
   },
   {
-    path: '/instructor/self-interview-evalution',
+    path: '/eklavadmin/self-interview-evalution',
     name: 'Self Interview Evaluation',
     element: <SelfInterviewEvaluation />,
   },
   {
-    path: '/instructor/company-interview',
+    path: '/eklavadmin/company-interview',
     name: 'Company Interview',
     element: <AdminCompanyInterview />,
   },
   {
-    path: '/instructor/admin-interview-details',
+    path: '/eklavadmin/admin-interview-details',
     name: 'Interview Details',
     element: <AdminInterviewDetails />,
   },
   {
-    path: '/instructor/college-details',
+    path: '/eklavadmin/college-details',
     name: 'College Details',
     element: <AdminCollegeDetails />,
   },
   {
-    path: '/instructor/coupon-management',
+    path: '/eklavadmin/coupon-management',
     name: 'Coupon Management',
     element: <AdminCouponManagement />,
   },
   {
-    path: '/instructor/admin-chatbox',
+    path: '/eklavadmin/admin-chatbox',
     name: 'Admin Chatbox',
     element: <AdminChatbox />,
   },

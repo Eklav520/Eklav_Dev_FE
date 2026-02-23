@@ -40,7 +40,7 @@ const useSignIn = () => {
     const normalizedRole = role?.toLowerCase()
 
     if (normalizedRole === 'admin' || normalizedRole === 'collegeadmin') {
-      navigate('/instructor/dashboard', { replace: true })
+      navigate('/eklavadmin/dashboard', { replace: true })
     } else {
       navigate('/student/dashboard', { replace: true })
     }

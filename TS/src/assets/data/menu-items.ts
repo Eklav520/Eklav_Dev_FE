@@ -218,178 +218,146 @@ export const CATEGORY_MENU_ITEMS: MenuItemType[] = [
   },
 ]
 
-export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
+export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'dashboard',
     label: 'Dashboard',
-    icon: BsSpeedometer2, // speedometer = overview
-    url: '/instructor/dashboard',
-    parentKey: 'instructor',
+    icon: BsSpeedometer2,
+    url: '/eklavadmin/dashboard',
+    parentKey: 'eklavadmin',
   },
   {
     key: 'student-analytics',
     label: 'Student Analytics',
     icon: BsGraphUp,
-    url: '/instructor/student-analytics',
-    parentKey: 'instructor',
+    url: '/eklavadmin/student-analytics',
+    parentKey: 'eklavadmin',
   },
   {
     key: 'students',
     label: 'Students List',
-    icon: BsPeople, // people = students
-    url: '/instructor/student-list',
-    parentKey: 'instructor',
+    icon: BsPeople,
+    url: '/eklavadmin/student-list',
+    parentKey: 'eklavadmin',
   },
-  // Courses (collapsible)
   {
     key: 'courses',
     label: 'Courses Details',
-    icon: BsBook, // books = courses
+    icon: BsBook,
     children: [
       {
         key: 'coursesList',
         label: 'Courses List',
-        icon: BsCardChecklist, // list of course cards
-        url: '/instructor/manage-course',
-        parentKey: 'instructor',
+        icon: BsCardChecklist,
+        url: '/eklavadmin/manage-course',
+        parentKey: 'eklavadmin',
       },
-      /* {
-        key: 'MockInterviewList',
-        label: 'Mock Interview List',
-        icon: BsFileEarmarkText, // file of interview items
-        url: '/instructor/course-resume',
-        parentKey: 'instructor',
-      },
-      {
-        key: 'CommunicationSkillsList',
-        label: 'Communication Skills List',
-        icon: BsChatDots, // conversation = comm skills
-        url: '/instructor/communication-skills',
-        parentKey: 'instructor',
-      }, */
     ],
   },
-  // Self Preparation
   {
     key: 'preparation',
     label: 'Self Preparation',
-    icon: BsLightbulb, // learning/ideas
+    icon: BsLightbulb,
     children: [
       {
         key: 'aptitudeQuestionsUpload',
         label: 'Aptitude Questions Upload',
-        icon: BsCalculator, // aptitude/math
-        url: '/instructor/aptitude-questions-upload',
-        parentKey: 'instructor',
+        icon: BsCalculator,
+        url: '/eklavadmin/aptitude-questions-upload',
+        parentKey: 'eklavadmin',
       },
       {
         key: 'ProblemStatement',
         label: 'Daily Challenge',
-        icon: BsLightningCharge, // daily spark/challenge
-        url: '/instructor/problem-statement',
-        parentKey: 'instructor',
+        icon: BsLightningCharge,
+        url: '/eklavadmin/problem-statement',
+        parentKey: 'eklavadmin',
       },
       {
         key: 'SelfInterview',
         label: 'Self Interview',
-        icon: BsMic, // speaking/interview
-        url: '/instructor/self-interview',
-        parentKey: 'instructor',
+        icon: BsMic,
+        url: '/eklavadmin/self-interview',
+        parentKey: 'eklavadmin',
       },
-      /* {
-        key: 'CompanyInterview',
-        label: 'Company Interview',
-        icon: BsPersonWorkspace,
-        url: '/instructor/Company-interview',
-        parentKey: 'instructor',
-      }, */
-     /*  {
-        key: 'SelfInterviewEvaluation',
-        label: 'Self Interview Evaluation',
-        icon: BsPatchCheck, // evaluation/verified
-        url: '/instructor/self-interview-evalution',
-        parentKey: 'instructor',
-      }, */
     ],
   },
-  // Other Activities
   {
     key: 'otherActivities',
     label: 'Other Activities',
-    icon: BsGrid, // misc/collection
+    icon: BsGrid,
     children: [
       {
         key: 'onlineClasses',
         label: 'Online Classes',
-        icon: BsCameraVideo, // live/recorded classes
-        url: '/instructor/online-classes',
-        parentKey: 'instructor',
+        icon: BsCameraVideo,
+        url: '/eklavadmin/online-classes',
+        parentKey: 'eklavadmin',
       },
       {
         key: 'InterviewDetails',
         label: 'Interview Details Upload',
-        icon: BsFileEarmarkArrowUp, // upload interview details
-        url: '/instructor/admin-interview-details',
-        parentKey: 'instructor',
+        icon: BsFileEarmarkArrowUp,
+        url: '/eklavadmin/admin-interview-details',
+        parentKey: 'eklavadmin',
       },
     ],
   },
-    {
+  {
     key: 'finalAssessmentActivities',
     label: 'Final Assessment',
-    icon: BsGrid, // misc/collection
+    icon: BsGrid,
     children: [
       {
         key: 'uploadAssessments',
         label: 'Upload Assessments',
-        icon: BsCameraVideo, // live/recorded classes
-        url: '/instructor/finalassessmentupload',
-        parentKey: 'instructor',
+        icon: BsCameraVideo,
+        url: '/eklavadmin/finalassessmentupload',
+        parentKey: 'eklavadmin',
       },
       {
         key: 'uploadAssessmentsDetails',
         label: 'Assessments Details',
-        icon: BsFileEarmarkArrowUp, // upload interview details
-        url: '/instructor/final-assessment-details',
-        parentKey: 'instructor',
+        icon: BsFileEarmarkArrowUp,
+        url: '/eklavadmin/final-assessment-details',
+        parentKey: 'eklavadmin',
       },
     ],
   },
   {
     key: 'admin',
     label: 'Admin Chatbox',
-    icon: BsPeople, // people = students
-    url: '/instructor/admin-chatbox',
-    parentKey: 'instructor',
+    icon: BsPeople,
+    url: '/eklavadmin/admin-chatbox',
+    parentKey: 'eklavadmin',
   },
   {
     key: 'collegeDetails',
     label: 'Add College Details',
-    icon: FaUserCog, // ⚙️ user with cog
-    url: '/instructor/college-details',
-    parentKey: 'instructor',
+    icon: FaUserCog,
+    url: '/eklavadmin/college-details',
+    parentKey: 'eklavadmin',
   },
   {
     key: 'couponManagement',
     label: 'Manage Coupons',
     icon: BsCreditCard2Front,
-    url: '/instructor/coupon-management',
-    parentKey: 'instructor',
+    url: '/eklavadmin/coupon-management',
+    parentKey: 'eklavadmin',
   },
   {
     key: 'profile',
     label: 'Edit Profile',
-    icon: BsPencilSquare, // edit/profile
-    url: '/instructor/edit-profile',
-    parentKey: 'instructor',
+    icon: BsPencilSquare,
+    url: '/eklavadmin/edit-profile',
+    parentKey: 'eklavadmin',
   },
-
   {
     key: 'payout',
     label: 'Payout',
-    icon: BsWallet2, // wallet = payouts
-    url: '/instructor/payout',
-    parentKey: 'instructor',
+    icon: BsWallet2,
+    url: '/eklavadmin/payout',
+    parentKey: 'eklavadmin',
   },
 ]
 
@@ -571,7 +539,6 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/edit-profile',
   },
 ]
-
 export const APP_MENU_ITEMS: MenuItemType[] = [
   /* {
     key: 'demos',
@@ -1169,6 +1136,7 @@ export const APP_MENU_ITEMS: MenuItemType[] = [
     ],
   }, */
 ]
+
 
 export const MEGA_MENU_ITEMS: MegaMenuType = {
   getStarted: [

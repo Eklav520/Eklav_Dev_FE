@@ -14,7 +14,7 @@ import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import type { IconType } from 'react-icons'
 
-import { INSTRUCTOR_MENU_ITEMS } from '@/assets/data/menu-items'
+import { EKLAVADMIN_MENU_ITEMS } from '@/assets/data/menu-items'
 import Preloader from '@/components/Preloader'
 import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
@@ -127,7 +127,7 @@ const VerticalMenu = ({ role }: { role?: string }) => {
 
   // 1) Memoize source menu for stability
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
-    const items = INSTRUCTOR_MENU_ITEMS as unknown as MenuItemTypeLocal[]
+    const items = EKLAVADMIN_MENU_ITEMS as unknown as MenuItemTypeLocal[]
 
     // ✅ collegeAdmin → only first 3 menu sections
     if (role === 'collegeAdmin') {
