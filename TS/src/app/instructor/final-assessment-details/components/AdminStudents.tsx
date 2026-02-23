@@ -787,6 +787,7 @@ const StudentListPage: React.FC = () => {
   const [trScore, setTrScore] = useState<number>(0)
   const [hrScore, setHrScore] = useState<number>(0)
   const [savingScores, setSavingScores] = useState(false)
+  const [loadingStudents, setLoadingStudents] = useState(true)
 
   const studentsPerPage = 5
 
@@ -822,22 +823,27 @@ const StudentListPage: React.FC = () => {
 
   useEffect(() => {
     const fetchStudents = async () => {
+      setLoadingStudents(true)
+
       try {
         const res = await fetch(`${baseURL}/api/tr/attended-students`)
         const json = await res.json()
 
         if (json.success && Array.isArray(json.students)) {
           setStudents(json.students)
+        } else {
+          setStudents([])
         }
       } catch (e) {
         console.error('Failed to fetch TR-attended students', e)
+        setStudents([])
+      } finally {
+        setLoadingStudents(false)
       }
     }
 
     fetchStudents()
   }, [baseURL])
-
-
   const refreshOverview = useCallback(async () => {
     if (!selectedStudent) return
     setLoadingOverview(true)
@@ -949,20 +955,19 @@ const StudentListPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {students.length === 0 ? (
+                {loadingStudents ? (
                   <tr>
-                    <td colSpan={5} className="text-center">
-                      <Spinner />
+                    <td colSpan={5} className="text-center py-4">
+                      <Spinner animation="border" />
                     </td>
                   </tr>
                 ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center">
+                    <td colSpan={5} className="text-center py-4">
                       No TR-attended students found.
                     </td>
                   </tr>
                 ) : (
-
                   currentStudents.map((student) => (
                     <StudentTableRow
                       key={student._id}

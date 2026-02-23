@@ -51,6 +51,7 @@ const StudentListPage: React.FC = () => {
       if (!res.ok) throw new Error('Failed to fetch profile')
 
       const data = await res.json()
+      console.log("Students API response:", data)
       setCollege(data.college || null)
       setRole(data.role || null)
     } catch (err) {
@@ -71,8 +72,18 @@ const StudentListPage: React.FC = () => {
 
       if (!res.ok) throw new Error('Failed to fetch students')
 
-      const data: Student[] = await res.json()
-      setStudents(data)
+      const data = await res.json()
+
+      if (Array.isArray(data)) {
+        setStudents(data)
+      } else if (Array.isArray(data.students)) {
+        setStudents(data.students)
+      } else if (Array.isArray(data.data)) {
+        setStudents(data.data)
+      } else {
+        console.error("Unexpected student response format:", data)
+        setStudents([])
+      }
     } catch (error) {
       console.error('Error fetching all students:', error)
     }
@@ -123,7 +134,7 @@ const StudentListPage: React.FC = () => {
   /* ============================
      SORT + FILTER
   ============================ */
-  let sortedStudents = [...students]
+ let sortedStudents = Array.isArray(students) ? [...students] : []
 
   if (sortOption === 'college') {
     sortedStudents.sort((a, b) =>

@@ -71,10 +71,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
       {/* TOP NAVBAR */}
       <Suspense>
         <TopNavigationBar role={role} onToggleMenu={toggleOffCanvasMenu} />
-        <TrialWelcomeModal
+       {/*  <TrialWelcomeModal
           show={showTrialModal}
           onClose={() => setShowTrialModal(false)}
-        />
+        /> */}
 
       </Suspense>
 

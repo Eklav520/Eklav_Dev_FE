@@ -78,7 +78,8 @@ const InstructorCreateCourse = lazy(() => import('@/app/(other)/instructor/creat
 const InstructorCourseAdd = lazy(() => import('@/app/(other)/instructor/course-added/page'))
 const InstructorCodeChallenge = lazy(() => import('@/app/instructor/codeChallenge/page'))
 const AdminChallengeDetail = lazy(() => import('@/app/instructor/codeChallenge/components/AdminChallengeDetail'));
-const AdminFinalAssessment = lazy(() => import('@/app/instructor/final-assessment/page'))
+const AdminFinalAssessmentUpload = lazy(() => import('@/app/instructor/final-assessment/page'))
+const AdminFinalAssessmentDetails = lazy(() => import('@/app/instructor/final-assessment-details/page'))
 const Quiz = lazy(() => import('@/app/instructor/quiz/page'))
 const Earnings = lazy(() => import('@/app/instructor/earning/page'))
 const StudentsList = lazy(() => import('@/app/instructor/student-list/page'))
@@ -489,9 +490,14 @@ export const InstructorRoutes: RoutesProps[] = [
     element: <AdminChallengeDetail />,
   },
   {
-    path: '/instructor/final-assessment',
+    path: '/instructor/finalassessmentupload',
     name: 'Admin Final Assessment',
-    element: <AdminFinalAssessment />,
+    element: <AdminFinalAssessmentUpload />,
+  },
+  {
+    path: '/instructor/final-assessment-details',
+    name: 'Admin Final Assessment Details',
+    element: <AdminFinalAssessmentDetails />,
   },
   /* {
     path: '/instructor/earning',

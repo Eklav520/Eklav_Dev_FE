@@ -7,7 +7,6 @@ import AdminManageChallenges from './components/CodeChallenegeComponents/AdminMa
 import InterviewQuestions from './components/InterviewQuestions/InterviewQuestions'
 import AdminReview from './components/AdminReview'
 import HRInterviewQuestions from './components/HRRoundQuestions/HRInterviewQuestions'
-import AdminStudents from './components/AdminStudents'
 
 export default function FinalAssessmentPage() {
   const [view, setView] = useState('quiz') // 'quiz' | 'code' | 'tr' | 'hr'
@@ -79,9 +78,6 @@ export default function FinalAssessmentPage() {
           </Card>
         )}
       </div>
-
-     {/*  <AdminReview /> */}
-      <AdminStudents/>
     </>
   )
 }

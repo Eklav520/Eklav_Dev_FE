@@ -253,7 +253,7 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
         url: '/instructor/manage-course',
         parentKey: 'instructor',
       },
-      {
+      /* {
         key: 'MockInterviewList',
         label: 'Mock Interview List',
         icon: BsFileEarmarkText, // file of interview items
@@ -266,7 +266,7 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
         icon: BsChatDots, // conversation = comm skills
         url: '/instructor/communication-skills',
         parentKey: 'instructor',
-      },
+      }, */
     ],
   },
   // Self Preparation
@@ -296,20 +296,20 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
         url: '/instructor/self-interview',
         parentKey: 'instructor',
       },
-      {
+      /* {
         key: 'CompanyInterview',
         label: 'Company Interview',
         icon: BsPersonWorkspace,
         url: '/instructor/Company-interview',
         parentKey: 'instructor',
-      },
-      {
+      }, */
+     /*  {
         key: 'SelfInterviewEvaluation',
         label: 'Self Interview Evaluation',
         icon: BsPatchCheck, // evaluation/verified
         url: '/instructor/self-interview-evalution',
         parentKey: 'instructor',
-      },
+      }, */
     ],
   },
   // Other Activities
@@ -334,12 +334,26 @@ export const INSTRUCTOR_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
-  {
-    key: 'finalAssessment',
-    label: 'Admin Final Assessment',
-    icon: BsClipboardCheck, // assessment/checklist
-    url: '/instructor/final-assessment',
-    parentKey: 'instructor',
+    {
+    key: 'finalAssessmentActivities',
+    label: 'Final Assessment',
+    icon: BsGrid, // misc/collection
+    children: [
+      {
+        key: 'uploadAssessments',
+        label: 'Upload Assessments',
+        icon: BsCameraVideo, // live/recorded classes
+        url: '/instructor/finalassessmentupload',
+        parentKey: 'instructor',
+      },
+      {
+        key: 'uploadAssessmentsDetails',
+        label: 'Assessments Details',
+        icon: BsFileEarmarkArrowUp, // upload interview details
+        url: '/instructor/final-assessment-details',
+        parentKey: 'instructor',
+      },
+    ],
   },
   {
     key: 'admin',

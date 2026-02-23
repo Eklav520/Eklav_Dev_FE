@@ -65,9 +65,7 @@ export const reactBook: Book = {
         {
           id: "ch1-page1",
           title: "What is React? Ecosystem Overview",
-          content: `
-React is a declarative, efficient, and flexible JavaScript library for building user interfaces.
-
+          content: `React is a declarative, efficient, and flexible JavaScript library for building user interfaces.
 Key Concepts:
 - Component-Based Architecture
 - Virtual DOM for Performance
@@ -125,8 +123,7 @@ root.render(<Welcome />);
         {
           id: "ch1-page2",
           title: "JSX Deep Dive & Transpilation",
-          content: `
-JSX (JavaScript XML) is a syntax extension that looks like HTML but works with JavaScript.
+          content: `JSX (JavaScript XML) is a syntax extension that looks like HTML but works with JavaScript.
 
 JSX Rules:
 1. Return a single parent element (use Fragment <> </>)
@@ -203,9 +200,7 @@ const element = React.createElement(
         {
           id: "ch2-page1",
           title: "Functional vs Class Components",
-          content: `
-React has two main types of components:
-
+          content: `React has two main types of components
 Functional Components (Modern Approach):
 - Simpler syntax
 - Hooks for state and lifecycle
@@ -273,8 +268,7 @@ class Greeting extends React.Component {
         {
           id: "ch2-page2",
           title: "Props: Data Flow & Validation",
-          content: `
-Props (Properties) are read-only data passed from parent to child components.
+          content: `Props (Properties) are read-only data passed from parent to child components.
 
 Key Prop Concepts:
 - Immutable (cannot be modified by child)

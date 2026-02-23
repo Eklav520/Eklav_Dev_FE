@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Card, ProgressBar, Button, Row, Col, Spinner, Container, Badge } from 'react-bootstrap'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
+import RoboAvatar from './RoboAvatar'
+import TalkingTom from './TalkingTom'
 
 interface Message {
   sender: 'user' | 'eklav'
@@ -618,8 +620,17 @@ const EnglishVoicePractice: React.FC = () => {
             </Card.Footer>
           </Card>
         </Col>
-        {/* FEEDBACK CARD */}
         <Col xs={12} lg={6}>
+          <Card className="shadow-sm h-100">
+            <RoboAvatar
+              isTyping={isTyping}
+              isListening={isListening}
+              isSpeaking={ttsCountRef.current > 0}
+            />
+          </Card>
+        </Col>
+        {/* FEEDBACK CARD */}
+        <Col xs={12} lg={12}>
           <Card className="shadow-sm h-100">
             <Card.Header className="feedback-header">
               <h5 className="fw-bold mb-0">
