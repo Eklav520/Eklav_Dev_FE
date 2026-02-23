@@ -13,7 +13,7 @@ const AdminChallengeList: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    fetch(`${baseURL}//admin/challenges`, {
+    fetch(`${baseURL}/admin/challenges`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
