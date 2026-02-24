@@ -1,6 +1,6 @@
 /* ===== BOOK READER CONTAINER ===== */
 .book-reader-container {
-    height: 100vh;
+    height: 100%;
     width: 100%;
     background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
     display: flex;
@@ -16,7 +16,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 30px 20px;
     transition: all 0.3s ease;
     position: relative;
 }
@@ -1279,4 +1279,14 @@
         box-shadow: none;
         break-inside: avoid;
     }
+}
+.modal.book-modal .modal-body {
+  padding: 0 !important;
+  overflow: hidden !important;
+  height: 100vh;
+}
+
+.modal.book-modal .modal-content {
+  height: 100vh;
+  border-radius: 0;
 }

@@ -98,8 +98,11 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
                 let height = width * 0.8; // Wide aspect ratio
 
                 // Ensure height doesn't exceed container
-                if (height > containerHeight * 0.8) {
-                    height = containerHeight * 0.8;
+               // Reserve space for top + bottom breathing gap
+                const maxBookHeight = containerHeight * 0.83; // 👈 change this value
+
+                if (height > maxBookHeight) {
+                    height = maxBookHeight;
                     width = height * 1.25;
                 }
 

@@ -26,7 +26,6 @@ const Materials = () => {
         show={!!selectedBook}
         onHide={handleClose}
         fullscreen
-        centered
         backdrop="static"
         keyboard={false}
         dialogClassName="book-modal"

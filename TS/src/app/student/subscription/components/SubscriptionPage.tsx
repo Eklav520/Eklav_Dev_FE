@@ -27,6 +27,11 @@ import {
     BsLightningCharge,
     BsPeople,
     BsRocket,
+    BsDatabase,
+    BsHddStack,
+    BsShieldLock,
+    BsFolderSymlink,
+    BsPlusCircle,
 } from 'react-icons/bs';
 
 declare global {
@@ -81,22 +86,28 @@ interface UniversalCoupon {
     endDate: string;
 }
 
-// Orange theme colors
+// Orange glassy theme colors
 const THEME = {
-    primary: '#ff7a00',
-    dark: '#e96d00',
-    light: '#fff4e6',
-    soft: '#ffe8cc',
-    gradient: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)',
-    success: '#10b981',
-    border: '#e5e7eb',
-    cardBg: '#ffffff',
+    primary: '#ff8a4c',
+    secondary: '#ff6b2b',
+    accent: '#ffb347',
+    dark: '#e85d1c',
+    light: '#fff1e6',
+    soft: '#ffe4d6',
+    glow: 'rgba(255, 139, 76, 0.3)',
+    gradient: 'linear-gradient(145deg, #ff8a4c 0%, #ff6b2b 100%)',
+    gradientGlow: 'linear-gradient(145deg, #ff9a5c 0%, #ff7b3b 100%)',
+    glass: 'rgba(255, 255, 255, 0.9)',
+    glassDark: 'rgba(255, 255, 255, 0.95)',
+    border: 'rgba(255, 139, 76, 0.2)',
+    shadow: '0 25px 40px -12px rgba(255, 107, 43, 0.25)',
     text: {
-        primary: '#1f2937',    // Dark gray for primary text
-        secondary: '#4b5563',   // Medium gray for secondary text
-        muted: '#6b7280',       // Light gray for muted text
-        light: '#9ca3af',       // Very light gray
-        white: '#ffffff',       // White text
+        primary: '#2d2d2d',
+        secondary: '#4a4a4a',
+        muted: '#6f6f6f',
+        light: '#8f8f8f',
+        white: '#ffffff',
+        orange: '#ff6b2b',
     }
 } as const;
 
@@ -113,7 +124,7 @@ const FREE_TRIAL: Plan = {
         'Basic features included',
         'No payment required',
         'Access to sample courses',
-        'Community support'
+        'Community support',
     ],
 };
 
@@ -130,7 +141,7 @@ const PREMIUM_FEATURES = [
     'English Practice with AI',
     'Speaking Practice',
     'Writing Practice',
-    'Self Interview with AI'
+    'Self Interview with AI',
 ];
 
 const SubscriptionPage = () => {
@@ -379,415 +390,526 @@ const SubscriptionPage = () => {
 
             <style>{`
         body {
-          background-color: #f3f4f6;
+          background: linear-gradient(135deg, #fff9f5 0%, #fff2e8 100%);
         }
-        
-        .btn-primary-custom {
-          background: ${THEME.gradient};
-          border: none;
-          color: #fff;
-          font-weight: 600;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.75rem;
-          transition: all 0.3s ease;
-        }
-        .btn-primary-custom:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px -5px rgba(255, 122, 0, 0.4);
-        }
-        .btn-outline-custom {
-          background: transparent;
-          border: 2px solid ${THEME.primary};
-          color: ${THEME.primary};
-          font-weight: 600;
-          padding: 0.75rem 1.5rem;
-          border-radius: 0.75rem;
-          transition: all 0.3s ease;
-        }
-        .btn-outline-custom:hover:not(:disabled) {
-          background: ${THEME.gradient};
-          border-color: transparent;
-          color: #fff;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px -5px rgba(255, 122, 0, 0.4);
-        }
-        .btn-outline-custom:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-        .plan-card {
+
+        /* Orange Glassmorphism Effects */
+        .glass-card {
+          background: ${THEME.glass};
+          backdrop-filter: blur(10px);
           border: 1px solid ${THEME.border};
-          border-radius: 1.5rem;
-          transition: all 0.3s ease;
-          background: ${THEME.cardBg};
-          height: 100%;
+          border-radius: 32px;
+          box-shadow: ${THEME.shadow};
+          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          position: relative;
           overflow: hidden;
         }
-        .plan-card:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 20px 40px -15px rgba(255, 122, 0, 0.3);
+
+        .glass-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+          transition: left 0.7s ease;
+        }
+
+        .glass-card:hover::before {
+          left: 100%;
+        }
+
+        .glass-card:hover {
+          transform: translateY(-8px) scale(1.02);
           border-color: ${THEME.primary};
+          box-shadow: 0 30px 50px -15px ${THEME.glow};
         }
-        .plan-card-popular {
+
+        .glass-card.popular {
+          background: ${THEME.glassDark};
           border: 2px solid ${THEME.primary};
-          box-shadow: 0 10px 30px -10px rgba(255, 122, 0, 0.3);
+          box-shadow: 0 30px 50px -15px ${THEME.glow};
         }
+
+        /* Popular Badge */
         .popular-badge {
           position: absolute;
-          top: 1.5rem;
-          right: 1.5rem;
+          top: 24px;
+          right: 24px;
           background: ${THEME.gradient};
           color: white;
-          padding: 0.5rem 1rem;
-          border-radius: 2rem;
-          font-size: 0.875rem;
+          padding: 8px 20px;
+          border-radius: 40px;
+          font-size: 0.9rem;
           font-weight: 600;
+          letter-spacing: 0.5px;
+          box-shadow: 0 10px 20px -5px ${THEME.glow};
+          z-index: 10;
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          z-index: 1;
+          gap: 8px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(4px);
         }
-        .price-tag {
+
+        /* Plan Header with Orange Glow */
+        .plan-header {
+          text-align: center;
+          padding: 24px 24px 16px;
+          border-bottom: 2px dashed ${THEME.border};
+        }
+
+        .plan-icon {
+          width: 80px;
+          height: 80px;
+          margin: 0 auto 20px;
+          background: ${THEME.gradient};
+          border-radius: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
           font-size: 2.5rem;
-          font-weight: 700;
-          color: ${THEME.text.primary};
+          box-shadow: 0 15px 25px -8px ${THEME.glow};
+          transform: rotate(0deg);
+          transition: transform 0.3s ease;
         }
+
+        .glass-card:hover .plan-icon {
+          transform: rotate(5deg) scale(1.05);
+        }
+
+        .plan-title {
+          font-size: 2rem;
+          font-weight: 800;
+          color: ${THEME.text.primary};
+          margin-bottom: 4px;
+          letter-spacing: -0.5px;
+        }
+
+        .plan-subtitle {
+          color: ${THEME.text.orange};
+          font-weight: 600;
+          font-size: 0.95rem;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+
+        /* Price Section */
+        .price-section {
+          text-align: center;
+          padding: 20px 24px;
+          background: linear-gradient(145deg, ${THEME.light}, transparent);
+        }
+
+        .price {
+          font-size: 3.5rem;
+          font-weight: 800;
+          color: ${THEME.text.primary};
+          line-height: 1;
+        }
+
+        .price small {
+          font-size: 1.2rem;
+          font-weight: 500;
+          color: ${THEME.text.muted};
+        }
+
         .price-period {
           color: ${THEME.text.muted};
           font-size: 1rem;
-          font-weight: 400;
+          font-weight: 500;
+          display: block;
+          margin-top: 4px;
         }
+
+        .original-price {
+          font-size: 1.2rem;
+          color: ${THEME.text.light};
+          text-decoration: line-through;
+          margin-right: 8px;
+        }
+
+        .discount-badge {
+          background: ${THEME.gradient};
+          color: white;
+          padding: 6px 16px;
+          border-radius: 30px;
+          font-weight: 600;
+          font-size: 0.9rem;
+          display: inline-block;
+          margin-top: 10px;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(4px);
+        }
+
+        /* Features List */
+        .features-list {
+          padding: 24px;
+        }
+
         .feature-item {
           display: flex;
           align-items: center;
-          padding: 0.5rem 0;
+          padding: 8px 0;
           color: ${THEME.text.secondary};
+          font-size: 0.95rem;
         }
-        .feature-icon {
+
+        .feature-icon-wrapper {
+          width: 24px;
+          height: 24px;
+          margin-right: 12px;
           color: ${THEME.primary};
-          margin-right: 0.75rem;
-          font-size: 1.25rem;
           flex-shrink: 0;
         }
-        .coupon-chip {
-            background: #ffffff;
-            border: 1px solid ${THEME.border};
-            border-radius: 2rem;
-            padding: 0.5rem 1.25rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            color: #ff7a00;
-            font-weight: 600;
-            }
-        .coupon-chip:hover {
-          border-color: ${THEME.primary};
-          background: white;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.1);
+
+        .feature-item svg {
+          width: 20px;
+          height: 20px;
         }
-        .section-title {
+
+        .more-features {
+          display: flex;
+          align-items: center;
+          padding: 8px 0;
+          color: ${THEME.primary};
+          font-size: 0.95rem;
+          font-weight: 600;
+        }
+
+        .more-features svg {
+          color: ${THEME.primary};
+          margin-right: 12px;
+          font-size: 1.2rem;
+        }
+
+        /* Action Button */
+        .plan-action {
+          padding: 0 24px 24px;
+        }
+
+        .btn-plan {
+          width: 100%;
+          padding: 16px;
+          border-radius: 50px;
+          font-weight: 700;
+          font-size: 1.1rem;
+          letter-spacing: 0.5px;
+          border: none;
+          background: ${THEME.gradient};
+          color: white;
+          box-shadow: 0 10px 20px -5px ${THEME.glow};
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .btn-plan::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+          transition: left 0.5s ease;
+        }
+
+        .btn-plan:hover::before {
+          left: 100%;
+        }
+
+        .btn-plan:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 20px 30px -8px ${THEME.glow};
+        }
+
+        .btn-plan:disabled {
+          opacity: 0.7;
+          transform: none;
+        }
+
+        .btn-plan-outline {
+          background: transparent;
+          border: 2px solid ${THEME.primary};
+          color: ${THEME.primary};
+          box-shadow: none;
+        }
+
+        .btn-plan-outline:hover {
+          background: ${THEME.gradient};
+          color: white;
+          border-color: transparent;
+        }
+
+        /* Active Subscription Banner */
+        .active-banner {
+          background: ${THEME.gradient};
+          border-radius: 60px;
+          padding: 20px 30px;
+          color: white;
+          box-shadow: 0 20px 30px -10px ${THEME.glow};
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          backdrop-filter: blur(4px);
+        }
+
+        .active-banner-item {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+        }
+
+        .active-banner-item svg {
+          font-size: 2rem;
+          opacity: 0.9;
+        }
+
+        .active-banner-item .label {
+          font-size: 0.9rem;
+          opacity: 0.9;
+          margin-bottom: 4px;
+        }
+
+        .active-banner-item .value {
+          font-size: 1.3rem;
+          font-weight: 700;
+          margin: 0;
+          line-height: 1.2;
+        }
+
+        .active-status-badge {
+          background: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(4px);
+          border: 2px solid rgba(255, 255, 255, 0.4);
+          border-radius: 40px;
+          padding: 12px 30px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          font-size: 1.1rem;
+        }
+
+        /* Coupon Styles */
+        .coupon-section {
+          background: ${THEME.glass};
+          backdrop-filter: blur(10px);
+          border-radius: 30px;
+          padding: 30px;
+          border: 1px solid ${THEME.border};
+          box-shadow: ${THEME.shadow};
+        }
+
+        .coupon-chip {
+          background: white;
+          border: 1px solid ${THEME.border};
+          border-radius: 50px;
+          padding: 12px 24px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          box-shadow: 0 5px 15px rgba(255, 107, 43, 0.1);
+        }
+
+        .coupon-chip:hover {
+          transform: translateY(-3px);
+          border-color: ${THEME.primary};
+          box-shadow: 0 15px 25px -8px ${THEME.glow};
+        }
+
+        .coupon-code {
+          font-weight: 700;
+          letter-spacing: 1px;
+          color: ${THEME.primary};
+        }
+
+        .coupon-badge {
+          background: ${THEME.gradient};
+          color: white;
+          padding: 4px 12px;
+          border-radius: 30px;
+          font-weight: 600;
+          font-size: 0.85rem;
+        }
+
+        .coupon-input-group {
+          background: white;
+          border-radius: 60px;
+          padding: 5px;
+          border: 1px solid ${THEME.border};
+          box-shadow: 0 5px 15px rgba(255, 107, 43, 0.1);
+        }
+
+        .coupon-input {
+          border: none;
+          background: transparent;
+          padding: 12px 20px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          color: ${THEME.text.primary};
+        }
+        
+        .coupon-input::placeholder {
+            color: #666 !important;
+            opacity: 1 !important;
+            }
+
+            .coupon-input {
+            color: #222 !important;
+            }
+
+        .coupon-input:focus {
+          outline: none;
+          box-shadow: none;
+          background: transparent;
+        }
+
+        .coupon-apply-btn {
+          background: ${THEME.gradient};
+          border: none;
+          border-radius: 50px !important;
+          padding: 12px 30px;
+          font-weight: 600;
+          color: white;
+          transition: all 0.3s ease;
+        }
+
+        .coupon-apply-btn:hover {
+          transform: translateX(5px);
+          box-shadow: 0 10px 20px -5px ${THEME.glow};
+        }
+
+        .applied-coupon {
+          background: ${THEME.light};
+          border-radius: 50px;
+          padding: 15px 25px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border: 1px solid ${THEME.primary};
+        }
+
+        /* Features Header - Made White */
+        .features-header {
+          text-align: center;
+          margin-bottom: 3rem;
+        }
+
+        .features-header h2 {
           font-size: 2.5rem;
           font-weight: 800;
           color: ${THEME.text.primary};
           margin-bottom: 0.5rem;
-          line-height: 1.2;
-          text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-        .section-subtitle {
-          color: ${THEME.text.muted};
-          font-size: 1.25rem;
-          margin-bottom: 2rem;
-          font-weight: 400;
-        }
-        .free-trial-card {
-          background: linear-gradient(135deg, #fff4e6 0%, #ffe8cc 100%);
-          border: 1px solid ${THEME.soft};
-        }
-        .free-trial-card .price-tag {
-          color: ${THEME.primary};
-        }
-        .active-plan-badge {
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(8px);
-          border: 2px solid rgba(255, 255, 255, 0.4);
-          color: #fff;
-          padding: 0.5rem 1.5rem;
-          border-radius: 2rem;
-          font-weight: 600;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .feature-grid-card {
-          border: none;
-          border-radius: 1rem;
-          transition: all 0.2s;
-          height: 100%;
-          background: #ffffff;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        .feature-grid-card:hover {
-          background: white;
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-          transform: translateY(-2px);
-        }
-        .feature-grid-card .feature-item {
+
+        .features-header p {
           color: ${THEME.text.secondary};
+          font-size: 1.2rem;
+          opacity: 0.9;
         }
-        .feature-grid-card h5 {
-          color: ${THEME.primary};
-          font-weight: 700;
-          margin-bottom: 1.25rem;
-          font-size: 1.25rem;
+
+        /* Feature Cards */
+        .feature-card {
+          background: white;
+          border: 1px solid ${THEME.border};
+          border-radius: 32px;
+          padding: 2rem;
+          height: 100%;
+          transition: all 0.3s ease;
+          box-shadow: 0 10px 30px -10px rgba(255, 107, 43, 0.1);
         }
-        .text-muted-custom {
-          color: ${THEME.text.muted};
+
+        .feature-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 20px 40px -12px ${THEME.glow};
+          border-color: ${THEME.primary};
         }
-        .card-title-custom {
+
+        .feature-card h4 {
           color: ${THEME.text.primary};
           font-weight: 700;
-          font-size: 1.5rem;
+          margin-bottom: 1.5rem;
+          font-size: 1.3rem;
         }
-        .header-section {
-          background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-          padding: 3rem 0;
-          border-radius: 2rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+        .feature-card .feature-item {
+          color: ${THEME.text.secondary};
+          padding: 6px 0;
         }
-        .features-header-section {
-          background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
-          padding: 2rem 0;
-          border-radius: 1.5rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+        .feature-card .feature-icon-wrapper {
+          color: ${THEME.primary};
         }
-        .active-plan-single-box {
-          background: ${THEME.gradient};
-          border-radius: 1rem;
-          padding: 1.25rem 2rem;
-          box-shadow: 0 10px 25px -5px rgba(255, 122, 0, 0.3);
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 1.5rem;
-        }
-        .active-plan-info {
-          display: flex;
-          align-items: center;
-          gap: 2rem;
-          flex-wrap: wrap;
-        }
-        .active-plan-info-item {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          color: white;
-        }
-        .active-plan-info-item .label {
-          font-size: 0.875rem;
-          opacity: 0.9;
-          margin-bottom: 0.25rem;
-        }
-        .active-plan-info-item .value {
-          font-size: 1.25rem;
-          font-weight: 700;
-          margin: 0;
-          color: white;
-          line-height: 1.3;
-        }
-        .active-plan-status {
-          background: rgba(255, 255, 255, 0.2);
-          backdrop-filter: blur(4px);
-          border: 2px solid rgba(255, 255, 255, 0.4);
-          color: white;
-          padding: 0.5rem 1.5rem;
-          border-radius: 2rem;
-          font-weight: 600;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          white-space: nowrap;
-        }
+
+        /* Responsive */
         @media (max-width: 768px) {
-          .active-plan-single-box {
+          .price {
+            font-size: 2.5rem;
+          }
+          
+          .plan-icon {
+            width: 60px;
+            height: 60px;
+            font-size: 2rem;
+          }
+          
+          .active-banner {
             flex-direction: column;
-            align-items: flex-start;
+            text-align: center;
           }
-          .active-plan-info {
-            flex-direction: column;
-            gap: 1rem;
+          
+          .active-banner-item {
             width: 100%;
-          }
-          .active-plan-info-item {
-            width: 100%;
-          }
-          .active-plan-status {
-            align-self: flex-start;
+            justify-content: center;
           }
         }
-          /* Coupon Section Improvements */
 
-            .coupon-title {
-            color: #ff7a00;
-            letter-spacing: 0.5px;
+        .features-header-text {
+            text-align: center;
             }
 
-            .coupon-chip {
-            background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 30px;
-            padding: 8px 18px;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            transition: all 0.25s ease;
+            .features-header-text h2 {
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            color: white;
             }
 
-            .coupon-chip:hover {
-            transform: translateY(-2px);
-            border-color: #ff7a00;
-            box-shadow: 0 6px 16px rgba(255,122,0,0.15);
-            }
-
-            .coupon-code {
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #ff7a00;
-            }
-
-            .coupon-badge {
-            background: linear-gradient(135deg,#ff6a00 0%,#ff9a3c 100%);
-            font-weight: 600;
-            }
-
-            .coupon-icon {
-            color: #9ca3af;
-            }
-
-            .coupon-icon.success {
-            color: #10b981;
-            }
-
-            .coupon-input-card {
-            border-radius: 16px;
-            background: #ffffff;
-            }
-
-            .coupon-heading {
-            color: #ff7a00;
-            }
-
-            .coupon-tag-icon {
-            color: #ff7a00;
-            }
-
-            .coupon-input {
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-            border-radius: 10px 0 0 10px !important;
-            }
-
-            .coupon-apply-btn {
-            background: linear-gradient(135deg,#ff6a00 0%,#ff9a3c 100%);
-            border: none;
-            border-radius: 0 10px 10px 0 !important;
-            font-weight: 600;
-            }
-
-            .applied-coupon-box {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px;
-            border-radius: 12px;
-            background: #fff4e6;
-            }
-
-            .applied-code {
-            font-weight: 700;
-            letter-spacing: 1px;
-            color: #ff7a00;
-            }
-
-            .applied-discount {
-            font-weight: 600;
-            color: #10b981;
+            .features-header-text p {
+            color: #ddd;
+            font-size: 1.1rem;
             }
       `}</style>
 
-            <Container className="py-4">
-                {/* Header Section with clean background */}
-                <Row className="justify-content-center mb-4">
-                    {/* <Col xs={12} md={10} lg={8} className="text-center">
-            <div className="header-section px-4">
-              <h1 className="section-title">Choose Your Plan</h1>
-              <p className="section-subtitle">Select the perfect plan for your learning journey</p>
-            </div>
-          </Col> */}
-                </Row>
-
-                {/* Alerts */}
-                <Row className="justify-content-center mb-4">
-                    <Col xs={12} md={10} lg={8}>
-                        {successMsg && (
-                            <Alert
-                                variant="success"
-                                dismissible
-                                onClose={() => setSuccessMsg(null)}
-                                className="d-flex align-items-center border-0 shadow-sm"
-                                style={{ background: '#d1fae5', color: '#065f46' }}
-                            >
-                                <BsCheckCircleFill className="me-2 flex-shrink-0" />
-                                {successMsg}
-                            </Alert>
-                        )}
-
-                        {error && (
-                            <Alert variant="danger" dismissible onClose={() => setError(null)} className="border-0 shadow-sm">
-                                {error}
-                            </Alert>
-                        )}
-                    </Col>
-                </Row>
-
-                {/* Active Subscription - Single Box */}
+            <Container className="py-5">
+                {/* Active Subscription Banner */}
                 {subscription?.isActive && (
                     <Row className="justify-content-center mb-5">
-                        <Col xs={12} md={10} lg={8}>
-                            <div className="active-plan-single-box">
-                                <div className="active-plan-info">
-                                    {/* Plan Info */}
-                                    <div className="active-plan-info-item">
-                                        <BsShieldCheck size={28} />
-                                        <div>
-                                            <div className="label">Active Plan</div>
-                                            <div className="value">
-                                                {subscription.plan === '12months' ? '12 Months Premium' :
-                                                    subscription.plan === '6months' ? '6 Months Premium' :
-                                                        'Premium Plan'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Validity Info */}
-                                    <div className="active-plan-info-item">
-                                        <BsClock size={24} />
-                                        <div>
-                                            <div className="label">Valid Until</div>
-                                            <div className="value">{formatDate(subscription.endDate)}</div>
+                        <Col xs={12} lg={10}>
+                            <div className="active-banner d-flex align-items-center justify-content-between flex-wrap gap-4">
+                                <div className="active-banner-item">
+                                    <BsShieldCheck />
+                                    <div>
+                                        <div className="label">Active Plan</div>
+                                        <div className="value">
+                                            {subscription.plan === '12months' ? '12 Months Premium' :
+                                             subscription.plan === '6months' ? '6 Months Premium' :
+                                             'Premium Plan'}
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Active Status Badge */}
-                                <span className="active-plan-status">
+                                <div className="active-banner-item">
+                                    <BsClock />
+                                    <div>
+                                        <div className="label">Valid Until</div>
+                                        <div className="value">{formatDate(subscription.endDate)}</div>
+                                    </div>
+                                </div>
+                                <span className="active-status-badge">
                                     <BsCheckCircleFill />
                                     Active
                                 </span>
@@ -799,206 +921,173 @@ const SubscriptionPage = () => {
                 {/* Coupon Section */}
                 {!subscription?.isActive && (
                     <Row className="justify-content-center mb-5">
-                        <Col xs={12} md={8} lg={6}>
+                        <Col xs={12} lg={8}>
+                            <div className="coupon-section text-center">
+                                <h4 className="mb-4" style={{ color: THEME.text.orange, fontWeight: 700 }}>
+                                    <BsTagFill className="me-2" />
+                                    Exclusive Offers
+                                </h4>
 
-                            {/* Available Coupons */}
-                            {universalCoupons.length > 0 && !appliedCoupon && (
-                                <div className="text-center mb-4">
-                                    <h6 className="fw-bold mb-3 coupon-title">
-                                        Available Coupons
-                                    </h6>
-
-                                    <div className="d-flex justify-content-center flex-wrap gap-3">
+                                {/* Available Coupons */}
+                                {universalCoupons.length > 0 && !appliedCoupon && (
+                                    <div className="d-flex justify-content-center flex-wrap gap-3 mb-4">
                                         {universalCoupons.map((coupon) => (
                                             <div
                                                 key={coupon.code}
                                                 className="coupon-chip"
                                                 onClick={() => copyToClipboard(coupon.code)}
                                             >
-                                                <span className="coupon-code">
-                                                    {coupon.code}
-                                                </span>
-
-                                                <Badge className="coupon-badge">
-                                                    {coupon.discountPercent}% OFF
-                                                </Badge>
-
+                                                <span className="coupon-code">{coupon.code}</span>
+                                                <span className="coupon-badge">{coupon.discountPercent}% OFF</span>
                                                 {copiedCode === coupon.code ? (
-                                                    <BsClipboardCheck className="coupon-icon success" />
+                                                    <BsClipboardCheck style={{ color: '#10b981' }} />
                                                 ) : (
-                                                    <BsClipboard className="coupon-icon" />
+                                                    <BsClipboard style={{ color: THEME.text.light }} />
                                                 )}
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* Coupon Input Card */}
-                            <Card className="coupon-input-card shadow-sm border-0">
-                                <Card.Body className="p-4">
-
-                                    <div className="text-center mb-3">
-                                        <BsTagFill className="me-2 coupon-tag-icon" />
-                                        <span className="fw-semibold coupon-heading">
-                                            Have a coupon code?
-                                        </span>
-                                    </div>
-
-                                    {appliedCoupon?.valid ? (
-                                        <div className="applied-coupon-box">
-                                            <div>
-                                                <span className="applied-code">
-                                                    {appliedCoupon.code}
-                                                </span>
-                                                <span className="mx-2 text-muted">—</span>
-                                                <span className="applied-discount">
-                                                    {appliedCoupon.discountPercent}% OFF
-                                                </span>
-                                            </div>
-
-                                            <Button
-                                                variant="link"
-                                                className="text-danger p-0"
-                                                onClick={removeCoupon}
-                                            >
-                                                <BsXCircleFill size={20} />
-                                            </Button>
+                                {/* Coupon Input */}
+                                {appliedCoupon?.valid ? (
+                                    <div className="applied-coupon">
+                                        <div>
+                                            <span className="fw-bold" style={{ color: THEME.primary }}>
+                                                {appliedCoupon.code}
+                                            </span>
+                                            <span className="mx-3 text-muted">•</span>
+                                            <span style={{ color: '#10b981', fontWeight: 600 }}>
+                                                {appliedCoupon.discountPercent}% OFF
+                                            </span>
                                         </div>
-                                    ) : (
-                                        <>
-                                            <InputGroup>
-                                                <Form.Control
-                                                    type="text"
-                                                    placeholder="ENTER COUPON CODE"
-                                                    value={couponCode}
-                                                    onChange={(e) => {
-                                                        setCouponCode(e.target.value.toUpperCase());
-                                                        if (couponResult) setCouponResult(null);
-                                                    }}
-                                                    onKeyDown={(e) =>
-                                                        e.key === 'Enter' && validateCoupon()
-                                                    }
-                                                    className="coupon-input"
-                                                    disabled={couponLoading}
-                                                />
+                                        <Button
+                                            variant="link"
+                                            className="text-danger p-0"
+                                            onClick={removeCoupon}
+                                        >
+                                            <BsXCircleFill size={20} />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="d-flex coupon-input-group">
+                                        <Form.Control
+                                            type="text"
+                                            placeholder="ENTER COUPON CODE"
+                                            value={couponCode}
+                                            onChange={(e) => {
+                                                setCouponCode(e.target.value.toUpperCase());
+                                                if (couponResult) setCouponResult(null);
+                                            }}
+                                            onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
+                                            className="coupon-input"
+                                            disabled={couponLoading}
+                                        />
+                                        <Button
+                                            className="coupon-apply-btn"
+                                            onClick={() => validateCoupon()}
+                                            disabled={!couponCode.trim() || couponLoading}
+                                        >
+                                            {couponLoading ? <Spinner size="sm" /> : 'Apply'}
+                                        </Button>
+                                    </div>
+                                )}
 
-                                                <Button
-                                                    className="coupon-apply-btn"
-                                                    onClick={() => validateCoupon()}
-                                                    disabled={!couponCode.trim() || couponLoading}
-                                                >
-                                                    {couponLoading ? (
-                                                        <Spinner animation="border" size="sm" />
-                                                    ) : (
-                                                        'Apply'
-                                                    )}
-                                                </Button>
-                                            </InputGroup>
-
-                                            {couponResult && !couponResult.valid && (
-                                                <div className="text-danger small mt-2 text-center">
-                                                    <BsXCircleFill className="me-1" />
-                                                    {couponResult.error}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </Card.Body>
-                            </Card>
+                                {couponResult && !couponResult.valid && (
+                                    <div className="text-danger small mt-3">
+                                        <BsXCircleFill className="me-1" />
+                                        {couponResult.error}
+                                    </div>
+                                )}
+                            </div>
                         </Col>
                     </Row>
                 )}
 
-                {/* Plan Cards */}
+                {/* Plan Cards - Redesigned with Orange Glassy Look */}
                 <Row className="g-4 justify-content-center">
                     {allPlans.map((plan, index) => {
                         const isCurrentPlan = subscription?.isActive && subscription.plan === plan.id;
                         const discountedPrice = getDiscountedPrice(plan);
                         const displayPrice = discountedPrice ?? plan.price;
 
+                        // Map icons based on plan
+                        const PlanIcon = index === 0 ? BsLightningCharge : index === 1 ? BsPeople : BsRocket;
+
                         return (
                             <Col key={plan.id} xs={12} md={6} lg={4}>
-                                <Card className={`plan-card position-relative ${plan.popular ? 'plan-card-popular' : ''} ${plan.isFree ? 'free-trial-card' : ''}`}>
+                                <Card className={`glass-card ${plan.popular ? 'popular' : ''} ${plan.isFree ? 'bg-white' : ''}`}>
                                     {plan.popular && (
                                         <div className="popular-badge">
-                                            <BsStarFill size={14} />
+                                            <BsStarFill size={16} />
                                             Most Popular
                                         </div>
                                     )}
 
-                                    <Card.Body className="p-4">
-                                        {/* Plan Header */}
-                                        <div className="text-center mb-4">
-                                            <div className="mb-3">
-                                                {index === 0 ? (
-                                                    <BsLightningCharge size={40} style={{ color: THEME.primary }} />
-                                                ) : index === 1 ? (
-                                                    <BsPeople size={40} style={{ color: THEME.primary }} />
-                                                ) : (
-                                                    <BsRocket size={40} style={{ color: THEME.primary }} />
-                                                )}
-                                            </div>
-                                            <h3 className="card-title-custom mb-1">{plan.label}</h3>
-                                            {plan.duration && (
-                                                <p className="text-muted-custom mb-3">
-                                                    {plan.duration} Access
-                                                </p>
-                                            )}
-
-                                            {/* Price */}
-                                            <div className="mb-3">
-                                                {plan.isFree ? (
-                                                    <span className="price-tag">Free</span>
-                                                ) : (
-                                                    <>
-                                                        {discountedPrice ? (
-                                                            <>
-                                                                <span className="text-muted-custom text-decoration-line-through fs-5 me-2">
-                                                                    ₹{plan.price}
-                                                                </span>
-                                                                <span className="price-tag">₹{discountedPrice}</span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="price-tag">₹{plan.price}</span>
-                                                        )}
-                                                        <span className="price-period ms-2">/{plan.duration.toLowerCase()} + GST(Included) </span>
-                                                    </>
-                                                )}
-                                            </div>
-
-                                            {discountedPrice && (
-                                                <Badge className="px-3 py-2 rounded-pill" style={{ background: THEME.gradient }}>
-                                                    Save {appliedCoupon?.discountPercent}%
-                                                </Badge>
-                                            )}
+                                    {/* Plan Header with Icon */}
+                                    <div className="plan-header">
+                                        <div className="plan-icon">
+                                            <PlanIcon />
                                         </div>
+                                        <h3 className="plan-title">{plan.label}</h3>
+                                        {plan.duration && (
+                                            <div className="plan-subtitle">{plan.duration} Access</div>
+                                        )}
+                                    </div>
 
-                                        {/* Features - Show first 8 features for better visibility */}
-                                        <div className="mb-4">
-                                            {plan.features?.slice(0, 8).map((feature, idx) => (
-                                                <div key={idx} className="feature-item">
-                                                    <BsCheckCircleFill className="feature-icon" />
-                                                    <span>{feature}</span>
+                                    {/* Price Section */}
+                                    <div className="price-section">
+                                        {plan.isFree ? (
+                                            <div className="price">Free</div>
+                                        ) : (
+                                            <>
+                                                <div>
+                                                    {discountedPrice && (
+                                                        <span className="original-price">₹{plan.price}</span>
+                                                    )}
+                                                    <span className="price">
+                                                        ₹{displayPrice}
+                                                        <small>.00</small>
+                                                    </span>
                                                 </div>
-                                            ))}
-                                            {plan.features && plan.features.length > 8 && (
-                                                <div className="feature-item text-muted-custom">
-                                                    <BsCircleFill className="feature-icon" style={{ fontSize: '0.5rem' }} />
-                                                    <span>+{plan.features.length - 8} more features</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                                <span className="price-period">/{plan.duration.toLowerCase()}</span>
+                                                {discountedPrice && (
+                                                    <div className="discount-badge">
+                                                        Save {appliedCoupon?.discountPercent}%
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
 
-                                        {/* Action Button */}
+                                    {/* Features List */}
+                                    <div className="features-list">
+                                        {plan.features?.slice(0, 6).map((feature, idx) => (
+                                            <div key={idx} className="feature-item">
+                                                <div className="feature-icon-wrapper">
+                                                    <BsCheckCircleFill />
+                                                </div>
+                                                <span>{feature}</span>
+                                            </div>
+                                        ))}
+                                        {plan.features && plan.features.length > 6 && (
+                                            <div className="more-features">
+                                                <BsPlusCircle />
+                                                <span>+{plan.features.length - 6} more features</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <div className="plan-action">
                                         {isCurrentPlan ? (
-                                            <Button className="w-100 btn-primary-custom" disabled>
+                                            <Button className="btn-plan" disabled>
                                                 <BsCheckCircleFill className="me-2" />
                                                 Current Plan
                                             </Button>
                                         ) : plan.isFree ? (
                                             <Button
-                                                className="w-100 btn-outline-custom"
+                                                className="btn-plan btn-plan-outline"
                                                 onClick={() => window.location.href = '/student/dashboard'}
                                                 disabled={subscription?.isActive}
                                             >
@@ -1006,7 +1095,7 @@ const SubscriptionPage = () => {
                                             </Button>
                                         ) : (
                                             <Button
-                                                className={`w-100 ${plan.popular ? 'btn-primary-custom' : 'btn-outline-custom'}`}
+                                                className={`btn-plan ${!plan.popular ? 'btn-plan-outline' : ''}`}
                                                 onClick={() => handlePayment(plan)}
                                                 disabled={!!paymentLoading || subscription?.isActive}
                                             >
@@ -1016,116 +1105,81 @@ const SubscriptionPage = () => {
                                                         Processing...
                                                     </>
                                                 ) : (
-                                                    `Choose Plan - ₹${displayPrice}`
+                                                    <>
+                                                        Select Plan
+                                                        <BsArrowRight className="ms-2" />
+                                                    </>
                                                 )}
                                             </Button>
                                         )}
-                                    </Card.Body>
+                                    </div>
                                 </Card>
                             </Col>
                         );
                     })}
                 </Row>
 
-                {/* Features Section */}
+                {/* Features Section - Fixed Visibility */}
                 <Row className="mt-5 pt-4">
-                    <Col xs={12} className="text-center mb-4">
-                        <div className="features-header-section px-4">
-                            <h2 className="section-title fw-bold mb-2">
-                                Everything You Get
-                            </h2>
-                            <p className="section-subtitle text mb-0">
-                                All premium plans include these core features
-                            </p>
+                    <Col xs={12}>
+                        <div className="features-header-text">
+                            <h2>Everything You Get</h2>
+                            <p>All premium plans include these core features</p>
                         </div>
                     </Col>
 
                     <Row className="g-4">
                         <Col md={4}>
-                            <Card className="feature-grid-card">
-                                <Card.Body className="p-4">
-                                    <h5>Learning & Courses</h5>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Top Tech Courses</span>
+                            <div className="feature-card">
+                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                    <BsFolderSymlink />
+                                </div>
+                                <h4>Learning & Courses</h4>
+                                {['Top Tech Courses', 'Unlimited Access', 'Communication Skills', 'Mock Interviews', '24/7 Support'].map((item, idx) => (
+                                    <div key={idx} className="feature-item">
+                                        <div className="feature-icon-wrapper">
+                                            <BsCheckCircleFill />
+                                        </div>
+                                        <span>{item}</span>
                                     </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Unlimited Access</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Communication Skills</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Mock Interviews</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>24/7 Support</span>
-                                    </div>
-                                </Card.Body>
-                            </Card>
+                                ))}
+                            </div>
                         </Col>
 
                         <Col md={4}>
-                            <Card className="feature-grid-card">
-                                <Card.Body className="p-4">
-                                    <h5>AI-Powered Tools</h5>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>AI Practice Tools</span>
+                            <div className="feature-card">
+                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                    <BsHddStack />
+                                </div>
+                                <h4>AI-Powered Tools</h4>
+                                {['AI Practice Tools', 'Leadership Board', 'English Practice', 'Speaking Practice', 'Writing Practice'].map((item, idx) => (
+                                    <div key={idx} className="feature-item">
+                                        <div className="feature-icon-wrapper">
+                                            <BsCheckCircleFill />
+                                        </div>
+                                        <span>{item}</span>
                                     </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Leadership Board</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>English Practice</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Speaking Practice</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Writing Practice</span>
-                                    </div>
-                                </Card.Body>
-                            </Card>
+                                ))}
+                            </div>
                         </Col>
 
                         <Col md={4}>
-                            <Card className="feature-grid-card">
-                                <Card.Body className="p-4">
-                                    <h5>Assessment & Prep</h5>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Aptitude Prep</span>
+                            <div className="feature-card">
+                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                    <BsShieldLock />
+                                </div>
+                                <h4>Assessment & Prep</h4>
+                                {['Aptitude Prep', 'Code Challenges', 'AI Interview', 'Online Classes', 'Final Assessment'].map((item, idx) => (
+                                    <div key={idx} className="feature-item">
+                                        <div className="feature-icon-wrapper">
+                                            <BsCheckCircleFill />
+                                        </div>
+                                        <span>{item}</span>
                                     </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Code Challenges</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>AI Interview</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Online Classes</span>
-                                    </div>
-                                    <div className="feature-item">
-                                        <BsCheckCircleFill className="feature-icon" />
-                                        <span>Final Assessment</span>
-                                    </div>
-                                </Card.Body>
-                            </Card>
+                                ))}
+                            </div>
                         </Col>
                     </Row>
-
                 </Row>
             </Container>
         </>
