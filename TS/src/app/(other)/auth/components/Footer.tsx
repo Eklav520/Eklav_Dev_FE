@@ -307,13 +307,13 @@ const Footer = () => {
         <div className="cta-section">
           <h2 className="cta-title">Ready to Transform Your Career?</h2>
           <p className="cta-description">
-            Explore our course bundles designed to take you from beginner to job-ready, 
+            Explore our course bundles designed to take you from beginner to job-ready,
             with skills that top companies demand.
           </p>
           <Link to="#" className="cta-button">
             EXPLORE COURSE BUNDLES
           </Link>
-          
+
           <div className="app-buttons">
             <a href="#" className="app-button">
               <FaApple />
@@ -367,9 +367,33 @@ const Footer = () => {
           <Col md={3} sm={6} className="footer-column">
             <h4 className="footer-column-title">Follow Us</h4>
             <ul className="footer-links-list">
-              <li><Link to="https://instagram.com/eklav.in">Instagram</Link></li>
-              <li><Link to="https://www.facebook.com/eklav.in">Facebook</Link></li>
-              <li><Link to="https://www.linkedin.com/company/eklav/">LinkedIn</Link></li>
+              <li>
+                <a
+                  href="https://instagram.com/eklav.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Instagram
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.facebook.com/eklav.in"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Facebook
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://www.linkedin.com/company/eklav/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  LinkedIn
+                </a>
+              </li>
             </ul>
           </Col>
         </Row>
@@ -379,9 +403,9 @@ const Footer = () => {
           <Col md={4} className="text-center text-md-start">
             <div className="footer-logo">
               <Link to="/" aria-label="Eklav - Go to homepage">
-                <img 
-                  src={logoLight} 
-                  alt="Eklav Logo" 
+                <img
+                  src={logoLight}
+                  alt="Eklav Logo"
                   height={36}
                   width={126}
                   loading="lazy"
@@ -399,9 +423,9 @@ const Footer = () => {
           <Col md={4}>
             <ul className="social-list">
               <li className="social-item">
-                <Link 
-                  to="https://instagram.com" 
-                  target="_blank" 
+                <Link
+                  to="https://instagram.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="social-link"
                   aria-label="Follow us on Instagram"
@@ -410,9 +434,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li className="social-item">
-                <Link 
-                  to="https://facebook.com" 
-                  target="_blank" 
+                <Link
+                  to="https://facebook.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="social-link"
                   aria-label="Follow us on Facebook"
@@ -421,9 +445,9 @@ const Footer = () => {
                 </Link>
               </li>
               <li className="social-item">
-                <Link 
-                  to="https://twitter.com" 
-                  target="_blank" 
+                <Link
+                  to="https://twitter.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="social-link"
                   aria-label="Follow us on Twitter"
