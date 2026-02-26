@@ -9,6 +9,8 @@ export type AuthContextType = {
   user: UserType | undefined
   isAuthenticated: boolean
   saveSession: (session: UserType) => void
+  updateUser: (data: Partial<UserType>) => void
+  refreshUser: () => Promise<void>
   removeSession: () => void
 }
 
@@ -41,6 +43,57 @@ export function AuthProvider({ children }: ChildrenType) {
     setIsAuthenticated(true)
   }
 
+  const updateUser = (data: Partial<UserType>) => {
+    setUser((prev) => {
+      if (!prev) return prev
+
+      const updatedUser = { ...prev, ...data }
+
+      // update cookie
+      setCookie(authSessionKey, JSON.stringify(updatedUser))
+
+      return updatedUser
+    })
+  }
+
+  const refreshUser = async () => {
+    try {
+      const currentSession = getSession()
+      if (!currentSession?.token) return
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${currentSession.token}`,
+          },
+        }
+      )
+
+      if (!res.ok) throw new Error("Failed to refresh user")
+
+      const data = await res.json()
+
+      console.log("Profile API response:", data)
+
+      // 🔥 Support both structures
+      const freshProfile = data.user ?? data
+
+      const updatedUser = {
+        ...currentSession,
+        ...freshProfile,
+      }
+
+      console.log("Updated user after merge:", updatedUser)
+
+      setCookie(authSessionKey, JSON.stringify(updatedUser))
+      setUser(updatedUser)
+
+    } catch (err) {
+      console.error("Refresh failed:", err)
+    }
+  }
+
   const removeSession = () => {
     deleteCookie(authSessionKey)
     setUser(undefined)
@@ -60,8 +113,11 @@ export function AuthProvider({ children }: ChildrenType) {
         user,
         isAuthenticated,
         saveSession,
+        updateUser,
+        refreshUser, // ✅ added
         removeSession,
-      }}>
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

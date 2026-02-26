@@ -1,178 +1,123 @@
 "use client";
 
 import { useState } from "react";
-import { 
-  FaHeart, 
-  FaRegHeart, 
-  FaCommentDots, 
-  FaShare, 
+import axios from "axios";
+import {
+  FaHeart,
+  FaRegHeart,
+  FaCommentDots,
   FaEllipsisH,
   FaVolumeUp,
-  FaVolumeMute
+  FaVolumeMute,
 } from "react-icons/fa";
+import CommentsDrawer from "./CommentsDrawer";
 
 interface ReelActionsProps {
-  reelId: number;
+  reelId: string;
   initialLikes: number;
   comments: number;
-  shares: number;
   isMuted: boolean;
   onMuteToggle: (e: React.MouseEvent) => void;
+  token?: string;
+  baseURL: string;
 }
 
-const ReelActions = ({ 
-  reelId, 
-  initialLikes, 
-  comments, 
-  shares, 
+const ReelActions = ({
+  reelId,
+  initialLikes,
+  comments,
   isMuted,
-  onMuteToggle 
+  onMuteToggle,
+  token,
+  baseURL,
 }: ReelActionsProps) => {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(initialLikes);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
-  const handleLike = (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    setLiked(!liked);
-    setLikesCount(prev => liked ? prev - 1 : prev + 1);
-  };
 
-  const handleComment = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log("Open comments for reel:", reelId);
-  };
+    try {
+      const res = await axios.patch(
+        `${baseURL}/api/studentSideReels/${reelId}/like`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log("Share reel:", reelId);
-  };
-
-  const handleMore = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    console.log("More options for reel:", reelId);
+      setLiked(res.data.liked);
+      setLikesCount(res.data.likes);
+    } catch (err) {
+      console.error("Like failed");
+    }
   };
 
   return (
     <div
       style={{
         position: "absolute",
-        right: 16,
-        bottom: 120,
+        right: 14,
+        bottom: 110,
         display: "flex",
         flexDirection: "column",
-        gap: 16,
-        color: "#fff",
+        gap: 18,
         alignItems: "center",
+        color: "#fff",
         zIndex: 10,
       }}
     >
       {/* Like */}
       <div style={{ textAlign: "center" }}>
-        <div 
-          onClick={handleLike} 
-          style={{ 
-            cursor: "pointer", 
-            marginBottom: 4,
-            transform: liked ? "scale(1.1)" : "scale(1)",
-            transition: "transform 0.2s ease",
-          }}
-        >
-          {liked ? 
-            <FaHeart size={32} color="#ff3040" /> : 
-            <FaRegHeart size={32} />
-          }
+        <div onClick={handleLike} style={{ cursor: "pointer" }}>
+          {liked ? (
+            <FaHeart size={26} color="#ff3040" />
+          ) : (
+            <FaRegHeart size={26} />
+          )}
         </div>
-        <span style={{ 
-          fontSize: 13, 
-          fontWeight: 600,
-          textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-        }}>
+        <span style={{ fontSize: 12, opacity: 0.9 }}>
           {likesCount}
         </span>
       </div>
 
       {/* Comment */}
       <div style={{ textAlign: "center" }}>
-        <FaCommentDots 
-          size={30} 
-          style={{ 
-            cursor: "pointer", 
-            marginBottom: 4,
-            transition: "transform 0.2s ease",
-          }}
-          onClick={handleComment}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-        />
-        <span style={{ 
-          fontSize: 13, 
-          fontWeight: 600,
-          textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-        }}>
+        <FaCommentDots
+  size={24}
+  style={{ cursor: "pointer" }}
+  onClick={() => setIsCommentsOpen(true)}
+/>
+        <span style={{ fontSize: 12, opacity: 0.9 }}>
           {comments}
         </span>
       </div>
 
-      {/* Share */}
-      <div style={{ textAlign: "center" }}>
-        <FaShare 
-          size={26} 
-          style={{ 
-            cursor: "pointer", 
-            marginBottom: 4,
-            transition: "transform 0.2s ease",
-          }}
-          onClick={handleShare}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-        />
-        <span style={{ 
-          fontSize: 13, 
-          fontWeight: 600,
-          textShadow: "0 1px 2px rgba(0,0,0,0.3)"
-        }}>
-          {shares}
-        </span>
-      </div>
+      {/* More */}
+      <FaEllipsisH
+        size={18}
+        style={{ cursor: "pointer", opacity: 0.8 }}
+      />
 
-      {/* More Options */}
-      <div style={{ textAlign: "center" }}>
-        <FaEllipsisH 
-          size={20} 
-          style={{ 
-            cursor: "pointer",
-            marginBottom: 4,
-            transition: "transform 0.2s ease",
-          }}
-          onClick={handleMore}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-        />
-      </div>
-
-      {/* Mute/Unmute */}
-      <div 
-        style={{ 
-          marginTop: 20,
-          padding: 10,
-          background: "rgba(0,0,0,0.5)",
+      {/* Mute */}
+      <div
+        style={{
+          marginTop: 16,
+          padding: 8,
+          background: "rgba(0,0,0,0.45)",
           borderRadius: "50%",
           cursor: "pointer",
-          transition: "all 0.2s ease",
-          border: "1px solid rgba(255,255,255,0.2)",
         }}
         onClick={onMuteToggle}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = "rgba(0,0,0,0.7)";
-          e.currentTarget.style.transform = "scale(1.1)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "scale(1)";
-        }}
       >
-        {isMuted ? <FaVolumeMute size={18} /> : <FaVolumeUp size={18} />}
+        {isMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
       </div>
+      <CommentsDrawer
+  reelId={reelId}
+  token={token}
+  baseURL={baseURL}
+  isOpen={isCommentsOpen}
+  onClose={() => setIsCommentsOpen(false)}
+/>
     </div>
   );
 };

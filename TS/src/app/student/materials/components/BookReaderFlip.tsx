@@ -105,7 +105,6 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
                     height = maxBookHeight;
                     width = height * 1.25;
                 }
-
                 if (width > availableWidth) {
                     width = availableWidth;
                     height = width * 0.75;

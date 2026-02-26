@@ -67,6 +67,7 @@ import {
   FaEdit,
   FaFacebook,
   FaLinkedinIn,
+  FaPlayCircle,
   FaRegCommentDots,
   FaRegFileAlt,
   FaRegFileCode,
@@ -339,6 +340,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
+    key: 'adminreels',
+    label: 'Admin Reels Upload',
+    icon: FaUserCog,
+    url: '/eklavadmin/admin-reels',
+    parentKey: 'eklavadmin',
+  },
+  {
     key: 'couponManagement',
     label: 'Manage Coupons',
     icon: BsCreditCard2Front,
@@ -387,6 +395,13 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     icon: BsCardChecklist, // ✅ checklist style
     url: '/student/subscription',
   },
+  {
+        key: 'selfInterview',
+        label: 'Self Interview with AI',
+        icon: FaRobot, // 🤖 AI
+        url: '/student/selfInterview',
+        parentKey: 'preparation',
+      },
 
   {
     key: 'courses',
@@ -400,7 +415,13 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         label: 'Materials',
         icon: FaBookOpen,
         url: '/student/materials',
-      }
+      },
+      /* {
+        key: 'materials',
+        label: 'Reels',
+        icon: FaPlayCircle,
+        url: '/student/reels',
+      } */
       /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
       /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
     ],
@@ -468,13 +489,6 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         label: 'Code Challenge',
         icon: HiOutlineCodeBracketSquare, // 📈 challenge/progress
         url: '/student/problem-statement',
-        parentKey: 'preparation',
-      },
-      {
-        key: 'selfInterview',
-        label: 'Self Interview with AI',
-        icon: FaRobot, // 🤖 AI
-        url: '/student/selfInterview',
         parentKey: 'preparation',
       },
       {

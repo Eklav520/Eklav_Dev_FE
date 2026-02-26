@@ -145,7 +145,8 @@ const PREMIUM_FEATURES = [
 ];
 
 const SubscriptionPage = () => {
-    const { user } = useAuthContext();
+    const { user, refreshUser } = useAuthContext();
+    //const { user, updateUser } = useAuthContext();
     const baseURL = import.meta.env.VITE_API_BASE_URL;
     const token = user?.token;
 
@@ -167,6 +168,8 @@ const SubscriptionPage = () => {
     // Universal coupons
     const [universalCoupons, setUniversalCoupons] = useState<UniversalCoupon[]>([]);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+    console.log('profile',profile)
 
     // Add the same premium features to all paid plans
     const plansWithFeatures = plans.map((plan) => ({
@@ -334,7 +337,17 @@ const SubscriptionPage = () => {
                                 endDate: verifyData.subscription.endDate,
                                 paymentId: response.razorpay_payment_id,
                                 amount: plan.price,
-                            });
+                            })
+
+                            await refreshUser()
+
+                            // 🔥 Also update local profile state
+                            const profileRes = await fetch(`${baseURL}/profile`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                            })
+
+                            const profileData = await profileRes.json()
+                            setProfile(profileData)
                         } catch (error: any) {
                             setError(error.message || 'Payment verification failed. Contact support.');
                         } finally {
@@ -368,6 +381,20 @@ const SubscriptionPage = () => {
             year: 'numeric',
         });
     };
+
+    /*  const refreshUserProfile = async () => {
+         const profileRes = await fetch(`${baseURL}/profile`, {
+             headers: {
+                 Authorization: `Bearer ${token}`,
+             },
+         })
+ 
+         if (!profileRes.ok) throw new Error('Failed to refresh profile')
+ 
+         const profileData = await profileRes.json()
+ 
+         updateUser(profileData)  // 🔥 real backend data
+     } */
 
     const copyToClipboard = (code: string) => {
         navigator.clipboard.writeText(code);
@@ -897,8 +924,8 @@ const SubscriptionPage = () => {
                                         <div className="label">Active Plan</div>
                                         <div className="value">
                                             {subscription.plan === '12months' ? '12 Months Premium' :
-                                             subscription.plan === '6months' ? '6 Months Premium' :
-                                             'Premium Plan'}
+                                                subscription.plan === '6months' ? '6 Months Premium' :
+                                                    'Premium Plan'}
                                         </div>
                                     </div>
                                 </div>

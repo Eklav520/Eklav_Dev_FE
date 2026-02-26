@@ -136,10 +136,10 @@ export default function ReelsContainer() {
         >
           {reelsData.map((reel, index) => (
             <SwiperSlide key={reel.id}>
-              <ReelItem 
+              {/* <ReelItem 
                 reel={reel} 
                 isActive={index === activeIndex}
-              />
+              /> */}
             </SwiperSlide>
           ))}
         </Swiper>

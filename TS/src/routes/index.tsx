@@ -101,6 +101,7 @@ const AptitudeQuestionsUpload = lazy(() => import('@/app/eklavadmin/aptitudeQues
 const SelfInterviewEvaluation = lazy(() => import('@/app/eklavadmin/self-interview-evaluation/page'))
 const StudentQuizResult = lazy(() => import('@/app/eklavadmin/studentQuizresult/page'))
 const AdminChatbox = lazy(() => import('@/app/eklavadmin/adminChatPanel/page'))
+const AdminReelsUpload = lazy(() => import('@/app/eklavadmin/adminReelsUpload/page'))
 const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/pages'))
 const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
 
@@ -123,6 +124,7 @@ const StudentDeleteAccount = lazy(() => import('@/app/student/delete-account/pag
 const SelfInterview = lazy(() => import('@/app/student/self-interview/page'))
 const StudentFinalAssessment = lazy(() => import('@/app/student/final-assessment/page'))
 const AvailableCourses = lazy(() => import('@/app/student/available-courses/page'))
+const Reels = lazy(() => import('@/app/student/reel-courses/page'))
 const Materials = lazy(() => import('@/app/student/materials/page'))
 const InterviewDetails = lazy(() => import('@/app/student/interview-details/page'))
 const Aptitude = lazy(() => import('@/app/student/Aptitude Preparation/page'))
@@ -599,6 +601,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Admin Chatbox',
     element: <AdminChatbox />,
   },
+  {
+    path: '/eklavadmin/admin-reels',
+    name: 'Admin Reels',
+    element: <AdminReelsUpload />,
+  },
 ]
 
 export const studentRoutes: RoutesProps[] = [
@@ -631,6 +638,11 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/available-courses',
     name: 'Available Courses',
     element: <AvailableCourses />,
+  },
+  {
+    path: '/student/reels',
+    name: 'Reels Courses',
+    element: <Reels />,
   },
   {
     path: '/student/materials',

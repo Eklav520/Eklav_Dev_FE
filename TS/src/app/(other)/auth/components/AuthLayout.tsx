@@ -1,5 +1,5 @@
 import { FC, lazy, Suspense, memo, useEffect, useMemo, useState, useRef } from "react";
-import { Col, Container, Row, Carousel } from "react-bootstrap";
+import { Col, Container, Row, Carousel, Modal, Button } from "react-bootstrap";
 import logo from "@/assets/images/logo_white.png";
 import { ChildrenType } from "@/types/component-props";
 import useToggle from "@/hooks/useToggle";
@@ -10,6 +10,10 @@ import TrustedCompanies from "./TrustedCompanies";
 const Footer = lazy(() => import("./Footer"));
 const Banner = lazy(() => import("@/components/StudentLayoutComponents/Banner"));
 const TopNavigationBar = lazy(() => import("./TopNavigationBar"));
+
+// Lazy load form components
+const SignInForm = lazy(() => import("@/app/(other)/auth/sign-in/components/SignIn"));
+const SignUpForm = lazy(() => import("@/app/(other)/auth/sign-up/components/SingUpForm"));
 
 // ========== CONSTANTS & CONFIGURATION ==========
 const LAYOUT_CONFIG = {
@@ -730,6 +734,132 @@ const GlobalStyles = memo(() => (
         border-bottom: 1px solid rgba(255, 152, 0, 0.1);
       }
 
+      /* Auth Modal Styles */
+      .auth-modal-dialog {
+        max-width: 900px;
+        margin: 1.75rem auto;
+      }
+
+      @media (max-width: 768px) {
+        .auth-modal-dialog {
+          margin: 0.5rem;
+          max-width: calc(100% - 1rem);
+        }
+      }
+
+      @media (max-width: 576px) {
+        .modal-dialog.auth-modal-dialog {
+          margin: 0;
+          max-width: 100%;
+          min-height: 100%;
+        }
+        
+        .auth-modal-content {
+          border-radius: 0 !important;
+          min-height: 100vh;
+        }
+      }
+
+      .auth-modal-content {
+        border-radius: 22px;
+        border: 1px solid rgba(255,255,255,0.05);
+        background: linear-gradient(135deg, #1e2228 0%, #121417 100%);
+        color: #ffffff;
+        overflow: hidden;
+        box-shadow: 
+          0 30px 80px rgba(0,0,0,0.65),
+          inset 0 1px 0 rgba(255,255,255,0.04);
+        animation: modalFadeIn .25s ease;
+      }
+
+      .auth-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 28px 16px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        background: rgba(255,255,255,0.02);
+      }
+
+      @media (max-width: 768px) {
+        .auth-modal-header {
+          padding: 16px 20px;
+        }
+        
+        .auth-modal-title {
+          font-size: 1.1rem;
+        }
+      }
+
+      .auth-close-btn {
+        background: rgba(255,255,255,0.08);
+        border: none;
+        color: #fd692a;
+        font-size: 16px;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        transition: all .25s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .auth-close-btn:hover {
+        background: #fd692a;
+        color: white;
+        transform: rotate(90deg) scale(1.05);
+      }
+
+      .auth-switch {
+        color: #fd692a;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .2s;
+      }
+
+      .auth-switch:hover {
+        color: #ff8a50;
+        text-decoration: underline;
+      }
+
+      .modal-backdrop.show {
+        backdrop-filter: blur(8px);
+        background-color: rgba(2,6,23,0.75);
+      }
+
+      @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(.94); }
+        to { opacity: 1; transform: scale(1); }
+      }
+
+      .nav-login-btn {
+        color: #fd692a;
+        font-weight: 600;
+        background: transparent;
+        border: none;
+      }
+
+      .nav-login-btn:hover {
+        color: #ff8a50;
+        text-decoration: underline;
+      }
+
+      .nav-signup-btn {
+        background: linear-gradient(135deg, #fd692a 0%, #ff8a50 100%);
+        border: none;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 0.5rem 1.5rem;
+        border-radius: 50px;
+        transition: all .25s ease;
+      }
+
+      .nav-signup-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(253,105,42,0.35);
+      }
+
       /* Responsive Design */
       @media (max-width: 1200px) {
         .carousel-control-prev {
@@ -834,7 +964,9 @@ const GlobalStyles = memo(() => (
         .category-btn,
         .video-overlay,
         .video-thumb,
-        .play-button {
+        .play-button,
+        .auth-close-btn,
+        .nav-signup-btn {
           animation: none;
           transition: none;
         }
@@ -858,9 +990,21 @@ GlobalStyles.displayName = 'GlobalStyles';
 // ========== MAIN COMPONENT ==========
 const AuthLayout: FC<ChildrenType> = ({ children }) => {
   const { toggle: toggleOffCanvasMenu } = useToggle();
+  const [showModal, setShowModal] = useState(false);
+  const [authType, setAuthType] = useState<"signin" | "signup">("signin");
   
   // Generate particles only once
   const particles = useMemo(() => generateParticles(LAYOUT_CONFIG.particles.count), []);
+
+  const handleOpen = (type: "signin" | "signup") => {
+    setAuthType(type);
+    setShowModal(true);
+  };
+
+  const handleClose = () => setShowModal(false);
+
+  // Pass handleOpen to TopNavigationBar via context or props
+  // For now, we'll use a custom event or you can modify TopNavigationBar to accept props
 
   return (
     <main className="auth-wrapper">
@@ -872,7 +1016,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
       {/* Fixed Navigation */}
       <div className="fixed-navigation">
         <Suspense fallback={<LoadingFallback />}>
-          <TopNavigationBar />
+          <TopNavigationBar onLoginClick={() => handleOpen("signin")} onSignupClick={() => handleOpen("signup")} />
         </Suspense>
       </div>
 
@@ -911,6 +1055,44 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           </Suspense>
         </Container>
       </div>
+
+      {/* AUTH MODAL */}
+      <Modal
+        show={showModal}
+        onHide={handleClose}
+        centered
+        backdrop="static"
+        size="xl"
+        dialogClassName="auth-modal-dialog"
+        contentClassName="auth-modal-content"
+        fullscreen="sm-down"
+      >
+        {/* Header */}
+        <div className="auth-modal-header">
+          <h4 className="mb-0 fw-bold text-white auth-modal-title">
+            {authType === "signin"
+              ? "Welcome To Eklav 👋"
+              : "Create Your Account 🚀"}
+          </h4>
+
+          <button className="auth-close-btn" onClick={handleClose}>
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <Modal.Body className="p-4 p-md-5">
+          <Suspense
+            fallback={
+              <div className="text-center py-5">
+                <span className="spinner-border text-warning" />
+              </div>
+            }
+          >
+            {authType === "signin" ? <SignInForm /> : <SignUpForm />}
+          </Suspense>
+        </Modal.Body>
+      </Modal>
     </main>
   );
 };
