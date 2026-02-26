@@ -396,39 +396,6 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/subscription',
   },
   {
-        key: 'selfInterview',
-        label: 'Self Interview with AI',
-        icon: FaRobot, // 🤖 AI
-        url: '/student/selfInterview',
-        parentKey: 'preparation',
-      },
-
-  {
-    key: 'courses',
-    label: 'Courses',
-    icon: BsBook, // 📚 tech-related
-    children: [
-      { key: 'availableCourses', label: 'Available Courses', icon: BsGridFill, url: '/student/available-courses', parentKey: 'courses' },
-      { key: 'enrolledCourses', label: 'Enrolled Courses', icon: FaUserGraduate, url: '/student/course-list', parentKey: 'courses' },
-      {
-        key: 'materials',
-        label: 'Materials',
-        icon: FaBookOpen,
-        url: '/student/materials',
-      },
-      /* {
-        key: 'materials',
-        label: 'Reels',
-        icon: FaPlayCircle,
-        url: '/student/reels',
-      } */
-      /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
-      /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
-    ],
-  },
-
-  // --- English Practice (separate) ---
-  {
     key: 'englishPractice',
     label: 'English Practice',
     icon: BsChatSquareText, // 💬 different from Courses
@@ -463,6 +430,41 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
+
+  {
+    key: 'selfInterview',
+    label: 'Self Interview with AI',
+    icon: FaRobot, // 🤖 AI
+    url: '/student/selfInterview',
+    parentKey: 'preparation',
+  },
+
+  {
+    key: 'courses',
+    label: 'Courses',
+    icon: BsBook, // 📚 tech-related
+    children: [
+      { key: 'availableCourses', label: 'Available Courses', icon: BsGridFill, url: '/student/available-courses', parentKey: 'courses' },
+      { key: 'enrolledCourses', label: 'Enrolled Courses', icon: FaUserGraduate, url: '/student/course-list', parentKey: 'courses' },
+      {
+        key: 'materials',
+        label: 'Materials',
+        icon: FaBookOpen,
+        url: '/student/materials',
+      },
+      /* {
+        key: 'materials',
+        label: 'Reels',
+        icon: FaPlayCircle,
+        url: '/student/reels',
+      } */
+      /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
+      /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
+    ],
+  },
+
+  // --- English Practice (separate) ---
+
 
   // Preparation parent (collapsible)
   {

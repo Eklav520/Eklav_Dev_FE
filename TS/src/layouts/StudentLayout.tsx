@@ -37,7 +37,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const { isTrue: isOffCanvasMenuOpen, toggle: toggleOffCanvasMenu } = useToggle()
 
   // Manual collapse state - controlled by user click
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
@@ -46,6 +46,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [role, setRole] = useState('Guest')
   const [showTrialModal, setShowTrialModal] = useState(false)
   const [userName, setUserName] = useState('Student')
+  const [isHovering, setIsHovering] = useState(false)
+  const isSidebarExpanded = !isCollapsed || isHovering
+  const isOrangeTheme = isHovering && isCollapsed
 
   useEffect(() => {
     const daysLeft = getRemainingTrialDays()
@@ -70,11 +73,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
   // Toggle sidebar collapse
   const toggleSidebar = () => {
-    setIsCollapsed(!isCollapsed)
+    setIsCollapsed(prev => !prev)
+    setIsHovering(false) // reset hover state
   }
 
   // Calculate sidebar width based on collapse state
-  const sidebarWidth = isCollapsed ? '80px' : '280px'
+  const sidebarWidth = isSidebarExpanded ? '280px' : '80px'
 
   return (
     <>
@@ -108,6 +112,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
         {/* FIXED DESKTOP SIDEBAR */}
         {isDesktop && (
           <aside
+            onMouseEnter={() => {
+              if (isCollapsed) setIsHovering(true)
+            }}
+            onMouseLeave={() => {
+              if (isCollapsed) setIsHovering(false)
+            }}
             style={{
               position: 'fixed',
               top: '70px',
@@ -115,14 +125,18 @@ const StudentLayout = ({ children }: ChildrenType) => {
               bottom: 0,
               width: sidebarWidth,
               zIndex: 1020,
-              backgroundColor: '#1a1d21',
+              backgroundColor: isOrangeTheme ? '#1c1410' : '#1a1d21',
+              borderRight: isOrangeTheme
+                ? '1px solid rgba(255,140,0,0.4)'
+                : '1px solid #2c2f33',
+              boxShadow: isOrangeTheme
+                ? '2px 0 12px rgba(255,140,0,0.15)'
+                : 'none',
               color: '#fff',
-              borderRight: '1px solid #2c2f33',
-              transition: 'width 0.3s ease',
+
+              transition: 'width 0.25s ease',
               overflowY: 'auto',
               overflowX: 'hidden',
-              scrollbarWidth: 'thin',
-              scrollbarColor: '#4a4f55 #1a1d21',
             }}
           >
             {/* ===== Sidebar Header ===== */}
@@ -135,7 +149,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
                 justifyContent: 'space-between',
               }}
             >
-              {!isCollapsed ? (
+              {isSidebarExpanded ? (
                 <>
                   <div
                     style={{
@@ -149,7 +163,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
                         width: '36px',
                         height: '36px',
                         borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        background: isOrangeTheme
+                          ? 'linear-gradient(135deg, #ff8c00 0%, #ff6a00 100%)'
+                          : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -193,7 +209,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
                       borderRadius: '6px',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#2c2f33';
+                      e.currentTarget.style.background = isCollapsed
+                        ? '#2c2f33'
+                        : 'rgba(255,140,0,0.15)';
                       e.currentTarget.style.color = '#fff';
                     }}
                     onMouseLeave={(e) => {
@@ -219,7 +237,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
                       width: '40px',
                       height: '40px',
                       borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      background: isOrangeTheme
+                        ? 'linear-gradient(135deg, #ff8c00 0%, #ff6a00 100%)'
+                        : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -247,7 +267,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             </div>
 
             {/* ===== Menu Items ===== */}
-            <VerticalMenu isCollapsed={isCollapsed} />
+            <VerticalMenu isCollapsed={!isSidebarExpanded} />
           </aside>
         )}
 
@@ -298,12 +318,6 @@ const StudentLayout = ({ children }: ChildrenType) => {
       <Suspense fallback={null}>
         <ChatBox position="bottom-right" />
       </Suspense>
-
-      {/* TRIAL MODAL */}
-      <TrialWelcomeModal
-        show={showTrialModal}
-        onClose={() => setShowTrialModal(false)}
-      />
     </>
   )
 }
@@ -351,7 +365,7 @@ const VerticalMenu = ({ isCollapsed }: { isCollapsed: boolean }) => {
     const open = !!openKeys[node.key]
 
     if (node.isTitle) {
-      return !isCollapsed ? (
+      return isCollapsed ? (
         <div key={node.key} style={{
           padding: '12px 16px 8px',
           fontSize: '0.75rem',
@@ -387,7 +401,9 @@ const VerticalMenu = ({ isCollapsed }: { isCollapsed: boolean }) => {
             }}
             onMouseEnter={(e) => {
               if (!pathname.startsWith(node.url || '#')) {
-                e.currentTarget.style.background = '#2c2f33'
+                e.currentTarget.style.background = isCollapsed
+                  ? '#2c2f33'
+                  : 'rgba(255,140,0,0.15)'
                 e.currentTarget.style.color = '#fff'
               }
             }}
@@ -447,7 +463,9 @@ const VerticalMenu = ({ isCollapsed }: { isCollapsed: boolean }) => {
         }}
         onMouseEnter={(e) => {
           if (!isActive) {
-            e.currentTarget.style.background = '#2c2f33'
+            e.currentTarget.style.background = isCollapsed
+              ? '#2c2f33'
+              : 'rgba(255,140,0,0.15)'
             e.currentTarget.style.color = '#fff'
           }
         }}
