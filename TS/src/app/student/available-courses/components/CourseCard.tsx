@@ -65,7 +65,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   const isApproved = status === 'approved'
   const isPending = status === 'pending'
   const courseStatus = course?.courseStatus?.toLowerCase()
-  const isComingSoon = courseStatus === 'comingsoon'
+  const isComingSoon = courseStatus === 'coming-soon'
 
   const canEnroll =
     courseType === 'free'
