@@ -74,6 +74,7 @@ const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/pag
 const InstructorDashboard = lazy(() => import('@/app/eklavadmin/dashboard/page'))
 const StudentAnalytics = lazy(() => import('@/app/eklavadmin/student-analytics/page'))
 const InstructorCourses = lazy(() => import('@/app/eklavadmin/manage-course/page'))
+const InternList = lazy(() => import('@/app/eklavadmin/adminIntern/page'))
 const InstructorCreateCourse = lazy(() => import('@/app/(other)/instructor/create-course/page'))
 const InstructorCourseAdd = lazy(() => import('@/app/(other)/instructor/course-added/page'))
 const InstructorCodeChallenge = lazy(() => import('@/app/eklavadmin/codeChallenge/page'))
@@ -124,6 +125,8 @@ const StudentDeleteAccount = lazy(() => import('@/app/student/delete-account/pag
 const SelfInterview = lazy(() => import('@/app/student/self-interview/page'))
 const StudentFinalAssessment = lazy(() => import('@/app/student/final-assessment/page'))
 const AvailableCourses = lazy(() => import('@/app/student/available-courses/page'))
+const IntershipsList = lazy(() => import('@/app/student/Internships/page'))
+const IntershipsApplied = lazy(() => import('@/app/student/Internships/page'))
 const Reels = lazy(() => import('@/app/student/reel-courses/page'))
 const Materials = lazy(() => import('@/app/student/materials/page'))
 const InterviewDetails = lazy(() => import('@/app/student/interview-details/page'))
@@ -466,6 +469,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Courses',
     element: <InstructorCourses />,
   },
+   {
+    path: '/eklavadmin/intern-list',
+    name: 'Intern List',
+    element: <InternList />,
+  },
   {
     path: '/eklavadmin/course-added',
     name: 'Course Added',
@@ -638,6 +646,16 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/available-courses',
     name: 'Available Courses',
     element: <AvailableCourses />,
+  },
+  {
+    path: '/student/interships',
+    name: 'Interships',
+    element: <IntershipsList/>,
+  },
+    {
+    path: '/student/applied',
+    name: 'Interships',
+    element: <IntershipsApplied/>,
   },
   {
     path: '/student/reels',

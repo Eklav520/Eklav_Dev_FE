@@ -253,6 +253,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/eklavadmin/manage-course',
         parentKey: 'eklavadmin',
       },
+      /*  {
+        key: 'internList',
+        label: 'Intern List',
+        icon: BsCardChecklist,
+        url: '/eklavadmin/intern-list',
+        parentKey: 'eklavadmin',
+      }, */
     ],
   },
   {
@@ -438,6 +445,18 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/selfInterview',
     parentKey: 'preparation',
   },
+
+/*   {
+    key: 'internship',
+    label: 'Internships',
+    icon: BsBook, // 📚 tech-related
+    children: [
+      { key: 'availableIntern', label: 'Available Internships', icon: BsGridFill, url: '/student/interships', parentKey: 'internship' },
+      { key: 'applyIntern', label: 'Apllied Internships', icon: FaUserGraduate, url: '/student/applied', parentKey: 'internship' },
+      
+     
+    ],
+  }, */
 
   {
     key: 'courses',
