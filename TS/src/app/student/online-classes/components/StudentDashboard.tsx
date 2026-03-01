@@ -42,17 +42,33 @@ interface Course {
   students?: number
 }
 
+interface Tutor {
+  _id: string
+  name: string
+  experience?: string
+  achievements?: string[]
+  bio?: string
+  profileImage?: string
+}
+
 interface ClassSession {
   _id: string
   title: string
-  courseId: Course | null
-  date: string | null // tolerate bad data
-  startTime: string | null
-  endTime: string | null
+  courseName: string
+  startDate?: string | null
+  startTime?: string | null
+
+  endTime?: string | null
   meetingLink: string
-  capacity?: number
-  enrolled?: number
-  type?: 'live' | 'recorded' | 'workshop'
+  description?: string
+  createdBy?: Tutor | null
+
+  // ✅ ADD THESE
+  cost?: number
+  totalSeats?: number
+  availableSeats?: number
+  days?: string[]
+  tags?: string[]
 }
 
 interface Props {
@@ -65,15 +81,15 @@ interface Props {
 
 const notNil = <T,>(x: T | null | undefined): x is T => x != null
 
-type RowWithTimes = { date?: string | null; startTime?: string | null; endTime?: string | null }
-type RowWithEnd = { date?: string | null; endTime?: string | null }
+type RowWithTimes = { startDate?: string | null; startTime?: string | null; endTime?: string | null }
+type RowWithEnd = { startDate?: string | null; endTime?: string | null }
 
 const hasDateStartEnd = (x: unknown): x is Required<RowWithTimes> => {
   const r = x as any
   return (
     !!r &&
-    typeof r.date === 'string' &&
-    r.date.trim() &&
+    typeof r.startDate === 'string' &&
+    r.startDate.trim() &&
     typeof r.startTime === 'string' &&
     r.startTime.trim() &&
     typeof r.endTime === 'string' &&
@@ -83,7 +99,13 @@ const hasDateStartEnd = (x: unknown): x is Required<RowWithTimes> => {
 
 const hasDateEnd = (x: unknown): x is Required<RowWithEnd> => {
   const r = x as any
-  return !!r && typeof r.date === 'string' && r.date.trim() && typeof r.endTime === 'string' && r.endTime.trim()
+  return (
+    !!r &&
+    typeof r.startDate === 'string' &&
+    r.startDate.trim() &&
+    typeof r.endTime === 'string' &&
+    r.endTime.trim()
+  )
 }
 
 /** ---------- date/time normalizers that accept ISO, dd/MM/yyyy, etc. ---------- */
@@ -130,8 +152,8 @@ const safeParseDateTime = (dateStr?: string | null, timeStr?: string | null): Da
 
 const isLive = (row: unknown): boolean => {
   if (!hasDateStartEnd(row)) return false
-  const start = safeParseDateTime(row.date, row.startTime)
-  const end = safeParseDateTime(row.date, row.endTime)
+  const start = safeParseDateTime(row.startDate, row.startTime)
+  const end = safeParseDateTime(row.startDate, row.endTime)
   if (!start || !end) return false
   const now = new Date()
   return start <= now && now <= end
@@ -139,7 +161,7 @@ const isLive = (row: unknown): boolean => {
 
 const isUpcoming = (row: unknown): boolean => {
   if (!hasDateStartEnd(row)) return false
-  const start = safeParseDateTime(row.date, row.startTime)
+  const start = safeParseDateTime(row.startDate, row.startTime)
   return !!start && start > new Date()
 }
 
@@ -158,6 +180,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   // Available tab pagination
   const [availPage, setAvailPage] = useState(1)
   const [availPageSize, setAvailPageSize] = useState(9) // cards per page
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false)
+  const [selectedPurchaseClass, setSelectedPurchaseClass] = useState<ClassSession | null>(null)
+  const [purchasing, setPurchasing] = useState(false)
 
   // Enrolled tab pagination (optional)
   const [enrPage, setEnrPage] = useState(1)
@@ -216,7 +241,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   }
 
   const getTimeUntilClass = (cls: ClassSession): string => {
-    const start = safeParseDateTime(cls.date, cls.startTime)
+    const start = safeParseDateTime(cls.startDate, cls.startTime)
     if (!start) return ''
     const now = new Date()
     const diff = start.getTime() - now.getTime()
@@ -229,21 +254,141 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     return `${minutes}m`
   }
 
+  const loadRazorpayScript = () => {
+    return new Promise<boolean>((resolve) => {
+      // If already loaded, resolve immediately
+      if ((window as any).Razorpay) {
+        resolve(true);
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleClassPurchase = async (classId: string) => {
+    try {
+      setPurchasing(true);
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        alert("Failed to load payment gateway. Please try again.");
+        return;
+      }
+
+      // 1️⃣ Create Order
+      const res = await fetch(
+        `${baseURL}/payment/create-class-order/${classId}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        throw new Error("Failed to create payment order");
+      }
+
+      const data = await res.json();
+
+      // 2️⃣ Razorpay Options
+      const options = {
+        key: data.key,
+        amount: data.amount,
+        currency: data.currency,
+        name: "Eklav Learning",
+        description: "Online Class Purchase",
+        order_id: data.orderId,
+
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await fetch(
+              `${baseURL}/payment/verify-class-payment`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  classId,
+                }),
+              }
+            );
+
+            const verifyData = await verifyRes.json();
+
+            if (!verifyRes.ok || !verifyData.success) {
+              throw new Error("Payment verification failed");
+            }
+
+            // ✅ Success
+            await fetchEnrolledClasses();
+            await fetchAvailableClasses();
+            setShowPurchaseModal(false);
+            setActiveTab("enrolled");
+
+          } catch (verifyError) {
+            console.error("Verification error:", verifyError);
+            alert("Payment verification failed. Contact support.");
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            console.log("Payment popup closed");
+          },
+        },
+
+        theme: {
+          color: "#f97316",
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+
+      rzp.on("payment.failed", function (response: any) {
+        console.error("Payment failed:", response.error);
+        alert("Payment failed. Please try again.");
+      });
+
+      rzp.open();
+
+    } catch (err) {
+      console.error("Class purchase error:", err);
+      alert("Something went wrong. Please try again.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
   const handleEnroll = async (classId: string) => {
     try {
       const res = await fetch(`${baseURL}/student/enroll/${classId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
       })
+
       if (res.ok) {
-        alert('Enrolled successfully!')
         fetchEnrolledClasses()
       } else {
         const error = await res.json()
-        alert(`Enrollment failed: ${error.error}`)
+        alert(`Purchase failed: ${error.error}`)
       }
     } catch (err) {
-      console.error('Error during enrollment:', err)
+      console.error('Error during purchase:', err)
     }
   }
 
@@ -257,7 +402,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     const q = (searchTerm || '').toLowerCase()
     return (availableClasses ?? []).filter(notNil).filter((cls) => {
       const t1 = (cls.title || '').toLowerCase()
-      const t2 = (cls.courseId?.title || '').toLowerCase()
+      const t2 = (cls.courseName || '').toLowerCase()
       return t1.includes(q) || t2.includes(q)
     })
   }, [availableClasses, searchTerm])
@@ -269,18 +414,18 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   )
 
   // Available
-const availTotalPages = Math.max(1, Math.ceil(upcomingClasses.length / availPageSize))
-const pagedUpcoming = useMemo(() => {
-  const start = (availPage - 1) * availPageSize
-  return upcomingClasses.slice(start, start + availPageSize)
-}, [upcomingClasses, availPage, availPageSize])
+  const availTotalPages = Math.max(1, Math.ceil(upcomingClasses.length / availPageSize))
+  const pagedUpcoming = useMemo(() => {
+    const start = (availPage - 1) * availPageSize
+    return upcomingClasses.slice(start, start + availPageSize)
+  }, [upcomingClasses, availPage, availPageSize])
 
-// Enrolled
-const enrTotalPages = Math.max(1, Math.ceil(enrolledClasses.length / enrPageSize))
-const pagedEnrolled = useMemo(() => {
-  const start = (enrPage - 1) * enrPageSize
-  return enrolledClasses.slice(start, start + enrPageSize)
-}, [enrolledClasses, enrPage, enrPageSize])
+  // Enrolled
+  const enrTotalPages = Math.max(1, Math.ceil(enrolledClasses.length / enrPageSize))
+  const pagedEnrolled = useMemo(() => {
+    const start = (enrPage - 1) * enrPageSize
+    return enrolledClasses.slice(start, start + enrPageSize)
+  }, [enrolledClasses, enrPage, enrPageSize])
 
 
   useEffect(() => {
@@ -297,7 +442,7 @@ const pagedEnrolled = useMemo(() => {
         .filter(notNil)
         .filter(hasDateEnd)
         .filter((cls) => {
-          const end = safeParseDateTime(cls.date, cls.endTime)
+          const end = safeParseDateTime(cls.startDate, cls.endTime)
           return !!end && end < new Date()
         }),
     [enrolledClasses],
@@ -307,450 +452,559 @@ const pagedEnrolled = useMemo(() => {
     <>
       <Container fluid className="professional-dashboard">
         {/* Header Section */}
+        {/* ================= HEADER ================= */}
         <div className="dashboard-header">
-          <Row className="align-items-center">
-            <Col lg={8}>
-              <div className="header-content">
-                <h1 className="dashboard-title">
-                  <FaGraduationCap className="header-icon" />
-                  Learning Dashboard
-                </h1>
-                <p className="dashboard-subtitle">Manage your classes and track your learning journey</p>
+          <div className="header-left">
+            <FaGraduationCap className="header-icon me-2" />
+            <h1 className="dashboard-title mb-0">Learning Dashboard</h1>
+          </div>
 
-                <div className="stats-container">
-                  <div className="stat-card">
-                    <div className="stat-icon enrolled">
-                      <FaBook />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{enrolledClasses.filter(notNil).length}</div>
-                      <div className="stat-label">Enrolled Classes</div>
-                    </div>
-                  </div>
+          <div className="header-center">
+            <div className="search-box">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search classes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+            </div>
+          </div>
 
-                  <div className="stat-card">
-                    <div className="stat-icon upcoming">
-                      <FaRocket />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{upcomingClasses.length}</div>
-                      <div className="stat-label">Upcoming</div>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon completed">
-                      <FaCertificate />
-                    </div>
-                    <div className="stat-info">
-                      <div className="stat-number">{completedClasses.length}</div>
-                      <div className="stat-label">Completed</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Col>
-
-            <Col lg={4}>
-              <div className="header-actions">
-                <div className="search-box">
-                  <FaSearch className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search classes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="search-input"
-                  />
-                </div>
-              </div>
-            </Col>
-          </Row>
+          <div className="header-right">
+            <Tabs
+              activeKey={activeTab}
+              onSelect={(k) => setActiveTab(k || "available")}
+              className="professional-tabs"
+            >
+              <Tab
+                eventKey="available"
+                title={
+                  <span>
+                    Available
+                    <Badge className="tab-badge">
+                      {availableClasses.filter(notNil).length}
+                    </Badge>
+                  </span>
+                }
+              />
+              <Tab
+                eventKey="enrolled"
+                title={
+                  <span>
+                    Enrolled
+                    <Badge className="tab-badge">
+                      {enrolledClasses.filter(notNil).length}
+                    </Badge>
+                  </span>
+                }
+              />
+            </Tabs>
+          </div>
         </div>
 
-        {/* Main Content */}
+        {/* ================= CONTENT ================= */}
         <div className="dashboard-content">
-          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'available')} className="professional-tabs">
-            {/* Available Classes Tab */}
-            <Tab
-              eventKey="available"
-              title={
-                <span className="tab-title">
-                  <FaRegCalendarCheck className="tab-icon" />
-                  Available Classes
-                  <Badge bg="primary" className="tab-badge">
-                    {availableClasses.filter(notNil).length}
-                  </Badge>
-                </span>
-              }>
-              <div className="tab-content">
-                <div className="section-header">
-                  <h2>Upcoming Learning Sessions</h2>
-                  <p>Discover and enroll in new learning opportunities tailored for you</p>
+
+          {activeTab === "available" && (
+            <>
+              {upcomingClasses.length === 0 ? (
+                <div className="empty-state">
+                  <FaCalendarAlt size={64} className="empty-icon" />
+                  <h3>No Upcoming Classes</h3>
+                  <p>Check back later for new learning sessions</p>
                 </div>
+              ) : (
+                <Row className="g-4">
+                  {pagedUpcoming.map((cls) => {
+                    const classLive = isLive(cls)
+                    const classUpcoming = !classLive && isUpcoming(cls)
+                    const alreadyPurchased = enrolledClasses.some(
+                      (e) => e._id === cls._id
+                    )
 
-                {upcomingClasses.length === 0 ? (
-                  <div className="empty-state">
-                    <FaCalendarAlt size={64} className="empty-icon" />
-                    <h3>No Upcoming Classes</h3>
-                    <p>Check back later for new learning sessions</p>
-                  </div>
-                ) : (
-                  <Row className="g-4">
-                    {pagedUpcoming.map((cls) => {
-                      const classLive = isLive(cls)
-                      const classUpcoming = !classLive && isUpcoming(cls)
+                    return (
+                      <Col key={cls._id} xl={4} lg={6} md={6}>
+                        <Card className="class-card premium">
+                          <Card.Body>
 
-                      return (
-                        <Col key={cls._id} xl={4} lg={6} md={6}>
-                          <Card className="class-card premium">
-                            <Card.Body>
-                              <div className="class-header">
-                                <div className="class-badges">
-                                  <span className={`badge status-badge ${classLive ? 'live' : 'upcoming'}`}>
-                                    {classLive ? (
-                                      <>
-                                        <FaVideo className="me-1" />
-                                        LIVE NOW
-                                      </>
-                                    ) : (
-                                      'UPCOMING'
-                                    )}
-                                  </span>
-                                  <span className="badge type-badge">
-                                    <FaLaptop className="me-1" />
-                                    {(cls.type || 'live').toUpperCase()}
-                                  </span>
-                                </div>
-
-                                {classUpcoming && (
-                                  <div className="countdown">
-                                    <FaClock className="me-1" />
-                                    Starts in {getTimeUntilClass(cls)}
-                                  </div>
-                                )}
-                              </div>
-
-                              <h3 className="class-title">{cls.title}</h3>
-
-                              <div className="class-meta">
-                                <div className="meta-item">
-                                  <FaCalendar className="meta-icon" />
-                                  <span>{formatDate(cls.date || undefined)}</span>
-                                </div>
-                                <div className="meta-item">
-                                  <FaClock className="meta-icon" />
-                                  <span>
-                                    {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
-                                  </span>
-                                </div>
-                                <div className="meta-item">
-                                  <FaUserTie className="meta-icon" />
-                                  <span>{cls.courseId?.instructor || 'Expert Instructor'}</span>
-                                </div>
-                              </div>
-
-                              <div className="class-description">
-                                {cls.courseId?.description || 'Join this interactive learning session to enhance your skills.'}
-                              </div>
-
-                              <div className="class-actions">
-                                <Button variant="outline-primary" className="action-btn details-btn" onClick={() => showClassDetails(cls)}>
-                                  View Details
-                                </Button>
-                                <Button variant="primary" className="action-btn enroll-btn" onClick={() => handleEnroll(cls._id)}>
-                                  Enroll Now
-                                  <FaArrowRight className="ms-2" />
-                                </Button>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      )
-                    })}
-                  </Row>
-                )}
-              </div>
-            </Tab>
-
-            {/* Enrolled Classes Tab */}
-            <Tab
-              eventKey="enrolled"
-              title={
-                <span className="tab-title">
-                  <FaBook className="tab-icon" />
-                  My Enrollments
-                  <Badge bg="success" className="tab-badge">
-                    {enrolledClasses.filter(notNil).length}
-                  </Badge>
-                </span>
-              }>
-              <div className="tab-content">
-                <div className="section-header">
-                  <h2>Your Learning Journey</h2>
-                  <p>Track your progress and access your enrolled classes</p>
-                </div>
-
-                {enrolledClasses.length === 0 ? (
-                  <div className="empty-state">
-                    <FaGraduationCap size={64} className="empty-icon" />
-                    <h3>No Enrollments Yet</h3>
-                    <p>Start your learning journey by enrolling in available classes</p>
-                    <Button variant="primary" className="cta-button" onClick={() => setActiveTab('available')}>
-                      Browse Classes
-                    </Button>
-                  </div>
-                ) : (
-                  <Row className="g-4">
-                    {enrolledClasses.filter(notNil).map((cls) => {
-                      const classLive = isLive(cls)
-                      const classUpcoming = !classLive && isUpcoming(cls)
-                      const classCompleted = (() => {
-                        const end = safeParseDateTime(cls.date, cls.endTime)
-                        return !!end && end < new Date()
-                      })()
-
-                      return (
-                        <Col key={cls._id} xl={6} lg={6} md={12}>
-                          <Card className={`enrollment-card ${classLive ? 'live' : classCompleted ? 'completed' : 'upcoming'}`}>
-                            <Card.Body>
-                              <div className="enrollment-header">
-                                <div className="enrollment-status">
-                                  <span className={`badge status-badge ${classLive ? 'live' : classCompleted ? 'completed' : 'upcoming'}`}>
-                                    {classLive ? 'LIVE NOW' : classCompleted ? 'COMPLETED' : 'UPCOMING'}
-                                  </span>
-                                  <span className="enrollment-date">
-                                    <FaCalendar className="me-1" />
-                                    {formatDate(cls.date || undefined)}
-                                  </span>
-                                </div>
-                                <div className="enrollment-type">
-                                  <FaDesktop className="type-icon" />
-                                  Online Class
-                                </div>
-                              </div>
-
-                              <h3 className="enrollment-title">{cls.title}</h3>
-
-                              <div className="enrollment-details">
-                                <div className="detail-group">
-                                  <div className="detail-item">
-                                    <strong>Course:</strong> {cls.courseId?.title || 'Professional Development'}
-                                  </div>
-                                  <div className="detail-item">
-                                    <strong>Time:</strong> {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
-                                  </div>
-                                  <div className="detail-item">
-                                    <strong>Instructor:</strong> {cls.courseId?.instructor || 'Industry Expert'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="enrollment-actions">
-                                <Button
-                                  variant={classLive ? 'danger' : 'primary'}
-                                  href={cls.meetingLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  disabled={classCompleted && !classLive}
-                                  className="join-button">
-                                  <FaVideo className="me-2" />
-                                  {classLive ? 'Join Live Session' : classCompleted ? 'Session Ended' : 'Join Class'}
-                                  <FaExternalLinkAlt className="ms-2" />
-                                </Button>
+                            <div className="class-header">
+                              <div className="class-badges">
+                                <span className={`badge status-badge ${classLive ? "live" : "upcoming"}`}>
+                                  {classLive ? "LIVE NOW" : "UPCOMING"}
+                                </span>
                               </div>
 
                               {classUpcoming && (
-                                <div className="upcoming-notice">
-                                  <FaClock className="me-2" />
-                                  Session starts in {getTimeUntilClass(cls)}
+                                <div className="countdown">
+                                  <FaClock className="me-1" />
+                                  Starts in {getTimeUntilClass(cls)}
                                 </div>
                               )}
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      )
-                    })}
-                  </Row>
-                  
-                )}
-                {availTotalPages > 1 && (
-  <div className="list-footer">
-    <div className="page-size">
-      <label>
-        Per page:&nbsp;
-        <select
-          value={availPageSize}
-          onChange={(e) => { setAvailPageSize(Number(e.target.value)); setAvailPage(1) }}
-        >
-          <option value={6}>6</option>
-          <option value={9}>9</option>
-          <option value={12}>12</option>
-        </select>
-      </label>
-    </div>
+                            </div>
 
-    <Pagination className="glass-pagination">
-      <Pagination.First onClick={() => setAvailPage(1)} disabled={availPage === 1} />
-      <Pagination.Prev onClick={() => setAvailPage(p => Math.max(1, p - 1))} disabled={availPage === 1} />
+                            <h3 className="class-title">{cls.title}</h3>
 
-      {/* compact window of page numbers */}
-      {(() => {
-        const maxBtns = 5
-        const pages = []
-        let start = Math.max(1, availPage - Math.floor(maxBtns / 2))
-        let end = Math.min(availTotalPages, start + maxBtns - 1)
-        start = Math.max(1, end - maxBtns + 1)
-        for (let i = start; i <= end; i++) pages.push(i)
-        return (
-          <>
-            {start > 1 && <Pagination.Ellipsis disabled />}
-            {pages.map(n => (
-              <Pagination.Item key={n} active={n === availPage} onClick={() => setAvailPage(n)}>
-                {n}
-              </Pagination.Item>
-            ))}
-            {end < availTotalPages && <Pagination.Ellipsis disabled />}
-          </>
-        )
-      })()}
+                            <div className="class-meta">
+                              <div className="meta-item">
+                                <FaCalendar className="meta-icon" />
+                                <span>{formatDate(cls.startDate)}</span>
+                              </div>
+                              <div className="meta-item">
+                                <FaClock className="meta-icon" />
+                                <span>
+                                  {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
+                                </span>
+                              </div>
+                              <div className="meta-item">
+                                <FaUserTie className="meta-icon" />
+                                <span>{cls.createdBy?.name || "Instructor"}</span>
+                              </div>
+                            </div>
+                            <div className="class-extra-info">
+                              {cls.cost && (
+                                <div className="info-item">
+                                  {cls.cost && (
+                                    <div className="price-badge">
+                                      ₹ {cls.cost.toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
 
-      <Pagination.Next onClick={() => setAvailPage(p => Math.min(availTotalPages, p + 1))} disabled={availPage === availTotalPages} />
-      <Pagination.Last onClick={() => setAvailPage(availTotalPages)} disabled={availPage === availTotalPages} />
-    </Pagination>
-  </div>
-)}
+                              {typeof cls.availableSeats === "number" &&
+                                typeof cls.totalSeats === "number" && (
+                                  <div className="info-item">
+                                    <div className="slots-wrapper">
+                                      <div className="slots-text">
+                                        🎟 {cls.availableSeats} / {cls.totalSeats} Seats Left
+                                      </div>
 
-              </div>
-            </Tab>
-          </Tabs>
+                                      <div className="slots-progress">
+                                        <div
+                                          className="slots-fill"
+                                          style={{
+                                            width: `${((cls.totalSeats - cls.availableSeats) /
+                                              cls.totalSeats) *
+                                              100
+                                              }%`,
+                                          }}
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              {cls.days?.length && (
+                                <div className="info-item">
+                                  {cls.days?.length && (
+                                    <div className="info-item">
+                                      📅 {cls.days
+                                        .sort(
+                                          (a, b) =>
+                                            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(a) -
+                                            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(b)
+                                        )
+                                        .join(", ")}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {cls.tags?.length && (
+                                <div className="tags-container">
+                                  {cls.tags.map((tag, index) => (
+                                    <span key={index} className="tag-badge">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                            </div>
+
+                            <div className="class-actions">
+                              <Button
+                                variant="outline-primary"
+                                className="action-btn details-btn"
+                                onClick={() => showClassDetails(cls)}
+                              >
+                                View Details
+                              </Button>
+                              {alreadyPurchased ? (
+                                <Button
+                                  variant="success"
+                                  className="action-btn"
+                                  disabled
+                                >
+                                  Purchased
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="primary"
+                                  className="action-btn enroll-btn"
+                                  onClick={() => {
+                                    setSelectedPurchaseClass(cls)
+                                    setShowPurchaseModal(true)
+                                  }}
+                                >
+                                  Purchase
+                                </Button>
+                              )}
+                            </div>
+
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    )
+                  })}
+                </Row>
+              )}
+            </>
+          )}
+
+          {activeTab === "enrolled" && (
+            <>
+              {enrolledClasses.length === 0 ? (
+                <div className="empty-state">
+                  <FaGraduationCap size={64} className="empty-icon" />
+                  <h3>No Enrollments Yet</h3>
+                  <Button onClick={() => setActiveTab("available")}>
+                    Browse Classes
+                  </Button>
+                </div>
+              ) : (
+                <Row className="g-4">
+                  {enrolledClasses.filter(notNil).map((cls) => {
+                    const classLive = isLive(cls)
+                    const endDate = safeParseDateTime(cls.startDate, cls.endTime)
+                    const classCompleted = endDate ? endDate < new Date() : false
+
+                    return (
+                      <Col key={cls._id} xl={6} lg={6} md={12}>
+                        <Card className={`enrollment-card ${classLive ? "live" : classCompleted ? "completed" : "upcoming"}`}>
+                          <Card.Body>
+
+                            <h3 className="enrollment-title">{cls.title}</h3>
+
+                            <div className="enrollment-details">
+                              <div><strong>Course:</strong> {cls.courseName}</div>
+                              <div>
+                                <strong>Time:</strong> {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
+                              </div>
+                              <div>
+                                <strong>Instructor:</strong> {cls.createdBy?.name}
+                              </div>
+                            </div>
+
+                            <Button
+                              variant={classLive ? "danger" : "primary"}
+                              href={cls.meetingLink}
+                              target="_blank"
+                              disabled={classCompleted && !classLive}
+                              className="join-button mt-3"
+                            >
+                              {classLive ? "Join Live Session" : classCompleted ? "Session Ended" : "Join Class"}
+                            </Button>
+
+                          </Card.Body>
+                        </Card>
+                      </Col>
+                    )
+                  })}
+                </Row>
+              )}
+            </>
+          )}
+
         </div>
+
+        {/* Main Content */}
+
       </Container>
 
       {/* Class Details Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} size="lg" centered className="professional-modal">
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
+        size="xl"
+        centered
+        fullscreen
+        className="professional-modal"
+      >
         <Modal.Header closeButton>
           <Modal.Title>
             <FaChalkboardTeacher className="me-2" />
             Class Details
           </Modal.Title>
         </Modal.Header>
+
         <Modal.Body>
-          {selectedClass && (
-            <div className="class-details">
-              <div className="class-hero">
-                <h3>{selectedClass.title}</h3>
-                <span className="badge modal-badge">{isLive(selectedClass) ? 'LIVE' : isUpcoming(selectedClass) ? 'UPCOMING' : 'COMPLETED'}</span>
-              </div>
+          {selectedClass && (() => {
+            const alreadyPurchased = enrolledClasses.some(
+              (e) => e._id === selectedClass._id
+            )
 
-              <div className="details-grid">
-                <div className="detail-card">
-                  <FaCalendar className="detail-icon" />
-                  <div>
-                    <label>Date</label>
-                    <span>{formatDate(selectedClass.date || undefined)}</span>
-                  </div>
-                </div>
+            return (
+              <div className="class-modal-layout">
 
-                <div className="detail-card">
-                  <FaClock className="detail-icon" />
-                  <div>
-                    <label>Time</label>
-                    <span>
-                      {formatTime(selectedClass.startTime)} - {formatTime(selectedClass.endTime)}
+                {/* LEFT SIDE */}
+                <div className="modal-left">
+
+                  <div className="class-hero">
+                    <h3>{selectedClass.title}</h3>
+                    <span className="badge modal-badge">
+                      {isLive(selectedClass)
+                        ? 'LIVE'
+                        : isUpcoming(selectedClass)
+                          ? 'UPCOMING'
+                          : 'COMPLETED'}
                     </span>
                   </div>
+
+                  <div className="details-grid">
+                    <div className="detail-card">
+                      <FaCalendar className="detail-icon" />
+                      <div>
+                        <label>Date</label>
+                        <span>{formatDate(selectedClass.startDate || undefined)}</span>
+                      </div>
+                    </div>
+
+                    <div className="detail-card">
+                      <FaClock className="detail-icon" />
+                      <div>
+                        <label>Time</label>
+                        <span>
+                          {formatTime(selectedClass.startTime)} -{' '}
+                          {formatTime(selectedClass.endTime)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="detail-card">
+                      <FaGlobe className="detail-icon" />
+                      <div>
+                        <label>Format</label>
+                        <span>Live Online Session</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedClass.description && (
+                    <div className="description-section">
+                      <h5>About This Session</h5>
+                      <div
+                        dangerouslySetInnerHTML={{
+                          __html: selectedClass.description || ''
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="detail-card">
-                  <FaUserTie className="detail-icon" />
-                  <div>
-                    <label>Instructor</label>
-                    <span>{selectedClass.courseId?.instructor || 'Industry Expert'}</span>
+                {/* RIGHT SIDE – INSTRUCTOR */}
+                <div className="modal-right">
+                  {selectedClass.createdBy && (
+                    <div className="instructor-card">
+                      <h5 className="section-title">Instructor</h5>
+
+                      <div className="instructor-profile">
+                        <div className="instructor-avatar">
+                          {selectedClass.createdBy.profileImage ? (
+                            <img
+                              src={selectedClass.createdBy.profileImage}
+                              alt={selectedClass.createdBy.name}
+                            />
+                          ) : (
+                            <div className="avatar-placeholder">
+                              {selectedClass.createdBy.name?.charAt(0)}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="instructor-info">
+                          <h6>{selectedClass.createdBy.name}</h6>
+
+                          {selectedClass.createdBy.experience && (
+                            <p className="exp">
+                              {selectedClass.createdBy.experience} Experience
+                            </p>
+                          )}
+
+                          {selectedClass.createdBy.bio && (
+                            <p className="bio">
+                              {selectedClass.createdBy.bio}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {selectedClass.createdBy.achievements?.length ? (
+                        <ul className="achievements">
+                          {selectedClass.createdBy.achievements.map((a, i) => (
+                            <li key={i}>{a}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Purchase Button */}
+                  <div className="modal-actions">
+                    {alreadyPurchased ? (
+                      <Button variant="success" disabled>
+                        Already Purchased
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="primary"
+                        onClick={() => {
+                          setSelectedPurchaseClass(selectedClass)
+                          setShowModal(false)
+                          setShowPurchaseModal(true)
+                        }}
+                      >
+                        Purchase This Class
+                      </Button>
+                    )}
                   </div>
                 </div>
 
-                <div className="detail-card">
-                  <FaGlobe className="detail-icon" />
-                  <div>
-                    <label>Format</label>
-                    <span>Live Online Session</span>
-                  </div>
+              </div>
+            )
+          })()}
+        </Modal.Body>
+      </Modal>
+      {/* ================= PURCHASE MODAL ================= */}
+      <Modal
+        show={showPurchaseModal}
+        onHide={() => setShowPurchaseModal(false)}
+        centered
+        className="professional-modal"
+      >
+        <Modal.Body>
+          {selectedPurchaseClass && (
+            <div className="purchase-modal-content">
+
+              <h3 className="mb-3">
+                Confirm Purchase
+              </h3>
+
+              <div className="purchase-info">
+                <h5>{selectedPurchaseClass.title}</h5>
+                <div className="price-display">
+                  ₹ {selectedPurchaseClass.cost?.toLocaleString() || 0}
                 </div>
               </div>
 
-              {selectedClass.courseId?.description && (
-                <div className="description-section">
-                  <h5>About This Session</h5>
-                  <p>{selectedClass.courseId.description}</p>
-                </div>
-              )}
+              <div className="purchase-actions mt-4">
+                <Button
+                  variant="outline-light"
+                  onClick={() => setShowPurchaseModal(false)}
+                  disabled={purchasing}
+                >
+                  Cancel
+                </Button>
 
-              <div className="modal-actions">
                 <Button
                   variant="primary"
-                  onClick={() => {
-                    handleEnroll(selectedClass._id)
-                    setShowModal(false)
+                  disabled={purchasing}
+                  onClick={async () => {
+                    if (!selectedPurchaseClass) return
+                    try {
+                      setPurchasing(true)
+                      await handleClassPurchase(selectedPurchaseClass._id)
+                      setShowPurchaseModal(false)
+                    } finally {
+                      setPurchasing(false)
+                    }
                   }}
-                  disabled={(() => {
-                    const end = safeParseDateTime(selectedClass.date, selectedClass.endTime)
-                    return !!end && end < new Date()
-                  })()}
-                  className="enroll-button">
-                  Enroll in This Class
+                >
+                  {purchasing ? "Processing..." : "Confirm & Purchase"}
                 </Button>
               </div>
+
             </div>
           )}
         </Modal.Body>
       </Modal>
-
       {/* (your styles unchanged) */}
       <style>{`
         /* ===================== GLASS THEME ===================== */
 :root{
-  --bg-deep-1: #0b1020;
-  --bg-deep-2: #0a0f1e;
-  --glass-bg: rgba(255,255,255,.06);
-  --glass-border: rgba(255,255,255,.18);
-  --glass-text: #e5e7eb;
-  --glass-muted: #9aa3af;
-  --primary-1: #60a5fa;
-  --primary-2: #2563eb;
-  --success-1: #34d399;
-  --success-2: #059669;
+  --bg-deep-1: #0f172a;
+  --bg-deep-2: #0b1220;
+
+  --glass-bg: rgba(255,255,255,.04);
+  --glass-border: rgba(255,255,255,.08);
+
+  --text-main: #f1f5f9;
+  --text-muted: #94a3b8;
+
+  /* 🔥 ORANGE THEME */
+  --accent: #f97316;
+  --accent-dark: #ea580c;
+  --accent-soft: rgba(249,115,22,.15);
 }
 
 /* Page background */
 .professional-dashboard{
   background:
-    radial-gradient(900px 520px at 100% 8%, rgba(59,130,246,.22) 0, rgba(59,130,246,0) 60%),
-    radial-gradient(700px 420px at -10% 0%,  rgba(16,185,129,.20) 0, rgba(16,185,129,0) 60%),
-    linear-gradient(180deg, var(--bg-deep-1) 0%, var(--bg-deep-2) 100%) !important;
+    radial-gradient(800px 400px at 90% 10%, rgba(249,115,22,.15), transparent 60%),
+    linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
   min-height: 100vh;
   padding: 0;
-  color: var(--glass-text);
+  color: var(--text-main);
 }
 
 /* ===== Header (glass panel) ===== */
 .dashboard-header{
-  background: var(--glass-bg) !important;
-  color: var(--glass-text);
-  padding: 2rem 2rem !important;
-  margin: 2rem 2rem 1.5rem !important;
+  background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: 0 18px 50px rgba(2,8,23,.45);
+  border-radius: 14px;
+  padding: 1rem 2rem;
+  margin: 1.5rem;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:2rem;
+}
+
+.header-left{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+  flex:1;
+}
+
+.header-center{
+  flex:1;
+  display:flex;
+  justify-content:center;
+}
+
+.header-right{
+  flex:1;
+  display:flex;
+  justify-content:flex-end;
+}
+
+.dashboard-title{
+  font-size:1.5rem;
+  font-weight:600;
+  white-space:nowrap;
 }
 .header-content{ max-width: 800px; }
 .dashboard-title{
-  font-size: 2.5rem; font-weight: 700;color:#fff; margin-bottom: 1rem; display:flex; align-items:center;
+  font-size: 1.8rem;
+  margin-bottom: .5rem;
 }
 .header-icon{ margin-right: 1rem; font-size: 2rem; }
-.dashboard-subtitle{ font-size: 1.1rem; color: var(--glass-muted); margin-bottom: 2rem; }
+.dashboard-subtitle{
+  margin-bottom: 1rem;
+  font-size: .95rem;
+}
 
 /* Stats chips */
 .stats-container{ display:flex; gap:1.5rem; margin-top:2rem; flex-wrap:wrap; }
@@ -759,7 +1013,7 @@ const pagedEnrolled = useMemo(() => {
   background: rgba(255,255,255,.06);
   border:1px solid var(--glass-border);
   border-radius:12px;
-  padding:1rem 1.5rem;
+  padding: .7rem 1rem;
   backdrop-filter: blur(12px) saturate(140%);
   -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
@@ -782,23 +1036,39 @@ const pagedEnrolled = useMemo(() => {
 .search-input::placeholder{ color:#9aa3b2; }
 
 /* ===== Tabs container (glass) ===== */
-.dashboard-content{ padding: 0 2rem 2rem; }
+.dashboard-content{
+  padding: 0 1.5rem 2rem;
+  margin-top: 1rem;   /* 🔥 add this */
+}
 .professional-tabs{
-  background: var(--glass-bg) !important;
-  border:1px solid var(--glass-border);
-  border-radius: 18px !important;
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-  box-shadow: 0 16px 40px rgba(2,8,23,.35);
-  overflow:hidden;
+  background: rgba(255,255,255,.04);
+  padding: 4px;
+  border-radius: 999px;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+
+  /* IMPORTANT FIX */
+  overflow: hidden;
 }
+
+.professional-tabs .nav-item{
+  margin: 0 !important;
+}
+
 .professional-tabs .nav-link{
-  padding:1.25rem 2rem; border:none; font-weight:600;
-  color: var(--glass-muted) !important; display:flex; align-items:center; gap:.5rem;
+  border: none !important;
+  border-radius: 999px !important;
+  padding: .45rem 1.1rem !important;
+  font-size: .9rem;
+  color: var(--text-muted) !important;
+  background: transparent !important;
+  transition: all .2s ease;
 }
+
 .professional-tabs .nav-link.active{
-  background: linear-gradient(135deg, rgba(59,130,246,.35), rgba(37,99,235,.35)) !important;
-  color:#fff !important; border-radius:999px;
+  background: var(--accent) !important;
+  color: #fff !important;
 }
 .tab-icon{ font-size:1.1rem; }
 .tab-badge{ margin-left:.5rem; font-size:.8rem; }
@@ -813,19 +1083,26 @@ const pagedEnrolled = useMemo(() => {
 .class-card,
 .class-card.premium,
 .enrollment-card{
+  width: 100%;   /* 🔥 make card fill column */
   background: var(--glass-bg) !important;
-  color: var(--glass-text) !important;
   border: 1px solid var(--glass-border) !important;
   backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border-radius:16px;
   box-shadow: 0 18px 50px rgba(2,8,23,.45) !important;
-  border-radius:16px; transition: transform .25s ease, box-shadow .25s ease;
+  transition: transform .25s ease, box-shadow .25s ease;
 }
+
+.class-card .card-body{
+  padding: 1.5rem 1.5rem;  /* reduced */
+}
+
 .class-card:hover, .enrollment-card:hover{
   transform: translateY(-4px);
   box-shadow: 0 22px 60px rgba(5,12,30,.55) !important;
 }
-.class-card.premium{ border-left: 4px solid rgba(59,130,246,.45) !important; }
+.class-card.premium{
+  border-left: 4px solid var(--accent);
+}
 
 .class-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; }
 .class-badges{ display:flex; gap:.5rem; flex-wrap:wrap; }
@@ -839,16 +1116,33 @@ const pagedEnrolled = useMemo(() => {
 /* Buttons */
 .action-btn{ flex:1; padding:.75rem 1.25rem; border-radius:12px; font-weight:600; transition: transform .2s ease; }
 .action-btn:active{ transform: translateY(1px); }
-.action-btn.details-btn{ border:1px solid rgba(96,165,250,.65) !important; color:#bfdbfe !important; background:transparent !important; }
-.action-btn.enroll-btn{
-  background: linear-gradient(135deg, var(--primary-1) 0%, var(--primary-2) 100%) !important;
-  border:none !important;
-  box-shadow: 0 10px 28px rgba(37,99,235,.45) !important;
+.action-btn.details-btn{
+  border:1px solid var(--accent) !important;
+  color: var(--accent) !important;
+  background: transparent !important;
 }
 
+.action-btn.details-btn:hover{
+  background: var(--accent-soft) !important;
+}
+
+.action-btn.enroll-btn,
+.enroll-button,
 .join-button{
-  background: linear-gradient(135deg, var(--success-1) 0%, var(--success-2) 100%) !important;
-  border:none !important; color:#052e2b !important;
+  background: var(--accent) !important;
+  border:none !important;
+  color:#fff !important;
+}
+
+.action-btn.enroll-btn:hover,
+.enroll-button:hover,
+.join-button:hover{
+  background: var(--accent-dark) !important;
+}
+.join-button{
+  background: var(--accent) !important;
+  border: 1px solid var(--accent-dark) !important;
+  color: #fff !important;
 }
 
 /* Badges / chips */
@@ -859,7 +1153,11 @@ const pagedEnrolled = useMemo(() => {
   display:inline-flex; align-items:center; gap:.35rem; border:1px solid transparent;
 }
 .badge.status-badge.live{       background: rgba(239,68,68,.15);  color:#fecaca;  border-color: rgba(239,68,68,.35); }
-.badge.status-badge.upcoming{   background: rgba(251,146,60,.14); color:#fed7aa;  border-color: rgba(251,146,60,.35); }
+.badge.status-badge.upcoming{
+  background: var(--accent-soft);
+  color: var(--accent);
+  border:1px solid var(--accent);
+}
 .badge.status-badge.completed{  background: rgba(34,197,94,.14);  color:#bbf7d0;  border-color: rgba(34,197,94,.35); }
 .badge.type-badge{ background: rgba(56,189,248,.14); color:#bae6fd; border-color: rgba(56,189,248,.35); font-size:.72rem; }
 .badge.modal-badge{ background: rgba(148,163,184,.16); color:#e5e7eb; border-color: rgba(148,163,184,.35); }
@@ -911,16 +1209,29 @@ const pagedEnrolled = useMemo(() => {
 
 .modal-actions{ text-align:center; }
 .enroll-button{
-  padding:.875rem 1.75rem; border-radius:12px; font-weight:600;
-  background: linear-gradient(135deg, var(--primary-1) 0%, var(--primary-2) 100%) !important;
-  border:none;
+  padding:.875rem 1.75rem;
+  border-radius:12px;
+  font-weight:600;
+  background: var(--accent) !important;
+  border: 1px solid var(--accent-dark) !important;  /* ✅ add border */
+  color: #fff !important;
+}
+
+.class-actions{
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
 }
 
 /* Responsive */
 @media (max-width: 768px){
   .dashboard-title{ font-size:2rem; }
   .stats-container{ flex-direction:column; gap:1rem; }
-  .class-actions{ flex-direction:column; }
+  .class-actions{
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
   .details-grid{ grid-template-columns:1fr; }
   .class-header{ flex-direction:column; gap:1rem; }
   .dashboard-header{ margin: 1rem 1rem 1rem !important; }
@@ -935,6 +1246,207 @@ const pagedEnrolled = useMemo(() => {
   .professional-modal .modal-content{
     background: rgba(17,24,39,.92) !important;
   }
+}
+
+.dashboard-header.compact{
+  padding: 1rem 1.5rem !important;
+  margin: 1rem 1.5rem !important;
+  border-radius: 14px;
+}
+
+.header-tabs-nav .nav-link{
+  padding: .5rem 1rem !important;
+  font-size: .9rem;
+  border-radius: 999px !important;
+}
+
+.header-tabs-nav .nav-link.active{
+  background: linear-gradient(135deg, rgba(59,130,246,.4), rgba(37,99,235,.4)) !important;
+  color: #fff !important;
+}
+
+.header-left{
+  display:flex;
+  align-items:center;
+}
+
+.dashboard-title{
+  font-size:1.6rem;
+  margin-bottom:0;
+}
+
+/* Modal Layout */
+.class-modal-layout{
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+}
+
+.modal-left{
+  padding-right: 1rem;
+}
+
+.modal-right{
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  height: fit-content;
+}
+
+.section-title{
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+/* Instructor */
+.instructor-profile{
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.instructor-avatar img{
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent);
+}
+
+.avatar-placeholder{
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.instructor-info h6{
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.exp{
+  color: var(--accent);
+  font-weight: 600;
+  margin: .3rem 0;
+}
+
+.bio{
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+
+.achievements{
+  margin-top: 1rem;
+  padding-left: 1rem;
+  color: var(--text-muted);
+}
+
+.modal-actions{
+  margin-top: 2rem;
+}
+
+/* Responsive */
+@media (max-width: 992px){
+  .class-modal-layout{
+    grid-template-columns: 1fr;
+  }
+}
+
+.class-extra-info{
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
+.info-item{
+  font-size: .9rem;
+  color: var(--text-muted);
+}
+
+.tags-container{
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .5rem;
+}
+
+.tag-badge{
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: .3rem .7rem;
+  border-radius: 999px;
+  font-size: .75rem;
+  border: 1px solid var(--accent);
+}
+
+.price-badge{
+  display:inline-block;
+  background: rgba(34,197,94,.15);
+  color:#86efac;
+  padding:.4rem .8rem;
+  border-radius:12px;
+  font-weight:700;
+  font-size:.9rem;
+  border:1px solid rgba(34,197,94,.4);
+}
+
+.slots-wrapper{
+  display:flex;
+  flex-direction:column;
+  gap:.3rem;
+}
+
+.slots-text{
+  font-size:.85rem;
+  color:#fde68a;
+  font-weight:600;
+}
+
+.slots-progress{
+  height:6px;
+  background: rgba(255,255,255,.08);
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.slots-fill{
+  height:100%;
+  background: linear-gradient(90deg, #f97316, #ea580c);
+}
+
+.purchase-modal-content{
+  text-align:center;
+  padding:1.5rem;
+}
+
+.purchase-info{
+  background: rgba(255,255,255,.05);
+  border:1px solid var(--glass-border);
+  border-radius:16px;
+  padding:1.5rem;
+}
+
+.price-display{
+  font-size:2rem;
+  font-weight:700;
+  color:#86efac;
+  margin-top:.5rem;
+}
+
+.purchase-actions{
+  display:flex;
+  justify-content:center;
+  gap:1rem;
 }
 
 

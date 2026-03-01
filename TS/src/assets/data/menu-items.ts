@@ -534,12 +534,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     label: 'Extra Activities',
     icon: FaRunning, // 🏃‍♂️ activities
     children: [
-      // {
-      //   key: 'onlineClasses',
-      //   label: 'Online Classes',
-      //   icon: FaChalkboardTeacher, // 👨‍🏫 online classes
-      //   url: '/student/online-classes',
-      // },
+    /*  {
+         key: 'onlineClasses',
+       label: 'Online Classes',
+        icon: FaChalkboardTeacher, // 👨‍🏫 online classes
+        url: '/student/online-classes',
+      }, */
       {
         key: 'resume',
         label: 'Resume Preparation',
