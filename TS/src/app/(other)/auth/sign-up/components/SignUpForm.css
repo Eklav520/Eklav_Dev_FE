@@ -78,3 +78,19 @@
 .form-check-input:focus {
   box-shadow: 0 0 0 .2rem rgba(253,105,42,.25);
 }
+
+.role-toggle {
+  padding: 10px 30px;
+  border-radius: 50px;
+  border: 2px solid #fd692a;
+  cursor: pointer;
+  font-weight: 600;
+  color: #fd692a;
+  transition: all 0.25s ease;
+}
+
+.role-toggle.active {
+  background: #fd692a;
+  color: white;
+  box-shadow: 0 8px 20px rgba(253,105,42,.3);
+}

@@ -18,7 +18,11 @@ import TermsModal from './TermsModal'
 import CollegeSearch from './CollegeSearch'
 import './SignUpForm.css'
 
-const SignUpForm = () => {
+interface SignUpFormProps {
+  onSuccess?: () => void;
+}
+
+const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
   const {
     signUp,
     control,
@@ -27,8 +31,9 @@ const SignUpForm = () => {
     errors,
     loading,
     setValue,
-    clearErrors
-  } = useSignUp()
+    clearErrors,
+    trigger
+ } = useSignUp(onSuccess)
 
   const [step, setStep] = useState(1)
   const [showTermsModal, setShowTermsModal] = useState(false)
@@ -58,16 +63,17 @@ const SignUpForm = () => {
     'Bachelor of Technology'
   ].sort()
 
-  const validateStep1 = () => {
-    return !errors.fullname && !errors.email && !errors.password && !errors.confirmPassword
+  const validateStep1 = async () => {
+    return await trigger(['fullname', 'email', 'password', 'confirmPassword'])
   }
 
   const validateStep2 = () => {
-    return !errors.phoneNo && !errors.joiningYear && !errors.department && !errors.college
+    return !errors.phoneNo
   }
 
-  const nextStep = () => {
-    if (step === 1 && validateStep1()) {
+  const nextStep = async () => {
+    const valid = await validateStep1()
+    if (valid && passwordScore >= 3) {
       setStep(2)
     }
   }
@@ -77,13 +83,11 @@ const SignUpForm = () => {
   }
   const handleCollegeSelect = (college: any | null) => {
     if (!college) {
-      setValue('college', '', { shouldValidate: true })
+      setValue('college', null, { shouldValidate: true })
       return
     }
 
-    const fullValue = `${college.name}, ${college.address}, ${college.pincode}`
-
-    setValue('college', fullValue, { shouldValidate: true })
+    setValue('college', college.name, { shouldValidate: true })
     clearErrors('college')
   }
 
@@ -125,6 +129,43 @@ const SignUpForm = () => {
             <FaUser className="me-2" />
             Account Information
           </h5>
+          {/* Role Selection */}
+          <div className="mb-4 text-center">
+            <label className="form-label fw-semibold d-block mb-3">
+              Register As
+            </label>
+
+            <div className="d-flex justify-content-center gap-3">
+              <input
+                type="radio"
+                id="studentRole"
+                value="student"
+                {...register('role')}
+                defaultChecked
+                hidden
+              />
+              <label
+                htmlFor="studentRole"
+                className={`role-toggle ${watch('role', 'student') === 'student' ? 'active' : ''}`}
+              >
+                🎓 Student
+              </label>
+
+              <input
+                type="radio"
+                id="tutorRole"
+                value="tutor"
+                {...register('role')}
+                hidden
+              />
+              <label
+                htmlFor="tutorRole"
+                className={`role-toggle ${watch('role') === 'tutor' ? 'active' : ''}`}
+              >
+                👨‍🏫 Tutor
+              </label>
+            </div>
+          </div>
 
           <Row>
             <Col md={12} className="mb-3">
@@ -197,7 +238,7 @@ const SignUpForm = () => {
               }}
 
               onClick={nextStep}
-              disabled={!validateStep1() || passwordScore < 3}
+              disabled={passwordScore < 3}
             >
               Continue
               <i className="fas fa-arrow-right ms-2"></i>
@@ -233,7 +274,7 @@ const SignUpForm = () => {
               <div className="form-group">
                 <label className="form-label fw-semibold">
                   <FaCalendarAlt className="me-2" />
-                  Joining Year *
+                  Joining Year (Optional)
                 </label>
                 <select
                   className={`form-select ${errors?.joiningYear ? 'is-invalid' : ''}`}
@@ -256,7 +297,7 @@ const SignUpForm = () => {
               <div className="form-group">
                 <label className="form-label fw-semibold">
                   <FaGraduationCap className="me-2" />
-                  Department *
+                  Department (Optional)
                 </label>
                 <select
                   className={`form-select ${errors?.department ? 'is-invalid' : ''}`}
@@ -279,12 +320,12 @@ const SignUpForm = () => {
               <div className="form-group">
                 <label className="form-label fw-semibold">
                   <FaBuilding className="me-2" />
-                  College/University *
+                  College/University (Optional)
                 </label>
                 <CollegeSearch
                   onSelect={handleCollegeSelect}
                   error={errors.college}
-                  value={watch('college')}
+                  value={watch('college') ?? undefined}
                 />
               </div>
             </Col>

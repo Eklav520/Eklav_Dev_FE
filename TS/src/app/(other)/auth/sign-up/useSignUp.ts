@@ -3,20 +3,19 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as yup from 'yup'
-import CryptoJS from 'crypto-js'
 import { useNotificationContext } from '@/context/useNotificationContext'
 
-const SECRET_KEY = import.meta.env.VITE_ENCRYPTION_KEY || 'EKLAV@2025'
-
 const schema = yup.object({
+  role: yup
+    .string()
+    .oneOf(['student', 'tutor'])
+    .default('student'),
+
   email: yup
     .string()
     .email('Please enter a valid email address')
-    .required('Email address is required')
-    .matches(
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-      'Please enter a valid email format'
-    ),
+    .required('Email address is required'),
+
   password: yup
     .string()
     .required('Password is required')
@@ -25,36 +24,50 @@ const schema = yup.object({
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
       'Must contain uppercase, lowercase, and number'
     ),
+
   confirmPassword: yup
     .string()
     .required('Please confirm your password')
     .oneOf([yup.ref('password')], 'Passwords must match'),
+
   fullname: yup
     .string()
     .required('Full name is required')
-    .min(2, 'Name must be at least 2 characters')
-    .max(50, 'Name cannot exceed 50 characters')
+    .min(2)
+    .max(50)
     .matches(/^[a-zA-Z\s]*$/, 'Name can only contain letters and spaces'),
+
   phoneNo: yup
     .string()
     .required('Phone number is required')
     .matches(/^[0-9]{10}$/, 'Please enter a valid 10-digit phone number'),
+
   terms: yup
     .boolean()
-    .oneOf([true], 'You must accept the terms and conditions')
-    .required('You must accept the terms and conditions'),
+    .oneOf([true], 'You must accept the terms and conditions'),
+
   joiningYear: yup
     .number()
-    .required('Joining year is required')
-    .min(2000, 'Year must be after 2000')
-    .max(new Date().getFullYear(), 'Year cannot be in the future'),
-  department: yup.string().required('Please select your department'),
-  college: yup.string().required('Please select your college'),
+    .nullable()
+    .transform((value, originalValue) =>
+      originalValue === '' ? null : value
+    )
+    .notRequired(),
+
+  department: yup
+    .string()
+    .nullable()
+    .notRequired(),
+
+  college: yup
+    .string()
+    .nullable()
+    .notRequired(),
 })
 
 type SignFormFields = yup.InferType<typeof schema>
 
-const useSignUp = () => {
+const useSignUp = (onSuccess?: () => void) => {
   const [loading, setLoading] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const navigate = useNavigate()
@@ -70,14 +83,18 @@ const useSignUp = () => {
     setValue,
     clearErrors,
     trigger,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<SignFormFields>({
     resolver: yupResolver(schema),
     mode: 'onChange',
-    reValidateMode: 'onChange',
   })
 
-  const redirectUser = () => {
+   const redirectUser = () => {
+    if (onSuccess) {
+      onSuccess();  // 👈 closes modal
+    } else {
+      redirectUser();
+    }
     const redirectLink = searchParams.get('redirectTo')
     if (redirectLink) navigate(redirectLink)
     else navigate('/auth/sign-in')
@@ -88,44 +105,31 @@ const useSignUp = () => {
       setLoading(true)
       setSubmitError(null)
 
-      // Validate form before submission
       const isValid = await trigger()
       if (!isValid) {
         throw new Error('Please fix the errors in the form')
       }
 
-      const encryptedPassword = CryptoJS.AES.encrypt(
-        values.password,
-        SECRET_KEY
-      ).toString()
-
-      const encryptedConfirmPassword = CryptoJS.AES.encrypt(
-        values.confirmPassword,
-        SECRET_KEY
-      ).toString()
+      // Remove confirmPassword before sending
+      const { confirmPassword, ...rest } = values
 
       const payload = {
-        ...values,
-        password: encryptedPassword,
-        confirmPassword: encryptedConfirmPassword,
-        userType: 'student',
-        registrationDate: new Date().toISOString(),
-        status: 'pending_verification',
+        ...rest,
+        fullname: values.fullname.trim(),
+        email: values.email.toLowerCase().trim(),
+        role: values.role || 'student',
+        college: values.college || null,
       }
+
       const response = await fetch(`${baseURL}/register`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          Accept: 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify(payload),
       })
-
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Server returned non-JSON response')
-      }
 
       const result = await response.json()
 
@@ -133,48 +137,42 @@ const useSignUp = () => {
         throw new Error(result.message || 'Registration failed')
       }
 
-      showNotification({ 
-        message: 'Account created successfully! Please check your email for verification.', 
+      showNotification({
+        message:
+          'Account created successfully! Please wait for approval if required.',
         variant: 'success',
       })
 
-      // Store user info in localStorage for immediate access
       localStorage.setItem('user_email', values.email)
       localStorage.setItem('registration_complete', 'true')
 
       redirectUser()
-
     } catch (error: any) {
-      console.error('Signup error:', error)
-      
-      const errorMessage = error.message || 
-        (error.response?.data?.message) || 
-        'Registration failed. Please try again.'
-      
+      const errorMessage =
+        error.message || 'Registration failed. Please try again.'
+
       setSubmitError(errorMessage)
-      
+
       showNotification({
         message: errorMessage,
         variant: 'danger',
       })
-
     } finally {
       setLoading(false)
     }
   })
 
-  return { 
-    loading, 
-    signUp, 
-    control, 
-    register, 
-    watch, 
-    setValue, 
-    clearErrors, 
+  return {
+    loading,
+    signUp,
+    control,
+    register,
+    watch,
+    setValue,
+    clearErrors,
     trigger,
-    errors, 
-    isValid,
-    submitError 
+    errors,
+    submitError,
   }
 }
 

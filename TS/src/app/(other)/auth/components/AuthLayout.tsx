@@ -1089,7 +1089,11 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
               </div>
             }
           >
-            {authType === "signin" ? <SignInForm /> : <SignUpForm />}
+            {authType === "signin" ? (
+  <SignInForm />
+) : (
+  <SignUpForm onSuccess={handleClose} />
+)}
           </Suspense>
         </Modal.Body>
       </Modal>
