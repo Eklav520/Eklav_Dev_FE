@@ -1,11 +1,12 @@
 import { Navigate, Route, Routes, type RouteProps } from 'react-router-dom'
-import { adminRoutes, appRoutes, authRoutes, EklavAdminRoutes, shopRoutes, studentRoutes } from '@/routes/index'
+import { adminRoutes, appRoutes, authRoutes, EklavAdminRoutes, shopRoutes, studentRoutes, tutorRoutes } from '@/routes/index'
 import AdminLayout from '@/layouts/AdminLayout'
 import ShopLayout from '@/layouts/ShopLayout'
 import InstructorLayout from '@/layouts/InstructorLayout'
 import StudentLayout from '@/layouts/StudentLayout'
 import OtherLayout from '@/layouts/OtherLayout'
 import { useAuthContext } from '@/context/useAuthContext'
+import TutorLayout from '@/layouts/TutorLayout'
 
 const AppRouter = (props: RouteProps) => {
   const { isAuthenticated } = useAuthContext()
@@ -51,13 +52,31 @@ const AppRouter = (props: RouteProps) => {
           }
         />
       ))}
-      {(EklavAdminRoutes || []).map((route:any, idx:any) => (
+      {(EklavAdminRoutes || []).map((route: any, idx: any) => (
         <Route
           key={idx + route.name}
           path={route.path}
           element={
             isAuthenticated ? (
               <InstructorLayout {...props}>{route.element}</InstructorLayout>
+            ) : (
+              <Navigate
+                to={{
+                  pathname: '/auth/sign-in',
+                  search: 'redirectTo=' + route.path,
+                }}
+              />
+            )
+          }
+        />
+      ))}
+      {(tutorRoutes || []).map((route, idx) => (
+        <Route
+          key={idx + route.name}
+          path={route.path}
+          element={
+            isAuthenticated ? (
+              <TutorLayout {...props}>{route.element}</TutorLayout>
             ) : (
               <Navigate
                 to={{

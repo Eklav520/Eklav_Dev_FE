@@ -29,22 +29,34 @@ const useSignIn = () => {
 
   type LoginFormFields = yup.InferType<typeof loginFormSchema>
 
-  const redirectUser = (role: string) => {
-    const redirectLink = searchParams.get('redirectTo')
+const redirectUser = (role: string) => {
+  const redirectLink = searchParams.get('redirectTo')
 
-    if (redirectLink) {
-      navigate(redirectLink, { replace: true })
-      return
-    }
-
-    const normalizedRole = role?.toLowerCase()
-
-    if (normalizedRole === 'admin' || normalizedRole === 'collegeadmin') {
-      navigate('/eklavadmin/dashboard', { replace: true })
-    } else {
-      navigate('/student/dashboard', { replace: true })
-    }
+  if (redirectLink) {
+    navigate(redirectLink, { replace: true })
+    return
   }
+
+  const normalizedRole = role?.toLowerCase()
+
+  switch (normalizedRole) {
+    case 'admin':
+    case 'collegeadmin':
+      navigate('/eklavadmin/dashboard', { replace: true })
+      break
+
+    case 'tutor':
+      navigate('/tutor/dashboard', { replace: true })
+      break
+
+    case 'student':
+      navigate('/student/dashboard', { replace: true })
+      break
+
+    default:
+      navigate('/auth/sign-in', { replace: true })
+  }
+}
 
 
   const login = handleSubmit(async (values: LoginFormFields) => {

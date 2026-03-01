@@ -574,6 +574,164 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/edit-profile',
   },
 ]
+
+export const TUTOR_MENU_ITEMS: MenuItemType[] = [
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    icon: BsSpeedometer2,
+    url: '/tutor/dashboard',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'student-analytics',
+    label: 'Student Analytics',
+    icon: BsGraphUp,
+    url: '/tutor/student-analytics',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'students',
+    label: 'Students List',
+    icon: BsPeople,
+    url: '/tutor/student-list',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'courses',
+    label: 'Courses Details',
+    icon: BsBook,
+    children: [
+      {
+        key: 'coursesList',
+        label: 'Courses List',
+        icon: BsCardChecklist,
+        url: '/tutor/manage-course',
+        parentKey: 'eklavadmin',
+      },
+      /*  {
+        key: 'internList',
+        label: 'Intern List',
+        icon: BsCardChecklist,
+        url: '/eklavadmin/intern-list',
+        parentKey: 'eklavadmin',
+      }, */
+    ],
+  },
+  {
+    key: 'preparation',
+    label: 'Self Preparation',
+    icon: BsLightbulb,
+    children: [
+      {
+        key: 'aptitudeQuestionsUpload',
+        label: 'Aptitude Questions Upload',
+        icon: BsCalculator,
+        url: '/tutor/aptitude-questions-upload',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'ProblemStatement',
+        label: 'Daily Challenge',
+        icon: BsLightningCharge,
+        url: '/tutor/problem-statement',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'SelfInterview',
+        label: 'Self Interview',
+        icon: BsMic,
+        url: '/tutor/self-interview',
+        parentKey: 'eklavadmin',
+      },
+    ],
+  },
+  {
+    key: 'otherActivities',
+    label: 'Other Activities',
+    icon: BsGrid,
+    children: [
+      {
+        key: 'onlineClasses',
+        label: 'Online Classes',
+        icon: BsCameraVideo,
+        url: '/tutor/online-classes',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'InterviewDetails',
+        label: 'Interview Details Upload',
+        icon: BsFileEarmarkArrowUp,
+        url: '/tutor/admin-interview-details',
+        parentKey: 'eklavadmin',
+      },
+    ],
+  },
+  {
+    key: 'finalAssessmentActivities',
+    label: 'Final Assessment',
+    icon: BsGrid,
+    children: [
+      {
+        key: 'uploadAssessments',
+        label: 'Upload Assessments',
+        icon: BsCameraVideo,
+        url: '/tutor/finalassessmentupload',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'uploadAssessmentsDetails',
+        label: 'Assessments Details',
+        icon: BsFileEarmarkArrowUp,
+        url: '/tutor/final-assessment-details',
+        parentKey: 'eklavadmin',
+      },
+    ],
+  },
+  {
+    key: 'admin',
+    label: 'Admin Chatbox',
+    icon: BsPeople,
+    url: '/tutor/admin-chatbox',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'collegeDetails',
+    label: 'Add College Details',
+    icon: FaUserCog,
+    url: '/tutor/college-details',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'adminreels',
+    label: 'Admin Reels Upload',
+    icon: FaUserCog,
+    url: '/tutor/admin-reels',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'couponManagement',
+    label: 'Manage Coupons',
+    icon: BsCreditCard2Front,
+    url: '/tutor/coupon-management',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'profile',
+    label: 'Edit Profile',
+    icon: BsPencilSquare,
+    url: '/tutor/edit-profile',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'payout',
+    label: 'Payout',
+    icon: BsWallet2,
+    url: '/tutor/payout',
+    parentKey: 'eklavadmin',
+  },
+]
+
 export const APP_MENU_ITEMS: MenuItemType[] = [
   /* {
     key: 'demos',
