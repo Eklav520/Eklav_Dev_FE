@@ -1,207 +1,125 @@
 import { useEffect, useState } from 'react'
-import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap'
-import { FaMapMarkerAlt, FaRegEnvelope, FaSearch, FaDownload } from 'react-icons/fa'
-import ChoicesFormInput from '@/components/form/ChoicesFormInput'
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Col,
+  Row,
+  Form,
+  Badge,
+} from 'react-bootstrap'
+import { FaSearch, FaDownload } from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
-import { Modal, Form } from 'react-bootstrap'
-import StarRating from './components/StarRating'
 import { useAuthContext } from '@/context/useAuthContext'
 import * as XLSX from 'xlsx'
 
-interface Student {
-  _id: string
-  fullName: string
-  profileImage?: string
-  location: string
-  progress: number
-  phoneNo: string
+interface EnrolledStudent {
+  id: string
+  name: string
   email: string
-  college?: string
+  classTitle: string
+  amountPaid: number
+  enrolledAt: string
 }
 
-const StudentListPage: React.FC = () => {
+const TutorStudentsPage: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
 
-  const [students, setStudents] = useState<Student[]>([])
-  const [showModal, setShowModal] = useState(false)
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-  const [feedbackText, setFeedbackText] = useState('')
-  const [feedbackRating, setFeedbackRating] = useState<number>(0)
-  const [currentPage, setCurrentPage] = useState(1)
+  const [students, setStudents] = useState<EnrolledStudent[]>([])
+  const [totalStudents, setTotalStudents] = useState<number>(0)
+  const [totalRevenue, setTotalRevenue] = useState<number>(0)
   const [searchTerm, setSearchTerm] = useState('')
-  const [sortOption, setSortOption] = useState<string>('')
-
-  const [college, setCollege] = useState<string | null>(null)
-  const [role, setRole] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const studentsPerPage = 5
 
-  /* ============================
-     FETCH PROFILE
-  ============================ */
-  const fetchProfile = async () => {
+  /* =============================
+     FETCH ALL ENROLLMENTS
+  ============================= */
+  const fetchEnrollments = async () => {
     try {
-      const res = await fetch(`${baseURL}/profile`, {
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-        },
+      const res = await fetch(`${baseURL}/tutor/enrollments`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
       })
-
-      if (!res.ok) throw new Error('Failed to fetch profile')
-
-      const data = await res.json()
-      console.log("Students API response:", data)
-      setCollege(data.college || null)
-      setRole(data.role || null)
-    } catch (err) {
-      console.error('Failed to load profile', err)
-    }
-  }
-
-  /* ============================
-     FETCH STUDENTS (ADMIN)
-  ============================ */
-  const fetchAllStudents = async () => {
-    try {
-      const res = await fetch(`${baseURL}/adminProfiles/admin`, {
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-        },
-      })
-
-      if (!res.ok) throw new Error('Failed to fetch students')
 
       const data = await res.json()
 
-      if (Array.isArray(data)) {
-      setStudents(data)
-      } else if (Array.isArray(data.students)) {
-        setStudents(data.students)
-      } else if (Array.isArray(data.data)) {
-        setStudents(data.data)
-      } else {
-        console.error("Unexpected student response format:", data)
-        setStudents([])
+      if (!res.ok) {
+        console.error(data)
+        return
       }
-    } catch (error) {
-      console.error('Error fetching all students:', error)
+
+      setStudents(data.students || [])
+      setTotalStudents(data.totalStudents || 0)
+      setTotalRevenue(data.totalRevenue || 0)
+
+    } catch (err) {
+      console.error(err)
+      setStudents([])
     }
   }
 
-  /* ============================
-     FETCH STUDENTS (COLLEGE)
-  ============================ */
-  const fetchStudentsByCollege = async (collegeName: string) => {
-    try {
-      const res = await fetch(
-        `${baseURL}/adminProfiles/admin?college=${encodeURIComponent(collegeName)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${user?.token}`,
-          },
-        }
-      )
-
-      if (!res.ok) throw new Error('Failed to fetch students')
-
-      const data: Student[] = await res.json()
-      setStudents(data)
-    } catch (error) {
-      console.error('Error fetching students:', error)
-    }
-  }
-
-  /* ============================
-     INITIAL LOAD
-  ============================ */
   useEffect(() => {
-    if (user?.token) fetchProfile()
+    if (user?.token) fetchEnrollments()
   }, [user?.token])
 
-  useEffect(() => {
-    if (!user?.token || !role) return
-
-    if (role === 'college_admin' && college) {
-      fetchStudentsByCollege(college)
-    }
-
-    if (role === 'admin' || role === 'super_admin') {
-      fetchAllStudents()
-    }
-  }, [role, college, user?.token])
-
-  /* ============================
-     SORT + FILTER
-  ============================ */
- let sortedStudents = Array.isArray(students) ? [...students] : []
-
-  if (sortOption === 'college') {
-    sortedStudents.sort((a, b) =>
-      (a.college || '').localeCompare(b.college || '')
-    )
-  }
-
-  const filteredStudents = sortedStudents.filter(student => {
-    const term = searchTerm.toLowerCase()
-    return (
-      student.fullName.toLowerCase().includes(term) ||
-      student.email.toLowerCase().includes(term) ||
-      student.location.toLowerCase().includes(term) ||
-      student.college?.toLowerCase().includes(term)
-    )
-  })
-
-  /* ============================
-     PAGINATION
-  ============================ */
-  const indexOfLastStudent = currentPage * studentsPerPage
-  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage
-  const currentStudents = filteredStudents.slice(
-    indexOfFirstStudent,
-    indexOfLastStudent
+  /* =============================
+     FILTER
+  ============================= */
+  const filteredStudents = students.filter((student) =>
+    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.classTitle.toLowerCase().includes(searchTerm.toLowerCase())
   )
-  const totalPages = Math.ceil(filteredStudents.length / studentsPerPage)
 
-  /* ============================
+  /* =============================
+     PAGINATION
+  ============================= */
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredStudents.length / studentsPerPage)
+  )
+
+  const indexOfLast = currentPage * studentsPerPage
+  const indexOfFirst = indexOfLast - studentsPerPage
+  const currentStudents = filteredStudents.slice(indexOfFirst, indexOfLast)
+
+  /* =============================
      DOWNLOAD EXCEL
-  ============================ */
+  ============================= */
   const handleDownloadExcel = () => {
     if (!filteredStudents.length) return
 
     const excelData = filteredStudents.map((student, index) => ({
       'S.No': index + 1,
-      'Student Name': student.fullName,
+      Name: student.name,
       Email: student.email,
-      Phone: student.phoneNo,
-      Location: student.location,
-      College: student.college || '-',
+      Class: student.classTitle,
+      AmountPaid: student.amountPaid,
+      EnrolledDate: new Date(student.enrolledAt).toLocaleDateString(),
     }))
 
     const worksheet = XLSX.utils.json_to_sheet(excelData)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students')
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Enrollments')
 
-    const fileName =
-      role === 'college_admin' && college
-        ? `Students_${college}.xlsx`
-        : 'All_Students.xlsx'
-
-    XLSX.writeFile(workbook, fileName)
+    XLSX.writeFile(workbook, 'Tutor_Enrollments.xlsx')
   }
 
   return (
     <>
-      <PageMetaData title="Student List" />
+      <PageMetaData title="My Enrolled Students" />
 
       <Card className="border bg-transparent rounded-3">
-        <CardHeader className="bg-transparent border-bottom d-flex justify-content-between align-items-center">
-          <h3 className="mb-0">My Students List</h3>
+        <CardHeader className="d-flex justify-content-between align-items-center">
+          <h3 className="mb-0">All Enrolled Students</h3>
 
           <Button
             variant="outline-success"
             onClick={handleDownloadExcel}
-            disabled={filteredStudents.length === 0}
+            disabled={!filteredStudents.length}
           >
             <FaDownload className="me-2" />
             Download Excel
@@ -209,36 +127,28 @@ const StudentListPage: React.FC = () => {
         </CardHeader>
 
         <CardBody>
-          <Row className="g-3 align-items-center justify-content-between mb-4">
-            <Col md={8}>
-              <form className="rounded position-relative">
-                <input
-                  className="form-control pe-5 bg-transparent"
-                  type="search"
-                  placeholder="Search by name, email or location"
-                  value={searchTerm}
-                  onChange={e => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                />
-                <button
-                  className="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0"
-                  onClick={e => e.preventDefault()}
-                >
-                  <FaSearch />
-                </button>
-              </form>
-            </Col>
 
-            <Col md={3}>
-              <ChoicesFormInput
-                className="form-select bg-transparent"
-                onChange={(value: string) => setSortOption(value)}
-              >
-                <option value="">Sort by</option>
-                <option value="college">College</option>
-              </ChoicesFormInput>
+          {/* Summary */}
+          <div className="mb-3">
+            <Badge bg="primary" className="me-2">
+              Total Students: {totalStudents}
+            </Badge>
+            <Badge bg="success">
+              Total Revenue: ₹ {totalRevenue}
+            </Badge>
+          </div>
+
+          <Row className="mb-4">
+            <Col md={4}>
+              <Form.Control
+                type="search"
+                placeholder="Search by name, email or class"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value)
+                  setCurrentPage(1)
+                }}
+              />
             </Col>
           </Row>
 
@@ -246,42 +156,29 @@ const StudentListPage: React.FC = () => {
             <table className="table table-hover">
               <thead>
                 <tr>
-                  <th>Student name</th>
-                  <th>College</th>
-                  <th>Phone</th>
+                  <th>Name</th>
                   <th>Email</th>
-                  <th>Feedback</th>
+                  <th>Class</th>
+                  <th>Amount Paid</th>
+                  <th>Enrolled Date</th>
                 </tr>
               </thead>
               <tbody>
                 {currentStudents.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center">
-                      No students found
+                      No enrollments found
                     </td>
                   </tr>
                 ) : (
-                  currentStudents.map(student => (
-                    <tr key={student._id}>
-                      <td>
-                        <strong>{student.fullName}</strong>
-                        <div className="small text-muted">
-                          <FaMapMarkerAlt /> {student.location}
-                        </div>
-                      </td>
-                      <td>{student.college}</td>
-                      <td>{student.phoneNo}</td>
+                  currentStudents.map((student) => (
+                    <tr key={student.id}>
+                      <td>{student.name}</td>
                       <td>{student.email}</td>
+                      <td>{student.classTitle}</td>
+                      <td>₹ {student.amountPaid}</td>
                       <td>
-                        <Button
-                          variant="success-soft"
-                          onClick={() => {
-                            setSelectedStudent(student)
-                            setShowModal(true)
-                          }}
-                        >
-                          <FaRegEnvelope />
-                        </Button>
+                        {new Date(student.enrolledAt).toLocaleDateString()}
                       </td>
                     </tr>
                   ))
@@ -289,90 +186,30 @@ const StudentListPage: React.FC = () => {
               </tbody>
             </table>
 
-            <div className="d-flex justify-content-between mt-3">
-              <Button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => p - 1)}
-              >
-                Previous
-              </Button>
-              <span>
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => p + 1)}
-              >
-                Next
-              </Button>
-            </div>
+            {totalPages > 1 && (
+              <div className="d-flex justify-content-between mt-3">
+                <Button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
-
-          {/* FEEDBACK MODAL */}
-          <Modal show={showModal} onHide={() => setShowModal(false)}>
-            <Modal.Header closeButton>
-              <Modal.Title>
-                Send Feedback to {selectedStudent?.fullName}
-              </Modal.Title>
-            </Modal.Header>
-
-            <Modal.Body>
-              <Form
-                onSubmit={async e => {
-                  e.preventDefault()
-                  if (!selectedStudent) return
-
-                  await fetch(
-                    `${baseURL}/adminProfiles/admin/${selectedStudent._id}/feedback`,
-                    {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        feedback: feedbackText,
-                        rating: feedbackRating,
-                      }),
-                    }
-                  )
-
-                  setFeedbackText('')
-                  setFeedbackRating(0)
-                  setShowModal(false)
-                }}
-              >
-                <Form.Group className="mb-3">
-                  <Form.Label>Feedback</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={3}
-                    value={feedbackText}
-                    onChange={e => setFeedbackText(e.target.value)}
-                    required
-                  />
-                </Form.Group>
-
-                <Form.Group className="mb-3">
-                  <Form.Label>Rating</Form.Label>
-                  <StarRating
-                    rating={feedbackRating}
-                    setRating={setFeedbackRating}
-                  />
-                </Form.Group>
-
-                <div className="text-end">
-                  <Button variant="secondary" onClick={() => setShowModal(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" className="ms-2">
-                    Send
-                  </Button>
-                </div>
-              </Form>
-            </Modal.Body>
-          </Modal>
         </CardBody>
       </Card>
     </>
   )
 }
 
-export default StudentListPage
+export default TutorStudentsPage

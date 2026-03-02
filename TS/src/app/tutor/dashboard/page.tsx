@@ -1,13 +1,19 @@
 import PageMetaData from '@/components/PageMetaData'
+import Counter from './components/Counter'
+
 
 const DashboardPage = () => {
   return (
     <>
       <PageMetaData title="Tutor Dashboard" />
 
+      
       <div className="container-lg py-3 bg-body-secondary">
-        <h2>Tutor Dashboard</h2>
-        <p>Welcome to Tutor Panel</p>
+        <div className="mb-2">
+          <Counter />
+        </div>
+
+      
       </div>
     </>
   )

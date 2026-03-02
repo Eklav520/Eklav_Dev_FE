@@ -1,6 +1,6 @@
 import { useAuthContext } from '@/context/useAuthContext'
 import React, { useEffect, useState, useMemo } from 'react'
-import { Card, Button, Container, Row, Col, Badge, Modal, Tabs, Tab, Pagination } from 'react-bootstrap'
+import { Card, Button, Container, Row, Col, Badge, Modal, Tabs, Tab, Form } from 'react-bootstrap'
 import {
   FaPlay,
   FaCalendar,
@@ -27,6 +27,9 @@ import {
   FaMobileAlt,
   FaGlobe,
   FaLaptop,
+  FaComment,
+  FaPaperPlane,
+  FaUserCircle,
 } from 'react-icons/fa'
 
 interface Course {
@@ -42,13 +45,26 @@ interface Course {
   students?: number
 }
 
-interface Tutor {
-  _id: string
+interface Instructor {
+  designation: string
+  id: string
   name: string
+  email?: string
+  aboutMe?: string
   experience?: string
-  achievements?: string[]
-  bio?: string
+  skills?: string[]
   profileImage?: string
+  department?: string
+}
+
+interface Comment {
+  id: string
+  userId: string
+  userName: string
+  userAvatar?: string
+  text: string
+  createdAt: string
+  likes: number
 }
 
 interface ClassSession {
@@ -57,25 +73,23 @@ interface ClassSession {
   courseName: string
   startDate?: string | null
   startTime?: string | null
-
   endTime?: string | null
   meetingLink: string
   description?: string
-  createdBy?: Tutor | null
-
-  // ✅ ADD THESE
+  instructor?: Instructor | null
+  designation?: string
   cost?: number
   totalSeats?: number
   availableSeats?: number
   days?: string[]
   tags?: string[]
+  purchaseLastDate?: string | null
+  comments?: Comment[]
 }
 
 interface Props {
   userId: string
 }
-
-/* ===================== null-safe helpers & predicates ===================== */
 
 /* ===================== null-safe helpers & predicates ===================== */
 
@@ -106,6 +120,16 @@ const hasDateEnd = (x: unknown): x is Required<RowWithEnd> => {
     typeof r.endTime === 'string' &&
     r.endTime.trim()
   )
+}
+
+const isPurchaseClosed = (purchaseLastDate?: string | null) => {
+  if (!purchaseLastDate) return false
+
+  const normalized = normalizeDate(purchaseLastDate)
+  if (!normalized) return false
+
+  const lastDate = new Date(normalized + "T23:59:59")
+  return new Date() > lastDate
 }
 
 /** ---------- date/time normalizers that accept ISO, dd/MM/yyyy, etc. ---------- */
@@ -184,9 +208,15 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   const [selectedPurchaseClass, setSelectedPurchaseClass] = useState<ClassSession | null>(null)
   const [purchasing, setPurchasing] = useState(false)
 
+  // Comment state
+  const [commentText, setCommentText] = useState('')
+  const [comments, setComments] = useState<Comment[]>([])
+  const [submittingComment, setSubmittingComment] = useState(false)
+
   // Enrolled tab pagination (optional)
   const [enrPage, setEnrPage] = useState(1)
   const [enrPageSize, setEnrPageSize] = useState(6)
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     fetchAvailableClasses()
@@ -216,6 +246,49 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     }
   }
 
+  const fetchClassComments = async (classId: string) => {
+    try {
+      const res = await fetch(`${baseURL}/classes/${classId}/comments`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setComments(Array.isArray(data) ? data : [])
+      }
+    } catch (err) {
+      console.error('Error fetching comments:', err)
+    }
+  }
+
+  const handleSubmitComment = async () => {
+    if (!commentText.trim() || !selectedClass) return
+
+    setSubmittingComment(true)
+    try {
+      const res = await fetch(`${baseURL}/classes/${selectedClass._id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          text: commentText,
+          userName: user?.fullName || 'Student',
+        }),
+      })
+
+      if (res.ok) {
+        const newComment = await res.json()
+        setComments(prev => [newComment, ...prev])
+        setCommentText('')
+      }
+    } catch (err) {
+      console.error('Error posting comment:', err)
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
+
   // safer “pretty” date/time formatters
   const formatTime = (time24?: string | null): string => {
     if (!time24) return '--'
@@ -238,6 +311,21 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     const dt = new Date(d)
     if (Number.isNaN(dt.getTime())) return dateStr
     return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  }
+
+  const formatCommentDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return 'Just now'
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
+    return date.toLocaleDateString()
   }
 
   const getTimeUntilClass = (cls: ClassSession): string => {
@@ -394,7 +482,11 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
   const showClassDetails = (cls: ClassSession) => {
     setSelectedClass(cls)
+    setComments(cls.comments || [])
     setShowModal(true)
+    if (cls._id) {
+      fetchClassComments(cls._id)
+    }
   }
 
   // SAFE search (don’t call .toLowerCase on undefined)
@@ -452,11 +544,10 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     <>
       <Container fluid className="professional-dashboard">
         {/* Header Section */}
-        {/* ================= HEADER ================= */}
         <div className="dashboard-header">
           <div className="header-left">
             <FaGraduationCap className="header-icon me-2" />
-            <h1 className="dashboard-title mb-0">Learning Dashboard</h1>
+            <h1 className="dashboard-title mb-0">Live Learning Hub</h1>
           </div>
 
           <div className="header-center">
@@ -518,6 +609,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
               ) : (
                 <Row className="g-4">
                   {pagedUpcoming.map((cls) => {
+                    const purchaseClosed = isPurchaseClosed(cls.purchaseLastDate)
                     const classLive = isLive(cls)
                     const classUpcoming = !classLive && isUpcoming(cls)
                     const alreadyPurchased = enrolledClasses.some(
@@ -531,8 +623,19 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
                             <div className="class-header">
                               <div className="class-badges">
-                                <span className={`badge status-badge ${classLive ? "live" : "upcoming"}`}>
-                                  {classLive ? "LIVE NOW" : "UPCOMING"}
+                                <span
+                                  className={`badge status-badge ${purchaseClosed
+                                    ? "completed"
+                                    : classLive
+                                      ? "live"
+                                      : "upcoming"
+                                    }`}
+                                >
+                                  {purchaseClosed
+                                    ? "DATE CLOSED"
+                                    : classLive
+                                      ? "LIVE NOW"
+                                      : "UPCOMING"}
                                 </span>
                               </div>
 
@@ -559,17 +662,15 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                               </div>
                               <div className="meta-item">
                                 <FaUserTie className="meta-icon" />
-                                <span>{cls.createdBy?.name || "Instructor"}</span>
+                                <span>{cls.instructor?.name || "Instructor"}</span>
                               </div>
                             </div>
                             <div className="class-extra-info">
                               {cls.cost && (
                                 <div className="info-item">
-                                  {cls.cost && (
-                                    <div className="price-badge">
-                                      ₹ {cls.cost.toLocaleString()}
-                                    </div>
-                                  )}
+                                  <div className="price-badge">
+                                    ₹ {cls.cost.toLocaleString()}
+                                  </div>
                                 </div>
                               )}
 
@@ -597,17 +698,13 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                 )}
                               {cls.days?.length && (
                                 <div className="info-item">
-                                  {cls.days?.length && (
-                                    <div className="info-item">
-                                      📅 {cls.days
-                                        .sort(
-                                          (a, b) =>
-                                            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(a) -
-                                            ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(b)
-                                        )
-                                        .join(", ")}
-                                    </div>
-                                  )}
+                                  📅 {cls.days
+                                    .sort(
+                                      (a, b) =>
+                                        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(a) -
+                                        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(b)
+                                    )
+                                    .join(", ")}
                                 </div>
                               )}
 
@@ -632,17 +729,16 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                 View Details
                               </Button>
                               {alreadyPurchased ? (
-                                <Button
-                                  variant="success"
-                                  className="action-btn"
-                                  disabled
-                                >
+                                <Button className="action-btn btn-orange" disabled>
                                   Purchased
+                                </Button>
+                              ) : purchaseClosed ? (
+                                <Button className="action-btn btn-disabled" disabled>
+                                  Date Closed
                                 </Button>
                               ) : (
                                 <Button
-                                  variant="primary"
-                                  className="action-btn enroll-btn"
+                                  className="action-btn btn-orange"
                                   onClick={() => {
                                     setSelectedPurchaseClass(cls)
                                     setShowPurchaseModal(true)
@@ -692,19 +788,14 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                               <div>
                                 <strong>Time:</strong> {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
                               </div>
-                              <div>
-                                <strong>Instructor:</strong> {cls.createdBy?.name}
-                              </div>
                             </div>
 
                             <Button
-                              variant={classLive ? "danger" : "primary"}
                               href={cls.meetingLink}
                               target="_blank"
-                              disabled={classCompleted && !classLive}
-                              className="join-button mt-3"
+                              className="join-button btn-orange mt-3"
                             >
-                              {classLive ? "Join Live Session" : classCompleted ? "Session Ended" : "Join Class"}
+                              {classLive ? "Join Live Session" : "Join Class"}
                             </Button>
 
                           </Card.Body>
@@ -718,19 +809,14 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           )}
 
         </div>
-
-        {/* Main Content */}
-
       </Container>
 
       {/* Class Details Modal */}
       <Modal
         show={showModal}
         onHide={() => setShowModal(false)}
-        size="xl"
-        centered
-        fullscreen
         className="professional-modal"
+        dialogClassName="modal-fullscreen-custom modal-dialog-scrollable"
       >
         <Modal.Header closeButton>
           <Modal.Title>
@@ -746,142 +832,297 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
             )
 
             return (
-              <div className="class-modal-layout">
+              <>
+                <div className="class-modal-layout">
 
-                {/* LEFT SIDE */}
-                <div className="modal-left">
+                  {/* LEFT SIDE - Class Info */}
+                  <div className="modal-left">
+                    <div className="class-hero">
+                      <h3>{selectedClass.title}</h3>
+                      <span className="badge modal-badge">
+                        {isLive(selectedClass)
+                          ? 'LIVE'
+                          : isUpcoming(selectedClass)
+                            ? 'UPCOMING'
+                            : 'COMPLETED'}
+                      </span>
+                    </div>
 
-                  <div className="class-hero">
-                    <h3>{selectedClass.title}</h3>
-                    <span className="badge modal-badge">
-                      {isLive(selectedClass)
-                        ? 'LIVE'
-                        : isUpcoming(selectedClass)
-                          ? 'UPCOMING'
-                          : 'COMPLETED'}
-                    </span>
-                  </div>
+                    <div className="details-grid">
+                      <div className="detail-card">
+                        <FaCalendar className="detail-icon" />
+                        <div>
+                          <label>Date</label>
+                          <span>{formatDate(selectedClass.startDate || undefined)}</span>
+                        </div>
+                      </div>
 
-                  <div className="details-grid">
-                    <div className="detail-card">
-                      <FaCalendar className="detail-icon" />
-                      <div>
-                        <label>Date</label>
-                        <span>{formatDate(selectedClass.startDate || undefined)}</span>
+                      <div className="detail-card">
+                        <FaClock className="detail-icon" />
+                        <div>
+                          <label>Time</label>
+                          <span>
+                            {formatTime(selectedClass.startTime)} -{' '}
+                            {formatTime(selectedClass.endTime)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="detail-card">
+                        <FaGlobe className="detail-icon" />
+                        <div>
+                          <label>Format</label>
+                          <span>Live Online Session</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="detail-card">
-                      <FaClock className="detail-icon" />
-                      <div>
-                        <label>Time</label>
-                        <span>
-                          {formatTime(selectedClass.startTime)} -{' '}
-                          {formatTime(selectedClass.endTime)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="detail-card">
-                      <FaGlobe className="detail-icon" />
-                      <div>
-                        <label>Format</label>
-                        <span>Live Online Session</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedClass.description && (
+                    {/* About This Session - Always show at least the header */}
                     <div className="description-section">
-                      <h5>About This Session</h5>
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: selectedClass.description || ''
-                        }}
-                      />
+                      <h5>
+                        <FaBook className="me-2" />
+                        About This Session
+                      </h5>
+                      {selectedClass.description ? (
+                        <div
+                          dangerouslySetInnerHTML={{
+                            __html: selectedClass.description
+                          }}
+                        />
+                      ) : (
+                        <div className="description-placeholder">
+                          <p className="text-muted mb-0">No description available for this session.</p>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Purchase button for mobile view */}
+                    <div className="modal-actions-mobile mt-4">
+                      {alreadyPurchased ? (
+                        <Button className="btn-orange w-100" disabled>
+                          Already Purchased
+                        </Button>
+                      ) : (
+                        <Button
+                          className="btn-orange w-100"
+                          onClick={() => {
+                            setSelectedPurchaseClass(selectedClass)
+                            setShowModal(false)
+                            setShowPurchaseModal(true)
+                          }}
+                        >
+                          Purchase This Class
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT SIDE - Instructor Info */}
+                  <div className="modal-right">
+                    <h5 className="section-title">
+                      <FaUserTie className="me-2" />
+                      Instructor Details
+                    </h5>
+                    
+                    {selectedClass.instructor ? (
+                      <div className="instructor-card professional">
+                        {/* Profile Header */}
+                        <div className="instructor-header">
+                          <div className="instructor-avatar">
+                            {selectedClass.instructor.profileImage && !imgError ? (
+                              <img
+                                src={selectedClass.instructor.profileImage}
+                                alt={selectedClass.instructor.name}
+                                onError={() => setImgError(true)}
+                              />
+                            ) : (
+                              <div className="avatar-placeholder">
+                                {selectedClass.instructor.name?.charAt(0)?.toUpperCase() || "I"}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="instructor-main">
+                            <h4 className="instructor-name">
+                              {selectedClass.instructor.name}
+                            </h4>
+
+                            {selectedClass.instructor.email && (
+                              <div className="instructor-email">
+                                {selectedClass.instructor.email}
+                              </div>
+                            )}
+
+                            {/* Rating */}
+                            <div className="rating-row">
+                              <span className="label">Rating :</span>
+                              <div className="stars">
+                                ⭐⭐⭐⭐☆
+                                <span className="rating-value">(4.5)</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Designation */}
+                        {selectedClass.instructor.designation && (
+                          <div className="info-block">
+                            <span className="label">Designation :</span>
+                            <span className="value">
+                              {selectedClass.instructor.designation}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Experience */}
+                        {selectedClass.instructor.experience && (
+                          <div className="info-block">
+                            <span className="label">Experience :</span>
+                            <span className="value highlight">
+                              {selectedClass.instructor.experience}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Bio */}
+                        {selectedClass.instructor.aboutMe && (
+                          <div className="info-block">
+                            <span className="label">Bio :</span>
+                            <p className="bio-text">
+                              {selectedClass.instructor.aboutMe}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Skills */}
+                        {selectedClass.instructor.skills?.length ? (
+                          <div className="info-block">
+                            <span className="label">Skills :</span>
+                            <div className="skills-container">
+                              {selectedClass.instructor.skills.map((skill, i) => (
+                                <span key={i} className="skill-badge">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="instructor-card professional">
+                        <p className="text-muted text-center py-4">
+                          <FaUserCircle size={48} className="mb-3 opacity-50" />
+                          <br />
+                          No instructor information available
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Purchase button for desktop view */}
+                    <div className="modal-actions mt-4">
+                      {alreadyPurchased ? (
+                        <Button className="btn-orange w-100" disabled>
+                          Already Purchased
+                        </Button>
+                      ) : (
+                        <Button
+                          className="btn-orange w-100"
+                          onClick={() => {
+                            setSelectedPurchaseClass(selectedClass)
+                            setShowModal(false)
+                            setShowPurchaseModal(true)
+                          }}
+                        >
+                          Purchase This Class
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* RIGHT SIDE – INSTRUCTOR */}
-                <div className="modal-right">
-                  {selectedClass.createdBy && (
-                    <div className="instructor-card">
-                      <h5 className="section-title">Instructor</h5>
+                {/* Comments Section - Always visible at the bottom */}
+                <div className="comments-section">
+                  <h5 className="comments-title">
+                    <FaComment className="me-2" />
+                    Discussion ({comments.length})
+                  </h5>
 
-                      <div className="instructor-profile">
-                        <div className="instructor-avatar">
-                          {selectedClass.createdBy.profileImage ? (
-                            <img
-                              src={selectedClass.createdBy.profileImage}
-                              alt={selectedClass.createdBy.name}
-                            />
-                          ) : (
-                            <div className="avatar-placeholder">
-                              {selectedClass.createdBy.name?.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="instructor-info">
-                          <h6>{selectedClass.createdBy.name}</h6>
-
-                          {selectedClass.createdBy.experience && (
-                            <p className="exp">
-                              {selectedClass.createdBy.experience} Experience
-                            </p>
-                          )}
-
-                          {selectedClass.createdBy.bio && (
-                            <p className="bio">
-                              {selectedClass.createdBy.bio}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      {selectedClass.createdBy.achievements?.length ? (
-                        <ul className="achievements">
-                          {selectedClass.createdBy.achievements.map((a, i) => (
-                            <li key={i}>{a}</li>
-                          ))}
-                        </ul>
-                      ) : null}
+                  {/* Comment Input */}
+                  <div className="comment-input-wrapper">
+                    <div className="comment-avatar">
+                      <FaUserCircle size={40} />
                     </div>
-                  )}
-
-                  {/* Purchase Button */}
-                  <div className="modal-actions">
-                    {alreadyPurchased ? (
-                      <Button variant="success" disabled>
-                        Already Purchased
-                      </Button>
-                    ) : (
+                    <div className="comment-input-container">
+                      <Form.Control
+                        as="textarea"
+                        rows={2}
+                        placeholder="Share your thoughts or ask a question..."
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        className="comment-textarea"
+                      />
                       <Button
-                        variant="primary"
-                        onClick={() => {
-                          setSelectedPurchaseClass(selectedClass)
-                          setShowModal(false)
-                          setShowPurchaseModal(true)
-                        }}
+                        className="comment-submit-btn"
+                        onClick={handleSubmitComment}
+                        disabled={!commentText.trim() || submittingComment}
                       >
-                        Purchase This Class
+                        <FaPaperPlane className="me-2" />
+                        {submittingComment ? 'Posting...' : 'Post Comment'}
                       </Button>
+                    </div>
+                  </div>
+
+                  {/* Comments List */}
+                  <div className="comments-list">
+                    {comments.length === 0 ? (
+                      <div className="no-comments">
+                        <p>No comments yet. Be the first to start the discussion!</p>
+                      </div>
+                    ) : (
+                      comments.map((comment) => (
+                        <div key={comment.id} className="comment-item">
+                          <div className="comment-avatar">
+                            {comment.userAvatar ? (
+                              <img src={comment.userAvatar} alt={comment.userName} />
+                            ) : (
+                              <FaUserCircle size={40} />
+                            )}
+                          </div>
+                          <div className="comment-content">
+                            <div className="comment-header">
+                              <span className="comment-author">{comment.userName}</span>
+                              <span className="comment-time">
+                                {formatCommentDate(comment.createdAt)}
+                              </span>
+                            </div>
+                            <p className="comment-text">{comment.text}</p>
+                            <div className="comment-actions">
+                              <Button variant="link" className="comment-like-btn">
+                                <FaStar className="me-1" />
+                                Like ({comment.likes})
+                              </Button>
+                              <Button variant="link" className="comment-reply-btn">
+                                Reply
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
-
-              </div>
+              </>
             )
           })()}
         </Modal.Body>
       </Modal>
+
       {/* ================= PURCHASE MODAL ================= */}
       <Modal
         show={showPurchaseModal}
         onHide={() => setShowPurchaseModal(false)}
-        centered
         className="professional-modal"
+        dialogClassName="modal-fullscreen-custom modal-dialog-scrollable"
       >
         <Modal.Body>
           {selectedPurchaseClass && (
@@ -908,7 +1149,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                 </Button>
 
                 <Button
-                  variant="primary"
+                  className={`btn-orange ${purchasing ? "btn-disabled" : ""}`}
                   disabled={purchasing}
                   onClick={async () => {
                     if (!selectedPurchaseClass) return
@@ -929,528 +1170,978 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           )}
         </Modal.Body>
       </Modal>
-      {/* (your styles unchanged) */}
+
       <style>{`
         /* ===================== GLASS THEME ===================== */
-:root{
-  --bg-deep-1: #0f172a;
-  --bg-deep-2: #0b1220;
+        :root {
+          --bg-deep-1: #0f172a;
+          --bg-deep-2: #0b1220;
+          --glass-bg: rgba(255,255,255,.04);
+          --glass-border: rgba(255,255,255,.08);
+          --text-main: #f1f5f9;
+          --text-muted: #94a3b8;
+          --accent: #f97316;
+          --accent-dark: #ea580c;
+          --accent-soft: rgba(249,115,22,.15);
+        }
 
-  --glass-bg: rgba(255,255,255,.04);
-  --glass-border: rgba(255,255,255,.08);
+        /* Page background */
+        .professional-dashboard {
+          background: radial-gradient(800px 400px at 90% 10%, rgba(249,115,22,.15), transparent 60%),
+                      linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
+          min-height: 100vh;
+          padding: 0;
+          color: var(--text-main);
+        }
 
-  --text-main: #f1f5f9;
-  --text-muted: #94a3b8;
+        /* ===== Header (glass panel) ===== */
+        .dashboard-header {
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 14px;
+          padding: 1rem 2rem;
+          margin: 1.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 2rem;
+        }
 
-  /* 🔥 ORANGE THEME */
-  --accent: #f97316;
-  --accent-dark: #ea580c;
-  --accent-soft: rgba(249,115,22,.15);
-}
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: .75rem;
+          flex: 1;
+        }
 
-/* Page background */
-.professional-dashboard{
-  background:
-    radial-gradient(800px 400px at 90% 10%, rgba(249,115,22,.15), transparent 60%),
-    linear-gradient(180deg, #0f172a 0%, #0b1220 100%);
-  min-height: 100vh;
-  padding: 0;
-  color: var(--text-main);
-}
+        .header-center {
+          flex: 1;
+          display: flex;
+          justify-content: center;
+        }
 
-/* ===== Header (glass panel) ===== */
-.dashboard-header{
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  padding: 1rem 2rem;
-  margin: 1.5rem;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:2rem;
-}
+        .header-right {
+          flex: 1;
+          display: flex;
+          justify-content: flex-end;
+        }
 
-.header-left{
-  display:flex;
-  align-items:center;
-  gap:.75rem;
-  flex:1;
-}
+        .dashboard-title {
+          font-size: 1.5rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
 
-.header-center{
-  flex:1;
-  display:flex;
-  justify-content:center;
-}
+        .header-icon {
+          font-size: 2rem;
+        }
 
-.header-right{
-  flex:1;
-  display:flex;
-  justify-content:flex-end;
-}
+        /* Search box */
+        .search-box {
+          position: relative;
+          width: 100%;
+          max-width: 400px;
+        }
 
-.dashboard-title{
-  font-size:1.5rem;
-  font-weight:600;
-  white-space:nowrap;
-}
-.header-content{ max-width: 800px; }
-.dashboard-title{
-  font-size: 1.8rem;
-  margin-bottom: .5rem;
-}
-.header-icon{ margin-right: 1rem; font-size: 2rem; }
-.dashboard-subtitle{
-  margin-bottom: 1rem;
-  font-size: .95rem;
-}
+        .search-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #93a2b8;
+        }
 
-/* Stats chips */
-.stats-container{ display:flex; gap:1.5rem; margin-top:2rem; flex-wrap:wrap; }
-.stat-card{
-  display:flex; align-items:center; gap:1rem;
-  background: rgba(255,255,255,.06);
-  border:1px solid var(--glass-border);
-  border-radius:12px;
-  padding: .7rem 1rem;
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
-}
-.stat-icon{ width:50px; height:50px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.5rem; }
-.stat-icon.enrolled{ background: rgba(16,185,129,.18); color:#6ee7b7; }
-.stat-icon.upcoming{ background: rgba(251,146,60,.18); color:#fdba74; }
-.stat-icon.completed{ background: rgba(59,130,246,.18); color:#93c5fd; }
-.stat-number{ font-size:1.5rem; font-weight:700; line-height:1; }
-.stat-label{ font-size:.9rem; color:var(--glass-muted); }
+        .search-input {
+          width: 100%;
+          padding: .875rem 1rem .875rem 3rem;
+          border: none;
+          border-radius: 12px;
+          background: rgba(255,255,255,.08) !important;
+          color: #e5e7eb !important;
+          border: 1px solid var(--glass-border) !important;
+          box-shadow: none !important;
+        }
 
-/* Search box */
-.header-actions{ display:flex; justify-content:flex-end; }
-.search-box{ position:relative; width:100%; max-width:400px; }
-.search-icon{ position:absolute; left:1rem; top:50%; transform:translateY(-50%); color:#93a2b8; }
-.search-input{
-  width:100%; padding:.875rem 1rem .875rem 3rem; border:none; border-radius:12px;
-  background: rgba(255,255,255,.08) !important; color:#e5e7eb !important;
-  border: 1px solid var(--glass-border) !important; box-shadow:none !important;
-}
-.search-input::placeholder{ color:#9aa3b2; }
+        .search-input::placeholder {
+          color: #9aa3b2;
+        }
 
-/* ===== Tabs container (glass) ===== */
-.dashboard-content{
-  padding: 0 1.5rem 2rem;
-  margin-top: 1rem;   /* 🔥 add this */
-}
-.professional-tabs{
-  background: rgba(255,255,255,.04);
-  padding: 4px;
-  border-radius: 999px;
-  display: inline-flex !important;
-  align-items: center;
-  gap: 4px;
+        /* ===== Tabs container (glass) ===== */
+        .dashboard-content {
+          padding: 0 1.5rem 2rem;
+          margin-top: 1rem;
+        }
 
-  /* IMPORTANT FIX */
+        .professional-tabs {
+          background: rgba(255,255,255,.04);
+          padding: 4px;
+          border-radius: 999px;
+          display: inline-flex !important;
+          align-items: center;
+          gap: 4px;
+          overflow: hidden;
+        }
+
+        .professional-tabs .nav-item {
+          margin: 0 !important;
+        }
+
+        .professional-tabs .nav-link {
+          border: none !important;
+          border-radius: 999px !important;
+          padding: .45rem 1.1rem !important;
+          font-size: .9rem;
+          color: var(--text-muted) !important;
+          background: transparent !important;
+          transition: all .2s ease;
+        }
+
+        .professional-tabs .nav-link.active {
+          background: var(--accent) !important;
+          color: #fff !important;
+        }
+
+        .tab-badge {
+          margin-left: .5rem;
+          font-size: .8rem;
+          background: rgba(255,255,255,.2);
+        }
+
+        /* ===== Cards (glass panels) ===== */
+        .class-card,
+        .class-card.premium,
+        .enrollment-card {
+          width: 100%;
+          background: var(--glass-bg) !important;
+          border: 1px solid var(--glass-border) !important;
+          backdrop-filter: blur(12px) saturate(140%);
+          border-radius: 16px;
+          box-shadow: 0 18px 50px rgba(2,8,23,.45) !important;
+          transition: transform .25s ease, box-shadow .25s ease;
+        }
+
+        .class-card .card-body {
+          padding: 1.5rem;
+        }
+
+        .class-card:hover,
+        .enrollment-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 22px 60px rgba(5,12,30,.55) !important;
+        }
+
+        .class-card.premium {
+          border-left: 4px solid var(--accent);
+        }
+
+        .class-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 1.5rem;
+        }
+
+        .class-badges {
+          display: flex;
+          gap: .5rem;
+          flex-wrap: wrap;
+        }
+
+        .class-title,
+        .enrollment-title {
+          font-size: 1.3rem;
+          font-weight: 700;
+          color: #fff !important;
+          margin-bottom: 1rem;
+          line-height: 1.3;
+        }
+
+        .class-meta {
+          display: flex;
+          flex-direction: column;
+          gap: .8rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .meta-item {
+          display: flex;
+          align-items: center;
+          gap: .8rem;
+          color: var(--text-muted);
+          font-size: .95rem;
+        }
+
+        .meta-icon {
+          color: #93c5fd;
+          width: 16px;
+        }
+
+        /* Badges / chips */
+        .badge.status-badge,
+        .badge.modal-badge {
+          padding: .5rem 1rem;
+          border-radius: 999px;
+          font-size: .8rem;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: .35rem;
+          border: 1px solid transparent;
+        }
+
+        .badge.status-badge.live {
+          background: rgba(239,68,68,.15);
+          color: #fecaca;
+          border-color: rgba(239,68,68,.35);
+        }
+
+        .badge.status-badge.upcoming {
+          background: var(--accent-soft);
+          color: var(--accent);
+          border: 1px solid var(--accent);
+        }
+
+        .badge.status-badge.completed {
+          background: rgba(34,197,94,.14);
+          color: #bbf7d0;
+          border-color: rgba(34,197,94,.35);
+        }
+
+        .badge.modal-badge {
+          background: rgba(148,163,184,.16);
+          color: #e5e7eb;
+          border-color: rgba(148,163,184,.35);
+        }
+
+        /* Countdown chip */
+        .countdown {
+          background: rgba(251,191,36,.12) !important;
+          color: #fde68a !important;
+          border: 1px solid rgba(251,191,36,.35);
+          border-radius: 12px;
+          font-weight: 600;
+          padding: .4rem .8rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+          text-align: center;
+          padding: 3rem 2rem;
+          color: var(--text-muted);
+        }
+
+        .empty-icon {
+          margin-bottom: 1rem;
+          opacity: .7;
+        }
+
+        .empty-state h3 {
+          margin-bottom: 1rem;
+          color: #e5e7eb;
+        }
+
+        /* Enrollment specific */
+        .enrollment-card.live {
+          border-left: 4px solid rgba(239,68,68,.45) !important;
+        }
+
+        .enrollment-card.upcoming {
+          border-left: 4px solid rgba(251,146,60,.45) !important;
+        }
+
+        .enrollment-card.completed {
+          border-left: 4px solid rgba(34,197,94,.45) !important;
+        }
+
+        /* Class actions */
+        .class-actions {
+          display: flex;
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .action-btn {
+          flex: 1;
+          padding: .75rem 1.25rem;
+          border-radius: 12px;
+          font-weight: 600;
+          transition: transform .2s ease;
+        }
+
+        .action-btn:active {
+          transform: translateY(1px);
+        }
+
+        .action-btn.details-btn {
+          border: 1px solid var(--accent) !important;
+          color: var(--accent) !important;
+          background: transparent !important;
+        }
+
+        .action-btn.details-btn:hover {
+          background: var(--accent-soft) !important;
+        }
+
+        /* Buttons */
+        .btn-orange {
+          background: var(--accent) !important;
+          border: 1px solid var(--accent-dark) !important;
+          color: #fff !important;
+          border-radius: 12px !important;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .btn-orange:hover {
+          background: var(--accent-dark) !important;
+          transform: translateY(-2px);
+        }
+
+        .btn-orange:disabled,
+        .btn-disabled {
+          background: rgba(249,115,22,.3) !important;
+          border: 1px solid rgba(249,115,22,.3) !important;
+          color: #fff !important;
+          cursor: not-allowed;
+          transform: none !important;
+        }
+
+        .join-button {
+          background: var(--accent) !important;
+          border: 1px solid var(--accent-dark) !important;
+          color: #fff !important;
+        }
+
+        /* Class extra info */
+        .class-extra-info {
+          margin-bottom: 1rem;
+          display: flex;
+          flex-direction: column;
+          gap: .5rem;
+        }
+
+        .info-item {
+          font-size: .9rem;
+          color: var(--text-muted);
+        }
+
+        .tags-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: .5rem;
+          margin-top: .5rem;
+        }
+
+        .tag-badge {
+          background: var(--accent-soft);
+          color: var(--accent);
+          padding: .3rem .7rem;
+          border-radius: 999px;
+          font-size: .75rem;
+          border: 1px solid var(--accent);
+        }
+
+        .price-badge {
+          display: inline-block;
+          background: rgba(34,197,94,.15);
+          color: #86efac;
+          padding: .4rem .8rem;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: .9rem;
+          border: 1px solid rgba(34,197,94,.4);
+        }
+
+        .slots-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: .3rem;
+        }
+
+        .slots-text {
+          font-size: .85rem;
+          color: #fde68a;
+          font-weight: 600;
+        }
+
+        .slots-progress {
+          height: 6px;
+          background: rgba(255,255,255,.08);
+          border-radius: 999px;
+          overflow: hidden;
+        }
+
+        .slots-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #f97316, #ea580c);
+        }
+
+        /* ===== Modal Styles ===== */
+        .professional-modal .modal-content {
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 20px;
+          backdrop-filter: blur(14px) saturate(140%);
+          -webkit-backdrop-filter: blur(14px) saturate(140%);
+          box-shadow: 0 22px 70px rgba(2,8,23,.55);
+          color: var(--text-main);
+        }
+
+        .professional-modal .modal-header {
+          border-bottom: 1px solid var(--glass-border);
+          padding: 1.25rem 1.5rem;
+        }
+
+        .professional-modal .modal-header .btn-close {
+          filter: invert(1) grayscale(100%) brightness(200%);
+        }
+
+        .professional-modal .modal-dialog {
+          max-width: 1200px;
+          margin: 1.75rem auto;
+        }
+
+        .professional-modal .modal-dialog-scrollable .modal-body {
+          max-height: calc(100vh - 100px);
+          overflow-y: auto;
+        }
+
+        .professional-modal .modal-body {
+          padding: 1.5rem;
+        }
+
+        /* Modal Layout */
+        .class-modal-layout {
+          display: grid;
+          grid-template-columns: 1.5fr 1fr;
+          gap: 1.5rem;
+          margin-bottom: 2rem;
+          width: 100%;
+          min-width: 0;
+        }
+
+        .modal-left,
+        .modal-right {
+          min-width: 0;
+        }
+
+        .instructor-card.professional {
+          width: 100%;
+          overflow-wrap: break-word;
+        }
+
+        .modal-left {
+          height: 100%;
+        }
+
+        .modal-right {
+          background: rgba(255,255,255,.05);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          padding: 1.5rem;
+          height: fit-content;
+        }
+
+        .class-hero {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 2rem;
+        }
+
+        .class-hero h3 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #fff;
+          margin: 0;
+        }
+
+        .details-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .detail-card {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255,255,255,.06);
+          border: 1px solid var(--glass-border);
+          border-radius: 12px;
+        }
+
+        .detail-icon {
+          font-size: 1.5rem;
+          color: #93c5fd;
+        }
+
+        .detail-card label {
+          display: block;
+          font-size: .8rem;
+          color: var(--text-muted);
+          margin-bottom: .2rem;
+        }
+
+        .detail-card span {
+          font-weight: 600;
+          color: #e5e7eb;
+        }
+
+       .description-section {
+  margin-bottom: 2rem;
+  max-width: 100%;
   overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
-.professional-tabs .nav-item{
-  margin: 0 !important;
+/* VERY IMPORTANT — constrain all injected HTML */
+.description-section * {
+  max-width: 100% !important;
+  box-sizing: border-box;
 }
 
-.professional-tabs .nav-link{
-  border: none !important;
-  border-radius: 999px !important;
-  padding: .45rem 1.1rem !important;
-  font-size: .9rem;
-  color: var(--text-muted) !important;
-  background: transparent !important;
-  transition: all .2s ease;
-}
+      /* Prevent images from overflowing */
+      .description-section img {
+        max-width: 100% !important;
+        height: auto !important;
+        border-radius: 12px;
+      }
 
-.professional-tabs .nav-link.active{
-  background: var(--accent) !important;
-  color: #fff !important;
-}
-.tab-icon{ font-size:1.1rem; }
-.tab-badge{ margin-left:.5rem; font-size:.8rem; }
-.tab-content{ padding:2rem; }
+      /* Prevent long code blocks / pre text overflow */
+      .description-section pre,
+      .description-section code {
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+      }
 
-/* Section header */
-.section-header{ text-align:center; margin-bottom:3rem; }
-.section-header h2{ font-size:2rem; font-weight:700; color:#f8fafc; margin-bottom:1rem; }
-.section-header p{ font-size:1.05rem; color:var(--glass-muted); max-width:600px; margin:0 auto; }
+      /* Prevent tables from breaking layout */
+      .description-section table {
+        width: 100% !important;
+        display: block;
+        overflow-x: auto;
+      }
 
-/* ===== Cards (glass panels) ===== */
-.class-card,
-.class-card.premium,
-.enrollment-card{
-  width: 100%;   /* 🔥 make card fill column */
-  background: var(--glass-bg) !important;
-  border: 1px solid var(--glass-border) !important;
-  backdrop-filter: blur(12px) saturate(140%);
-  border-radius:16px;
-  box-shadow: 0 18px 50px rgba(2,8,23,.45) !important;
-  transition: transform .25s ease, box-shadow .25s ease;
-}
+        .description-section h5 {
+          color: #fff;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+        }
 
-.class-card .card-body{
-  padding: 1.5rem 1.5rem;  /* reduced */
-}
+        .description-section p {
+          color: var(--text-muted);
+          line-height: 1.6;
+        }
 
-.class-card:hover, .enrollment-card:hover{
-  transform: translateY(-4px);
-  box-shadow: 0 22px 60px rgba(5,12,30,.55) !important;
-}
-.class-card.premium{
-  border-left: 4px solid var(--accent);
-}
+        .description-placeholder {
+          background: rgba(255,255,255,.02);
+          border-radius: 12px;
+          padding: 2rem;
+          text-align: center;
+        }
 
-.class-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; }
-.class-badges{ display:flex; gap:.5rem; flex-wrap:wrap; }
+        .modal-actions-mobile {
+          display: none;
+        }
 
-.class-title, .enrollment-title{ font-size:1.3rem; font-weight:700; color:#fff !important; margin-bottom:1rem; line-height:1.3; }
-.class-meta{ display:flex; flex-direction:column; gap:.8rem; margin-bottom:1.5rem; }
-.meta-item{ display:flex; align-items:center; gap:.8rem; color:var(--glass-muted); font-size:.95rem; }
-.meta-icon{ color:#93c5fd; width:16px; }
-.class-description{ color:var(--glass-muted); line-height:1.6; margin-bottom:2rem; font-size:.95rem; }
+        /* ===== Professional Instructor Card ===== */
+        .instructor-card.professional {
+          background: rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 16px;
+          padding: 1.5rem;
+        }
 
-/* Buttons */
-.action-btn{ flex:1; padding:.75rem 1.25rem; border-radius:12px; font-weight:600; transition: transform .2s ease; }
-.action-btn:active{ transform: translateY(1px); }
-.action-btn.details-btn{
-  border:1px solid var(--accent) !important;
-  color: var(--accent) !important;
-  background: transparent !important;
-}
+        .section-title {
+          color: #fff;
+          margin-bottom: 1.2rem;
+          display: flex;
+          align-items: center;
+        }
 
-.action-btn.details-btn:hover{
-  background: var(--accent-soft) !important;
-}
+        .instructor-header {
+          display: flex;
+          gap: 1.2rem;
+          margin-bottom: 1.5rem;
+          align-items: center;
+        }
 
-.action-btn.enroll-btn,
-.enroll-button,
-.join-button{
-  background: var(--accent) !important;
-  border:none !important;
-  color:#fff !important;
-}
+        .instructor-avatar img {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid var(--accent);
+        }
 
-.action-btn.enroll-btn:hover,
-.enroll-button:hover,
-.join-button:hover{
-  background: var(--accent-dark) !important;
-}
-.join-button{
-  background: var(--accent) !important;
-  border: 1px solid var(--accent-dark) !important;
-  color: #fff !important;
-}
+        .avatar-placeholder {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          background: linear-gradient(135deg,#f97316,#ea580c);
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 2rem;
+          font-weight: 700;
+        }
 
-/* Badges / chips */
-.badge.status-badge,
-.badge.type-badge,
-.badge.modal-badge{
-  padding:.5rem 1rem; border-radius:999px; font-size:.8rem; font-weight:600;
-  display:inline-flex; align-items:center; gap:.35rem; border:1px solid transparent;
-}
-.badge.status-badge.live{       background: rgba(239,68,68,.15);  color:#fecaca;  border-color: rgba(239,68,68,.35); }
-.badge.status-badge.upcoming{
-  background: var(--accent-soft);
-  color: var(--accent);
-  border:1px solid var(--accent);
-}
-.badge.status-badge.completed{  background: rgba(34,197,94,.14);  color:#bbf7d0;  border-color: rgba(34,197,94,.35); }
-.badge.type-badge{ background: rgba(56,189,248,.14); color:#bae6fd; border-color: rgba(56,189,248,.35); font-size:.72rem; }
-.badge.modal-badge{ background: rgba(148,163,184,.16); color:#e5e7eb; border-color: rgba(148,163,184,.35); }
+        .instructor-name {
+          margin: 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: #fff;
+        }
 
-/* Countdown chip */
-.countdown{
-  background: rgba(251,191,36,.12) !important;
-  color:#fde68a !important;
-  border:1px solid rgba(251,191,36,.35);
-  border-radius:12px; font-weight:600; padding:.4rem .8rem;
-}
+        .instructor-email {
+          font-size: .85rem;
+          color: var(--text-muted);
+          margin-top: .3rem;
+        }
 
-/* Empty state */
-.empty-state{ text-align:center; padding:3rem 2rem; color:var(--glass-muted); }
-.empty-icon{ margin-bottom:1rem; opacity:.7; }
-.empty-state h3{ margin-bottom:1rem; color:#e5e7eb; }
+        .rating-row {
+          margin-top: .6rem;
+          display: flex;
+          align-items: center;
+          gap: .5rem;
+        }
 
-/* Enrollment specific */
-.enrollment-card.live{      border-left: 4px solid rgba(239,68,68,.45) !important; }
-.enrollment-card.upcoming{  border-left: 4px solid rgba(251,146,60,.45) !important; }
-.enrollment-card.completed{ border-left: 4px solid rgba(34,197,94,.45) !important; }
-.enrollment-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem; }
-.enrollment-status{ display:flex; align-items:center; gap:1rem; }
-.enrollment-date{ color:var(--glass-muted); font-size:.9rem; }
-.enrollment-type{ display:flex; align-items:center; gap:.5rem; color:#93c5fd; font-size:.9rem; font-weight:600; }
+        .stars {
+          color: #facc15;
+          font-size: .9rem;
+          font-weight: 600;
+        }
 
-/* Modal (glass) */
-.professional-modal .modal-content{
-  background: var(--glass-bg);
-  border:1px solid var(--glass-border);
-  border-radius:20px;
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  box-shadow: 0 22px 70px rgba(2,8,23,.55);
-  color: var(--glass-text);
-}
-.class-hero{ display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; }
-.class-hero h3{ font-size:1.5rem; font-weight:700; color:#fff; margin:0; }
+        .rating-value {
+          margin-left: .3rem;
+          color: var(--text-muted);
+        }
 
-.details-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:1rem; margin-bottom:2rem; }
-.detail-card{ display:flex; align-items:center; gap:1rem; padding:1rem; background: rgba(255,255,255,.06); border:1px solid var(--glass-border); border-radius:12px; }
-.detail-icon{ font-size:1.5rem; color:#93c5fd; }
-.detail-card label{ display:block; font-size:.8rem; color:var(--glass-muted); margin-bottom:.2rem; }
-.detail-card span{ font-weight:600; color:#e5e7eb; }
+        .info-block {
+          margin-bottom: 1.2rem;
+        }
 
-.description-section{ margin-bottom:2rem; }
-.description-section h5{ color:#fff; margin-bottom:1rem; }
-.description-section p{ color:var(--glass-muted); line-height:1.6; }
+        .label {
+          display: block;
+          font-size: .8rem;
+          font-weight: 600;
+          color: var(--accent);
+          text-transform: uppercase;
+          letter-spacing: .5px;
+          margin-bottom: .3rem;
+        }
 
-.modal-actions{ text-align:center; }
-.enroll-button{
-  padding:.875rem 1.75rem;
-  border-radius:12px;
-  font-weight:600;
-  background: var(--accent) !important;
-  border: 1px solid var(--accent-dark) !important;  /* ✅ add border */
-  color: #fff !important;
-}
+        .value {
+          font-size: .95rem;
+          color: #e5e7eb;
+        }
 
-.class-actions{
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
+        .highlight {
+          color: #86efac;
+          font-weight: 600;
+        }
 
-/* Responsive */
-@media (max-width: 768px){
-  .dashboard-title{ font-size:2rem; }
-  .stats-container{ flex-direction:column; gap:1rem; }
-  .class-actions{
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-  .details-grid{ grid-template-columns:1fr; }
-  .class-header{ flex-direction:column; gap:1rem; }
-  .dashboard-header{ margin: 1rem 1rem 1rem !important; }
-}
+        .bio-text {
+          font-size: .9rem;
+          color: var(--text-muted);
+          line-height: 1.6;
+          margin: 0;
+        }
 
-/* Fallback for browsers without backdrop-filter */
-@supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))){
-  .dashboard-header,
-  .professional-tabs,
-  .class-card,
-  .enrollment-card,
-  .professional-modal .modal-content{
-    background: rgba(17,24,39,.92) !important;
-  }
-}
+        .skills-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: .5rem;
+          margin-top: .3rem;
+        }
 
-.dashboard-header.compact{
-  padding: 1rem 1.5rem !important;
-  margin: 1rem 1.5rem !important;
-  border-radius: 14px;
-}
+        .skill-badge {
+          background: rgba(249,115,22,.12);
+          color: #f97316;
+          border: 1px solid #f97316;
+          padding: .35rem .8rem;
+          border-radius: 999px;
+          font-size: .75rem;
+          font-weight: 600;
+        }
 
-.header-tabs-nav .nav-link{
-  padding: .5rem 1rem !important;
-  font-size: .9rem;
-  border-radius: 999px !important;
-}
+        .modal-actions {
+          text-align: center;
+        }
 
-.header-tabs-nav .nav-link.active{
-  background: linear-gradient(135deg, rgba(59,130,246,.4), rgba(37,99,235,.4)) !important;
-  color: #fff !important;
-}
+        /* Comments Section */
+        .comments-section {
+          margin-top: 2rem;
+          padding-top: 2rem;
+          border-top: 1px solid var(--glass-border);
+        }
 
-.header-left{
-  display:flex;
-  align-items:center;
-}
+        .comments-title {
+          color: #fff;
+          margin-bottom: 1.5rem;
+          font-size: 1.2rem;
+          display: flex;
+          align-items: center;
+        }
 
-.dashboard-title{
-  font-size:1.6rem;
-  margin-bottom:0;
-}
+        .comment-input-wrapper {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
 
-/* Modal Layout */
-.class-modal-layout{
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
-}
+        .comment-avatar {
+          flex-shrink: 0;
+        }
 
-.modal-left{
-  padding-right: 1rem;
-}
+        .comment-avatar svg,
+        .comment-avatar img {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          color: var(--text-muted);
+        }
 
-.modal-right{
-  background: rgba(255,255,255,.05);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-  padding: 1.5rem;
-  height: fit-content;
-}
+        .comment-input-container {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
 
-.section-title{
-  margin-bottom: 1rem;
-  color: #fff;
-}
+        .comment-textarea {
+          background: rgba(255,255,255,.05) !important;
+          border: 1px solid var(--glass-border) !important;
+          color: #fff !important;
+          border-radius: 12px !important;
+          resize: vertical;
+          min-height: 80px;
+        }
 
-/* Instructor */
-.instructor-profile{
-  display: flex;
-  gap: 1rem;
-  align-items: flex-start;
-}
+        .comment-textarea:focus {
+          background: rgba(255,255,255,.08) !important;
+          border-color: var(--accent) !important;
+          box-shadow: none !important;
+        }
 
-.instructor-avatar img{
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--accent);
-}
+        .comment-submit-btn {
+          align-self: flex-end;
+          background: var(--accent) !important;
+          border: 1px solid var(--accent-dark) !important;
+          color: #fff !important;
+          border-radius: 999px !important;
+          padding: 0.5rem 1.5rem !important;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
 
-.avatar-placeholder{
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: var(--accent-soft);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.8rem;
-  font-weight: bold;
-}
+        .comment-submit-btn:hover:not(:disabled) {
+          background: var(--accent-dark) !important;
+          transform: translateY(-2px);
+        }
 
-.instructor-info h6{
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #fff;
-}
+        .comment-submit-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
 
-.exp{
-  color: var(--accent);
-  font-weight: 600;
-  margin: .3rem 0;
-}
+        .comments-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
 
-.bio{
-  color: var(--text-muted);
-  font-size: .9rem;
-}
+        .no-comments {
+          text-align: center;
+          color: var(--text-muted);
+          padding: 2rem;
+          background: rgba(255,255,255,.02);
+          border-radius: 12px;
+        }
 
-.achievements{
-  margin-top: 1rem;
-  padding-left: 1rem;
-  color: var(--text-muted);
-}
+        .comment-item {
+          display: flex;
+          gap: 1rem;
+          padding: 1rem;
+          background: rgba(255,255,255,.02);
+          border-radius: 12px;
+          transition: background 0.2s ease;
+        }
 
-.modal-actions{
-  margin-top: 2rem;
-}
+        .comment-item:hover {
+          background: rgba(255,255,255,.04);
+        }
 
-/* Responsive */
-@media (max-width: 992px){
-  .class-modal-layout{
-    grid-template-columns: 1fr;
-  }
-}
+        .comment-content {
+          flex: 1;
+        }
 
-.class-extra-info{
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-}
+        .comment-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
 
-.info-item{
-  font-size: .9rem;
-  color: var(--text-muted);
-}
+        .comment-author {
+          font-weight: 600;
+          color: #fff;
+        }
 
-.tags-container{
-  display: flex;
-  flex-wrap: wrap;
-  gap: .5rem;
-  margin-top: .5rem;
-}
+        .comment-time {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+        }
 
-.tag-badge{
-  background: var(--accent-soft);
-  color: var(--accent);
-  padding: .3rem .7rem;
-  border-radius: 999px;
-  font-size: .75rem;
-  border: 1px solid var(--accent);
-}
+        .comment-text {
+          color: var(--text-main);
+          margin-bottom: 0.75rem;
+          line-height: 1.5;
+        }
 
-.price-badge{
-  display:inline-block;
-  background: rgba(34,197,94,.15);
-  color:#86efac;
-  padding:.4rem .8rem;
-  border-radius:12px;
-  font-weight:700;
-  font-size:.9rem;
-  border:1px solid rgba(34,197,94,.4);
-}
+        .comment-actions {
+          display: flex;
+          gap: 1rem;
+        }
 
-.slots-wrapper{
-  display:flex;
-  flex-direction:column;
-  gap:.3rem;
-}
+        .comment-like-btn,
+        .comment-reply-btn {
+          color: var(--text-muted) !important;
+          font-size: 0.9rem !important;
+          padding: 0 !important;
+          text-decoration: none !important;
+        }
 
-.slots-text{
-  font-size:.85rem;
-  color:#fde68a;
-  font-weight:600;
-}
+        .comment-like-btn:hover,
+        .comment-reply-btn:hover {
+          color: var(--accent) !important;
+        }
 
-.slots-progress{
-  height:6px;
-  background: rgba(255,255,255,.08);
-  border-radius:999px;
-  overflow:hidden;
-}
+        /* Purchase Modal */
+        .purchase-modal-content {
+          text-align: center;
+          padding: 1.5rem;
+        }
 
-.slots-fill{
-  height:100%;
-  background: linear-gradient(90deg, #f97316, #ea580c);
-}
+        .purchase-info {
+          background: rgba(255,255,255,.05);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          padding: 1.5rem;
+        }
 
-.purchase-modal-content{
-  text-align:center;
-  padding:1.5rem;
-}
+        .price-display {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #86efac;
+          margin-top: .5rem;
+        }
 
-.purchase-info{
-  background: rgba(255,255,255,.05);
-  border:1px solid var(--glass-border);
-  border-radius:16px;
-  padding:1.5rem;
-}
+        .purchase-actions {
+          display: flex;
+          justify-content: center;
+          gap: 1rem;
+        }
 
-.price-display{
-  font-size:2rem;
-  font-weight:700;
-  color:#86efac;
-  margin-top:.5rem;
-}
+        /* Responsive */
+        @media (max-width: 992px) {
+          .class-modal-layout {
+            grid-template-columns: 1fr;
+          }
 
-.purchase-actions{
-  display:flex;
-  justify-content:center;
-  gap:1rem;
-}
+          .modal-actions-mobile {
+            display: block;
+          }
 
+          .modal-actions {
+            display: none;
+          }
+        }
 
+        @media (max-width: 768px) {
+          .dashboard-header {
+            flex-direction: column;
+            gap: 1rem;
+          }
+          
+          .header-left,
+          .header-center,
+          .header-right {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .details-grid {
+            grid-template-columns: 1fr;
+          }
 
+          .comment-input-wrapper {
+            flex-direction: column;
+          }
+
+          .comment-submit-btn {
+            align-self: stretch;
+          }
+
+          .instructor-header {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .instructor-main {
+            text-align: center;
+          }
+
+          .rating-row {
+            justify-content: center;
+          }
+        }
+
+        /* Fallback for browsers without backdrop-filter */
+        @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+          .dashboard-header,
+          .professional-tabs,
+          .class-card,
+          .enrollment-card,
+          .professional-modal .modal-content {
+            background: rgba(17,24,39,.92) !important;
+          }
+        }
+
+      /* FULL TRUE FULLSCREEN */
+      .modal-fullscreen-custom {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+      }
+
+      .professional-modal .modal-dialog {
+        margin: 0 !important;   /* remove bootstrap spacing */
+        height: 100vh;
+      }
+
+      .professional-modal .modal-content {
+        height: 100vh;
+        border-radius: 0 !important;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .professional-modal .modal-header {
+        flex-shrink: 0;
+      }
+
+      .professional-modal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
       `}</style>
     </>
   )

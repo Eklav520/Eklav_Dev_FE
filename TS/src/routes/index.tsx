@@ -157,11 +157,8 @@ const NotFound = lazy(() => import('@/app/admin/error-404/page'))
 
 // ✅ Tutor Dashboard
 const TutorDashboard = lazy(() => import('@/app/tutor/dashboard/page'))
-
-// ✅ Tutor Courses
-const TutorManageCourses = lazy(() => import('@/app/tutor/manage-course/page'))
-
-
+const TutorOnline = lazy(() => import('@/app/tutor/online-classes/page'))
+const TutorEditProfile = lazy(() => import('@/app/tutor/edit-profile/page'))
 // ✅ Tutor Earnings
 const TutorEarnings = lazy(() => import('@/app/tutor/earning/page'))
 const TutorPayout = lazy(() => import('@/app/tutor/payout/page'))
@@ -170,9 +167,10 @@ const TutorPayout = lazy(() => import('@/app/tutor/payout/page'))
 const TutorStudentsList = lazy(() => import('@/app/tutor/student-list/page'))
 
 // ✅ Tutor Profile
-const TutorEditProfile = lazy(() => import('@/app/tutor/edit-profile/page'))
+
 const TutorSettings = lazy(() => import('@/app/tutor/setting/page'))
 const TutorDeleteAccount = lazy(() => import('@/app/tutor/delete-account/page'))
+
 
 
 
@@ -477,10 +475,10 @@ export const authRoutes: RoutesProps[] = [
 
 export const tutorRoutes: RoutesProps[] = [
   { path: '/tutor/dashboard', name: 'Dashboard', element: <TutorDashboard /> },
-  { path: '/tutor/manage-course', name: 'Manage Courses', element: <TutorManageCourses /> },
   { path: '/tutor/student-list', name: 'Students', element: <TutorStudentsList /> },
   { path: '/tutor/earning', name: 'Earnings', element: <TutorEarnings /> },
   { path: '/tutor/payout', name: 'Payout', element: <TutorPayout /> },
+  { path: 'tutor/online-classes', name: 'Online-Classes', element: <TutorOnline/>},
   { path: '/tutor/edit-profile', name: 'Edit Profile', element: <TutorEditProfile /> },
   { path: '/tutor/setting', name: 'Settings', element: <TutorSettings /> },
   { path: '/tutor/delete-account', name: 'Delete Account', element: <TutorDeleteAccount /> },

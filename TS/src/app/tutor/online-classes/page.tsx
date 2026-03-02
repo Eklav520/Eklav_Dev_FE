@@ -9,7 +9,7 @@ const OnlineClasses = () => {
     <>
       <PageMetaData title="Self Interview" />
       <Card className="bg-transparent border rounded-4">
-        <ScheduleClassForm adminId="665fc5556789d1c9cabcdef1" />
+        <ScheduleClassForm  />
       </Card>
     </>
   )

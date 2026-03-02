@@ -11,12 +11,6 @@ const EditProfilePage = () => {
     <>
       <PageMetaData title="Edit Profile" />
       <EditProfile />
-      {/* <Row className="g-4 mt-3">
-        <LinkedAccount />
-        <SocialMedia />
-        <EmailChange />
-        <PasswordChange />
-      </Row> */}
     </>
   )
 }
