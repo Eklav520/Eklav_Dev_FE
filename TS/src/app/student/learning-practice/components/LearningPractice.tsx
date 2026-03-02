@@ -261,7 +261,7 @@ const ListeningPractice: React.FC = () => {
                     <span className="header-title">Listening Challenge</span>
                   </div>
                   <span className="progress-indicator">
-                    {currentQ + 1} / {prompt?.questions.length || 0}
+                    {currentQ + 1} / {prompt?.questions?.length || 0}
                   </span>
                 </div>
               </Card.Header>
