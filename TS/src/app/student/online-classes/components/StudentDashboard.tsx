@@ -63,8 +63,8 @@ interface Comment {
   userName: string
   userAvatar?: string
   text: string
+  rating: number
   createdAt: string
-  likes: number
 }
 
 interface ClassSession {
@@ -217,11 +217,25 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   const [enrPage, setEnrPage] = useState(1)
   const [enrPageSize, setEnrPageSize] = useState(6)
   const [imgError, setImgError] = useState(false);
+  const [rating, setRating] = useState<number>(0)
 
   useEffect(() => {
     fetchAvailableClasses()
     fetchEnrolledClasses()
   }, [])
+
+  const hasUserCommented = useMemo(() => {
+    if (!user) return false
+    return comments.some(
+      c => String(c.userId) === String(user?.id)
+    )
+  }, [comments, user])
+
+  const averageRating = useMemo(() => {
+    if (!comments.length) return 0
+    const total = comments.reduce((sum, c) => sum + c.rating, 0)
+    return (total / comments.length).toFixed(1)
+  }, [comments])
 
   const fetchAvailableClasses = async () => {
     try {
@@ -253,7 +267,17 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
       })
       if (res.ok) {
         const data = await res.json()
-        setComments(Array.isArray(data) ? data : [])
+        const mapped = (Array.isArray(data) ? data : []).map((c: any) => ({
+          id: c._id,
+          userId: String(c.userId),
+          userName: c.user?.fullName || "Student",
+          userAvatar: c.user?.profileImage || "",
+          text: c.comment,
+          rating: c.rating || 0,
+          createdAt: c.createdAt,
+        }))
+
+        setComments(mapped)
       }
     } catch (err) {
       console.error('Error fetching comments:', err)
@@ -261,29 +285,64 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   }
 
   const handleSubmitComment = async () => {
-    if (!commentText.trim() || !selectedClass) return
+    if (!selectedClass) return
+
+    const trimmedComment = commentText.trim()
+
+    if (!trimmedComment) {
+      alert("Please enter your feedback.")
+      return
+    }
+
+    if (rating === 0) {
+      alert("Please select a rating.")
+      return
+    }
 
     setSubmittingComment(true)
-    try {
-      const res = await fetch(`${baseURL}/classes/${selectedClass._id}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          text: commentText,
-          userName: user?.fullName || 'Student',
-        }),
-      })
 
-      if (res.ok) {
-        const newComment = await res.json()
-        setComments(prev => [newComment, ...prev])
-        setCommentText('')
+    try {
+      const res = await fetch(
+        `${baseURL}/classes/${selectedClass._id}/comments`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            comment: trimmedComment,
+            rating: rating,
+          }),
+        }
+      )
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        alert(data.error || "Failed to submit feedback.")
+        return
       }
+
+      const mappedComment: Comment = {
+        id: data._id,
+        userId: String(data.userId),
+        userName: user?.fullName || "You",
+        userAvatar: "",
+        text: data.comment,
+        rating: data.rating,
+        createdAt: data.createdAt,
+      }
+
+      setComments((prev) => [mappedComment, ...prev])
+
+      // Reset form
+      setCommentText("")
+      setRating(0)
+
     } catch (err) {
-      console.error('Error posting comment:', err)
+      console.error("Error posting feedback:", err)
+      alert("Something went wrong. Please try again.")
     } finally {
       setSubmittingComment(false)
     }
@@ -483,7 +542,10 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   const showClassDetails = (cls: ClassSession) => {
     setSelectedClass(cls)
     setComments(cls.comments || [])
+    setCommentText("")
+    setRating(0) // 🔥 reset rating
     setShowModal(true)
+
     if (cls._id) {
       fetchClassComments(cls._id)
     }
@@ -923,7 +985,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                       <FaUserTie className="me-2" />
                       Instructor Details
                     </h5>
-                    
+
                     {selectedClass.instructor ? (
                       <div className="instructor-card professional">
                         {/* Profile Header */}
@@ -1044,39 +1106,75 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                 <div className="comments-section">
                   <h5 className="comments-title">
                     <FaComment className="me-2" />
-                    Discussion ({comments.length})
+                    Feedback ({comments.length}) {comments.length > 0 && (
+                      <span className="ms-2 text-warning">
+                        ⭐ {averageRating}
+                      </span>
+                    )}
                   </h5>
 
                   {/* Comment Input */}
-                  <div className="comment-input-wrapper">
-                    <div className="comment-avatar">
-                      <FaUserCircle size={40} />
+                  {hasUserCommented ? (
+                    <div className="already-commented text-center py-3">
+                      <p className="text-muted mb-0">
+                        You have already submitted feedback for this class.
+                      </p>
                     </div>
-                    <div className="comment-input-container">
-                      <Form.Control
-                        as="textarea"
-                        rows={2}
-                        placeholder="Share your thoughts or ask a question..."
-                        value={commentText}
-                        onChange={(e) => setCommentText(e.target.value)}
-                        className="comment-textarea"
-                      />
-                      <Button
-                        className="comment-submit-btn"
-                        onClick={handleSubmitComment}
-                        disabled={!commentText.trim() || submittingComment}
-                      >
-                        <FaPaperPlane className="me-2" />
-                        {submittingComment ? 'Posting...' : 'Post Comment'}
-                      </Button>
+                  ) : (
+                    <div className="comment-input-wrapper">
+                      <div className="comment-avatar">
+                        <FaUserCircle size={40} />
+                      </div>
+
+                      <div className="comment-input-container">
+                        <Form.Control
+                          as="textarea"
+                          rows={2}
+                          placeholder="Share your feedback about this session..."
+                          value={commentText}
+                          onChange={(e) => setCommentText(e.target.value)}
+                          className="comment-textarea"
+                        />
+
+                        {/* ⭐ Rating Input */}
+                        <div className="rating-input">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <FaStar
+                              key={star}
+                              size={20}
+                              onClick={() => setRating(star)}
+                              style={{
+                                cursor: "pointer",
+                                color: star <= rating ? "#facc15" : "#334155",
+                                transition: "transform 0.15s ease"
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "scale(1.2)"
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "scale(1)"
+                              }}
+                            />
+                          ))}
+                        </div>
+
+                        <Button
+                          className="comment-submit-btn"
+                          onClick={handleSubmitComment}
+                          disabled={!commentText.trim() || rating === 0 || submittingComment}
+                        >
+                          <FaPaperPlane className="me-2" />
+                          {submittingComment ? "Posting..." : "Submit Feedback"}
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Comments List */}
-                  <div className="comments-list">
+                  <div className="comments-list scrollable-feedback">
                     {comments.length === 0 ? (
                       <div className="no-comments">
-                        <p>No comments yet. Be the first to start the discussion!</p>
+                        <p>No feedback yet. Be the first to rate this session!</p>
                       </div>
                     ) : (
                       comments.map((comment) => (
@@ -1095,16 +1193,19 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                 {formatCommentDate(comment.createdAt)}
                               </span>
                             </div>
-                            <p className="comment-text">{comment.text}</p>
-                            <div className="comment-actions">
-                              <Button variant="link" className="comment-like-btn">
-                                <FaStar className="me-1" />
-                                Like ({comment.likes})
-                              </Button>
-                              <Button variant="link" className="comment-reply-btn">
-                                Reply
-                              </Button>
+                            <div className="comment-rating">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <FaStar
+                                  key={star}
+                                  size={14}
+                                  style={{
+                                    color: star <= comment.rating ? "#facc15" : "#334155",
+                                    marginRight: "2px"
+                                  }}
+                                />
+                              ))}
                             </div>
+                            <p className="comment-text">{comment.text}</p>
                           </div>
                         </div>
                       ))
@@ -2141,6 +2242,36 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         flex: 1;
         overflow-y: auto;
         overflow-x: hidden;
+      }
+      /* ===== Scrollable Feedback Box ===== */
+      .scrollable-feedback {
+        max-height: 320px;      /* You can adjust: 300–400px */
+        overflow-y: auto;
+        padding-right: 6px;
+      }
+
+      /* Smooth scrollbar (Chrome/Edge) */
+      .scrollable-feedback::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .scrollable-feedback::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      .scrollable-feedback::-webkit-scrollbar-thumb {
+        background: rgba(255,255,255,0.2);
+        border-radius: 999px;
+      }
+
+      .scrollable-feedback::-webkit-scrollbar-thumb:hover {
+        background: rgba(255,255,255,0.35);
+      }
+
+      /* Firefox */
+      .scrollable-feedback {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.25) transparent;
       }
       `}</style>
     </>

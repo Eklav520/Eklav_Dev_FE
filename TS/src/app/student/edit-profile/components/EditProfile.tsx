@@ -225,7 +225,7 @@ const EditProfile = () => {
   }
 
   const onSubmit = async (data: any) => {
-    if (!selectedCollege) {
+   if (!data.college || data.college.trim() === '') {
       setToastMessage('Please select a valid college from the list')
       setShowToast(true)
       return
@@ -290,7 +290,7 @@ const EditProfile = () => {
             background: 'linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%)',
           }}
         >
-          <h3 className="card-header-title mb-0">Update Profile</h3>
+          <h3 className="card-header-title mb-0">Update Profiless</h3>
         </CardHeader>
         <CardBody>
           <form className="row g-4" onSubmit={handleSubmit(onSubmit)}>
