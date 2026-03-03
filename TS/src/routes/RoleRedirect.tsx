@@ -18,7 +18,7 @@ const RoleRedirect = () => {
 
   // 🎓 Tutor
   if (user.role === 'tutor') {
-    return <Navigate to="/tutor/dashboard" replace />
+    return <Navigate to="/tutor/online-classes" replace />
   }
 
   // 👨‍🎓 Student (default)

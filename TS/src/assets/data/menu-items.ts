@@ -606,13 +606,13 @@ export const TUTOR_MENU_ITEMS: MenuItemType[] = [
     url: '/tutor/edit-profile',
     parentKey: 'eklavadmin',
   },
-  {
+  /* {
     key: 'payout',
     label: 'Payout',
     icon: BsWallet2,
     url: '/tutor/payout',
     parentKey: 'eklavadmin',
-  },
+  }, */
 ]
 
 export const APP_MENU_ITEMS: MenuItemType[] = [

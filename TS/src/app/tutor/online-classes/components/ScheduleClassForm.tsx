@@ -31,11 +31,12 @@ interface ClassSession {
 const ScheduleClassForm: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
-  console.log("user data",user)
+  console.log("user data", user)
 
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [classList, setClassList] = useState<ClassSession[]>([])
+  const [profileStatus, setProfileStatus] = useState<string | null>(null)
 
   const initialState = {
     title: '',
@@ -53,8 +54,21 @@ const ScheduleClassForm: React.FC = () => {
 
   const [formData, setFormData] = useState(initialState)
 
+  const fetchProfileStatus = async () => {
+    try {
+      const res = await fetch(`${baseURL}/profile`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      })
+      const data = await res.json()
+      setProfileStatus(data.status)
+    } catch (err) {
+      console.error("Error fetching profile status", err)
+    }
+  }
+
   useEffect(() => {
     fetchClassList()
+    fetchProfileStatus()
   }, [])
 
   const fetchClassList = async () => {
@@ -124,10 +138,22 @@ const ScheduleClassForm: React.FC = () => {
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3>📋 Scheduled Classes</h3>
-        <Button onClick={() => setShowModal(true)}>
-          + Schedule Class
-        </Button>
+        {profileStatus === "approved" ? (
+          <Button onClick={() => setShowModal(true)}>
+            + Schedule Class
+          </Button>
+        ) : (
+          <Button disabled variant="secondary">
+            Profile Under Review
+          </Button>
+        )}
       </div>
+
+      {profileStatus !== "approved" && (
+        <div className="alert alert-warning mb-3">
+          Your profile is under review. You can schedule classes once approved by admin.
+        </div>
+      )}
 
       {/* Table */}
       <Table striped bordered hover responsive>

@@ -46,7 +46,7 @@ const redirectUser = (role: string) => {
       break
 
     case 'tutor':
-      navigate('/tutor/dashboard', { replace: true })
+      navigate('/tutor/online-classes', { replace: true })
       break
 
     case 'student':
