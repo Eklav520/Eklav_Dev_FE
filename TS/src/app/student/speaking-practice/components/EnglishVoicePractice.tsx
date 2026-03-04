@@ -26,7 +26,7 @@ const EnglishVoicePractice: React.FC = () => {
   const isTrialUser = status === 'pending'
   const isSubscribedUser = status === 'approved'
   const token = user?.token
-  console.log('status0',status)
+  console.log('status0', status)
 
   const [messages, setMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')
@@ -49,6 +49,7 @@ const EnglishVoicePractice: React.FC = () => {
   const chatBodyRef = useRef<HTMLDivElement>(null)
   const [history, setHistory] = useState<any>(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const speechPauseTimerRef = useRef<any>(null)
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
   //const isMonthlyLimitReached = history && history.attemptsUsed >= history.monthlyLimit
@@ -184,7 +185,7 @@ const EnglishVoicePractice: React.FC = () => {
 
     const rec = new SR()
     rec.lang = 'en-US'
-    rec.continuous = false
+    rec.continuous = true
     rec.interimResults = true
 
     rec.onstart = () => {
@@ -214,14 +215,23 @@ const EnglishVoicePractice: React.FC = () => {
         noResponseCountRef.current = 0
         const text = final.trim()
 
-        if (text === lastUserRef.current) return
-        lastUserRef.current = text
+        clearTimeout(speechPauseTimerRef.current)
 
-        setLiveSpeech('')
-        setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
-        transcriptRef.current += `You: ${text}\n`
+        speechPauseTimerRef.current = setTimeout(async () => {
 
-        await sendToRob(text)
+          if (!sessionActiveRef.current) return
+
+          if (text === lastUserRef.current) return
+          lastUserRef.current = text
+
+          setLiveSpeech('')
+          setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
+
+          transcriptRef.current += `You: ${text}\n`
+
+          await sendToRob(text)
+
+        }, 1800) // wait 1.8 seconds for user continuation
       }
 
       startSilenceTimer()
