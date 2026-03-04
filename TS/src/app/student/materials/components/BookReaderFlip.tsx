@@ -43,7 +43,7 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
         selectedIndex: number,
         e: React.MouseEvent
     ) => {
-       // e.stopPropagation(); // Prevent event from bubbling up to the flip book
+        // e.stopPropagation(); // Prevent event from bubbling up to the flip book
         setQuizAnswers((prev) => ({
             ...prev,
             [pageId]: {
@@ -54,7 +54,7 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
     };
 
     const toggleQuestionExpand = (questionKey: string, e: React.MouseEvent) => {
-       // e.stopPropagation(); // Stop event propagation
+        // e.stopPropagation(); // Stop event propagation
         setExpandedQuestions(prev => ({
             ...prev,
             [questionKey]: !prev[questionKey]
@@ -98,7 +98,7 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
                 let height = width * 0.8; // Wide aspect ratio
 
                 // Ensure height doesn't exceed container
-               // Reserve space for top + bottom breathing gap
+                // Reserve space for top + bottom breathing gap
                 const maxBookHeight = containerHeight * 0.83; // 👈 change this value
 
                 if (height > maxBookHeight) {
@@ -188,11 +188,11 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
 
         return (
             <div
-  className="quiz-section"
-  onMouseDownCapture={(e) => e.stopPropagation()}
-  onTouchStartCapture={(e) => e.stopPropagation()}
-  onPointerDownCapture={(e) => e.stopPropagation()}
->
+                className="quiz-section"
+                onMouseDownCapture={(e) => e.stopPropagation()}
+                onTouchStartCapture={(e) => e.stopPropagation()}
+                onPointerDownCapture={(e) => e.stopPropagation()}
+            >
                 <h6 className="quiz-section-title">📝 Knowledge Check</h6>
                 {quizzes.map((quizItem, qIndex) => {
                     const questionKey = `${page.id}-q${qIndex}`;
@@ -230,14 +230,14 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
                 ${showResult && isSelected && !isCorrect ? "wrong" : ""}
             `}
                                                 onMouseDownCapture={(e) => e.stopPropagation()}
-onClick={(e) => {
-  handleQuizAnswer(
-    page.id,
-    qIndex,
-    optIndex,
-    e
-  );
-}}
+                                                onClick={(e) => {
+                                                    handleQuizAnswer(
+                                                        page.id,
+                                                        qIndex,
+                                                        optIndex,
+                                                        e
+                                                    );
+                                                }}
 
                                                 disabled={showResult}
                                             >
@@ -421,19 +421,18 @@ onClick={(e) => {
                         <h4>📚 Chapters</h4>
                         <ul className="chapter-list">
                             {chapters.map((chapter, idx) => {
-                                let pageNum = 1;
-                                for (let i = 0; i < idx; i++) {
-                                    pageNum += 1 + (chapters[i].pages.length *
-                                        (chapters[i].pages.some(p => p.videoUrl || p.quiz || p.keyPoints) ? 2 : 1));
-                                }
+                                const pageIndex = bookPages.findIndex(
+                                    (p) => p.type === "title" && p.chapterIndex === idx
+                                );
+
                                 return (
                                     <li key={chapter.id}>
-                                        <button onClick={() => goToPage(pageNum)}>
+                                        <button onClick={() => goToPage(pageIndex)}>
                                             <span className="chapter-number">{idx + 1}</span>
                                             <div className="chapter-info">
                                                 <span className="chapter-title">{chapter.title}</span>
                                                 <span className="chapter-pages">
-                                                    {chapter.pages.length} {chapter.pages.length === 1 ? 'page' : 'pages'}
+                                                    {chapter.pages.length} {chapter.pages.length === 1 ? "page" : "pages"}
                                                 </span>
                                             </div>
                                         </button>
@@ -553,7 +552,6 @@ onClick={(e) => {
                                     <div className="page-content-wrapper">
                                         {page.side === "left" && (
                                             <>
-                                                <h5>{page.pageData.title}</h5>
                                                 <div className="content-text">
                                                     {renderContentWithHeadings(page.pageData.content)}
                                                 </div>

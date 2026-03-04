@@ -1,0 +1,2598 @@
+{
+    "id": "React-mastery",
+    "title": "React Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "js-ch1",
+            "title": "Introduction to JavaScript",
+            "description": "Understanding JavaScript fundamentals and its role in modern web development",
+            "pages": [
+                {
+                    "id": "js-ch1-page1",
+                    "title": "What is JavaScript?",
+                    "content": "JavaScript is a high-level programming language used to create dynamic and interactive web applications. It runs directly in web browsers and allows developers to manipulate HTML content, handle events, and communicate with servers. JavaScript is one of the core technologies of the web alongside HTML and CSS.\n\nModern JavaScript is also used outside the browser with environments like Node.js, enabling developers to build full-stack applications using the same language.",
+                    "exampleCode": "console.log('Hello JavaScript');",
+                    "keyPoints": [
+                        "JavaScript is a programming language",
+                        "Runs inside web browsers",
+                        "Used for interactive web applications",
+                        "Works with HTML and CSS"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "JavaScript is mainly used for:",
+                            "options": [
+                                "Styling web pages",
+                                "Creating dynamic web pages",
+                                "Creating databases",
+                                "Managing servers only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "JavaScript is used to create dynamic and interactive web pages."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch1-page2",
+                    "title": "History of JavaScript",
+                    "content": "JavaScript was created in 1995 by Brendan Eich while working at Netscape. It was originally developed in just 10 days and was first called Mocha, then renamed LiveScript, and finally JavaScript.\n\nJavaScript quickly became the standard language for web development. Today it is maintained by ECMA International under the ECMAScript specification.",
+                    "exampleCode": "// Example JavaScript code\nconsole.log('JavaScript was created in 1995');",
+                    "keyPoints": [
+                        "Created in 1995",
+                        "Developed by Brendan Eich",
+                        "Standardized as ECMAScript",
+                        "Now one of the most popular programming languages"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Who created JavaScript?",
+                            "options": [
+                                "Dennis Ritchie",
+                                "Brendan Eich",
+                                "James Gosling",
+                                "Guido van Rossum"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Brendan Eich created JavaScript in 1995."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch1-page3",
+                    "title": "Why JavaScript is Important",
+                    "content": "JavaScript is essential for modern web development. It enables developers to create interactive websites, build full-stack applications, and develop mobile and desktop apps.\n\nWith frameworks such as React, Angular, and Vue, JavaScript powers most modern front-end applications.",
+                    "exampleCode": "let message = 'JavaScript powers modern web apps';\nconsole.log(message);",
+                    "keyPoints": [
+                        "Used in frontend development",
+                        "Also used in backend with Node.js",
+                        "Large ecosystem of libraries",
+                        "Supported by all major browsers"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which framework is built using JavaScript?",
+                            "options": [
+                                "React",
+                                "Laravel",
+                                "Django",
+                                "Spring Boot"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "React is a JavaScript framework/library."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch1-page4",
+                    "title": "Where JavaScript Runs",
+                    "content": "JavaScript can run in multiple environments. Traditionally, it runs inside web browsers such as Chrome, Firefox, and Edge. However, with Node.js, JavaScript can also run on servers.\n\nThis allows developers to build both frontend and backend applications using the same language.",
+                    "exampleCode": "// JavaScript can run in browsers\nconsole.log('Running in browser console');",
+                    "keyPoints": [
+                        "Runs in browsers",
+                        "Runs on servers using Node.js",
+                        "Can be used for mobile and desktop apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which environment allows JavaScript to run on the server?",
+                            "options": [
+                                "Node.js",
+                                "HTML",
+                                "CSS",
+                                "Bootstrap"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Node.js allows JavaScript to run on the server."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch1-page5",
+                    "title": "Adding JavaScript to HTML",
+                    "content": "JavaScript can be added to HTML in three ways: inline, internal, and external.\n\nInline JavaScript is written directly inside HTML elements. Internal JavaScript is written inside the script tag in an HTML file. External JavaScript is written in a separate .js file and linked to HTML.",
+                    "exampleCode": "<script>\nconsole.log('JavaScript inside HTML');\n</script>",
+                    "keyPoints": [
+                        "Inline JavaScript inside HTML elements",
+                        "Internal JavaScript inside script tag",
+                        "External JavaScript inside separate files"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which tag is used to include JavaScript in HTML?",
+                            "options": [
+                                "<javascript>",
+                                "<script>",
+                                "<js>",
+                                "<code>"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "JavaScript is added using the script tag."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch1-page6",
+                    "title": "Your First JavaScript Program",
+                    "content": "The most common way to display output in JavaScript during development is using console.log(). The console displays messages that help developers debug and understand program behavior.",
+                    "exampleCode": "console.log('My first JavaScript program');",
+                    "keyPoints": [
+                        "console.log prints output",
+                        "Useful for debugging",
+                        "Runs in browser developer console"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function prints output in the console?",
+                            "options": [
+                                "print()",
+                                "echo()",
+                                "console.log()",
+                                "display()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "console.log() prints messages in the browser console."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch2",
+            "title": "Variables",
+            "description": "Understanding variables and how to store data in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch2-page1",
+                    "title": "What is a Variable?",
+                    "content": "A variable is a container used to store data values in a program. In JavaScript, variables allow developers to store numbers, strings, objects, arrays, and other data types.\n\nVariables are declared using keywords such as var, let, or const.",
+                    "exampleCode": "let name = 'John';\nconsole.log(name);",
+                    "keyPoints": [
+                        "Variables store data",
+                        "Used to hold different types of values",
+                        "Declared using var, let, or const"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of a variable?",
+                            "options": [
+                                "To style web pages",
+                                "To store data",
+                                "To create HTML elements",
+                                "To manage CSS"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Variables are used to store data."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch2-page2",
+                    "title": "Using var",
+                    "content": "The var keyword was used in older JavaScript versions to declare variables. Variables declared with var are function-scoped and can be redeclared within the same scope.\n\nHowever, var is not commonly used in modern JavaScript because it can cause unexpected behavior.",
+                    "exampleCode": "var age = 25;\nconsole.log(age);",
+                    "keyPoints": [
+                        "var declares variables",
+                        "Function-scoped",
+                        "Allows redeclaration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword was used in older JavaScript to declare variables?",
+                            "options": [
+                                "let",
+                                "const",
+                                "var",
+                                "define"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "var was used in older JavaScript versions."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch2-page3",
+                    "title": "Using let",
+                    "content": "The let keyword was introduced in ES6. It allows developers to declare variables with block scope. Unlike var, variables declared with let cannot be redeclared in the same scope.",
+                    "exampleCode": "let score = 100;\nconsole.log(score);",
+                    "keyPoints": [
+                        "Introduced in ES6",
+                        "Block-scoped variable",
+                        "Cannot redeclare in same scope"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword provides block scope?",
+                            "options": [
+                                "var",
+                                "let",
+                                "const",
+                                "define"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "let creates block-scoped variables."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch2-page4",
+                    "title": "Using const",
+                    "content": "The const keyword is used to declare variables whose values should not change. Once a value is assigned to a const variable, it cannot be reassigned.\n\nConst variables must be initialized when declared.",
+                    "exampleCode": "const pi = 3.14;\nconsole.log(pi);",
+                    "keyPoints": [
+                        "Cannot be reassigned",
+                        "Must be initialized when declared",
+                        "Block scoped"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used for constant values?",
+                            "options": [
+                                "let",
+                                "var",
+                                "const",
+                                "static"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "const declares variables that cannot be reassigned."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch2-page5",
+                    "title": "Variable Scope",
+                    "content": "Scope determines where variables can be accessed. JavaScript has two main scopes: global scope and block scope.\n\nGlobal variables can be accessed anywhere in the program, while block-scoped variables exist only inside the block where they are declared.",
+                    "exampleCode": "let globalVar = 'I am global';\n\nfunction test() {\n  let localVar = 'I am local';\n  console.log(localVar);\n}\n\ntest();",
+                    "keyPoints": [
+                        "Global scope variables accessible everywhere",
+                        "Block scope variables limited to blocks",
+                        "let and const support block scope"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword supports block scope?",
+                            "options": [
+                                "var",
+                                "let",
+                                "document",
+                                "console"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "let supports block scope."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch2-page6",
+                    "title": "Variable Naming Rules",
+                    "content": "JavaScript variables must follow certain naming rules. Variable names should start with a letter, underscore, or dollar sign. They cannot start with numbers and should not use reserved keywords.\n\nGood variable names improve code readability and maintainability.",
+                    "exampleCode": "let userName = 'Alice';\nlet totalPrice = 100;",
+                    "keyPoints": [
+                        "Variable names cannot start with numbers",
+                        "Use meaningful names",
+                        "Avoid reserved keywords",
+                        "Use camelCase convention"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which variable name is valid?",
+                            "options": [
+                                "1name",
+                                "userName",
+                                "var",
+                                "function"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "userName follows JavaScript naming rules."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch3",
+            "title": "Data Types",
+            "description": "Understanding primitive and non-primitive data types in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch3-page1",
+                    "title": "What are Data Types?",
+                    "content": "Data types define the type of value stored in a variable. JavaScript is a dynamically typed language, meaning variables do not need an explicit type declaration. The data type is automatically determined based on the value assigned.\n\nJavaScript data types are divided into two main categories: Primitive and Non-Primitive (Reference) types.",
+                    "exampleCode": "let message = 'Hello';\nlet number = 10;\nconsole.log(message);\nconsole.log(number);",
+                    "keyPoints": [
+                        "Defines the type of value stored",
+                        "JavaScript is dynamically typed",
+                        "Two categories: Primitive and Reference"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "JavaScript is a:",
+                            "options": [
+                                "Statically typed language",
+                                "Dynamically typed language",
+                                "Compiled language",
+                                "Database language"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "JavaScript automatically determines variable types."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page2",
+                    "title": "String Data Type",
+                    "content": "A string represents textual data in JavaScript. Strings can be written using single quotes, double quotes, or backticks.\n\nStrings are commonly used for storing names, messages, and text content.",
+                    "exampleCode": "let name = 'Alice';\nlet greeting = \"Hello\";\nlet message = `Welcome ${name}`;\n\nconsole.log(message);",
+                    "keyPoints": [
+                        "Represents text data",
+                        "Can use single, double, or backtick quotes",
+                        "Supports template literals"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol allows template literals?",
+                            "options": [
+                                "'",
+                                "\"",
+                                "`",
+                                "#"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Backticks (`) allow template literals."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page3",
+                    "title": "Number Data Type",
+                    "content": "The number data type represents numeric values such as integers and floating-point numbers. JavaScript uses a single number type for all numeric values.",
+                    "exampleCode": "let age = 25;\nlet price = 99.99;\n\nconsole.log(age);\nconsole.log(price);",
+                    "keyPoints": [
+                        "Represents numeric values",
+                        "Includes integers and decimals",
+                        "JavaScript uses one number type"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type represents numbers?",
+                            "options": [
+                                "String",
+                                "Boolean",
+                                "Number",
+                                "Object"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Number represents numeric values."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page4",
+                    "title": "Boolean Data Type",
+                    "content": "A boolean data type represents logical values. It has only two possible values: true and false. Booleans are commonly used in conditional statements and comparisons.",
+                    "exampleCode": "let isLoggedIn = true;\nlet isAdmin = false;\n\nconsole.log(isLoggedIn);",
+                    "keyPoints": [
+                        "Represents true or false values",
+                        "Used in conditions",
+                        "Important for logic control"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many values does Boolean have?",
+                            "options": [
+                                "1",
+                                "2",
+                                "3",
+                                "4"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Boolean has two values: true and false."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page5",
+                    "title": "Null and Undefined",
+                    "content": "Null represents an intentional absence of value. Undefined means a variable has been declared but not assigned a value.",
+                    "exampleCode": "let value = null;\nlet data;\n\nconsole.log(value);\nconsole.log(data);",
+                    "keyPoints": [
+                        "null means empty value",
+                        "undefined means variable not assigned",
+                        "Both represent absence of value"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does undefined mean?",
+                            "options": [
+                                "Variable declared but not assigned",
+                                "Variable deleted",
+                                "Variable constant",
+                                "Variable private"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Undefined means the variable has no assigned value."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page6",
+                    "title": "Symbol and BigInt",
+                    "content": "Symbol is a unique and immutable primitive data type used mainly for object property keys. BigInt is used to represent very large integers beyond the limit of the Number type.",
+                    "exampleCode": "let id = Symbol('user');\nlet bigNumber = 12345678901234567890n;\n\nconsole.log(id);\nconsole.log(bigNumber);",
+                    "keyPoints": [
+                        "Symbol represents unique identifiers",
+                        "BigInt stores very large numbers",
+                        "Introduced in modern JavaScript"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which type stores very large numbers?",
+                            "options": [
+                                "Number",
+                                "BigInt",
+                                "String",
+                                "Boolean"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "BigInt stores integers larger than Number can handle."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch3-page7",
+                    "title": "Checking Data Types",
+                    "content": "JavaScript provides the typeof operator to determine the type of a variable. It helps developers debug and understand the data they are working with.",
+                    "exampleCode": "let name = 'John';\nlet age = 30;\n\nconsole.log(typeof name);\nconsole.log(typeof age);",
+                    "keyPoints": [
+                        "typeof checks variable type",
+                        "Useful for debugging",
+                        "Returns the data type as a string"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks data type?",
+                            "options": [
+                                "type",
+                                "typeof",
+                                "check",
+                                "dataType"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "typeof returns the type of a variable."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch4",
+            "title": "Operators",
+            "description": "Understanding different types of operators used in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch4-page1",
+                    "title": "What are Operators?",
+                    "content": "Operators are symbols used to perform operations on variables and values. They allow JavaScript programs to perform tasks such as calculations, comparisons, and logical evaluations.\n\nOperators play an essential role in building expressions and controlling program logic.",
+                    "exampleCode": "let a = 5;\nlet b = 3;\nlet sum = a + b;\n\nconsole.log(sum);",
+                    "keyPoints": [
+                        "Operators perform operations on values",
+                        "Used in expressions and calculations",
+                        "Different types of operators exist"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Operators are used to:",
+                            "options": [
+                                "Style web pages",
+                                "Perform operations on values",
+                                "Create HTML elements",
+                                "Store CSS"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Operators perform operations on variables and values."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page2",
+                    "title": "Arithmetic Operators",
+                    "content": "Arithmetic operators are used to perform mathematical operations such as addition, subtraction, multiplication, and division.",
+                    "exampleCode": "let a = 10;\nlet b = 5;\n\nconsole.log(a + b); // Addition\nconsole.log(a - b); // Subtraction\nconsole.log(a * b); // Multiplication\nconsole.log(a / b); // Division\nconsole.log(a % b); // Modulus",
+                    "keyPoints": [
+                        "Used for mathematical calculations",
+                        "Includes +, -, *, /, %",
+                        "Common in numeric operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator gives the remainder?",
+                            "options": [
+                                "+",
+                                "%",
+                                "/",
+                                "*"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The modulus operator (%) returns the remainder."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page3",
+                    "title": "Assignment Operators",
+                    "content": "Assignment operators are used to assign values to variables. The most common assignment operator is =, but JavaScript also provides compound assignment operators.",
+                    "exampleCode": "let x = 10;\nx += 5; // x = x + 5\nx -= 2; // x = x - 2\n\nconsole.log(x);",
+                    "keyPoints": [
+                        "Assign values to variables",
+                        "Includes =, +=, -=, *=, /=",
+                        "Compound operators simplify expressions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator assigns a value?",
+                            "options": [
+                                "=",
+                                "==",
+                                "===",
+                                "+"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The = operator assigns values."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page4",
+                    "title": "Comparison Operators",
+                    "content": "Comparison operators are used to compare two values and return a boolean result (true or false). They are commonly used in conditions and loops.",
+                    "exampleCode": "let a = 10;\nlet b = 5;\n\nconsole.log(a > b);\nconsole.log(a < b);\nconsole.log(a == b);\nconsole.log(a === b);",
+                    "keyPoints": [
+                        "Compare values",
+                        "Return true or false",
+                        "Used in conditional logic"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks strict equality?",
+                            "options": [
+                                "==",
+                                "===",
+                                "=",
+                                "!="
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "=== checks value and type equality."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page5",
+                    "title": "Logical Operators",
+                    "content": "Logical operators are used to combine multiple conditions. They return boolean values based on logical relationships.",
+                    "exampleCode": "let age = 25;\nlet hasLicense = true;\n\nconsole.log(age > 18 && hasLicense);\nconsole.log(age > 30 || hasLicense);\nconsole.log(!hasLicense);",
+                    "keyPoints": [
+                        "Used in conditional logic",
+                        "Includes &&, ||, !",
+                        "Combine multiple conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator means logical AND?",
+                            "options": [
+                                "&&",
+                                "||",
+                                "!",
+                                "%"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "&& represents logical AND."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page6",
+                    "title": "Increment and Decrement",
+                    "content": "Increment (++) increases a variable by one, while decrement (--) decreases a variable by one. These operators are commonly used in loops.",
+                    "exampleCode": "let count = 5;\n\ncount++;\nconsole.log(count);\n\ncount--;\nconsole.log(count);",
+                    "keyPoints": [
+                        "++ increases value by one",
+                        "-- decreases value by one",
+                        "Commonly used in loops"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator increases value by one?",
+                            "options": [
+                                "--",
+                                "++",
+                                "+=",
+                                "=="
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "++ increases value by one."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch4-page7",
+                    "title": "Operator Precedence",
+                    "content": "Operator precedence determines the order in which operations are executed in an expression. Multiplication and division have higher precedence than addition and subtraction.",
+                    "exampleCode": "let result = 10 + 5 * 2;\nconsole.log(result);",
+                    "keyPoints": [
+                        "Defines order of operations",
+                        "Multiplication before addition",
+                        "Parentheses can change precedence"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operation runs first?",
+                            "options": [
+                                "Addition",
+                                "Multiplication",
+                                "Assignment",
+                                "Comparison"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Multiplication has higher precedence."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch5",
+            "title": "Control Statements",
+            "description": "Understanding conditional statements used to control program flow",
+            "pages": [
+                {
+                    "id": "js-ch5-page1",
+                    "title": "What are Control Statements?",
+                    "content": "Control statements determine the order in which code is executed in a program. They allow developers to execute different blocks of code depending on conditions.\n\nIn JavaScript, conditional statements are commonly used to perform decision-making operations.",
+                    "exampleCode": "let age = 20;\n\nif(age > 18) {\n  console.log('You are an adult');\n}",
+                    "keyPoints": [
+                        "Control program flow",
+                        "Execute code based on conditions",
+                        "Used for decision making"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Control statements are used for:",
+                            "options": [
+                                "Styling pages",
+                                "Decision making",
+                                "Creating HTML",
+                                "Handling CSS"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Control statements allow programs to make decisions."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch5-page2",
+                    "title": "if Statement",
+                    "content": "The if statement executes a block of code only if a specified condition evaluates to true. It is the simplest form of conditional statement.",
+                    "exampleCode": "let score = 80;\n\nif(score >= 50) {\n  console.log('You passed the exam');\n}",
+                    "keyPoints": [
+                        "Executes code if condition is true",
+                        "Uses boolean expressions",
+                        "Simplest conditional statement"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which statement runs code when condition is true?",
+                            "options": [
+                                "if",
+                                "loop",
+                                "switch",
+                                "break"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The if statement runs code when a condition is true."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch5-page3",
+                    "title": "if...else Statement",
+                    "content": "The if...else statement executes one block of code if the condition is true and another block if the condition is false.",
+                    "exampleCode": "let age = 16;\n\nif(age >= 18) {\n  console.log('Eligible to vote');\n} else {\n  console.log('Not eligible to vote');\n}",
+                    "keyPoints": [
+                        "Handles two possible outcomes",
+                        "Uses else for alternate execution",
+                        "Common in real-world logic"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens if an if condition is false?",
+                            "options": [
+                                "Program stops",
+                                "Else block runs",
+                                "Loop runs",
+                                "Function ends"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The else block runs when the condition is false."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch5-page4",
+                    "title": "else if Ladder",
+                    "content": "The else if ladder allows checking multiple conditions sequentially. The first condition that evaluates to true executes its block.",
+                    "exampleCode": "let marks = 75;\n\nif(marks >= 90) {\n  console.log('Grade A');\n} else if(marks >= 70) {\n  console.log('Grade B');\n} else if(marks >= 50) {\n  console.log('Grade C');\n} else {\n  console.log('Fail');\n}",
+                    "keyPoints": [
+                        "Used for multiple conditions",
+                        "Checks conditions sequentially",
+                        "Only one block executes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which statement checks multiple conditions?",
+                            "options": [
+                                "else if",
+                                "switch",
+                                "break",
+                                "continue"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The else if ladder allows multiple condition checks."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch5-page5",
+                    "title": "Switch Statement",
+                    "content": "The switch statement evaluates an expression and executes the matching case block. It is useful when there are many possible values to check.",
+                    "exampleCode": "let day = 2;\n\nswitch(day) {\n  case 1:\n    console.log('Monday');\n    break;\n  case 2:\n    console.log('Tuesday');\n    break;\n  default:\n    console.log('Other day');\n}",
+                    "keyPoints": [
+                        "Checks multiple values",
+                        "Uses case and break",
+                        "Default runs if no case matches"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword exits a switch case?",
+                            "options": [
+                                "stop",
+                                "break",
+                                "exit",
+                                "continue"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "break stops execution of the switch block."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch5-page6",
+                    "title": "Nested Conditions",
+                    "content": "Nested conditions occur when one conditional statement is placed inside another. This is useful when multiple dependent conditions need to be checked.",
+                    "exampleCode": "let age = 20;\nlet hasID = true;\n\nif(age >= 18) {\n  if(hasID) {\n    console.log('Entry allowed');\n  } else {\n    console.log('ID required');\n  }\n}",
+                    "keyPoints": [
+                        "Condition inside another condition",
+                        "Used for complex logic",
+                        "Common in real-world programs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a nested condition?",
+                            "options": [
+                                "Loop inside loop",
+                                "Condition inside condition",
+                                "Function inside function",
+                                "Array inside object"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Nested conditions place one condition inside another."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch6",
+            "title": "Loops",
+            "description": "Understanding loops used to execute repeated operations in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch6-page1",
+                    "title": "What are Loops?",
+                    "content": "Loops allow developers to execute a block of code multiple times without rewriting the same code. They are useful when performing repetitive tasks such as printing numbers, iterating through arrays, or processing large datasets.",
+                    "exampleCode": "for(let i = 1; i <= 3; i++) {\n  console.log(i);\n}",
+                    "keyPoints": [
+                        "Loops repeat code execution",
+                        "Reduce code duplication",
+                        "Useful for iteration tasks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of loops?",
+                            "options": [
+                                "Styling HTML",
+                                "Repeating code execution",
+                                "Creating CSS",
+                                "Managing databases"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Loops repeat a block of code multiple times."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page2",
+                    "title": "for Loop",
+                    "content": "The for loop is the most commonly used loop in JavaScript. It runs a block of code a specific number of times and contains three parts: initialization, condition, and increment/decrement.",
+                    "exampleCode": "for(let i = 1; i <= 5; i++) {\n  console.log('Number:', i);\n}",
+                    "keyPoints": [
+                        "Most commonly used loop",
+                        "Consists of initialization, condition, increment",
+                        "Best for known iteration counts"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop is best when the number of iterations is known?",
+                            "options": [
+                                "while",
+                                "do...while",
+                                "for",
+                                "switch"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The for loop is ideal when the iteration count is known."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page3",
+                    "title": "while Loop",
+                    "content": "The while loop executes code as long as a specified condition remains true. It checks the condition before executing the loop body.",
+                    "exampleCode": "let i = 1;\n\nwhile(i <= 5) {\n  console.log(i);\n  i++;\n}",
+                    "keyPoints": [
+                        "Checks condition before execution",
+                        "Runs while condition is true",
+                        "Useful when iteration count is unknown"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop checks the condition before executing?",
+                            "options": [
+                                "for",
+                                "while",
+                                "do...while",
+                                "switch"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The while loop checks the condition before execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page4",
+                    "title": "do...while Loop",
+                    "content": "The do...while loop executes the code block at least once before checking the condition. The condition is evaluated after the loop body runs.",
+                    "exampleCode": "let i = 1;\n\ndo {\n  console.log(i);\n  i++;\n} while(i <= 3);",
+                    "keyPoints": [
+                        "Runs at least once",
+                        "Condition checked after execution",
+                        "Useful when code must run initially"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop runs at least once?",
+                            "options": [
+                                "for",
+                                "while",
+                                "do...while",
+                                "if"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The do...while loop executes the code block before checking the condition."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page5",
+                    "title": "Break Statement",
+                    "content": "The break statement is used to terminate a loop immediately. When break is encountered, the loop stops executing and control moves to the next statement after the loop.",
+                    "exampleCode": "for(let i = 1; i <= 5; i++) {\n  if(i === 3) {\n    break;\n  }\n  console.log(i);\n}",
+                    "keyPoints": [
+                        "Stops loop execution",
+                        "Used when condition is met",
+                        "Common in loops and switch statements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does break do in a loop?",
+                            "options": [
+                                "Stops the loop",
+                                "Repeats the loop",
+                                "Skips iteration",
+                                "Creates variable"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The break statement stops loop execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page6",
+                    "title": "Continue Statement",
+                    "content": "The continue statement skips the current iteration of a loop and moves to the next iteration. It does not terminate the loop entirely.",
+                    "exampleCode": "for(let i = 1; i <= 5; i++) {\n  if(i === 3) {\n    continue;\n  }\n  console.log(i);\n}",
+                    "keyPoints": [
+                        "Skips current iteration",
+                        "Loop continues execution",
+                        "Useful for filtering iterations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does continue do?",
+                            "options": [
+                                "Stops loop",
+                                "Skips current iteration",
+                                "Ends program",
+                                "Creates condition"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "continue skips the current loop iteration."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch6-page7",
+                    "title": "Nested Loops",
+                    "content": "Nested loops occur when one loop is placed inside another. They are commonly used for working with multi-dimensional data such as matrices or tables.",
+                    "exampleCode": "for(let i = 1; i <= 2; i++) {\n  for(let j = 1; j <= 2; j++) {\n    console.log(i, j);\n  }\n}",
+                    "keyPoints": [
+                        "Loop inside another loop",
+                        "Useful for grids and matrices",
+                        "Inner loop runs fully for each outer iteration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a nested loop?",
+                            "options": [
+                                "Loop inside another loop",
+                                "Loop inside condition",
+                                "Function inside loop",
+                                "Object inside array"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Nested loops are loops placed inside other loops."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch7",
+            "title": "Functions",
+            "description": "Understanding functions and how they help create reusable code in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch7-page1",
+                    "title": "What are Functions?",
+                    "content": "A function is a reusable block of code designed to perform a specific task. Functions allow developers to avoid repeating the same code multiple times.\n\nFunctions are executed when they are called or invoked.",
+                    "exampleCode": "function greet() {\n  console.log('Hello, Welcome to JavaScript');\n}\n\ngreet();",
+                    "keyPoints": [
+                        "Functions group reusable code",
+                        "Executed when called",
+                        "Improve program organization"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main purpose of a function?",
+                            "options": [
+                                "Store CSS",
+                                "Reuse code",
+                                "Create HTML",
+                                "Manage databases"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Functions help reuse code."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page2",
+                    "title": "Function Declaration",
+                    "content": "A function declaration defines a named function using the function keyword. These functions can be called anywhere in the code due to hoisting.",
+                    "exampleCode": "function add(a, b) {\n  return a + b;\n}\n\nconsole.log(add(5, 3));",
+                    "keyPoints": [
+                        "Defined using function keyword",
+                        "Named function",
+                        "Supports hoisting"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword defines a function?",
+                            "options": [
+                                "method",
+                                "define",
+                                "function",
+                                "create"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Functions are declared using the function keyword."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page3",
+                    "title": "Function Expressions",
+                    "content": "A function expression assigns a function to a variable. Unlike function declarations, function expressions are not hoisted.",
+                    "exampleCode": "const multiply = function(a, b) {\n  return a * b;\n};\n\nconsole.log(multiply(4, 2));",
+                    "keyPoints": [
+                        "Function stored in variable",
+                        "Not hoisted",
+                        "Often used in callbacks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is a function stored in a function expression?",
+                            "options": [
+                                "Inside array",
+                                "Inside variable",
+                                "Inside object",
+                                "Inside loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Function expressions store functions in variables."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page4",
+                    "title": "Arrow Functions",
+                    "content": "Arrow functions were introduced in ES6 to provide a shorter syntax for writing functions. They are commonly used in modern JavaScript applications.",
+                    "exampleCode": "const subtract = (a, b) => {\n  return a - b;\n};\n\nconsole.log(subtract(10, 4));",
+                    "keyPoints": [
+                        "Introduced in ES6",
+                        "Shorter syntax",
+                        "Common in modern JS"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used in arrow functions?",
+                            "options": [
+                                "=>",
+                                "->",
+                                "==>",
+                                "::"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Arrow functions use the => syntax."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page5",
+                    "title": "Parameters and Arguments",
+                    "content": "Parameters are variables listed in the function definition. Arguments are the actual values passed to the function when it is called.",
+                    "exampleCode": "function greet(name) {\n  console.log('Hello ' + name);\n}\n\ngreet('Alice');",
+                    "keyPoints": [
+                        "Parameters defined in function",
+                        "Arguments passed during function call",
+                        "Allow dynamic input"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Values passed to functions are called:",
+                            "options": [
+                                "Variables",
+                                "Arguments",
+                                "Objects",
+                                "Expressions"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Arguments are values passed to functions."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page6",
+                    "title": "Return Values",
+                    "content": "Functions can return values using the return statement. This allows the result of a function to be used elsewhere in the program.",
+                    "exampleCode": "function square(num) {\n  return num * num;\n}\n\nlet result = square(5);\nconsole.log(result);",
+                    "keyPoints": [
+                        "Return sends value back",
+                        "Stops function execution",
+                        "Useful for calculations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword returns a value from a function?",
+                            "options": [
+                                "send",
+                                "return",
+                                "break",
+                                "output"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "return sends a value back from a function."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch7-page7",
+                    "title": "Default Parameters",
+                    "content": "Default parameters allow functions to assign default values if no argument is provided. This prevents errors and simplifies function usage.",
+                    "exampleCode": "function greet(name = 'Guest') {\n  console.log('Hello ' + name);\n}\n\ngreet();\ngreet('John');",
+                    "keyPoints": [
+                        "Provides default values",
+                        "Introduced in ES6",
+                        "Improves function reliability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Default parameters were introduced in:",
+                            "options": [
+                                "ES5",
+                                "ES6",
+                                "ES3",
+                                "ES2"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Default parameters were introduced in ES6."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch8",
+            "title": "Arrays",
+            "description": "Understanding arrays and how to store multiple values in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch8-page1",
+                    "title": "What are Arrays?",
+                    "content": "An array is a data structure used to store multiple values in a single variable. Instead of creating separate variables for each value, arrays allow developers to store and manage collections of data efficiently.\n\nEach value in an array is called an element and is accessed using an index. The index of an array starts from 0.",
+                    "exampleCode": "let fruits = ['Apple', 'Banana', 'Orange'];\nconsole.log(fruits);",
+                    "keyPoints": [
+                        "Arrays store multiple values",
+                        "Elements are accessed using indexes",
+                        "Array index starts at 0"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the index of the first element in an array?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "2"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Array indexes start from 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch8-page2",
+                    "title": "Creating Arrays",
+                    "content": "Arrays can be created using square brackets or the Array constructor. The most common method is using square brackets.",
+                    "exampleCode": "let numbers = [10, 20, 30];\nlet colors = new Array('Red', 'Green', 'Blue');\n\nconsole.log(numbers);\nconsole.log(colors);",
+                    "keyPoints": [
+                        "Created using [] brackets",
+                        "Can store different data types",
+                        "Array constructor is another method"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used to create arrays?",
+                            "options": [
+                                "()",
+                                "{}",
+                                "[]",
+                                "<>"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Arrays are created using square brackets []."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch8-page3",
+                    "title": "Accessing Array Elements",
+                    "content": "Array elements are accessed using their index. Since arrays start at index 0, the first element is accessed using index 0.",
+                    "exampleCode": "let fruits = ['Apple', 'Banana', 'Orange'];\n\nconsole.log(fruits[0]);\nconsole.log(fruits[1]);",
+                    "keyPoints": [
+                        "Access elements using index",
+                        "First index is 0",
+                        "Use bracket notation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you access the second element in an array?",
+                            "options": [
+                                "array[0]",
+                                "array[1]",
+                                "array[2]",
+                                "array.second"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Index 1 represents the second element."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch8-page4",
+                    "title": "Adding and Removing Elements",
+                    "content": "JavaScript provides several built-in methods to add or remove elements from arrays.\n\npush() adds an element to the end of an array.\npop() removes the last element.\nunshift() adds an element to the beginning.\nshift() removes the first element.",
+                    "exampleCode": "let numbers = [1,2,3];\n\nnumbers.push(4);\nnumbers.pop();\nnumbers.unshift(0);\nnumbers.shift();\n\nconsole.log(numbers);",
+                    "keyPoints": [
+                        "push adds element to end",
+                        "pop removes last element",
+                        "unshift adds element at beginning",
+                        "shift removes first element"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method adds an element at the end of an array?",
+                            "options": [
+                                "push",
+                                "pop",
+                                "shift",
+                                "slice"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "push() adds elements to the end of an array."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch8-page5",
+                    "title": "Array Length",
+                    "content": "The length property returns the number of elements in an array. It is useful when iterating through arrays.",
+                    "exampleCode": "let fruits = ['Apple', 'Banana', 'Orange'];\n\nconsole.log(fruits.length);",
+                    "keyPoints": [
+                        "length returns array size",
+                        "Useful for loops",
+                        "Automatically updates when elements change"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which property returns the number of elements in an array?",
+                            "options": [
+                                "size",
+                                "length",
+                                "count",
+                                "total"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "length returns the total elements in an array."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch8-page6",
+                    "title": "Iterating Arrays",
+                    "content": "Arrays can be iterated using loops such as for loop or forEach method. Iteration allows developers to access each element of an array.",
+                    "exampleCode": "let fruits = ['Apple','Banana','Orange'];\n\nfor(let i = 0; i < fruits.length; i++){\n  console.log(fruits[i]);\n}\n\nfruits.forEach(function(item){\n  console.log(item);\n});",
+                    "keyPoints": [
+                        "for loop can iterate arrays",
+                        "forEach simplifies iteration",
+                        "Common in data processing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method iterates through array elements?",
+                            "options": [
+                                "forEach",
+                                "loop",
+                                "iterate",
+                                "mapArray"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "forEach iterates through array elements."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch9",
+            "title": "Objects",
+            "description": "Understanding objects and how to store structured data in JavaScript",
+            "pages": [
+                {
+                    "id": "js-ch9-page1",
+                    "title": "What are Objects?",
+                    "content": "Objects are collections of key-value pairs used to represent structured data. Each key is called a property, and the value can be any data type including numbers, strings, arrays, or even functions.\n\nObjects are commonly used to represent real-world entities such as users, products, or courses.",
+                    "exampleCode": "let user = {\n  name: 'Alice',\n  age: 25\n};\n\nconsole.log(user);",
+                    "keyPoints": [
+                        "Objects store key-value pairs",
+                        "Used for structured data",
+                        "Values can be any data type"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does an object store?",
+                            "options": [
+                                "Numbers only",
+                                "Key-value pairs",
+                                "Functions only",
+                                "HTML elements"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Objects store data as key-value pairs."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch9-page2",
+                    "title": "Creating Objects",
+                    "content": "Objects can be created using object literals with curly braces {}. This is the most common way to create objects in JavaScript.",
+                    "exampleCode": "let student = {\n  name: 'John',\n  age: 22,\n  course: 'JavaScript'\n};\n\nconsole.log(student);",
+                    "keyPoints": [
+                        "Objects created using {}",
+                        "Properties defined as key-value pairs",
+                        "Most common object creation method"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used to create objects?",
+                            "options": [
+                                "[]",
+                                "{}",
+                                "()",
+                                "<>"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Objects are created using curly braces {}."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch9-page3",
+                    "title": "Accessing Object Properties",
+                    "content": "Object properties can be accessed using dot notation or bracket notation. Dot notation is commonly used when property names are known.",
+                    "exampleCode": "let car = {\n  brand: 'Toyota',\n  model: 'Camry'\n};\n\nconsole.log(car.brand);\nconsole.log(car['model']);",
+                    "keyPoints": [
+                        "Access properties using dot notation",
+                        "Bracket notation also supported",
+                        "Used to retrieve object data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which syntax accesses object properties?",
+                            "options": [
+                                "dot notation",
+                                "bracket notation",
+                                "Both",
+                                "None"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Both dot and bracket notation access properties."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch9-page4",
+                    "title": "Adding and Removing Properties",
+                    "content": "JavaScript allows developers to add new properties or remove existing ones from objects dynamically.",
+                    "exampleCode": "let user = {\n  name: 'David'\n};\n\nuser.age = 30;\nconsole.log(user);\n\ndelete user.age;",
+                    "keyPoints": [
+                        "Properties can be added dynamically",
+                        "delete keyword removes properties",
+                        "Objects are flexible data structures"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword removes an object property?",
+                            "options": [
+                                "remove",
+                                "delete",
+                                "clear",
+                                "unset"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "delete removes object properties."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch9-page5",
+                    "title": "Object Methods",
+                    "content": "Objects can contain functions called methods. Methods define behaviors associated with the object.",
+                    "exampleCode": "let person = {\n  name: 'Emma',\n  greet: function() {\n    console.log('Hello ' + this.name);\n  }\n};\n\nperson.greet();",
+                    "keyPoints": [
+                        "Methods are functions inside objects",
+                        "Define object behavior",
+                        "Called using dot notation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Functions inside objects are called:",
+                            "options": [
+                                "methods",
+                                "variables",
+                                "loops",
+                                "arrays"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Functions inside objects are called methods."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch9-page6",
+                    "title": "The 'this' Keyword",
+                    "content": "The 'this' keyword refers to the current object. It allows object methods to access properties within the same object.",
+                    "exampleCode": "let user = {\n  name: 'Sophia',\n  sayHello() {\n    console.log('Hello ' + this.name);\n  }\n};\n\nuser.sayHello();",
+                    "keyPoints": [
+                        "this refers to current object",
+                        "Used inside object methods",
+                        "Access object properties"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does 'this' refer to in an object method?",
+                            "options": [
+                                "Global object",
+                                "Current object",
+                                "Array",
+                                "Function parameter"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "this refers to the current object."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch10",
+            "title": "DOM Manipulation",
+            "description": "Understanding how JavaScript interacts with HTML using the Document Object Model",
+            "pages": [
+                {
+                    "id": "js-ch10-page1",
+                    "title": "What is the DOM?",
+                    "content": "The DOM (Document Object Model) represents the structure of an HTML document as a tree of objects. Each element in an HTML page becomes a node in the DOM tree. JavaScript can use the DOM to access, modify, and manipulate HTML elements dynamically.",
+                    "exampleCode": "console.log(document);",
+                    "keyPoints": [
+                        "DOM represents HTML structure",
+                        "JavaScript can interact with HTML using DOM",
+                        "DOM is structured like a tree"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does DOM stand for?",
+                            "options": [
+                                "Document Object Model",
+                                "Data Object Method",
+                                "Dynamic Object Model",
+                                "Display Object Management"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "DOM stands for Document Object Model."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch10-page2",
+                    "title": "Selecting HTML Elements",
+                    "content": "JavaScript provides several methods to select HTML elements from the DOM. These include getElementById, getElementsByClassName, getElementsByTagName, and querySelector.",
+                    "exampleCode": "let title = document.getElementById('title');\nconsole.log(title);\n\nlet element = document.querySelector('.box');\nconsole.log(element);",
+                    "keyPoints": [
+                        "getElementById selects by ID",
+                        "querySelector selects first matching element",
+                        "DOM selection is used before manipulation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method selects an element by ID?",
+                            "options": [
+                                "querySelector",
+                                "getElementById",
+                                "getElement",
+                                "findElement"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "getElementById selects elements by their ID."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch10-page3",
+                    "title": "Changing Element Content",
+                    "content": "JavaScript allows developers to modify the content of HTML elements using properties like innerText, innerHTML, and textContent.",
+                    "exampleCode": "let heading = document.getElementById('title');\nheading.innerText = 'Welcome to JavaScript';",
+                    "keyPoints": [
+                        "innerText changes text content",
+                        "innerHTML can modify HTML content",
+                        "textContent updates text safely"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which property changes text content of an element?",
+                            "options": [
+                                "innerText",
+                                "style",
+                                "value",
+                                "node"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "innerText changes the text inside an element."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch10-page4",
+                    "title": "Changing Styles",
+                    "content": "JavaScript can change the CSS styles of HTML elements using the style property. This allows dynamic updates to page appearance.",
+                    "exampleCode": "let box = document.getElementById('box');\nbox.style.backgroundColor = 'blue';\nbox.style.color = 'white';",
+                    "keyPoints": [
+                        "style property changes CSS",
+                        "Allows dynamic styling",
+                        "Uses camelCase for CSS properties"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which property modifies CSS styles in JavaScript?",
+                            "options": [
+                                "css",
+                                "design",
+                                "style",
+                                "format"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "style is used to modify CSS properties."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch10-page5",
+                    "title": "Creating Elements",
+                    "content": "JavaScript can dynamically create new HTML elements using document.createElement(). These elements can then be added to the DOM using appendChild() or append().",
+                    "exampleCode": "let newElement = document.createElement('p');\nnewElement.innerText = 'New paragraph created';\n\ndocument.body.appendChild(newElement);",
+                    "keyPoints": [
+                        "createElement creates new HTML elements",
+                        "appendChild adds element to DOM",
+                        "Useful for dynamic UI"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method creates a new HTML element?",
+                            "options": [
+                                "createNode",
+                                "createElement",
+                                "makeElement",
+                                "append"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "createElement creates new HTML elements."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch10-page6",
+                    "title": "Removing Elements",
+                    "content": "Elements can be removed from the DOM using remove() or removeChild(). This helps dynamically update page content.",
+                    "exampleCode": "let element = document.getElementById('item');\nelement.remove();",
+                    "keyPoints": [
+                        "remove deletes element from DOM",
+                        "Used for dynamic UI updates",
+                        "Helps manage page elements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method removes an element from the DOM?",
+                            "options": [
+                                "deleteElement",
+                                "remove",
+                                "clearNode",
+                                "destroy"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "remove() deletes an element from the DOM."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch11",
+            "title": "Events",
+            "description": "Understanding how JavaScript responds to user interactions using events",
+            "pages": [
+                {
+                    "id": "js-ch11-page1",
+                    "title": "What are Events?",
+                    "content": "Events are actions or occurrences that happen in the browser, usually triggered by the user. Examples include clicking a button, typing on a keyboard, or submitting a form.\n\nJavaScript can listen for these events and execute specific code when they occur.",
+                    "exampleCode": "document.addEventListener('click', function(){\n  console.log('Page clicked');\n});",
+                    "keyPoints": [
+                        "Events represent user interactions",
+                        "JavaScript reacts to events",
+                        "Examples include click, input, and submit"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What triggers an event in JavaScript?",
+                            "options": [
+                                "User interaction",
+                                "CSS styling",
+                                "Database query",
+                                "HTML tag"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Events are triggered by user interactions like clicks or typing."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch11-page2",
+                    "title": "Event Listeners",
+                    "content": "Event listeners allow JavaScript to detect when a specific event occurs on an element. The addEventListener() method is commonly used to attach events.",
+                    "exampleCode": "let button = document.getElementById('btn');\n\nbutton.addEventListener('click', function(){\n  console.log('Button clicked');\n});",
+                    "keyPoints": [
+                        "addEventListener attaches events",
+                        "Can listen to many event types",
+                        "Keeps HTML and JavaScript separate"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method attaches an event listener?",
+                            "options": [
+                                "addEventListener",
+                                "listenEvent",
+                                "attachEvent",
+                                "setEvent"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "addEventListener is used to attach events."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch11-page3",
+                    "title": "Click Events",
+                    "content": "Click events occur when a user clicks an HTML element such as a button, link, or image. They are commonly used to trigger actions like opening menus or submitting data.",
+                    "exampleCode": "let button = document.getElementById('btn');\n\nbutton.addEventListener('click', function(){\n  alert('Button clicked');\n});",
+                    "keyPoints": [
+                        "Triggered when element is clicked",
+                        "Commonly used with buttons",
+                        "Can trigger UI updates"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which event occurs when a user clicks a button?",
+                            "options": [
+                                "hover",
+                                "click",
+                                "focus",
+                                "load"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The click event triggers when a button is clicked."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch11-page4",
+                    "title": "Form Events",
+                    "content": "Form events occur when users interact with forms. Examples include submit, input, change, and focus events.",
+                    "exampleCode": "let form = document.getElementById('myForm');\n\nform.addEventListener('submit', function(event){\n  event.preventDefault();\n  console.log('Form submitted');\n});",
+                    "keyPoints": [
+                        "submit triggers when form is submitted",
+                        "input detects typing",
+                        "preventDefault prevents page reload"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method prevents form refresh?",
+                            "options": [
+                                "stopReload",
+                                "preventDefault",
+                                "cancelSubmit",
+                                "blockEvent"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "preventDefault prevents default browser behavior."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch11-page5",
+                    "title": "Keyboard Events",
+                    "content": "Keyboard events occur when users press keys on the keyboard. Common keyboard events include keydown, keyup, and keypress.",
+                    "exampleCode": "document.addEventListener('keydown', function(event){\n  console.log('Key pressed:', event.key);\n});",
+                    "keyPoints": [
+                        "keydown triggers when key pressed",
+                        "keyup triggers when key released",
+                        "Useful for keyboard shortcuts"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which event occurs when a key is pressed?",
+                            "options": [
+                                "keypress",
+                                "keydown",
+                                "keyup",
+                                "Both keypress and keydown"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Both keypress and keydown can detect key presses."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch11-page6",
+                    "title": "Event Bubbling",
+                    "content": "Event bubbling occurs when an event starts from the target element and propagates upward through its parent elements. This allows parent elements to respond to events triggered on child elements.",
+                    "exampleCode": "document.getElementById('child').addEventListener('click', function(){\n  console.log('Child clicked');\n});\n\ndocument.getElementById('parent').addEventListener('click', function(){\n  console.log('Parent clicked');\n});",
+                    "keyPoints": [
+                        "Event moves from child to parent",
+                        "Called event propagation",
+                        "Can be controlled using stopPropagation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Event bubbling moves from:",
+                            "options": [
+                                "Parent to child",
+                                "Child to parent",
+                                "Left to right",
+                                "Top to bottom"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Event bubbling moves from the child element to its parent."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch12",
+            "title": "ES6 Features",
+            "description": "Understanding modern JavaScript features introduced in ES6",
+            "pages": [
+                {
+                    "id": "js-ch12-page1",
+                    "title": "Introduction to ES6",
+                    "content": "ES6 (ECMAScript 2015) is a major update to JavaScript that introduced many modern features. These features simplify JavaScript development and improve readability and maintainability.\n\nModern frameworks like React and Node.js heavily rely on ES6 syntax.",
+                    "exampleCode": "let message = 'Welcome to ES6';\nconsole.log(message);",
+                    "keyPoints": [
+                        "ES6 released in 2015",
+                        "Introduced modern syntax",
+                        "Improves code readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does ES6 stand for?",
+                            "options": [
+                                "ECMAScript 6",
+                                "Event Script 6",
+                                "Extended Script 6",
+                                "Element Script 6"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "ES6 stands for ECMAScript 6."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page2",
+                    "title": "let and const",
+                    "content": "ES6 introduced let and const to replace var. These provide block scope and improve variable management.\n\nlet allows reassignment, while const creates constant variables.",
+                    "exampleCode": "let count = 10;\ncount = 20;\n\nconst pi = 3.14;\nconsole.log(pi);",
+                    "keyPoints": [
+                        "let allows reassignment",
+                        "const creates constant variables",
+                        "Both support block scope"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword creates a constant variable?",
+                            "options": [
+                                "var",
+                                "let",
+                                "const",
+                                "define"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "const creates variables that cannot be reassigned."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page3",
+                    "title": "Arrow Functions",
+                    "content": "Arrow functions provide a shorter syntax for writing functions. They are widely used in modern JavaScript and React development.",
+                    "exampleCode": "const add = (a, b) => a + b;\n\nconsole.log(add(5, 3));",
+                    "keyPoints": [
+                        "Shorter function syntax",
+                        "Introduced in ES6",
+                        "Common in React development"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which syntax defines an arrow function?",
+                            "options": [
+                                "->",
+                                "=>",
+                                "::",
+                                "==>"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Arrow functions use the => syntax."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page4",
+                    "title": "Template Literals",
+                    "content": "Template literals allow embedding variables inside strings using backticks (`). They make string concatenation easier and cleaner.",
+                    "exampleCode": "let name = 'John';\nlet message = `Hello ${name}`;\n\nconsole.log(message);",
+                    "keyPoints": [
+                        "Uses backticks (`)",
+                        "Supports variable interpolation",
+                        "Improves string readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used for template literals?",
+                            "options": [
+                                "'",
+                                "\"",
+                                "`",
+                                "#"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Template literals use backticks (`)."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page5",
+                    "title": "Destructuring",
+                    "content": "Destructuring allows developers to extract values from arrays or objects into separate variables. It simplifies code when working with complex data structures.",
+                    "exampleCode": "let user = { name: 'Alice', age: 25 };\n\nlet { name, age } = user;\n\nconsole.log(name);\nconsole.log(age);",
+                    "keyPoints": [
+                        "Extract values from objects",
+                        "Works with arrays and objects",
+                        "Reduces repetitive code"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Destructuring is used to:",
+                            "options": [
+                                "Create arrays",
+                                "Extract values",
+                                "Delete variables",
+                                "Sort data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Destructuring extracts values from arrays or objects."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page6",
+                    "title": "Spread Operator",
+                    "content": "The spread operator (...) allows expanding elements of arrays or objects. It is commonly used for copying arrays and merging objects.",
+                    "exampleCode": "let arr1 = [1,2,3];\nlet arr2 = [...arr1, 4,5];\n\nconsole.log(arr2);",
+                    "keyPoints": [
+                        "Uses three dots (...)",
+                        "Expands arrays or objects",
+                        "Useful for copying data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol represents the spread operator?",
+                            "options": [
+                                "...",
+                                "++",
+                                "==",
+                                "//"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The spread operator uses three dots (...)."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch12-page7",
+                    "title": "Modules",
+                    "content": "ES6 introduced modules that allow JavaScript files to export and import functionality. This helps organize code into reusable components.",
+                    "exampleCode": "// file1.js\nexport const name = 'JavaScript';\n\n// file2.js\nimport { name } from './file1.js';\n\nconsole.log(name);",
+                    "keyPoints": [
+                        "Modules organize code",
+                        "export shares functionality",
+                        "import loads functionality"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword imports modules?",
+                            "options": [
+                                "include",
+                                "import",
+                                "require",
+                                "fetch"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "import is used to load modules."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch13",
+            "title": "Promises",
+            "description": "Understanding asynchronous programming using JavaScript Promises",
+            "pages": [
+                {
+                    "id": "js-ch13-page1",
+                    "title": "What are Promises?",
+                    "content": "A Promise is an object representing the eventual completion or failure of an asynchronous operation. Promises allow JavaScript to handle tasks that take time to complete, such as fetching data from a server.",
+                    "exampleCode": "let promise = new Promise(function(resolve, reject) {\n  resolve('Operation successful');\n});\n\npromise.then(result => console.log(result));",
+                    "keyPoints": [
+                        "Handles asynchronous operations",
+                        "Represents future completion",
+                        "Used in API calls"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Promises are mainly used for:",
+                            "options": [
+                                "Styling pages",
+                                "Handling asynchronous operations",
+                                "Creating arrays",
+                                "Manipulating HTML"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Promises handle asynchronous operations like API requests."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch13-page2",
+                    "title": "Promise States",
+                    "content": "A Promise has three possible states: Pending, Fulfilled, and Rejected.\n\nPending means the operation is still running. Fulfilled means the operation completed successfully. Rejected means the operation failed.",
+                    "exampleCode": "let promise = new Promise((resolve, reject) => {\n  let success = true;\n\n  if(success) {\n    resolve('Success');\n  } else {\n    reject('Error occurred');\n  }\n});",
+                    "keyPoints": [
+                        "Pending state initially",
+                        "Fulfilled when successful",
+                        "Rejected when error occurs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many states does a Promise have?",
+                            "options": [
+                                "2",
+                                "3",
+                                "4",
+                                "5"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Promises have three states: Pending, Fulfilled, and Rejected."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch13-page3",
+                    "title": "Creating Promises",
+                    "content": "Promises are created using the Promise constructor. It takes a function with two parameters: resolve and reject.",
+                    "exampleCode": "let myPromise = new Promise((resolve, reject) => {\n  let dataLoaded = true;\n\n  if(dataLoaded) {\n    resolve('Data loaded successfully');\n  } else {\n    reject('Failed to load data');\n  }\n});",
+                    "keyPoints": [
+                        "Created using new Promise()",
+                        "resolve indicates success",
+                        "reject indicates failure"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword creates a Promise?",
+                            "options": [
+                                "new Promise",
+                                "createPromise",
+                                "makePromise",
+                                "generatePromise"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Promises are created using the Promise constructor."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch13-page4",
+                    "title": "Using .then()",
+                    "content": "The .then() method is used to handle successful completion of a Promise. It receives the resolved value as its argument.",
+                    "exampleCode": "myPromise.then(function(result) {\n  console.log(result);\n});",
+                    "keyPoints": [
+                        ".then handles successful result",
+                        "Receives resolved value",
+                        "Can chain multiple then methods"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method handles successful Promise results?",
+                            "options": [
+                                "then",
+                                "catch",
+                                "resolve",
+                                "execute"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": ".then() handles successful promise results."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch13-page5",
+                    "title": "Using .catch()",
+                    "content": "The .catch() method handles errors in Promises. It executes when a Promise is rejected.",
+                    "exampleCode": "myPromise.catch(function(error) {\n  console.log(error);\n});",
+                    "keyPoints": [
+                        ".catch handles errors",
+                        "Runs when promise fails",
+                        "Helps manage error handling"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method handles Promise errors?",
+                            "options": [
+                                "then",
+                                "catch",
+                                "error",
+                                "fail"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": ".catch() handles rejected promises."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch13-page6",
+                    "title": "Promise Chaining",
+                    "content": "Promise chaining allows multiple asynchronous operations to run sequentially using multiple .then() methods.",
+                    "exampleCode": "fetch('https://api.example.com/data')\n  .then(response => response.json())\n  .then(data => console.log(data))\n  .catch(error => console.log(error));",
+                    "keyPoints": [
+                        "Multiple then calls possible",
+                        "Used for sequential async tasks",
+                        "Common in API requests"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Promise chaining is done using:",
+                            "options": [
+                                "multiple then methods",
+                                "loops",
+                                "functions",
+                                "switch"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Promise chaining uses multiple .then() calls."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch14",
+            "title": "Async / Await",
+            "description": "Understanding modern asynchronous programming using async and await",
+            "pages": [
+                {
+                    "id": "js-ch14-page1",
+                    "title": "Asynchronous Programming",
+                    "content": "Asynchronous programming allows JavaScript to perform tasks without blocking the execution of other code. This is useful for operations that take time such as API calls, file loading, and database requests.\n\nInstead of waiting for a task to complete, JavaScript continues executing other code.",
+                    "exampleCode": "console.log('Start');\n\nsetTimeout(() => {\n  console.log('Async task completed');\n}, 2000);\n\nconsole.log('End');",
+                    "keyPoints": [
+                        "Allows non-blocking operations",
+                        "Used for API calls and timers",
+                        "Improves application performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does asynchronous programming allow?",
+                            "options": [
+                                "Blocking execution",
+                                "Running tasks simultaneously",
+                                "Styling HTML",
+                                "Managing CSS"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Asynchronous programming allows tasks to run without blocking the main thread."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch14-page2",
+                    "title": "Async Functions",
+                    "content": "An async function is a function declared using the async keyword. It always returns a Promise. Inside an async function, developers can use the await keyword to handle asynchronous operations.",
+                    "exampleCode": "async function greet() {\n  return 'Hello World';\n}\n\ngreet().then(result => console.log(result));",
+                    "keyPoints": [
+                        "Declared using async keyword",
+                        "Always returns a Promise",
+                        "Works with await"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does an async function return?",
+                            "options": [
+                                "String",
+                                "Array",
+                                "Promise",
+                                "Object"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Async functions always return a Promise."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch14-page3",
+                    "title": "Await Keyword",
+                    "content": "The await keyword pauses execution of an async function until the Promise is resolved. It can only be used inside async functions.",
+                    "exampleCode": "async function getData() {\n  let response = await fetch('https://jsonplaceholder.typicode.com/posts/1');\n  let data = await response.json();\n  console.log(data);\n}\n\ngetData();",
+                    "keyPoints": [
+                        "Used inside async functions",
+                        "Waits for Promise resolution",
+                        "Simplifies asynchronous code"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where can await be used?",
+                            "options": [
+                                "Inside loops",
+                                "Inside async functions",
+                                "Inside arrays",
+                                "Inside objects"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "await can only be used inside async functions."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch14-page4",
+                    "title": "Error Handling with try...catch",
+                    "content": "Errors in async/await code can be handled using try...catch blocks. This ensures the application can gracefully handle failures in asynchronous operations.",
+                    "exampleCode": "async function loadData() {\n  try {\n    let response = await fetch('https://api.example.com/data');\n    let data = await response.json();\n    console.log(data);\n  } catch(error) {\n    console.log('Error:', error);\n  }\n}\n\nloadData();",
+                    "keyPoints": [
+                        "try handles successful execution",
+                        "catch handles errors",
+                        "Improves error management"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block handles errors?",
+                            "options": [
+                                "try",
+                                "catch",
+                                "throw",
+                                "resolve"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "catch handles errors in try...catch blocks."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch14-page5",
+                    "title": "Converting Promises to Async/Await",
+                    "content": "Async/await is built on top of Promises. Instead of chaining multiple .then() methods, developers can use await to write cleaner and more readable code.",
+                    "exampleCode": "// Promise version\nfetch('https://jsonplaceholder.typicode.com/posts')\n  .then(res => res.json())\n  .then(data => console.log(data));\n\n// Async/Await version\nasync function fetchData() {\n  let res = await fetch('https://jsonplaceholder.typicode.com/posts');\n  let data = await res.json();\n  console.log(data);\n}\n\nfetchData();",
+                    "keyPoints": [
+                        "Async/await replaces promise chains",
+                        "Code becomes easier to read",
+                        "Used in modern JavaScript"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Async/await is built on top of:",
+                            "options": [
+                                "Callbacks",
+                                "Promises",
+                                "Loops",
+                                "Objects"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Async/await is based on Promises."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "js-ch15",
+            "title": "Fetch API & API Integration",
+            "description": "Understanding how JavaScript communicates with servers using the Fetch API",
+            "pages": [
+                {
+                    "id": "js-ch15-page1",
+                    "title": "What is Fetch API?",
+                    "content": "The Fetch API is a modern JavaScript interface used to make HTTP requests to servers. It allows web applications to retrieve or send data asynchronously.\n\nFetch is commonly used to communicate with REST APIs and load data dynamically into web pages.",
+                    "exampleCode": "fetch('https://jsonplaceholder.typicode.com/posts')\n  .then(response => response.json())\n  .then(data => console.log(data));",
+                    "keyPoints": [
+                        "Used to communicate with servers",
+                        "Supports HTTP requests",
+                        "Works with Promises",
+                        "Common in modern web apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the Fetch API do?",
+                            "options": [
+                                "Styles HTML pages",
+                                "Makes HTTP requests",
+                                "Creates arrays",
+                                "Handles loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Fetch API is used to send and receive data from servers."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch15-page2",
+                    "title": "Making GET Requests",
+                    "content": "GET requests are used to retrieve data from a server. Fetch makes GET requests by default when only the URL is provided.",
+                    "exampleCode": "fetch('https://jsonplaceholder.typicode.com/posts/1')\n  .then(response => response.json())\n  .then(data => console.log(data));",
+                    "keyPoints": [
+                        "GET retrieves data",
+                        "Default fetch request type",
+                        "Used for reading API data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which HTTP method retrieves data?",
+                            "options": [
+                                "POST",
+                                "GET",
+                                "DELETE",
+                                "PUT"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "GET requests retrieve data from the server."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch15-page3",
+                    "title": "Making POST Requests",
+                    "content": "POST requests send data to the server. This is commonly used when submitting forms or creating new records in a database.",
+                    "exampleCode": "fetch('https://jsonplaceholder.typicode.com/posts', {\n  method: 'POST',\n  headers: {\n    'Content-Type': 'application/json'\n  },\n  body: JSON.stringify({\n    title: 'New Post',\n    body: 'Post content',\n    userId: 1\n  })\n})\n.then(response => response.json())\n.then(data => console.log(data));",
+                    "keyPoints": [
+                        "POST sends data to server",
+                        "Requires method and body",
+                        "Often used for form submissions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which HTTP method sends data to server?",
+                            "options": [
+                                "GET",
+                                "POST",
+                                "READ",
+                                "FETCH"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "POST sends data to the server."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch15-page4",
+                    "title": "Handling JSON Data",
+                    "content": "Most APIs return data in JSON format. The response.json() method converts the response into usable JavaScript objects.",
+                    "exampleCode": "fetch('https://jsonplaceholder.typicode.com/users')\n  .then(response => response.json())\n  .then(users => {\n    users.forEach(user => {\n      console.log(user.name);\n    });\n  });",
+                    "keyPoints": [
+                        "APIs commonly return JSON",
+                        "response.json converts data",
+                        "JSON becomes JavaScript object"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method converts API response to JSON?",
+                            "options": [
+                                "response.text()",
+                                "response.json()",
+                                "response.parse()",
+                                "response.data()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "response.json() converts API data to JSON."
+                        }
+                    ]
+                },
+                {
+                    "id": "js-ch15-page5",
+                    "title": "Error Handling in Fetch",
+                    "content": "Errors can occur during API requests due to network issues or server problems. JavaScript uses catch() or try/catch with async/await to handle these errors.",
+                    "exampleCode": "fetch('https://jsonplaceholder.typicode.com/posts')\n  .then(response => response.json())\n  .then(data => console.log(data))\n  .catch(error => console.log('Error:', error));",
+                    "keyPoints": [
+                        "catch handles fetch errors",
+                        "Important for stable applications",
+                        "Prevents crashes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method handles fetch errors?",
+                            "options": [
+                                "then",
+                                "catch",
+                                "resolve",
+                                "return"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "catch handles errors in fetch requests."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is JavaScript?",
+            "answer": "JavaScript is a high-level programming language used to create dynamic and interactive web applications.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "Is JavaScript a compiled or interpreted language?",
+            "answer": "JavaScript is primarily an interpreted language executed by browsers using JavaScript engines.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are the main data types in JavaScript?",
+            "answer": "String, Number, Boolean, Undefined, Null, Symbol, BigInt, and Object.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between let, var, and const?",
+            "answer": "var has function scope, let and const have block scope. const cannot be reassigned.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a variable in JavaScript?",
+            "answer": "A variable is a container used to store data values.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a function?",
+            "answer": "A function is a reusable block of code designed to perform a specific task.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is an array?",
+            "answer": "An array is a data structure used to store multiple values in a single variable.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is an object in JavaScript?",
+            "answer": "An object is a collection of key-value pairs used to represent structured data.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the DOM?",
+            "answer": "The DOM (Document Object Model) represents HTML documents as objects that JavaScript can manipulate.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is an event in JavaScript?",
+            "answer": "An event is an action that occurs in the browser such as clicking a button or typing on a keyboard.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is hoisting in JavaScript?",
+            "answer": "Hoisting is JavaScript's behavior of moving variable and function declarations to the top of their scope during compilation.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between == and ===?",
+            "answer": "== compares values after type conversion, while === compares both value and data type.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a callback function?",
+            "answer": "A callback function is a function passed as an argument to another function.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a closure?",
+            "answer": "A closure is a function that remembers variables from its outer scope even after the outer function has finished executing.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between null and undefined?",
+            "answer": "null represents an intentional empty value, while undefined means a variable has been declared but not assigned.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the typeof operator?",
+            "answer": "typeof is used to determine the data type of a variable.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is destructuring in JavaScript?",
+            "answer": "Destructuring allows extracting values from arrays or objects into variables.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the spread operator?",
+            "answer": "The spread operator (...) expands elements of arrays or objects.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between map() and forEach()?",
+            "answer": "map() returns a new array, while forEach() executes a function for each element but does not return a new array.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is event bubbling?",
+            "answer": "Event bubbling is the process where events propagate from child elements to parent elements.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are promises in JavaScript?",
+            "answer": "Promises represent the eventual completion or failure of an asynchronous operation.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are the states of a Promise?",
+            "answer": "Pending, Fulfilled, and Rejected.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is async/await?",
+            "answer": "Async/await simplifies working with Promises and allows writing asynchronous code like synchronous code.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the Fetch API?",
+            "answer": "Fetch API is used to make HTTP requests to servers.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is JSON?",
+            "answer": "JSON (JavaScript Object Notation) is a lightweight format for storing and exchanging data.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between synchronous and asynchronous programming?",
+            "answer": "Synchronous code runs sequentially, while asynchronous code allows tasks to run without blocking execution.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the event loop?",
+            "answer": "The event loop handles asynchronous callbacks and ensures non-blocking execution in JavaScript.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are arrow functions?",
+            "answer": "Arrow functions are a shorter syntax for writing functions introduced in ES6.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between function declaration and function expression?",
+            "answer": "Function declarations are hoisted, while function expressions are not.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the this keyword?",
+            "answer": "The this keyword refers to the current object executing the function.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are template literals?",
+            "answer": "Template literals allow embedding variables in strings using backticks.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is local storage?",
+            "answer": "Local storage allows storing data in the browser with no expiration date.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is session storage?",
+            "answer": "Session storage stores data only for the duration of the browser session.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is debouncing?",
+            "answer": "Debouncing limits how often a function executes during repeated events.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is throttling?",
+            "answer": "Throttling ensures a function executes at most once within a specified time interval.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are JavaScript modules?",
+            "answer": "Modules allow splitting code into reusable files using export and import.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is strict mode?",
+            "answer": "Strict mode enforces stricter parsing and error handling in JavaScript.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between call(), apply(), and bind()?",
+            "answer": "They control the value of this in functions. call and apply invoke functions immediately, while bind returns a new function.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between shallow copy and deep copy?",
+            "answer": "Shallow copy copies references, while deep copy duplicates nested objects.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a higher-order function?",
+            "answer": "A higher-order function is a function that takes another function as an argument or returns a function.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between let and const?",
+            "answer": "let allows reassignment while const does not allow reassignment.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What does NaN mean?",
+            "answer": "NaN stands for Not-a-Number and represents an invalid numeric value.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between slice() and splice()?",
+            "answer": "slice returns a new array, while splice modifies the original array.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What does the Array.isArray() method do?",
+            "answer": "It checks whether a value is an array.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a prototype in JavaScript?",
+            "answer": "A prototype is an object from which other objects inherit properties.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is garbage collection?",
+            "answer": "Garbage collection automatically removes unused memory from JavaScript programs.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is optional chaining?",
+            "answer": "Optional chaining (?.) safely accesses nested object properties without errors.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between window and document?",
+            "answer": "window represents the browser window, while document represents the HTML document loaded in it.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the purpose of the debugger statement?",
+            "answer": "The debugger statement pauses code execution for debugging.",
+            "difficulty": "intermediate"
+        }
+    ]
+}

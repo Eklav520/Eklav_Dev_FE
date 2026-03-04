@@ -1,0 +1,1853 @@
+{
+    "id": "c-mastery",
+    "title": "C Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "c-ch1",
+            "title": "Introduction to C",
+            "description": "Understanding the basics of C programming language",
+            "pages": [
+                {
+                    "id": "c-ch1-page1",
+                    "title": "What is C Programming",
+                    "content": "C is a general-purpose procedural programming language developed by Dennis Ritchie at Bell Labs in 1972. It is widely used for system programming, operating systems, embedded systems, and performance-critical applications. C provides low-level memory access through pointers and is considered the foundation for many modern programming languages such as C++, Java, and Python.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello, C Programming!\\n\");\n    return 0;\n}",
+                    "keyPoints": [
+                        "C is a procedural programming language",
+                        "Developed by Dennis Ritchie in 1972",
+                        "Used in operating systems and embedded systems",
+                        "Provides direct memory access using pointers"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Who developed the C programming language?",
+                            "options": [
+                                "James Gosling",
+                                "Dennis Ritchie",
+                                "Bjarne Stroustrup",
+                                "Guido van Rossum"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Dennis Ritchie developed C at Bell Labs in 1972."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch1-page2",
+                    "title": "Structure of a C Program",
+                    "content": "A C program consists of several components including header files, the main() function, variable declarations, statements, and return statements. Every C program execution begins from the main() function.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    printf(\"Welcome to C Programming\");\n    return 0;\n}",
+                    "keyPoints": [
+                        "Every C program starts execution from main()",
+                        "Header files include library functions",
+                        "Statements inside main() define program logic"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function is the entry point of a C program?",
+                            "options": [
+                                "start()",
+                                "run()",
+                                "main()",
+                                "init()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Execution of every C program starts from the main() function."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch1-page3",
+                    "title": "Compilation Process",
+                    "content": "A C program goes through several stages before becoming an executable file. The stages include preprocessing, compilation, assembling, and linking.",
+                    "exampleCode": "gcc program.c -o program",
+                    "keyPoints": [
+                        "Preprocessor handles directives like #include",
+                        "Compiler converts code into assembly language",
+                        "Assembler converts assembly to machine code",
+                        "Linker creates final executable file"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which step creates the final executable file?",
+                            "options": [
+                                "Compiler",
+                                "Assembler",
+                                "Linker",
+                                "Preprocessor"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The linker combines object files and libraries to create the executable."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch2",
+            "title": "Variables & Data Types",
+            "description": "Understanding variables, data types, and memory usage in C",
+            "pages": [
+                {
+                    "id": "c-ch2-page1",
+                    "title": "Variables in C",
+                    "content": "A variable in C is a named storage location used to store data. Every variable has a data type that defines what type of data it can hold. Variables must be declared before they are used in a program. The declaration tells the compiler the variable's name and the type of value it will store.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int age = 25;\n    printf(\"Age = %d\", age);\n    return 0;\n}",
+                    "keyPoints": [
+                        "Variables store data in memory",
+                        "Each variable has a specific data type",
+                        "Variables must be declared before use",
+                        "Variable names should be meaningful"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a variable in C?",
+                            "options": [
+                                "A constant value",
+                                "A named storage location",
+                                "A compiler directive",
+                                "A type of loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A variable is a named memory location used to store data."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch2-page2",
+                    "title": "Basic Data Types",
+                    "content": "Data types define the type of data a variable can store. C provides several basic data types such as int, char, float, and double. Each data type occupies a specific amount of memory and is used for different types of values.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int num = 10;\n    char grade = 'A';\n    float salary = 25000.50;\n    double pi = 3.1415926535;\n\n    printf(\"Number: %d\\n\", num);\n    printf(\"Grade: %c\\n\", grade);\n    printf(\"Salary: %f\\n\", salary);\n    printf(\"Pi: %lf\", pi);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "int stores integers",
+                        "char stores single characters",
+                        "float stores decimal values",
+                        "double stores large decimal values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type stores decimal values?",
+                            "options": [
+                                "int",
+                                "char",
+                                "float",
+                                "short"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "float and double are used for decimal numbers."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch2-page3",
+                    "title": "Size of Data Types",
+                    "content": "Each data type in C occupies a specific amount of memory. The size may vary depending on the compiler and system architecture, but commonly used sizes are int (4 bytes), char (1 byte), float (4 bytes), and double (8 bytes).",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    printf(\"Size of int: %lu bytes\\n\", sizeof(int));\n    printf(\"Size of char: %lu bytes\\n\", sizeof(char));\n    printf(\"Size of float: %lu bytes\\n\", sizeof(float));\n    printf(\"Size of double: %lu bytes\\n\", sizeof(double));\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "sizeof operator returns memory size",
+                        "Different data types use different memory",
+                        "Efficient memory usage is important in C"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator is used to find the size of a data type?",
+                            "options": [
+                                "size",
+                                "length",
+                                "sizeof",
+                                "memoryof"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "sizeof operator returns the memory size of a variable or data type."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch2-page4",
+                    "title": "Type Modifiers",
+                    "content": "Type modifiers are used to modify the size or range of basic data types. Common modifiers include short, long, signed, and unsigned. They allow programmers to optimize memory usage and define variable ranges.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    unsigned int num = 10;\n    long int population = 7800000000;\n\n    printf(\"Number: %u\\n\", num);\n    printf(\"Population: %ld\", population);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "short reduces memory usage",
+                        "long increases storage capacity",
+                        "signed allows negative numbers",
+                        "unsigned allows only positive numbers"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which modifier allows only positive values?",
+                            "options": [
+                                "signed",
+                                "unsigned",
+                                "long",
+                                "short"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "unsigned data types store only positive values."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch3",
+            "title": "Operators in C",
+            "description": "Understanding different types of operators used in C programming",
+            "pages": [
+                {
+                    "id": "c-ch3-page1",
+                    "title": "Arithmetic Operators",
+                    "content": "Arithmetic operators are used to perform mathematical operations such as addition, subtraction, multiplication, division, and modulus. These operators work with numeric data types such as int, float, and double.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int a = 10, b = 5;\n\n    printf(\"Addition: %d\\n\", a + b);\n    printf(\"Subtraction: %d\\n\", a - b);\n    printf(\"Multiplication: %d\\n\", a * b);\n    printf(\"Division: %d\\n\", a / b);\n    printf(\"Modulus: %d\\n\", a % b);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "+ is used for addition",
+                        "- is used for subtraction",
+                        "* is used for multiplication",
+                        "/ is used for division",
+                        "% returns the remainder"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator returns the remainder of a division?",
+                            "options": [
+                                "+",
+                                "%",
+                                "/",
+                                "*"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The modulus (%) operator returns the remainder after division."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch3-page2",
+                    "title": "Relational Operators",
+                    "content": "Relational operators are used to compare two values. The result of a relational operation is either true (1) or false (0). These operators are commonly used in decision-making statements such as if and while.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int a = 10, b = 20;\n\n    printf(\"a == b : %d\\n\", a == b);\n    printf(\"a != b : %d\\n\", a != b);\n    printf(\"a > b : %d\\n\", a > b);\n    printf(\"a < b : %d\\n\", a < b);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "== checks equality",
+                        "!= checks inequality",
+                        "> checks greater than",
+                        "< checks less than",
+                        ">= and <= check boundary conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks if two values are equal?",
+                            "options": [
+                                "=",
+                                "==",
+                                "!=",
+                                "<"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "== is used to check equality between two values."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch3-page3",
+                    "title": "Logical Operators",
+                    "content": "Logical operators are used to combine multiple conditions in a program. They are mostly used in conditional statements such as if and loops.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int age = 20;\n\n    if(age > 18 && age < 30) {\n        printf(\"Eligible age group\");\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "&& represents logical AND",
+                        "|| represents logical OR",
+                        "! represents logical NOT",
+                        "Used to combine conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator represents logical AND?",
+                            "options": [
+                                "&&",
+                                "||",
+                                "!",
+                                "&"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "&& is the logical AND operator."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch3-page4",
+                    "title": "Assignment Operators",
+                    "content": "Assignment operators are used to assign values to variables. The basic assignment operator is '='. There are also compound assignment operators that combine arithmetic operations with assignment.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int a = 10;\n\n    a += 5;\n    printf(\"a += 5 : %d\\n\", a);\n\n    a -= 3;\n    printf(\"a -= 3 : %d\", a);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "= assigns value",
+                        "+= adds and assigns",
+                        "-= subtracts and assigns",
+                        "*= multiplies and assigns",
+                        "/= divides and assigns"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator adds a value and assigns it to a variable?",
+                            "options": [
+                                "+=",
+                                "-=",
+                                "*=",
+                                "/="
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "+= adds the value and assigns the result."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch3-page5",
+                    "title": "Increment and Decrement Operators",
+                    "content": "Increment and decrement operators are used to increase or decrease the value of a variable by 1. They are commonly used in loops and counters.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int a = 5;\n\n    a++;\n    printf(\"After increment: %d\\n\", a);\n\n    a--;\n    printf(\"After decrement: %d\", a);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "++ increases value by 1",
+                        "-- decreases value by 1",
+                        "Used frequently in loops",
+                        "Can be prefix or postfix"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator increases a value by 1?",
+                            "options": [
+                                "+",
+                                "++",
+                                "--",
+                                "*"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "++ is the increment operator."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch4",
+            "title": "Control Statements",
+            "description": "Decision-making statements used to control the flow of a program",
+            "pages": [
+                {
+                    "id": "c-ch4-page1",
+                    "title": "if Statement",
+                    "content": "The if statement is used to execute a block of code only when a specified condition is true. It allows programs to make decisions based on conditions.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int num = 10;\n\n    if(num > 0) {\n        printf(\"Number is positive\");\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Used for decision making",
+                        "Executes code only if condition is true",
+                        "Commonly used with relational operators"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which statement is used for decision making?",
+                            "options": [
+                                "printf",
+                                "if",
+                                "scanf",
+                                "goto"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The if statement executes code when a condition is true."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch4-page2",
+                    "title": "if-else Statement",
+                    "content": "The if-else statement is used when two possible outcomes exist. If the condition is true, the if block executes. Otherwise, the else block executes.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int num = 5;\n\n    if(num % 2 == 0) {\n        printf(\"Even number\");\n    } else {\n        printf(\"Odd number\");\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Provides two execution paths",
+                        "if block runs when condition is true",
+                        "else block runs when condition is false"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block runs when the condition is false?",
+                            "options": [
+                                "if",
+                                "else",
+                                "switch",
+                                "for"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The else block executes when the if condition is false."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch4-page3",
+                    "title": "switch Statement",
+                    "content": "The switch statement allows a variable to be tested against multiple values. It is often used instead of multiple if-else statements for better readability.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int day = 2;\n\n    switch(day) {\n        case 1: printf(\"Monday\"); break;\n        case 2: printf(\"Tuesday\"); break;\n        case 3: printf(\"Wednesday\"); break;\n        default: printf(\"Invalid day\");\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Used for multiple conditions",
+                        "Each case represents a value",
+                        "break prevents fall-through",
+                        "default runs when no case matches"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword prevents fall-through in switch?",
+                            "options": [
+                                "stop",
+                                "exit",
+                                "break",
+                                "return"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "break stops execution of further cases."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch5",
+            "title": "Loops",
+            "description": "Repetition statements used to execute code multiple times",
+            "pages": [
+                {
+                    "id": "c-ch5-page1",
+                    "title": "for Loop",
+                    "content": "The for loop is used when the number of iterations is known. It consists of initialization, condition, and increment/decrement.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    for(int i = 1; i <= 5; i++) {\n        printf(\"%d\\n\", i);\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Used when number of iterations is known",
+                        "Contains initialization, condition, increment",
+                        "Commonly used for counting loops"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop is commonly used when the number of iterations is known?",
+                            "options": [
+                                "for",
+                                "while",
+                                "do while",
+                                "switch"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The for loop is ideal when the iteration count is known."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch5-page2",
+                    "title": "while Loop",
+                    "content": "The while loop repeatedly executes a block of code as long as the condition remains true.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int i = 1;\n\n    while(i <= 5) {\n        printf(\"%d\\n\", i);\n        i++;\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Condition is checked before execution",
+                        "Loop runs while condition is true",
+                        "Useful when iteration count is unknown"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When is the condition checked in a while loop?",
+                            "options": [
+                                "Before execution",
+                                "After execution",
+                                "Never",
+                                "Only once"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The while loop checks the condition before executing the loop body."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch5-page3",
+                    "title": "do-while Loop",
+                    "content": "The do-while loop executes the block of code at least once before checking the condition.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int i = 1;\n\n    do {\n        printf(\"%d\\n\", i);\n        i++;\n    } while(i <= 5);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Executes at least once",
+                        "Condition checked after execution",
+                        "Useful for menu-driven programs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop executes at least once?",
+                            "options": [
+                                "for",
+                                "while",
+                                "do-while",
+                                "switch"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The do-while loop executes the body before checking the condition."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch6",
+            "title": "Functions",
+            "description": "Reusable blocks of code used to perform specific tasks",
+            "pages": [
+                {
+                    "id": "c-ch6-page1",
+                    "title": "Introduction to Functions",
+                    "content": "A function in C is a block of code that performs a specific task. Functions help organize programs into smaller modules, making code easier to read, reuse, and maintain. Every C program contains at least one function, which is the main() function.",
+                    "exampleCode": "#include <stdio.h>\n\nvoid greet() {\n    printf(\"Welcome to C Programming!\\n\");\n}\n\nint main() {\n    greet();\n    return 0;\n}",
+                    "keyPoints": [
+                        "Functions help modularize code",
+                        "Reduce code duplication",
+                        "Improve readability",
+                        "main() is the entry point of a C program"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function is the entry point of a C program?",
+                            "options": [
+                                "start()",
+                                "main()",
+                                "run()",
+                                "init()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Execution of every C program starts from the main() function."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch6-page2",
+                    "title": "Function Declaration and Definition",
+                    "content": "In C, functions are usually declared before they are used. The declaration tells the compiler the function's name, return type, and parameters. The definition contains the actual code that runs when the function is called.",
+                    "exampleCode": "#include <stdio.h>\n\nint add(int a, int b); // Function declaration\n\nint main() {\n    int result = add(5, 3);\n    printf(\"Sum = %d\", result);\n    return 0;\n}\n\nint add(int a, int b) {\n    return a + b;\n}",
+                    "keyPoints": [
+                        "Declaration informs compiler about the function",
+                        "Definition contains the function body",
+                        "Helps avoid compilation errors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a function declaration specify?",
+                            "options": [
+                                "Function name only",
+                                "Function name and return type",
+                                "Function body",
+                                "Program output"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Function declaration specifies the name, return type, and parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch6-page3",
+                    "title": "Function Parameters",
+                    "content": "Functions can accept input values called parameters. These values are passed when the function is called. Parameters allow functions to work with different values each time they run.",
+                    "exampleCode": "#include <stdio.h>\n\nvoid display(int num) {\n    printf(\"Number is: %d\", num);\n}\n\nint main() {\n    display(10);\n    return 0;\n}",
+                    "keyPoints": [
+                        "Parameters allow passing values to functions",
+                        "They increase flexibility of functions",
+                        "Values are passed during function call"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are inputs passed to functions called?",
+                            "options": [
+                                "Variables",
+                                "Parameters",
+                                "Operators",
+                                "Loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Parameters are values passed into functions."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch6-page4",
+                    "title": "Return Values",
+                    "content": "Functions can return values to the calling function using the return keyword. The return type of the function must match the type of value returned.",
+                    "exampleCode": "#include <stdio.h>\n\nint square(int num) {\n    return num * num;\n}\n\nint main() {\n    int result = square(4);\n    printf(\"Square = %d\", result);\n    return 0;\n}",
+                    "keyPoints": [
+                        "return keyword sends value back",
+                        "Return type must match function declaration",
+                        "Functions can return only one value"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to return a value from a function?",
+                            "options": [
+                                "send",
+                                "exit",
+                                "return",
+                                "give"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The return keyword returns a value from a function."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch6-page5",
+                    "title": "Recursion",
+                    "content": "Recursion is a technique where a function calls itself to solve a problem. Recursive functions must have a base condition to stop infinite recursion.",
+                    "exampleCode": "#include <stdio.h>\n\nint factorial(int n) {\n    if(n == 0)\n        return 1;\n    else\n        return n * factorial(n - 1);\n}\n\nint main() {\n    printf(\"Factorial = %d\", factorial(5));\n    return 0;\n}",
+                    "keyPoints": [
+                        "A function calls itself",
+                        "Requires a base condition",
+                        "Commonly used for mathematical problems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is recursion?",
+                            "options": [
+                                "Function calling another function",
+                                "Function calling itself",
+                                "Loop execution",
+                                "Variable declaration"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Recursion occurs when a function calls itself."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch7",
+            "title": "Arrays",
+            "description": "Understanding arrays and how to store multiple values in a single variable",
+            "pages": [
+                {
+                    "id": "c-ch7-page1",
+                    "title": "Introduction to Arrays",
+                    "content": "An array is a collection of elements of the same data type stored in contiguous memory locations. Arrays allow programmers to store multiple values using a single variable name. Each value in an array is accessed using an index number. In C programming, array indexing starts from 0.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int numbers[5] = {10, 20, 30, 40, 50};\n\n    printf(\"First element: %d\\n\", numbers[0]);\n    printf(\"Second element: %d\\n\", numbers[1]);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Array stores multiple values of the same type",
+                        "Elements are stored in contiguous memory",
+                        "Array index starts from 0",
+                        "Array size must be specified during declaration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the starting index of an array in C?",
+                            "options": [
+                                "0",
+                                "1",
+                                "-1",
+                                "Depends on compiler"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Array indexing in C starts from 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch7-page2",
+                    "title": "Array Declaration and Initialization",
+                    "content": "Arrays must be declared before they are used. The declaration includes the data type, array name, and the number of elements it can store. Arrays can also be initialized at the time of declaration.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int marks[3];\n\n    marks[0] = 80;\n    marks[1] = 85;\n    marks[2] = 90;\n\n    printf(\"Marks: %d %d %d\", marks[0], marks[1], marks[2]);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Array must be declared before use",
+                        "Elements are accessed using index numbers",
+                        "Initialization can be done during declaration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which syntax correctly declares an array?",
+                            "options": [
+                                "int arr();",
+                                "int arr[];",
+                                "int arr[5];",
+                                "array int[5];"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "int arr[5]; declares an array with 5 elements."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch7-page3",
+                    "title": "Using Loops with Arrays",
+                    "content": "Loops are commonly used with arrays to access each element. Instead of manually printing each value, loops allow programmers to iterate through array elements efficiently.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int numbers[5] = {1, 2, 3, 4, 5};\n\n    for(int i = 0; i < 5; i++) {\n        printf(\"%d\\n\", numbers[i]);\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Loops help iterate through arrays",
+                        "Commonly used loop is the for loop",
+                        "Index variable controls array access"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop is commonly used to traverse arrays?",
+                            "options": [
+                                "if",
+                                "for",
+                                "switch",
+                                "goto"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The for loop is commonly used to iterate through arrays."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch7-page4",
+                    "title": "Multidimensional Arrays",
+                    "content": "Multidimensional arrays are arrays of arrays. They are commonly used to represent tables or matrices. The most common type is a two-dimensional array.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int matrix[2][2] = {\n        {1, 2},\n        {3, 4}\n    };\n\n    printf(\"%d\", matrix[1][0]);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Two-dimensional arrays represent tables",
+                        "Accessed using two indices",
+                        "Commonly used for matrices"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many indices are required for a 2D array?",
+                            "options": [
+                                "1",
+                                "2",
+                                "3",
+                                "4"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Two-dimensional arrays require two indices."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch7-page5",
+                    "title": "Array Program Example",
+                    "content": "Arrays are often used in programs where multiple values must be processed together. For example, calculating the sum of elements in an array.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int numbers[5] = {10, 20, 30, 40, 50};\n    int sum = 0;\n\n    for(int i = 0; i < 5; i++) {\n        sum += numbers[i];\n    }\n\n    printf(\"Sum = %d\", sum);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Arrays simplify handling multiple values",
+                        "Used with loops for processing elements",
+                        "Common operations include sum, average, search"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which variable stores the result in the example program?",
+                            "options": [
+                                "numbers",
+                                "sum",
+                                "i",
+                                "matrix"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The variable sum stores the total of array elements."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch8",
+            "title": "Strings",
+            "description": "Understanding strings and string manipulation in C programming",
+            "pages": [
+                {
+                    "id": "c-ch8-page1",
+                    "title": "Introduction to Strings",
+                    "content": "A string in C is a sequence of characters terminated by a null character '\\0'. Strings are stored in character arrays. Unlike some modern languages, C does not have a built-in string data type, so strings are handled using arrays of characters.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    char name[] = \"Programming\";\n\n    printf(\"String: %s\", name);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Strings are stored in character arrays",
+                        "Strings end with a null character '\\0'",
+                        "Each character occupies one byte",
+                        "Strings are printed using %s format specifier"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which character terminates a string in C?",
+                            "options": [
+                                "\\n",
+                                "\\t",
+                                "\\0",
+                                "\\r"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Strings in C end with a null character '\\0'."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch8-page2",
+                    "title": "String Input and Output",
+                    "content": "Strings can be read and displayed using functions such as scanf() and gets(). The printf() function is used to display strings. However, scanf() stops reading input when it encounters a space.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    char name[20];\n\n    printf(\"Enter your name: \");\n    scanf(\"%s\", name);\n\n    printf(\"Hello %s\", name);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "scanf reads string input",
+                        "printf prints strings",
+                        "scanf stops at whitespace",
+                        "Arrays must have enough memory to store characters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which format specifier is used to print a string?",
+                            "options": [
+                                "%d",
+                                "%c",
+                                "%f",
+                                "%s"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "%s is used to print strings."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch8-page3",
+                    "title": "String Functions",
+                    "content": "C provides several built-in string handling functions in the string.h library. These functions help perform operations such as finding string length, copying strings, comparing strings, and concatenating strings.",
+                    "exampleCode": "#include <stdio.h>\n#include <string.h>\n\nint main() {\n    char str1[] = \"Hello\";\n    char str2[] = \"World\";\n\n    printf(\"Length: %lu\\n\", strlen(str1));\n\n    strcat(str1, str2);\n    printf(\"Concatenated: %s\\n\", str1);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "strlen() returns string length",
+                        "strcpy() copies one string to another",
+                        "strcmp() compares two strings",
+                        "strcat() joins two strings"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function returns the length of a string?",
+                            "options": [
+                                "strlen()",
+                                "strcpy()",
+                                "strcmp()",
+                                "strcat()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "strlen() calculates the number of characters in a string."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch8-page4",
+                    "title": "String Comparison",
+                    "content": "The strcmp() function compares two strings. It returns 0 if the strings are equal, a positive value if the first string is greater, and a negative value if the second string is greater.",
+                    "exampleCode": "#include <stdio.h>\n#include <string.h>\n\nint main() {\n    char str1[] = \"apple\";\n    char str2[] = \"apple\";\n\n    if(strcmp(str1, str2) == 0)\n        printf(\"Strings are equal\");\n    else\n        printf(\"Strings are not equal\");\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "strcmp compares two strings",
+                        "Returns 0 when strings match",
+                        "Used in conditional statements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does strcmp() return if two strings are equal?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "Depends on compiler"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "strcmp returns 0 when both strings are equal."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch8-page5",
+                    "title": "String Program Example",
+                    "content": "Strings are commonly used in real-world programs such as storing names, sentences, and text data. Below is a simple program that calculates the length of a string manually.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    char str[] = \"Programming\";\n    int length = 0;\n\n    while(str[length] != '\\0') {\n        length++;\n    }\n\n    printf(\"Length of string: %d\", length);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Strings are processed character by character",
+                        "Null character marks the end",
+                        "Loops are used for string traversal"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which character indicates the end of a string?",
+                            "options": [
+                                "\\n",
+                                "\\t",
+                                "\\0",
+                                "\\s"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The null character '\\0' marks the end of a string."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch9",
+            "title": "Pointers",
+            "description": "Understanding memory addresses and pointer variables in C",
+            "pages": [
+                {
+                    "id": "c-ch9-page1",
+                    "title": "Introduction to Pointers",
+                    "content": "A pointer is a variable that stores the memory address of another variable. Instead of storing a value directly, a pointer stores the location of the value in memory. Pointers are powerful features of the C language and are used for dynamic memory allocation, arrays, and function arguments.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int x = 10;\n    int *ptr = &x;\n\n    printf(\"Value of x: %d\\n\", x);\n    printf(\"Address of x: %p\\n\", &x);\n    printf(\"Pointer value: %p\\n\", ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Pointer stores memory address",
+                        "Declared using * symbol",
+                        "Used for memory manipulation",
+                        "Common in system programming"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a pointer store?",
+                            "options": [
+                                "Value",
+                                "Memory address",
+                                "Function",
+                                "Loop counter"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Pointers store the memory address of a variable."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch9-page2",
+                    "title": "Address Operator (&)",
+                    "content": "The address-of operator (&) is used to obtain the memory address of a variable. This address can then be stored in a pointer variable.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int num = 20;\n\n    printf(\"Value: %d\\n\", num);\n    printf(\"Address: %p\", &num);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "& returns the memory address",
+                        "Used to initialize pointers",
+                        "Works with all variables"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator returns the memory address of a variable?",
+                            "options": [
+                                "*",
+                                "&",
+                                "%",
+                                "#"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "& operator returns the address of a variable."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch9-page3",
+                    "title": "Dereference Operator (*)",
+                    "content": "The dereference operator (*) is used to access the value stored at the memory address pointed to by a pointer. It allows programmers to manipulate the actual data stored in memory.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int x = 15;\n    int *ptr = &x;\n\n    printf(\"Value using pointer: %d\", *ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "* accesses the value at the address",
+                        "Called dereferencing",
+                        "Allows modification of original variable"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does *ptr represent?",
+                            "options": [
+                                "Pointer address",
+                                "Value stored at pointer address",
+                                "Variable name",
+                                "Function call"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "*ptr accesses the value stored at the memory location."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch9-page4",
+                    "title": "Pointer Arithmetic",
+                    "content": "Pointer arithmetic allows pointers to move through memory locations. It is commonly used when working with arrays.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int arr[3] = {10, 20, 30};\n    int *ptr = arr;\n\n    printf(\"First element: %d\\n\", *ptr);\n    printf(\"Second element: %d\\n\", *(ptr + 1));\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Pointers can move through memory",
+                        "Used heavily with arrays",
+                        "Pointer increments move to next memory location"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does ptr + 1 represent?",
+                            "options": [
+                                "Next memory location",
+                                "Same location",
+                                "Previous location",
+                                "Invalid pointer"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "ptr + 1 moves the pointer to the next memory location."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch9-page5",
+                    "title": "Pointers with Arrays",
+                    "content": "Pointers and arrays are closely related in C. The name of an array itself represents the address of the first element.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    int arr[3] = {5, 10, 15};\n    int *ptr = arr;\n\n    for(int i = 0; i < 3; i++) {\n        printf(\"%d\\n\", *(ptr + i));\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Array name acts as pointer",
+                        "Pointers help traverse arrays",
+                        "Useful for efficient memory access"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does an array name represent?",
+                            "options": [
+                                "Last element",
+                                "First element value",
+                                "Address of first element",
+                                "Array size"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The array name represents the address of the first element."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch10",
+            "title": "Dynamic Memory Allocation",
+            "description": "Allocating and managing memory at runtime using pointers",
+            "pages": [
+                {
+                    "id": "c-ch10-page1",
+                    "title": "Introduction to Dynamic Memory Allocation",
+                    "content": "Dynamic Memory Allocation (DMA) allows programs to allocate memory during runtime instead of compile time. It is useful when the amount of memory needed is not known in advance. In C, dynamic memory is allocated from the heap using functions provided in the stdlib.h library.",
+                    "exampleCode": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    int *ptr;\n\n    ptr = (int*) malloc(sizeof(int));\n\n    *ptr = 10;\n\n    printf(\"Value: %d\", *ptr);\n\n    free(ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Memory is allocated at runtime",
+                        "Uses heap memory",
+                        "Requires pointer variables",
+                        "Memory must be freed after use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library provides dynamic memory allocation functions?",
+                            "options": [
+                                "stdio.h",
+                                "stdlib.h",
+                                "math.h",
+                                "string.h"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "stdlib.h contains functions like malloc, calloc, realloc, and free."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch10-page2",
+                    "title": "malloc() Function",
+                    "content": "The malloc() function allocates a specified number of bytes in memory and returns a pointer to the allocated memory. The memory is not initialized and may contain garbage values.",
+                    "exampleCode": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    int *ptr;\n\n    ptr = (int*) malloc(5 * sizeof(int));\n\n    for(int i = 0; i < 5; i++) {\n        ptr[i] = i + 1;\n        printf(\"%d\\n\", ptr[i]);\n    }\n\n    free(ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "malloc allocates memory block",
+                        "Memory contains garbage values",
+                        "Returns pointer to allocated memory"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function allocates memory without initialization?",
+                            "options": [
+                                "malloc()",
+                                "calloc()",
+                                "realloc()",
+                                "free()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "malloc allocates memory but does not initialize it."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch10-page3",
+                    "title": "calloc() Function",
+                    "content": "The calloc() function allocates memory for multiple elements and initializes all bytes to zero. It requires two parameters: the number of elements and the size of each element.",
+                    "exampleCode": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    int *ptr;\n\n    ptr = (int*) calloc(5, sizeof(int));\n\n    for(int i = 0; i < 5; i++) {\n        printf(\"%d\\n\", ptr[i]);\n    }\n\n    free(ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "calloc allocates memory for multiple elements",
+                        "Memory is initialized to zero",
+                        "Safer than malloc in some cases"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function initializes allocated memory to zero?",
+                            "options": [
+                                "malloc()",
+                                "calloc()",
+                                "realloc()",
+                                "free()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "calloc initializes allocated memory with zero values."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch10-page4",
+                    "title": "realloc() Function",
+                    "content": "The realloc() function is used to resize previously allocated memory. It helps expand or shrink memory blocks without losing existing data.",
+                    "exampleCode": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    int *ptr;\n\n    ptr = (int*) malloc(3 * sizeof(int));\n\n    ptr = (int*) realloc(ptr, 5 * sizeof(int));\n\n    for(int i = 0; i < 5; i++) {\n        ptr[i] = i + 1;\n        printf(\"%d\\n\", ptr[i]);\n    }\n\n    free(ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "realloc resizes allocated memory",
+                        "Useful when memory requirements change",
+                        "Existing data is preserved"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function resizes previously allocated memory?",
+                            "options": [
+                                "malloc()",
+                                "calloc()",
+                                "realloc()",
+                                "free()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "realloc resizes existing memory blocks."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch10-page5",
+                    "title": "free() Function",
+                    "content": "The free() function releases dynamically allocated memory back to the system. If memory is not freed properly, it may cause memory leaks.",
+                    "exampleCode": "#include <stdio.h>\n#include <stdlib.h>\n\nint main() {\n    int *ptr;\n\n    ptr = (int*) malloc(sizeof(int));\n\n    *ptr = 50;\n\n    printf(\"Value: %d\\n\", *ptr);\n\n    free(ptr);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "free releases allocated memory",
+                        "Prevents memory leaks",
+                        "Should be used after malloc or calloc"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function releases dynamically allocated memory?",
+                            "options": [
+                                "malloc()",
+                                "calloc()",
+                                "realloc()",
+                                "free()"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "free releases allocated memory back to the system."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch11",
+            "title": "Structures",
+            "description": "User-defined data types used to group different types of data together",
+            "pages": [
+                {
+                    "id": "c-ch11-page1",
+                    "title": "Introduction to Structures",
+                    "content": "A structure in C is a user-defined data type that allows grouping variables of different data types under one name. Structures are useful when representing real-world entities such as students, employees, or products where multiple attributes need to be stored together.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct Student {\n    int id;\n    char grade;\n    float marks;\n};\n\nint main() {\n    struct Student s1 = {1, 'A', 95.5};\n\n    printf(\"ID: %d\\n\", s1.id);\n    printf(\"Grade: %c\\n\", s1.grade);\n    printf(\"Marks: %f\", s1.marks);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Structures group multiple variables",
+                        "Members can have different data types",
+                        "Defined using the struct keyword",
+                        "Commonly used for complex data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to define a structure?",
+                            "options": [
+                                "class",
+                                "struct",
+                                "object",
+                                "define"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The struct keyword is used to define a structure in C."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch11-page2",
+                    "title": "Declaring and Initializing Structures",
+                    "content": "After defining a structure, variables of that structure type can be declared. These variables can then be initialized with values for each member.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct Book {\n    int id;\n    char title[20];\n};\n\nint main() {\n    struct Book b1 = {101, \"C Programming\"};\n\n    printf(\"Book ID: %d\\n\", b1.id);\n    printf(\"Book Title: %s\", b1.title);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Structure variables are declared after structure definition",
+                        "Members are accessed using dot operator",
+                        "Initialization can happen during declaration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator is used to access structure members?",
+                            "options": [
+                                "->",
+                                ".",
+                                "&",
+                                "*"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The dot operator (.) is used to access structure members."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch11-page3",
+                    "title": "Array of Structures",
+                    "content": "An array of structures allows storing multiple records of the same structure type. It is useful when managing data for multiple entities such as students or employees.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct Student {\n    int id;\n    int marks;\n};\n\nint main() {\n    struct Student students[2] = {\n        {1, 90},\n        {2, 85}\n    };\n\n    for(int i = 0; i < 2; i++) {\n        printf(\"ID: %d Marks: %d\\n\", students[i].id, students[i].marks);\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Stores multiple structure records",
+                        "Access elements using array index",
+                        "Useful for storing collections of objects"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is used to store multiple structure records?",
+                            "options": [
+                                "Pointer",
+                                "Array of structures",
+                                "Function",
+                                "Loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "An array of structures stores multiple records."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch11-page4",
+                    "title": "Pointers to Structures",
+                    "content": "Structures can also be accessed using pointers. When a pointer is used to refer to a structure, the arrow operator (->) is used to access members.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct Student {\n    int id;\n};\n\nint main() {\n    struct Student s1 = {10};\n    struct Student *ptr = &s1;\n\n    printf(\"ID: %d\", ptr->id);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Pointers can reference structures",
+                        "-> operator accesses structure members",
+                        "Used in dynamic memory and linked lists"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator accesses members through a pointer?",
+                            "options": [
+                                ".",
+                                "->",
+                                "*",
+                                "&"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The arrow operator (->) accesses structure members through pointers."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch11-page5",
+                    "title": "Structure Program Example",
+                    "content": "Structures are commonly used in real-world applications such as storing student records. Below is a simple program that stores and displays student information.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct Student {\n    int id;\n    char name[20];\n    float marks;\n};\n\nint main() {\n    struct Student s1 = {1, \"John\", 88.5};\n\n    printf(\"ID: %d\\n\", s1.id);\n    printf(\"Name: %s\\n\", s1.name);\n    printf(\"Marks: %f\", s1.marks);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Structures model real-world entities",
+                        "Store multiple attributes together",
+                        "Commonly used in database-like programs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which concept groups different data types together?",
+                            "options": [
+                                "Array",
+                                "Structure",
+                                "Pointer",
+                                "Loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Structures group different types of variables together."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch12",
+            "title": "Unions",
+            "description": "Understanding unions and how they share memory among members",
+            "pages": [
+                {
+                    "id": "c-ch12-page1",
+                    "title": "Introduction to Unions",
+                    "content": "A union in C is a user-defined data type similar to a structure. The key difference is that in a union all members share the same memory location. This means only one member can hold a value at a time. Unions are used when memory optimization is important.",
+                    "exampleCode": "#include <stdio.h>\n\nunion Data {\n    int i;\n    float f;\n    char c;\n};\n\nint main() {\n    union Data d;\n\n    d.i = 10;\n\n    printf(\"Integer: %d\", d.i);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Union is similar to structure",
+                        "All members share the same memory",
+                        "Only one member can store value at a time",
+                        "Useful for memory optimization"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main feature of a union?",
+                            "options": [
+                                "Each member has separate memory",
+                                "Members share the same memory",
+                                "Union stores only integers",
+                                "Union cannot store characters"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "All members of a union share the same memory location."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch12-page2",
+                    "title": "Declaring and Using Unions",
+                    "content": "Unions are declared using the union keyword. After defining a union, variables of that union type can be declared and used similarly to structures.",
+                    "exampleCode": "#include <stdio.h>\n\nunion Student {\n    int id;\n    float marks;\n};\n\nint main() {\n    union Student s;\n\n    s.id = 101;\n\n    printf(\"Student ID: %d\", s.id);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Declared using union keyword",
+                        "Union variables are created after definition",
+                        "Members accessed using dot operator"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to define a union?",
+                            "options": [
+                                "class",
+                                "union",
+                                "struct",
+                                "object"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The union keyword defines a union in C."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch12-page3",
+                    "title": "Union Memory Behavior",
+                    "content": "Since all union members share the same memory, assigning a value to one member overwrites the value stored by another member. This behavior is different from structures where each member has separate memory.",
+                    "exampleCode": "#include <stdio.h>\n\nunion Data {\n    int i;\n    float f;\n};\n\nint main() {\n    union Data d;\n\n    d.i = 10;\n    printf(\"Integer: %d\\n\", d.i);\n\n    d.f = 3.14;\n    printf(\"Float: %f\", d.f);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Members share same memory",
+                        "Changing one member affects others",
+                        "Only one member stores valid value at a time"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens when another member of a union is assigned a value?",
+                            "options": [
+                                "Memory doubles",
+                                "Previous value is overwritten",
+                                "Program crashes",
+                                "Nothing happens"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Assigning a value to another union member overwrites the previous value."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch12-page4",
+                    "title": "Difference Between Structure and Union",
+                    "content": "Structures allocate separate memory for each member, while unions share a single memory location among all members. Structures allow storing multiple values simultaneously, while unions allow storing only one value at a time.",
+                    "exampleCode": "#include <stdio.h>\n\nstruct A {\n    int x;\n    float y;\n};\n\nunion B {\n    int x;\n    float y;\n};\n\nint main() {\n    printf(\"Structure size: %lu\\n\", sizeof(struct A));\n    printf(\"Union size: %lu\", sizeof(union B));\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Structures allocate separate memory",
+                        "Unions share memory among members",
+                        "Union size equals largest member size"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type shares memory between members?",
+                            "options": [
+                                "Structure",
+                                "Union",
+                                "Array",
+                                "Pointer"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Union members share the same memory location."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch12-page5",
+                    "title": "Union Program Example",
+                    "content": "Unions are often used when a variable may store different types of data but only one at a time. This helps reduce memory usage in systems where memory is limited.",
+                    "exampleCode": "#include <stdio.h>\n\nunion Value {\n    int i;\n    float f;\n    char str[20];\n};\n\nint main() {\n    union Value v;\n\n    v.i = 25;\n    printf(\"Integer: %d\\n\", v.i);\n\n    v.f = 5.75;\n    printf(\"Float: %f\", v.f);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Used when memory optimization is required",
+                        "Common in embedded systems",
+                        "Only one member should be used at a time"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are unions commonly used?",
+                            "options": [
+                                "Memory optimization",
+                                "Graphics design",
+                                "Network cables",
+                                "Database queries"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Unions help optimize memory usage."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch13",
+            "title": "File Handling",
+            "description": "Working with files to store and retrieve data in C",
+            "pages": [
+                {
+                    "id": "c-ch13-page1",
+                    "title": "Introduction to File Handling",
+                    "content": "File handling in C allows programs to store data permanently in files instead of temporary memory. Files help save information that can be accessed later even after the program stops running. In C, file operations are performed using the FILE pointer and functions available in the stdio.h library.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    FILE *fp;\n\n    fp = fopen(\"data.txt\", \"w\");\n\n    if(fp == NULL) {\n        printf(\"File could not be opened\");\n        return 1;\n    }\n\n    printf(\"File created successfully\");\n\n    fclose(fp);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Files store data permanently",
+                        "FILE pointer is used to handle files",
+                        "File functions are available in stdio.h",
+                        "Files must be closed after use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which pointer type is used for file handling?",
+                            "options": [
+                                "int*",
+                                "FILE*",
+                                "char*",
+                                "float*"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "FILE* pointer is used for file operations in C."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch13-page2",
+                    "title": "Opening and Closing Files",
+                    "content": "Files are opened using the fopen() function. It requires the filename and mode as parameters. After finishing file operations, the file should be closed using fclose() to free resources.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    FILE *fp;\n\n    fp = fopen(\"example.txt\", \"r\");\n\n    if(fp == NULL) {\n        printf(\"Unable to open file\");\n    } else {\n        printf(\"File opened successfully\");\n    }\n\n    fclose(fp);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "fopen opens a file",
+                        "fclose closes a file",
+                        "File modes define file operations",
+                        "Always close files after use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function closes a file?",
+                            "options": [
+                                "close()",
+                                "fclose()",
+                                "end()",
+                                "stop()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "fclose() closes an open file."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch13-page3",
+                    "title": "Writing to Files",
+                    "content": "Data can be written to a file using functions like fprintf(), fputs(), and fputc(). These functions allow writing formatted text or characters into a file.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    FILE *fp;\n\n    fp = fopen(\"output.txt\", \"w\");\n\n    fprintf(fp, \"Hello File Handling in C\");\n\n    fclose(fp);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "fprintf writes formatted data",
+                        "fputs writes strings",
+                        "fputc writes single characters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function writes formatted data to a file?",
+                            "options": [
+                                "fprintf()",
+                                "scanf()",
+                                "printf()",
+                                "gets()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "fprintf() writes formatted data into files."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch13-page4",
+                    "title": "Reading from Files",
+                    "content": "Data can be read from files using functions such as fscanf(), fgets(), and fgetc(). These functions help retrieve data stored in files.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    FILE *fp;\n    char text[50];\n\n    fp = fopen(\"output.txt\", \"r\");\n\n    fscanf(fp, \"%s\", text);\n\n    printf(\"Read from file: %s\", text);\n\n    fclose(fp);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "fscanf reads formatted input",
+                        "fgets reads entire lines",
+                        "fgetc reads single characters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function reads formatted data from a file?",
+                            "options": [
+                                "fscanf()",
+                                "fprintf()",
+                                "fgets()",
+                                "fputc()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "fscanf() reads formatted data from files."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch13-page5",
+                    "title": "File Program Example",
+                    "content": "Below is a simple example that writes data into a file and then reads the data from the same file.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    FILE *fp;\n    char text[50];\n\n    fp = fopen(\"sample.txt\", \"w\");\n    fprintf(fp, \"Learning C File Handling\");\n    fclose(fp);\n\n    fp = fopen(\"sample.txt\", \"r\");\n    fgets(text, 50, fp);\n\n    printf(\"File Content: %s\", text);\n\n    fclose(fp);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Files allow permanent data storage",
+                        "Programs can both read and write files",
+                        "Useful for logs, reports, and data storage"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which mode is used to write data to a file?",
+                            "options": [
+                                "r",
+                                "w",
+                                "a",
+                                "rw"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "w mode opens a file for writing."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch14",
+            "title": "Preprocessor Directives",
+            "description": "Special instructions processed before compilation",
+            "pages": [
+                {
+                    "id": "c-ch14-page1",
+                    "title": "Introduction to Preprocessor",
+                    "content": "The C preprocessor is a tool that processes source code before compilation. Preprocessor directives begin with the '#' symbol and instruct the compiler to perform certain actions such as including files, defining constants, or controlling compilation.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    printf(\"Preprocessor Example\");\n    return 0;\n}",
+                    "keyPoints": [
+                        "Executed before compilation",
+                        "Start with # symbol",
+                        "Handled by preprocessor",
+                        "Used for macros and file inclusion"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol begins a preprocessor directive?",
+                            "options": [
+                                "$",
+                                "@",
+                                "#",
+                                "&"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "All preprocessor directives begin with the # symbol."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch14-page2",
+                    "title": "#include Directive",
+                    "content": "The #include directive is used to include header files in a program. Header files contain declarations for library functions such as printf() and scanf().",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    printf(\"Hello World\");\n    return 0;\n}",
+                    "keyPoints": [
+                        "Includes header files",
+                        "Provides library functions",
+                        "Two forms: < > and \" \"",
+                        "Used at the top of the program"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which directive includes header files?",
+                            "options": [
+                                "#define",
+                                "#include",
+                                "#if",
+                                "#ifdef"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "#include is used to include header files."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch14-page3",
+                    "title": "#define Macro",
+                    "content": "The #define directive is used to define symbolic constants or macros. Macros help make programs easier to read and maintain.",
+                    "exampleCode": "#include <stdio.h>\n#define PI 3.14159\n\nint main() {\n    printf(\"Value of PI: %f\", PI);\n    return 0;\n}",
+                    "keyPoints": [
+                        "Defines constants",
+                        "Replaces values before compilation",
+                        "Improves readability",
+                        "Common for mathematical constants"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which directive defines symbolic constants?",
+                            "options": [
+                                "#define",
+                                "#include",
+                                "#ifdef",
+                                "#endif"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "#define creates symbolic constants."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch14-page4",
+                    "title": "Conditional Compilation",
+                    "content": "Conditional compilation allows certain parts of code to be compiled only if specific conditions are met. It uses directives such as #if, #ifdef, #ifndef, #else, and #endif.",
+                    "exampleCode": "#include <stdio.h>\n#define DEBUG\n\nint main() {\n#ifdef DEBUG\n    printf(\"Debug mode enabled\");\n#endif\n    return 0;\n}",
+                    "keyPoints": [
+                        "Controls compilation of code",
+                        "Used for debugging and platform differences",
+                        "Uses #if, #ifdef, #ifndef"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which directive checks if a macro is defined?",
+                            "options": [
+                                "#ifdef",
+                                "#include",
+                                "#define",
+                                "#pragma"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "#ifdef checks whether a macro is defined."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch14-page5",
+                    "title": "Macro Function Example",
+                    "content": "Macros can also act like functions. These are called function-like macros and they expand during preprocessing.",
+                    "exampleCode": "#include <stdio.h>\n#define SQUARE(x) (x*x)\n\nint main() {\n    printf(\"Square: %d\", SQUARE(5));\n    return 0;\n}",
+                    "keyPoints": [
+                        "Macros can act like functions",
+                        "Executed during preprocessing",
+                        "Improve code reuse"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the macro SQUARE(x) do?",
+                            "options": [
+                                "Finds square root",
+                                "Multiplies x by itself",
+                                "Divides x",
+                                "Returns cube"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "SQUARE(x) multiplies x by itself."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "c-ch15",
+            "title": "Storage Classes",
+            "description": "Understanding the scope, lifetime, and visibility of variables in C",
+            "pages": [
+                {
+                    "id": "c-ch15-page1",
+                    "title": "Introduction to Storage Classes",
+                    "content": "Storage classes in C determine the lifetime, scope, and visibility of variables and functions. They define where variables are stored in memory and how long they exist during program execution. The main storage classes in C are auto, register, static, and extern.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    auto int x = 10;\n\n    printf(\"Value of x: %d\", x);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Defines variable scope",
+                        "Controls variable lifetime",
+                        "Determines memory storage",
+                        "Four main types: auto, register, static, extern"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many main storage classes exist in C?",
+                            "options": [
+                                "2",
+                                "3",
+                                "4",
+                                "5"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "C has four storage classes: auto, register, static, and extern."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch15-page2",
+                    "title": "Auto Storage Class",
+                    "content": "The auto storage class is the default storage class for local variables declared inside functions. These variables are automatically created when the function starts and destroyed when the function ends.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    auto int num = 5;\n\n    printf(\"Number: %d\", num);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Default storage class",
+                        "Used for local variables",
+                        "Scope limited to function",
+                        "Lifetime limited to function execution"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which storage class is default for local variables?",
+                            "options": [
+                                "auto",
+                                "extern",
+                                "static",
+                                "register"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "auto is the default storage class for local variables."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch15-page3",
+                    "title": "Register Storage Class",
+                    "content": "The register storage class requests the compiler to store variables in CPU registers instead of memory for faster access. It is commonly used for frequently accessed variables such as loop counters.",
+                    "exampleCode": "#include <stdio.h>\n\nint main() {\n    register int i;\n\n    for(i = 0; i < 5; i++) {\n        printf(\"%d \", i);\n    }\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Stored in CPU register",
+                        "Faster access than memory",
+                        "Commonly used for loop counters",
+                        "Cannot obtain address using & operator"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which storage class stores variables in CPU registers?",
+                            "options": [
+                                "static",
+                                "register",
+                                "auto",
+                                "extern"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "register variables are stored in CPU registers."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch15-page4",
+                    "title": "Static Storage Class",
+                    "content": "The static storage class allows a variable to retain its value between function calls. Static variables are initialized only once and their value persists throughout the program execution.",
+                    "exampleCode": "#include <stdio.h>\n\nvoid counter() {\n    static int count = 0;\n\n    count++;\n\n    printf(\"Count: %d\\n\", count);\n}\n\nint main() {\n    counter();\n    counter();\n    counter();\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Retains value between function calls",
+                        "Initialized only once",
+                        "Lifetime is entire program execution"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which storage class retains value between function calls?",
+                            "options": [
+                                "auto",
+                                "register",
+                                "static",
+                                "extern"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "static variables keep their value between function calls."
+                        }
+                    ]
+                },
+                {
+                    "id": "c-ch15-page5",
+                    "title": "Extern Storage Class",
+                    "content": "The extern storage class is used to declare global variables that are defined in another file or outside the current scope. It allows multiple source files to share the same variable.",
+                    "exampleCode": "#include <stdio.h>\n\nint x = 20;\n\nint main() {\n    extern int x;\n\n    printf(\"Value of x: %d\", x);\n\n    return 0;\n}",
+                    "keyPoints": [
+                        "Used for global variables",
+                        "Allows sharing variables across files",
+                        "Declared using extern keyword"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which storage class allows sharing variables across files?",
+                            "options": [
+                                "auto",
+                                "static",
+                                "extern",
+                                "register"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "extern allows variables to be accessed across multiple files."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is C programming language?",
+            "answer": "C is a general-purpose procedural programming language developed by Dennis Ritchie. It is widely used for system programming, embedded systems, and operating systems.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between C and C++?",
+            "answer": "C is a procedural programming language while C++ supports object-oriented programming features such as classes, inheritance, and polymorphism.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a pointer in C?",
+            "answer": "A pointer is a variable that stores the memory address of another variable.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between malloc() and calloc()?",
+            "answer": "malloc() allocates memory but does not initialize it, whereas calloc() allocates memory and initializes all bytes to zero.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a structure in C?",
+            "answer": "A structure is a user-defined data type that groups variables of different data types under one name.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between structure and union?",
+            "answer": "In a structure, each member has its own memory location, while in a union all members share the same memory location.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is recursion?",
+            "answer": "Recursion is a technique where a function calls itself to solve a problem.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is dynamic memory allocation?",
+            "answer": "Dynamic memory allocation allows programs to allocate memory during runtime using functions such as malloc(), calloc(), realloc(), and free().",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a null pointer?",
+            "answer": "A null pointer is a pointer that does not point to any valid memory location. It is usually assigned the value NULL.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between call by value and call by reference?",
+            "answer": "In call by value, a copy of the variable is passed to the function. In call by reference, the address of the variable is passed so the function can modify the original value.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the use of static keyword?",
+            "answer": "The static keyword allows a variable to retain its value between function calls and limits its scope depending on where it is declared.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a segmentation fault?",
+            "answer": "A segmentation fault occurs when a program tries to access memory that it is not allowed to access.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between array and pointer?",
+            "answer": "An array is a collection of elements stored in contiguous memory, while a pointer is a variable that stores the address of another variable.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the use of sizeof operator?",
+            "answer": "The sizeof operator returns the memory size of a variable or data type in bytes.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a memory leak?",
+            "answer": "A memory leak occurs when dynamically allocated memory is not released using free(), causing memory to remain allocated unnecessarily.",
+            "difficulty": "advanced"
+        }
+    ]
+}
