@@ -137,7 +137,7 @@ const ScheduleClassForm: React.FC = () => {
 
       {/* Header */}
       <div className="d-flex justify-content-between align-items-center mb-3">
-        <h3>📋 Scheduled Classes</h3>
+        <h3>📋 Scheduled Classes </h3>
         {profileStatus === "approved" ? (
           <Button onClick={() => setShowModal(true)}>
             + Schedule Class
