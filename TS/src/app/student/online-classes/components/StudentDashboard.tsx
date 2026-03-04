@@ -284,6 +284,28 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
     }
   }
 
+  const handleJoinClass = async (classId: string) => {
+    try {
+      const res = await fetch(`${baseURL}/student/join-class/${classId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || "Not authorized to join this class");
+        return;
+      }
+
+      window.open(data.meetingLink, "_blank");
+
+    } catch (err) {
+      console.error("Join class error:", err);
+    }
+  };
+
   const handleSubmitComment = async () => {
     if (!selectedClass) return
 
@@ -853,8 +875,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                             </div>
 
                             <Button
-                              href={cls.meetingLink}
-                              target="_blank"
+                              onClick={() => handleJoinClass(cls._id)}
                               className="join-button btn-orange mt-3"
                             >
                               {classLive ? "Join Live Session" : "Join Class"}

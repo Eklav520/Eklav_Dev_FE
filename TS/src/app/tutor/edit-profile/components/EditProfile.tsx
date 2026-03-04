@@ -46,7 +46,7 @@ const contactFormSchema = yup.object({
 })
 
 const EditProfile = () => {
-  const { user } = useAuthContext()
+  const { user, setUser } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const [preview, setPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -125,10 +125,11 @@ const EditProfile = () => {
         })
 
         if (profile.profileImage) {
-          setPreview(profile.profileImage.startsWith('http')
+          const imageUrl = profile.profileImage.startsWith("http")
             ? profile.profileImage
-            : `${baseURL}${profile.profileImage}`
-          )
+            : `${baseURL}/${profile.profileImage.replace(/^\/+/, "")}`
+
+          setPreview(imageUrl)
         }
       } catch (err) {
         console.error('Error fetching profile:', err)
@@ -173,11 +174,22 @@ const EditProfile = () => {
       await axios.put(`${baseURL}/profile`, formData, {
         headers: {
           Authorization: `Bearer ${user?.token}`,
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       })
 
-      alert('Profile updated successfully')
+      // 🔄 Fetch updated profile
+      const updated = await axios.get(`${baseURL}/profile`, {
+        headers: { Authorization: `Bearer ${user?.token}` },
+      })
+
+      // 🔄 Update context
+      setUser((prev: any) => ({
+        ...prev,
+        ...updated.data
+      }))
+
+      alert("Profile updated successfully")
     } catch (err) {
       console.error('Error updating profile:', err)
       alert('Failed to update profile. Please try again.')
@@ -222,6 +234,9 @@ const EditProfile = () => {
                   className="avatar-img rounded-circle border border-3 shadow"
                   src={preview || avatar7}
                   alt="Profile"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = avatar7
+                  }}
                 />
               </span>
               <div className="flex-grow-1">
