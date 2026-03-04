@@ -107,9 +107,9 @@ const TutorLayout = ({ children }: ChildrenType) => {
         </section>
       </main>
 
-      <Suspense>
+     {/*  <Suspense>
         <Footer />
-      </Suspense>
+      </Suspense> */}
     </>
   )
 }
