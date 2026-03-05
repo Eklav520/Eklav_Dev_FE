@@ -144,59 +144,63 @@ const EditProfile = () => {
   /* ===============================
      Submit (Only Editable Fields)
   =============================== */
-  const onSubmit = async (data: ProfileFormValues) => {
+const onSubmit = async (data: ProfileFormValues) => {
+  setIsLoading(true)
+
+  try {
+    const formData = new FormData()
+
+    const education = data.education.filter(edu => edu.trim() !== '')
+    const skills = data.skills.filter(skill => skill.trim() !== '')
+
+    formData.append('college', data.college || '')
+    formData.append('about', data.about || '')
+    formData.append('joiningYear', data.joiningYear || '')
+    formData.append('department', data.department || '')
+    formData.append('designation', data.designation || '')
+    formData.append('experience', data.experience || '')
+    formData.append('education', JSON.stringify(education))
+    formData.append('skills', JSON.stringify(skills))
+
+    if (data.profileImage?.[0]) {
+      formData.append('profileImage', data.profileImage[0])
+    }
+
+    if (data.resume?.[0]) {
+      formData.append('resume', data.resume[0])
+    }
+
+    // ✅ UPDATE PROFILE
+    await axios.put(`${baseURL}/profile`, formData, {
+      headers: {
+        Authorization: `Bearer ${user?.token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    })
+
+    alert("Profile updated successfully")
+
+    // ✅ Fetch updated profile (optional)
     try {
-      setIsLoading(true)
-      const formData = new FormData()
-
-      // Filter out empty values
-      const education = data.education.filter(edu => edu.trim() !== '')
-      const skills = data.skills.filter(skill => skill.trim() !== '')
-
-      // ❗ DO NOT send fullName, email, phoneNo
-      formData.append('college', data.college || '')
-      formData.append('about', data.about || '')
-      formData.append('joiningYear', data.joiningYear || '')
-      formData.append('department', data.department || '')
-      formData.append('designation', data.designation || '')
-      formData.append('experience', data.experience || '')
-      formData.append('education', JSON.stringify(education))
-      formData.append('skills', JSON.stringify(skills))
-
-      if (data.profileImage?.[0]) {
-        formData.append('profileImage', data.profileImage[0])
-      }
-
-      if (data.resume?.[0]) {
-        formData.append('resume', data.resume[0])
-      }
-
-      await axios.put(`${baseURL}/profile`, formData, {
-        headers: {
-          Authorization: `Bearer ${user?.token}`,
-          "Content-Type": "multipart/form-data",
-        },
-      })
-
-      // 🔄 Fetch updated profile
       const updated = await axios.get(`${baseURL}/profile`, {
         headers: { Authorization: `Bearer ${user?.token}` },
       })
 
-      // 🔄 Update context
       setUser((prev: any) => ({
         ...prev,
         ...updated.data
       }))
-
-      alert("Profile updated successfully")
-    } catch (err) {
-      console.error('Error updating profile:', err)
-      alert('Failed to update profile. Please try again.')
-    } finally {
-      setIsLoading(false)
+    } catch (fetchErr) {
+      console.warn("Profile updated but failed to refresh user context")
     }
+
+  } catch (err) {
+    console.error('Error updating profile:', err)
+    alert('Failed to update profile. Please try again.')
+  } finally {
+    setIsLoading(false)
   }
+}
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
