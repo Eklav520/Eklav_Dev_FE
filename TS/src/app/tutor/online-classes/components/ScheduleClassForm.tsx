@@ -211,7 +211,7 @@ const ScheduleClassForm: React.FC = () => {
       </Table>
 
       {/* Modal */}
-      <Modal show={showModal} onHide={handleClose} centered size="lg">
+      <Modal show={showModal} onHide={handleClose} centered size="lg" fullscreen>
         <Modal.Header closeButton>
           <Modal.Title>
             {editingId ? 'Update Class' : 'Schedule New Class'}
@@ -289,7 +289,7 @@ const ScheduleClassForm: React.FC = () => {
                   backgroundColor: '#1f1f2e',
                   border: '1px solid #444',
                   borderRadius: '6px',
-                  minHeight: '250px'
+                  minHeight: '450px'
                 }}
               >
                 <ReactQuill
@@ -299,7 +299,7 @@ const ScheduleClassForm: React.FC = () => {
                     setFormData({ ...formData, description: value })
                   }
                   style={{
-                    height: '200px'
+                    height: '400px'
                   }}
                 />
               </div>

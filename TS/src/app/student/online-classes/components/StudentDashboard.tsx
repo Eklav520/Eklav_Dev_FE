@@ -780,9 +780,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                     </div>
                                   </div>
                                 )}
-                              {cls.days?.length && (
+                              {(cls.days?.length ?? 0) > 0 && (
                                 <div className="info-item">
-                                  📅 {cls.days
+                                  📅 {cls.days!
                                     .sort(
                                       (a, b) =>
                                         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].indexOf(a) -
@@ -791,10 +791,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                     .join(", ")}
                                 </div>
                               )}
-
-                              {cls.tags?.length && (
+                              {(cls.tags?.length ?? 0) > 0 && (
                                 <div className="tags-container">
-                                  {cls.tags.map((tag, index) => (
+                                  {cls.tags!.map((tag, index) => (
                                     <span key={index} className="tag-badge">
                                       {tag}
                                     </span>
