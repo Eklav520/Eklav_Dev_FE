@@ -631,7 +631,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         <div className="dashboard-header">
           <div className="header-left">
             <FaGraduationCap className="header-icon me-2" />
-            <h1 className="dashboard-title mb-0">Live Learning Hub</h1>
+            <h1 className="dashboard-title mb-0">Learn With Industry Experts</h1>
           </div>
 
           <div className="header-center">
