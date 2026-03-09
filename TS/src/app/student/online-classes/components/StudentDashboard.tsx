@@ -2293,6 +2293,29 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         scrollbar-width: thin;
         scrollbar-color: rgba(255,255,255,0.25) transparent;
       }
+        /* Make column stretch */
+.row > [class*='col-'] {
+  display: flex;
+}
+
+/* Make card take full height */
+.class-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Make body fill space */
+.class-card .card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Push buttons to bottom so cards align */
+.class-actions {
+  margin-top: auto;
+}
       `}</style>
     </>
   )
