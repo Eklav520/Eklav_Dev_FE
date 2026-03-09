@@ -295,7 +295,7 @@ const SubscriptionPage = () => {
                 const orderData = await orderResponse.json();
 
                 const options = {
-                    key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+                    key: orderData.key,
                     amount: orderData.amount,
                     currency: orderData.currency,
                     name: 'Eklav',
