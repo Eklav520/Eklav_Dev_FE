@@ -23,7 +23,7 @@ const getRankLabel = (completed: number, total: number) => {
 }
 
 type Props = {
-  selectedId: number
+  selectedId?: number
   completedIds: number[]
   onSelect: (p: Problem) => void
 }

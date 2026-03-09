@@ -206,19 +206,25 @@ const ProblemStatement = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('problemsList')
   const [testTab, setTestTab] = useState<'result'>('result')
   const [completedIds, setCompletedIds] = useState<number[]>([])
+  const [aiLoading, setAiLoading] = useState(false)
+  const [loadingProblems, setLoadingProblems] = useState(true)
 
   const PASS_THRESHOLD = 65
 
   /* ---------------- LOAD PROBLEMS ---------------- */
 
-  useEffect(() => {
-    const loadProblems = async () => {
-      const data = await fetchProblems()
-      setProblems(data)
-      setSelectedProblem(data[0] || null)
-    }
-    loadProblems()
-  }, [])
+ useEffect(() => {
+  const loadProblems = async () => {
+    setLoadingProblems(true)
+
+    const data = await fetchProblems()
+    setProblems(data)
+
+    setLoadingProblems(false)
+  }
+
+  loadProblems()
+}, [])
 
   useEffect(() => {
     const fetchCompletedProblems = async () => {
@@ -262,7 +268,7 @@ const ProblemStatement = () => {
     }
   }, [aiResult])
 
-  if (!selectedProblem || isProblemLoading) {
+  if (loadingProblems) {
     return (
       <Container className="p-5 text-center text-muted">
         <div className="spinner-border text-primary" role="status">
@@ -273,7 +279,7 @@ const ProblemStatement = () => {
     )
   }
 
-  const normalizedTestCases = selectedProblem.testCases.map((tc) => {
+ const normalizedTestCases = selectedProblem?.testCases?.map((tc) => {
     const input = tc.input.trim()
 
     // Case 1: Already JSON → keep
@@ -306,6 +312,63 @@ const ProblemStatement = () => {
     return tc
   })
 
+  const handleAIGuidance = async () => {
+
+    setAiLoading(true)
+
+    try {
+
+      const res = await fetch(`${baseURL}/api/aiEvaluate/code-help`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          language,
+          code,
+          problem: selectedProblem?.desc
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.comments) {
+
+        setCode(prev => {
+
+          let lines = prev.split("\n")
+
+          // Remove old AI hints
+          lines = lines.filter(line =>
+            !line.includes("👍") &&
+            !line.includes("Next step") &&
+            !line.includes("Hint:")
+          )
+
+          const openBraceIndex = lines.findIndex(l => l.includes("{"))
+
+          if (openBraceIndex !== -1) {
+
+            const comments = data.comments
+              .split("\n")
+              .map((c: string) => "  " + c)
+
+            lines.splice(openBraceIndex + 1, 0, ...comments)
+          }
+
+          return lines.join("\n")
+        })
+
+      }
+
+    } catch (err) {
+      console.error("AI help failed", err)
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
   /* ---------------- ACTIONS ---------------- */
 
   const handleRun = async () => {
@@ -314,7 +377,7 @@ const ProblemStatement = () => {
 
     try {
       console.log('Running code for language:', language)
-      console.log('Test cases:', selectedProblem.testCases)
+      console.log('Test cases:', selectedProblem?.testCases)
 
       const res = await fetch(`${baseURL}/api/aiEvaluate/evaluate`, {
         method: 'POST',
@@ -339,12 +402,12 @@ const ProblemStatement = () => {
         status: 'EVALUATED',
         language,
         summary: {
-          totalTestCases: selectedProblem.testCases.length,
+          totalTestCases: selectedProblem?.testCases.length,
           passed: 0,
-          failed: selectedProblem.testCases.length,
+          failed: selectedProblem?.testCases.length,
           passPercentage: 0,
         },
-        testCaseResults: selectedProblem.testCases.map((tc, index) => ({
+        testCaseResults: selectedProblem?.testCases.map((tc, index) => ({
           testCaseId: index + 1,
           status: 'FAIL',
           expected: JSON.parse(tc.output),
@@ -369,8 +432,8 @@ const ProblemStatement = () => {
     setSubmitting(true)
 
     const payload = {
-      problemId: selectedProblem.id,
-      problemTitle: selectedProblem.title,
+      problemId: selectedProblem?.id,
+      problemTitle: selectedProblem?.title,
       language: language, // Use current language
       passPercentage: aiResult.summary.passPercentage,
       passed: aiResult.summary.passed,
@@ -455,7 +518,7 @@ const ProblemStatement = () => {
             <div className="flex-grow-1 overflow-auto p-3">
               {activeTab === 'problemsList' && (
                 <ProblemsList
-                  selectedId={selectedProblem.id}
+                  selectedId={selectedProblem?.id}
                   completedIds={completedIds}
                   onSelect={(p) => {
                     setIsProblemLoading(true)
@@ -473,32 +536,32 @@ const ProblemStatement = () => {
               {activeTab === 'description' && (
                 <>
                   <h4 className="fw-bold">
-                    {selectedProblem.id}. {selectedProblem.title}
+                    {selectedProblem?.id}. {selectedProblem?.title}
                   </h4>
                   <Badge
                     style={{
                       backgroundColor:
-                        selectedProblem.difficulty === 'Medium'
+                        selectedProblem?.difficulty === 'Medium'
                           ? '#ff7a00'
                           : undefined,
                     }}
                     bg={
-                      selectedProblem.difficulty === 'Easy'
+                      selectedProblem?.difficulty === 'Easy'
                         ? 'success'
-                        : selectedProblem.difficulty === 'Hard'
+                        : selectedProblem?.difficulty === 'Hard'
                           ? 'danger'
                           : undefined
                     }
                   >
-                    {selectedProblem.difficulty}
+                    {selectedProblem?.difficulty}
                   </Badge>
 
                   <p className="mt-3" style={{ whiteSpace: 'pre-line' }}>
-                    {selectedProblem.desc}
+                    {selectedProblem?.desc}
                   </p>
 
                   <h6 className="fw-semibold mt-3">Examples</h6>
-                  {selectedProblem.testCases.map((tc, idx) => (
+                  {selectedProblem?.testCases.map((tc, idx) => (
                     <div key={idx} className="border rounded p-2 mb-2 bg-light">
                       <strong>Input:</strong> <pre>{tc.input}</pre>
                       <strong>Output:</strong> <pre>{tc.output}</pre>
@@ -507,7 +570,7 @@ const ProblemStatement = () => {
                 </>
               )}
 
-              {activeTab === 'discussion' && <Discussion problemId={selectedProblem.id} />}
+              {activeTab === 'discussion' &&selectedProblem && <Discussion problemId={selectedProblem?.id} />}
             </div>
           </Col>
 
@@ -531,18 +594,49 @@ const ProblemStatement = () => {
                 </span>
               </div>
 
+              <Button
+                size="sm"
+                style={{
+                  backgroundColor: '#ff7a00',
+                  border: 'none',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                onClick={handleAIGuidance}
+                disabled={aiLoading || !selectedProblem}
+              >
+                {aiLoading && (
+                  <span className="spinner-border spinner-border-sm" role="status" />
+                )}
+
+                {aiLoading ? "Thinking..." : "🤖 AI Help"}
+              </Button>
+
+              {/* LANGUAGE SELECTOR */}
               <Dropdown align="end">
-                <Dropdown.Toggle size="sm" variant="outline-secondary" className="d-flex align-items-center">
-                  <span className="me-2">{LANGUAGE_GROUPS.flat().find((l) => l.key === language)?.label}</span>
+                <Dropdown.Toggle
+                  size="sm"
+                  variant="outline-secondary"
+                  className="d-flex align-items-center"
+                >
+                  <span className="me-2">
+                    {LANGUAGE_GROUPS.flat().find((l) => l.key === language)?.label}
+                  </span>
                   <FiChevronDown />
                 </Dropdown.Toggle>
 
-                <Dropdown.Menu style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <Dropdown.Menu style={{ maxHeight: "300px", overflowY: "auto" }}>
                   {LANGUAGE_GROUPS.map((group, groupIndex) => (
                     <div key={groupIndex}>
                       {groupIndex > 0 && <Dropdown.Divider />}
                       {group.map((lang) => (
-                        <Dropdown.Item key={lang.key} onClick={() => setLanguage(lang.key as Language)} active={language === lang.key}>
+                        <Dropdown.Item
+                          key={lang.key}
+                          onClick={() => setLanguage(lang.key as Language)}
+                          active={language === lang.key}
+                        >
                           {lang.label}
                         </Dropdown.Item>
                       ))}
@@ -567,7 +661,23 @@ const ProblemStatement = () => {
                   overflowY: 'auto',
                   overflowX: 'hidden',
                 }}>
-                <CodeEditor language={language} value={code} onChange={setCode} />
+                {selectedProblem ? (
+                  <CodeEditor language={language} value={code} onChange={setCode} />
+                ) : (
+                  <div
+                    style={{
+                      height: "100%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#888",
+                      fontSize: "18px",
+                      fontWeight: 500
+                    }}
+                  >
+                    👈 Select a problem from the list to start coding
+                  </div>
+                )}
               </div>
             </div>
 
@@ -634,7 +744,7 @@ const ProblemStatement = () => {
 
               {/* Right Side - Buttons */}
               <div className="d-flex gap-2">
-                <Button variant="secondary" onClick={handleRun} disabled={loading}>
+                <Button variant="secondary" onClick={handleRun} disabled={!canSubmit || submitting || !selectedProblem}>
                   {loading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" />
