@@ -238,20 +238,15 @@ export default function StudentFinalAssessmentPage() {
   const isAssessmentWindow = () => {
     const now = new Date()
 
-    if (now.getDate() !== ASSESSMENT_DAY) return false
+    const currentDay = now.getDate()
+    const currentMonth = now.getMonth()
+    const currentYear = now.getFullYear()
 
-    const hour = now.getHours()
-    const minute = now.getMinutes()
+    // Last day of current month
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
 
-    const afterStart =
-      hour > START_HOUR ||
-      hour === START_HOUR
-
-    const beforeEnd =
-      hour < END_HOUR ||
-      (hour === END_HOUR && minute < END_MINUTE)
-
-    return afterStart && beforeEnd
+    // Allow from 20th until end of month
+    return currentDay >= ASSESSMENT_DAY && currentDay <= lastDayOfMonth
   }
 
 
@@ -623,7 +618,9 @@ export default function StudentFinalAssessmentPage() {
         <div style={{ display: 'flex', gap: 24 }}>
           <div style={{ width: 420 }}>
             <Alert variant="warning">
-              Final Assessment is available only on 20th of Every Month between 7:00 PM – 8:30 PM.
+              Final Assessment opens on the <b>20th of every month</b> and remains available
+              until the <b>end of the month</b>. You can attempt the exam at any time during
+              this period.
             </Alert>
 
             {status === 'pending' && trialUsed && (
