@@ -5,6 +5,7 @@ import { ChildrenType } from "@/types/component-props";
 import useToggle from "@/hooks/useToggle";
 import HeroMovingTopics from "./HeroMovingTopics";
 import TrustedCompanies from "./TrustedCompanies";
+import About from "./About";
 
 // Lazy-loaded components
 const Footer = lazy(() => import("./Footer"));
@@ -1030,6 +1031,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <Suspense fallback={<LoadingFallback />}>
             <Banner toggleOffCanvas={toggleOffCanvasMenu} />
           </Suspense>
+          <About/>
 
           {/* Main Row - Full height */}
           <Row className="g-0 mx-0 min-vh-100">
