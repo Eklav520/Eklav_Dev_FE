@@ -408,8 +408,12 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                       <div>
                         {discountPrice ? (
                           <>
-                            <span className="text-decoration-line-through opacity-75 me-2">₹{price}</span>
-                            <span className="text-success">₹{discountPrice}</span>
+                            <span className="text-decoration-line-through opacity-75 me-2">
+                              ₹{discountPrice}
+                            </span>
+                            <span className="text-success">
+                              ₹{price}
+                            </span>
                           </>
                         ) : (
                           <span className="text-success">₹{price}</span>
@@ -500,8 +504,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                                 <span className="fw-bold">
                                   {discountPrice ? (
                                     <>
-                                      <span className="text-muted text-decoration-line-through me-2">₹{price}</span>
-                                      <span className="text-success">₹{discountPrice}</span>
+                                      <span className="text-success me-2">₹{price}</span>
+                                      <span className="text-muted text-decoration-line-through ">₹{discountPrice}</span>
                                     </>
                                   ) : (
                                     <span className="text-success">₹{price}</span>
