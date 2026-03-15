@@ -137,7 +137,7 @@ const NavigationScrollEffect = memo(() => {
     const handleScroll = () => {
       const nav = document.querySelector('.fixed-navigation');
       if (!nav) return;
-      
+
       if (window.scrollY > LAYOUT_CONFIG.navigation.scrollThreshold) {
         nav.classList.add('scrolled');
       } else {
@@ -161,9 +161,9 @@ const VideoShowcase: FC = () => {
   const videoRefs = useRef<(HTMLIFrameElement | null)[]>([]);
 
   const categories = ['all', ...new Set(VIDEOS.map(v => v.category))];
-  
-  const filteredVideos = selectedCategory === 'all' 
-    ? VIDEOS 
+
+  const filteredVideos = selectedCategory === 'all'
+    ? VIDEOS
     : VIDEOS.filter(v => v.category === selectedCategory);
 
   useEffect(() => {
@@ -213,9 +213,9 @@ const VideoShowcase: FC = () => {
     if (isVideoPlaying && activeVideoIndex !== index) {
       pauseVideo(activeVideoIndex);
     }
-    
+
     setActiveVideoIndex(index);
-    
+
     setTimeout(() => {
       playVideo(index);
     }, 100);
@@ -248,9 +248,9 @@ const VideoShowcase: FC = () => {
       </div>
 
       <Container fluid className="px-3 px-xl-4">
-        <Carousel 
-          indicators 
-          controls 
+        <Carousel
+          indicators
+          controls
           interval={null}
           activeIndex={activeVideoIndex}
           onSelect={handleCarouselChange}
@@ -275,7 +275,7 @@ const VideoShowcase: FC = () => {
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       />
                     </div>
-                    
+
                     {/* Video Overlay with Play Button */}
                     {!isVideoPlaying && activeVideoIndex === originalIndex && (
                       <div className="video-overlay" onClick={() => handleVideoSelect(originalIndex)}>
@@ -993,7 +993,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
   const { toggle: toggleOffCanvasMenu } = useToggle();
   const [showModal, setShowModal] = useState(false);
   const [authType, setAuthType] = useState<"signin" | "signup">("signin");
-  
+
   // Generate particles only once
   const particles = useMemo(() => generateParticles(LAYOUT_CONFIG.particles.count), []);
 
@@ -1010,7 +1010,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
   return (
     <main className="auth-wrapper">
       <GlobalStyles />
-      
+
       {/* Floating particles animation */}
       <Particles particles={particles} />
 
@@ -1031,7 +1031,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <Suspense fallback={<LoadingFallback />}>
             <Banner toggleOffCanvas={toggleOffCanvasMenu} />
           </Suspense>
-          <About/>
+          <About />
 
           {/* Main Row - Full height */}
           <Row className="g-0 mx-0 min-vh-100">
@@ -1074,7 +1074,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <h4 className="mb-0 fw-bold text-white auth-modal-title">
             {authType === "signin"
               ? "Welcome To Eklav 👋"
-              : "Create Your Account 🚀"}
+              : "Create Your Account"}
           </h4>
 
           <button className="auth-close-btn" onClick={handleClose}>
@@ -1092,10 +1092,10 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
             }
           >
             {authType === "signin" ? (
-  <SignInForm />
-) : (
-  <SignUpForm onSuccess={handleClose} />
-)}
+              <SignInForm />
+            ) : (
+              <SignUpForm onSuccess={handleClose} />
+            )}
           </Suspense>
         </Modal.Body>
       </Modal>

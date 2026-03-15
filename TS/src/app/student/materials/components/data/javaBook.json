@@ -1,0 +1,2367 @@
+{
+    "id": "Java-mastery",
+    "title": "Java Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Programming Experts",
+    "chapters": [
+        {
+            "id": "java-ch1",
+            "title": "Introduction to Java",
+            "description": "Understanding Java programming language and its importance",
+            "pages": [
+                {
+                    "id": "java-ch1-page1",
+                    "title": "What is Java?",
+                    "content": "Java is a high-level, object-oriented programming language developed by Sun Microsystems (now owned by Oracle). It is widely used for building web applications, mobile apps, enterprise software, and Android applications.",
+                    "exampleCode": "public class Main {\n  public static void main(String[] args) {\n    System.out.println(\"Hello Java\");\n  }\n}",
+                    "keyPoints": [
+                        "Java is an object-oriented language",
+                        "Developed by Sun Microsystems",
+                        "Platform-independent language",
+                        "Widely used in enterprise applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Who developed Java?",
+                            "options": [
+                                "Microsoft",
+                                "Sun Microsystems",
+                                "Google",
+                                "IBM"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Java was developed by Sun Microsystems."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch1-page2",
+                    "title": "Features of Java",
+                    "content": "Java offers several powerful features including platform independence, object-oriented programming, strong security, and automatic memory management.",
+                    "exampleCode": "System.out.println(\"Java is platform independent\");",
+                    "keyPoints": [
+                        "Platform independent (Write Once Run Anywhere)",
+                        "Object-oriented programming",
+                        "Secure and robust",
+                        "Automatic memory management"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does WORA stand for in Java?",
+                            "options": [
+                                "Write Once Run Anywhere",
+                                "Write Only Run Always",
+                                "Work Once Run Anywhere",
+                                "Write One Run All"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "WORA means Write Once Run Anywhere."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch1-page3",
+                    "title": "Java Architecture",
+                    "content": "Java programs are compiled into bytecode which runs on the Java Virtual Machine (JVM). This architecture allows Java programs to run on any system with a JVM installed.",
+                    "exampleCode": "// Compilation step\njavac Main.java\n\n// Execution step\njava Main",
+                    "keyPoints": [
+                        "Java code compiles into bytecode",
+                        "Bytecode runs on JVM",
+                        "JVM enables platform independence"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What runs Java bytecode?",
+                            "options": [
+                                "Compiler",
+                                "JVM",
+                                "Browser",
+                                "Operating System"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Java bytecode runs on the Java Virtual Machine."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch1-page4",
+                    "title": "Installing Java (JDK)",
+                    "content": "To run Java programs, you need to install the Java Development Kit (JDK). The JDK includes the compiler (javac) and runtime environment required to build and execute Java applications.",
+                    "exampleCode": "java -version",
+                    "keyPoints": [
+                        "JDK contains compiler and tools",
+                        "Required to develop Java programs",
+                        "Install from Oracle website"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which package contains the Java compiler?",
+                            "options": [
+                                "JVM",
+                                "JDK",
+                                "JRE",
+                                "IDE"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The Java Development Kit (JDK) contains the Java compiler."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch1-page5",
+                    "title": "First Java Program",
+                    "content": "Every Java application starts from the main method. The main method is the entry point of a Java program.",
+                    "exampleCode": "public class HelloWorld {\n  public static void main(String[] args) {\n    System.out.println(\"Hello, World!\");\n  }\n}",
+                    "keyPoints": [
+                        "main() is the entry point",
+                        "System.out.println prints output",
+                        "Java programs run through classes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method is the entry point of a Java program?",
+                            "options": [
+                                "start()",
+                                "run()",
+                                "main()",
+                                "execute()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "main() is the starting point of a Java program."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch2",
+            "title": "Variables and Data Types",
+            "description": "Understanding how Java stores and manages different types of data",
+            "pages": [
+                {
+                    "id": "java-ch2-page1",
+                    "title": "Introduction to Variables",
+                    "content": "Variables are containers used to store data values. In Java, every variable must have a data type that defines the kind of data it can store.",
+                    "exampleCode": "int age = 25;\nString name = \"John\";\nSystem.out.println(name);\nSystem.out.println(age);",
+                    "keyPoints": [
+                        "Variables store data values",
+                        "Java requires declaring variable type",
+                        "Variable name should follow naming rules",
+                        "Variables must be initialized before use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a variable in Java?",
+                            "options": [
+                                "A loop structure",
+                                "A container for storing data",
+                                "A Java class",
+                                "A method"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A variable is used to store data values in Java."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch2-page2",
+                    "title": "Variable Naming Rules",
+                    "content": "Java variables must follow specific naming rules. A variable name can start with a letter, underscore, or dollar sign but cannot start with a number.",
+                    "exampleCode": "int studentAge = 20;\nString studentName = \"Alice\";",
+                    "keyPoints": [
+                        "Must start with letter, underscore, or dollar sign",
+                        "Cannot start with a number",
+                        "Cannot use Java reserved keywords",
+                        "Java variables are case-sensitive"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which of the following is a valid variable name?",
+                            "options": [
+                                "1age",
+                                "student_age",
+                                "class",
+                                "int"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "student_age is a valid variable name."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch2-page3",
+                    "title": "Primitive Data Types",
+                    "content": "Java provides primitive data types which store simple values such as numbers and characters. These include int, float, double, char, and boolean.",
+                    "exampleCode": "int number = 10;\nfloat price = 10.5f;\nchar grade = 'A';\nboolean isActive = true;",
+                    "keyPoints": [
+                        "Primitive data types store simple values",
+                        "Examples include int, float, double",
+                        "char stores a single character",
+                        "boolean stores true or false"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type stores a single character?",
+                            "options": [
+                                "String",
+                                "char",
+                                "int",
+                                "boolean"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "char stores a single character value."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch2-page4",
+                    "title": "Non-Primitive Data Types",
+                    "content": "Non-primitive data types refer to objects and references. These include classes, arrays, and strings.",
+                    "exampleCode": "String name = \"Java\";\nint[] numbers = {1,2,3,4};",
+                    "keyPoints": [
+                        "Non-primitive types refer to objects",
+                        "Examples include String, Array, and Class",
+                        "Can store multiple values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which of the following is a non-primitive data type?",
+                            "options": [
+                                "int",
+                                "float",
+                                "String",
+                                "boolean"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "String is a non-primitive data type."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch2-page5",
+                    "title": "Type Casting",
+                    "content": "Type casting is the process of converting one data type into another. Java supports two types of casting: implicit and explicit casting.",
+                    "exampleCode": "int num = 10;\ndouble value = num; // implicit casting\n\nint x = (int) 9.8; // explicit casting",
+                    "keyPoints": [
+                        "Implicit casting happens automatically",
+                        "Explicit casting requires manual conversion",
+                        "Used when changing data types"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which type casting happens automatically?",
+                            "options": [
+                                "Explicit casting",
+                                "Manual casting",
+                                "Implicit casting",
+                                "Forced casting"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Implicit casting happens automatically."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch2-page6",
+                    "title": "Constants",
+                    "content": "Constants are variables whose values cannot be changed once assigned. In Java, constants are declared using the final keyword.",
+                    "exampleCode": "final double PI = 3.14159;\nSystem.out.println(PI);",
+                    "keyPoints": [
+                        "Constants cannot change value",
+                        "Declared using final keyword",
+                        "Used for fixed values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword defines a constant in Java?",
+                            "options": [
+                                "const",
+                                "static",
+                                "final",
+                                "constant"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The final keyword is used to define constants."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch3",
+            "title": "Operators",
+            "description": "Understanding different types of operators used in Java programming",
+            "pages": [
+                {
+                    "id": "java-ch3-page1",
+                    "title": "Introduction to Operators",
+                    "content": "Operators in Java are special symbols used to perform operations on variables and values. They are used to manipulate data and perform calculations in programs.",
+                    "exampleCode": "int a = 10;\nint b = 5;\nSystem.out.println(a + b);",
+                    "keyPoints": [
+                        "Operators perform operations on values",
+                        "Used in expressions and calculations",
+                        "Java supports multiple operator types"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are operators used for?",
+                            "options": [
+                                "To create classes",
+                                "To perform operations on variables",
+                                "To define methods",
+                                "To store data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Operators perform operations on variables and values."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch3-page2",
+                    "title": "Arithmetic Operators",
+                    "content": "Arithmetic operators are used to perform mathematical operations such as addition, subtraction, multiplication, and division.",
+                    "exampleCode": "int a = 10;\nint b = 3;\n\nSystem.out.println(a + b);\nSystem.out.println(a - b);\nSystem.out.println(a * b);\nSystem.out.println(a / b);\nSystem.out.println(a % b);",
+                    "keyPoints": [
+                        "+ Addition",
+                        "- Subtraction",
+                        "* Multiplication",
+                        "/ Division",
+                        "% Modulus (remainder)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator gives the remainder?",
+                            "options": [
+                                "/",
+                                "*",
+                                "%",
+                                "+"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The % operator returns the remainder."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch3-page3",
+                    "title": "Relational Operators",
+                    "content": "Relational operators compare two values and return a boolean result (true or false).",
+                    "exampleCode": "int a = 10;\nint b = 20;\n\nSystem.out.println(a == b);\nSystem.out.println(a != b);\nSystem.out.println(a > b);\nSystem.out.println(a < b);",
+                    "keyPoints": [
+                        "== Equal to",
+                        "!= Not equal to",
+                        "> Greater than",
+                        "< Less than",
+                        ">= Greater than or equal",
+                        "<= Less than or equal"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks equality?",
+                            "options": [
+                                "=",
+                                "==",
+                                "!=",
+                                "<>"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "== is used to compare equality."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch3-page4",
+                    "title": "Logical Operators",
+                    "content": "Logical operators are used to combine multiple conditions and return boolean values.",
+                    "exampleCode": "int a = 10;\nint b = 5;\n\nSystem.out.println(a > 5 && b < 10);\nSystem.out.println(a > 20 || b < 10);\nSystem.out.println(!(a < b));",
+                    "keyPoints": [
+                        "&& Logical AND",
+                        "|| Logical OR",
+                        "! Logical NOT",
+                        "Used in conditional statements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator represents Logical AND?",
+                            "options": [
+                                "||",
+                                "&&",
+                                "!",
+                                "&"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "&& is the logical AND operator."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch3-page5",
+                    "title": "Assignment Operators",
+                    "content": "Assignment operators are used to assign values to variables and sometimes combine operations with assignment.",
+                    "exampleCode": "int x = 10;\n\nx += 5;\nx -= 2;\nx *= 3;\nx /= 2;\n\nSystem.out.println(x);",
+                    "keyPoints": [
+                        "= assigns value",
+                        "+= adds and assigns",
+                        "-= subtracts and assigns",
+                        "*= multiplies and assigns",
+                        "/= divides and assigns"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator adds a value and assigns it?",
+                            "options": [
+                                "+=",
+                                "-=",
+                                "*=",
+                                "/="
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "+= adds a value and assigns it."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch3-page6",
+                    "title": "Bitwise Operators",
+                    "content": "Bitwise operators perform operations on binary values at the bit level. They are commonly used in low-level programming.",
+                    "exampleCode": "int a = 5;\nint b = 3;\n\nSystem.out.println(a & b);\nSystem.out.println(a | b);\nSystem.out.println(a ^ b);",
+                    "keyPoints": [
+                        "& Bitwise AND",
+                        "| Bitwise OR",
+                        "^ Bitwise XOR",
+                        "~ Bitwise NOT"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator represents Bitwise OR?",
+                            "options": [
+                                "&",
+                                "|",
+                                "^",
+                                "~"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "| is the Bitwise OR operator."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch4",
+            "title": "Conditional Statements",
+            "description": "Understanding decision-making statements in Java such as if, else, and switch",
+            "pages": [
+                {
+                    "id": "java-ch4-page1",
+                    "title": "Introduction to Conditional Statements",
+                    "content": "Conditional statements allow programs to make decisions based on certain conditions. They help control the flow of execution depending on whether a condition is true or false.",
+                    "exampleCode": "int age = 18;\n\nif(age >= 18){\n  System.out.println(\"Eligible to vote\");\n}",
+                    "keyPoints": [
+                        "Used for decision making",
+                        "Executes code based on conditions",
+                        "Common statements include if, else, and switch"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of conditional statements?",
+                            "options": [
+                                "To store data",
+                                "To make decisions in programs",
+                                "To create loops",
+                                "To declare variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Conditional statements allow programs to make decisions based on conditions."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch4-page2",
+                    "title": "if Statement",
+                    "content": "The if statement executes a block of code only if the specified condition evaluates to true.",
+                    "exampleCode": "int number = 10;\n\nif(number > 5){\n  System.out.println(\"Number is greater than 5\");\n}",
+                    "keyPoints": [
+                        "Executes when condition is true",
+                        "Used for simple decision making",
+                        "Condition must return boolean value"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When does an if statement execute?",
+                            "options": [
+                                "When condition is false",
+                                "Always",
+                                "When condition is true",
+                                "Never"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The if block executes only when the condition is true."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch4-page3",
+                    "title": "if-else Statement",
+                    "content": "The if-else statement allows executing one block of code if the condition is true and another block if the condition is false.",
+                    "exampleCode": "int number = 3;\n\nif(number % 2 == 0){\n  System.out.println(\"Even number\");\n}else{\n  System.out.println(\"Odd number\");\n}",
+                    "keyPoints": [
+                        "Handles two conditions",
+                        "One block runs when condition is true",
+                        "Another block runs when condition is false"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block runs when the condition is false?",
+                            "options": [
+                                "if block",
+                                "else block",
+                                "main block",
+                                "loop block"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The else block runs when the condition is false."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch4-page4",
+                    "title": "if-else-if Ladder",
+                    "content": "The if-else-if ladder allows checking multiple conditions. The program executes the first block whose condition is true.",
+                    "exampleCode": "int marks = 75;\n\nif(marks >= 90){\n  System.out.println(\"Grade A\");\n}else if(marks >= 70){\n  System.out.println(\"Grade B\");\n}else{\n  System.out.println(\"Grade C\");\n}",
+                    "keyPoints": [
+                        "Used to check multiple conditions",
+                        "Executes first true condition",
+                        "Improves decision-making logic"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens when multiple conditions exist?",
+                            "options": [
+                                "All conditions execute",
+                                "First true condition executes",
+                                "Last condition executes",
+                                "Program stops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "In an if-else-if ladder, the first true condition executes."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch4-page5",
+                    "title": "Switch Statement",
+                    "content": "The switch statement allows selecting one of many code blocks to execute based on the value of a variable.",
+                    "exampleCode": "int day = 2;\n\nswitch(day){\n  case 1:\n    System.out.println(\"Monday\");\n    break;\n  case 2:\n    System.out.println(\"Tuesday\");\n    break;\n  default:\n    System.out.println(\"Other day\");\n}",
+                    "keyPoints": [
+                        "Used when multiple cases exist",
+                        "Cleaner than multiple if-else statements",
+                        "Uses case and break keywords"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword stops switch execution?",
+                            "options": [
+                                "stop",
+                                "exit",
+                                "break",
+                                "return"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "break stops further execution of switch cases."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch4-page6",
+                    "title": "Switch vs If Statement",
+                    "content": "Both switch and if statements control program flow. If statements are better for complex conditions, while switch works well for fixed values.",
+                    "exampleCode": "// Using if\nif(day == 1){\n  System.out.println(\"Monday\");\n}\n\n// Using switch\nswitch(day){\n  case 1:\n    System.out.println(\"Monday\");\n}",
+                    "keyPoints": [
+                        "if handles complex conditions",
+                        "switch handles multiple fixed values",
+                        "switch improves readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which statement is better for many fixed values?",
+                            "options": [
+                                "if",
+                                "switch",
+                                "loop",
+                                "method"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Switch works best when checking multiple fixed values."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch5",
+            "title": "Loops",
+            "description": "Understanding loops in Java including for, while, do-while, break, and continue statements",
+            "pages": [
+                {
+                    "id": "java-ch5-page1",
+                    "title": "Introduction to Loops",
+                    "content": "Loops allow a block of code to execute multiple times. They are useful when performing repetitive tasks such as iterating through numbers or collections.",
+                    "exampleCode": "for(int i = 1; i <= 5; i++){\n  System.out.println(i);\n}",
+                    "keyPoints": [
+                        "Loops execute code repeatedly",
+                        "Used to automate repetitive tasks",
+                        "Common loops include for, while, and do-while"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of loops?",
+                            "options": [
+                                "Store data",
+                                "Repeat code execution",
+                                "Create classes",
+                                "Define variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Loops repeat a block of code multiple times."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch5-page2",
+                    "title": "For Loop",
+                    "content": "The for loop is used when the number of iterations is known. It consists of initialization, condition, and increment/decrement.",
+                    "exampleCode": "for(int i = 1; i <= 10; i++){\n  System.out.println(i);\n}",
+                    "keyPoints": [
+                        "Used when iteration count is known",
+                        "Contains initialization, condition, update",
+                        "Commonly used for counting loops"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop is commonly used when the number of iterations is known?",
+                            "options": [
+                                "while",
+                                "for",
+                                "do-while",
+                                "switch"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The for loop is used when the number of iterations is known."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch5-page3",
+                    "title": "While Loop",
+                    "content": "The while loop executes a block of code as long as the specified condition remains true. It is commonly used when the number of iterations is not known in advance.",
+                    "exampleCode": "int i = 1;\nwhile(i <= 5){\n  System.out.println(i);\n  i++;\n}",
+                    "keyPoints": [
+                        "Executes while condition is true",
+                        "Useful when iteration count is unknown",
+                        "Condition checked before execution"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When is a while loop useful?",
+                            "options": [
+                                "When iterations are fixed",
+                                "When iterations are unknown",
+                                "When creating objects",
+                                "When defining variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "While loops are useful when the number of iterations is unknown."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch5-page4",
+                    "title": "Do-While Loop",
+                    "content": "The do-while loop executes the block of code at least once before checking the condition. After execution, the condition is evaluated.",
+                    "exampleCode": "int i = 1;\n\ndo{\n  System.out.println(i);\n  i++;\n}while(i <= 5);",
+                    "keyPoints": [
+                        "Executes code at least once",
+                        "Condition checked after execution",
+                        "Useful when code must run at least once"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop guarantees at least one execution?",
+                            "options": [
+                                "for",
+                                "while",
+                                "do-while",
+                                "switch"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The do-while loop executes at least once."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch5-page5",
+                    "title": "Break Statement",
+                    "content": "The break statement immediately terminates the loop and transfers control to the next statement after the loop.",
+                    "exampleCode": "for(int i = 1; i <= 10; i++){\n  if(i == 5){\n    break;\n  }\n  System.out.println(i);\n}",
+                    "keyPoints": [
+                        "Stops loop execution immediately",
+                        "Used inside loops and switch statements",
+                        "Improves control flow"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the break statement do?",
+                            "options": [
+                                "Restarts the loop",
+                                "Stops the loop",
+                                "Skips iteration",
+                                "Declares variable"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The break statement stops loop execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch5-page6",
+                    "title": "Continue Statement",
+                    "content": "The continue statement skips the current iteration of the loop and moves to the next iteration.",
+                    "exampleCode": "for(int i = 1; i <= 5; i++){\n  if(i == 3){\n    continue;\n  }\n  System.out.println(i);\n}",
+                    "keyPoints": [
+                        "Skips current loop iteration",
+                        "Loop continues with next iteration",
+                        "Useful for filtering conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the continue statement do?",
+                            "options": [
+                                "Stops loop completely",
+                                "Skips current iteration",
+                                "Ends program",
+                                "Creates variable"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Continue skips the current iteration and continues the loop."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch6",
+            "title": "Java Strings",
+            "description": "Understanding String handling and operations in Java",
+            "pages": [
+                {
+                    "id": "java-ch6-page1",
+                    "title": "Introduction to Strings",
+                    "content": "A String in Java is a sequence of characters used to represent text. Strings are widely used in programs for storing names, messages, and other textual data.",
+                    "exampleCode": "String name = \"Java\";\nSystem.out.println(name);",
+                    "keyPoints": [
+                        "String stores text data",
+                        "Strings are objects in Java",
+                        "Defined using double quotes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a String store in Java?",
+                            "options": [
+                                "Numbers",
+                                "Characters and text",
+                                "Boolean values",
+                                "Objects only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Strings store characters and textual data."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch6-page2",
+                    "title": "Creating Strings",
+                    "content": "Strings in Java can be created in two ways: using string literals or using the new keyword with the String class.",
+                    "exampleCode": "String s1 = \"Hello\";\nString s2 = new String(\"World\");\nSystem.out.println(s1 + \" \" + s2);",
+                    "keyPoints": [
+                        "String literals are stored in string pool",
+                        "new keyword creates new object",
+                        "Both store text data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword creates a new String object?",
+                            "options": [
+                                "create",
+                                "new",
+                                "make",
+                                "init"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The new keyword creates a new String object."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch6-page3",
+                    "title": "Common String Methods",
+                    "content": "Java provides many built-in methods to manipulate strings such as length(), toUpperCase(), toLowerCase(), and charAt().",
+                    "exampleCode": "String text = \"Java Programming\";\nSystem.out.println(text.length());\nSystem.out.println(text.toUpperCase());\nSystem.out.println(text.charAt(0));",
+                    "keyPoints": [
+                        "length() returns string length",
+                        "toUpperCase() converts text to uppercase",
+                        "charAt() returns character at index"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method returns the length of a string?",
+                            "options": [
+                                "size()",
+                                "count()",
+                                "length()",
+                                "len()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "length() returns the number of characters in a string."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch6-page4",
+                    "title": "String Concatenation",
+                    "content": "String concatenation combines two or more strings together. In Java, this is commonly done using the + operator or the concat() method.",
+                    "exampleCode": "String first = \"Hello\";\nString second = \"World\";\n\nString result = first + \" \" + second;\nSystem.out.println(result);",
+                    "keyPoints": [
+                        "Concatenation joins strings",
+                        "+ operator commonly used",
+                        "concat() method also available"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator joins two strings?",
+                            "options": [
+                                "-",
+                                "*",
+                                "+",
+                                "/"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The + operator joins two strings."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch6-page5",
+                    "title": "String Comparison",
+                    "content": "Strings can be compared using the equals() method or compareTo() method. The == operator checks reference equality, not content equality.",
+                    "exampleCode": "String a = \"Java\";\nString b = \"Java\";\n\nSystem.out.println(a.equals(b));",
+                    "keyPoints": [
+                        "equals() compares string values",
+                        "== compares references",
+                        "compareTo() compares lexicographically"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method compares string content?",
+                            "options": [
+                                "compare()",
+                                "equals()",
+                                "match()",
+                                "check()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "equals() compares the content of strings."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch6-page6",
+                    "title": "StringBuilder",
+                    "content": "StringBuilder is used when strings need to be modified frequently. Unlike String, StringBuilder objects are mutable, meaning their content can be changed.",
+                    "exampleCode": "StringBuilder sb = new StringBuilder(\"Hello\");\nsb.append(\" Java\");\nSystem.out.println(sb);",
+                    "keyPoints": [
+                        "StringBuilder is mutable",
+                        "Used for efficient string modifications",
+                        "append() adds text to existing string"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class allows modifying strings efficiently?",
+                            "options": [
+                                "String",
+                                "StringBuilder",
+                                "Character",
+                                "Text"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "StringBuilder allows modifying string content efficiently."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch7",
+            "title": "Arrays",
+            "description": "Understanding arrays and how to store multiple values in Java",
+            "pages": [
+                {
+                    "id": "java-ch7-page1",
+                    "title": "Introduction to Arrays",
+                    "content": "An array in Java is a collection of elements of the same data type stored in contiguous memory locations. Arrays allow storing multiple values in a single variable.",
+                    "exampleCode": "int[] numbers = {1,2,3,4,5};\nSystem.out.println(numbers[0]);",
+                    "keyPoints": [
+                        "Array stores multiple values",
+                        "Elements must be of the same type",
+                        "Array elements are accessed using indexes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does an array store?",
+                            "options": [
+                                "Only one value",
+                                "Multiple values of same type",
+                                "Only text",
+                                "Only numbers"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Arrays store multiple values of the same data type."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch7-page2",
+                    "title": "Declaring and Initializing Arrays",
+                    "content": "Arrays can be declared and initialized in Java using square brackets []. They can also be initialized with values at the time of declaration.",
+                    "exampleCode": "int[] arr = new int[5];\narr[0] = 10;\narr[1] = 20;\n\nint[] numbers = {1,2,3,4};",
+                    "keyPoints": [
+                        "Declared using [] brackets",
+                        "Size must be defined when creating array",
+                        "Values can be assigned later or during declaration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used to declare arrays?",
+                            "options": [
+                                "()",
+                                "{}",
+                                "[]",
+                                "<>"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Arrays are declared using square brackets []."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch7-page3",
+                    "title": "Accessing Array Elements",
+                    "content": "Array elements are accessed using their index number. In Java, array indexing starts from 0.",
+                    "exampleCode": "int[] numbers = {10,20,30};\n\nSystem.out.println(numbers[0]);\nSystem.out.println(numbers[1]);",
+                    "keyPoints": [
+                        "Index starts from 0",
+                        "Use index to access element",
+                        "numbers[0] gives first element"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the index of the first element in Java arrays?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "2"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Java arrays start indexing from 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch7-page4",
+                    "title": "Looping Through Arrays",
+                    "content": "Loops can be used to iterate through array elements. The for loop is commonly used for this purpose.",
+                    "exampleCode": "int[] numbers = {1,2,3,4};\n\nfor(int i = 0; i < numbers.length; i++){\n  System.out.println(numbers[i]);\n}",
+                    "keyPoints": [
+                        "Use loops to access all elements",
+                        "numbers.length gives array size",
+                        "for loop commonly used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which property gives array length?",
+                            "options": [
+                                "size",
+                                "count",
+                                "length",
+                                "total"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "length returns the size of the array."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch7-page5",
+                    "title": "Multidimensional Arrays",
+                    "content": "Multidimensional arrays are arrays of arrays. They are commonly used to represent tables or matrices.",
+                    "exampleCode": "int[][] matrix = {\n {1,2},\n {3,4}\n};\n\nSystem.out.println(matrix[0][1]);",
+                    "keyPoints": [
+                        "Array inside another array",
+                        "Used for tables and matrices",
+                        "Access using two indexes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you access elements in a 2D array?",
+                            "options": [
+                                "Using one index",
+                                "Using two indexes",
+                                "Using three indexes",
+                                "Using loops only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "2D arrays require two indexes to access elements."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch7-page6",
+                    "title": "Enhanced For Loop",
+                    "content": "Java provides an enhanced for loop (for-each loop) to iterate through arrays easily without using indexes.",
+                    "exampleCode": "int[] numbers = {10,20,30};\n\nfor(int num : numbers){\n  System.out.println(num);\n}",
+                    "keyPoints": [
+                        "Simplifies array iteration",
+                        "No need to use index",
+                        "Improves readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which loop simplifies iterating arrays?",
+                            "options": [
+                                "while loop",
+                                "do-while loop",
+                                "for-each loop",
+                                "switch loop"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The enhanced for loop simplifies array iteration."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch8",
+            "title": "Methods",
+            "description": "Understanding methods in Java and how they help organize reusable code",
+            "pages": [
+                {
+                    "id": "java-ch8-page1",
+                    "title": "Introduction to Methods",
+                    "content": "A method in Java is a block of code that performs a specific task. Methods help organize programs into smaller, reusable units.",
+                    "exampleCode": "public class Main {\n  static void greet() {\n    System.out.println(\"Hello Java\");\n  }\n\n  public static void main(String[] args) {\n    greet();\n  }\n}",
+                    "keyPoints": [
+                        "Methods perform specific tasks",
+                        "Improve code reuse",
+                        "Reduce code duplication"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of a method?",
+                            "options": [
+                                "Store data",
+                                "Repeat loops",
+                                "Perform a specific task",
+                                "Create variables"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Methods perform specific tasks in programs."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch8-page2",
+                    "title": "Method Syntax",
+                    "content": "A method in Java consists of an access modifier, return type, method name, parameters, and a method body.",
+                    "exampleCode": "public static void display(){\n  System.out.println(\"Method Example\");\n}",
+                    "keyPoints": [
+                        "Method contains return type",
+                        "Method name identifies the method",
+                        "Method body contains code"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which part defines the method name?",
+                            "options": [
+                                "Return type",
+                                "Method name",
+                                "Parameter list",
+                                "Body"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The method name identifies the method."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch8-page3",
+                    "title": "Method Parameters",
+                    "content": "Parameters allow methods to receive input values. These values are used inside the method to perform operations.",
+                    "exampleCode": "static void greet(String name){\n  System.out.println(\"Hello \" + name);\n}",
+                    "keyPoints": [
+                        "Parameters allow passing data",
+                        "Defined inside method parentheses",
+                        "Improve method flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are parameters used for?",
+                            "options": [
+                                "Loop control",
+                                "Passing values to methods",
+                                "Declaring arrays",
+                                "Creating classes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Parameters allow passing values to methods."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch8-page4",
+                    "title": "Return Values",
+                    "content": "Methods can return values using the return keyword. The return type specifies what type of value the method returns.",
+                    "exampleCode": "static int add(int a, int b){\n  return a + b;\n}",
+                    "keyPoints": [
+                        "Return keyword sends value back",
+                        "Return type defines output type",
+                        "void means no return value"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword returns a value from a method?",
+                            "options": [
+                                "send",
+                                "output",
+                                "return",
+                                "result"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The return keyword sends values from methods."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch8-page5",
+                    "title": "Method Overloading",
+                    "content": "Method overloading allows multiple methods with the same name but different parameter lists. It improves code readability and flexibility.",
+                    "exampleCode": "static int add(int a, int b){\n  return a + b;\n}\n\nstatic double add(double a, double b){\n  return a + b;\n}",
+                    "keyPoints": [
+                        "Same method name",
+                        "Different parameters",
+                        "Improves flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is method overloading?",
+                            "options": [
+                                "Using multiple loops",
+                                "Same method name with different parameters",
+                                "Returning multiple values",
+                                "Using multiple classes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Method overloading uses the same method name with different parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch8-page6",
+                    "title": "Recursion",
+                    "content": "Recursion is a technique where a method calls itself to solve a problem. It is commonly used for problems like factorial calculation and tree traversal.",
+                    "exampleCode": "static int factorial(int n){\n  if(n == 1)\n    return 1;\n  return n * factorial(n-1);\n}",
+                    "keyPoints": [
+                        "Method calls itself",
+                        "Used for complex problems",
+                        "Requires a base condition"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is recursion?",
+                            "options": [
+                                "Calling another method",
+                                "Method calling itself",
+                                "Loop inside method",
+                                "Multiple classes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Recursion occurs when a method calls itself."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch9",
+            "title": "Classes and Objects",
+            "description": "Understanding how Java uses classes and objects in Object-Oriented Programming",
+            "pages": [
+                {
+                    "id": "java-ch9-page1",
+                    "title": "Introduction to Classes",
+                    "content": "A class in Java is a blueprint used to create objects. It defines properties (variables) and behaviors (methods) that objects will have.",
+                    "exampleCode": "class Student {\n  String name;\n  int age;\n}",
+                    "keyPoints": [
+                        "Class is a blueprint for objects",
+                        "Contains variables and methods",
+                        "Used to structure programs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a class?",
+                            "options": [
+                                "A loop structure",
+                                "A blueprint for objects",
+                                "A variable type",
+                                "A package"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A class is a blueprint used to create objects."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch9-page2",
+                    "title": "Objects in Java",
+                    "content": "An object is an instance of a class. Objects allow accessing properties and methods defined in the class.",
+                    "exampleCode": "class Student {\n  String name = \"John\";\n}\n\npublic class Main {\n  public static void main(String[] args) {\n    Student s = new Student();\n    System.out.println(s.name);\n  }\n}",
+                    "keyPoints": [
+                        "Object is an instance of a class",
+                        "Created using new keyword",
+                        "Used to access class members"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What creates an object in Java?",
+                            "options": [
+                                "new keyword",
+                                "create keyword",
+                                "init keyword",
+                                "object keyword"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Objects are created using the new keyword."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch9-page3",
+                    "title": "Constructors",
+                    "content": "Constructors are special methods used to initialize objects. They have the same name as the class and are automatically called when an object is created.",
+                    "exampleCode": "class Student {\n  Student(){\n    System.out.println(\"Constructor called\");\n  }\n}",
+                    "keyPoints": [
+                        "Constructor initializes objects",
+                        "Name same as class name",
+                        "Automatically executed"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of constructors?",
+                            "options": [
+                                "Loop execution",
+                                "Object initialization",
+                                "Variable declaration",
+                                "File handling"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Constructors initialize objects."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch9-page4",
+                    "title": "Access Modifiers",
+                    "content": "Access modifiers control the visibility of classes, variables, and methods in Java. Common modifiers include public, private, and protected.",
+                    "exampleCode": "public class Student {\n  private String name;\n}",
+                    "keyPoints": [
+                        "Control accessibility",
+                        "Common modifiers: public, private, protected",
+                        "Improve program security"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which modifier restricts access within the class only?",
+                            "options": [
+                                "public",
+                                "private",
+                                "protected",
+                                "default"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Private restricts access within the class."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch9-page5",
+                    "title": "this Keyword",
+                    "content": "The this keyword refers to the current object. It is commonly used to differentiate instance variables from parameters.",
+                    "exampleCode": "class Student {\n  String name;\n\n  Student(String name){\n    this.name = name;\n  }\n}",
+                    "keyPoints": [
+                        "Refers to current object",
+                        "Used to avoid variable conflicts",
+                        "Common in constructors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the this keyword refer to?",
+                            "options": [
+                                "Class name",
+                                "Current object",
+                                "Parent class",
+                                "Loop variable"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "this refers to the current object."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch10",
+            "title": "Inheritance",
+            "description": "Understanding how inheritance allows classes to reuse code in Java",
+            "pages": [
+                {
+                    "id": "java-ch10-page1",
+                    "title": "Introduction to Inheritance",
+                    "content": "Inheritance allows one class to inherit properties and methods from another class. It promotes code reuse and establishes relationships between classes.",
+                    "exampleCode": "class Animal {\n  void sound(){\n    System.out.println(\"Animal sound\");\n  }\n}",
+                    "keyPoints": [
+                        "Allows code reuse",
+                        "Child class inherits from parent class",
+                        "Important OOP concept"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is inheritance used for?",
+                            "options": [
+                                "Looping",
+                                "Code reuse",
+                                "File storage",
+                                "Exception handling"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Inheritance promotes code reuse."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch10-page2",
+                    "title": "Extending a Class",
+                    "content": "Inheritance in Java is implemented using the extends keyword. The child class inherits properties and methods from the parent class.",
+                    "exampleCode": "class Dog extends Animal {\n  void bark(){\n    System.out.println(\"Dog barks\");\n  }\n}",
+                    "keyPoints": [
+                        "Uses extends keyword",
+                        "Child class inherits parent properties",
+                        "Supports hierarchical relationships"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used for inheritance?",
+                            "options": [
+                                "implements",
+                                "inherits",
+                                "extends",
+                                "super"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The extends keyword is used for inheritance."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch10-page3",
+                    "title": "Types of Inheritance",
+                    "content": "Java supports several types of inheritance including single, multilevel, and hierarchical inheritance.",
+                    "exampleCode": "class A {}\nclass B extends A {}\nclass C extends B {}",
+                    "keyPoints": [
+                        "Single inheritance",
+                        "Multilevel inheritance",
+                        "Hierarchical inheritance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which inheritance type involves multiple levels?",
+                            "options": [
+                                "Single",
+                                "Multilevel",
+                                "Hierarchical",
+                                "Multiple"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Multilevel inheritance involves multiple levels."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch10-page4",
+                    "title": "super Keyword",
+                    "content": "The super keyword refers to the parent class. It is used to access parent class methods and constructors.",
+                    "exampleCode": "class Animal {\n  void sound(){\n    System.out.println(\"Animal sound\");\n  }\n}\n\nclass Dog extends Animal {\n  void sound(){\n    super.sound();\n    System.out.println(\"Dog bark\");\n  }\n}",
+                    "keyPoints": [
+                        "Refers to parent class",
+                        "Used to call parent methods",
+                        "Used with constructors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the super keyword refer to?",
+                            "options": [
+                                "Child class",
+                                "Current class",
+                                "Parent class",
+                                "Object"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "super refers to the parent class."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch10-page5",
+                    "title": "Method Overriding",
+                    "content": "Method overriding allows a subclass to provide a specific implementation of a method that is already defined in its parent class.",
+                    "exampleCode": "class Animal {\n  void sound(){\n    System.out.println(\"Animal sound\");\n  }\n}\n\nclass Dog extends Animal {\n  void sound(){\n    System.out.println(\"Dog bark\");\n  }\n}",
+                    "keyPoints": [
+                        "Subclass modifies parent method",
+                        "Supports runtime polymorphism",
+                        "Same method signature required"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does method overriding do?",
+                            "options": [
+                                "Creates new class",
+                                "Changes parent method behavior",
+                                "Stops inheritance",
+                                "Declares variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Method overriding changes parent class method behavior."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch11",
+            "title": "Polymorphism and Abstraction",
+            "description": "Understanding polymorphism and abstraction concepts in Java Object-Oriented Programming",
+            "pages": [
+                {
+                    "id": "java-ch11-page1",
+                    "title": "Introduction to Polymorphism",
+                    "content": "Polymorphism in Java means 'many forms'. It allows methods to behave differently depending on the object calling them.",
+                    "exampleCode": "class Animal {\n  void sound(){\n    System.out.println(\"Animal makes sound\");\n  }\n}",
+                    "keyPoints": [
+                        "Polymorphism means many forms",
+                        "Allows same method name with different behavior",
+                        "Important concept in OOP"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does polymorphism mean?",
+                            "options": [
+                                "Single behavior",
+                                "Multiple forms",
+                                "Multiple variables",
+                                "Single class"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Polymorphism means many forms or behaviors."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch11-page2",
+                    "title": "Method Overloading",
+                    "content": "Method overloading allows multiple methods with the same name but different parameter lists within the same class.",
+                    "exampleCode": "class Calculator {\n  int add(int a, int b){\n    return a + b;\n  }\n\n  int add(int a, int b, int c){\n    return a + b + c;\n  }\n}",
+                    "keyPoints": [
+                        "Same method name",
+                        "Different parameters",
+                        "Compile-time polymorphism"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What defines method overloading?",
+                            "options": [
+                                "Same name, different parameters",
+                                "Different name, same parameters",
+                                "Same name and parameters",
+                                "Different class names"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Method overloading requires same name but different parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch11-page3",
+                    "title": "Method Overriding",
+                    "content": "Method overriding occurs when a subclass provides its own implementation of a method already defined in the parent class.",
+                    "exampleCode": "class Animal {\n  void sound(){\n    System.out.println(\"Animal sound\");\n  }\n}\n\nclass Dog extends Animal {\n  void sound(){\n    System.out.println(\"Dog bark\");\n  }\n}",
+                    "keyPoints": [
+                        "Child class modifies parent method",
+                        "Same method signature required",
+                        "Runtime polymorphism"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What type of polymorphism is method overriding?",
+                            "options": [
+                                "Compile-time",
+                                "Runtime",
+                                "Static",
+                                "Loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Method overriding occurs at runtime."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch11-page4",
+                    "title": "Introduction to Abstraction",
+                    "content": "Abstraction hides implementation details and only shows essential features of an object. It helps reduce complexity and increase security.",
+                    "exampleCode": "abstract class Animal {\n  abstract void sound();\n}",
+                    "keyPoints": [
+                        "Hides internal implementation",
+                        "Shows only essential features",
+                        "Improves program design"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does abstraction hide?",
+                            "options": [
+                                "Variables",
+                                "Implementation details",
+                                "Classes",
+                                "Loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Abstraction hides internal implementation details."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch11-page5",
+                    "title": "Abstract Classes",
+                    "content": "Abstract classes are classes that cannot be instantiated and may contain abstract methods that must be implemented by subclasses.",
+                    "exampleCode": "abstract class Animal {\n  abstract void sound();\n}\n\nclass Dog extends Animal {\n  void sound(){\n    System.out.println(\"Dog bark\");\n  }\n}",
+                    "keyPoints": [
+                        "Cannot create objects of abstract class",
+                        "Contains abstract methods",
+                        "Must be extended by child classes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Can we create objects of an abstract class?",
+                            "options": [
+                                "Yes",
+                                "No",
+                                "Sometimes",
+                                "Only once"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Abstract classes cannot be instantiated."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch11-page6",
+                    "title": "Interfaces",
+                    "content": "Interfaces define a contract that classes must implement. They allow multiple inheritance in Java and help achieve abstraction.",
+                    "exampleCode": "interface Animal {\n  void sound();\n}\n\nclass Dog implements Animal {\n  public void sound(){\n    System.out.println(\"Dog bark\");\n  }\n}",
+                    "keyPoints": [
+                        "Interface defines method structure",
+                        "Classes implement interfaces",
+                        "Supports multiple inheritance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to implement an interface?",
+                            "options": [
+                                "extends",
+                                "implements",
+                                "interface",
+                                "inherit"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Classes use the implements keyword to implement interfaces."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch12",
+            "title": "Exception Handling",
+            "description": "Understanding how Java handles runtime errors using exception handling mechanisms",
+            "pages": [
+                {
+                    "id": "java-ch12-page1",
+                    "title": "Introduction to Exceptions",
+                    "content": "An exception is an unexpected event that occurs during program execution and disrupts the normal flow of the program.",
+                    "exampleCode": "int a = 10;\nint b = 0;\nSystem.out.println(a / b);",
+                    "keyPoints": [
+                        "Exception occurs during runtime",
+                        "Interrupts program execution",
+                        "Java provides mechanisms to handle errors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an exception?",
+                            "options": [
+                                "Syntax error",
+                                "Runtime error",
+                                "Variable",
+                                "Loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Exceptions occur during runtime execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch12-page2",
+                    "title": "Try-Catch Block",
+                    "content": "The try-catch block is used to handle exceptions. The try block contains code that may cause an exception, and the catch block handles the exception.",
+                    "exampleCode": "try {\n  int a = 10/0;\n}\ncatch(Exception e){\n  System.out.println(\"Error occurred\");\n}",
+                    "keyPoints": [
+                        "try block contains risky code",
+                        "catch block handles exception",
+                        "Prevents program crash"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block handles exceptions?",
+                            "options": [
+                                "try",
+                                "catch",
+                                "finally",
+                                "loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The catch block handles exceptions."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch12-page3",
+                    "title": "Finally Block",
+                    "content": "The finally block always executes regardless of whether an exception occurs or not. It is commonly used for closing resources.",
+                    "exampleCode": "try {\n  int a = 5;\n}\nfinally {\n  System.out.println(\"Finally executed\");\n}",
+                    "keyPoints": [
+                        "Always executes",
+                        "Used for cleanup code",
+                        "Runs after try-catch"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block always executes?",
+                            "options": [
+                                "try",
+                                "catch",
+                                "finally",
+                                "throw"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The finally block always executes."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch12-page4",
+                    "title": "Throw Keyword",
+                    "content": "The throw keyword is used to explicitly throw an exception in Java.",
+                    "exampleCode": "throw new ArithmeticException(\"Division by zero\");",
+                    "keyPoints": [
+                        "Used to throw exceptions manually",
+                        "Used with exception objects",
+                        "Stops normal execution"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword throws an exception?",
+                            "options": [
+                                "throw",
+                                "catch",
+                                "final",
+                                "new"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The throw keyword is used to throw exceptions."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch12-page5",
+                    "title": "Throws Keyword",
+                    "content": "The throws keyword declares exceptions that a method may generate. It informs the caller that the method may throw exceptions.",
+                    "exampleCode": "void readFile() throws IOException {\n  // file reading code\n}",
+                    "keyPoints": [
+                        "Used in method declaration",
+                        "Indicates possible exceptions",
+                        "Improves error handling"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is the throws keyword used?",
+                            "options": [
+                                "Inside loops",
+                                "Method declaration",
+                                "Class declaration",
+                                "Variable declaration"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Throws is used in method declaration."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch12-page6",
+                    "title": "Custom Exceptions",
+                    "content": "Custom exceptions allow developers to create their own exception classes to handle specific errors.",
+                    "exampleCode": "class MyException extends Exception {\n  MyException(String msg){\n    super(msg);\n  }\n}",
+                    "keyPoints": [
+                        "User-defined exceptions",
+                        "Extend Exception class",
+                        "Used for custom error handling"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class is extended to create custom exceptions?",
+                            "options": [
+                                "Object",
+                                "Error",
+                                "Exception",
+                                "Throwable"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Custom exceptions extend the Exception class."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch13",
+            "title": "Collections Framework",
+            "description": "Understanding Java Collections used to store and manipulate groups of objects",
+            "pages": [
+                {
+                    "id": "java-ch13-page1",
+                    "title": "Introduction to Collections",
+                    "content": "The Java Collections Framework provides classes and interfaces to store and manipulate groups of objects efficiently.",
+                    "exampleCode": "import java.util.ArrayList;\n\nArrayList<String> list = new ArrayList<>();",
+                    "keyPoints": [
+                        "Stores groups of objects",
+                        "Part of java.util package",
+                        "Provides flexible data structures"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which package contains collections?",
+                            "options": [
+                                "java.lang",
+                                "java.io",
+                                "java.util",
+                                "java.sql"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Collections are part of java.util package."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch13-page2",
+                    "title": "List Interface",
+                    "content": "The List interface stores ordered collections that allow duplicate elements.",
+                    "exampleCode": "List<String> names = new ArrayList<>();\nnames.add(\"Java\");",
+                    "keyPoints": [
+                        "Maintains order",
+                        "Allows duplicate values",
+                        "Examples: ArrayList, LinkedList"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Does List allow duplicate values?",
+                            "options": [
+                                "Yes",
+                                "No",
+                                "Sometimes",
+                                "Only once"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Lists allow duplicate elements."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch13-page3",
+                    "title": "Set Interface",
+                    "content": "The Set interface stores unique elements and does not allow duplicates.",
+                    "exampleCode": "Set<Integer> numbers = new HashSet<>();\nnumbers.add(1);",
+                    "keyPoints": [
+                        "Stores unique elements",
+                        "No duplicate values allowed",
+                        "Example: HashSet"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which collection does not allow duplicates?",
+                            "options": [
+                                "List",
+                                "Set",
+                                "ArrayList",
+                                "Vector"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Set does not allow duplicate elements."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch13-page4",
+                    "title": "Map Interface",
+                    "content": "The Map interface stores key-value pairs where each key maps to a specific value.",
+                    "exampleCode": "Map<Integer,String> map = new HashMap<>();\nmap.put(1,\"Java\");",
+                    "keyPoints": [
+                        "Stores key-value pairs",
+                        "Keys must be unique",
+                        "Example: HashMap"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does Map store?",
+                            "options": [
+                                "Numbers",
+                                "Objects",
+                                "Key-value pairs",
+                                "Strings only"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Map stores key-value pairs."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch13-page5",
+                    "title": "ArrayList",
+                    "content": "ArrayList is a resizable array implementation of the List interface.",
+                    "exampleCode": "ArrayList<String> list = new ArrayList<>();\nlist.add(\"Java\");",
+                    "keyPoints": [
+                        "Dynamic array",
+                        "Maintains order",
+                        "Allows duplicates"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which collection is a dynamic array?",
+                            "options": [
+                                "HashMap",
+                                "ArrayList",
+                                "Set",
+                                "Tree"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "ArrayList is a dynamic array implementation."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch13-page6",
+                    "title": "HashMap",
+                    "content": "HashMap stores key-value pairs and allows fast data retrieval using keys.",
+                    "exampleCode": "HashMap<Integer,String> map = new HashMap<>();\nmap.put(1,\"Java\");",
+                    "keyPoints": [
+                        "Stores key-value pairs",
+                        "Fast lookup",
+                        "Keys must be unique"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which collection stores key-value pairs?",
+                            "options": [
+                                "List",
+                                "Set",
+                                "HashMap",
+                                "Array"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "HashMap stores key-value pairs."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch14",
+            "title": "File Handling",
+            "description": "Understanding how Java reads and writes files using File, FileReader, and FileWriter classes",
+            "pages": [
+                {
+                    "id": "java-ch14-page1",
+                    "title": "Introduction to File Handling",
+                    "content": "File handling in Java allows programs to create, read, write, and delete files. It helps store data permanently outside the program.",
+                    "exampleCode": "import java.io.File;\n\nFile file = new File(\"example.txt\");",
+                    "keyPoints": [
+                        "Used for storing data permanently",
+                        "Java provides File class",
+                        "Part of java.io package"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which package is used for file handling in Java?",
+                            "options": [
+                                "java.lang",
+                                "java.util",
+                                "java.io",
+                                "java.net"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The java.io package provides classes for file handling."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch14-page2",
+                    "title": "Creating a File",
+                    "content": "Java provides the File class to create files. The createNewFile() method is used to create a new file.",
+                    "exampleCode": "import java.io.File;\n\nFile file = new File(\"test.txt\");\nfile.createNewFile();",
+                    "keyPoints": [
+                        "File class represents file path",
+                        "createNewFile() creates new file",
+                        "File must be handled using exceptions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method creates a new file?",
+                            "options": [
+                                "newFile()",
+                                "createNewFile()",
+                                "makeFile()",
+                                "openFile()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "createNewFile() creates a new file."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch14-page3",
+                    "title": "Writing to Files",
+                    "content": "Java allows writing data to files using classes like FileWriter and BufferedWriter.",
+                    "exampleCode": "import java.io.FileWriter;\n\nFileWriter writer = new FileWriter(\"data.txt\");\nwriter.write(\"Hello Java\");\nwriter.close();",
+                    "keyPoints": [
+                        "FileWriter writes data to files",
+                        "write() method adds content",
+                        "close() closes file resources"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class is used to write data into files?",
+                            "options": [
+                                "FileReader",
+                                "FileWriter",
+                                "Scanner",
+                                "Reader"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "FileWriter writes data to files."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch14-page4",
+                    "title": "Reading Files",
+                    "content": "Java reads files using FileReader, BufferedReader, or Scanner classes.",
+                    "exampleCode": "import java.io.FileReader;\n\nFileReader reader = new FileReader(\"data.txt\");\nint i;\nwhile((i = reader.read()) != -1){\n  System.out.print((char)i);\n}",
+                    "keyPoints": [
+                        "FileReader reads characters",
+                        "read() reads file data",
+                        "Used to process file content"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class reads file data?",
+                            "options": [
+                                "FileWriter",
+                                "FileReader",
+                                "HashMap",
+                                "ArrayList"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "FileReader reads data from files."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch14-page5",
+                    "title": "BufferedReader and BufferedWriter",
+                    "content": "BufferedReader and BufferedWriter improve file reading and writing performance by buffering data.",
+                    "exampleCode": "BufferedReader br = new BufferedReader(new FileReader(\"data.txt\"));\nString line = br.readLine();\nSystem.out.println(line);",
+                    "keyPoints": [
+                        "Improves performance",
+                        "Reads data line by line",
+                        "Efficient file operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class reads file line by line?",
+                            "options": [
+                                "FileReader",
+                                "BufferedReader",
+                                "Scanner",
+                                "Writer"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "BufferedReader reads file content line by line."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch14-page6",
+                    "title": "Deleting Files",
+                    "content": "Java allows deleting files using the delete() method from the File class.",
+                    "exampleCode": "File file = new File(\"test.txt\");\nfile.delete();",
+                    "keyPoints": [
+                        "delete() removes file",
+                        "Part of File class",
+                        "Used for file management"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method deletes a file?",
+                            "options": [
+                                "remove()",
+                                "delete()",
+                                "erase()",
+                                "destroy()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "delete() removes a file."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "java-ch15",
+            "title": "Java Mini Projects",
+            "description": "Applying Java concepts through small practical projects",
+            "pages": [
+                {
+                    "id": "java-ch15-page1",
+                    "title": "Calculator Application",
+                    "content": "This project creates a simple calculator that performs basic arithmetic operations like addition, subtraction, multiplication, and division.",
+                    "exampleCode": "import java.util.Scanner;\n\npublic class Calculator {\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    int a = sc.nextInt();\n    int b = sc.nextInt();\n    System.out.println(\"Sum: \" + (a + b));\n  }\n}",
+                    "keyPoints": [
+                        "Uses Scanner for user input",
+                        "Applies arithmetic operators",
+                        "Simple command-line calculator"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class is used to take input in Java?",
+                            "options": [
+                                "Scanner",
+                                "InputReader",
+                                "FileReader",
+                                "System"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Scanner is used to take user input in Java."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch15-page2",
+                    "title": "Student Management System",
+                    "content": "This project stores student details such as name and marks and displays them using classes and objects.",
+                    "exampleCode": "class Student {\n  String name;\n  int marks;\n}\n\npublic class Main {\n  public static void main(String[] args) {\n    Student s = new Student();\n    s.name = \"John\";\n    s.marks = 85;\n    System.out.println(s.name + \" \" + s.marks);\n  }\n}",
+                    "keyPoints": [
+                        "Uses classes and objects",
+                        "Stores student data",
+                        "Basic data management"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which concept stores student data here?",
+                            "options": [
+                                "Loop",
+                                "Class and Object",
+                                "File",
+                                "Array"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Classes and objects are used to store student data."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch15-page3",
+                    "title": "Number Guessing Game",
+                    "content": "This game generates a random number and asks the user to guess it. The program provides feedback if the guess is correct or incorrect.",
+                    "exampleCode": "import java.util.Random;\n\nRandom rand = new Random();\nint number = rand.nextInt(10);\nSystem.out.println(\"Random number: \" + number);",
+                    "keyPoints": [
+                        "Uses Random class",
+                        "Interactive user program",
+                        "Practices conditional statements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class generates random numbers?",
+                            "options": [
+                                "Scanner",
+                                "Random",
+                                "Math",
+                                "Array"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Random class generates random numbers."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch15-page4",
+                    "title": "File Organizer",
+                    "content": "This project organizes files in directories using Java file handling. It demonstrates reading and managing files.",
+                    "exampleCode": "import java.io.File;\n\nFile folder = new File(\".\");\nFile[] files = folder.listFiles();\n\nfor(File f : files){\n  System.out.println(f.getName());\n}",
+                    "keyPoints": [
+                        "Uses File class",
+                        "Lists files in directory",
+                        "Demonstrates file management"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class manages files?",
+                            "options": [
+                                "File",
+                                "Scanner",
+                                "ArrayList",
+                                "Random"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "File class manages file operations."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch15-page5",
+                    "title": "Simple Banking System",
+                    "content": "This project simulates a basic banking system with deposit and withdraw operations using classes and methods.",
+                    "exampleCode": "class Bank {\n  int balance = 1000;\n\n  void deposit(int amount){\n    balance += amount;\n  }\n\n  void withdraw(int amount){\n    balance -= amount;\n  }\n}",
+                    "keyPoints": [
+                        "Uses methods for operations",
+                        "Simulates banking operations",
+                        "Practices OOP concepts"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which concept is used in banking system project?",
+                            "options": [
+                                "OOP",
+                                "Loops",
+                                "Arrays",
+                                "Files"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The banking system uses object-oriented programming."
+                        }
+                    ]
+                },
+                {
+                    "id": "java-ch15-page6",
+                    "title": "API Data Fetching",
+                    "content": "Java applications can connect to APIs to retrieve data from the internet. This project demonstrates basic API communication.",
+                    "exampleCode": "import java.net.*;\nimport java.io.*;\n\nURL url = new URL(\"https://api.github.com\");\nBufferedReader br = new BufferedReader(new InputStreamReader(url.openStream()));\nSystem.out.println(br.readLine());",
+                    "keyPoints": [
+                        "Uses java.net package",
+                        "Fetches data from APIs",
+                        "Common in web applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which package helps connect to web APIs?",
+                            "options": [
+                                "java.io",
+                                "java.net",
+                                "java.util",
+                                "java.sql"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "java.net is used for network communication."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is Java?",
+            "answer": "Java is a high-level, object-oriented programming language designed to be platform independent using the JVM.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "Who developed Java?",
+            "answer": "Java was developed by James Gosling and his team at Sun Microsystems in 1995.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are the main features of Java?",
+            "answer": "Java features include platform independence, object-oriented programming, security, robustness, multithreading, and portability.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is JVM?",
+            "answer": "JVM stands for Java Virtual Machine. It is responsible for running Java bytecode and enabling platform independence.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is JDK?",
+            "answer": "JDK stands for Java Development Kit. It includes tools for developing Java applications such as the compiler and runtime environment.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is JRE?",
+            "answer": "JRE stands for Java Runtime Environment. It provides the libraries and JVM required to run Java programs.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between JDK, JRE, and JVM?",
+            "answer": "JDK is used to develop Java applications, JRE provides the runtime environment, and JVM executes Java bytecode.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a class in Java?",
+            "answer": "A class is a blueprint used to create objects. It defines properties and behaviors of objects.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is an object in Java?",
+            "answer": "An object is an instance of a class that contains properties and methods defined in the class.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a constructor?",
+            "answer": "A constructor is a special method used to initialize objects when they are created.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are Java data types?",
+            "answer": "Java data types are divided into primitive types like int, float, boolean, char and non-primitive types like String, arrays, and classes.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is method overloading?",
+            "answer": "Method overloading allows multiple methods with the same name but different parameter lists.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is method overriding?",
+            "answer": "Method overriding occurs when a subclass provides a specific implementation of a method already defined in its parent class.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is inheritance in Java?",
+            "answer": "Inheritance allows a class to inherit properties and methods from another class using the extends keyword.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is polymorphism?",
+            "answer": "Polymorphism allows methods to perform different actions depending on the object calling them.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is abstraction?",
+            "answer": "Abstraction hides implementation details and shows only essential features to the user.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is encapsulation?",
+            "answer": "Encapsulation is the process of wrapping data and methods into a single unit and restricting direct access using access modifiers.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between abstract class and interface?",
+            "answer": "An abstract class can contain both abstract and concrete methods, while an interface contains only abstract methods (before Java 8).",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is exception handling in Java?",
+            "answer": "Exception handling is used to manage runtime errors using try, catch, finally, throw, and throws keywords.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between checked and unchecked exceptions?",
+            "answer": "Checked exceptions are checked at compile time, while unchecked exceptions occur at runtime.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the Java Collections Framework?",
+            "answer": "The Java Collections Framework provides classes and interfaces to store and manipulate groups of objects efficiently.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between ArrayList and LinkedList?",
+            "answer": "ArrayList uses a dynamic array for storage, while LinkedList uses a doubly linked list structure.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a HashMap?",
+            "answer": "HashMap is a collection that stores key-value pairs and allows fast retrieval using keys.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is multithreading in Java?",
+            "answer": "Multithreading allows multiple threads to execute concurrently within a program.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between process and thread?",
+            "answer": "A process is an independent program in execution, while a thread is a smaller unit of execution within a process.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is garbage collection in Java?",
+            "answer": "Garbage collection automatically removes unused objects from memory to free up resources.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between == and equals() in Java?",
+            "answer": "== compares object references, while equals() compares object values.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a package in Java?",
+            "answer": "A package is a namespace that organizes classes and interfaces into groups.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the main method in Java?",
+            "answer": "The main method is the entry point of a Java application where execution begins.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What does the static keyword mean?",
+            "answer": "The static keyword means the member belongs to the class rather than an instance of the class.",
+            "difficulty": "intermediate"
+        }
+    ]
+}

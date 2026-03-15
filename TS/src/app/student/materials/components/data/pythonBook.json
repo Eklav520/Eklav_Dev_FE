@@ -1,0 +1,2434 @@
+{
+    "id": "python-mastery",
+    "title": "Python Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Programming Experts",
+    "chapters": [
+        {
+            "id": "python-ch1",
+            "title": "Introduction to Python",
+            "description": "Understanding Python and its importance",
+            "pages": [
+                {
+                    "id": "python-ch1-page1",
+                    "title": "What is Python?",
+                    "content": "Python is a high-level, interpreted programming language known for its simplicity and readability. It was created by Guido van Rossum and first released in 1991. Python is widely used in web development, data science, artificial intelligence, automation, and software development. Its simple syntax makes it one of the best programming languages for beginners.",
+                    "exampleCode": "print('Hello, Python World!')",
+                    "keyPoints": [
+                        "Python is easy to learn",
+                        "Interpreted programming language",
+                        "Used in AI, web, and automation",
+                        "Created by Guido van Rossum"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Who created Python?",
+                            "options": [
+                                "Dennis Ritchie",
+                                "Guido van Rossum",
+                                "James Gosling",
+                                "Bjarne Stroustrup"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Python was created by Guido van Rossum in 1991."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch1-page2",
+                    "title": "Why Learn Python?",
+                    "content": "Python is one of the most popular programming languages due to its simplicity and versatility. It supports multiple programming paradigms such as object-oriented, procedural, and functional programming. Python is widely used in modern industries including machine learning, web development, data analysis, and automation.",
+                    "exampleCode": "name = 'Student'\nprint('Welcome', name)",
+                    "keyPoints": [
+                        "Easy syntax",
+                        "Large community support",
+                        "Used in data science and AI",
+                        "Cross-platform language"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which field commonly uses Python?",
+                            "options": [
+                                "Data Science",
+                                "Artificial Intelligence",
+                                "Web Development",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Python is widely used in data science, AI, and web development."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch1-page3",
+                    "title": "Installing Python",
+                    "content": "Python can be installed from the official website python.org. After downloading the installer, follow the installation steps and make sure to check the option 'Add Python to PATH'. Once installed, you can run Python programs using the command prompt or terminal.",
+                    "exampleCode": "python --version",
+                    "keyPoints": [
+                        "Download Python from python.org",
+                        "Install Python interpreter",
+                        "Add Python to PATH during installation",
+                        "Verify installation using python --version"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command checks Python version?",
+                            "options": [
+                                "python version",
+                                "python --version",
+                                "check python",
+                                "python check"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "python --version displays the installed Python version."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch1-page4",
+                    "title": "Running Python Programs",
+                    "content": "Python programs can be executed using the Python interpreter. You can run Python code in three main ways: using the interactive Python shell, running Python files (.py) from the terminal, or using an Integrated Development Environment (IDE).",
+                    "exampleCode": "python hello.py",
+                    "keyPoints": [
+                        "Python files use .py extension",
+                        "Programs can run from terminal",
+                        "Interactive shell allows quick testing",
+                        "IDE makes coding easier"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the extension of Python files?",
+                            "options": [
+                                ".java",
+                                ".py",
+                                ".js",
+                                ".cpp"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Python files use the .py extension."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch1-page5",
+                    "title": "Python IDEs",
+                    "content": "Python code can be written using various editors and IDEs. Popular Python IDEs include Visual Studio Code, PyCharm, and Jupyter Notebook. These tools provide features like syntax highlighting, debugging tools, and code completion which help developers write better code.",
+                    "exampleCode": "# Example Python code in any IDE\nprint('Learning Python with Eklav')",
+                    "keyPoints": [
+                        "VS Code is lightweight and popular",
+                        "PyCharm is a powerful Python IDE",
+                        "Jupyter Notebook is used in data science",
+                        "IDEs provide debugging and autocomplete"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which IDE is commonly used for Python development?",
+                            "options": [
+                                "VS Code",
+                                "PyCharm",
+                                "Jupyter Notebook",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "VS Code, PyCharm, and Jupyter Notebook are popular Python development tools."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch2",
+            "title": "Variables and Data Types",
+            "description": "Understanding how Python stores and manages different types of data",
+            "pages": [
+                {
+                    "id": "python-ch2-page1",
+                    "title": "What are Variables?",
+                    "content": "Variables are used to store data values in a program. In Python, variables are created when you assign a value to them. Python automatically determines the data type based on the assigned value.",
+                    "exampleCode": "name = 'John'\nage = 25\nprint(name)\nprint(age)",
+                    "keyPoints": [
+                        "Variables store data values",
+                        "No need to declare variable type",
+                        "Created using assignment operator =",
+                        "Python automatically detects type"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How are variables created in Python?",
+                            "options": [
+                                "Using var keyword",
+                                "Using let keyword",
+                                "By assigning a value",
+                                "By declaring type first"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "In Python, variables are created when a value is assigned."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch2-page2",
+                    "title": "Variable Naming Rules",
+                    "content": "Variable names must follow certain rules. A variable name must start with a letter or underscore, cannot start with a number, and cannot be a Python keyword.",
+                    "exampleCode": "name = 'Alice'\n_age = 20\nstudentName = 'Tom'",
+                    "keyPoints": [
+                        "Must start with letter or underscore",
+                        "Cannot start with numbers",
+                        "Cannot use Python reserved keywords",
+                        "Variable names are case-sensitive"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which of the following is a valid variable name?",
+                            "options": [
+                                "1name",
+                                "_name",
+                                "class",
+                                "2value"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "_name is valid because it starts with an underscore."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch2-page3",
+                    "title": "Multiple Variable Assignment",
+                    "content": "Python allows assigning values to multiple variables in a single line. You can also assign the same value to multiple variables at once.",
+                    "exampleCode": "x, y, z = 10, 20, 30\nprint(x, y, z)\n\na = b = c = 5\nprint(a, b, c)",
+                    "keyPoints": [
+                        "Multiple variables can be assigned in one line",
+                        "Same value can be assigned to multiple variables",
+                        "Improves code readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which syntax assigns the same value to multiple variables?",
+                            "options": [
+                                "a, b, c = 5",
+                                "a = b = c = 5",
+                                "a = 5, b = 5",
+                                "None of the above"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "a = b = c = 5 assigns the same value to all variables."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch2-page4",
+                    "title": "Basic Data Types",
+                    "content": "Python supports multiple built-in data types including integers, floats, strings, and booleans. These data types define the kind of data stored in variables.",
+                    "exampleCode": "age = 25\nprice = 99.99\nname = 'Python'\nisStudent = True",
+                    "keyPoints": [
+                        "int represents integers",
+                        "float represents decimal numbers",
+                        "str represents text",
+                        "bool represents True or False"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type represents text?",
+                            "options": [
+                                "int",
+                                "float",
+                                "str",
+                                "bool"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Strings (str) represent text data."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch2-page5",
+                    "title": "Checking Data Types",
+                    "content": "Python provides the type() function to check the data type of a variable. This helps developers understand what type of data a variable contains.",
+                    "exampleCode": "x = 10\nprint(type(x))\n\ny = 'Hello'\nprint(type(y))",
+                    "keyPoints": [
+                        "type() function checks variable type",
+                        "Useful for debugging",
+                        "Helps identify correct data type"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function checks the data type of a variable?",
+                            "options": [
+                                "datatype()",
+                                "typeof()",
+                                "type()",
+                                "checkType()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "type() returns the data type of a variable."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch2-page6",
+                    "title": "Type Conversion",
+                    "content": "Type conversion allows changing one data type into another. Python provides built-in functions such as int(), float(), and str() for converting data types.",
+                    "exampleCode": "age = '25'\nage = int(age)\nprint(age + 5)",
+                    "keyPoints": [
+                        "int() converts to integer",
+                        "float() converts to decimal",
+                        "str() converts to string",
+                        "Type conversion avoids errors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function converts a value to integer?",
+                            "options": [
+                                "string()",
+                                "float()",
+                                "int()",
+                                "number()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "int() converts a value into an integer."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch3",
+            "title": "Python Operators",
+            "description": "Understanding different types of operators used in Python programs",
+            "pages": [
+                {
+                    "id": "python-ch3-page1",
+                    "title": "Introduction to Operators",
+                    "content": "Operators are special symbols used to perform operations on variables and values. Python provides several types of operators such as arithmetic, comparison, logical, assignment, membership, and identity operators.",
+                    "exampleCode": "a = 10\nb = 5\nprint(a + b)",
+                    "keyPoints": [
+                        "Operators perform operations on values",
+                        "Used in calculations and comparisons",
+                        "Python has multiple types of operators",
+                        "Operators work with variables and data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are operators used for?",
+                            "options": [
+                                "To store values",
+                                "To perform operations on variables",
+                                "To create functions",
+                                "To declare variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Operators perform operations such as addition, comparison, and logical evaluation."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch3-page2",
+                    "title": "Arithmetic Operators",
+                    "content": "Arithmetic operators are used to perform mathematical calculations such as addition, subtraction, multiplication, and division.",
+                    "exampleCode": "a = 10\nb = 3\n\nprint(a + b)\nprint(a - b)\nprint(a * b)\nprint(a / b)",
+                    "keyPoints": [
+                        "+ performs addition",
+                        "- performs subtraction",
+                        "* performs multiplication",
+                        "/ performs division",
+                        "% gives remainder",
+                        "** performs exponentiation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator is used for multiplication?",
+                            "options": [
+                                "+",
+                                "*",
+                                "/",
+                                "%"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "* is the multiplication operator."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch3-page3",
+                    "title": "Comparison Operators",
+                    "content": "Comparison operators compare two values and return either True or False depending on the result of the comparison.",
+                    "exampleCode": "a = 10\nb = 5\n\nprint(a > b)\nprint(a < b)\nprint(a == b)",
+                    "keyPoints": [
+                        "== checks equality",
+                        "!= checks inequality",
+                        "> greater than",
+                        "< less than",
+                        ">= greater than or equal",
+                        "<= less than or equal"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks if two values are equal?",
+                            "options": [
+                                "=",
+                                "==",
+                                "!=",
+                                ">"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "== is used to compare two values for equality."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch3-page4",
+                    "title": "Logical Operators",
+                    "content": "Logical operators are used to combine conditional statements. Python provides three logical operators: and, or, and not.",
+                    "exampleCode": "age = 20\nhasID = True\n\nprint(age > 18 and hasID)",
+                    "keyPoints": [
+                        "and returns True if both conditions are True",
+                        "or returns True if one condition is True",
+                        "not reverses the condition"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which logical operator returns True when both conditions are True?",
+                            "options": [
+                                "or",
+                                "not",
+                                "and",
+                                "xor"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The 'and' operator returns True only if both conditions are True."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch3-page5",
+                    "title": "Assignment Operators",
+                    "content": "Assignment operators are used to assign values to variables. Python also supports shorthand assignment operators that combine operations with assignment.",
+                    "exampleCode": "x = 10\nx += 5\nprint(x)",
+                    "keyPoints": [
+                        "= assigns value",
+                        "+= adds and assigns",
+                        "-= subtracts and assigns",
+                        "*= multiplies and assigns",
+                        "/= divides and assigns"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the += operator do?",
+                            "options": [
+                                "Adds two values",
+                                "Adds and assigns value",
+                                "Subtracts value",
+                                "Multiplies value"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "+= adds a value to the variable and assigns the result."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch3-page6",
+                    "title": "Membership and Identity Operators",
+                    "content": "Membership operators check if a value exists in a sequence like a list or string. Identity operators compare the memory location of two objects.",
+                    "exampleCode": "numbers = [1,2,3,4]\n\nprint(2 in numbers)\n\nx = 10\ny = 10\nprint(x is y)",
+                    "keyPoints": [
+                        "in checks if value exists",
+                        "not in checks if value does not exist",
+                        "is compares object identity",
+                        "is not checks if objects are different"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator checks if a value exists in a list?",
+                            "options": [
+                                "is",
+                                "in",
+                                "==",
+                                "!="
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The 'in' operator checks membership in a sequence."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch4",
+            "title": "Conditional Statements",
+            "description": "Making decisions in Python programs using if, elif, and else",
+            "pages": [
+                {
+                    "id": "python-ch4-page1",
+                    "title": "Introduction to Conditional Statements",
+                    "content": "Conditional statements allow a program to make decisions based on conditions. Python uses if, elif, and else statements to execute different blocks of code depending on whether a condition is True or False.",
+                    "exampleCode": "age = 18\n\nif age >= 18:\n    print('You are eligible to vote')",
+                    "keyPoints": [
+                        "Conditional statements control program flow",
+                        "Python uses if, elif, and else",
+                        "Conditions return True or False",
+                        "Indentation is important in Python"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to check a condition in Python?",
+                            "options": [
+                                "loop",
+                                "if",
+                                "check",
+                                "switch"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The 'if' statement is used to check a condition in Python."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch4-page2",
+                    "title": "The if Statement",
+                    "content": "The if statement is used to test a condition. If the condition is True, the code block inside the if statement is executed.",
+                    "exampleCode": "temperature = 30\n\nif temperature > 25:\n    print('It is a hot day')",
+                    "keyPoints": [
+                        "if checks a condition",
+                        "Runs code only if condition is True",
+                        "Uses indentation for code blocks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens if the if condition is False?",
+                            "options": [
+                                "Program stops",
+                                "Code block is skipped",
+                                "Error occurs",
+                                "Code runs again"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "If the condition is False, the code block inside the if statement is skipped."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch4-page3",
+                    "title": "The if-else Statement",
+                    "content": "The else statement runs when the condition in the if statement is False. It provides an alternative block of code.",
+                    "exampleCode": "age = 16\n\nif age >= 18:\n    print('You can vote')\nelse:\n    print('You cannot vote yet')",
+                    "keyPoints": [
+                        "else runs when if condition is False",
+                        "Provides alternative execution path",
+                        "Used for decision making"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When does the else block run?",
+                            "options": [
+                                "When condition is True",
+                                "When condition is False",
+                                "Always",
+                                "Never"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The else block executes when the if condition evaluates to False."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch4-page4",
+                    "title": "The if-elif-else Statement",
+                    "content": "The elif statement allows checking multiple conditions. It stands for 'else if'. Python evaluates conditions in order and executes the first True block.",
+                    "exampleCode": "marks = 75\n\nif marks >= 90:\n    print('Grade A')\nelif marks >= 70:\n    print('Grade B')\nelse:\n    print('Grade C')",
+                    "keyPoints": [
+                        "elif checks additional conditions",
+                        "Allows multiple condition checks",
+                        "Only one block executes"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does 'elif' stand for?",
+                            "options": [
+                                "else if",
+                                "end if",
+                                "extra if",
+                                "error if"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "'elif' means 'else if' in Python."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch4-page5",
+                    "title": "Nested Conditional Statements",
+                    "content": "Nested conditions occur when an if statement is placed inside another if statement. This helps check complex decision logic.",
+                    "exampleCode": "age = 20\ncitizen = True\n\nif age >= 18:\n    if citizen:\n        print('Eligible to vote')",
+                    "keyPoints": [
+                        "Nested conditions place if inside another if",
+                        "Used for complex decisions",
+                        "Indentation must be correct"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a nested if statement?",
+                            "options": [
+                                "An if inside another if",
+                                "Two if statements in different files",
+                                "Multiple variables",
+                                "A loop statement"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Nested if means placing one if statement inside another."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch4-page6",
+                    "title": "Short-Hand if Statement",
+                    "content": "Python allows writing simple if statements in a single line. This is called shorthand if or conditional expression.",
+                    "exampleCode": "age = 18\nprint('Adult') if age >= 18 else print('Minor')",
+                    "keyPoints": [
+                        "Short-hand if simplifies code",
+                        "Useful for simple conditions",
+                        "Also called ternary expression"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is another name for short-hand if?",
+                            "options": [
+                                "Loop expression",
+                                "Ternary expression",
+                                "Switch statement",
+                                "Function expression"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Short-hand if is also known as a ternary expression."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch5",
+            "title": "Loops",
+            "description": "Repeating tasks in Python using loops such as for and while",
+            "pages": [
+                {
+                    "id": "python-ch5-page1",
+                    "title": "Introduction to Loops",
+                    "content": "Loops allow programmers to repeat a block of code multiple times without writing it repeatedly. Python mainly provides two types of loops: for loop and while loop. Loops are useful when working with lists, ranges, and repetitive tasks.",
+                    "exampleCode": "for i in range(3):\n    print('Hello Python')",
+                    "keyPoints": [
+                        "Loops repeat code multiple times",
+                        "Reduces repetitive code",
+                        "Python has two main loops: for and while",
+                        "Commonly used with lists and ranges"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of loops?",
+                            "options": [
+                                "To store variables",
+                                "To repeat a block of code",
+                                "To define functions",
+                                "To declare variables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Loops are used to repeat a block of code multiple times."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch5-page2",
+                    "title": "The for Loop",
+                    "content": "The for loop is used to iterate over a sequence such as a list, tuple, string, or range. It executes the block of code once for each item in the sequence.",
+                    "exampleCode": "for number in range(5):\n    print(number)",
+                    "keyPoints": [
+                        "for loop iterates over sequences",
+                        "Often used with range() function",
+                        "Runs fixed number of times"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function is commonly used with for loops?",
+                            "options": [
+                                "type()",
+                                "range()",
+                                "input()",
+                                "len()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "range() is commonly used with for loops to generate sequences."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch5-page3",
+                    "title": "The while Loop",
+                    "content": "The while loop executes a block of code as long as a condition remains True. It is useful when the number of iterations is not known beforehand.",
+                    "exampleCode": "count = 1\n\nwhile count <= 5:\n    print(count)\n    count += 1",
+                    "keyPoints": [
+                        "Runs while condition is True",
+                        "Used when number of iterations is unknown",
+                        "Condition is checked before each loop"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When does a while loop stop?",
+                            "options": [
+                                "When condition becomes False",
+                                "When program ends",
+                                "When variable becomes zero",
+                                "When loop reaches 10"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The while loop stops when the condition becomes False."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch5-page4",
+                    "title": "The break Statement",
+                    "content": "The break statement is used to immediately exit a loop even if the loop condition is still True. It is commonly used when a specific condition is met.",
+                    "exampleCode": "for i in range(10):\n    if i == 5:\n        break\n    print(i)",
+                    "keyPoints": [
+                        "break stops the loop immediately",
+                        "Used when a condition is met",
+                        "Works with both for and while loops"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the break statement do?",
+                            "options": [
+                                "Restarts the loop",
+                                "Stops the loop immediately",
+                                "Skips an iteration",
+                                "Creates a new loop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "break stops the loop immediately."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch5-page5",
+                    "title": "The continue Statement",
+                    "content": "The continue statement skips the current iteration of the loop and moves to the next iteration without stopping the loop completely.",
+                    "exampleCode": "for i in range(5):\n    if i == 2:\n        continue\n    print(i)",
+                    "keyPoints": [
+                        "continue skips current iteration",
+                        "Loop continues to next iteration",
+                        "Useful for skipping specific conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does continue do in a loop?",
+                            "options": [
+                                "Stops the loop",
+                                "Skips current iteration",
+                                "Restarts the loop",
+                                "Ends the program"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "continue skips the current iteration and moves to the next."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch5-page6",
+                    "title": "Nested Loops",
+                    "content": "A nested loop is a loop inside another loop. Nested loops are commonly used when working with matrices, tables, or complex iterations.",
+                    "exampleCode": "for i in range(3):\n    for j in range(2):\n        print(i, j)",
+                    "keyPoints": [
+                        "Loop inside another loop",
+                        "Outer loop controls overall iterations",
+                        "Inner loop runs for each outer iteration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a nested loop?",
+                            "options": [
+                                "Two loops in different files",
+                                "Loop inside another loop",
+                                "Loop with conditions",
+                                "Loop with break statement"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Nested loop means placing one loop inside another."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch6",
+            "title": "Python Strings",
+            "description": "Working with text data using Python strings",
+            "pages": [
+                {
+                    "id": "python-ch6-page1",
+                    "title": "Introduction to Strings",
+                    "content": "A string in Python is a sequence of characters used to store text. Strings can be created using single quotes (' '), double quotes (\" \"), or triple quotes for multi-line text.",
+                    "exampleCode": "name = 'Python'\nmessage = \"Welcome to Python\"\nprint(name)\nprint(message)",
+                    "keyPoints": [
+                        "Strings store text data",
+                        "Created using single or double quotes",
+                        "Strings are immutable",
+                        "Commonly used for messages and user input"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a string in Python?",
+                            "options": [
+                                "A numeric value",
+                                "A sequence of characters",
+                                "A loop structure",
+                                "A variable type for numbers"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A string is a sequence of characters used to represent text."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch6-page2",
+                    "title": "String Indexing",
+                    "content": "String indexing allows accessing individual characters of a string using their position. Indexes start from 0 in Python.",
+                    "exampleCode": "text = 'Python'\nprint(text[0])\nprint(text[3])",
+                    "keyPoints": [
+                        "Index starts from 0",
+                        "Access characters using square brackets",
+                        "Useful for extracting characters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the index of the first character in a string?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "None"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Python indexing starts at 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch6-page3",
+                    "title": "String Slicing",
+                    "content": "String slicing allows extracting a portion of a string using start and end indexes. The syntax is string[start:end].",
+                    "exampleCode": "text = 'PythonProgramming'\nprint(text[0:6])\nprint(text[6:])",
+                    "keyPoints": [
+                        "Extract part of a string",
+                        "Uses start and end index",
+                        "End index is not included"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does text[0:3] return?",
+                            "options": [
+                                "First three characters",
+                                "Last three characters",
+                                "Entire string",
+                                "Error"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Slicing from index 0 to 3 returns the first three characters."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch6-page4",
+                    "title": "String Methods",
+                    "content": "Python provides many built-in methods to manipulate strings such as lower(), upper(), strip(), and replace(). These methods help modify or analyze string content.",
+                    "exampleCode": "text = 'Python'\nprint(text.upper())\nprint(text.lower())",
+                    "keyPoints": [
+                        "upper() converts to uppercase",
+                        "lower() converts to lowercase",
+                        "replace() replaces text",
+                        "strip() removes spaces"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method converts a string to uppercase?",
+                            "options": [
+                                "upper()",
+                                "lower()",
+                                "capitalize()",
+                                "title()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "upper() converts all characters to uppercase."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch6-page5",
+                    "title": "String Concatenation",
+                    "content": "String concatenation means joining two or more strings together. This is usually done using the + operator.",
+                    "exampleCode": "first = 'Hello'\nsecond = 'Python'\nmessage = first + ' ' + second\nprint(message)",
+                    "keyPoints": [
+                        "Concatenation joins strings",
+                        "Uses + operator",
+                        "Commonly used for building messages"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator is used for string concatenation?",
+                            "options": [
+                                "-",
+                                "*",
+                                "+",
+                                "/"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "+ is used to join strings together."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch6-page6",
+                    "title": "String Formatting",
+                    "content": "String formatting allows inserting variables into strings. Python supports several formatting techniques including f-strings, format(), and % formatting.",
+                    "exampleCode": "name = 'John'\nage = 25\nprint(f'My name is {name} and I am {age} years old')",
+                    "keyPoints": [
+                        "f-strings provide modern formatting",
+                        "Allows inserting variables in strings",
+                        "Improves readability of output"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method is commonly used for modern string formatting?",
+                            "options": [
+                                "format()",
+                                "f-strings",
+                                "replace()",
+                                "concat()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "f-strings are the modern and recommended way for formatting strings."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch7",
+            "title": "Python Lists",
+            "description": "Understanding lists and how to store multiple values in Python",
+            "pages": [
+                {
+                    "id": "python-ch7-page1",
+                    "title": "Introduction to Lists",
+                    "content": "A list in Python is a collection used to store multiple values in a single variable. Lists are ordered, changeable (mutable), and allow duplicate values. Lists are created using square brackets [].",
+                    "exampleCode": "fruits = ['Apple', 'Banana', 'Orange']\nprint(fruits)",
+                    "keyPoints": [
+                        "Lists store multiple values",
+                        "Lists are ordered",
+                        "Lists are mutable (can change)",
+                        "Lists allow duplicate values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used to create a list in Python?",
+                            "options": [
+                                "()",
+                                "{}",
+                                "[]",
+                                "<>"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Lists are created using square brackets []."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch7-page2",
+                    "title": "Accessing List Elements",
+                    "content": "List elements can be accessed using indexes. Indexes start from 0, meaning the first element has index 0.",
+                    "exampleCode": "fruits = ['Apple', 'Banana', 'Orange']\nprint(fruits[0])\nprint(fruits[2])",
+                    "keyPoints": [
+                        "List index starts at 0",
+                        "Access elements using square brackets",
+                        "Useful for retrieving specific values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the index of the first element in a list?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "None"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The first element of a list has index 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch7-page3",
+                    "title": "List Slicing",
+                    "content": "List slicing allows extracting a portion of a list using start and end indexes. The syntax is list[start:end].",
+                    "exampleCode": "numbers = [10,20,30,40,50]\nprint(numbers[1:4])",
+                    "keyPoints": [
+                        "Extract a portion of a list",
+                        "Uses start and end indexes",
+                        "End index is not included"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does numbers[1:3] return?",
+                            "options": [
+                                "[10,20]",
+                                "[20,30]",
+                                "[30,40]",
+                                "[20,30,40]"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "numbers[1:3] returns elements at index 1 and 2."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch7-page4",
+                    "title": "Adding Elements to Lists",
+                    "content": "Python provides several methods to add elements to lists such as append(), insert(), and extend().",
+                    "exampleCode": "fruits = ['Apple','Banana']\nfruits.append('Orange')\nprint(fruits)",
+                    "keyPoints": [
+                        "append() adds element to end",
+                        "insert() adds element at specific position",
+                        "extend() adds multiple elements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method adds an element to the end of a list?",
+                            "options": [
+                                "add()",
+                                "append()",
+                                "insert()",
+                                "push()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "append() adds an element to the end of a list."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch7-page5",
+                    "title": "Removing Elements from Lists",
+                    "content": "Python lists allow removing elements using methods such as remove(), pop(), and clear().",
+                    "exampleCode": "numbers = [1,2,3,4]\nnumbers.remove(3)\nprint(numbers)",
+                    "keyPoints": [
+                        "remove() removes specific value",
+                        "pop() removes element by index",
+                        "clear() removes all elements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method removes an element by index?",
+                            "options": [
+                                "remove()",
+                                "delete()",
+                                "pop()",
+                                "clear()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "pop() removes element using its index."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch7-page6",
+                    "title": "List Comprehension",
+                    "content": "List comprehension provides a short and efficient way to create lists using a single line of code.",
+                    "exampleCode": "numbers = [x for x in range(5)]\nprint(numbers)",
+                    "keyPoints": [
+                        "Short way to create lists",
+                        "Improves readability",
+                        "Common in data processing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is list comprehension used for?",
+                            "options": [
+                                "Deleting lists",
+                                "Creating lists in a compact way",
+                                "Sorting lists",
+                                "Looping lists only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "List comprehension is used to create lists in a concise way."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch8",
+            "title": "Tuples and Sets",
+            "description": "Understanding tuples and sets for storing collections of data in Python",
+            "pages": [
+                {
+                    "id": "python-ch8-page1",
+                    "title": "Introduction to Tuples",
+                    "content": "A tuple is a collection used to store multiple items in a single variable. Tuples are ordered and immutable, meaning their values cannot be changed after creation.",
+                    "exampleCode": "numbers = (10, 20, 30)\nprint(numbers)",
+                    "keyPoints": [
+                        "Tuples store multiple values",
+                        "Tuples are ordered",
+                        "Tuples are immutable",
+                        "Created using parentheses ()"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which symbol is used to create a tuple?",
+                            "options": [
+                                "[]",
+                                "{}",
+                                "()",
+                                "<>"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Tuples are created using parentheses ()."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch8-page2",
+                    "title": "Accessing Tuple Elements",
+                    "content": "Tuple elements can be accessed using indexes similar to lists. Indexing starts from 0, and negative indexing can also be used to access elements from the end.",
+                    "exampleCode": "colors = ('red','green','blue')\nprint(colors[0])\nprint(colors[-1])",
+                    "keyPoints": [
+                        "Index starts from 0",
+                        "Access elements using square brackets",
+                        "Supports negative indexing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does colors[-1] return?",
+                            "options": [
+                                "First element",
+                                "Last element",
+                                "Second element",
+                                "Error"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Negative indexing accesses elements from the end."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch8-page3",
+                    "title": "Tuple Methods",
+                    "content": "Tuples have limited built-in methods compared to lists. The most commonly used methods are count() and index().",
+                    "exampleCode": "numbers = (1,2,2,3,4)\nprint(numbers.count(2))\nprint(numbers.index(3))",
+                    "keyPoints": [
+                        "count() counts occurrences of a value",
+                        "index() returns position of value",
+                        "Tuples have fewer methods because they are immutable"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method counts occurrences of a value in a tuple?",
+                            "options": [
+                                "find()",
+                                "count()",
+                                "total()",
+                                "search()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "count() returns the number of occurrences of a value."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch8-page4",
+                    "title": "Introduction to Sets",
+                    "content": "A set is an unordered collection of unique elements. Sets are useful for removing duplicates and performing mathematical operations like union and intersection.",
+                    "exampleCode": "numbers = {1,2,3,4}\nprint(numbers)",
+                    "keyPoints": [
+                        "Sets store unique values",
+                        "Sets are unordered",
+                        "Sets do not allow duplicates",
+                        "Created using curly braces {}"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which feature is unique to sets?",
+                            "options": [
+                                "Ordered elements",
+                                "Allows duplicates",
+                                "Stores unique values",
+                                "Immutable values"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Sets automatically remove duplicate values."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch8-page5",
+                    "title": "Set Methods",
+                    "content": "Python provides methods such as add(), remove(), and clear() to modify sets.",
+                    "exampleCode": "numbers = {1,2,3}\nnumbers.add(4)\nprint(numbers)",
+                    "keyPoints": [
+                        "add() adds an element",
+                        "remove() deletes an element",
+                        "clear() removes all elements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method adds an element to a set?",
+                            "options": [
+                                "insert()",
+                                "add()",
+                                "append()",
+                                "push()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "add() is used to insert elements into a set."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch8-page6",
+                    "title": "Set Operations",
+                    "content": "Sets support mathematical operations such as union, intersection, and difference. These operations help compare elements between sets.",
+                    "exampleCode": "a = {1,2,3}\nb = {3,4,5}\nprint(a.union(b))\nprint(a.intersection(b))",
+                    "keyPoints": [
+                        "union() combines sets",
+                        "intersection() finds common elements",
+                        "difference() finds unique elements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method finds common elements between sets?",
+                            "options": [
+                                "union()",
+                                "intersection()",
+                                "difference()",
+                                "combine()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "intersection() returns common elements between sets."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch9",
+            "title": "Python Dictionaries",
+            "description": "Understanding dictionaries for storing key-value pairs in Python",
+            "pages": [
+                {
+                    "id": "python-ch9-page1",
+                    "title": "Introduction to Dictionaries",
+                    "content": "A dictionary in Python is a collection used to store data in key-value pairs. Dictionaries are ordered, changeable (mutable), and do not allow duplicate keys.",
+                    "exampleCode": "student = {\n  'name': 'John',\n  'age': 20,\n  'course': 'Python'\n}\nprint(student)",
+                    "keyPoints": [
+                        "Stores data in key-value pairs",
+                        "Keys must be unique",
+                        "Dictionaries are mutable",
+                        "Created using curly braces {}"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a dictionary store?",
+                            "options": [
+                                "Only numbers",
+                                "Only lists",
+                                "Key-value pairs",
+                                "Only strings"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Dictionaries store data using key-value pairs."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch9-page2",
+                    "title": "Accessing Dictionary Values",
+                    "content": "Dictionary values can be accessed using their keys. This allows retrieving specific values stored in the dictionary.",
+                    "exampleCode": "student = {'name':'Alice','age':22}\nprint(student['name'])",
+                    "keyPoints": [
+                        "Access values using keys",
+                        "Keys act as identifiers",
+                        "Square brackets are used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you access a value in a dictionary?",
+                            "options": [
+                                "Using index",
+                                "Using key",
+                                "Using loop only",
+                                "Using slice"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Dictionary values are accessed using their keys."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch9-page3",
+                    "title": "Adding and Updating Values",
+                    "content": "New key-value pairs can be added to a dictionary, and existing values can be updated using assignment.",
+                    "exampleCode": "student = {'name':'Alice','age':22}\nstudent['age'] = 23\nstudent['city'] = 'New York'\nprint(student)",
+                    "keyPoints": [
+                        "New keys can be added easily",
+                        "Existing values can be updated",
+                        "Dictionaries are mutable"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens if you assign a value to an existing key?",
+                            "options": [
+                                "It creates duplicate key",
+                                "It updates the value",
+                                "It deletes the key",
+                                "It causes error"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Assigning a value to an existing key updates its value."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch9-page4",
+                    "title": "Dictionary Methods",
+                    "content": "Python provides several built-in methods to work with dictionaries such as keys(), values(), and items().",
+                    "exampleCode": "student = {'name':'Alice','age':22}\nprint(student.keys())\nprint(student.values())",
+                    "keyPoints": [
+                        "keys() returns all keys",
+                        "values() returns all values",
+                        "items() returns key-value pairs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method returns all dictionary keys?",
+                            "options": [
+                                "keys()",
+                                "values()",
+                                "items()",
+                                "get()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "keys() returns all the keys in the dictionary."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch9-page5",
+                    "title": "Removing Dictionary Items",
+                    "content": "Dictionary items can be removed using methods like pop(), popitem(), and clear().",
+                    "exampleCode": "student = {'name':'Alice','age':22}\nstudent.pop('age')\nprint(student)",
+                    "keyPoints": [
+                        "pop() removes specific key",
+                        "popitem() removes last item",
+                        "clear() removes all items"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method removes a specific key from a dictionary?",
+                            "options": [
+                                "delete()",
+                                "pop()",
+                                "remove()",
+                                "clear()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "pop() removes the specified key from the dictionary."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch9-page6",
+                    "title": "Iterating Dictionaries",
+                    "content": "You can loop through dictionaries using for loops to access keys, values, or both.",
+                    "exampleCode": "student = {'name':'Alice','age':22}\nfor key, value in student.items():\n    print(key, value)",
+                    "keyPoints": [
+                        "Use loops to iterate dictionaries",
+                        "items() returns key-value pairs",
+                        "Useful for processing data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method returns key-value pairs for iteration?",
+                            "options": [
+                                "keys()",
+                                "values()",
+                                "items()",
+                                "pairs()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "items() returns key-value pairs for iteration."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch10",
+            "title": "Python Functions",
+            "description": "Understanding how to create and use functions in Python",
+            "pages": [
+                {
+                    "id": "python-ch10-page1",
+                    "title": "Introduction to Functions",
+                    "content": "A function is a block of reusable code that performs a specific task. Functions help make programs modular, readable, and easier to maintain.",
+                    "exampleCode": "def greet():\n    print('Hello, Python!')\n\ngreet()",
+                    "keyPoints": [
+                        "Functions group reusable code",
+                        "Improve program structure",
+                        "Reduce code repetition",
+                        "Defined using the def keyword"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to define a function in Python?",
+                            "options": [
+                                "function",
+                                "def",
+                                "fun",
+                                "define"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Functions in Python are defined using the def keyword."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch10-page2",
+                    "title": "Calling a Function",
+                    "content": "Once a function is defined, it can be executed by calling its name followed by parentheses.",
+                    "exampleCode": "def sayHello():\n    print('Hello Student')\n\nsayHello()",
+                    "keyPoints": [
+                        "Functions must be called to execute",
+                        "Parentheses () are required",
+                        "Function can be called multiple times"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you execute a function?",
+                            "options": [
+                                "Using run keyword",
+                                "Calling its name with parentheses",
+                                "Using execute()",
+                                "Using call keyword"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Functions run when their name is called with parentheses."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch10-page3",
+                    "title": "Function Parameters",
+                    "content": "Parameters allow passing data into functions. This makes functions more flexible and reusable.",
+                    "exampleCode": "def greet(name):\n    print('Hello', name)\n\ngreet('John')",
+                    "keyPoints": [
+                        "Parameters receive values",
+                        "Values passed are called arguments",
+                        "Functions can have multiple parameters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are values passed into a function called?",
+                            "options": [
+                                "Parameters",
+                                "Arguments",
+                                "Variables",
+                                "Indexes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Values passed into a function are called arguments."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch10-page4",
+                    "title": "Return Statement",
+                    "content": "The return statement sends a value back from a function. This allows functions to produce results that can be used elsewhere in the program.",
+                    "exampleCode": "def add(a, b):\n    return a + b\n\nresult = add(3, 5)\nprint(result)",
+                    "keyPoints": [
+                        "return sends value back",
+                        "Function stops when return executes",
+                        "Returned value can be stored in a variable"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the return statement do?",
+                            "options": [
+                                "Stops the program",
+                                "Returns a value from the function",
+                                "Deletes variables",
+                                "Loops the function"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "return sends a result back from a function."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch10-page5",
+                    "title": "Default Parameters",
+                    "content": "Default parameters allow assigning default values to function parameters. If no argument is passed, the default value is used.",
+                    "exampleCode": "def greet(name='Student'):\n    print('Hello', name)\n\ngreet()\ngreet('Alice')",
+                    "keyPoints": [
+                        "Default values avoid errors",
+                        "Arguments can override default values",
+                        "Useful for optional parameters"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens if no argument is passed to a default parameter?",
+                            "options": [
+                                "Error occurs",
+                                "Default value is used",
+                                "Program stops",
+                                "Value becomes None"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The default value is used if no argument is provided."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch10-page6",
+                    "title": "Lambda Functions",
+                    "content": "A lambda function is a small anonymous function defined using the lambda keyword. It is often used for simple operations in a single line.",
+                    "exampleCode": "add = lambda a, b: a + b\nprint(add(4, 6))",
+                    "keyPoints": [
+                        "Lambda functions are anonymous",
+                        "Defined using lambda keyword",
+                        "Useful for short operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword defines a lambda function?",
+                            "options": [
+                                "lambda",
+                                "def",
+                                "func",
+                                "anonymous"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Lambda functions are defined using the lambda keyword."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch11",
+            "title": "Modules and Packages",
+            "description": "Organizing and reusing Python code using modules and packages",
+            "pages": [
+                {
+                    "id": "python-ch11-page1",
+                    "title": "Introduction to Modules",
+                    "content": "A module is a file containing Python code such as variables, functions, and classes. Modules help organize code and allow developers to reuse functionality across different programs.",
+                    "exampleCode": "# example module usage\nimport math\n\nprint(math.sqrt(16))",
+                    "keyPoints": [
+                        "Modules contain reusable Python code",
+                        "Help organize large programs",
+                        "Can include functions, variables, and classes",
+                        "Imported using the import keyword"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a module in Python?",
+                            "options": [
+                                "A loop structure",
+                                "A Python file containing code",
+                                "A variable type",
+                                "A conditional statement"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A module is a Python file that contains functions, variables, or classes."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch11-page2",
+                    "title": "Importing Modules",
+                    "content": "Python provides the import keyword to use modules. Once a module is imported, its functions and variables can be used in the program.",
+                    "exampleCode": "import math\n\nprint(math.factorial(5))",
+                    "keyPoints": [
+                        "Use import to include modules",
+                        "Access module functions using dot notation",
+                        "Example: math.sqrt()"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword is used to include a module?",
+                            "options": [
+                                "include",
+                                "import",
+                                "require",
+                                "load"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The import keyword is used to include modules in Python."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch11-page3",
+                    "title": "Importing Specific Functions",
+                    "content": "Instead of importing the entire module, Python allows importing specific functions using the from keyword.",
+                    "exampleCode": "from math import sqrt\n\nprint(sqrt(25))",
+                    "keyPoints": [
+                        "Import specific functions using from",
+                        "Reduces typing module name repeatedly",
+                        "Improves code readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which syntax imports only a specific function?",
+                            "options": [
+                                "import function",
+                                "from module import function",
+                                "include module",
+                                "load module"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "from module import function imports a specific function."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch11-page4",
+                    "title": "Creating Custom Modules",
+                    "content": "Developers can create their own modules by writing Python code in a file and importing it into another program.",
+                    "exampleCode": "# file: mymodule.py\n\ndef greet(name):\n    return 'Hello ' + name\n\n# main file\nimport mymodule\nprint(mymodule.greet('John'))",
+                    "keyPoints": [
+                        "Create modules using .py files",
+                        "Import custom modules like built-in modules",
+                        "Helps reuse your own functions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What file extension is used for Python modules?",
+                            "options": [
+                                ".module",
+                                ".python",
+                                ".py",
+                                ".pym"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Python modules are saved with the .py extension."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch11-page5",
+                    "title": "Introduction to Packages",
+                    "content": "A package is a collection of multiple modules organized into directories. Packages help structure large Python projects.",
+                    "exampleCode": "# Example package structure\nmypackage/\n   module1.py\n   module2.py",
+                    "keyPoints": [
+                        "Packages organize multiple modules",
+                        "Used for large projects",
+                        "Stored as directories containing modules"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a package in Python?",
+                            "options": [
+                                "A single Python function",
+                                "A group of modules",
+                                "A loop structure",
+                                "A conditional block"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A package is a collection of modules organized in a directory."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch11-page6",
+                    "title": "Using pip and External Packages",
+                    "content": "Python provides pip, a package manager used to install external libraries and packages from the Python Package Index (PyPI).",
+                    "exampleCode": "pip install requests",
+                    "keyPoints": [
+                        "pip installs external libraries",
+                        "Packages come from PyPI",
+                        "Used to extend Python functionality"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which tool installs external Python packages?",
+                            "options": [
+                                "npm",
+                                "pip",
+                                "apt",
+                                "brew"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "pip is the Python package manager used to install libraries."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch12",
+            "title": "File Handling",
+            "description": "Reading, writing, and managing files using Python",
+            "pages": [
+                {
+                    "id": "python-ch12-page1",
+                    "title": "Introduction to File Handling",
+                    "content": "File handling allows Python programs to read data from files and write data to files. This is useful for storing data permanently outside the program.",
+                    "exampleCode": "file = open('example.txt', 'r')\nprint(file.read())\nfile.close()",
+                    "keyPoints": [
+                        "Files store data permanently",
+                        "Python can read and write files",
+                        "Files must be opened before use",
+                        "Files should be closed after use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of file handling?",
+                            "options": [
+                                "To store data permanently",
+                                "To create loops",
+                                "To perform calculations",
+                                "To define variables"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "File handling is used to store and retrieve data from files."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch12-page2",
+                    "title": "Opening Files",
+                    "content": "Python uses the open() function to open files. The open() function requires the file name and mode such as read, write, or append.",
+                    "exampleCode": "file = open('data.txt', 'r')\nprint(file.read())",
+                    "keyPoints": [
+                        "open() is used to open files",
+                        "Requires file name and mode",
+                        "Common modes include read, write, append"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function is used to open a file in Python?",
+                            "options": [
+                                "file()",
+                                "open()",
+                                "read()",
+                                "write()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The open() function is used to open files."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch12-page3",
+                    "title": "File Modes",
+                    "content": "File modes define how a file should be opened. Common modes include 'r' for reading, 'w' for writing, and 'a' for appending.",
+                    "exampleCode": "# read mode\nopen('file.txt', 'r')\n\n# write mode\nopen('file.txt', 'w')",
+                    "keyPoints": [
+                        "r opens file for reading",
+                        "w opens file for writing",
+                        "a opens file for appending",
+                        "x creates a new file"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which mode opens a file for writing?",
+                            "options": [
+                                "r",
+                                "w",
+                                "a",
+                                "x"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The 'w' mode opens a file for writing."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch12-page4",
+                    "title": "Reading Files",
+                    "content": "Python provides methods such as read(), readline(), and readlines() to read file content.",
+                    "exampleCode": "file = open('example.txt', 'r')\nprint(file.readline())\nfile.close()",
+                    "keyPoints": [
+                        "read() reads entire file",
+                        "readline() reads one line",
+                        "readlines() reads all lines as list"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method reads one line from a file?",
+                            "options": [
+                                "read()",
+                                "readline()",
+                                "readlines()",
+                                "line()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "readline() reads a single line from the file."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch12-page5",
+                    "title": "Writing Files",
+                    "content": "Python can write data to files using the write() method. If the file does not exist, Python will create it in write mode.",
+                    "exampleCode": "file = open('output.txt', 'w')\nfile.write('Hello Python')\nfile.close()",
+                    "keyPoints": [
+                        "write() adds content to file",
+                        "w mode overwrites file content",
+                        "Useful for saving program output"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method writes data to a file?",
+                            "options": [
+                                "print()",
+                                "write()",
+                                "read()",
+                                "save()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "write() is used to insert text into a file."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch12-page6",
+                    "title": "Using the with Statement",
+                    "content": "The with statement automatically handles opening and closing files. This makes the code safer and easier to manage.",
+                    "exampleCode": "with open('data.txt', 'r') as file:\n    print(file.read())",
+                    "keyPoints": [
+                        "with automatically closes files",
+                        "Prevents file handling errors",
+                        "Recommended way to work with files"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is the with statement recommended?",
+                            "options": [
+                                "It makes code shorter",
+                                "It automatically closes files",
+                                "It speeds up programs",
+                                "It removes files"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The with statement automatically closes the file after use."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch13",
+            "title": "Exception Handling",
+            "description": "Handling errors and exceptions in Python programs",
+            "pages": [
+                {
+                    "id": "python-ch13-page1",
+                    "title": "Introduction to Exceptions",
+                    "content": "Exceptions are errors that occur during the execution of a program. Python provides a way to handle these errors using exception handling so the program does not crash unexpectedly.",
+                    "exampleCode": "print(10 / 0)",
+                    "keyPoints": [
+                        "Exceptions occur during program execution",
+                        "Errors can stop the program",
+                        "Exception handling prevents crashes",
+                        "Handled using try and except"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an exception?",
+                            "options": [
+                                "A loop statement",
+                                "An error during program execution",
+                                "A variable type",
+                                "A function call"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "An exception is an error that occurs during program execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch13-page2",
+                    "title": "The try and except Block",
+                    "content": "The try block allows testing code for errors, while the except block handles the error if it occurs.",
+                    "exampleCode": "try:\n    x = 10 / 0\nexcept:\n    print('An error occurred')",
+                    "keyPoints": [
+                        "try block tests code",
+                        "except block handles errors",
+                        "Prevents program from crashing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block handles errors in Python?",
+                            "options": [
+                                "if",
+                                "except",
+                                "loop",
+                                "function"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The except block handles errors when they occur."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch13-page3",
+                    "title": "Handling Specific Exceptions",
+                    "content": "Python allows handling specific types of exceptions such as ZeroDivisionError, ValueError, or TypeError.",
+                    "exampleCode": "try:\n    num = int('abc')\nexcept ValueError:\n    print('Invalid number')",
+                    "keyPoints": [
+                        "Handle specific exceptions",
+                        "Improves program control",
+                        "Common errors include ValueError and TypeError"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which error occurs when converting invalid text to integer?",
+                            "options": [
+                                "TypeError",
+                                "ValueError",
+                                "IndexError",
+                                "SyntaxError"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "ValueError occurs when a value is inappropriate for the operation."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch13-page4",
+                    "title": "The else Block",
+                    "content": "The else block runs if no exceptions occur in the try block. It allows separating normal code from error handling.",
+                    "exampleCode": "try:\n    x = 10 / 2\nexcept:\n    print('Error occurred')\nelse:\n    print('Division successful')",
+                    "keyPoints": [
+                        "Runs when no error occurs",
+                        "Executed after try block",
+                        "Helps separate normal logic"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When does the else block run?",
+                            "options": [
+                                "When an error occurs",
+                                "When no exception occurs",
+                                "Always",
+                                "Never"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The else block executes only if no exception occurs."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch13-page5",
+                    "title": "The finally Block",
+                    "content": "The finally block always executes regardless of whether an exception occurs or not. It is often used for cleanup operations like closing files.",
+                    "exampleCode": "try:\n    print('Trying')\nexcept:\n    print('Error')\nfinally:\n    print('This always runs')",
+                    "keyPoints": [
+                        "Always executes",
+                        "Runs after try and except",
+                        "Commonly used for cleanup tasks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which block always executes?",
+                            "options": [
+                                "try",
+                                "except",
+                                "finally",
+                                "else"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The finally block always runs regardless of exceptions."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch13-page6",
+                    "title": "Raising Exceptions",
+                    "content": "Python allows developers to raise exceptions manually using the raise keyword. This helps enforce rules in programs.",
+                    "exampleCode": "age = -5\n\nif age < 0:\n    raise ValueError('Age cannot be negative')",
+                    "keyPoints": [
+                        "raise keyword creates exceptions",
+                        "Useful for validation",
+                        "Improves program reliability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which keyword raises an exception manually?",
+                            "options": [
+                                "throw",
+                                "raise",
+                                "error",
+                                "exception"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The raise keyword is used to generate exceptions manually."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch14",
+            "title": "Object-Oriented Programming (OOP)",
+            "description": "Understanding classes, objects, and OOP concepts in Python",
+            "pages": [
+                {
+                    "id": "python-ch14-page1",
+                    "title": "Introduction to Object-Oriented Programming",
+                    "content": "Object-Oriented Programming (OOP) is a programming paradigm that organizes code using objects and classes. It helps structure large programs and promotes code reusability.",
+                    "exampleCode": "class Person:\n    pass",
+                    "keyPoints": [
+                        "OOP organizes programs using objects",
+                        "Based on classes and objects",
+                        "Improves code reusability",
+                        "Helps structure large programs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does OOP stand for?",
+                            "options": [
+                                "Object-Oriented Programming",
+                                "Open Object Programming",
+                                "Ordered Operation Programming",
+                                "Object Operation Processing"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "OOP stands for Object-Oriented Programming."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch14-page2",
+                    "title": "Classes and Objects",
+                    "content": "A class is a blueprint for creating objects. An object is an instance of a class that contains data and methods.",
+                    "exampleCode": "class Person:\n    name = 'John'\n\np = Person()\nprint(p.name)",
+                    "keyPoints": [
+                        "Class is a blueprint",
+                        "Object is an instance of a class",
+                        "Objects access class properties"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an object?",
+                            "options": [
+                                "A loop structure",
+                                "An instance of a class",
+                                "A variable",
+                                "A file"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "An object is an instance created from a class."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch14-page3",
+                    "title": "Constructors",
+                    "content": "Constructors are special methods used to initialize objects when they are created. In Python, the constructor is defined using the __init__ method.",
+                    "exampleCode": "class Person:\n    def __init__(self, name):\n        self.name = name\n\np = Person('Alice')\nprint(p.name)",
+                    "keyPoints": [
+                        "__init__ is the constructor method",
+                        "Automatically runs when object is created",
+                        "Used to initialize object properties"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method acts as a constructor in Python?",
+                            "options": [
+                                "__start__",
+                                "__init__",
+                                "__create__",
+                                "__main__"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "__init__ is the constructor method in Python."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch14-page4",
+                    "title": "Inheritance",
+                    "content": "Inheritance allows one class to inherit properties and methods from another class. This promotes code reuse and hierarchical relationships.",
+                    "exampleCode": "class Animal:\n    def speak(self):\n        print('Animal sound')\n\nclass Dog(Animal):\n    pass\n\nobj = Dog()\nobj.speak()",
+                    "keyPoints": [
+                        "Inheritance promotes code reuse",
+                        "Child class inherits from parent class",
+                        "Uses parent class methods"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is inheritance used for?",
+                            "options": [
+                                "Looping",
+                                "Code reuse",
+                                "File handling",
+                                "Exception handling"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Inheritance allows code reuse between classes."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch14-page5",
+                    "title": "Encapsulation",
+                    "content": "Encapsulation restricts direct access to certain variables and methods. It helps protect data and improves program security.",
+                    "exampleCode": "class BankAccount:\n    def __init__(self, balance):\n        self.__balance = balance\n\naccount = BankAccount(1000)",
+                    "keyPoints": [
+                        "Encapsulation protects data",
+                        "Private variables use double underscore",
+                        "Improves program security"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How are private variables defined in Python?",
+                            "options": [
+                                "Using single underscore",
+                                "Using double underscore",
+                                "Using keyword private",
+                                "Using keyword secure"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Private variables are defined using double underscore (__)."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch14-page6",
+                    "title": "Polymorphism",
+                    "content": "Polymorphism allows methods to behave differently depending on the object calling them. This helps write flexible and reusable code.",
+                    "exampleCode": "class Bird:\n    def sound(self):\n        print('Bird sound')\n\nclass Dog:\n    def sound(self):\n        print('Dog bark')\n\nfor animal in (Bird(), Dog()):\n    animal.sound()",
+                    "keyPoints": [
+                        "Same method name with different behavior",
+                        "Supports flexible programming",
+                        "Common in object-oriented design"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is polymorphism?",
+                            "options": [
+                                "Multiple loops",
+                                "Same method behaving differently",
+                                "File storage",
+                                "Variable declaration"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Polymorphism allows methods to behave differently for different objects."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "python-ch15",
+            "title": "Python Mini Projects",
+            "description": "Applying Python concepts by building simple real-world projects",
+            "pages": [
+                {
+                    "id": "python-ch15-page1",
+                    "title": "Calculator Project",
+                    "content": "This project builds a simple calculator that performs addition, subtraction, multiplication, and division. It helps practice variables, functions, and user input.",
+                    "exampleCode": "num1 = int(input('Enter first number: '))\nnum2 = int(input('Enter second number: '))\n\nprint('Addition:', num1 + num2)\nprint('Subtraction:', num1 - num2)\nprint('Multiplication:', num1 * num2)\nprint('Division:', num1 / num2)",
+                    "keyPoints": [
+                        "Uses user input",
+                        "Applies arithmetic operators",
+                        "Demonstrates basic program structure"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function takes input from the user?",
+                            "options": [
+                                "print()",
+                                "input()",
+                                "scan()",
+                                "read()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "input() is used to take user input in Python."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch15-page2",
+                    "title": "Number Guessing Game",
+                    "content": "In this game, the computer randomly selects a number, and the user tries to guess it. The program provides hints if the guess is too high or too low.",
+                    "exampleCode": "import random\n\nnumber = random.randint(1,10)\nguess = int(input('Guess the number: '))\n\nif guess == number:\n    print('Correct!')\nelse:\n    print('Wrong! The number was', number)",
+                    "keyPoints": [
+                        "Uses random module",
+                        "Practices conditional statements",
+                        "Interactive user program"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module generates random numbers?",
+                            "options": [
+                                "math",
+                                "random",
+                                "time",
+                                "sys"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The random module generates random numbers."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch15-page3",
+                    "title": "To-Do List Application",
+                    "content": "This project creates a simple to-do list where users can add tasks and view them. It helps practice lists and loops.",
+                    "exampleCode": "tasks = []\n\nwhile True:\n    task = input('Enter task (or quit): ')\n    if task == 'quit':\n        break\n    tasks.append(task)\n\nprint('Your Tasks:', tasks)",
+                    "keyPoints": [
+                        "Uses lists to store tasks",
+                        "Applies loops and conditions",
+                        "Simple productivity tool"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure is used to store tasks?",
+                            "options": [
+                                "Tuple",
+                                "Dictionary",
+                                "List",
+                                "Set"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Lists are used to store multiple tasks."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch15-page4",
+                    "title": "Password Generator",
+                    "content": "This project generates random passwords using letters, numbers, and symbols. It demonstrates working with strings and randomization.",
+                    "exampleCode": "import random\nimport string\n\ncharacters = string.ascii_letters + string.digits\npassword = ''.join(random.choice(characters) for i in range(8))\nprint('Generated Password:', password)",
+                    "keyPoints": [
+                        "Uses string module",
+                        "Generates secure passwords",
+                        "Demonstrates random selection"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module provides letters and digits for password generation?",
+                            "options": [
+                                "random",
+                                "string",
+                                "math",
+                                "sys"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The string module provides character sets."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch15-page5",
+                    "title": "Simple File Organizer",
+                    "content": "This project organizes files in a directory by moving them into folders based on their file type.",
+                    "exampleCode": "import os\n\nfiles = os.listdir('.')\nprint(files)",
+                    "keyPoints": [
+                        "Uses os module",
+                        "Helps automate file management",
+                        "Demonstrates working with directories"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module is used to interact with the operating system?",
+                            "options": [
+                                "os",
+                                "sys",
+                                "math",
+                                "random"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The os module is used to interact with the operating system."
+                        }
+                    ]
+                },
+                {
+                    "id": "python-ch15-page6",
+                    "title": "Fetching Data from an API",
+                    "content": "This project fetches data from an external API using Python. It introduces working with web data and external services.",
+                    "exampleCode": "import requests\n\nresponse = requests.get('https://api.github.com')\nprint(response.status_code)",
+                    "keyPoints": [
+                        "Uses requests library",
+                        "Fetches data from APIs",
+                        "Common in web applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is commonly used to fetch API data in Python?",
+                            "options": [
+                                "requests",
+                                "urllib",
+                                "socket",
+                                "http"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "The requests library is widely used for API requests."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is Python?",
+            "answer": "Python is a high-level, interpreted programming language known for its readability and simplicity.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "Who created Python?",
+            "answer": "Python was created by Guido van Rossum and released in 1991.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are the key features of Python?",
+            "answer": "Python features include simplicity, readability, dynamic typing, large libraries, and cross-platform compatibility.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a variable in Python?",
+            "answer": "A variable is a container used to store data values in a program.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are Python data types?",
+            "answer": "Common Python data types include int, float, string, boolean, list, tuple, set, and dictionary.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between a list and a tuple?",
+            "answer": "Lists are mutable (can change), while tuples are immutable (cannot change after creation).",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a dictionary in Python?",
+            "answer": "A dictionary is a collection of key-value pairs used to store structured data.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are Python operators?",
+            "answer": "Operators are symbols used to perform operations on variables and values such as arithmetic, comparison, and logical operations.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between == and = in Python?",
+            "answer": "= assigns a value to a variable, while == compares two values for equality.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a loop in Python?",
+            "answer": "A loop allows executing a block of code multiple times using constructs like for and while.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a function in Python?",
+            "answer": "A function is a reusable block of code designed to perform a specific task.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the purpose of the return statement?",
+            "answer": "The return statement sends a value back from a function to the caller.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a module in Python?",
+            "answer": "A module is a file containing Python code such as functions, variables, and classes.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a package in Python?",
+            "answer": "A package is a collection of modules organized in directories.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is file handling in Python?",
+            "answer": "File handling allows programs to read from and write to files stored on the system.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is exception handling?",
+            "answer": "Exception handling is a mechanism to manage runtime errors using try, except, and finally blocks.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between syntax errors and exceptions?",
+            "answer": "Syntax errors occur when code violates Python grammar rules, while exceptions occur during program execution.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is Object-Oriented Programming?",
+            "answer": "OOP is a programming paradigm based on objects and classes that organize code into reusable components.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a class in Python?",
+            "answer": "A class is a blueprint for creating objects that contain properties and methods.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is an object in Python?",
+            "answer": "An object is an instance of a class containing data and behavior.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is inheritance in Python?",
+            "answer": "Inheritance allows a class to inherit properties and methods from another class.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is polymorphism?",
+            "answer": "Polymorphism allows methods to behave differently depending on the object that calls them.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is encapsulation?",
+            "answer": "Encapsulation restricts direct access to data and protects it using private variables.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a lambda function?",
+            "answer": "A lambda function is a small anonymous function defined using the lambda keyword.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are Python decorators?",
+            "answer": "Decorators are functions that modify the behavior of other functions without changing their code.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are generators in Python?",
+            "answer": "Generators are functions that return an iterator using the yield keyword.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is list comprehension?",
+            "answer": "List comprehension provides a concise way to create lists using a single line of code.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between deep copy and shallow copy?",
+            "answer": "A shallow copy duplicates references, while a deep copy duplicates the actual objects recursively.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the Global Interpreter Lock (GIL)?",
+            "answer": "The GIL ensures that only one thread executes Python bytecode at a time in CPython.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is pip?",
+            "answer": "pip is the Python package manager used to install external libraries from PyPI.",
+            "difficulty": "intermediate"
+        }
+    ]
+}

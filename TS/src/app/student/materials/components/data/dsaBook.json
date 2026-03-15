@@ -1,0 +1,2515 @@
+{
+    "id": "DSA-mastery",
+    "title": "DSA with C++ Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "dsa-ch1",
+            "title": "Introduction to Data Structures",
+            "description": "Understanding data structures, their importance, and complexity analysis",
+            "pages": [
+                {
+                    "id": "dsa-ch1-page1",
+                    "title": "What is a Data Structure?",
+                    "content": "A data structure is a way of organizing and storing data so that it can be accessed and modified efficiently. Data structures help in managing large amounts of data and allow programs to perform operations like searching, sorting, and updating efficiently.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int numbers[5] = {1,2,3,4,5};\n    cout << numbers[0];\n    return 0;\n}",
+                    "keyPoints": [
+                        "Data structures organize and store data",
+                        "Improve program efficiency",
+                        "Examples include arrays, stacks, queues, and trees",
+                        "Used in almost every software application"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of a data structure?",
+                            "options": [
+                                "To organize and store data efficiently",
+                                "To create user interfaces",
+                                "To design hardware",
+                                "To manage operating systems"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Data structures organize and store data efficiently for processing."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch1-page2",
+                    "title": "Types of Data Structures",
+                    "content": "Data structures are mainly classified into two categories: linear and non-linear data structures. Linear structures arrange elements sequentially, while non-linear structures arrange data hierarchically.",
+                    "exampleCode": "// Linear structure example\nint arr[3] = {10,20,30};",
+                    "keyPoints": [
+                        "Linear data structures store elements sequentially",
+                        "Examples: Array, Stack, Queue, Linked List",
+                        "Non-linear data structures organize data hierarchically",
+                        "Examples: Trees, Graphs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which of the following is a linear data structure?",
+                            "options": [
+                                "Tree",
+                                "Graph",
+                                "Array",
+                                "Heap"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Arrays store elements sequentially, making them a linear data structure."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch1-page3",
+                    "title": "Importance of Data Structures",
+                    "content": "Data structures play a key role in writing efficient algorithms. They help in optimizing time and memory usage. Many real-world systems such as search engines, databases, and operating systems rely heavily on efficient data structures.",
+                    "exampleCode": "// Simple search example\nint arr[5] = {1,2,3,4,5};\nfor(int i=0;i<5;i++){\n if(arr[i]==3)\n  cout<<\"Found\";\n}",
+                    "keyPoints": [
+                        "Improve algorithm efficiency",
+                        "Reduce time and memory usage",
+                        "Used in databases and operating systems",
+                        "Essential for coding interviews"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why are data structures important?",
+                            "options": [
+                                "They improve efficiency",
+                                "They reduce complexity",
+                                "They organize data",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Data structures improve efficiency, reduce complexity, and organize data."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch1-page4",
+                    "title": "Time Complexity",
+                    "content": "Time complexity measures how the execution time of an algorithm grows as the input size increases. It helps programmers understand how efficient an algorithm is.",
+                    "exampleCode": "// Example of linear time complexity\nfor(int i=0;i<n;i++){\n cout<<i;\n}",
+                    "keyPoints": [
+                        "Measures algorithm efficiency",
+                        "Based on input size",
+                        "Helps compare algorithms",
+                        "Common notations include O(n), O(log n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does time complexity measure?",
+                            "options": [
+                                "Memory usage",
+                                "Execution time relative to input size",
+                                "Program size",
+                                "Compiler speed"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Time complexity measures how execution time grows with input size."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch1-page5",
+                    "title": "Space Complexity",
+                    "content": "Space complexity measures the amount of memory an algorithm uses during execution. Efficient algorithms aim to minimize both time and space complexity.",
+                    "exampleCode": "// Example using extra memory\nint arr[n];",
+                    "keyPoints": [
+                        "Measures memory usage of algorithm",
+                        "Includes input memory and auxiliary memory",
+                        "Important for large datasets",
+                        "Optimizing space improves performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does space complexity measure?",
+                            "options": [
+                                "Execution speed",
+                                "Memory usage",
+                                "Program size",
+                                "Code readability"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Space complexity measures how much memory an algorithm uses."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch1-page6",
+                    "title": "Big-O Notation",
+                    "content": "Big-O notation describes the performance of an algorithm in terms of time or space complexity. It represents the worst-case scenario of an algorithm's growth rate.",
+                    "exampleCode": "// Constant time example\nint x = arr[0];",
+                    "keyPoints": [
+                        "Describes algorithm efficiency",
+                        "Represents worst-case complexity",
+                        "Common examples: O(1), O(n), O(log n)",
+                        "Used to compare algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which notation describes algorithm complexity?",
+                            "options": [
+                                "Big-O",
+                                "HTML",
+                                "JSON",
+                                "Binary"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Big-O notation describes the complexity of algorithms."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch2",
+            "title": "C++ Basics for DSA",
+            "description": "Understanding basic C++ concepts required for learning Data Structures and Algorithms",
+            "pages": [
+                {
+                    "id": "dsa-ch2-page1",
+                    "title": "Introduction to C++ for DSA",
+                    "content": "C++ is one of the most widely used programming languages for learning Data Structures and Algorithms. It provides powerful features like pointers, memory control, and fast execution which are essential for competitive programming and system development.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    cout << \"Welcome to DSA with C++\";\n    return 0;\n}",
+                    "keyPoints": [
+                        "C++ is widely used for competitive programming",
+                        "Provides direct memory management",
+                        "Supports object-oriented programming",
+                        "Fast execution compared to many languages"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is C++ commonly used for DSA?",
+                            "options": [
+                                "Because it is slow",
+                                "Because it provides memory control and speed",
+                                "Because it only works on Windows",
+                                "Because it cannot handle algorithms"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "C++ provides direct memory management and fast execution which makes it ideal for DSA."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch2-page2",
+                    "title": "Variables and Data Types",
+                    "content": "Variables are used to store data in programs. In C++, each variable must have a data type that determines what type of data it can store such as integers, characters, or floating point numbers.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int age = 20;\n    float price = 10.5;\n    char grade = 'A';\n\n    cout << age << endl;\n    cout << price << endl;\n    cout << grade;\n}",
+                    "keyPoints": [
+                        "Variables store program data",
+                        "Each variable has a data type",
+                        "Common types include int, float, char, double",
+                        "Data types define memory allocation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data type stores whole numbers in C++?",
+                            "options": [
+                                "float",
+                                "char",
+                                "int",
+                                "string"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The int data type stores whole numbers."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch2-page3",
+                    "title": "Input and Output (cin and cout)",
+                    "content": "C++ uses the input stream 'cin' to receive input from the user and 'cout' to display output to the screen. These are part of the iostream library.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int number;\n\n    cout << \"Enter a number: \";\n    cin >> number;\n\n    cout << \"You entered: \" << number;\n}",
+                    "keyPoints": [
+                        "cin is used for input",
+                        "cout is used for output",
+                        "Both belong to iostream library",
+                        ">> is extraction operator for input"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which statement is used to take input in C++?",
+                            "options": [
+                                "cout",
+                                "cin",
+                                "print",
+                                "scan"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "cin is used to take input from the user."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch2-page4",
+                    "title": "Functions in C++",
+                    "content": "Functions are blocks of code designed to perform specific tasks. They help organize programs and allow code reuse.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid greet(){\n    cout << \"Hello Student\";\n}\n\nint main() {\n    greet();\n}",
+                    "keyPoints": [
+                        "Functions improve code reuse",
+                        "They divide large programs into smaller parts",
+                        "Functions can accept parameters",
+                        "Functions can return values"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main benefit of using functions?",
+                            "options": [
+                                "Increase file size",
+                                "Code reuse",
+                                "Slow program",
+                                "Remove loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Functions allow code reuse and improve program structure."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch2-page5",
+                    "title": "Arrays in C++",
+                    "content": "Arrays store multiple values of the same data type in a single variable. They are widely used in DSA because many algorithms operate on arrays.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int numbers[5] = {1,2,3,4,5};\n\n    cout << numbers[2];\n}",
+                    "keyPoints": [
+                        "Arrays store multiple values",
+                        "Elements must have same data type",
+                        "Array indexing starts from 0",
+                        "Commonly used in algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the index of the first element in an array?",
+                            "options": [
+                                "1",
+                                "0",
+                                "-1",
+                                "2"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Array indexing starts from 0."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch2-page6",
+                    "title": "Pointers in C++",
+                    "content": "Pointers store the memory address of variables. They are powerful tools used in data structures like linked lists, trees, and graphs.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main() {\n    int x = 10;\n    int *ptr = &x;\n\n    cout << ptr;\n}",
+                    "keyPoints": [
+                        "Pointers store memory addresses",
+                        "Declared using * symbol",
+                        "Access address using & operator",
+                        "Used heavily in data structures"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a pointer store?",
+                            "options": [
+                                "Variable value",
+                                "Memory address",
+                                "Loop condition",
+                                "Function result"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Pointers store the memory address of a variable."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch3",
+            "title": "Arrays in Data Structures",
+            "description": "Understanding arrays and their operations in Data Structures and Algorithms",
+            "pages": [
+                {
+                    "id": "dsa-ch3-page1",
+                    "title": "Introduction to Arrays",
+                    "content": "An array is a collection of elements of the same data type stored in contiguous memory locations. Arrays allow efficient access to elements using their index and are widely used in algorithms.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {10,20,30,40,50};\n    cout << arr[0];\n}",
+                    "keyPoints": [
+                        "Array stores multiple elements",
+                        "All elements have the same data type",
+                        "Stored in contiguous memory locations",
+                        "Accessed using index"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How are array elements accessed?",
+                            "options": [
+                                "Using index",
+                                "Using pointer only",
+                                "Using function",
+                                "Using loops only"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Array elements are accessed using their index positions."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch3-page2",
+                    "title": "Array Traversal",
+                    "content": "Array traversal means visiting each element of the array exactly once to perform operations like printing or modifying values.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {1,2,3,4,5};\n\n    for(int i=0;i<5;i++){\n        cout << arr[i] << \" \";\n    }\n}",
+                    "keyPoints": [
+                        "Traversal means visiting each element",
+                        "Usually done using loops",
+                        "Useful for printing or processing elements",
+                        "Time complexity is O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the time complexity of array traversal?",
+                            "options": [
+                                "O(1)",
+                                "O(n)",
+                                "O(log n)",
+                                "O(n^2)"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Traversal requires visiting each element once, so it is O(n)."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch3-page3",
+                    "title": "Insertion in Array",
+                    "content": "Insertion in an array means adding a new element at a specific position. Elements after that position must be shifted to the right.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[6] = {10,20,30,40,50};\n    int n = 5;\n    int pos = 2;\n    int value = 25;\n\n    for(int i=n;i>pos;i--){\n        arr[i] = arr[i-1];\n    }\n\n    arr[pos] = value;\n\n    for(int i=0;i<n+1;i++){\n        cout<<arr[i]<<\" \";\n    }\n}",
+                    "keyPoints": [
+                        "Insertion requires shifting elements",
+                        "Position must be within array bounds",
+                        "Time complexity is O(n)",
+                        "Common operation in array manipulation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What must happen before inserting an element in the middle of an array?",
+                            "options": [
+                                "Delete elements",
+                                "Shift elements to the right",
+                                "Reverse array",
+                                "Sort array"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Elements must shift right to create space for insertion."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch3-page4",
+                    "title": "Deletion in Array",
+                    "content": "Deletion removes an element from the array. Elements after the deleted position must shift left to fill the gap.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {10,20,30,40,50};\n    int n = 5;\n    int pos = 2;\n\n    for(int i=pos;i<n-1;i++){\n        arr[i] = arr[i+1];\n    }\n\n    for(int i=0;i<n-1;i++){\n        cout<<arr[i]<<\" \";\n    }\n}",
+                    "keyPoints": [
+                        "Deletion removes an element",
+                        "Elements shift left after deletion",
+                        "Reduces array size logically",
+                        "Time complexity is O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens after deleting an element from an array?",
+                            "options": [
+                                "Elements shift left",
+                                "Elements shift right",
+                                "Array reverses",
+                                "Nothing happens"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Elements shift left to fill the deleted element's position."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch3-page5",
+                    "title": "Searching in Arrays",
+                    "content": "Searching is the process of finding an element in the array. The simplest method is Linear Search which checks each element sequentially.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {10,20,30,40,50};\n    int key = 30;\n\n    for(int i=0;i<5;i++){\n        if(arr[i] == key){\n            cout<<\"Element Found\";\n        }\n    }\n}",
+                    "keyPoints": [
+                        "Searching finds a specific value",
+                        "Linear search checks each element",
+                        "Works on unsorted arrays",
+                        "Time complexity is O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which search method checks elements one by one?",
+                            "options": [
+                                "Binary Search",
+                                "Linear Search",
+                                "Hash Search",
+                                "Tree Search"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Linear search checks each element sequentially."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch3-page6",
+                    "title": "Advantages and Limitations of Arrays",
+                    "content": "Arrays provide fast access to elements using indexes but have limitations such as fixed size and expensive insertion or deletion operations.",
+                    "exampleCode": "int arr[5] = {1,2,3,4,5};",
+                    "keyPoints": [
+                        "Fast random access",
+                        "Memory efficient",
+                        "Fixed size limitation",
+                        "Insertion and deletion are costly"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main limitation of arrays?",
+                            "options": [
+                                "Slow access",
+                                "Fixed size",
+                                "Cannot store numbers",
+                                "Cannot use loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Arrays have a fixed size which cannot be easily changed."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch4",
+            "title": "Searching Algorithms",
+            "description": "Understanding searching techniques used to find elements efficiently in data structures",
+            "pages": [
+                {
+                    "id": "dsa-ch4-page1",
+                    "title": "Introduction to Searching",
+                    "content": "Searching is the process of finding a specific element in a data structure. Efficient searching algorithms are important for improving the performance of programs when working with large datasets.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {10,20,30,40,50};\n    int key = 30;\n\n    for(int i=0;i<5;i++){\n        if(arr[i] == key){\n            cout << \"Element Found\";\n        }\n    }\n}",
+                    "keyPoints": [
+                        "Searching finds a specific element",
+                        "Important for efficient algorithms",
+                        "Two main types: Linear Search and Binary Search",
+                        "Used in databases and applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of a searching algorithm?",
+                            "options": [
+                                "To sort elements",
+                                "To find an element in a data structure",
+                                "To delete elements",
+                                "To reverse arrays"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Searching algorithms are used to locate a specific element within a data structure."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch4-page2",
+                    "title": "Linear Search",
+                    "content": "Linear Search is the simplest searching algorithm. It checks each element of the array sequentially until the desired element is found or the array ends.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint linearSearch(int arr[], int n, int key){\n    for(int i=0;i<n;i++){\n        if(arr[i] == key)\n            return i;\n    }\n    return -1;\n}",
+                    "keyPoints": [
+                        "Checks each element sequentially",
+                        "Works on sorted and unsorted arrays",
+                        "Easy to implement",
+                        "Time complexity is O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the time complexity of Linear Search?",
+                            "options": [
+                                "O(1)",
+                                "O(log n)",
+                                "O(n)",
+                                "O(n^2)"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Linear search may check every element, so its complexity is O(n)."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch4-page3",
+                    "title": "Binary Search",
+                    "content": "Binary Search is an efficient searching algorithm that works on sorted arrays. It repeatedly divides the search range into halves until the target element is found.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint binarySearch(int arr[], int left, int right, int key){\n    while(left <= right){\n        int mid = (left + right) / 2;\n\n        if(arr[mid] == key)\n            return mid;\n\n        if(arr[mid] < key)\n            left = mid + 1;\n        else\n            right = mid - 1;\n    }\n\n    return -1;\n}",
+                    "keyPoints": [
+                        "Works only on sorted arrays",
+                        "Divides search space into halves",
+                        "Much faster than linear search",
+                        "Time complexity is O(log n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Binary search works on which type of array?",
+                            "options": [
+                                "Unsorted array",
+                                "Sorted array",
+                                "Random array",
+                                "Linked list"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Binary search requires the array to be sorted."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch4-page4",
+                    "title": "Binary Search Example",
+                    "content": "Binary search repeatedly divides the array into two halves. If the middle element is greater than the target, the search continues in the left half; otherwise it continues in the right half.",
+                    "exampleCode": "int arr[5] = {10,20,30,40,50};\nint key = 30;",
+                    "keyPoints": [
+                        "Middle element divides the search range",
+                        "Reduces comparisons significantly",
+                        "Works best with sorted data",
+                        "Efficient for large datasets"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the advantage of Binary Search?",
+                            "options": [
+                                "Slower performance",
+                                "Works without sorting",
+                                "Reduces search space by half each step",
+                                "Uses more memory"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Binary search halves the search space each iteration, making it efficient."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch4-page5",
+                    "title": "Linear Search vs Binary Search",
+                    "content": "Linear search checks each element sequentially while binary search repeatedly divides the search space. Binary search is much faster for large sorted datasets.",
+                    "exampleCode": "// Linear Search O(n)\n// Binary Search O(log n)",
+                    "keyPoints": [
+                        "Linear search works on any array",
+                        "Binary search requires sorted array",
+                        "Binary search is faster for large datasets",
+                        "Binary search reduces search time significantly"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which search algorithm is faster for large sorted arrays?",
+                            "options": [
+                                "Linear Search",
+                                "Binary Search",
+                                "Bubble Search",
+                                "Sequential Search"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Binary search is faster because it reduces the search space by half."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch4-page6",
+                    "title": "Applications of Searching Algorithms",
+                    "content": "Searching algorithms are widely used in many applications such as databases, search engines, dictionaries, and file systems to quickly locate data.",
+                    "exampleCode": "// Example: Searching user ID in database",
+                    "keyPoints": [
+                        "Used in databases",
+                        "Used in search engines",
+                        "Used in file systems",
+                        "Important for large-scale applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are searching algorithms commonly used?",
+                            "options": [
+                                "Databases",
+                                "Search engines",
+                                "File systems",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Searching algorithms are used in many real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch5",
+            "title": "Sorting Algorithms",
+            "description": "Understanding basic sorting techniques used to arrange data efficiently",
+            "pages": [
+                {
+                    "id": "dsa-ch5-page1",
+                    "title": "Introduction to Sorting",
+                    "content": "Sorting is the process of arranging elements of a data structure in a specific order, usually ascending or descending. Sorting makes searching and data processing more efficient.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint main(){\n    int arr[5] = {50,20,40,10,30};\n}",
+                    "keyPoints": [
+                        "Sorting arranges data in order",
+                        "Common orders are ascending and descending",
+                        "Improves efficiency of searching algorithms",
+                        "Important concept in Data Structures"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of sorting?",
+                            "options": [
+                                "To delete elements",
+                                "To arrange data in order",
+                                "To create arrays",
+                                "To reverse strings"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Sorting arranges data elements in a particular order."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch5-page2",
+                    "title": "Bubble Sort",
+                    "content": "Bubble Sort repeatedly compares adjacent elements and swaps them if they are in the wrong order. Larger elements move to the end of the array in each iteration.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid bubbleSort(int arr[], int n){\n    for(int i=0;i<n-1;i++){\n        for(int j=0;j<n-i-1;j++){\n            if(arr[j] > arr[j+1]){\n                swap(arr[j], arr[j+1]);\n            }\n        }\n    }\n}",
+                    "keyPoints": [
+                        "Compares adjacent elements",
+                        "Swaps elements if needed",
+                        "Simple but inefficient for large data",
+                        "Time complexity O(n^2)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the time complexity of Bubble Sort?",
+                            "options": [
+                                "O(n)",
+                                "O(log n)",
+                                "O(n^2)",
+                                "O(1)"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Bubble Sort has time complexity of O(n^2)."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch5-page3",
+                    "title": "Selection Sort",
+                    "content": "Selection Sort repeatedly finds the smallest element from the unsorted portion and places it at the beginning of the sorted portion.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid selectionSort(int arr[], int n){\n    for(int i=0;i<n-1;i++){\n        int minIndex = i;\n        for(int j=i+1;j<n;j++){\n            if(arr[j] < arr[minIndex])\n                minIndex = j;\n        }\n        swap(arr[i], arr[minIndex]);\n    }\n}",
+                    "keyPoints": [
+                        "Finds minimum element each iteration",
+                        "Places element at correct position",
+                        "Works well for small datasets",
+                        "Time complexity O(n^2)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does Selection Sort do in each iteration?",
+                            "options": [
+                                "Finds largest element",
+                                "Finds smallest element",
+                                "Reverses array",
+                                "Deletes elements"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Selection sort finds the smallest element and places it at the correct position."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch5-page4",
+                    "title": "Insertion Sort",
+                    "content": "Insertion Sort builds the sorted array one element at a time by inserting each element into its correct position.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid insertionSort(int arr[], int n){\n    for(int i=1;i<n;i++){\n        int key = arr[i];\n        int j = i - 1;\n\n        while(j >= 0 && arr[j] > key){\n            arr[j+1] = arr[j];\n            j--;\n        }\n        arr[j+1] = key;\n    }\n}",
+                    "keyPoints": [
+                        "Builds sorted array gradually",
+                        "Efficient for small datasets",
+                        "Works well for nearly sorted arrays",
+                        "Time complexity O(n^2)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Insertion Sort works best for which type of data?",
+                            "options": [
+                                "Random data",
+                                "Large datasets",
+                                "Nearly sorted arrays",
+                                "Empty arrays"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Insertion Sort performs well for nearly sorted arrays."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch5-page5",
+                    "title": "Comparison of Sorting Algorithms",
+                    "content": "Different sorting algorithms have different time complexities and performance characteristics. Choosing the right sorting algorithm depends on dataset size and requirements.",
+                    "exampleCode": "// Bubble Sort -> O(n^2)\n// Selection Sort -> O(n^2)\n// Insertion Sort -> O(n^2)",
+                    "keyPoints": [
+                        "Sorting efficiency depends on algorithm",
+                        "Bubble, Selection, and Insertion Sort have O(n^2)",
+                        "Advanced algorithms are faster",
+                        "Sorting choice depends on data size"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which complexity do basic sorting algorithms share?",
+                            "options": [
+                                "O(n)",
+                                "O(log n)",
+                                "O(n^2)",
+                                "O(1)"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Basic sorting algorithms usually have O(n^2) complexity."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch5-page6",
+                    "title": "Applications of Sorting",
+                    "content": "Sorting algorithms are widely used in applications such as database indexing, search optimization, and data analysis.",
+                    "exampleCode": "// Example: sorting student marks",
+                    "keyPoints": [
+                        "Used in databases",
+                        "Used in search algorithms",
+                        "Used in data analysis",
+                        "Important for algorithm optimization"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are sorting algorithms commonly used?",
+                            "options": [
+                                "Databases",
+                                "Search engines",
+                                "Data analysis",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Sorting algorithms are used in many real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch6",
+            "title": "Advanced Sorting Algorithms",
+            "description": "Understanding efficient sorting algorithms used in real-world applications and coding interviews",
+            "pages": [
+                {
+                    "id": "dsa-ch6-page1",
+                    "title": "Introduction to Advanced Sorting",
+                    "content": "Advanced sorting algorithms improve efficiency compared to basic sorting techniques like Bubble Sort and Selection Sort. These algorithms are designed to handle large datasets efficiently.",
+                    "exampleCode": "// Advanced sorting algorithms improve efficiency",
+                    "keyPoints": [
+                        "More efficient than basic sorting algorithms",
+                        "Used for large datasets",
+                        "Important for coding interviews",
+                        "Examples include Merge Sort and Quick Sort"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why are advanced sorting algorithms used?",
+                            "options": [
+                                "To increase program size",
+                                "To improve sorting efficiency",
+                                "To remove arrays",
+                                "To slow down programs"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Advanced sorting algorithms improve performance for large datasets."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch6-page2",
+                    "title": "Merge Sort",
+                    "content": "Merge Sort is a divide-and-conquer algorithm. It divides the array into two halves, sorts each half recursively, and then merges the sorted halves.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid merge(int arr[], int l, int m, int r){\n    int n1 = m - l + 1;\n    int n2 = r - m;\n\n    int L[n1], R[n2];\n\n    for(int i=0;i<n1;i++) L[i] = arr[l+i];\n    for(int j=0;j<n2;j++) R[j] = arr[m+1+j];\n\n    int i=0,j=0,k=l;\n\n    while(i<n1 && j<n2){\n        if(L[i] <= R[j]) arr[k++] = L[i++];\n        else arr[k++] = R[j++];\n    }\n\n    while(i<n1) arr[k++] = L[i++];\n    while(j<n2) arr[k++] = R[j++];\n}",
+                    "keyPoints": [
+                        "Uses divide and conquer strategy",
+                        "Divides array into halves",
+                        "Merges sorted subarrays",
+                        "Time complexity O(n log n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What strategy does Merge Sort use?",
+                            "options": [
+                                "Greedy approach",
+                                "Divide and conquer",
+                                "Dynamic programming",
+                                "Backtracking"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Merge Sort uses the divide-and-conquer approach."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch6-page3",
+                    "title": "Quick Sort",
+                    "content": "Quick Sort is another divide-and-conquer algorithm. It selects a pivot element and partitions the array around the pivot so that smaller elements come before it and larger elements come after it.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint partition(int arr[], int low, int high){\n    int pivot = arr[high];\n    int i = low - 1;\n\n    for(int j=low;j<high;j++){\n        if(arr[j] < pivot){\n            i++;\n            swap(arr[i], arr[j]);\n        }\n    }\n\n    swap(arr[i+1], arr[high]);\n    return i+1;\n}",
+                    "keyPoints": [
+                        "Uses pivot element",
+                        "Partitions array around pivot",
+                        "Very fast in practice",
+                        "Average time complexity O(n log n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What element is used in Quick Sort for partitioning?",
+                            "options": [
+                                "Root element",
+                                "Pivot element",
+                                "First element always",
+                                "Last element always"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Quick Sort uses a pivot element to partition the array."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch6-page4",
+                    "title": "Heap Sort",
+                    "content": "Heap Sort uses a binary heap data structure. It first builds a max heap and repeatedly extracts the maximum element to place it at the end of the array.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid heapify(int arr[], int n, int i){\n    int largest = i;\n    int left = 2*i + 1;\n    int right = 2*i + 2;\n\n    if(left < n && arr[left] > arr[largest])\n        largest = left;\n\n    if(right < n && arr[right] > arr[largest])\n        largest = right;\n\n    if(largest != i){\n        swap(arr[i], arr[largest]);\n        heapify(arr, n, largest);\n    }\n}",
+                    "keyPoints": [
+                        "Uses binary heap structure",
+                        "Builds max heap",
+                        "Repeatedly extracts largest element",
+                        "Time complexity O(n log n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure is used in Heap Sort?",
+                            "options": [
+                                "Stack",
+                                "Queue",
+                                "Binary Heap",
+                                "Linked List"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Heap Sort uses a binary heap data structure."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch6-page5",
+                    "title": "Time Complexity Comparison",
+                    "content": "Different sorting algorithms have different performance characteristics. Advanced algorithms like Merge Sort, Quick Sort, and Heap Sort perform significantly better for large datasets.",
+                    "exampleCode": "// Merge Sort -> O(n log n)\n// Quick Sort -> O(n log n) average\n// Heap Sort -> O(n log n)",
+                    "keyPoints": [
+                        "Merge Sort complexity O(n log n)",
+                        "Quick Sort average complexity O(n log n)",
+                        "Heap Sort complexity O(n log n)",
+                        "Better than basic sorting algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which complexity is common for advanced sorting algorithms?",
+                            "options": [
+                                "O(n)",
+                                "O(n log n)",
+                                "O(n^2)",
+                                "O(log n)"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Most advanced sorting algorithms have O(n log n) complexity."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch6-page6",
+                    "title": "When to Use Each Sorting Algorithm",
+                    "content": "Choosing the right sorting algorithm depends on factors like dataset size, memory constraints, and whether the data is already partially sorted.",
+                    "exampleCode": "// Choose algorithm based on dataset size and requirements",
+                    "keyPoints": [
+                        "Merge Sort works well for large datasets",
+                        "Quick Sort is fastest in practice",
+                        "Heap Sort guarantees O(n log n)",
+                        "Algorithm choice depends on problem requirements"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which sorting algorithm is usually fastest in practice?",
+                            "options": [
+                                "Bubble Sort",
+                                "Selection Sort",
+                                "Quick Sort",
+                                "Insertion Sort"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Quick Sort is generally the fastest sorting algorithm in practice."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch7",
+            "title": "Strings in Data Structures",
+            "description": "Understanding string operations and algorithms used in data structures and coding interviews",
+            "pages": [
+                {
+                    "id": "dsa-ch7-page1",
+                    "title": "Introduction to Strings",
+                    "content": "A string is a sequence of characters used to represent text. In C++, strings can be represented using character arrays or the string class from the standard library.",
+                    "exampleCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main(){\n    string text = \"Hello\";\n    cout << text;\n}",
+                    "keyPoints": [
+                        "Strings store text data",
+                        "Represented as character arrays or string class",
+                        "Widely used in algorithms",
+                        "Important for interview problems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a string store?",
+                            "options": [
+                                "Numbers only",
+                                "Characters forming text",
+                                "Boolean values",
+                                "Objects only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Strings store characters that form text."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch7-page2",
+                    "title": "String Traversal",
+                    "content": "String traversal means accessing each character of the string sequentially. This is commonly done using loops.",
+                    "exampleCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main(){\n    string text = \"DSA\";\n\n    for(int i=0;i<text.length();i++){\n        cout << text[i] << \" \";\n    }\n}",
+                    "keyPoints": [
+                        "Traversal means visiting every character",
+                        "Usually done using loops",
+                        "Used for processing string data",
+                        "Time complexity O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does string traversal mean?",
+                            "options": [
+                                "Deleting characters",
+                                "Visiting each character",
+                                "Sorting characters",
+                                "Reversing characters"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Traversal means visiting each character of the string."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch7-page3",
+                    "title": "String Reversal",
+                    "content": "String reversal means reversing the order of characters in a string. This is a common interview question.",
+                    "exampleCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main(){\n    string str = \"hello\";\n\n    for(int i=str.length()-1;i>=0;i--)\n        cout << str[i];\n}",
+                    "keyPoints": [
+                        "Reverse the order of characters",
+                        "Common interview problem",
+                        "Can be solved using loops",
+                        "Time complexity O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does string reversal do?",
+                            "options": [
+                                "Deletes characters",
+                                "Changes case of letters",
+                                "Reverses character order",
+                                "Sorts characters"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "String reversal changes the order of characters from end to start."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch7-page4",
+                    "title": "Palindrome Check",
+                    "content": "A palindrome is a string that reads the same forward and backward. Checking for palindromes is a common algorithm problem.",
+                    "exampleCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nbool isPalindrome(string s){\n    int start = 0;\n    int end = s.length() - 1;\n\n    while(start < end){\n        if(s[start] != s[end])\n            return false;\n        start++;\n        end--;\n    }\n\n    return true;\n}",
+                    "keyPoints": [
+                        "Palindrome reads same forward and backward",
+                        "Uses two-pointer technique",
+                        "Common coding interview problem",
+                        "Time complexity O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which word is a palindrome?",
+                            "options": [
+                                "hello",
+                                "world",
+                                "madam",
+                                "array"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Madam reads the same forward and backward."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch7-page5",
+                    "title": "Character Frequency Count",
+                    "content": "Frequency counting means determining how many times each character appears in a string. This is useful for many string processing tasks.",
+                    "exampleCode": "#include <iostream>\n#include <string>\nusing namespace std;\n\nint main(){\n    string str = \"hello\";\n    int freq[26] = {0};\n\n    for(char c : str)\n        freq[c - 'a']++;\n\n    cout << freq['l' - 'a'];\n}",
+                    "keyPoints": [
+                        "Counts occurrences of characters",
+                        "Uses arrays for frequency storage",
+                        "Common in text processing",
+                        "Time complexity O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does frequency counting do?",
+                            "options": [
+                                "Sort characters",
+                                "Delete characters",
+                                "Count occurrences of characters",
+                                "Reverse strings"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Frequency counting calculates how many times each character appears."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch7-page6",
+                    "title": "Applications of String Algorithms",
+                    "content": "String algorithms are widely used in search engines, text processing, compilers, and data analysis systems.",
+                    "exampleCode": "// Example: searching word in text",
+                    "keyPoints": [
+                        "Used in search engines",
+                        "Used in text processing",
+                        "Used in compilers",
+                        "Important for many real-world applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are string algorithms commonly used?",
+                            "options": [
+                                "Search engines",
+                                "Compilers",
+                                "Text processing systems",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "String algorithms are used in many real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch8",
+            "title": "Recursion",
+            "description": "Understanding recursion and solving problems using recursive algorithms in C++",
+            "pages": [
+                {
+                    "id": "dsa-ch8-page1",
+                    "title": "Introduction to Recursion",
+                    "content": "Recursion is a programming technique where a function calls itself to solve a problem. It breaks the problem into smaller subproblems until a base condition is reached.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nvoid printNumbers(int n){\n    if(n == 0)\n        return;\n\n    cout << n << \" \";\n    printNumbers(n-1);\n}\n\nint main(){\n    printNumbers(5);\n}",
+                    "keyPoints": [
+                        "Recursion is when a function calls itself",
+                        "Used to solve problems in smaller steps",
+                        "Common in algorithms and data structures",
+                        "Requires a base condition to stop"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is recursion?",
+                            "options": [
+                                "A loop inside a function",
+                                "A function calling itself",
+                                "A function without parameters",
+                                "A sorting algorithm"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Recursion occurs when a function calls itself."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch8-page2",
+                    "title": "Base Case in Recursion",
+                    "content": "The base case is the condition that stops the recursive calls. Without a base case, recursion will continue infinitely and cause a stack overflow.",
+                    "exampleCode": "int factorial(int n){\n    if(n == 1)\n        return 1;\n\n    return n * factorial(n-1);\n}",
+                    "keyPoints": [
+                        "Base case stops recursion",
+                        "Prevents infinite recursive calls",
+                        "Must always be defined",
+                        "Essential part of recursive functions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is the base case important in recursion?",
+                            "options": [
+                                "To repeat loops",
+                                "To stop recursion",
+                                "To create arrays",
+                                "To print values"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The base case stops the recursion from running infinitely."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch8-page3",
+                    "title": "Factorial Using Recursion",
+                    "content": "Factorial is a common example used to demonstrate recursion. The factorial of n is calculated as n multiplied by factorial of (n-1).",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint factorial(int n){\n    if(n == 1)\n        return 1;\n\n    return n * factorial(n-1);\n}\n\nint main(){\n    cout << factorial(5);\n}",
+                    "keyPoints": [
+                        "Factorial example demonstrates recursion",
+                        "Uses base condition factorial(1)",
+                        "Each call reduces problem size",
+                        "Time complexity O(n)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is factorial of 5?",
+                            "options": [
+                                "60",
+                                "100",
+                                "120",
+                                "240"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "5! = 5 × 4 × 3 × 2 × 1 = 120."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch8-page4",
+                    "title": "Fibonacci Using Recursion",
+                    "content": "The Fibonacci sequence is another example of recursion where each number is the sum of the previous two numbers.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint fibonacci(int n){\n    if(n <= 1)\n        return n;\n\n    return fibonacci(n-1) + fibonacci(n-2);\n}\n\nint main(){\n    cout << fibonacci(6);\n}",
+                    "keyPoints": [
+                        "Each term depends on previous two terms",
+                        "Classic recursion example",
+                        "Often used in algorithm learning",
+                        "Time complexity is exponential"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are the first two Fibonacci numbers?",
+                            "options": [
+                                "1 and 2",
+                                "0 and 1",
+                                "2 and 3",
+                                "1 and 3"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The Fibonacci sequence starts with 0 and 1."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch8-page5",
+                    "title": "Advantages and Disadvantages of Recursion",
+                    "content": "Recursion can simplify complex problems but may use more memory due to function call stack usage.",
+                    "exampleCode": "// Recursive vs Iterative approaches",
+                    "keyPoints": [
+                        "Simplifies complex algorithms",
+                        "Useful in divide-and-conquer algorithms",
+                        "Uses extra stack memory",
+                        "Sometimes slower than iterative solutions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a disadvantage of recursion?",
+                            "options": [
+                                "Cannot solve problems",
+                                "Uses extra stack memory",
+                                "Cannot return values",
+                                "Cannot use loops"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Recursive calls consume stack memory."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch8-page6",
+                    "title": "Applications of Recursion",
+                    "content": "Recursion is widely used in algorithms like tree traversal, divide-and-conquer algorithms, and backtracking problems.",
+                    "exampleCode": "// Example: tree traversal uses recursion",
+                    "keyPoints": [
+                        "Used in tree and graph algorithms",
+                        "Used in divide-and-conquer techniques",
+                        "Used in backtracking problems",
+                        "Important concept for coding interviews"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is recursion commonly used?",
+                            "options": [
+                                "Tree traversal",
+                                "Backtracking algorithms",
+                                "Divide-and-conquer algorithms",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Recursion is used in many algorithmic techniques."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch9",
+            "title": "Linked Lists",
+            "description": "Understanding linked lists and their operations in Data Structures using C++",
+            "pages": [
+                {
+                    "id": "dsa-ch9-page1",
+                    "title": "Introduction to Linked Lists",
+                    "content": "A Linked List is a linear data structure where elements are stored in nodes. Each node contains data and a pointer that points to the next node in the sequence.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nstruct Node{\n    int data;\n    Node* next;\n};",
+                    "keyPoints": [
+                        "Linked list stores elements in nodes",
+                        "Each node has data and a pointer",
+                        "Dynamic data structure",
+                        "Size can grow or shrink during execution"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a node in a linked list contain?",
+                            "options": [
+                                "Only data",
+                                "Data and pointer",
+                                "Only pointer",
+                                "Array elements"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Each node contains data and a pointer to the next node."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch9-page2",
+                    "title": "Singly Linked List",
+                    "content": "In a singly linked list, each node contains data and a pointer to the next node. The last node points to NULL indicating the end of the list.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nstruct Node{\n    int data;\n    Node* next;\n};",
+                    "keyPoints": [
+                        "Each node points to next node",
+                        "Last node points to NULL",
+                        "Traversal happens in one direction",
+                        "Most basic type of linked list"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the last node in a singly linked list point to?",
+                            "options": [
+                                "First node",
+                                "NULL",
+                                "Random node",
+                                "Memory address"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The last node points to NULL indicating the end of the list."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch9-page3",
+                    "title": "Insertion in Linked List",
+                    "content": "Insertion adds a new node to the linked list. It can be done at the beginning, middle, or end of the list.",
+                    "exampleCode": "Node* newNode = new Node();\nnewNode->data = 10;\nnewNode->next = head;\nhead = newNode;",
+                    "keyPoints": [
+                        "Insertion can occur at multiple positions",
+                        "Does not require shifting elements",
+                        "Efficient compared to arrays",
+                        "Time complexity O(1) for head insertion"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where can insertion occur in a linked list?",
+                            "options": [
+                                "Beginning",
+                                "Middle",
+                                "End",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Insertion can happen at beginning, middle, or end."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch9-page4",
+                    "title": "Deletion in Linked List",
+                    "content": "Deletion removes a node from the linked list. The previous node pointer is updated to skip the deleted node.",
+                    "exampleCode": "Node* temp = head;\nhead = head->next;\ndelete temp;",
+                    "keyPoints": [
+                        "Deletion removes nodes",
+                        "Pointers must be updated carefully",
+                        "Avoid memory leaks",
+                        "Common operation in linked lists"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What must be updated when deleting a node?",
+                            "options": [
+                                "Array index",
+                                "Pointer links",
+                                "Loop variable",
+                                "Stack value"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Pointers must be updated to skip the deleted node."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch9-page5",
+                    "title": "Doubly Linked List",
+                    "content": "A doubly linked list contains two pointers in each node: one pointing to the next node and another pointing to the previous node.",
+                    "exampleCode": "struct Node{\n    int data;\n    Node* prev;\n    Node* next;\n};",
+                    "keyPoints": [
+                        "Each node has two pointers",
+                        "Traversal possible in both directions",
+                        "Uses more memory",
+                        "Useful for complex operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many pointers does a node in a doubly linked list contain?",
+                            "options": [
+                                "1",
+                                "2",
+                                "3",
+                                "0"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Doubly linked list nodes have two pointers."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch9-page6",
+                    "title": "Circular Linked List",
+                    "content": "In a circular linked list, the last node points back to the first node instead of NULL, forming a circular structure.",
+                    "exampleCode": "// lastNode->next = head;",
+                    "keyPoints": [
+                        "Last node connects to first node",
+                        "Forms circular structure",
+                        "Traversal can continue indefinitely",
+                        "Useful in scheduling algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the last node point to in a circular linked list?",
+                            "options": [
+                                "NULL",
+                                "First node",
+                                "Random node",
+                                "Memory address"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The last node points to the first node in a circular linked list."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch10",
+            "title": "Stack",
+            "description": "Understanding stack data structure and its operations using C++",
+            "pages": [
+                {
+                    "id": "dsa-ch10-page1",
+                    "title": "Introduction to Stack",
+                    "content": "A stack is a linear data structure that follows the LIFO (Last In First Out) principle. The last element inserted into the stack is the first element to be removed.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint stack[5];\nint top = -1;",
+                    "keyPoints": [
+                        "Stack follows LIFO principle",
+                        "Insertion happens at the top",
+                        "Deletion also happens from the top",
+                        "Commonly used in algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What principle does a stack follow?",
+                            "options": [
+                                "FIFO",
+                                "LIFO",
+                                "Random access",
+                                "Sequential access"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Stack follows Last In First Out (LIFO) principle."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch10-page2",
+                    "title": "Stack Operations",
+                    "content": "The main operations in a stack are push, pop, and peek. Push inserts an element into the stack, pop removes the top element, and peek returns the top element without removing it.",
+                    "exampleCode": "void push(int value){\n    stack[++top] = value;\n}\n\nint pop(){\n    return stack[top--];\n}",
+                    "keyPoints": [
+                        "Push adds element to stack",
+                        "Pop removes element from stack",
+                        "Peek returns top element",
+                        "Operations occur at the top"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operation removes an element from the stack?",
+                            "options": [
+                                "Push",
+                                "Pop",
+                                "Peek",
+                                "Insert"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Pop removes the top element from the stack."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch10-page3",
+                    "title": "Stack Using Arrays",
+                    "content": "Stacks can be implemented using arrays. The array stores elements while a variable called top keeps track of the current top position.",
+                    "exampleCode": "#define MAX 5\nint stack[MAX];\nint top = -1;",
+                    "keyPoints": [
+                        "Array stores stack elements",
+                        "Top variable tracks position",
+                        "Simple implementation",
+                        "Fixed size limitation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What variable tracks the top element of a stack?",
+                            "options": [
+                                "index",
+                                "head",
+                                "top",
+                                "node"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The top variable stores the position of the stack's top element."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch10-page4",
+                    "title": "Stack Using Linked List",
+                    "content": "Stacks can also be implemented using linked lists. This approach avoids the fixed size limitation of arrays.",
+                    "exampleCode": "struct Node{\n    int data;\n    Node* next;\n};",
+                    "keyPoints": [
+                        "Dynamic stack implementation",
+                        "Uses linked list nodes",
+                        "No fixed size limitation",
+                        "Push and pop operate at head"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an advantage of using linked lists for stacks?",
+                            "options": [
+                                "Fixed size",
+                                "Dynamic memory allocation",
+                                "No push operation",
+                                "No pop operation"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Linked lists allow dynamic memory allocation for stacks."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch10-page5",
+                    "title": "Stack Overflow and Underflow",
+                    "content": "Stack overflow occurs when trying to push an element into a full stack. Stack underflow occurs when trying to pop an element from an empty stack.",
+                    "exampleCode": "if(top == MAX-1)\n    cout << \"Stack Overflow\";\n\nif(top == -1)\n    cout << \"Stack Underflow\";",
+                    "keyPoints": [
+                        "Overflow happens when stack is full",
+                        "Underflow happens when stack is empty",
+                        "Important to check conditions",
+                        "Prevents runtime errors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What happens when pushing into a full stack?",
+                            "options": [
+                                "Stack Overflow",
+                                "Stack Underflow",
+                                "Stack Reset",
+                                "Stack Delete"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Stack overflow occurs when pushing into a full stack."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch10-page6",
+                    "title": "Applications of Stack",
+                    "content": "Stacks are widely used in applications like expression evaluation, syntax parsing, backtracking algorithms, and managing function calls in recursion.",
+                    "exampleCode": "// Example: checking balanced parentheses",
+                    "keyPoints": [
+                        "Used in expression evaluation",
+                        "Used in recursion and function calls",
+                        "Used in syntax parsing",
+                        "Used in backtracking algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are stacks commonly used?",
+                            "options": [
+                                "Expression evaluation",
+                                "Function calls",
+                                "Backtracking algorithms",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Stacks are used in many algorithmic applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch11",
+            "title": "Queue",
+            "description": "Understanding the queue data structure and its operations using C++",
+            "pages": [
+                {
+                    "id": "dsa-ch11-page1",
+                    "title": "Introduction to Queue",
+                    "content": "A queue is a linear data structure that follows the FIFO (First In First Out) principle. The element inserted first is the first one to be removed.",
+                    "exampleCode": "#include <iostream>\nusing namespace std;\n\nint queueArr[5];\nint front = -1, rear = -1;",
+                    "keyPoints": [
+                        "Queue follows FIFO principle",
+                        "Insertion happens at the rear",
+                        "Deletion happens from the front",
+                        "Common in scheduling systems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What principle does a queue follow?",
+                            "options": [
+                                "LIFO",
+                                "FIFO",
+                                "Random access",
+                                "Binary access"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Queue follows the First In First Out principle."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch11-page2",
+                    "title": "Queue Operations",
+                    "content": "The main operations of a queue are enqueue, dequeue, and peek. Enqueue adds an element to the rear of the queue, dequeue removes an element from the front, and peek returns the front element.",
+                    "exampleCode": "void enqueue(int value){\n    queueArr[++rear] = value;\n}\n\nint dequeue(){\n    return queueArr[front++];\n}",
+                    "keyPoints": [
+                        "Enqueue inserts element",
+                        "Dequeue removes element",
+                        "Peek returns front element",
+                        "Operations follow FIFO order"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operation inserts an element into the queue?",
+                            "options": [
+                                "Push",
+                                "Pop",
+                                "Enqueue",
+                                "Peek"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Enqueue inserts an element at the rear of the queue."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch11-page3",
+                    "title": "Queue Using Arrays",
+                    "content": "Queues can be implemented using arrays where the front variable tracks the first element and the rear variable tracks the last element.",
+                    "exampleCode": "#define MAX 5\nint queueArr[MAX];\nint front = -1, rear = -1;",
+                    "keyPoints": [
+                        "Array stores queue elements",
+                        "Front tracks first element",
+                        "Rear tracks last element",
+                        "Fixed size limitation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which variable tracks the first element in a queue?",
+                            "options": [
+                                "rear",
+                                "front",
+                                "top",
+                                "index"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The front variable points to the first element of the queue."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch11-page4",
+                    "title": "Circular Queue",
+                    "content": "A circular queue improves the efficiency of the simple queue by connecting the end of the queue back to the front. This prevents unused memory spaces.",
+                    "exampleCode": "rear = (rear + 1) % MAX;",
+                    "keyPoints": [
+                        "Avoids wasted memory space",
+                        "Rear connects to front",
+                        "Efficient queue implementation",
+                        "Uses modulo operation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main advantage of a circular queue?",
+                            "options": [
+                                "Slower operations",
+                                "Avoids memory wastage",
+                                "Stores only numbers",
+                                "Removes elements faster"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Circular queues avoid memory wastage in array-based queues."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch11-page5",
+                    "title": "Queue Using Linked List",
+                    "content": "Queues can also be implemented using linked lists. This approach allows dynamic memory allocation and removes the fixed size limitation.",
+                    "exampleCode": "struct Node{\n    int data;\n    Node* next;\n};",
+                    "keyPoints": [
+                        "Dynamic memory allocation",
+                        "No fixed size limitation",
+                        "Front and rear pointers used",
+                        "Efficient insert and delete operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an advantage of using linked lists for queues?",
+                            "options": [
+                                "Fixed size",
+                                "Dynamic memory allocation",
+                                "Slower operations",
+                                "Cannot insert elements"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Linked lists allow dynamic memory allocation."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch11-page6",
+                    "title": "Applications of Queue",
+                    "content": "Queues are used in many real-world applications such as CPU scheduling, printer queues, network data buffering, and Breadth First Search (BFS) algorithms.",
+                    "exampleCode": "// Example: BFS algorithm uses queue",
+                    "keyPoints": [
+                        "Used in CPU scheduling",
+                        "Used in printer queues",
+                        "Used in network buffering",
+                        "Used in BFS graph traversal"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which graph algorithm uses a queue?",
+                            "options": [
+                                "DFS",
+                                "BFS",
+                                "Dijkstra",
+                                "Binary Search"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Breadth First Search uses a queue."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch12",
+            "title": "Trees",
+            "description": "Understanding tree data structures and binary trees in Data Structures using C++",
+            "pages": [
+                {
+                    "id": "dsa-ch12-page1",
+                    "title": "Introduction to Trees",
+                    "content": "A tree is a hierarchical data structure consisting of nodes connected by edges. It is widely used to represent hierarchical relationships such as file systems and organizational structures.",
+                    "exampleCode": "struct Node{\n    int data;\n    Node* left;\n    Node* right;\n};",
+                    "keyPoints": [
+                        "Tree is a hierarchical structure",
+                        "Consists of nodes and edges",
+                        "Root is the topmost node",
+                        "Widely used in databases and file systems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the top node of a tree called?",
+                            "options": [
+                                "Leaf",
+                                "Root",
+                                "Branch",
+                                "Edge"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The topmost node of a tree is called the root."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch12-page2",
+                    "title": "Binary Tree",
+                    "content": "A binary tree is a type of tree data structure where each node has at most two children called the left child and right child.",
+                    "exampleCode": "struct Node{\n    int data;\n    Node* left;\n    Node* right;\n};",
+                    "keyPoints": [
+                        "Each node has at most two children",
+                        "Children are called left and right",
+                        "Most common tree structure",
+                        "Used in many algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many children can a binary tree node have?",
+                            "options": [
+                                "1",
+                                "2",
+                                "3",
+                                "Unlimited"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Binary tree nodes can have a maximum of two children."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch12-page3",
+                    "title": "Binary Search Tree (BST)",
+                    "content": "A Binary Search Tree is a special type of binary tree where the left child contains smaller values and the right child contains larger values compared to the parent node.",
+                    "exampleCode": "// BST insertion example\nif(value < root->data)\n    root->left = insert(root->left, value);\nelse\n    root->right = insert(root->right, value);",
+                    "keyPoints": [
+                        "Left subtree contains smaller values",
+                        "Right subtree contains larger values",
+                        "Improves searching efficiency",
+                        "Used in databases and indexing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are smaller values stored in a Binary Search Tree?",
+                            "options": [
+                                "Left subtree",
+                                "Right subtree",
+                                "Root node",
+                                "Leaf nodes"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "In BST, smaller values are stored in the left subtree."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch12-page4",
+                    "title": "Tree Traversals",
+                    "content": "Tree traversal means visiting all nodes in a tree in a specific order. Common traversal methods include Inorder, Preorder, and Postorder.",
+                    "exampleCode": "// Inorder traversal\nvoid inorder(Node* root){\n    if(root == NULL)\n        return;\n\n    inorder(root->left);\n    cout << root->data << \" \";\n    inorder(root->right);\n}",
+                    "keyPoints": [
+                        "Traversal means visiting nodes",
+                        "Common traversals are inorder, preorder, postorder",
+                        "Used for tree processing",
+                        "Important for algorithms"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which traversal visits left subtree, root, then right subtree?",
+                            "options": [
+                                "Preorder",
+                                "Postorder",
+                                "Inorder",
+                                "Level order"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Inorder traversal visits left subtree, root, then right subtree."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch12-page5",
+                    "title": "Preorder and Postorder Traversal",
+                    "content": "Preorder traversal visits the root first, then the left subtree, and finally the right subtree. Postorder traversal visits the left subtree, then the right subtree, and finally the root.",
+                    "exampleCode": "// Preorder traversal\nvoid preorder(Node* root){\n    if(root == NULL)\n        return;\n\n    cout << root->data << \" \";\n    preorder(root->left);\n    preorder(root->right);\n}",
+                    "keyPoints": [
+                        "Preorder visits root first",
+                        "Postorder visits root last",
+                        "Used in tree-based algorithms",
+                        "Helpful in tree reconstruction"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which traversal visits the root node first?",
+                            "options": [
+                                "Inorder",
+                                "Preorder",
+                                "Postorder",
+                                "Level order"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Preorder traversal visits the root node first."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch12-page6",
+                    "title": "Applications of Trees",
+                    "content": "Trees are widely used in many applications such as databases, file systems, network routing algorithms, and expression evaluation.",
+                    "exampleCode": "// Example: File system structure uses trees",
+                    "keyPoints": [
+                        "Used in file systems",
+                        "Used in database indexing",
+                        "Used in search algorithms",
+                        "Used in expression trees"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are tree data structures commonly used?",
+                            "options": [
+                                "File systems",
+                                "Database indexing",
+                                "Search algorithms",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Trees are used in many real-world systems."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch13",
+            "title": "Graphs",
+            "description": "Understanding graph data structures and traversal algorithms used in Data Structures",
+            "pages": [
+                {
+                    "id": "dsa-ch13-page1",
+                    "title": "Introduction to Graphs",
+                    "content": "A graph is a non-linear data structure consisting of nodes (vertices) connected by edges. Graphs are used to represent relationships between objects such as networks and maps.",
+                    "exampleCode": "// Graph representation concept\nVertices = {A, B, C}\nEdges = {(A,B), (B,C)}",
+                    "keyPoints": [
+                        "Graph consists of vertices and edges",
+                        "Used to represent relationships",
+                        "Can be directed or undirected",
+                        "Common in network applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What are the basic components of a graph?",
+                            "options": [
+                                "Nodes and edges",
+                                "Arrays and loops",
+                                "Stacks and queues",
+                                "Classes and objects"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Graphs consist of vertices (nodes) and edges."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch13-page2",
+                    "title": "Types of Graphs",
+                    "content": "Graphs can be categorized into different types such as directed graphs, undirected graphs, weighted graphs, and unweighted graphs depending on how edges connect vertices.",
+                    "exampleCode": "// Directed graph example\nA -> B\nB -> C",
+                    "keyPoints": [
+                        "Directed graphs have one-way edges",
+                        "Undirected graphs have two-way edges",
+                        "Weighted graphs assign values to edges",
+                        "Different graphs suit different problems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which graph type has edges with direction?",
+                            "options": [
+                                "Directed graph",
+                                "Undirected graph",
+                                "Binary graph",
+                                "Circular graph"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Directed graphs have edges with specific direction."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch13-page3",
+                    "title": "Graph Representation",
+                    "content": "Graphs can be represented using two main methods: adjacency matrix and adjacency list. These representations help store graph data efficiently in memory.",
+                    "exampleCode": "// Adjacency matrix example\nint graph[3][3] = {\n {0,1,0},\n {1,0,1},\n {0,1,0}\n};",
+                    "keyPoints": [
+                        "Adjacency matrix uses 2D array",
+                        "Adjacency list uses linked lists or vectors",
+                        "Matrix uses more memory",
+                        "List is more efficient for sparse graphs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which representation uses a 2D array?",
+                            "options": [
+                                "Adjacency matrix",
+                                "Adjacency list",
+                                "Binary tree",
+                                "Linked list"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Adjacency matrix uses a 2D array."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch13-page4",
+                    "title": "Breadth First Search (BFS)",
+                    "content": "Breadth First Search is a graph traversal algorithm that explores all neighbors of a node before moving to the next level. It uses a queue data structure.",
+                    "exampleCode": "// BFS uses queue\nqueue<int> q;\nq.push(startNode);",
+                    "keyPoints": [
+                        "Visits nodes level by level",
+                        "Uses queue data structure",
+                        "Useful for shortest path problems",
+                        "Time complexity O(V + E)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure is used in BFS?",
+                            "options": [
+                                "Stack",
+                                "Queue",
+                                "Array",
+                                "Tree"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "BFS uses a queue to manage nodes."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch13-page5",
+                    "title": "Depth First Search (DFS)",
+                    "content": "Depth First Search explores as far as possible along a branch before backtracking. It is commonly implemented using recursion or a stack.",
+                    "exampleCode": "// DFS example using recursion\nvoid dfs(int node){\n    visited[node] = true;\n\n    for(int neighbor : graph[node]){\n        if(!visited[neighbor])\n            dfs(neighbor);\n    }\n}",
+                    "keyPoints": [
+                        "Explores depth before breadth",
+                        "Uses recursion or stack",
+                        "Useful for path finding",
+                        "Time complexity O(V + E)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure is commonly used in DFS?",
+                            "options": [
+                                "Queue",
+                                "Stack",
+                                "Array",
+                                "Heap"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "DFS uses a stack or recursion."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch13-page6",
+                    "title": "Applications of Graphs",
+                    "content": "Graphs are widely used in real-world applications such as social networks, navigation systems, recommendation systems, and network routing algorithms.",
+                    "exampleCode": "// Example: Google Maps uses graph algorithms",
+                    "keyPoints": [
+                        "Used in social networks",
+                        "Used in GPS navigation",
+                        "Used in recommendation systems",
+                        "Used in network routing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are graph algorithms commonly used?",
+                            "options": [
+                                "Social networks",
+                                "Navigation systems",
+                                "Network routing",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Graph algorithms are used in many real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch14",
+            "title": "Hashing",
+            "description": "Understanding hashing techniques and hash tables used for fast data retrieval",
+            "pages": [
+                {
+                    "id": "dsa-ch14-page1",
+                    "title": "Introduction to Hashing",
+                    "content": "Hashing is a technique used to map data to a fixed-size table using a hash function. It allows very fast data retrieval, usually in constant time.",
+                    "exampleCode": "// Example concept\nkey -> hashFunction(key) -> index",
+                    "keyPoints": [
+                        "Hashing maps keys to indexes",
+                        "Provides fast data access",
+                        "Commonly used in databases",
+                        "Average time complexity O(1)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main purpose of hashing?",
+                            "options": [
+                                "Sorting data",
+                                "Fast data retrieval",
+                                "Deleting data",
+                                "Printing data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Hashing is used for fast data retrieval."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch14-page2",
+                    "title": "Hash Table",
+                    "content": "A hash table is a data structure that stores key-value pairs. It uses a hash function to determine the index where a value should be stored.",
+                    "exampleCode": "#include <unordered_map>\nusing namespace std;\n\nunordered_map<int, string> students;",
+                    "keyPoints": [
+                        "Stores key-value pairs",
+                        "Uses hash function to find index",
+                        "Supports fast lookup",
+                        "Implemented using arrays"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a hash table store?",
+                            "options": [
+                                "Numbers only",
+                                "Key-value pairs",
+                                "Arrays only",
+                                "Pointers only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Hash tables store key-value pairs."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch14-page3",
+                    "title": "Hash Function",
+                    "content": "A hash function converts a key into an index in the hash table. A good hash function distributes keys evenly across the table.",
+                    "exampleCode": "int hashFunction(int key){\n    return key % 10;\n}",
+                    "keyPoints": [
+                        "Converts key into index",
+                        "Helps store data efficiently",
+                        "Should distribute values evenly",
+                        "Important for performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a hash function return?",
+                            "options": [
+                                "Memory address",
+                                "Array index",
+                                "Pointer value",
+                                "Tree node"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A hash function returns an index for storing data."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch14-page4",
+                    "title": "Collision in Hashing",
+                    "content": "A collision occurs when two keys generate the same hash index. Collisions must be handled properly to maintain performance.",
+                    "exampleCode": "// Example collision\nhash(15) = 5\nhash(25) = 5",
+                    "keyPoints": [
+                        "Collision occurs when two keys share same index",
+                        "Common issue in hashing",
+                        "Must be handled efficiently",
+                        "Affects performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a collision in hashing?",
+                            "options": [
+                                "Two arrays merging",
+                                "Two keys producing same index",
+                                "Two stacks merging",
+                                "Two graphs connecting"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Collision occurs when two keys produce the same index."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch14-page5",
+                    "title": "Collision Handling Techniques",
+                    "content": "Collisions can be handled using methods like chaining and open addressing. Chaining uses linked lists while open addressing finds another empty slot.",
+                    "exampleCode": "// Chaining example using linked list",
+                    "keyPoints": [
+                        "Chaining uses linked lists",
+                        "Open addressing finds another slot",
+                        "Prevents data loss",
+                        "Maintains performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which technique uses linked lists to resolve collisions?",
+                            "options": [
+                                "Open addressing",
+                                "Chaining",
+                                "Binary search",
+                                "Sorting"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Chaining uses linked lists to handle collisions."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch14-page6",
+                    "title": "Applications of Hashing",
+                    "content": "Hashing is widely used in applications such as password storage, database indexing, caching systems, and data retrieval systems.",
+                    "exampleCode": "// Example: password hashing",
+                    "keyPoints": [
+                        "Used in databases",
+                        "Used in password storage",
+                        "Used in caching systems",
+                        "Used in fast lookup systems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is hashing commonly used?",
+                            "options": [
+                                "Password storage",
+                                "Database indexing",
+                                "Caching systems",
+                                "All of the above"
+                            ],
+                            "correctAnswer": 3,
+                            "explanation": "Hashing is widely used in many computing systems."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "dsa-ch15",
+            "title": "DSA Interview Problems",
+            "description": "Common coding interview problems using Data Structures and Algorithms in C++",
+            "pages": [
+                {
+                    "id": "dsa-ch15-page1",
+                    "title": "Two Sum Problem",
+                    "content": "The Two Sum problem asks us to find two numbers in an array that add up to a specific target value. This problem is commonly asked in coding interviews.",
+                    "exampleCode": "#include <iostream>\n#include <unordered_map>\nusing namespace std;\n\nint main(){\n    int arr[] = {2,7,11,15};\n    int target = 9;\n    unordered_map<int,int> map;\n\n    for(int i=0;i<4;i++){\n        int complement = target - arr[i];\n        if(map.count(complement)){\n            cout << \"Pair found\";\n            break;\n        }\n        map[arr[i]] = i;\n    }\n}",
+                    "keyPoints": [
+                        "Uses hashing for faster lookup",
+                        "Time complexity can be O(n)",
+                        "Common interview problem",
+                        "Tests array and hashing knowledge"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure helps solve Two Sum efficiently?",
+                            "options": [
+                                "Stack",
+                                "Queue",
+                                "Hash Map",
+                                "Tree"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Hash maps allow quick lookup for complement values."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch15-page2",
+                    "title": "Reverse Linked List",
+                    "content": "Reversing a linked list means changing the direction of the pointers so the last node becomes the first node.",
+                    "exampleCode": "Node* reverse(Node* head){\n    Node* prev = NULL;\n    Node* curr = head;\n\n    while(curr != NULL){\n        Node* next = curr->next;\n        curr->next = prev;\n        prev = curr;\n        curr = next;\n    }\n\n    return prev;\n}",
+                    "keyPoints": [
+                        "Uses pointer manipulation",
+                        "Common linked list interview question",
+                        "Time complexity O(n)",
+                        "Space complexity O(1)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the time complexity for reversing a linked list?",
+                            "options": [
+                                "O(1)",
+                                "O(log n)",
+                                "O(n)",
+                                "O(n^2)"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Each node is visited once, so time complexity is O(n)."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch15-page3",
+                    "title": "Valid Parentheses",
+                    "content": "The Valid Parentheses problem checks whether parentheses in a string are balanced using a stack.",
+                    "exampleCode": "#include <stack>\n#include <string>\nusing namespace std;\n\nbool isValid(string s){\n    stack<char> st;\n\n    for(char c : s){\n        if(c=='(') st.push(c);\n        else{\n            if(st.empty()) return false;\n            st.pop();\n        }\n    }\n\n    return st.empty();\n}",
+                    "keyPoints": [
+                        "Uses stack data structure",
+                        "Checks balanced parentheses",
+                        "Very common interview problem",
+                        "Linear time complexity"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which data structure is used to solve valid parentheses?",
+                            "options": [
+                                "Queue",
+                                "Stack",
+                                "Heap",
+                                "Graph"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Stacks help track opening and closing brackets."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch15-page4",
+                    "title": "Maximum Subarray Problem",
+                    "content": "The Maximum Subarray problem finds the contiguous subarray with the largest sum using Kadane's Algorithm.",
+                    "exampleCode": "int maxSubArray(int arr[], int n){\n    int maxSum = arr[0];\n    int currentSum = arr[0];\n\n    for(int i=1;i<n;i++){\n        currentSum = max(arr[i], currentSum + arr[i]);\n        maxSum = max(maxSum, currentSum);\n    }\n\n    return maxSum;\n}",
+                    "keyPoints": [
+                        "Solved using Kadane's Algorithm",
+                        "Time complexity O(n)",
+                        "Common array interview problem",
+                        "Used in optimization problems"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which algorithm solves the maximum subarray problem?",
+                            "options": [
+                                "Binary Search",
+                                "Kadane's Algorithm",
+                                "DFS",
+                                "Greedy Search"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Kadane's Algorithm efficiently finds the maximum subarray."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch15-page5",
+                    "title": "Binary Search",
+                    "content": "Binary Search is an efficient searching algorithm used on sorted arrays. It repeatedly divides the search interval in half.",
+                    "exampleCode": "int binarySearch(int arr[], int n, int target){\n    int left = 0, right = n-1;\n\n    while(left <= right){\n        int mid = (left + right)/2;\n\n        if(arr[mid] == target)\n            return mid;\n        else if(arr[mid] < target)\n            left = mid + 1;\n        else\n            right = mid - 1;\n    }\n\n    return -1;\n}",
+                    "keyPoints": [
+                        "Works only on sorted arrays",
+                        "Time complexity O(log n)",
+                        "Divides search space in half",
+                        "Very common interview question"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the time complexity of Binary Search?",
+                            "options": [
+                                "O(n)",
+                                "O(log n)",
+                                "O(n log n)",
+                                "O(1)"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Binary Search reduces the search space by half each time."
+                        }
+                    ]
+                },
+                {
+                    "id": "dsa-ch15-page6",
+                    "title": "Interview Preparation Tips",
+                    "content": "Practicing DSA problems regularly helps improve problem-solving skills and prepares you for technical interviews at top companies.",
+                    "exampleCode": "// Practice daily DSA problems",
+                    "keyPoints": [
+                        "Practice coding daily",
+                        "Understand time complexity",
+                        "Focus on problem-solving approach",
+                        "Practice common interview questions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the best way to prepare for DSA interviews?",
+                            "options": [
+                                "Memorize answers",
+                                "Practice coding problems regularly",
+                                "Avoid algorithms",
+                                "Only read theory"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Regular practice improves coding and problem-solving skills."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is a Data Structure?",
+            "answer": "A data structure is a way of organizing and storing data so that it can be accessed and modified efficiently.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between an array and a linked list?",
+            "answer": "Arrays store elements in contiguous memory locations and allow direct access by index, while linked lists store elements in nodes connected by pointers and do not require contiguous memory.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a stack?",
+            "answer": "A stack is a linear data structure that follows the LIFO (Last In First Out) principle where the last element added is the first one removed.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a queue?",
+            "answer": "A queue is a linear data structure that follows the FIFO (First In First Out) principle where the first element added is the first one removed.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the time complexity of accessing an element in an array?",
+            "answer": "The time complexity is O(1) because array elements can be accessed directly using an index.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is recursion?",
+            "answer": "Recursion is a technique where a function calls itself to solve smaller instances of a problem until a base condition is reached.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a binary tree?",
+            "answer": "A binary tree is a hierarchical data structure where each node has at most two children called the left child and right child.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a Binary Search Tree (BST)?",
+            "answer": "A Binary Search Tree is a binary tree where the left subtree contains smaller values and the right subtree contains larger values than the root node.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between BFS and DFS?",
+            "answer": "BFS (Breadth First Search) explores nodes level by level using a queue, while DFS (Depth First Search) explores as far as possible along a branch before backtracking using a stack or recursion.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is hashing?",
+            "answer": "Hashing is a technique used to map keys to specific indexes in a hash table using a hash function for fast data retrieval.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a hash table?",
+            "answer": "A hash table is a data structure that stores key-value pairs and uses a hash function to compute the index where the data is stored.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a collision in hashing?",
+            "answer": "A collision occurs when two different keys produce the same hash value and map to the same index in a hash table.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are the ways to resolve collisions in hashing?",
+            "answer": "Common collision resolution techniques include chaining and open addressing methods such as linear probing and quadratic probing.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the time complexity of binary search?",
+            "answer": "The time complexity of binary search is O(log n) because the search space is halved at each step.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a heap?",
+            "answer": "A heap is a complete binary tree where the parent node is either greater than (max heap) or smaller than (min heap) its children.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a priority queue?",
+            "answer": "A priority queue is a data structure where elements are served based on priority rather than insertion order.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is dynamic programming?",
+            "answer": "Dynamic programming is an optimization technique that solves complex problems by breaking them into smaller overlapping subproblems and storing results for reuse.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between greedy algorithms and dynamic programming?",
+            "answer": "Greedy algorithms make locally optimal choices at each step, while dynamic programming considers all possibilities and stores intermediate results.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a graph?",
+            "answer": "A graph is a non-linear data structure consisting of vertices connected by edges used to represent relationships between objects.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is topological sorting?",
+            "answer": "Topological sorting is a linear ordering of vertices in a directed acyclic graph (DAG) such that for every directed edge u → v, vertex u appears before v.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is Dijkstra's algorithm?",
+            "answer": "Dijkstra's algorithm is used to find the shortest path from a source vertex to all other vertices in a weighted graph.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between a tree and a graph?",
+            "answer": "A tree is a special type of graph that has no cycles and is connected, while a graph may contain cycles and may or may not be connected.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a minimum spanning tree?",
+            "answer": "A minimum spanning tree is a subset of edges in a weighted graph that connects all vertices with the minimum possible total edge weight.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is Kruskal's algorithm?",
+            "answer": "Kruskal's algorithm finds the minimum spanning tree by selecting the smallest edges while avoiding cycles.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is Prim's algorithm?",
+            "answer": "Prim's algorithm finds the minimum spanning tree by starting from a vertex and repeatedly adding the smallest edge that connects a new vertex.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is backtracking?",
+            "answer": "Backtracking is an algorithmic technique that tries different possibilities and backtracks when a solution path fails.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between linear search and binary search?",
+            "answer": "Linear search checks each element sequentially while binary search repeatedly divides the sorted array in half to locate the target.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is Kadane's Algorithm?",
+            "answer": "Kadane's Algorithm is used to find the maximum sum of a contiguous subarray in linear time.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the sliding window technique?",
+            "answer": "The sliding window technique is used to reduce time complexity when working with subarrays by maintaining a window that moves across the array.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is memoization?",
+            "answer": "Memoization is an optimization technique used in dynamic programming where results of expensive function calls are stored and reused.",
+            "difficulty": "advanced"
+        }
+    ]
+}

@@ -574,7 +574,7 @@ const BookReaderFlip = ({ book, onBack }: Props) => {
 
                                     <div className="page-footer">
                                         <span className="footer-left">{page.chapterTitle}</span>
-                                        <span className="footer-right">React Mastery</span>
+                                        <span className="footer-right">{page.pageData.title}</span>
                                     </div>
                                 </div>
                             );
