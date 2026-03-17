@@ -239,7 +239,11 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
   const fetchAvailableClasses = async () => {
     try {
-      const res = await fetch(`${baseURL}/student/classes`)
+      const res = await fetch(`${baseURL}/student/classes`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
       const data = await res.json()
       setAvailableClasses(Array.isArray(data) ? data : [])
     } catch (err) {

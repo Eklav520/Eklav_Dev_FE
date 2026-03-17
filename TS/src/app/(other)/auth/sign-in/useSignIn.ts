@@ -30,6 +30,7 @@ const useSignIn = () => {
   type LoginFormFields = yup.InferType<typeof loginFormSchema>
 
 const redirectUser = (role: string) => {
+
   const redirectLink = searchParams.get('redirectTo')
 
   if (redirectLink) {
@@ -40,9 +41,14 @@ const redirectUser = (role: string) => {
   const normalizedRole = role?.toLowerCase()
 
   switch (normalizedRole) {
+
     case 'admin':
     case 'collegeadmin':
       navigate('/eklavadmin/dashboard', { replace: true })
+      break
+
+    case 'instituteadmin':
+      navigate('/institute/dashboard', { replace: true })
       break
 
     case 'tutor':

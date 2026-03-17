@@ -62,12 +62,21 @@ const StudentDashboardUpdated: React.FC = () => {
   }, [user?.token, baseURL])
 
   useEffect(() => {
-    fetch(`${baseURL}/courses`)
+    if (!user?.token) return
+
+    setCoursesLoading(true)
+
+    fetch(`${baseURL}/courses`, {
+      headers: {
+        Authorization: `Bearer ${user.token}`,
+      },
+    })
       .then(res => res.json())
       .then(setAllCourses)
       .catch(() => setAllCourses([]))
       .finally(() => setCoursesLoading(false))
-  }, [baseURL])
+
+  }, [user?.token, baseURL])
 
 
   useEffect(() => {

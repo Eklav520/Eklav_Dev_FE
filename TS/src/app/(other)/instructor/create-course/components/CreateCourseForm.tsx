@@ -7,6 +7,7 @@ import Step4 from './Step4'
 import { useNotificationContext } from '@/context/useNotificationContext'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type VideoUpload = {
   videos: File
@@ -64,6 +65,8 @@ type CourseFormData = {
 
 const CreateCourseForm = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+  const token = user?.token
   const stepperRef = useRef<HTMLDivElement | null>(null)
   const stepperInstance = useBSStepper(stepperRef)
   const { showNotification } = useNotificationContext()
@@ -167,27 +170,35 @@ const CreateCourseForm = () => {
     previewKey: string | null,
     quizKey: string | null
   ) => {
-    const res = await axios.post(`${baseURL}/courses`, {
-      title: formData.title,
-      shortDescription: formData.shortDescription,
-      category: formData.category,
-      level: formData.level,
-      language: formData.language,
-      isFeatured: formData.isFeatured,
-      duration: formData.duration,
-      totalLectures: formData.totalLectures,
-      courseType: formData.courseType,
-      courseStatus: formData.courseStatus,
-      price: formData.price,
-      discountPrice: formData.discountPrice,
-      description: formData.description,
-      image: imageKey,
-      previewVideo: previewKey,
-      quizKey,
-      videoUrl: formData.videoUrl,
-      addFAQ: formData.addFAQ,
-      features: formData.features,
-    })
+    const res = await axios.post(
+      `${baseURL}/courses`,
+      {
+        title: formData.title,
+        shortDescription: formData.shortDescription,
+        category: formData.category,
+        level: formData.level,
+        language: formData.language,
+        isFeatured: formData.isFeatured,
+        duration: formData.duration,
+        totalLectures: formData.totalLectures,
+        courseType: formData.courseType,
+        courseStatus: formData.courseStatus,
+        price: formData.price,
+        discountPrice: formData.discountPrice,
+        description: formData.description,
+        image: imageKey,
+        previewVideo: previewKey,
+        quizKey,
+        videoUrl: formData.videoUrl,
+        addFAQ: formData.addFAQ,
+        features: formData.features,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
 
     return res.data.course._id
   }
@@ -215,12 +226,19 @@ const CreateCourseForm = () => {
           })
         }
       )
-
-      await axios.post(`${baseURL}/courses/${courseId}/video`, {
-        videoKey: s3Key,
-        description: video.description,
-        caseStudy: video.caseStudy || null,
-      })
+      await axios.post(
+        `${baseURL}/courses/${courseId}/video`,
+        {
+          videoKey: s3Key,
+          description: video.description,
+          caseStudy: video.caseStudy || null,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
       setFormData(prev => {
         const list = [...prev.videos]
@@ -331,66 +349,66 @@ const CreateCourseForm = () => {
             </p>
           </Col>
         </Row>
-      
-<Card className="bg-white border-0 shadow-sm rounded-3 mb-5 overflow-hidden">
-  <div id="stepper" ref={stepperRef} className="bs-stepper">
-    <CardHeader className="bg-light-subtle border-bottom px-4 px-lg-5 py-4">
-      <div className="bs-stepper-header" role="tablist">
-        <div className="step" data-target="#step-1">
-          <div className="d-flex flex-column align-items-center">
-            <button type="button" className="btn btn-link step-trigger p-0 mb-2">
-              <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
-                <span className="fw-medium">1</span>
+
+        <Card className="bg-white border-0 shadow-sm rounded-3 mb-5 overflow-hidden">
+          <div id="stepper" ref={stepperRef} className="bs-stepper">
+            <CardHeader className="bg-light-subtle border-bottom px-4 px-lg-5 py-4">
+              <div className="bs-stepper-header" role="tablist">
+                <div className="step" data-target="#step-1">
+                  <div className="d-flex flex-column align-items-center">
+                    <button type="button" className="btn btn-link step-trigger p-0 mb-2">
+                      <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
+                        <span className="fw-medium">1</span>
+                      </div>
+                    </button>
+                    <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Course Details</h6>
+                  </div>
+                </div>
+                <div className="bs-stepper-line flex-grow-1 mx-3 d-none d-md-block">
+                  <div className="bs-stepper-line-inner"></div>
+                </div>
+                <div className="step" data-target="#step-2">
+                  <div className="d-flex flex-column align-items-center">
+                    <button type="button" className="btn btn-link step-trigger p-0 mb-2">
+                      <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
+                        <span className="fw-medium">2</span>
+                      </div>
+                    </button>
+                    <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Course Media</h6>
+                  </div>
+                </div>
+                <div className="bs-stepper-line flex-grow-1 mx-3 d-none d-md-block">
+                  <div className="bs-stepper-line-inner"></div>
+                </div>
+                <div className="step" data-target="#step-4">
+                  <div className="d-flex flex-column align-items-center">
+                    <button type="button" className="btn btn-link step-trigger p-0 mb-2">
+                      <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
+                        <span className="fw-medium">3</span>
+                      </div>
+                    </button>
+                    <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Additional Info</h6>
+                  </div>
+                </div>
               </div>
-            </button>
-            <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Course Details</h6>
-          </div>
-        </div>
-        <div className="bs-stepper-line flex-grow-1 mx-3 d-none d-md-block">
-          <div className="bs-stepper-line-inner"></div>
-        </div>
-        <div className="step" data-target="#step-2">
-          <div className="d-flex flex-column align-items-center">
-            <button type="button" className="btn btn-link step-trigger p-0 mb-2">
-              <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
-                <span className="fw-medium">2</span>
+            </CardHeader>
+            <CardBody className="p-4 p-lg-5">
+              <div className="bs-stepper-content">
+                <Step1 stepperInstance={stepperInstance} formData={formData} setFormData={setFormData} />
+                <Step2 stepperInstance={stepperInstance} formData={formData} setFormData={setFormData} />
+                <Step4
+                  stepperInstance={stepperInstance}
+                  formData={formData}
+                  setFormData={setFormData}
+                  handleSubmit={handleSubmit}
+                  retryFailedVideos={retryFailedVideos}
+                  uploadProgress={uploadProgress}
+                  uploadedVideoCount={uploadedVideoCount}
+                />
               </div>
-            </button>
-            <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Course Media</h6>
+            </CardBody>
           </div>
-        </div>
-        <div className="bs-stepper-line flex-grow-1 mx-3 d-none d-md-block">
-          <div className="bs-stepper-line-inner"></div>
-        </div>
-        <div className="step" data-target="#step-4">
-          <div className="d-flex flex-column align-items-center">
-            <button type="button" className="btn btn-link step-trigger p-0 mb-2">
-              <div className="bs-stepper-circle d-flex align-items-center justify-content-center">
-                <span className="fw-medium">3</span>
-              </div>
-            </button>
-            <h6 className="bs-stepper-label text-nowrap fs-6 fw-medium text-secondary">Additional Info</h6>
-          </div>
-        </div>
-      </div>
-    </CardHeader>
-    <CardBody className="p-4 p-lg-5">
-      <div className="bs-stepper-content">
-        <Step1 stepperInstance={stepperInstance} formData={formData} setFormData={setFormData} />
-        <Step2 stepperInstance={stepperInstance} formData={formData} setFormData={setFormData} />
-        <Step4
-          stepperInstance={stepperInstance}
-          formData={formData}
-          setFormData={setFormData}
-          handleSubmit={handleSubmit}
-          retryFailedVideos={retryFailedVideos}
-          uploadProgress={uploadProgress}
-          uploadedVideoCount={uploadedVideoCount}
-        />
-      </div>
-    </CardBody>
-  </div>
-</Card>
+        </Card>
       </Container>
     </section>
   )

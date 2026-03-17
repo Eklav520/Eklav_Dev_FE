@@ -3,6 +3,7 @@ import {
   BsBasket,
   BsBasketFill,
   BsBook,
+  BsBriefcase,
   BsCalculator,
   BsCameraVideo,
   BsCardChecklist,
@@ -347,6 +348,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
+    key: 'instituteDetails',
+    label: 'Add Institute Details',
+    icon: FaUserCog,
+    url: '/eklavadmin/institute-details',
+    parentKey: 'eklavadmin',
+  },
+  {
     key: 'adminreels',
     label: 'Admin Reels Upload',
     icon: FaUserCog,
@@ -373,6 +381,107 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     icon: BsWallet2,
     url: '/eklavadmin/payout',
     parentKey: 'eklavadmin',
+  },
+]
+
+export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
+
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    icon: BsSpeedometer2,
+    url: '/institute/dashboard',
+    parentKey: 'instituteadmin',
+  },
+
+  {
+    key: 'courses',
+    label: 'Courses',
+    icon: BsBook,
+    children: [
+      {
+        key: 'manageCourses',
+        label: 'Manage Courses',
+        icon: BsBook,
+        url: '/institute/manage-courses',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
+    key: 'students',
+    label: 'Students',
+    icon: BsPeople,
+    children: [
+      {
+        key: 'studentList',
+        label: 'Students List',
+        icon: BsPeople,
+        url: '/institute/student-list',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
+    key: 'onlineClasses',
+    label: 'Online Classes',
+    icon: BsCameraVideo,
+    children: [
+      {
+        key: 'manageClasses',
+        label: 'Manage Classes',
+        icon: BsCameraVideo,
+        url: '/institute/online-classes',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
+    key: 'jobOpenings',
+    label: 'Job Openings',
+    icon: BsBriefcase,
+    children: [
+      {
+        key: 'manageJobs',
+        label: 'Manage Job Openings',
+        icon: BsBriefcase,
+        url: '/institute/job-openings',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
+    key: 'finalAssessment',
+    label: 'Final Assessment',
+    icon: BsClipboardCheck,
+    children: [
+      {
+        key: 'uploadAssessment',
+        label: 'Upload Assessment',
+        icon: BsClipboardCheck,
+        url: '/institute/final-assessment-upload',
+        parentKey: 'instituteadmin',
+      },
+      {
+        key: 'assessmentResults',
+        label: 'Assessment Results',
+        icon: BsClipboardCheck,
+        url: '/institute/final-assessment-results',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
+    key: 'profile',
+    label: 'Edit Profile',
+    icon: BsPencilSquare,
+    url: '/institute/edit-profile',
+    parentKey: 'instituteadmin',
   },
 ]
 

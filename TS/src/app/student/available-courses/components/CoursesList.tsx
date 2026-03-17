@@ -47,68 +47,64 @@ const CoursesList = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!token) return
+
     const fetchCoursesWithRatings = async () => {
       try {
         setLoading(true)
-        // Fetch courses
-        const coursesResponse = await fetch(`${baseURL}/courses`)
+
+        // ✅ Fetch courses WITH TOKEN
+        const coursesResponse = await fetch(`${baseURL}/courses`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
         const coursesData = await coursesResponse.json()
 
-        // Fetch ratings for each course using the correct endpoint
+        // ✅ Fetch ratings (also with token if protected)
         const coursesWithRatings = await Promise.all(
           coursesData.map(async (course: Course) => {
             try {
-              const ratingsResponse = await fetch(`${baseURL}/courses/${course._id}/ratings`)
+              const ratingsResponse = await fetch(
+                `${baseURL}/courses/${course._id}/ratings`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              )
+
               if (ratingsResponse.ok) {
                 const ratingData: RatingResponse = await ratingsResponse.json()
 
                 return {
                   ...course,
                   averageRating: ratingData.averageRating,
-                  totalRatings: ratingData.ratingCount
+                  totalRatings: ratingData.ratingCount,
                 }
               } else {
-                console.warn(`Failed to fetch ratings for course ${course._id}`)
-                return {
-                  ...course,
-                  averageRating: 0,
-                  totalRatings: 0
-                }
+                return { ...course, averageRating: 0, totalRatings: 0 }
               }
-            } catch (error) {
-              console.error(`Error fetching ratings for course ${course._id}:`, error)
-              return {
-                ...course,
-                averageRating: 0,
-                totalRatings: 0
-              }
+            } catch {
+              return { ...course, averageRating: 0, totalRatings: 0 }
             }
           })
         )
 
         setCourses(coursesWithRatings)
+
       } catch (error) {
-        console.error('Error fetching courses or ratings:', error)
-        // Fallback: fetch courses without ratings
-        try {
-          const coursesResponse = await fetch(`${baseURL}/courses`)
-          const coursesData = await coursesResponse.json()
-          const coursesWithDefaultRatings = coursesData.map((course: Course) => ({
-            ...course,
-            averageRating: 0,
-            totalRatings: 0
-          }))
-          setCourses(coursesWithDefaultRatings)
-        } catch (fallbackError) {
-          console.error('Error fetching courses:', fallbackError)
-        }
+        console.error('Error fetching courses:', error)
+        setCourses([])
       } finally {
         setLoading(false)
       }
     }
 
     fetchCoursesWithRatings()
-  }, [baseURL])
+
+  }, [baseURL, token])
 
   useEffect(() => {
     if (!token) {
@@ -272,7 +268,7 @@ const CoursesList = () => {
             Showing <strong>{filteredCourses.length}</strong> course{filteredCourses.length !== 1 ? 's' : ''}
           </p>
 
-         {/*  <p className="mb-2 mb-sm-0 text-secondary small">
+          {/*  <p className="mb-2 mb-sm-0 text-secondary small">
             You can enroll in <strong>{5 - enrolledCourseIds.length}</strong> more course
             {5 - enrolledCourseIds.length !== 1 ? 's' : ''}.
           </p> */}

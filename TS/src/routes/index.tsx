@@ -105,6 +105,16 @@ const AdminChatbox = lazy(() => import('@/app/eklavadmin/adminChatPanel/page'))
 const AdminReelsUpload = lazy(() => import('@/app/eklavadmin/adminReelsUpload/page'))
 const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/pages'))
 const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
+const AddInstitute = lazy(() => import('@/app/eklavadmin/instituteDetails/pages'))
+
+
+const InstituteDashboard = lazy(() => import('@/app/institute/dashboard/page'))
+const InstituteCourses = lazy(() => import('@/app/institute//manage-course/page'))
+const InstituteOnlineClasses = lazy(() => import('@/app/institute/online-classes/page'))
+const InstituteJobOpenings = lazy(() => import('@/app/institute/interview-details/page'))
+const InstituteFinalAssessmentUpload = lazy(() => import('@/app/institute/final-assessment/page'))
+const InstituteEditProfile = lazy(() => import('@/app/institute/edit-profile/page'))
+const AddStudent = lazy(() => import('@/app/institute/studentDetails/pages'))
 
 //Student
 const LeadershipBoard = lazy(() => import('@/app/student/leadership-board/page'))
@@ -484,6 +494,7 @@ export const tutorRoutes: RoutesProps[] = [
   { path: '/tutor/delete-account', name: 'Delete Account', element: <TutorDeleteAccount /> },
 ]
 
+
 export const EklavAdminRoutes: RoutesProps[] = [
   {
     path: '/eklavadmin/dashboard',
@@ -635,6 +646,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Coupon Management',
     element: <AdminCouponManagement />,
   },
+   {
+    path: '/eklavadmin/institute-details',
+    name: 'Add Institute',
+    element: <AddInstitute />,
+  },
   {
     path: '/eklavadmin/admin-chatbox',
     name: 'Admin Chatbox',
@@ -645,6 +661,55 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Admin Reels',
     element: <AdminReelsUpload />,
   },
+]
+
+export const InstituteAdminRoutes: RoutesProps[] = [
+
+  {
+    path: '/institute/dashboard',
+    name: 'Dashboard',
+    element: <InstituteDashboard />,
+  },
+
+  {
+    path: '/institute/manage-courses',
+    name: 'Manage Courses',
+    element: <InstituteCourses />,
+  },
+
+ 
+
+  {
+    path: '/institute/online-classes',
+    name: 'Online Classes',
+    element: <InstituteOnlineClasses />,
+  },
+
+  {
+    path: '/institute/job-openings',
+    name: 'Job Openings',
+    element: <InstituteJobOpenings />,
+  },
+
+  {
+    path: '/institute/final-assessment-upload',
+    name: 'Final Assessment Upload',
+    element: <InstituteFinalAssessmentUpload />,
+  },
+
+  {
+    path: '/institute/student-list',
+    name: 'Students Details',
+    element: <AddStudent/>,
+  },
+
+
+  {
+    path: '/institute/edit-profile',
+    name: 'Edit Profile',
+    element: <InstituteEditProfile />,
+  },
+
 ]
 
 export const studentRoutes: RoutesProps[] = [
