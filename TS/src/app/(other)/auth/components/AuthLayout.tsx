@@ -6,6 +6,7 @@ import useToggle from "@/hooks/useToggle";
 import HeroMovingTopics from "./HeroMovingTopics";
 import TrustedCompanies from "./TrustedCompanies";
 import About from "./About";
+import ForgotPassword from "../forgot-password/components/ForgotPassword";
 
 // Lazy-loaded components
 const Footer = lazy(() => import("./Footer"));
@@ -184,6 +185,7 @@ const VideoShowcase: FC = () => {
 
     return () => observer.disconnect();
   }, [activeVideoIndex, isVideoPlaying]);
+
 
   useEffect(() => {
     // Load YouTube IFrame API
@@ -992,17 +994,38 @@ GlobalStyles.displayName = 'GlobalStyles';
 const AuthLayout: FC<ChildrenType> = ({ children }) => {
   const { toggle: toggleOffCanvasMenu } = useToggle();
   const [showModal, setShowModal] = useState(false);
-  const [authType, setAuthType] = useState<"signin" | "signup">("signin");
+  const [authType, setAuthType] = useState<"signin" | "signup" | "forgot">("signin");
 
   // Generate particles only once
   const particles = useMemo(() => generateParticles(LAYOUT_CONFIG.particles.count), []);
 
-  const handleOpen = (type: "signin" | "signup") => {
+  const handleOpen = (type: "signin" | "signup" | "forgot") => {
     setAuthType(type);
     setShowModal(true);
   };
 
   const handleClose = () => setShowModal(false);
+
+  useEffect(() => {
+    const handleForgot = () => {
+      setAuthType("forgot");
+      setShowModal(true);
+    };
+
+    const handleSignin = () => {
+      console.log("Signin event received"); // 👈 DEBUG
+      setAuthType("signin");
+      setShowModal(true);
+    };
+
+    window.addEventListener("openForgot", handleForgot);
+    window.addEventListener("openSignin", handleSignin);
+
+    return () => {
+      window.removeEventListener("openForgot", handleForgot);
+      window.removeEventListener("openSignin", handleSignin);
+    };
+  }, []);
 
   // Pass handleOpen to TopNavigationBar via context or props
   // For now, we'll use a custom event or you can modify TopNavigationBar to accept props
@@ -1074,7 +1097,9 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <h4 className="mb-0 fw-bold text-white auth-modal-title">
             {authType === "signin"
               ? "Welcome To Eklav 👋"
-              : "Create Your Account"}
+              : authType === "signup"
+                ? "Create Your Account"
+                : "Reset Your Password 🔐"}
           </h4>
 
           <button className="auth-close-btn" onClick={handleClose}>
@@ -1091,11 +1116,13 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
               </div>
             }
           >
-            {authType === "signin" ? (
-              <SignInForm />
-            ) : (
+            {authType === "signin" && <SignInForm />}
+
+            {authType === "signup" && (
               <SignUpForm onSuccess={handleClose} />
             )}
+
+            {authType === "forgot" && <ForgotPassword />}
           </Suspense>
         </Modal.Body>
       </Modal>

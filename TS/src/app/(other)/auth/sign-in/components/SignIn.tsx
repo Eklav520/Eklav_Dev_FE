@@ -41,9 +41,15 @@ const SignIn = () => {
       </div>
 
       <div className="mb-3 d-flex justify-content-end">
-        <Link to="/auth/forgot-password" className="text-secondary">
+        <span
+          className="text-secondary"
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            window.dispatchEvent(new CustomEvent("openForgot"));
+          }}
+        >
           <u>Forgot password?</u>
-        </Link>
+        </span>
       </div>
 
       <CaptchaBox onValidate={setCaptchaValid} />
@@ -62,7 +68,7 @@ const SignIn = () => {
 
           {loading ? "Logging in..." : "Login"}
         </button>
-       {/*  <span>
+        {/*  <span>
           Don&apos;t have an account ? <Link to="/auth/sign-up" style={{ color: '#fd692a' }}>
             Signup here
           </Link>

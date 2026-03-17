@@ -162,7 +162,12 @@ const ForgotPassword = () => {
 
       <div className="d-grid">
         <button
-          className="btn btn-primary"
+          className="btn"
+          style={{
+            backgroundColor: '#fd692a',
+            borderColor: '#fd692a',
+            color: '#fff'
+          }}
           type="submit"
           disabled={loading || (stage === 'email' && !captchaValid)}
         >
@@ -181,7 +186,15 @@ const ForgotPassword = () => {
 
       <div className="mt-4 text-center">
         <span>
-          Already have an account? <Link to="/auth/sign-in">Sign in here</Link>
+          Already have an account?{" "}
+          <span
+            style={{ color: '#fd692a', cursor: 'pointer', fontWeight: 500 }}
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("openSignin"));
+            }}
+          >
+            Sign in here
+          </span>
         </span>
       </div>
     </form>
