@@ -115,7 +115,7 @@ const Leaderboard: React.FC = () => {
           const scoreNum = Math.max(0, Math.min(100, Number(p.score) || 0))
           const name = p.fullName?.trim() ? p.fullName : p.username || 'Unknown'
           const bio = p.college || p.email || ''
-          const skills = Array.isArray(p.skills) ? p.skills.filter(Boolean).slice(0, 3) : [] // Reduced to 3 for better mobile display
+          const skills = Array.isArray(p.skills) ? p.skills.filter(Boolean).slice(0, 3) : []
           return {
             id: p._id,
             name,
@@ -147,9 +147,7 @@ const Leaderboard: React.FC = () => {
     () =>
       students
         .filter((s) => {
-          // ✅ Only show students with score > 0
           if (s.score <= 0) return false
-
           const q = searchTerm.toLowerCase()
           return (
             s.name.toLowerCase().includes(q) ||
@@ -160,7 +158,6 @@ const Leaderboard: React.FC = () => {
         .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)),
     [students, searchTerm],
   )
-
 
   useEffect(() => {
     const maxPage = Math.max(1, Math.ceil(filteredStudents.length / ITEMS_PER_PAGE))
@@ -196,43 +193,45 @@ const Leaderboard: React.FC = () => {
   const pointsBoxBorder = isDarkMode ? subtleBorderDark : subtleBorderLight
   const pointsBoxShadow = isDarkMode ? '0 8px 30px rgba(5,8,10,0.6)' : '0 6px 18px rgba(16,24,40,0.06)'
   const topScorerBadgeStyle = isDarkMode
-  ? {
-      background: 'linear-gradient(180deg, rgba(255,122,0,0.25), rgba(255,122,0,0.12))',
-      color: '#ffb066',
-      border: '1px solid rgba(255,122,0,0.5)',
-      boxShadow: '0 4px 14px rgba(255,122,0,0.25)',
-    }
-  : {
-      background: 'linear-gradient(180deg, #fff2e6, #ffd9bf)',
-      color: '#cc5200',
-      border: '1px solid #ffb380',
-      boxShadow: '0 6px 16px rgba(255,122,0,0.2)',
-    }
-
+    ? {
+        background: 'linear-gradient(180deg, rgba(255,122,0,0.25), rgba(255,122,0,0.12))',
+        color: '#ffb066',
+        border: '1px solid rgba(255,122,0,0.5)',
+        boxShadow: '0 4px 14px rgba(255,122,0,0.25)',
+      }
+    : {
+        background: 'linear-gradient(180deg, #fff2e6, #ffd9bf)',
+        color: '#cc5200',
+        border: '1px solid #ffb380',
+        boxShadow: '0 6px 16px rgba(255,122,0,0.2)',
+      }
 
   return (
-    <div style={{ background: pageBg, padding: '12px 8px', borderRadius: 12 }}>
+    <div style={{ background: pageBg, padding: '12px 4px', borderRadius: 12 }}>
       <Card className="border-0" style={{ background: 'transparent' }}>
         <CardHeader className="border-0 pb-0 bg-transparent">
-          <Row className="align-items-center">
+          <Row className="align-items-center g-3">
             <Col xs={12} md={6}>
-              <h3
-                className="mb-1 fw-bold d-flex align-items-center gap-2"
-                style={{
-                  color: '#ff7a00',
-                  fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
-                }}
-              >
-                Leadership Board
-                <Badge bg="warning" text="dark" style={{ fontSize: '0.6rem' }}>
-                  Premium version will enable to attend the exams
-                </Badge>
-              </h3>
-
-              <small style={{ color: mutedText, fontSize: '0.85rem' }}>Top performing students</small>
+              <div className="d-flex flex-column">
+                <h3
+                  className="mb-1 fw-bold d-flex flex-wrap align-items-center gap-2"
+                  style={{
+                    color: '#ff7a00',
+                    fontSize: 'clamp(1.2rem, 5vw, 1.5rem)',
+                  }}
+                >
+                  Leadership Board
+                  <Badge bg="warning" text="dark" style={{ fontSize: '0.55rem', padding: '0.35rem 0.5rem' }}>
+                    Premium version will enable to attend the exams
+                  </Badge>
+                </h3>
+                <small style={{ color: mutedText, fontSize: 'clamp(0.75rem, 3vw, 0.85rem)' }}>
+                  Top performing students
+                </small>
+              </div>
             </Col>
 
-            <Col xs={12} md={6} className="mt-2 mt-md-0">
+            <Col xs={12} md={6}>
               <Form className="rounded position-relative" onSubmit={(e) => e.preventDefault()}>
                 <input
                   className="form-control pe-5"
@@ -244,13 +243,13 @@ const Leaderboard: React.FC = () => {
                     setCurrentPage(1)
                   }}
                   style={{
-                    borderRadius: '20px',
+                    borderRadius: '30px',
                     background: isDarkMode ? '#0b0d0e' : '#fff',
                     border: isDarkMode ? `1px solid ${subtleBorderDark}` : `1px solid ${subtleBorderLight}`,
                     color: isDarkMode ? 'rgba(255,255,255,0.92)' : '#0f1724',
                     paddingRight: 48,
-                    fontSize: '0.9rem',
-                    padding: '0.5rem 1rem',
+                    fontSize: 'clamp(0.85rem, 3vw, 0.9rem)',
+                    padding: '0.6rem 1rem',
                   }}
                 />
                 <button
@@ -258,14 +257,17 @@ const Leaderboard: React.FC = () => {
                   type="submit"
                   aria-label="Search"
                   style={{ right: '12px' }}>
-                  <FaSearch style={{ color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,36,0.55)', fontSize: '0.9rem' }} />
+                  <FaSearch style={{ 
+                    color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(15,23,36,0.55)', 
+                    fontSize: 'clamp(0.85rem, 3vw, 0.9rem)' 
+                  }} />
                 </button>
               </Form>
             </Col>
           </Row>
         </CardHeader>
 
-        <CardBody className="pt-3" style={{ background: 'transparent' }}>
+        <CardBody className="pt-3 px-2 px-md-3" style={{ background: 'transparent' }}>
           {loading && (
             <div className="d-flex justify-content-center py-5">
               <Spinner animation="border" role="status" />
@@ -278,7 +280,7 @@ const Leaderboard: React.FC = () => {
           )}
 
           {!loading && !error && (
-            <Row className="g-3">
+            <Row className="g-2 g-md-3">
               <Col xs={12}>
                 <div className="p-2 p-md-3 rounded-4" style={{ background: containerBg, borderRadius: 12 }}>
                   {paginatedStudents.length === 0 ? (
@@ -309,15 +311,16 @@ const Leaderboard: React.FC = () => {
                           className="student-row leaderboard-row d-flex flex-column mb-2 p-3 rounded-4"
                           style={{
                             background: rowBg,
-                            borderLeft: `6px solid ${leftBorderColor}`,
+                            borderLeft: `4px solid ${leftBorderColor}`,
                             transition: 'transform 0.15s ease',
                             border: `1px solid ${isDarkMode ? subtleBorderDark : subtleBorderLight}`,
-                            gap: '6px',
+                            gap: '8px',
                             position: 'relative',
                             overflow: 'hidden',
                           }}
                           onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
                           onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}>
+                          
                           {/* Top Row: Rank, Avatar, Name, and Score */}
                           <div className="d-flex align-items-center justify-content-between w-100">
                             <div className="d-flex align-items-center flex-grow-1" style={{ minWidth: 0 }}>
@@ -325,20 +328,21 @@ const Leaderboard: React.FC = () => {
                               <div
                                 className="rank-icon"
                                 style={{
-                                  width: 30,
+                                  width: 28,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   color: leftBorderColor,
                                   flexShrink: 0,
-                                  marginRight: 10,
+                                  marginRight: 8,
                                 }}
                               >
-
                                 {rank <= 3 ? (
-                                  getRankIcon(rank)
+                                  <div style={{ fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
+                                    {getRankIcon(rank)}
+                                  </div>
                                 ) : (
-                                  <span className="fw-bold" style={{ color: mutedText, fontSize: '1rem' }}>
+                                  <span className="fw-bold" style={{ color: mutedText, fontSize: 'clamp(0.85rem, 3vw, 1rem)' }}>
                                     {rank}
                                   </span>
                                 )}
@@ -346,10 +350,10 @@ const Leaderboard: React.FC = () => {
 
                               {/* Avatar */}
                               <div
-                                className="me-3"
+                                className="me-2 me-md-3"
                                 style={{
-                                  width: 44,
-                                  height: 44,
+                                  width: 40,
+                                  height: 40,
                                   borderRadius: '50%',
                                   background: isDarkMode ? 'rgba(255,255,255,0.04)' : '#f1f3f5',
                                   color: isDarkMode ? '#fff' : '#222',
@@ -357,7 +361,7 @@ const Leaderboard: React.FC = () => {
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   fontWeight: 700,
-                                  fontSize: '0.85rem',
+                                  fontSize: '0.8rem',
                                   border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'transparent'}`,
                                   overflow: 'hidden',
                                   position: 'relative',
@@ -389,18 +393,25 @@ const Leaderboard: React.FC = () => {
                                 </span>
                               </div>
 
-                              {/* Name and Rank Info - Takes remaining space */}
+                              {/* Name and Rank Info */}
                               <div className="flex-grow-1" style={{ minWidth: 0 }}>
-                                <div className="fw-semibold text-truncate" style={{ color: nameColor, fontSize: '0.95rem', lineHeight: 1.2 }}>
+                                <div className="fw-semibold text-truncate" style={{ 
+                                  color: nameColor, 
+                                  fontSize: 'clamp(0.85rem, 3.5vw, 0.95rem)', 
+                                  lineHeight: 1.2 
+                                }}>
                                   {stu.name}
                                 </div>
-                                <div className="small text-truncate" style={{ color: metaColor, fontSize: '0.8rem' }}>
+                                <div className="small text-truncate" style={{ 
+                                  color: metaColor, 
+                                  fontSize: 'clamp(0.7rem, 2.8vw, 0.8rem)' 
+                                }}>
                                   {ordinal(rank)} place • {stu.bio || 'Student'}
                                 </div>
                               </div>
                             </div>
 
-                            {/* Score Box - Fixed width, doesn't push content */}
+                            {/* Score Box */}
                             <div
                               aria-hidden
                               style={{
@@ -408,18 +419,20 @@ const Leaderboard: React.FC = () => {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                padding: '4px 8px',
+                                padding: '4px 6px',
                                 borderRadius: 8,
-                                minWidth: 80,
-                                height: 50,
+                                minWidth: '65px',
+                                height: '46px',
                                 boxShadow: pointsBoxShadow,
                                 border: `1px solid ${pointsBoxBorder}`,
                                 background: pointsBoxBg,
                                 flexShrink: 0,
-                                marginLeft: '8px',
+                                marginLeft: '6px',
                               }}>
-                              <div style={{ fontSize: 10, color: mutedText }}>Score / 100</div>
-                              <div style={{ fontWeight: 800, fontSize: 18, color: scoreColor }}>{Math.round(stu.score)}</div>
+                              <div style={{ fontSize: '8px', color: mutedText, whiteSpace: 'nowrap' }}>Score/100</div>
+                              <div style={{ fontWeight: 800, fontSize: 'clamp(14px, 4vw, 18px)', color: scoreColor }}>
+                                {Math.round(stu.score)}
+                              </div>
                             </div>
                           </div>
 
@@ -430,15 +443,15 @@ const Leaderboard: React.FC = () => {
                                 className="top-scorer-badge d-inline-flex align-items-center"
                                 style={{
                                   ...topScorerBadgeStyle,
-                                  padding: '0.16rem 0.5rem',
+                                  padding: '0.2rem 0.5rem',
                                   borderRadius: 999,
-                                  fontSize: '0.65rem',
+                                  fontSize: '0.6rem',
                                   fontWeight: 800,
                                   letterSpacing: 0.2,
                                   lineHeight: 1,
                                 }}
                                 title="Top Scorer">
-                                <FaCrown style={{ marginRight: 4, fontSize: '0.65rem' }} />
+                                <FaCrown style={{ marginRight: 4, fontSize: '0.6rem' }} />
                                 Top Scorer
                               </span>
                             )}
@@ -451,8 +464,8 @@ const Leaderboard: React.FC = () => {
                                   bg={undefined}
                                   className="badge-compact"
                                   style={{
-                                    fontSize: '0.65rem',
-                                    padding: '0.16rem 0.4rem',
+                                    fontSize: '0.6rem',
+                                    padding: '0.2rem 0.4rem',
                                     fontWeight: 600,
                                     letterSpacing: 0.1,
                                     borderRadius: 999,
@@ -466,7 +479,11 @@ const Leaderboard: React.FC = () => {
                           {/* Bottom Row: Skills */}
                           {!!stu.skills.length && (
                             <div className="w-100">
-                              <div className="small" style={{ color: mutedText, marginBottom: '4px', fontSize: '0.8rem' }}>
+                              <div className="small" style={{ 
+                                color: mutedText, 
+                                marginBottom: '4px', 
+                                fontSize: 'clamp(0.7rem, 2.5vw, 0.8rem)' 
+                              }}>
                                 Skills:
                               </div>
                               <div className="d-flex flex-wrap gap-1">
@@ -475,7 +492,7 @@ const Leaderboard: React.FC = () => {
                                     key={`skill-${i}`}
                                     bg={undefined}
                                     style={{
-                                      fontSize: '0.7rem',
+                                      fontSize: 'clamp(0.6rem, 2.3vw, 0.7rem)',
                                       padding: '0.2rem 0.5rem',
                                       fontWeight: 600,
                                       borderRadius: 999,
@@ -498,39 +515,81 @@ const Leaderboard: React.FC = () => {
 
           {!loading && !error && filteredStudents.length > 0 && (
             <div
-              className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-4 pt-3"
+              className="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-3 mt-md-4 pt-2 pt-md-3"
               style={{ borderTop: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(16,24,40,0.04)'}` }}>
-              <p className="mb-2 mb-sm-0 small" style={{ color: mutedText, fontSize: '0.85rem' }}>
+              <p className="mb-2 mb-sm-0 small" style={{ 
+                color: mutedText, 
+                fontSize: 'clamp(0.75rem, 2.5vw, 0.85rem)' 
+              }}>
                 Showing <strong style={{ color: isDarkMode ? '#fff' : '#0f1724' }}>{filteredStudents.length}</strong> student
                 {filteredStudents.length !== 1 ? 's' : ''}
               </p>
+              
+              {/* Mobile-friendly pagination */}
               <nav aria-label="Page navigation bottom">
-                <ul className="pagination pagination-sm mb-0" style={{ gap: 4 }}>
+                <ul className="pagination pagination-sm mb-0" style={{ gap: 2 }}>
                   <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <button className="page-link rounded-start-pill" onClick={goPrev} disabled={currentPage === 1} style={{ padding: '0.35rem 0.5rem' }}>
+                    <button 
+                      className="page-link rounded-start-pill" 
+                      onClick={goPrev} 
+                      disabled={currentPage === 1} 
+                      style={{ 
+                        padding: '0.3rem 0.5rem',
+                        minWidth: '32px',
+                        fontSize: '0.8rem'
+                      }}>
                       <FaAngleLeft />
                     </button>
                   </li>
-                  {[...Array(totalPages)].slice(0, 5).map((_, idx) => (
+                  
+                  {/* Show fewer page numbers on mobile */}
+                  {[...Array(totalPages)].slice(0, 3).map((_, idx) => (
                     <li key={idx} className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}>
-                      <button className="page-link" onClick={() => gotoPage(idx + 1)} style={{ padding: '0.35rem 0.5rem', minWidth: '36px' }}>
+                      <button 
+                        className="page-link" 
+                        onClick={() => gotoPage(idx + 1)} 
+                        style={{ 
+                          padding: '0.3rem 0.5rem', 
+                          minWidth: '32px',
+                          fontSize: '0.8rem'
+                        }}>
                         {idx + 1}
                       </button>
                     </li>
                   ))}
-                  {totalPages > 5 && (
-                    <li className="page-item disabled">
-                      <button className="page-link" style={{ padding: '0.35rem 0.5rem' }}>
-                        ...
-                      </button>
-                    </li>
+                  
+                  {totalPages > 3 && (
+                    <>
+                      <li className="page-item disabled">
+                        <button className="page-link" style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}>
+                          ...
+                        </button>
+                      </li>
+                      <li className={`page-item ${currentPage === totalPages ? 'active' : ''}`}>
+                        <button 
+                          className="page-link" 
+                          onClick={() => gotoPage(totalPages)} 
+                          style={{ 
+                            padding: '0.3rem 0.5rem', 
+                            minWidth: '32px',
+                            fontSize: '0.8rem'
+                          }}>
+                          {totalPages}
+                        </button>
+                      </li>
+                    </>
                   )}
+                  
                   <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
                     <button
                       className="page-link rounded-end-pill"
                       onClick={goNext}
                       disabled={currentPage === totalPages}
-                      style={{ padding: '0.35rem 0.5rem' }}>
+                      style={{ 
+                        padding: '0.3rem 0.5rem',
+                        minWidth: '32px',
+                        fontSize: '0.8rem'
+                      }}>
                       <FaAngleRight />
                     </button>
                   </li>
@@ -543,7 +602,7 @@ const Leaderboard: React.FC = () => {
 
       <style>{`
         .rank-icon svg {
-          font-size: 1.1rem;
+          font-size: 1rem;
         }
 
         .pagination .page-link {
@@ -562,73 +621,23 @@ const Leaderboard: React.FC = () => {
           transform: translateY(-1px);
         }
 
-        /* Mobile-specific adjustments */
+        /* Mobile-specific responsive styles */
         @media (max-width: 768px) {
           .leaderboard-row {
             padding: 12px !important;
-            margin-bottom: 10px !important;
+            margin-bottom: 8px !important;
+          }
+
+          .rank-icon {
+            min-width: 24px !important;
           }
 
           .rank-icon svg {
-            font-size: 1rem;
+            font-size: 0.9rem !important;
           }
 
           .rank-icon span {
-            font-size: 0.9rem !important;
-          }
-
-          /* Avatar smaller on mobile */
-          .leaderboard-row > div:first-child > div:first-child > div:nth-child(2) {
-            width: 40px !important;
-            height: 40px !important;
             font-size: 0.8rem !important;
-          }
-
-          /* Name text smaller and truncate */
-          .leaderboard-row .fw-semibold {
-            font-size: 0.9rem !important;
-            max-width: 180px !important;
-          }
-
-          /* Rank info smaller and truncate */
-          .leaderboard-row .small {
-            font-size: 0.75rem !important;
-            max-width: 180px !important;
-          }
-
-          /* Score box smaller and more compact */
-          .leaderboard-row > div:first-child > div:last-child {
-            min-width: 70px !important;
-            height: 48px !important;
-            padding: 4px 6px !important;
-            margin-left: 4px !important;
-          }
-
-          .leaderboard-row > div:first-child > div:last-child div:first-child {
-            font-size: 8px !important;
-            white-space: nowrap;
-          }
-
-          .leaderboard-row > div:first-child > div:last-child div:last-child {
-            font-size: 16px !important;
-          }
-
-          /* Badges smaller */
-          .top-scorer-badge,
-          .badge-compact {
-            font-size: 0.6rem !important;
-            padding: 0.12rem 0.35rem !important;
-          }
-
-          /* Skills smaller */
-          .leaderboard-row > div:last-child .badge {
-            font-size: 0.65rem !important;
-            padding: 0.15rem 0.4rem !important;
-          }
-
-          /* Skills label */
-          .leaderboard-row > div:last-child .small {
-            font-size: 0.75rem !important;
           }
         }
 
@@ -637,64 +646,38 @@ const Leaderboard: React.FC = () => {
             padding: 10px !important;
           }
 
-          /* Even smaller on very small screens */
-          .leaderboard-row > div:first-child > div:last-child {
-            min-width: 60px !important;
-            height: 42px !important;
-            padding: 3px 5px !important;
-          }
-
-          .leaderboard-row > div:first-child > div:last-child div:first-child {
-            font-size: 7px !important;
-          }
-
-          .leaderboard-row > div:first-child > div:last-child div:last-child {
-            font-size: 14px !important;
-          }
-
-          /* Name and rank info more compact */
-          .leaderboard-row .fw-semibold {
-            max-width: 130px !important;
-          }
-
-          .leaderboard-row .small {
-            max-width: 130px !important;
-          }
-
-          /* Reduce avatar size further */
-          .leaderboard-row > div:first-child > div:first-child > div:nth-child(2) {
-            width: 36px !important;
-            height: 36px !important;
-            margin-right: 8px !important;
-          }
-
-          /* Reduce rank icon size */
           .rank-icon {
-            min-width: 24px !important;
-            margin-right: 4px !important;
+            min-width: 22px !important;
+          }
+
+          .rank-icon svg {
+            font-size: 0.8rem !important;
+          }
+
+          .rank-icon span {
+            font-size: 0.7rem !important;
           }
         }
 
         @media (max-width: 400px) {
-          .leaderboard-row .fw-semibold {
-            max-width: 100px !important;
-            font-size: 0.85rem !important;
+          .leaderboard-row {
+            padding: 8px !important;
           }
 
-          .leaderboard-row .small {
-            max-width: 100px !important;
-            font-size: 0.7rem !important;
+          .leaderboard-row > div:first-child > div:first-child > div:nth-child(2) {
+            width: 32px !important;
+            height: 32px !important;
+            margin-right: 6px !important;
           }
 
-          /* Score box ultra compact */
           .leaderboard-row > div:first-child > div:last-child {
             min-width: 55px !important;
-            height: 38px !important;
+            height: 40px !important;
             padding: 2px 4px !important;
           }
 
           .leaderboard-row > div:first-child > div:last-child div:first-child {
-            font-size: 6px !important;
+            font-size: 7px !important;
           }
 
           .leaderboard-row > div:first-child > div:last-child div:last-child {
@@ -709,10 +692,12 @@ const Leaderboard: React.FC = () => {
           white-space: nowrap;
         }
 
-        /* Make sure the container doesn't allow horizontal overflow */
+        /* Prevent horizontal overflow */
         .leaderboard-row {
           box-sizing: border-box;
+          width: 100%;
         }
+
         .pagination .page-item.active .page-link {
           background-color: #ff7a00 !important;
           border-color: #ff7a00 !important;
@@ -722,13 +707,33 @@ const Leaderboard: React.FC = () => {
         .pagination .page-link:hover {
           color: #ff7a00;
         }
-    .form-control:focus {
-      border-color: #ff7a00 !important;
-      box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
-    }
 
+        .form-control:focus {
+          border-color: #ff7a00 !important;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
+        }
 
+        /* Touch-friendly improvements */
+        .page-link {
+          touch-action: manipulation;
+          cursor: pointer;
+          user-select: none;
+        }
 
+        .page-link:active {
+          transform: scale(0.95);
+        }
+
+        /* Better spacing for mobile */
+        .gap-2 {
+          gap: 0.5rem !important;
+        }
+
+        @media (max-width: 576px) {
+          .gap-2 {
+            gap: 0.35rem !important;
+          }
+        }
       `}</style>
     </div>
   )

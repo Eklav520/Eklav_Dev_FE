@@ -87,9 +87,9 @@ interface ClassSession {
   comments?: Comment[]
 }
 
-interface Props {
+/* interface Props {
   userId: string
-}
+} */
 
 /* ===================== null-safe helpers & predicates ===================== */
 
@@ -191,7 +191,7 @@ const isUpcoming = (row: unknown): boolean => {
 
 /* ===================== component ===================== */
 
-const StudentDashboard: React.FC<Props> = ({ userId }) => {
+const StudentDashboard: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const [availableClasses, setAvailableClasses] = useState<ClassSession[]>([])
   const [enrolledClasses, setEnrolledClasses] = useState<ClassSession[]>([])
@@ -203,7 +203,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
   const token = user?.token
   // Available tab pagination
   const [availPage, setAvailPage] = useState(1)
-  const [availPageSize, setAvailPageSize] = useState(9) // cards per page
+  const [availPageSize, setAvailPageSize] = useState(6) // Reduced from 9 for mobile
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [selectedPurchaseClass, setSelectedPurchaseClass] = useState<ClassSession | null>(null)
   const [purchasing, setPurchasing] = useState(false)
@@ -215,7 +215,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
   // Enrolled tab pagination (optional)
   const [enrPage, setEnrPage] = useState(1)
-  const [enrPageSize, setEnrPageSize] = useState(6)
+  const [enrPageSize, setEnrPageSize] = useState(4) // Reduced from 6 for mobile
   const [imgError, setImgError] = useState(false);
   const [rating, setRating] = useState<number>(0)
 
@@ -630,7 +630,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
   return (
     <>
-      <Container fluid className="professional-dashboard">
+      <Container fluid className="professional-dashboard px-2 px-md-3">
         {/* Header Section */}
         <div className="dashboard-header">
           <div className="header-left">
@@ -695,7 +695,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   <p>Check back later for new learning sessions</p>
                 </div>
               ) : (
-                <Row className="g-4">
+                <Row className="g-3 g-md-4">
                   {pagedUpcoming.map((cls) => {
                     const purchaseClosed = isPurchaseClosed(cls.purchaseLastDate)
                     const classLive = isLive(cls)
@@ -705,7 +705,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                     )
 
                     return (
-                      <Col key={cls._id} xl={4} lg={6} md={6}>
+                      <Col key={cls._id} lg={4} md={6} xs={12}>
                         <Card className="class-card premium">
                           <Card.Body>
 
@@ -753,6 +753,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                 <span>{cls.instructor?.name || "Instructor"}</span>
                               </div>
                             </div>
+                            
                             <div className="class-extra-info">
                               {cls.cost && (
                                 <div className="info-item">
@@ -804,7 +805,6 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                                   ))}
                                 </div>
                               )}
-
                             </div>
 
                             <div className="class-actions">
@@ -843,6 +843,31 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   })}
                 </Row>
               )}
+              
+              {/* Pagination for Available Classes */}
+              {availTotalPages > 1 && (
+                <div className="pagination-container mt-4">
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => setAvailPage(p => Math.max(1, p - 1))}
+                    disabled={availPage === 1}
+                    className="pagination-btn"
+                  >
+                    Previous
+                  </Button>
+                  <span className="pagination-info">
+                    Page {availPage} of {availTotalPages}
+                  </span>
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => setAvailPage(p => Math.min(availTotalPages, p + 1))}
+                    disabled={availPage === availTotalPages}
+                    className="pagination-btn"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </>
           )}
 
@@ -852,34 +877,36 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                 <div className="empty-state">
                   <FaGraduationCap size={64} className="empty-icon" />
                   <h3>No Enrollments Yet</h3>
-                  <Button onClick={() => setActiveTab("available")}>
+                  <Button onClick={() => setActiveTab("available")} className="btn-orange">
                     Browse Classes
                   </Button>
                 </div>
               ) : (
-                <Row className="g-4">
-                  {enrolledClasses.filter(notNil).map((cls) => {
+                <Row className="g-3 g-md-4">
+                  {pagedEnrolled.filter(notNil).map((cls) => {
                     const classLive = isLive(cls)
                     const endDate = safeParseDateTime(cls.startDate, cls.endTime)
                     const classCompleted = endDate ? endDate < new Date() : false
 
                     return (
-                      <Col key={cls._id} xl={6} lg={6} md={12}>
+                      <Col key={cls._id} lg={6} md={6} xs={12}>
                         <Card className={`enrollment-card ${classLive ? "live" : classCompleted ? "completed" : "upcoming"}`}>
                           <Card.Body>
 
                             <h3 className="enrollment-title">{cls.title}</h3>
 
                             <div className="enrollment-details">
-                              <div><strong>Course:</strong> {cls.courseName}</div>
-                              <div>
+                              <div className="detail-item">
+                                <strong>Course:</strong> {cls.courseName}
+                              </div>
+                              <div className="detail-item">
                                 <strong>Time:</strong> {formatTime(cls.startTime)} - {formatTime(cls.endTime)}
                               </div>
                             </div>
 
                             <Button
                               onClick={() => handleJoinClass(cls._id)}
-                              className="join-button btn-orange mt-3"
+                              className="join-button btn-orange mt-3 w-100"
                             >
                               {classLive ? "Join Live Session" : "Join Class"}
                             </Button>
@@ -890,6 +917,31 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                     )
                   })}
                 </Row>
+              )}
+              
+              {/* Pagination for Enrolled Classes */}
+              {enrTotalPages > 1 && (
+                <div className="pagination-container mt-4">
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => setEnrPage(p => Math.max(1, p - 1))}
+                    disabled={enrPage === 1}
+                    className="pagination-btn"
+                  >
+                    Previous
+                  </Button>
+                  <span className="pagination-info">
+                    Page {enrPage} of {enrTotalPages}
+                  </span>
+                  <Button 
+                    variant="outline-secondary" 
+                    onClick={() => setEnrPage(p => Math.min(enrTotalPages, p + 1))}
+                    disabled={enrPage === enrTotalPages}
+                    className="pagination-btn"
+                  >
+                    Next
+                  </Button>
+                </div>
               )}
             </>
           )}
@@ -903,6 +955,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         onHide={() => setShowModal(false)}
         className="professional-modal"
         dialogClassName="modal-fullscreen-custom modal-dialog-scrollable"
+        fullscreen="lg-down"
       >
         <Modal.Header closeButton>
           <Modal.Title>
@@ -924,7 +977,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   {/* LEFT SIDE - Class Info */}
                   <div className="modal-left">
                     <div className="class-hero">
-                      <h3>{selectedClass.title}</h3>
+                      <h3 className="modal-class-title">{selectedClass.title}</h3>
                       <span className="badge modal-badge">
                         {isLive(selectedClass)
                           ? 'LIVE'
@@ -963,7 +1016,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                       </div>
                     </div>
 
-                    {/* About This Session - Always show at least the header */}
+                    {/* About This Session */}
                     <div className="description-section">
                       <h5>
                         <FaBook className="me-2" />
@@ -1126,7 +1179,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   </div>
                 </div>
 
-                {/* Comments Section - Always visible at the bottom */}
+                {/* Comments Section */}
                 <div className="comments-section">
                   <h5 className="comments-title">
                     <FaComment className="me-2" />
@@ -1147,7 +1200,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   ) : (
                     <div className="comment-input-wrapper">
                       <div className="comment-avatar">
-                        <FaUserCircle size={40} />
+                        <FaUserCircle size={36} />
                       </div>
 
                       <div className="comment-input-container">
@@ -1165,7 +1218,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                           {[1, 2, 3, 4, 5].map((star) => (
                             <FaStar
                               key={star}
-                              size={20}
+                              size={18}
                               onClick={() => setRating(star)}
                               style={{
                                 cursor: "pointer",
@@ -1207,7 +1260,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                             {comment.userAvatar ? (
                               <img src={comment.userAvatar} alt={comment.userName} />
                             ) : (
-                              <FaUserCircle size={40} />
+                              <FaUserCircle size={32} />
                             )}
                           </div>
                           <div className="comment-content">
@@ -1221,7 +1274,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                               {[1, 2, 3, 4, 5].map((star) => (
                                 <FaStar
                                   key={star}
-                                  size={14}
+                                  size={12}
                                   style={{
                                     color: star <= comment.rating ? "#facc15" : "#334155",
                                     marginRight: "2px"
@@ -1247,18 +1300,17 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         show={showPurchaseModal}
         onHide={() => setShowPurchaseModal(false)}
         className="professional-modal"
-        dialogClassName="modal-fullscreen-custom modal-dialog-scrollable"
+        centered
+        size="sm"
       >
         <Modal.Body>
           {selectedPurchaseClass && (
             <div className="purchase-modal-content">
 
-              <h3 className="mb-3">
-                Confirm Purchase
-              </h3>
+              <h4 className="mb-3">Confirm Purchase</h4>
 
               <div className="purchase-info">
-                <h5>{selectedPurchaseClass.title}</h5>
+                <h5 className="purchase-class-title">{selectedPurchaseClass.title}</h5>
                 <div className="price-display">
                   ₹ {selectedPurchaseClass.cost?.toLocaleString() || 0}
                 </div>
@@ -1269,12 +1321,13 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                   variant="outline-light"
                   onClick={() => setShowPurchaseModal(false)}
                   disabled={purchasing}
+                  className="flex-grow-1"
                 >
                   Cancel
                 </Button>
 
                 <Button
-                  className={`btn-orange ${purchasing ? "btn-disabled" : ""}`}
+                  className={`btn-orange flex-grow-1 ${purchasing ? "btn-disabled" : ""}`}
                   disabled={purchasing}
                   onClick={async () => {
                     if (!selectedPurchaseClass) return
@@ -1287,7 +1340,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
                     }
                   }}
                 >
-                  {purchasing ? "Processing..." : "Confirm & Purchase"}
+                  {purchasing ? "Processing..." : "Confirm"}
                 </Button>
               </div>
 
@@ -1324,48 +1377,91 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: var(--glass-bg);
           border: 1px solid var(--glass-border);
           border-radius: 14px;
-          padding: 1rem 2rem;
-          margin: 1.5rem;
+          padding: 1rem;
+          margin: 1rem;
           display: flex;
+          flex-direction: column;
           align-items: center;
-          justify-content: space-between;
-          gap: 2rem;
+          gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+          .dashboard-header {
+            flex-direction: row;
+            padding: 1rem 2rem;
+            margin: 1.5rem;
+          }
         }
 
         .header-left {
           display: flex;
           align-items: center;
           gap: .75rem;
-          flex: 1;
+          width: 100%;
+          justify-content: center;
+        }
+
+        @media (min-width: 768px) {
+          .header-left {
+            width: auto;
+            justify-content: flex-start;
+          }
         }
 
         .header-center {
-          flex: 1;
+          width: 100%;
           display: flex;
           justify-content: center;
         }
 
+        @media (min-width: 768px) {
+          .header-center {
+            width: auto;
+          }
+        }
+
         .header-right {
-          flex: 1;
+          width: 100%;
           display: flex;
-          justify-content: flex-end;
+          justify-content: center;
+        }
+
+        @media (min-width: 768px) {
+          .header-right {
+            width: auto;
+            justify-content: flex-end;
+          }
         }
 
         .dashboard-title {
-          font-size: 1.5rem;
+          font-size: clamp(1.2rem, 4vw, 1.5rem);
           font-weight: 600;
-          white-space: nowrap;
+          white-space: normal;
+          text-align: center;
+        }
+
+        @media (min-width: 768px) {
+          .dashboard-title {
+            white-space: nowrap;
+          }
         }
 
         .header-icon {
-          font-size: 2rem;
+          font-size: clamp(1.5rem, 4vw, 2rem);
+          flex-shrink: 0;
         }
 
         /* Search box */
         .search-box {
           position: relative;
           width: 100%;
-          max-width: 400px;
+          max-width: 100%;
+        }
+
+        @media (min-width: 768px) {
+          .search-box {
+            max-width: 400px;
+          }
         }
 
         .search-icon {
@@ -1374,51 +1470,71 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           top: 50%;
           transform: translateY(-50%);
           color: #93a2b8;
+          font-size: 0.9rem;
         }
 
         .search-input {
           width: 100%;
-          padding: .875rem 1rem .875rem 3rem;
+          padding: 0.75rem 1rem 0.75rem 2.5rem;
           border: none;
-          border-radius: 12px;
+          border-radius: 30px;
           background: rgba(255,255,255,.08) !important;
           color: #e5e7eb !important;
           border: 1px solid var(--glass-border) !important;
           box-shadow: none !important;
+          font-size: 0.9rem;
         }
 
         .search-input::placeholder {
           color: #9aa3b2;
+          font-size: 0.85rem;
         }
 
         /* ===== Tabs container (glass) ===== */
         .dashboard-content {
-          padding: 0 1.5rem 2rem;
+          padding: 0 1rem 2rem;
           margin-top: 1rem;
         }
 
         .professional-tabs {
           background: rgba(255,255,255,.04);
           padding: 4px;
-          border-radius: 999px;
+          border-radius: 40px;
           display: inline-flex !important;
           align-items: center;
           gap: 4px;
           overflow: hidden;
+          width: 100%;
+          justify-content: center;
+        }
+
+        @media (min-width: 768px) {
+          .professional-tabs {
+            width: auto;
+          }
         }
 
         .professional-tabs .nav-item {
           margin: 0 !important;
+          flex: 1;
+        }
+
+        @media (min-width: 768px) {
+          .professional-tabs .nav-item {
+            flex: 0 1 auto;
+          }
         }
 
         .professional-tabs .nav-link {
           border: none !important;
-          border-radius: 999px !important;
-          padding: .45rem 1.1rem !important;
-          font-size: .9rem;
+          border-radius: 40px !important;
+          padding: 0.5rem 1rem !important;
+          font-size: 0.85rem;
           color: var(--text-muted) !important;
           background: transparent !important;
           transition: all .2s ease;
+          text-align: center;
+          width: 100%;
         }
 
         .professional-tabs .nav-link.active {
@@ -1427,9 +1543,10 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .tab-badge {
-          margin-left: .5rem;
-          font-size: .8rem;
+          margin-left: 0.25rem;
+          font-size: 0.7rem;
           background: rgba(255,255,255,.2);
+          padding: 0.2rem 0.4rem;
         }
 
         /* ===== Cards (glass panels) ===== */
@@ -1440,13 +1557,20 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: var(--glass-bg) !important;
           border: 1px solid var(--glass-border) !important;
           backdrop-filter: blur(12px) saturate(140%);
+          -webkit-backdrop-filter: blur(12px) saturate(140%);
           border-radius: 16px;
           box-shadow: 0 18px 50px rgba(2,8,23,.45) !important;
           transition: transform .25s ease, box-shadow .25s ease;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
 
         .class-card .card-body {
-          padding: 1.5rem;
+          padding: 1.25rem;
+          display: flex;
+          flex-direction: column;
+          height: 100%;
         }
 
         .class-card:hover,
@@ -1461,9 +1585,17 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
         .class-header {
           display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1.5rem;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+        }
+
+        @media (min-width: 576px) {
+          .class-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+          }
         }
 
         .class-badges {
@@ -1474,11 +1606,12 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
         .class-title,
         .enrollment-title {
-          font-size: 1.3rem;
+          font-size: clamp(1.1rem, 4vw, 1.3rem);
           font-weight: 700;
           color: #fff !important;
           margin-bottom: 1rem;
           line-height: 1.3;
+          word-break: break-word;
         }
 
         .class-meta {
@@ -1493,25 +1626,36 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           align-items: center;
           gap: .8rem;
           color: var(--text-muted);
-          font-size: .95rem;
+          font-size: 0.9rem;
+          flex-wrap: wrap;
         }
 
         .meta-icon {
           color: #93c5fd;
           width: 16px;
+          flex-shrink: 0;
         }
 
         /* Badges / chips */
         .badge.status-badge,
         .badge.modal-badge {
-          padding: .5rem 1rem;
+          padding: 0.4rem 0.75rem;
           border-radius: 999px;
-          font-size: .8rem;
+          font-size: 0.7rem;
           font-weight: 600;
           display: inline-flex;
           align-items: center;
           gap: .35rem;
           border: 1px solid transparent;
+          white-space: nowrap;
+        }
+
+        @media (min-width: 768px) {
+          .badge.status-badge,
+          .badge.modal-badge {
+            font-size: 0.8rem;
+            padding: .5rem 1rem;
+          }
         }
 
         .badge.status-badge.live {
@@ -1543,15 +1687,19 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: rgba(251,191,36,.12) !important;
           color: #fde68a !important;
           border: 1px solid rgba(251,191,36,.35);
-          border-radius: 12px;
+          border-radius: 30px;
           font-weight: 600;
-          padding: .4rem .8rem;
+          padding: 0.3rem 0.6rem;
+          font-size: 0.8rem;
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
         }
 
         /* Empty state */
         .empty-state {
           text-align: center;
-          padding: 3rem 2rem;
+          padding: 2rem 1rem;
           color: var(--text-muted);
         }
 
@@ -1563,6 +1711,11 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         .empty-state h3 {
           margin-bottom: 1rem;
           color: #e5e7eb;
+          font-size: 1.2rem;
+        }
+
+        .empty-state p {
+          font-size: 0.9rem;
         }
 
         /* Enrollment specific */
@@ -1578,19 +1731,47 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           border-left: 4px solid rgba(34,197,94,.45) !important;
         }
 
+        .enrollment-details {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          font-size: 0.9rem;
+          color: var(--text-muted);
+        }
+
+        .enrollment-details .detail-item {
+          word-break: break-word;
+        }
+
         /* Class actions */
         .class-actions {
           display: flex;
-          gap: 1rem;
-          margin-top: 1rem;
+          flex-direction: column;
+          gap: 0.5rem;
+          margin-top: auto;
+        }
+
+        @media (min-width: 576px) {
+          .class-actions {
+            flex-direction: row;
+            gap: 1rem;
+          }
         }
 
         .action-btn {
           flex: 1;
-          padding: .75rem 1.25rem;
-          border-radius: 12px;
+          padding: 0.6rem 1rem;
+          border-radius: 30px;
           font-weight: 600;
           transition: transform .2s ease;
+          font-size: 0.85rem;
+          width: 100%;
+        }
+
+        @media (min-width: 576px) {
+          .action-btn {
+            width: auto;
+          }
         }
 
         .action-btn:active {
@@ -1612,9 +1793,11 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: var(--accent) !important;
           border: 1px solid var(--accent-dark) !important;
           color: #fff !important;
-          border-radius: 12px !important;
+          border-radius: 30px !important;
           font-weight: 600;
           transition: all 0.2s ease;
+          padding: 0.6rem 1rem !important;
+          font-size: 0.85rem;
         }
 
         .btn-orange:hover {
@@ -1635,6 +1818,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: var(--accent) !important;
           border: 1px solid var(--accent-dark) !important;
           color: #fff !important;
+          border-radius: 30px !important;
+          font-size: 0.85rem;
+          padding: 0.6rem !important;
         }
 
         /* Class extra info */
@@ -1646,7 +1832,7 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .info-item {
-          font-size: .9rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
         }
 
@@ -1660,9 +1846,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         .tag-badge {
           background: var(--accent-soft);
           color: var(--accent);
-          padding: .3rem .7rem;
+          padding: 0.2rem 0.6rem;
           border-radius: 999px;
-          font-size: .75rem;
+          font-size: 0.7rem;
           border: 1px solid var(--accent);
         }
 
@@ -1670,10 +1856,10 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           display: inline-block;
           background: rgba(34,197,94,.15);
           color: #86efac;
-          padding: .4rem .8rem;
-          border-radius: 12px;
+          padding: 0.3rem 0.6rem;
+          border-radius: 30px;
           font-weight: 700;
-          font-size: .9rem;
+          font-size: 0.85rem;
           border: 1px solid rgba(34,197,94,.4);
         }
 
@@ -1684,13 +1870,13 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .slots-text {
-          font-size: .85rem;
+          font-size: 0.75rem;
           color: #fde68a;
           font-weight: 600;
         }
 
         .slots-progress {
-          height: 6px;
+          height: 4px;
           background: rgba(255,255,255,.08);
           border-radius: 999px;
           overflow: hidden;
@@ -1701,9 +1887,37 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: linear-gradient(90deg, #f97316, #ea580c);
         }
 
+        /* Pagination */
+        .pagination-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+          border-radius: 30px !important;
+          padding: 0.4rem 1rem !important;
+          font-size: 0.85rem !important;
+          border: 1px solid var(--glass-border) !important;
+          background: transparent !important;
+          color: var(--text-muted) !important;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+          background: var(--accent-soft) !important;
+          color: var(--accent) !important;
+        }
+
+        .pagination-info {
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+
         /* ===== Modal Styles ===== */
         .professional-modal .modal-content {
-          background: var(--glass-bg);
+          background: var(--bg-deep-1);
           border: 1px solid var(--glass-border);
           border-radius: 20px;
           backdrop-filter: blur(14px) saturate(140%);
@@ -1714,163 +1928,192 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
         .professional-modal .modal-header {
           border-bottom: 1px solid var(--glass-border);
-          padding: 1.25rem 1.5rem;
+          padding: 1rem;
         }
 
         .professional-modal .modal-header .btn-close {
           filter: invert(1) grayscale(100%) brightness(200%);
+          font-size: 0.8rem;
         }
 
         .professional-modal .modal-dialog {
-          max-width: 1200px;
-          margin: 1.75rem auto;
+          margin: 0;
+          height: 100vh;
+          max-width: 100vw;
         }
 
         .professional-modal .modal-dialog-scrollable .modal-body {
-          max-height: calc(100vh - 100px);
+          max-height: calc(100vh - 70px);
           overflow-y: auto;
-        }
-
-        .professional-modal .modal-body {
-          padding: 1.5rem;
+          padding: 1rem;
         }
 
         /* Modal Layout */
         .class-modal-layout {
-          display: grid;
-          grid-template-columns: 1.5fr 1fr;
+          display: flex;
+          flex-direction: column;
           gap: 1.5rem;
           margin-bottom: 2rem;
-          width: 100%;
-          min-width: 0;
+        }
+
+        @media (min-width: 992px) {
+          .class-modal-layout {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 1.5rem;
+          }
         }
 
         .modal-left,
         .modal-right {
-          min-width: 0;
-        }
-
-        .instructor-card.professional {
           width: 100%;
-          overflow-wrap: break-word;
-        }
-
-        .modal-left {
-          height: 100%;
         }
 
         .modal-right {
           background: rgba(255,255,255,.05);
           border: 1px solid var(--glass-border);
           border-radius: 16px;
-          padding: 1.5rem;
-          height: fit-content;
+          padding: 1.25rem;
         }
 
         .class-hero {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 2rem;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
         }
 
-        .class-hero h3 {
-          font-size: 1.5rem;
+        @media (min-width: 576px) {
+          .class-hero {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+          }
+        }
+
+        .class-hero h3.modal-class-title {
+          font-size: clamp(1.2rem, 4vw, 1.5rem);
           font-weight: 700;
           color: #fff;
           margin: 0;
+          word-break: break-word;
         }
 
         .details-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          margin-bottom: 2rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 576px) {
+          .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+          }
         }
 
         .detail-card {
           display: flex;
           align-items: center;
           gap: 1rem;
-          padding: 1rem;
+          padding: 0.75rem;
           background: rgba(255,255,255,.06);
           border: 1px solid var(--glass-border);
           border-radius: 12px;
         }
 
         .detail-icon {
-          font-size: 1.5rem;
+          font-size: 1.2rem;
           color: #93c5fd;
+          flex-shrink: 0;
         }
 
         .detail-card label {
           display: block;
-          font-size: .8rem;
+          font-size: 0.7rem;
           color: var(--text-muted);
-          margin-bottom: .2rem;
+          margin-bottom: .1rem;
         }
 
         .detail-card span {
           font-weight: 600;
           color: #e5e7eb;
+          font-size: 0.85rem;
+          word-break: break-word;
         }
 
-       .description-section {
-  margin-bottom: 2rem;
-  max-width: 100%;
-  overflow: hidden;
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
+        .description-section {
+          margin-bottom: 1.5rem;
+          max-width: 100%;
+          overflow: hidden;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
 
-/* VERY IMPORTANT — constrain all injected HTML */
-.description-section * {
-  max-width: 100% !important;
-  box-sizing: border-box;
-}
+        .description-section * {
+          max-width: 100% !important;
+          box-sizing: border-box;
+        }
 
-      /* Prevent images from overflowing */
-      .description-section img {
-        max-width: 100% !important;
-        height: auto !important;
-        border-radius: 12px;
-      }
+        .description-section img {
+          max-width: 100% !important;
+          height: auto !important;
+          border-radius: 12px;
+        }
 
-      /* Prevent long code blocks / pre text overflow */
-      .description-section pre,
-      .description-section code {
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-      }
+        .description-section pre,
+        .description-section code {
+          white-space: pre-wrap !important;
+          word-break: break-word !important;
+        }
 
-      /* Prevent tables from breaking layout */
-      .description-section table {
-        width: 100% !important;
-        display: block;
-        overflow-x: auto;
-      }
+        .description-section table {
+          width: 100% !important;
+          display: block;
+          overflow-x: auto;
+        }
 
         .description-section h5 {
           color: #fff;
-          margin-bottom: 1rem;
+          margin-bottom: 0.75rem;
           display: flex;
           align-items: center;
+          font-size: 1rem;
         }
 
         .description-section p {
           color: var(--text-muted);
           line-height: 1.6;
+          font-size: 0.9rem;
         }
 
         .description-placeholder {
           background: rgba(255,255,255,.02);
           border-radius: 12px;
-          padding: 2rem;
+          padding: 1.5rem;
           text-align: center;
         }
 
         .modal-actions-mobile {
+          display: block;
+        }
+
+        @media (min-width: 992px) {
+          .modal-actions-mobile {
+            display: none;
+          }
+        }
+
+        .modal-actions {
           display: none;
+        }
+
+        @media (min-width: 992px) {
+          .modal-actions {
+            display: block;
+          }
         }
 
         /* ===== Professional Instructor Card ===== */
@@ -1878,55 +2121,75 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: rgba(255,255,255,.05);
           border: 1px solid rgba(255,255,255,.1);
           border-radius: 16px;
-          padding: 1.5rem;
+          padding: 1.25rem;
         }
 
         .section-title {
           color: #fff;
-          margin-bottom: 1.2rem;
+          margin-bottom: 1rem;
           display: flex;
           align-items: center;
+          font-size: 1rem;
         }
 
         .instructor-header {
           display: flex;
-          gap: 1.2rem;
-          margin-bottom: 1.5rem;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 1.25rem;
           align-items: center;
+          text-align: center;
+        }
+
+        @media (min-width: 576px) {
+          .instructor-header {
+            flex-direction: row;
+            gap: 1.2rem;
+            align-items: center;
+            text-align: left;
+          }
         }
 
         .instructor-avatar img {
-          width: 80px;
-          height: 80px;
+          width: 70px;
+          height: 70px;
           border-radius: 50%;
           object-fit: cover;
           border: 3px solid var(--accent);
         }
 
+        @media (min-width: 768px) {
+          .instructor-avatar img {
+            width: 80px;
+            height: 80px;
+          }
+        }
+
         .avatar-placeholder {
-          width: 80px;
-          height: 80px;
+          width: 70px;
+          height: 70px;
           border-radius: 50%;
           background: linear-gradient(135deg,#f97316,#ea580c);
           color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 2rem;
+          font-size: 1.8rem;
           font-weight: 700;
         }
 
         .instructor-name {
           margin: 0;
-          font-size: 1.2rem;
+          font-size: 1.1rem;
           font-weight: 700;
           color: #fff;
         }
 
         .instructor-email {
-          font-size: .85rem;
+          font-size: 0.8rem;
           color: var(--text-muted);
           margin-top: .3rem;
+          word-break: break-word;
         }
 
         .rating-row {
@@ -1934,11 +2197,18 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           display: flex;
           align-items: center;
           gap: .5rem;
+          justify-content: center;
+        }
+
+        @media (min-width: 576px) {
+          .rating-row {
+            justify-content: flex-start;
+          }
         }
 
         .stars {
           color: #facc15;
-          font-size: .9rem;
+          font-size: 0.8rem;
           font-weight: 600;
         }
 
@@ -1948,12 +2218,12 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .info-block {
-          margin-bottom: 1.2rem;
+          margin-bottom: 1rem;
         }
 
         .label {
           display: block;
-          font-size: .8rem;
+          font-size: 0.7rem;
           font-weight: 600;
           color: var(--accent);
           text-transform: uppercase;
@@ -1962,8 +2232,9 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .value {
-          font-size: .95rem;
+          font-size: 0.85rem;
           color: #e5e7eb;
+          word-break: break-word;
         }
 
         .highlight {
@@ -1972,10 +2243,11 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         }
 
         .bio-text {
-          font-size: .9rem;
+          font-size: 0.85rem;
           color: var(--text-muted);
           line-height: 1.6;
           margin: 0;
+          word-break: break-word;
         }
 
         .skills-container {
@@ -1989,45 +2261,52 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           background: rgba(249,115,22,.12);
           color: #f97316;
           border: 1px solid #f97316;
-          padding: .35rem .8rem;
+          padding: 0.25rem 0.6rem;
           border-radius: 999px;
-          font-size: .75rem;
+          font-size: 0.65rem;
           font-weight: 600;
-        }
-
-        .modal-actions {
-          text-align: center;
         }
 
         /* Comments Section */
         .comments-section {
-          margin-top: 2rem;
-          padding-top: 2rem;
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
           border-top: 1px solid var(--glass-border);
         }
 
         .comments-title {
           color: #fff;
-          margin-bottom: 1.5rem;
-          font-size: 1.2rem;
+          margin-bottom: 1.25rem;
+          font-size: 1rem;
           display: flex;
           align-items: center;
+          flex-wrap: wrap;
         }
 
         .comment-input-wrapper {
           display: flex;
-          gap: 1rem;
-          margin-bottom: 2rem;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        @media (min-width: 576px) {
+          .comment-input-wrapper {
+            flex-direction: row;
+            gap: 1rem;
+          }
         }
 
         .comment-avatar {
           flex-shrink: 0;
+          display: flex;
+          justify-content: center;
         }
 
         .comment-avatar svg,
         .comment-avatar img {
-          width: 40px;
-          height: 40px;
+          width: 36px;
+          height: 36px;
           border-radius: 50%;
           color: var(--text-muted);
         }
@@ -2045,7 +2324,8 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           color: #fff !important;
           border-radius: 12px !important;
           resize: vertical;
-          min-height: 80px;
+          min-height: 70px;
+          font-size: 0.9rem;
         }
 
         .comment-textarea:focus {
@@ -2054,15 +2334,36 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
           box-shadow: none !important;
         }
 
+        .rating-input {
+          display: flex;
+          gap: 0.5rem;
+          justify-content: center;
+          margin: 0.25rem 0;
+        }
+
+        @media (min-width: 576px) {
+          .rating-input {
+            justify-content: flex-start;
+          }
+        }
+
         .comment-submit-btn {
-          align-self: flex-end;
           background: var(--accent) !important;
           border: 1px solid var(--accent-dark) !important;
           color: #fff !important;
           border-radius: 999px !important;
-          padding: 0.5rem 1.5rem !important;
+          padding: 0.5rem 1rem !important;
           font-weight: 600;
           transition: all 0.2s ease;
+          font-size: 0.85rem;
+          width: 100%;
+        }
+
+        @media (min-width: 576px) {
+          .comment-submit-btn {
+            width: auto;
+            align-self: flex-end;
+          }
         }
 
         .comment-submit-btn:hover:not(:disabled) {
@@ -2078,21 +2379,41 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
         .comments-list {
           display: flex;
           flex-direction: column;
-          gap: 1.5rem;
+          gap: 1rem;
+        }
+
+        .scrollable-feedback {
+          max-height: 300px;
+          overflow-y: auto;
+          padding-right: 6px;
+        }
+
+        .scrollable-feedback::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .scrollable-feedback::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .scrollable-feedback::-webkit-scrollbar-thumb {
+          background: rgba(255,255,255,0.2);
+          border-radius: 999px;
         }
 
         .no-comments {
           text-align: center;
           color: var(--text-muted);
-          padding: 2rem;
+          padding: 1.5rem;
           background: rgba(255,255,255,.02);
           border-radius: 12px;
+          font-size: 0.9rem;
         }
 
         .comment-item {
           display: flex;
-          gap: 1rem;
-          padding: 1rem;
+          gap: 0.75rem;
+          padding: 0.75rem;
           background: rgba(255,255,255,.02);
           border-radius: 12px;
           transition: background 0.2s ease;
@@ -2108,218 +2429,97 @@ const StudentDashboard: React.FC<Props> = ({ userId }) => {
 
         .comment-header {
           display: flex;
-          justify-content: space-between;
-          align-items: center;
+          flex-direction: column;
+          gap: 0.25rem;
           margin-bottom: 0.5rem;
+        }
+
+        @media (min-width: 576px) {
+          .comment-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+          }
         }
 
         .comment-author {
           font-weight: 600;
           color: #fff;
+          font-size: 0.9rem;
         }
 
         .comment-time {
-          font-size: 0.85rem;
+          font-size: 0.7rem;
           color: var(--text-muted);
+        }
+
+        .comment-rating {
+          margin-bottom: 0.5rem;
         }
 
         .comment-text {
           color: var(--text-main);
-          margin-bottom: 0.75rem;
+          margin-bottom: 0;
           line-height: 1.5;
-        }
-
-        .comment-actions {
-          display: flex;
-          gap: 1rem;
-        }
-
-        .comment-like-btn,
-        .comment-reply-btn {
-          color: var(--text-muted) !important;
-          font-size: 0.9rem !important;
-          padding: 0 !important;
-          text-decoration: none !important;
-        }
-
-        .comment-like-btn:hover,
-        .comment-reply-btn:hover {
-          color: var(--accent) !important;
+          font-size: 0.85rem;
+          word-break: break-word;
         }
 
         /* Purchase Modal */
         .purchase-modal-content {
           text-align: center;
-          padding: 1.5rem;
+          padding: 1rem;
         }
 
         .purchase-info {
           background: rgba(255,255,255,.05);
           border: 1px solid var(--glass-border);
           border-radius: 16px;
-          padding: 1.5rem;
+          padding: 1.25rem;
+        }
+
+        .purchase-class-title {
+          font-size: 1rem;
+          margin-bottom: 1rem;
+          word-break: break-word;
         }
 
         .price-display {
-          font-size: 2rem;
+          font-size: 1.5rem;
           font-weight: 700;
           color: #86efac;
-          margin-top: .5rem;
         }
 
         .purchase-actions {
           display: flex;
-          justify-content: center;
-          gap: 1rem;
+          flex-direction: column;
+          gap: 0.75rem;
         }
 
-        /* Responsive */
-        @media (max-width: 992px) {
-          .class-modal-layout {
-            grid-template-columns: 1fr;
-          }
-
-          .modal-actions-mobile {
-            display: block;
-          }
-
-          .modal-actions {
-            display: none;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .dashboard-header {
-            flex-direction: column;
+        @media (min-width: 576px) {
+          .purchase-actions {
+            flex-direction: row;
             gap: 1rem;
           }
-          
-          .header-left,
-          .header-center,
-          .header-right {
-            width: 100%;
-            justify-content: center;
-          }
-          
-          .details-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .comment-input-wrapper {
-            flex-direction: column;
-          }
-
-          .comment-submit-btn {
-            align-self: stretch;
-          }
-
-          .instructor-header {
-            flex-direction: column;
-            text-align: center;
-          }
-
-          .instructor-main {
-            text-align: center;
-          }
-
-          .rating-row {
-            justify-content: center;
-          }
         }
 
-        /* Fallback for browsers without backdrop-filter */
-        @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-          .dashboard-header,
-          .professional-tabs,
-          .class-card,
-          .enrollment-card,
-          .professional-modal .modal-content {
-            background: rgba(17,24,39,.92) !important;
-          }
+        /* Utility */
+        .w-100 {
+          width: 100%;
         }
 
-      /* FULL TRUE FULLSCREEN */
-      .modal-fullscreen-custom {
-        width: 100vw !important;
-        max-width: 100vw !important;
-        height: 100vh !important;
-        margin: 0 !important;
-      }
+        .text-muted {
+          color: var(--text-muted) !important;
+        }
 
-      .professional-modal .modal-dialog {
-        margin: 0 !important;   /* remove bootstrap spacing */
-        height: 100vh;
-      }
+        .text-warning {
+          color: #facc15 !important;
+        }
 
-      .professional-modal .modal-content {
-        height: 100vh;
-        border-radius: 0 !important;
-        display: flex;
-        flex-direction: column;
-      }
-
-      .professional-modal .modal-header {
-        flex-shrink: 0;
-      }
-
-      .professional-modal .modal-body {
-        flex: 1;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-      /* ===== Scrollable Feedback Box ===== */
-      .scrollable-feedback {
-        max-height: 320px;      /* You can adjust: 300–400px */
-        overflow-y: auto;
-        padding-right: 6px;
-      }
-
-      /* Smooth scrollbar (Chrome/Edge) */
-      .scrollable-feedback::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .scrollable-feedback::-webkit-scrollbar-track {
-        background: transparent;
-      }
-
-      .scrollable-feedback::-webkit-scrollbar-thumb {
-        background: rgba(255,255,255,0.2);
-        border-radius: 999px;
-      }
-
-      .scrollable-feedback::-webkit-scrollbar-thumb:hover {
-        background: rgba(255,255,255,0.35);
-      }
-
-      /* Firefox */
-      .scrollable-feedback {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(255,255,255,0.25) transparent;
-      }
         /* Make column stretch */
-.row > [class*='col-'] {
-  display: flex;
-}
-
-/* Make card take full height */
-.class-card {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* Make body fill space */
-.class-card .card-body {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-/* Push buttons to bottom so cards align */
-.class-actions {
-  margin-top: auto;
-}
+        .row > [class*='col-'] {
+          display: flex;
+        }
       `}</style>
     </>
   )

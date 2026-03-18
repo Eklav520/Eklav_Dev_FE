@@ -9,7 +9,7 @@ const OnlineClasses = () => {
     <>
       <PageMetaData title="Self Interview" />
       <Card className="bg-transparent border rounded-4">
-        <StudentDashboard userId="665fc5556789d1c9cabcdef2" />
+        <StudentDashboard/>
       </Card>
     </>
   )

@@ -211,19 +211,26 @@ const StudentDashboardUpdated: React.FC = () => {
       <HeroSection student={student} />
       <KPISection kpis={kpis} />
 
+      <Row className="g-3 mb-4 align-items-stretch">
+        <Col xs={12} lg={4} className="d-flex">
+          <div style={{ height: '600px', display: 'flex', width: '100%' }}>
+            <CourseProgress
+              enrolledCourses={enrolledCourses}
+              remainingCourses={remainingCourses}
+            />
+          </div>
+        </Col>
 
-      <Row className="g-3 mb-4">
-        <Col xs={12} lg={4}>
-          <CourseProgress
-            enrolledCourses={enrolledCourses}
-            remainingCourses={remainingCourses}
-          />
+        <Col xs={12} lg={4} className="d-flex">
+          <div style={{ height: '600px', width: '100%' }}>
+            <EnglishSkills />
+          </div>
         </Col>
-        <Col xs={12} lg={4}>
-          <EnglishSkills />
-        </Col>
-        <Col xs={12} lg={4}>
-          <SelfPreparation />
+
+        <Col xs={12} lg={4} className="d-flex">
+          <div style={{ height: '600px', display: 'flex', width: '100%' }}>
+            <SelfPreparation />
+          </div>
         </Col>
       </Row>
       {/*   <MonthlyReport /> */}

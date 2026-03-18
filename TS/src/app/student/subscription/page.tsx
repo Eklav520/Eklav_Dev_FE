@@ -7,7 +7,7 @@ const EnglishPractice = () => {
   return (
     <>
       <PageMetaData title="SubscriptionPage" />
-    <SubscriptionPage/>
+      <SubscriptionPage />
     </>
   )
 }

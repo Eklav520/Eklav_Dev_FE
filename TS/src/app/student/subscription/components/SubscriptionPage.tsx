@@ -146,7 +146,6 @@ const PREMIUM_FEATURES = [
 
 const SubscriptionPage = () => {
     const { user, refreshUser } = useAuthContext();
-    //const { user, updateUser } = useAuthContext();
     const baseURL = import.meta.env.VITE_API_BASE_URL;
     const token = user?.token;
 
@@ -168,8 +167,6 @@ const SubscriptionPage = () => {
     // Universal coupons
     const [universalCoupons, setUniversalCoupons] = useState<UniversalCoupon[]>([]);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
-
-    console.log('profile',profile)
 
     // Add the same premium features to all paid plans
     const plansWithFeatures = plans.map((plan) => ({
@@ -341,7 +338,6 @@ const SubscriptionPage = () => {
 
                             await refreshUser()
 
-                            // 🔥 Also update local profile state
                             const profileRes = await fetch(`${baseURL}/profile`, {
                                 headers: { Authorization: `Bearer ${token}` },
                             })
@@ -382,20 +378,6 @@ const SubscriptionPage = () => {
         });
     };
 
-    /*  const refreshUserProfile = async () => {
-         const profileRes = await fetch(`${baseURL}/profile`, {
-             headers: {
-                 Authorization: `Bearer ${token}`,
-             },
-         })
- 
-         if (!profileRes.ok) throw new Error('Failed to refresh profile')
- 
-         const profileData = await profileRes.json()
- 
-         updateUser(profileData)  // 🔥 real backend data
-     } */
-
     const copyToClipboard = (code: string) => {
         navigator.clipboard.writeText(code);
         setCopiedCode(code);
@@ -425,11 +407,12 @@ const SubscriptionPage = () => {
           background: ${THEME.glass};
           backdrop-filter: blur(10px);
           border: 1px solid ${THEME.border};
-          border-radius: 32px;
+          border-radius: 24px;
           box-shadow: ${THEME.shadow};
           transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
           position: relative;
           overflow: hidden;
+          height: 100%;
         }
 
         .glass-card::before {
@@ -448,7 +431,7 @@ const SubscriptionPage = () => {
         }
 
         .glass-card:hover {
-          transform: translateY(-8px) scale(1.02);
+          transform: translateY(-4px) scale(1.01);
           border-color: ${THEME.primary};
           box-shadow: 0 30px 50px -15px ${THEME.glow};
         }
@@ -462,20 +445,20 @@ const SubscriptionPage = () => {
         /* Popular Badge */
         .popular-badge {
           position: absolute;
-          top: 24px;
-          right: 24px;
+          top: 16px;
+          right: 16px;
           background: ${THEME.gradient};
           color: white;
-          padding: 8px 20px;
-          border-radius: 40px;
-          font-size: 0.9rem;
+          padding: 6px 16px;
+          border-radius: 30px;
+          font-size: 0.8rem;
           font-weight: 600;
           letter-spacing: 0.5px;
-          box-shadow: 0 10px 20px -5px ${THEME.glow};
+          box-shadow: 0 8px 16px -5px ${THEME.glow};
           z-index: 10;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           border: 1px solid rgba(255, 255, 255, 0.3);
           backdrop-filter: blur(4px);
         }
@@ -483,22 +466,22 @@ const SubscriptionPage = () => {
         /* Plan Header with Orange Glow */
         .plan-header {
           text-align: center;
-          padding: 24px 24px 16px;
+          padding: 20px 16px 12px;
           border-bottom: 2px dashed ${THEME.border};
         }
 
         .plan-icon {
-          width: 80px;
-          height: 80px;
-          margin: 0 auto 20px;
+          width: 60px;
+          height: 60px;
+          margin: 0 auto 16px;
           background: ${THEME.gradient};
-          border-radius: 30px;
+          border-radius: 20px;
           display: flex;
           align-items: center;
           justify-content: center;
           color: white;
-          font-size: 2.5rem;
-          box-shadow: 0 15px 25px -8px ${THEME.glow};
+          font-size: 2rem;
+          box-shadow: 0 12px 20px -8px ${THEME.glow};
           transform: rotate(0deg);
           transition: transform 0.3s ease;
         }
@@ -508,7 +491,7 @@ const SubscriptionPage = () => {
         }
 
         .plan-title {
-          font-size: 2rem;
+          font-size: clamp(1.5rem, 5vw, 2rem);
           font-weight: 800;
           color: ${THEME.text.primary};
           margin-bottom: 4px;
@@ -518,7 +501,7 @@ const SubscriptionPage = () => {
         .plan-subtitle {
           color: ${THEME.text.orange};
           font-weight: 600;
-          font-size: 0.95rem;
+          font-size: clamp(0.8rem, 3vw, 0.95rem);
           text-transform: uppercase;
           letter-spacing: 1px;
         }
@@ -526,33 +509,33 @@ const SubscriptionPage = () => {
         /* Price Section */
         .price-section {
           text-align: center;
-          padding: 20px 24px;
+          padding: 16px;
           background: linear-gradient(145deg, ${THEME.light}, transparent);
         }
 
         .price {
-          font-size: 3.5rem;
+          font-size: clamp(2rem, 8vw, 3.5rem);
           font-weight: 800;
           color: ${THEME.text.primary};
           line-height: 1;
         }
 
         .price small {
-          font-size: 1.2rem;
+          font-size: clamp(0.9rem, 3vw, 1.2rem);
           font-weight: 500;
           color: ${THEME.text.muted};
         }
 
         .price-period {
           color: ${THEME.text.muted};
-          font-size: 1rem;
+          font-size: clamp(0.8rem, 2.5vw, 1rem);
           font-weight: 500;
           display: block;
           margin-top: 4px;
         }
 
         .original-price {
-          font-size: 1.2rem;
+          font-size: clamp(1rem, 3vw, 1.2rem);
           color: ${THEME.text.light};
           text-decoration: line-through;
           margin-right: 8px;
@@ -561,73 +544,73 @@ const SubscriptionPage = () => {
         .discount-badge {
           background: ${THEME.gradient};
           color: white;
-          padding: 6px 16px;
+          padding: 4px 12px;
           border-radius: 30px;
           font-weight: 600;
-          font-size: 0.9rem;
+          font-size: clamp(0.8rem, 2.5vw, 0.9rem);
           display: inline-block;
-          margin-top: 10px;
+          margin-top: 8px;
           border: 1px solid rgba(255, 255, 255, 0.3);
           backdrop-filter: blur(4px);
         }
 
         /* Features List */
         .features-list {
-          padding: 24px;
+          padding: 16px;
         }
 
         .feature-item {
           display: flex;
           align-items: center;
-          padding: 8px 0;
+          padding: 6px 0;
           color: ${THEME.text.secondary};
-          font-size: 0.95rem;
+          font-size: clamp(0.85rem, 2.5vw, 0.95rem);
         }
 
         .feature-icon-wrapper {
-          width: 24px;
-          height: 24px;
-          margin-right: 12px;
+          width: 20px;
+          height: 20px;
+          margin-right: 10px;
           color: ${THEME.primary};
           flex-shrink: 0;
         }
 
         .feature-item svg {
-          width: 20px;
-          height: 20px;
+          width: 16px;
+          height: 16px;
         }
 
         .more-features {
           display: flex;
           align-items: center;
-          padding: 8px 0;
+          padding: 6px 0;
           color: ${THEME.primary};
-          font-size: 0.95rem;
+          font-size: clamp(0.85rem, 2.5vw, 0.95rem);
           font-weight: 600;
         }
 
         .more-features svg {
           color: ${THEME.primary};
-          margin-right: 12px;
-          font-size: 1.2rem;
+          margin-right: 10px;
+          font-size: 1.1rem;
         }
 
         /* Action Button */
         .plan-action {
-          padding: 0 24px 24px;
+          padding: 0 16px 20px;
         }
 
         .btn-plan {
           width: 100%;
-          padding: 16px;
-          border-radius: 50px;
+          padding: 14px;
+          border-radius: 40px;
           font-weight: 700;
-          font-size: 1.1rem;
+          font-size: clamp(0.95rem, 3vw, 1.1rem);
           letter-spacing: 0.5px;
           border: none;
           background: ${THEME.gradient};
           color: white;
-          box-shadow: 0 10px 20px -5px ${THEME.glow};
+          box-shadow: 0 8px 16px -5px ${THEME.glow};
           transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
@@ -650,7 +633,7 @@ const SubscriptionPage = () => {
 
         .btn-plan:hover {
           transform: translateY(-2px);
-          box-shadow: 0 20px 30px -8px ${THEME.glow};
+          box-shadow: 0 15px 25px -8px ${THEME.glow};
         }
 
         .btn-plan:disabled {
@@ -674,8 +657,8 @@ const SubscriptionPage = () => {
         /* Active Subscription Banner */
         .active-banner {
           background: ${THEME.gradient};
-          border-radius: 60px;
-          padding: 20px 30px;
+          border-radius: 30px;
+          padding: 20px;
           color: white;
           box-shadow: 0 20px 30px -10px ${THEME.glow};
           border: 1px solid rgba(255, 255, 255, 0.3);
@@ -685,22 +668,24 @@ const SubscriptionPage = () => {
         .active-banner-item {
           display: flex;
           align-items: center;
-          gap: 15px;
+          gap: 12px;
+          width: 100%;
         }
 
         .active-banner-item svg {
-          font-size: 2rem;
+          font-size: 1.8rem;
           opacity: 0.9;
+          flex-shrink: 0;
         }
 
         .active-banner-item .label {
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           opacity: 0.9;
-          margin-bottom: 4px;
+          margin-bottom: 2px;
         }
 
         .active-banner-item .value {
-          font-size: 1.3rem;
+          font-size: clamp(1rem, 4vw, 1.3rem);
           font-weight: 700;
           margin: 0;
           line-height: 1.2;
@@ -710,21 +695,23 @@ const SubscriptionPage = () => {
           background: rgba(255, 255, 255, 0.2);
           backdrop-filter: blur(4px);
           border: 2px solid rgba(255, 255, 255, 0.4);
-          border-radius: 40px;
-          padding: 12px 30px;
+          border-radius: 30px;
+          padding: 10px 24px;
           font-weight: 600;
           display: inline-flex;
           align-items: center;
-          gap: 10px;
-          font-size: 1.1rem;
+          gap: 8px;
+          font-size: 1rem;
+          width: 100%;
+          justify-content: center;
         }
 
         /* Coupon Styles */
         .coupon-section {
           background: ${THEME.glass};
           backdrop-filter: blur(10px);
-          border-radius: 30px;
-          padding: 30px;
+          border-radius: 24px;
+          padding: 24px 16px;
           border: 1px solid ${THEME.border};
           box-shadow: ${THEME.shadow};
         }
@@ -732,62 +719,72 @@ const SubscriptionPage = () => {
         .coupon-chip {
           background: white;
           border: 1px solid ${THEME.border};
-          border-radius: 50px;
-          padding: 12px 24px;
+          border-radius: 40px;
+          padding: 10px 16px;
           cursor: pointer;
           transition: all 0.3s ease;
           display: inline-flex;
           align-items: center;
-          gap: 12px;
+          gap: 8px;
           box-shadow: 0 5px 15px rgba(255, 107, 43, 0.1);
+          width: 100%;
+          justify-content: center;
         }
 
         .coupon-chip:hover {
-          transform: translateY(-3px);
+          transform: translateY(-2px);
           border-color: ${THEME.primary};
-          box-shadow: 0 15px 25px -8px ${THEME.glow};
+          box-shadow: 0 12px 20px -8px ${THEME.glow};
         }
 
         .coupon-code {
           font-weight: 700;
           letter-spacing: 1px;
           color: ${THEME.primary};
+          font-size: clamp(0.85rem, 3vw, 1rem);
         }
 
         .coupon-badge {
           background: ${THEME.gradient};
           color: white;
-          padding: 4px 12px;
+          padding: 4px 10px;
           border-radius: 30px;
           font-weight: 600;
-          font-size: 0.85rem;
+          font-size: 0.8rem;
         }
 
         .coupon-input-group {
           background: white;
-          border-radius: 60px;
-          padding: 5px;
+          border-radius: 50px;
+          padding: 4px;
           border: 1px solid ${THEME.border};
           box-shadow: 0 5px 15px rgba(255, 107, 43, 0.1);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        @media (min-width: 576px) {
+          .coupon-input-group {
+            flex-direction: row;
+          }
         }
 
         .coupon-input {
           border: none;
           background: transparent;
-          padding: 12px 20px;
+          padding: 12px 16px;
           font-weight: 600;
           letter-spacing: 1px;
           color: ${THEME.text.primary};
+          font-size: clamp(0.85rem, 3vw, 1rem);
+          width: 100%;
         }
         
         .coupon-input::placeholder {
             color: #666 !important;
             opacity: 1 !important;
-            }
-
-            .coupon-input {
-            color: #222 !important;
-            }
+        }
 
         .coupon-input:focus {
           outline: none;
@@ -799,10 +796,17 @@ const SubscriptionPage = () => {
           background: ${THEME.gradient};
           border: none;
           border-radius: 50px !important;
-          padding: 12px 30px;
+          padding: 12px 24px;
           font-weight: 600;
           color: white;
           transition: all 0.3s ease;
+          width: 100%;
+        }
+
+        @media (min-width: 576px) {
+          .coupon-apply-btn {
+            width: auto;
+          }
         }
 
         .coupon-apply-btn:hover {
@@ -812,46 +816,46 @@ const SubscriptionPage = () => {
 
         .applied-coupon {
           background: ${THEME.light};
-          border-radius: 50px;
-          padding: 15px 25px;
+          border-radius: 40px;
+          padding: 12px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           border: 1px solid ${THEME.primary};
+          flex-wrap: wrap;
+          gap: 8px;
         }
 
-        /* Features Header - Made White */
-        .features-header {
-          text-align: center;
-          margin-bottom: 3rem;
+        /* Features Header */
+        .features-header-text {
+            text-align: center;
         }
 
-        .features-header h2 {
-          font-size: 2.5rem;
-          font-weight: 800;
-          color: ${THEME.text.primary};
-          margin-bottom: 0.5rem;
+        .features-header-text h2 {
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            color: white;
         }
 
-        .features-header p {
-          color: ${THEME.text.secondary};
-          font-size: 1.2rem;
-          opacity: 0.9;
+        .features-header-text p {
+            color: #ddd;
+            font-size: clamp(1rem, 3vw, 1.2rem);
         }
 
         /* Feature Cards */
         .feature-card {
           background: white;
           border: 1px solid ${THEME.border};
-          border-radius: 32px;
-          padding: 2rem;
+          border-radius: 24px;
+          padding: 24px 20px;
           height: 100%;
           transition: all 0.3s ease;
           box-shadow: 0 10px 30px -10px rgba(255, 107, 43, 0.1);
         }
 
         .feature-card:hover {
-          transform: translateY(-5px);
+          transform: translateY(-4px);
           box-shadow: 0 20px 40px -12px ${THEME.glow};
           border-color: ${THEME.primary};
         }
@@ -859,65 +863,44 @@ const SubscriptionPage = () => {
         .feature-card h4 {
           color: ${THEME.text.primary};
           font-weight: 700;
-          margin-bottom: 1.5rem;
-          font-size: 1.3rem;
+          margin-bottom: 1.2rem;
+          font-size: clamp(1.2rem, 4vw, 1.3rem);
         }
 
         .feature-card .feature-item {
           color: ${THEME.text.secondary};
-          padding: 6px 0;
+          padding: 5px 0;
+          font-size: clamp(0.85rem, 2.5vw, 0.95rem);
         }
 
         .feature-card .feature-icon-wrapper {
           color: ${THEME.primary};
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-          .price {
-            font-size: 2.5rem;
-          }
-          
-          .plan-icon {
-            width: 60px;
-            height: 60px;
-            font-size: 2rem;
-          }
-          
-          .active-banner {
-            flex-direction: column;
-            text-align: center;
-          }
-          
-          .active-banner-item {
-            width: 100%;
-            justify-content: center;
-          }
+        /* Container padding for mobile */
+        .container {
+          padding-left: 16px;
+          padding-right: 16px;
         }
 
-        .features-header-text {
-            text-align: center;
-            }
+        /* Row gap for mobile */
+        .row {
+          --bs-gutter-y: 1rem;
+        }
 
-            .features-header-text h2 {
-            font-weight: 800;
-            margin-bottom: 0.5rem;
-            font-size: 2rem;
-            color: white;
-            }
-
-            .features-header-text p {
-            color: #ddd;
-            font-size: 1.1rem;
-            }
+        @media (min-width: 768px) {
+          .row {
+            --bs-gutter-y: 1.5rem;
+          }
+        }
       `}</style>
 
-            <Container className="py-5">
+            <Container className="py-4 py-md-5">
                 {/* Active Subscription Banner */}
                 {subscription?.isActive && (
-                    <Row className="justify-content-center mb-5">
+                    <Row className="justify-content-center mb-4 mb-md-5">
                         <Col xs={12} lg={10}>
-                            <div className="active-banner d-flex align-items-center justify-content-between flex-wrap gap-4">
+                            <div className="active-banner d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
                                 <div className="active-banner-item">
                                     <BsShieldCheck />
                                     <div>
@@ -947,17 +930,17 @@ const SubscriptionPage = () => {
 
                 {/* Coupon Section */}
                 {!subscription?.isActive && (
-                    <Row className="justify-content-center mb-5">
+                    <Row className="justify-content-center mb-4 mb-md-5">
                         <Col xs={12} lg={8}>
                             <div className="coupon-section text-center">
-                                <h4 className="mb-4" style={{ color: THEME.text.orange, fontWeight: 700 }}>
+                                <h4 className="mb-3 mb-md-4" style={{ color: THEME.text.orange, fontWeight: 700, fontSize: 'clamp(1.2rem, 4vw, 1.5rem)' }}>
                                     <BsTagFill className="me-2" />
                                     Exclusive Offers
                                 </h4>
 
                                 {/* Available Coupons */}
                                 {universalCoupons.length > 0 && !appliedCoupon && (
-                                    <div className="d-flex justify-content-center flex-wrap gap-3 mb-4">
+                                    <div className="d-flex flex-column flex-sm-row justify-content-center flex-wrap gap-2 mb-3 mb-md-4">
                                         {universalCoupons.map((coupon) => (
                                             <div
                                                 key={coupon.code}
@@ -983,7 +966,7 @@ const SubscriptionPage = () => {
                                             <span className="fw-bold" style={{ color: THEME.primary }}>
                                                 {appliedCoupon.code}
                                             </span>
-                                            <span className="mx-3 text-muted">•</span>
+                                            <span className="mx-2 text-muted">•</span>
                                             <span style={{ color: '#10b981', fontWeight: 600 }}>
                                                 {appliedCoupon.discountPercent}% OFF
                                             </span>
@@ -997,7 +980,7 @@ const SubscriptionPage = () => {
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="d-flex coupon-input-group">
+                                    <div className="coupon-input-group">
                                         <Form.Control
                                             type="text"
                                             placeholder="ENTER COUPON CODE"
@@ -1031,8 +1014,8 @@ const SubscriptionPage = () => {
                     </Row>
                 )}
 
-                {/* Plan Cards - Redesigned with Orange Glassy Look */}
-                <Row className="g-4 justify-content-center">
+                {/* Plan Cards */}
+                <Row className="g-3 g-md-4 justify-content-center">
                     {allPlans.map((plan, index) => {
                         const isCurrentPlan = subscription?.isActive && subscription.plan === plan.id;
                         const discountedPrice = getDiscountedPrice(plan);
@@ -1046,7 +1029,7 @@ const SubscriptionPage = () => {
                                 <Card className={`glass-card ${plan.popular ? 'popular' : ''} ${plan.isFree ? 'bg-white' : ''}`}>
                                     {plan.popular && (
                                         <div className="popular-badge">
-                                            <BsStarFill size={16} />
+                                            <BsStarFill size={14} />
                                             Most Popular
                                         </div>
                                     )}
@@ -1146,8 +1129,8 @@ const SubscriptionPage = () => {
                     })}
                 </Row>
 
-                {/* Features Section - Fixed Visibility */}
-                <Row className="mt-5 pt-4">
+                {/* Features Section */}
+                <Row className="mt-4 mt-md-5 pt-3 pt-md-4">
                     <Col xs={12}>
                         <div className="features-header-text">
                             <h2>Everything You Get</h2>
@@ -1155,10 +1138,10 @@ const SubscriptionPage = () => {
                         </div>
                     </Col>
 
-                    <Row className="g-4">
-                        <Col md={4}>
+                    <Row className="g-3 g-md-4 mt-2">
+                        <Col xs={12} md={4}>
                             <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
                                     <BsFolderSymlink />
                                 </div>
                                 <h4>Learning & Courses</h4>
@@ -1173,9 +1156,9 @@ const SubscriptionPage = () => {
                             </div>
                         </Col>
 
-                        <Col md={4}>
+                        <Col xs={12} md={4}>
                             <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
                                     <BsHddStack />
                                 </div>
                                 <h4>AI-Powered Tools</h4>
@@ -1190,9 +1173,9 @@ const SubscriptionPage = () => {
                             </div>
                         </Col>
 
-                        <Col md={4}>
+                        <Col xs={12} md={4}>
                             <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 60, height: 60, fontSize: '1.8rem', marginBottom: 20 }}>
+                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
                                     <BsShieldLock />
                                 </div>
                                 <h4>Assessment & Prep</h4>
