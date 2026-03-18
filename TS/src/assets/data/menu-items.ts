@@ -586,12 +586,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         icon: FaChalkboardTeacher, // 👨‍🏫 online classes
         url: '/student/online-classes',
       },
-      /* {
+      {
         key: 'materials',
         label: 'Reels',
         icon: FaPlayCircle,
         url: '/student/reels',
-      } */
+      }
       /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
       /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
     ],

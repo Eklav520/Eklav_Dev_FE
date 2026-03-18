@@ -82,123 +82,129 @@ const CommentsDrawer = ({
     }
   };
 
-  return (
-    <>
-      {/* Overlay */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.4)",
-            zIndex: 999,
-          }}
-        />
-      )}
-
-      {/* Drawer */}
+return (
+  <>
+    {isOpen && (
       <div
         style={{
           position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: "70%",
-          background: "#fff",
-          borderTopLeftRadius: 20,
-          borderTopRightRadius: 20,
-          transform: isOpen ? "translateY(0%)" : "translateY(100%)",
-          transition: "transform 0.3s ease",
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
+          inset: 0,
+          zIndex: 9999,
         }}
       >
-        {/* Header */}
+        {/* Overlay */}
         <div
+          onClick={onClose}
           style={{
-            padding: 16,
-            borderBottom: "1px solid #eee",
-            fontWeight: 600,
-            textAlign: "center",
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.6)",
           }}
-        >
-          Comments
-        </div>
+        />
 
-        {/* Comments List */}
+        {/* Drawer */}
         <div
           style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: 16,
-          }}
-        >
-          {loading ? (
-            <p>Loading...</p>
-          ) : comments.length === 0 ? (
-            <p style={{ textAlign: "center", opacity: 0.6 }}>
-              No comments yet
-            </p>
-          ) : (
-            comments.map((comment) => (
-              <div
-                key={comment._id}
-                style={{
-                  marginBottom: 12,
-                }}
-              >
-                <strong style={{ fontSize: 13 }}>
-                  {comment.user?.fullName || "User"}
-                </strong>
-                <p style={{ margin: 0, fontSize: 13 }}>
-                  {comment.text}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Input */}
-        <div
-          style={{
-            padding: 12,
-            borderTop: "1px solid #eee",
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "60vh", // ✅ reduced height
+            background: "#111", // ✅ dark theme (matches reels)
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
             display: "flex",
-            gap: 8,
+            flexDirection: "column",
+            transform: "translateY(0%)",
+            transition: "transform 0.3s ease",
           }}
         >
-          <input
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Add a comment..."
+          {/* Header */}
+          <div
             style={{
-              flex: 1,
-              padding: 8,
-              borderRadius: 20,
-              border: "1px solid #ddd",
-              fontSize: 13,
-            }}
-          />
-          <button
-            onClick={handleAddComment}
-            style={{
-              background: "#000",
+              padding: 14,
+              borderBottom: "1px solid #333",
+              textAlign: "center",
+              fontWeight: 600,
               color: "#fff",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: 20,
-              fontSize: 13,
-              cursor: "pointer",
             }}
           >
-            Post
-          </button>
+            Comments
+          </div>
+
+          {/* Comments List */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: 14,
+              color: "#fff",
+            }}
+          >
+            {loading ? (
+              <p>Loading...</p>
+            ) : comments.length === 0 ? (
+              <p style={{ textAlign: "center", opacity: 0.6 }}>
+                No comments yet
+              </p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment._id} style={{ marginBottom: 12 }}>
+                  <strong style={{ fontSize: 13 }}>
+                    {comment.user?.fullName || "User"}
+                  </strong>
+                  <p style={{ margin: 0, fontSize: 13 }}>
+                    {comment.text}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Input */}
+          <div
+            style={{
+              padding: 10,
+              borderTop: "1px solid #333",
+              display: "flex",
+              gap: 8,
+              background: "#111",
+            }}
+          >
+            <input
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a comment..."
+              style={{
+                flex: 1,
+                padding: 10,
+                borderRadius: 20,
+                border: "none",
+                background: "#222",
+                color: "#fff",
+                fontSize: 13,
+              }}
+            />
+            <button
+              onClick={handleAddComment}
+              style={{
+                background: "#000",
+                color: "#fff",
+                border: "none",
+                padding: "0 16px",
+                borderRadius: 20,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Post
+            </button>
+          </div>
         </div>
       </div>
-    </>
-  );
+    )}
+  </>
+);
 };
 
 export default CommentsDrawer;

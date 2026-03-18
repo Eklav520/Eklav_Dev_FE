@@ -83,13 +83,10 @@ const ReelActions = ({
       {/* Comment */}
       <div style={{ textAlign: "center" }}>
         <FaCommentDots
-  size={24}
-  style={{ cursor: "pointer" }}
-  onClick={() => setIsCommentsOpen(true)}
-/>
-        <span style={{ fontSize: 12, opacity: 0.9 }}>
-          {comments}
-        </span>
+          size={24}
+          style={{ cursor: "pointer" }}
+          onClick={() => setIsCommentsOpen(true)}
+        />
       </div>
 
       {/* More */}
@@ -112,12 +109,12 @@ const ReelActions = ({
         {isMuted ? <FaVolumeMute size={16} /> : <FaVolumeUp size={16} />}
       </div>
       <CommentsDrawer
-  reelId={reelId}
-  token={token}
-  baseURL={baseURL}
-  isOpen={isCommentsOpen}
-  onClose={() => setIsCommentsOpen(false)}
-/>
+        reelId={reelId}
+        token={token}
+        baseURL={baseURL}
+        isOpen={isCommentsOpen}
+        onClose={() => setIsCommentsOpen(false)}
+      />
     </div>
   );
 };

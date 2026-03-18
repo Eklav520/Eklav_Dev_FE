@@ -36,6 +36,12 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
   const [isMuted, setIsMuted] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  // ✅ Detect orientation
+  const [isLandscape, setIsLandscape] = useState(false);
+
+  // ✅ NEW: Loading state
+  const [isLoading, setIsLoading] = useState(true);
+
   /* ================= FETCH PROFILE ================= */
   useEffect(() => {
     if (!token) return;
@@ -56,6 +62,14 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
 
     fetchProfile();
   }, [token]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 3000); // fallback after 3 sec
+
+    return () => clearTimeout(timer);
+  }, [reel.videoUrl]);
 
   /* ================= AUTO PLAY ================= */
   useEffect(() => {
@@ -86,6 +100,17 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
   };
 
   return (
+    <>
+        {/* ✅ Inline spinner animation */}
+    <style>
+      {`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}
+    </style>
+
     <div
       style={{
         position: "relative",
@@ -95,6 +120,7 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        overflow: "hidden",
       }}
       onClick={togglePlay}
     >
@@ -104,12 +130,44 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
         loop
         playsInline
         preload="metadata"
+        onLoadedMetadata={(e) => {
+          const v = e.currentTarget;
+          setIsLandscape(v.videoWidth > v.videoHeight);
+        }}
+        onCanPlay={() => setIsLoading(false)}
+        onWaiting={() => setIsLoading(true)}
+        onPlaying={() => setIsLoading(false)}
         style={{
           height: "100%",
           width: "100%",
-          objectFit: "cover",
+          objectFit: isLandscape ? "contain" : "cover",
+          background: "#000",
+          zIndex: 1,
         }}
       />
+      {/* ⏳ Spinner */}
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 5,
+          }}
+        >
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              border: "3px solid rgba(255,255,255,0.2)",
+              borderTop: "3px solid #fff",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
+        </div>
+      )}
 
       {/* Gradient */}
       <div
@@ -119,6 +177,7 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
           background:
             "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.65) 100%)",
           pointerEvents: "none",
+          zIndex: 2,
         }}
       />
 
@@ -155,12 +214,14 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
             justifyContent: "center",
             fontSize: 24,
             color: "#fff",
+            zIndex: 6,
           }}
         >
           ▶
         </div>
       )}
     </div>
+    </>
   );
 };
 

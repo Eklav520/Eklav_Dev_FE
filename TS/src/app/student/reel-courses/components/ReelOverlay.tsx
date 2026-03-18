@@ -15,8 +15,8 @@ const ReelOverlay = ({
     <div
       style={{
         position: "absolute",
-        bottom: 100, // moved slightly down
         left: 16,
+        bottom: "40px", 
         color: "#fff",
         zIndex: 10,
         maxWidth: "70%",
