@@ -184,7 +184,25 @@ const InterviewDetailsPageView = () => {
 
       {/* 📦 CONTENT */}
       {loading ? (
-        <Spinner animation="border" />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "300px", // 👈 gives vertical center
+            width: "100%",
+          }}
+        >
+          <div className="text-center">
+            <Spinner
+              animation="border"
+              style={{ color: "#ff7a00", width: "3rem", height: "3rem" }}
+            />
+            <p style={{ marginTop: "10px", color: "#999" }}>
+              Loading jobs...
+            </p>
+          </div>
+        </div>
       ) : error ? (
         <Alert variant="danger">{error}</Alert>
       ) : paginatedJobs.length === 0 ? (

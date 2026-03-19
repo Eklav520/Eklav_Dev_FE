@@ -14,13 +14,19 @@ interface Props {
       attemptNumber: number
     }
   ) => void
+
+  resumeLimits?: {
+    used: number
+    remaining: number
+    limit: number
+  }
 }
 
 const MAX_MONTHLY = 5
 const TRIAL_MAX = 2
 const MAX_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 
-const ResumeInterviewSelection = ({ onStart }: Props) => {
+const ResumeInterviewSelection = ({ onStart , resumeLimits}: Props) => {
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
@@ -35,18 +41,24 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
   const [uploading, setUploading] = useState(false)
   const [starting, setStarting] = useState(false)
 
-  const [used, setUsed] = useState<number>(0)
+  //const [used, setUsed] = useState<number>(0)
   const [loadingLimit, setLoadingLimit] = useState(true)
 
   const [validFile, setValidFile] = useState(false)
   const [fileError, setFileError] = useState('')
 
-  const maxAllowed =
-    status === 'pending' ? TRIAL_MAX : MAX_MONTHLY
+const used = resumeLimits?.used ?? 0
+const remainingFromAPI = resumeLimits?.remaining
 
-  const remaining = Math.max(maxAllowed - used, 0)
+const maxAllowed =
+  status === 'pending' ? TRIAL_MAX : MAX_MONTHLY
 
+const remaining =
+  remainingFromAPI !== undefined
+    ? remainingFromAPI
+    : Math.max(maxAllowed - used, 0)
 
+/* 
   useEffect(() => {
 
     if (!token) return
@@ -82,7 +94,7 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
     fetchRemaining()
 
   }, [baseURL, token])
-
+ */
 
   /* ================= UPLOAD RESUME ================= */
 
@@ -219,11 +231,11 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
 
       /* UPDATE ATTEMPTS */
 
-      if (typeof data.used === 'number') {
+      /* if (typeof data.used === 'number') {
         setUsed(data.used)
       } else {
         setUsed(prev => prev + 1)
-      }
+      } */
 
 
       /* RESET UPLOADER */
@@ -269,7 +281,7 @@ const ResumeInterviewSelection = ({ onStart }: Props) => {
             🎯 Upload Latest Resume
           </h5>
 
-          {!loadingLimit && (
+          {resumeLimits && (
 
             <div
               className="px-3 py-1 rounded-pill small fw-semibold"

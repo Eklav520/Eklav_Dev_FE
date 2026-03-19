@@ -9,6 +9,7 @@ interface TopicSelectionProps {
     totalQuestions: number,
     role: string
   ) => void
+  limits: any
 }
 
 interface TopicLimit {
@@ -32,7 +33,7 @@ const formatTime = (ms: number) => {
   return `${days}d ${hours}h ${minutes}m`
 }
 
-const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
+const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -40,7 +41,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
 
   const [topics, setTopics] = useState<string[]>([])
   const [topic, setTopic] = useState<string>('')
-  const [limits, setLimits] = useState<Limits>({})
+  //const [limits, setLimits] = useState<Limits>({})
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -68,11 +69,11 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
         setTopics(topicsData.topics)
         if (topicsData.topics.length > 0) setTopic(topicsData.topics[0])
 
-        const limitsResponse = await fetch(`${baseURL}/interview/limits`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const limitsData = await limitsResponse.json()
-        setLimits(limitsData.limits || {})
+        /*    const limitsResponse = await fetch(`${baseURL}/interview/limits`, {
+             headers: { Authorization: `Bearer ${token}` },
+           })
+           const limitsData = await limitsResponse.json()
+           setLimits(limitsData.limits || {}) */
       } catch (error) {
         console.error('Failed to fetch topics or limits', error)
       }
@@ -88,7 +89,9 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart }) => {
       const now = Date.now()
       const newCountdowns: Record<string, number> = {}
 
-      Object.entries(limits).forEach(([topic, { remaining, earliestAttempt }]) => {
+      Object.entries(limits as Limits).forEach(([topic, value]) => {
+        const remaining = value.remaining
+        const earliestAttempt = value.earliestAttempt
         if (remaining === 0 && earliestAttempt) {
           const resetTime =
             new Date(earliestAttempt).getTime() + THIRTY_DAYS_MS

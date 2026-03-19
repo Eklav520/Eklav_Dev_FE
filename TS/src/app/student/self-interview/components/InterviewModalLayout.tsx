@@ -4,6 +4,7 @@ import TopicSelection from './TopicSelection'
 import ResumeInterviewSelection from './ResumeInterviewSelection'
 import InterviewUILayoutWithLogic from './InterviewUILayoutWithLogic'
 import { FaLaptopCode, FaFileAlt, FaTimes, FaInfoCircle, FaDesktop } from 'react-icons/fa'
+import { useAuthContext } from '@/context/useAuthContext'
 
 
 type InterviewMeta = {
@@ -14,6 +15,9 @@ type InterviewMeta = {
 
 
 const InterviewModalLayout = () => {
+  const { user } = useAuthContext()
+  const token = user?.token
+  const baseURL = import.meta.env.VITE_API_BASE_URL || ''
   const [show, setShow] = useState(false)
   const [interviewId, setInterviewId] = useState<string | null>(null)
   const [questions, setQuestions] = useState<string[]>([])
@@ -22,6 +26,8 @@ const InterviewModalLayout = () => {
   const modalRef = useRef<HTMLDivElement>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [meta, setMeta] = useState<InterviewMeta | undefined>(undefined)
+  const [limits, setLimits] = useState<any>(null);
+  const [resumeLimits, setResumeLimits] = useState<any>(null);
 
   // Check if mobile view
   useEffect(() => {
@@ -34,6 +40,13 @@ const InterviewModalLayout = () => {
 
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  useEffect(() => {
+    if (token) {
+      fetchLimits();
+      fetchResumeLimits();
+    }
+  }, [token]);
 
   const handleStart = (
     id: string,
@@ -53,13 +66,63 @@ const InterviewModalLayout = () => {
     setShow(true)
   }
 
-  const handleClose = () => {
-    setShow(false)
-    setInterviewId(null)
-    setQuestions([])
-    setTitle('')
-    setMeta(undefined)
-  }
+  const handleClose = async () => {
+    setShow(false);
+
+    await fetchLimits();
+    await fetchResumeLimits();
+
+    setInterviewId(null);
+    setQuestions([]);
+    setTitle('');
+    setMeta(undefined);
+  };
+
+  const handleInterviewComplete = async () => {
+    console.log("✅ Interview completed → refreshing limits");
+
+    await Promise.all([
+      fetchLimits(),
+      fetchResumeLimits()
+    ]);
+
+    handleClose(); // no timeout needed
+  };
+
+  const fetchLimits = async () => {
+    try {
+      const res = await fetch(`${baseURL}/interview/limits`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+
+      setLimits({ ...data }); // ✅ IMPORTANT
+
+    } catch (err) {
+      console.error("Limits fetch error", err);
+    }
+  };
+
+  const fetchResumeLimits = async () => {
+    try {
+      const res = await fetch(
+        `${baseURL}/api/resume-based-interview/remaining`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        }
+      );
+
+      const data = await res.json();
+
+      console.log("🔥 NEW LIMITS:", data);
+
+      setResumeLimits({ ...data }); // ✅ IMPORTANT
+
+    } catch (err) {
+      console.error("Resume limits error", err);
+    }
+  };
 
 
   return (
@@ -183,7 +246,7 @@ const InterviewModalLayout = () => {
             </div>
 
             <Card.Body className="p-4 pt-3">
-              <TopicSelection onStart={handleStart} />
+              <TopicSelection onStart={handleStart} limits={limits?.limits || {}}  />
             </Card.Body>
           </Card>
         </Col>
@@ -242,7 +305,7 @@ const InterviewModalLayout = () => {
             </div>
 
             <Card.Body className="p-4 pt-3">
-              <ResumeInterviewSelection onStart={handleStart} />
+              <ResumeInterviewSelection onStart={handleStart} resumeLimits={resumeLimits} />
             </Card.Body>
           </Card>
         </Col>
@@ -354,6 +417,7 @@ const InterviewModalLayout = () => {
                 title={title}
                 isFullscreen={!isMobile}
                 meta={meta}
+                onComplete={handleInterviewComplete}
               />
 
             )}

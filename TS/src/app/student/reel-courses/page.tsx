@@ -10,6 +10,7 @@ export default function HomePage() {
   const [isReelsOpen, setIsReelsOpen] = useState(false);
   const [selectedReelId, setSelectedReelId] = useState<string>();
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [loading, setLoading] = useState(true);
 
   const { user } = useAuthContext();
   const token = user?.token;
@@ -17,19 +18,18 @@ export default function HomePage() {
 
   const [sections, setSections] = useState<any[]>([]);
 
-  // Orange color palette
+  // Orange palette
   const orange = {
     primary: "#ff6b00",
-    light: "#ff8c42",
-    dark: "#e65c00",
     bg: "rgba(255, 107, 0, 0.2)",
-    lightBg: "rgba(255, 107, 0, 0.1)",
   };
 
-  /* ================= FETCH SECTIONS ================= */
+  /* ================= FETCH ================= */
   useEffect(() => {
     const fetchSections = async () => {
       try {
+        setLoading(true);
+
         const res = await axios.get(
           `${baseURL}/api/studentSideReels/sections`,
           {
@@ -39,35 +39,36 @@ export default function HomePage() {
           }
         );
 
-        setSections(res.data.sections);
+        setSections(res.data.sections || []);
       } catch (err) {
         console.error("Failed to fetch sections", err);
+      } finally {
+        setLoading(false);
       }
     };
 
     if (token) fetchSections();
   }, [token]);
 
-  /* ================= DYNAMIC CATEGORIES ================= */
+  /* ================= CATEGORIES ================= */
   const categories = [
     "All",
     ...sections
-      .filter((section) => section.reelCount > 0)
-      .map((section) => `${section.courseName}`),
+      .filter((s) => s.reelCount > 0)
+      .map((s) => s.courseName),
   ];
 
-  /* ================= FILTERED SECTIONS ================= */
+  /* ================= FILTER ================= */
   const filteredSections =
     activeCategory === "All"
       ? sections
       : sections.filter(
-          (section) =>
-            `${section.courseName}` === activeCategory
+          (s) => s.courseName === activeCategory
         );
 
-  /* ================= OPEN REELS ================= */
-  const openReels = (reelId?: string) => {
-    setSelectedReelId(reelId);
+  /* ================= OPEN ================= */
+  const openReels = (id?: string) => {
+    setSelectedReelId(id);
     setIsReelsOpen(true);
   };
 
@@ -75,205 +76,214 @@ export default function HomePage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#000000",
-        fontFamily:
-          "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        color: "#ffffff",
+        background: "#000",
+        color: "#fff",
       }}
     >
       {/* HEADER */}
       <div style={{ padding: "20px 16px 8px" }}>
-        <h1 style={{ fontSize: "28px", fontWeight: 700, margin: 0 }}>
+        <h1 style={{ fontSize: "28px", fontWeight: 700 }}>
           Courses
         </h1>
       </div>
 
-      {/* CATEGORY CHIPS */}
+      {/* CATEGORY */}
       <div
         style={{
           padding: "12px 16px",
           overflowX: "auto",
-          whiteSpace: "nowrap",
-          background: "#000000",
-          borderBottom: "1px solid #333333",
+          borderBottom: "1px solid #333",
         }}
       >
         <div style={{ display: "flex", gap: "8px" }}>
-          {categories.map((category) => (
+          {categories.map((cat) => (
             <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
               style={{
                 padding: "8px 16px",
                 borderRadius: "20px",
                 border:
-                  activeCategory === category
+                  activeCategory === cat
                     ? "none"
-                    : "1px solid #333333",
+                    : "1px solid #333",
                 background:
-                  activeCategory === category
+                  activeCategory === cat
                     ? orange.primary
                     : "#1a1a1a",
-                color: "#ffffff",
-                fontSize: "14px",
-                fontWeight: 500,
+                color: "#fff",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                boxShadow:
-                  activeCategory === category
-                    ? `0 2px 8px ${orange.primary}80`
-                    : "none",
-              }}
-              onMouseEnter={(e) => {
-                if (activeCategory !== category) {
-                  e.currentTarget.style.background = orange.bg;
-                  e.currentTarget.style.borderColor = orange.primary;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeCategory !== category) {
-                  e.currentTarget.style.background = "#1a1a1a";
-                  e.currentTarget.style.borderColor = "#333333";
-                }
               }}
             >
-              {category}
+              {cat}
             </button>
           ))}
         </div>
       </div>
 
-      {/* COURSES GRID */}
+      {/* ================= GRID ================= */}
       <div style={{ padding: "16px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "16px",
-          }}
-        >
-          {filteredSections.map((section) => (
+        {loading ? (
+          /* 🔥 ORANGE SPINNER */
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "300px",
+            }}
+          >
             <div
-              key={section._id}
               style={{
-                background: "#1a1a1a",
-                borderRadius: "20px",
-                overflow: "hidden",
-                border: "1px solid #333333",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                cursor:
-                  section.reelCount > 0 ? "pointer" : "default",
-                opacity:
-                  section.reelCount > 0 ? 1 : 0.5,
-                transition: "0.2s",
+                width: "50px",
+                height: "50px",
+                border: "5px solid rgba(255, 107, 0, 0.2)",
+                borderTop: "5px solid #ff6b00",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
               }}
-              onClick={() =>
-                section.reelCount > 0 &&
-                openReels(section._id)
-              }
-            >
-              {/* Preview */}
+            />
+          </div>
+        ) : filteredSections.length === 0 ? (
+          /* EMPTY STATE */
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px",
+              color: "#aaa",
+            }}
+          >
+            No reels available
+          </div>
+        ) : (
+          /* GRID */
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, 1fr)",
+              gap: "16px",
+            }}
+          >
+            {filteredSections.map((section) => (
               <div
+                key={section._id}
                 style={{
-                  height: "140px",
-                  background: `linear-gradient(135deg, ${orange.primary}40, ${orange.primary}20)`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  position: "relative",
+                  background: "#1a1a1a",
+                  borderRadius: "20px",
+                  border: "1px solid #333",
+                  cursor:
+                    section.reelCount > 0
+                      ? "pointer"
+                      : "default",
+                  opacity:
+                    section.reelCount > 0 ? 1 : 0.5,
                 }}
+                onClick={() =>
+                  section.reelCount > 0 &&
+                  openReels(section._id)
+                }
               >
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "10px",
-                    left: "10px",
-                    background: orange.primary,
-                    padding: "4px 10px",
-                    borderRadius: "16px",
-                    fontSize: "10px",
-                    fontWeight: 600,
-                  }}
-                >
-                  {section.reelCount} Reels
-                </span>
-
-                <span style={{ fontSize: "42px" }}>
-                  🎬
-                </span>
-
-                {section.reelCount === 0 && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      background: "rgba(0,0,0,0.8)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "12px",
-                      fontWeight: 600,
-                    }}
-                  >
-                    Coming Soon
-                  </div>
-                )}
-              </div>
-
-              {/* Content */}
-              <div style={{ padding: "14px" }}>
+                {/* PREVIEW */}
                 <div
                   style={{
-                    fontSize: "16px",
-                    fontWeight: 600,
-                    marginBottom: "6px",
-                  }}
-                >
-                  {section.courseName}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "#aaaaaa",
-                    marginBottom: "10px",
-                  }}
-                >
-                  {section.shortDescription}
-                </div>
-
-                <div
-                  style={{
+                    height: "140px",
+                    background: `linear-gradient(135deg, ${orange.primary}40, ${orange.primary}20)`,
                     display: "flex",
-                    justifyContent: "space-between",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
                   }}
                 >
                   <span
                     style={{
-                      fontSize: "11px",
-                      color: section.isActive
-                        ? "#00ff88"
-                        : "#ff4d4f",
+                      position: "absolute",
+                      top: 10,
+                      left: 10,
+                      background: orange.primary,
+                      padding: "4px 10px",
+                      borderRadius: "16px",
+                      fontSize: "10px",
                     }}
                   >
-                    {section.isActive
-                      ? "Active"
-                      : "Inactive"}
+                    {section.reelCount} Reels
                   </span>
 
-                  <FaBookmark size={12} color="#888888" />
+                  <span style={{ fontSize: "42px" }}>🎬</span>
+
+                  {section.reelCount === 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(0,0,0,0.8)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      Coming Soon
+                    </div>
+                  )}
+                </div>
+
+                {/* CONTENT */}
+                <div style={{ padding: "14px" }}>
+                  <div style={{ fontWeight: 600 }}>
+                    {section.courseName}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#aaa",
+                    }}
+                  >
+                    {section.shortDescription}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginTop: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: section.isActive
+                          ? "#00ff88"
+                          : "#ff4d4f",
+                      }}
+                    >
+                      {section.isActive
+                        ? "Active"
+                        : "Inactive"}
+                    </span>
+
+                    <FaBookmark size={12} color="#888" />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* MODAL */}
       <ReelsModal
         isOpen={isReelsOpen}
         onClose={() => setIsReelsOpen(false)}
         sectionId={selectedReelId}
       />
+
+      {/* 🔥 SPINNER ANIMATION */}
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

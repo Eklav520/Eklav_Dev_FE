@@ -30,7 +30,7 @@ function shuffle<T>(arr: T[]) {
   const a = arr.slice()
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
+      ;[a[i], a[j]] = [a[j], a[i]]
   }
   return a
 }
@@ -158,8 +158,19 @@ const CategoryGrid: React.FC = () => {
       <CardBody className="bg-black">
         <Row xs={1} sm={2} md={3} className="g-4 my-1">
           {loading ? (
-            <div className="text-center w-100">
-              <Spinner animation="border" variant="warning" />
+            <div
+              className="w-100"
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "300px",
+              }}
+            >
+              <Spinner
+                animation="border"
+                style={{ color: "#ff7a00", width: "3rem", height: "3rem" }}
+              />
             </div>
           ) : error ? (
             <Alert variant="danger" className="w-100 bg-danger text-white border-0">
@@ -172,9 +183,9 @@ const CategoryGrid: React.FC = () => {
                   <Card.Body>
                     <div className="d-flex justify-content-between align-items-start mb-3">
                       <h5 className="fw-bold text-white category-title">{category.title}</h5>
-                      <Button 
-                        size="sm" 
-                        className="btn-orange" 
+                      <Button
+                        size="sm"
+                        className="btn-orange"
                         onClick={() => openQuizForCategory(category)}
                       >
                         Take Quiz
@@ -183,8 +194,8 @@ const CategoryGrid: React.FC = () => {
 
                     <div className="topic-list">
                       {category.items.map((item, index) => (
-                        <div 
-                          key={item._id} 
+                        <div
+                          key={item._id}
                           className="topic-item"
                           onClick={() => openTopicPreview(item)}
                         >
@@ -201,10 +212,10 @@ const CategoryGrid: React.FC = () => {
         </Row>
 
         {/* Topic Preview Modal */}
-        <Modal 
-          show={topicPreviewOpen} 
-          onHide={() => setTopicPreviewOpen(false)} 
-          fullscreen 
+        <Modal
+          show={topicPreviewOpen}
+          onHide={() => setTopicPreviewOpen(false)}
+          fullscreen
           backdrop="static"
           className="text-white"
           contentClassName="bg-dark"
@@ -232,11 +243,11 @@ const CategoryGrid: React.FC = () => {
                                 <h6 className="text-white mb-0">Questions</h6>
                                 <Badge bg="secondary" className="bg-orange text-white">{previewTopic.questions.length}</Badge>
                               </div>
-                              
+
                               {/* Box-type question grid */}
-                              <div className="question-box-grid" style={{ 
-                                display: 'grid', 
-                                gridTemplateColumns: 'repeat(4, 1fr)', 
+                              <div className="question-box-grid" style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(4, 1fr)',
                                 gap: '8px',
                                 maxHeight: '60vh',
                                 overflowY: 'auto',
@@ -251,11 +262,10 @@ const CategoryGrid: React.FC = () => {
                                         const newPage = Math.floor(i / QUESTIONS_PER_PAGE) + 1
                                         setCurrentPage(newPage)
                                       }}
-                                      className={`question-box d-flex align-items-center justify-content-center p-2 rounded ${
-                                        isInCurrentPage 
-                                          ? 'bg-orange text-white' 
+                                      className={`question-box d-flex align-items-center justify-content-center p-2 rounded ${isInCurrentPage
+                                          ? 'bg-orange text-white'
                                           : 'bg-dark text-secondary border-secondary'
-                                      }`}
+                                        }`}
                                       style={{
                                         cursor: 'pointer',
                                         border: isInCurrentPage ? 'none' : '1px solid #333',
@@ -376,10 +386,10 @@ const CategoryGrid: React.FC = () => {
         </Modal>
 
         {/* Quiz Modal */}
-        <Modal 
-          show={quizOpen} 
-          onHide={closeQuiz} 
-          fullscreen 
+        <Modal
+          show={quizOpen}
+          onHide={closeQuiz}
+          fullscreen
           backdrop="static"
           className="text-white"
           contentClassName="bg-dark"
@@ -404,11 +414,11 @@ const CategoryGrid: React.FC = () => {
                       <h6 className="text-white mb-0">Questions</h6>
                       <Badge bg="secondary" className="bg-orange text-white">{quizQuestions.length}</Badge>
                     </div>
-                    
+
                     {/* Box-type question grid for quiz */}
-                    <div className="question-box-grid" style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(4, 1fr)', 
+                    <div className="question-box-grid" style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
                       gap: '8px',
                       maxHeight: '60vh',
                       overflowY: 'auto',
@@ -420,13 +430,12 @@ const CategoryGrid: React.FC = () => {
                           <div
                             key={i}
                             onClick={() => goto(i)}
-                            className={`question-box d-flex align-items-center justify-content-center p-2 rounded ${
-                              i === currentIndex
+                            className={`question-box d-flex align-items-center justify-content-center p-2 rounded ${i === currentIndex
                                 ? 'bg-orange text-white'
                                 : answered
-                                ? 'bg-success text-white'
-                                : 'bg-dark text-secondary border-secondary'
-                            }`}
+                                  ? 'bg-success text-white'
+                                  : 'bg-dark text-secondary border-secondary'
+                              }`}
                             style={{
                               cursor: 'pointer',
                               border: i === currentIndex || answered ? 'none' : '1px solid #333',
@@ -477,7 +486,7 @@ const CategoryGrid: React.FC = () => {
                             {userAnswers[currentIndex] ? 'Answered' : 'Pending'}
                           </Badge>
                         </div>
-                        
+
                         <h6 className="text-white mb-4">
                           {quizQuestions[currentIndex]?.question}
                         </h6>
@@ -506,8 +515,8 @@ const CategoryGrid: React.FC = () => {
                             })}
 
                             <div className="d-flex justify-content-between mt-4">
-                              <Button 
-                                variant="outline-secondary" 
+                              <Button
+                                variant="outline-secondary"
                                 onClick={() => goto(currentIndex - 1)}
                                 disabled={currentIndex === 0}
                                 className="text-white border-secondary"
@@ -564,17 +573,17 @@ const CategoryGrid: React.FC = () => {
                             <span className="small text-secondary">Answered</span>
                             <span className="text-white fw-bold">{answeredCount}/{quizQuestions.length}</span>
                           </div>
-                          <ProgressBar 
-                            now={(answeredCount/quizQuestions.length)*100} 
+                          <ProgressBar
+                            now={(answeredCount / quizQuestions.length) * 100}
                             className="orange-progress"
                             style={{ height: '6px' }}
                           />
                         </div>
 
                         <div className="mt-auto">
-                          <Button 
-                            className="btn-orange w-100 mb-2" 
-                            onClick={handleSubmitQuiz} 
+                          <Button
+                            className="btn-orange w-100 mb-2"
+                            onClick={handleSubmitQuiz}
                             disabled={quizQuestions.length === 0 || answeredCount < quizQuestions.length}
                           >
                             {answeredCount === quizQuestions.length ? 'Submit Quiz' : `Answer all (${quizQuestions.length - answeredCount} left)`}

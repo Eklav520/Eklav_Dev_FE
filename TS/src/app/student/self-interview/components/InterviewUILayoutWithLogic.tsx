@@ -44,13 +44,14 @@ interface Props {
     attemptId?: string
     attemptNumber?: number
   }
+  onComplete?: () => void
 }
 
 
 const FOLLOW_UP_THRESHOLD = 4
 const MAX_FOLLOW_UPS = 1
 
-const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback, meta }) => {
+const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, title, setLoadingFeedback, meta, onComplete }) => {
   const { user } = useAuthContext()
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL || ''
@@ -683,38 +684,38 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   }
 
   // STOP fast listening
- const stopListening = () => {
-  listeningHardRef.current = false;
+  const stopListening = () => {
+    listeningHardRef.current = false;
 
-  // Stop speech recognition
-  try {
-    recognitionRef.current?.stop();
-  } catch { }
-
-  setIsListening(false);
-  
-  // Stop video recording temporarily
-  setStopRecording(true);
-
-  // Stop waveform animation
-  cancelAnimationFrame(animationId);
-
-  // Close audio context
-  if (audioContextRef.current) {
+    // Stop speech recognition
     try {
-      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-        audioContextRef.current.close().catch(() => { });
-      }
+      recognitionRef.current?.stop();
     } catch { }
-  }
 
-  // Clear canvas
-  const canvas = canvasRef.current;
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-};
+    setIsListening(false);
+
+    // Stop video recording temporarily
+    setStopRecording(true);
+
+    // Stop waveform animation
+    cancelAnimationFrame(animationId);
+
+    // Close audio context
+    if (audioContextRef.current) {
+      try {
+        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+          audioContextRef.current.close().catch(() => { });
+        }
+      } catch { }
+    }
+
+    // Clear canvas
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  };
   /*   useEffect(() => {
       if (interviewFinished && finalFeedback) {
         downloadPDF() // 🎉 auto triggers once
@@ -812,7 +813,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
 
     setStopRecording(false);
-  setIsRecordingActive(true);
+    setIsRecordingActive(true);
 
     // 🔇 Stop mic completely so user cannot speak after feedback
     stopListening()
@@ -902,6 +903,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       // ✅ NOW interview is really finished
       setInterviewFinished(true)
       setRobotStatus('idle')
+      onComplete?.()
     } catch (err) {
       console.error('final feedback', err)
       alert('Could not get final feedback.')
@@ -1322,6 +1324,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                       const finalAnswers = [...answers, currentFeedback]
                       await finishInterview(finalAnswers)
                       await submitResumeScoreIfNeeded(finalAnswers)
+                      setTimeout(() => {
+                        onComplete?.()
+                      }, 500)
                     }}
 
                   >

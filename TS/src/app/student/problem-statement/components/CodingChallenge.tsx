@@ -213,18 +213,18 @@ const ProblemStatement = () => {
 
   /* ---------------- LOAD PROBLEMS ---------------- */
 
- useEffect(() => {
-  const loadProblems = async () => {
-    setLoadingProblems(true)
+  useEffect(() => {
+    const loadProblems = async () => {
+      setLoadingProblems(true)
 
-    const data = await fetchProblems()
-    setProblems(data)
+      const data = await fetchProblems()
+      setProblems(data)
 
-    setLoadingProblems(false)
-  }
+      setLoadingProblems(false)
+    }
 
-  loadProblems()
-}, [])
+    loadProblems()
+  }, [])
 
   useEffect(() => {
     const fetchCompletedProblems = async () => {
@@ -271,7 +271,11 @@ const ProblemStatement = () => {
   if (loadingProblems) {
     return (
       <Container className="p-5 text-center text-muted">
-        <div className="spinner-border text-primary" role="status">
+        <div
+          className="spinner-border"
+          role="status"
+          style={{ color: "#ff7a00" }}
+        >
           <span className="visually-hidden">Loading problem...</span>
         </div>
         <p className="mt-2">Loading problem statement…</p>
@@ -279,7 +283,7 @@ const ProblemStatement = () => {
     )
   }
 
- const normalizedTestCases = selectedProblem?.testCases?.map((tc) => {
+  const normalizedTestCases = selectedProblem?.testCases?.map((tc) => {
     const input = tc.input.trim()
 
     // Case 1: Already JSON → keep
@@ -570,7 +574,7 @@ const ProblemStatement = () => {
                 </>
               )}
 
-              {activeTab === 'discussion' &&selectedProblem && <Discussion problemId={selectedProblem?.id} />}
+              {activeTab === 'discussion' && selectedProblem && <Discussion problemId={selectedProblem?.id} />}
             </div>
           </Col>
 
