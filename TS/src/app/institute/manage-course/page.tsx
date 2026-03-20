@@ -98,6 +98,8 @@ const ManageCoursePage = () => {
   const { user } = useAuthContext();
   const token = user?.token;
 
+  console.log("TOKEN:", token)
+
   // Add these video handlers inside your ManageCoursePage component
 
   // Handle video change (description or URL)

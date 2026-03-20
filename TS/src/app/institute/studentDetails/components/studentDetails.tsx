@@ -4,8 +4,9 @@ import { Card, Button, Form, Table, Modal, Spinner, Alert } from 'react-bootstra
 import { useAuthContext } from '@/context/useAuthContext'
 
 type Student = {
-  _id: string
   name: string
+  _id: string
+  fullname: string
   email: string
   phoneNo?: string
 }
@@ -22,7 +23,7 @@ const InstituteAdmin: React.FC = () => {
   const [showModal, setShowModal] = useState(false)
 
   const [form, setForm] = useState({
-    name: '',
+    fullname: '',
     email: '',
     phoneNo: '',
     password: ''
@@ -98,7 +99,7 @@ const InstituteAdmin: React.FC = () => {
       alert("Student created successfully")
 
       setForm({
-        name: '',
+        fullname: '',
         email: '',
         phoneNo: '',
         password: ''
@@ -162,7 +163,7 @@ const InstituteAdmin: React.FC = () => {
         <tbody>
           {students.map((stu) => (
             <tr key={stu._id}>
-              <td>{stu.name}</td>
+              <td>{stu.fullname || stu.name}</td>
               <td>{stu.email}</td>
               <td>{stu.phoneNo || '-'}</td>
 
@@ -194,9 +195,9 @@ const InstituteAdmin: React.FC = () => {
               <Form.Label>Full Name</Form.Label>
               <Form.Control
                 required
-                value={form.name}
+                value={form.fullname}
                 onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
+                  setForm({ ...form, fullname: e.target.value })
                 }
               />
             </Form.Group>

@@ -588,7 +588,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       },
       {
         key: 'materials',
-        label: 'Reels',
+        label: 'Tech Reels',
         icon: FaPlayCircle,
         url: '/student/reels',
       }

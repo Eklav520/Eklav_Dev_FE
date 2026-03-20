@@ -8,6 +8,8 @@ type Institute = {
   name: string
   email: string
   phone?: string
+  domain?: string
+  dbName?: string
 }
 
 const InstituteAdmin: React.FC = () => {
@@ -73,25 +75,20 @@ const InstituteAdmin: React.FC = () => {
     if (!token) return
 
     try {
-
       setLoading(true)
 
       if (editing) {
-
         await axios.put(
           `${baseURL}/api/institute/updateInstitute/${editing._id}`,
           form,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-
       } else {
-
         await axios.post(
           `${baseURL}/api/institute/createInstitute`,
           form,
           { headers: { Authorization: `Bearer ${token}` } }
         )
-
       }
 
       setForm({ name: '', email: '', phone: '' })
@@ -109,18 +106,14 @@ const InstituteAdmin: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-
     if (!window.confirm("Are you sure you want to delete this institute?")) return
 
     try {
-
       await axios.delete(
         `${baseURL}/api/institute/deleteInstitute/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
-
       fetchInstitutes()
-
     } catch (err) {
       console.error(err)
       alert("Delete failed")
@@ -128,20 +121,16 @@ const InstituteAdmin: React.FC = () => {
   }
 
   const handleEdit = (inst: Institute) => {
-
     setEditing(inst)
-
     setForm({
       name: inst.name,
       email: inst.email,
       phone: inst.phone || ''
     })
-
     setShowModal(true)
   }
 
   const openCreateAdmin = (inst: Institute) => {
-
     setAdminError(null)
     setShowReset(false)
 
@@ -157,11 +146,10 @@ const InstituteAdmin: React.FC = () => {
   }
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
-
     e.preventDefault()
 
     try {
-
+      setLoading(true)
       setAdminError(null)
 
       await axios.post(
@@ -176,25 +164,21 @@ const InstituteAdmin: React.FC = () => {
     } catch (err: any) {
 
       if (err?.response?.data?.message === "User already exists") {
-
         setAdminError("User already exists. You can reset password.")
         setShowReset(true)
-
       } else {
-
         console.error(err)
         alert("Failed to create admin")
-
       }
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleResetPassword = async () => {
-
     try {
-
       await axios.post(
-        `${baseURL}/auth/reset-password`,
+        `${baseURL}/api/institute/reset-password`,
         {
           email: adminForm.email,
           newPassword: adminForm.password
@@ -206,10 +190,8 @@ const InstituteAdmin: React.FC = () => {
       setShowAdminModal(false)
 
     } catch (err) {
-
       console.error(err)
       alert("Password reset failed")
-
     }
   }
 
@@ -241,6 +223,7 @@ const InstituteAdmin: React.FC = () => {
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
+            <th>Domain</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -254,6 +237,14 @@ const InstituteAdmin: React.FC = () => {
               <td>{inst.name}</td>
               <td>{inst.email}</td>
               <td>{inst.phone || '-'}</td>
+
+              <td>
+                {inst.domain ? (
+                  <a href={`https://${inst.domain}`} target="_blank" rel="noreferrer">
+                    {inst.domain}
+                  </a>
+                ) : '-'}
+              </td>
 
               <td>
 
@@ -278,10 +269,35 @@ const InstituteAdmin: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline-success"
+                  className="me-2"
                   onClick={() => openCreateAdmin(inst)}
                 >
                   Create Admin
                 </Button>
+
+                {inst.domain && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline-info"
+                      className="me-2"
+                      onClick={() => window.open(`https://${inst.domain}`, "_blank")}
+                    >
+                      Open Portal
+                    </Button>
+
+                    <Button
+                      size="sm"
+                      variant="outline-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`https://${inst.domain}`)
+                        alert("Login URL copied")
+                      }}
+                    >
+                      Copy URL
+                    </Button>
+                  </>
+                )}
 
               </td>
 
@@ -298,7 +314,11 @@ const InstituteAdmin: React.FC = () => {
       <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} centered>
 
         <Modal.Header closeButton>
-          <Modal.Title>Create Institute Admin</Modal.Title>
+          <Modal.Title>
+            Create Admin for {
+              institutes.find(i => i._id === adminForm.instituteId)?.name
+            }
+          </Modal.Title>
         </Modal.Header>
 
         <Modal.Body>
@@ -372,8 +392,90 @@ const InstituteAdmin: React.FC = () => {
                 Cancel
               </Button>
 
-              <Button type="submit" variant="success">
-                Create Admin
+              <Button type="submit" variant="success" disabled={loading}>
+                {loading ? "Creating..." : "Create Admin"}
+              </Button>
+
+            </div>
+
+          </Form>
+
+        </Modal.Body>
+
+      </Modal>
+
+      {/* Create / Edit Institute Modal */}
+
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+
+        <Modal.Header closeButton>
+          <Modal.Title>
+            {editing ? "Edit Institute" : "Add Institute"}
+          </Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+
+          <Form onSubmit={handleSubmit}>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Name</Form.Label>
+              <Form.Control
+                required
+                value={form.name}
+                onChange={(e) =>
+                  setForm({ ...form, name: e.target.value })
+                }
+              />
+            </Form.Group>
+
+            {/* 🔥 Domain Preview */}
+            <Form.Group className="mb-3">
+              <Form.Label>Domain Preview</Form.Label>
+              <Form.Control
+                disabled
+                value={
+                  form.name
+                    ? `${form.name.toLowerCase().replace(/\s+/g, '')}.eklav.in`
+                    : ''
+                }
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Email</Form.Label>
+              <Form.Control
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) =>
+                  setForm({ ...form, email: e.target.value })
+                }
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Phone</Form.Label>
+              <Form.Control
+                value={form.phone}
+                onChange={(e) =>
+                  setForm({ ...form, phone: e.target.value })
+                }
+              />
+            </Form.Group>
+
+            <div className="text-end">
+
+              <Button
+                variant="secondary"
+                className="me-2"
+                onClick={() => setShowModal(false)}
+              >
+                Cancel
+              </Button>
+
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? "Saving..." : editing ? "Update" : "Create"}
               </Button>
 
             </div>

@@ -748,7 +748,7 @@ const ProblemStatement = () => {
 
               {/* Right Side - Buttons */}
               <div className="d-flex gap-2">
-                <Button variant="secondary" onClick={handleRun} disabled={!canSubmit || submitting || !selectedProblem}>
+                <Button variant="secondary" onClick={handleRun} disabled={loading || submitting || !selectedProblem}>
                   {loading ? (
                     <>
                       <span className="spinner-border spinner-border-sm me-2" />

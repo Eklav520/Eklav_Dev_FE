@@ -70,7 +70,7 @@ const SelfPreparation = () => {
     : 0
 
   return (
-    <Card className="border-0 shadow-lg overflow-hidden"
+    <Card className="border-0 shadow-lg overflow-hidden h-100 w-100"
       style={{
         borderRadius: '16px',
         background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)',
