@@ -10,7 +10,6 @@ import {
   FaBullseye
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
-import styles from './JobCard.module.css'
 
 interface Job {
   _id: string

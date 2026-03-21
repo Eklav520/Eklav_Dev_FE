@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react";
 import { Card, Form, Button, Alert, Spinner, Table } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import axios from "axios";
+import { FaFileExcel, FaUpload, FaEye, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -14,7 +15,6 @@ const AdminFinalAssessmentUpload: React.FC = () => {
   const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /* ================= FILE CHANGE ================= */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null);
     setPreview([]);
@@ -22,7 +22,6 @@ const AdminFinalAssessmentUpload: React.FC = () => {
     setError(null);
   };
 
-  /* ================= PREVIEW ================= */
   const handlePreview = async () => {
     if (!file) return;
 
@@ -34,14 +33,12 @@ const AdminFinalAssessmentUpload: React.FC = () => {
         workbook.Sheets[firstSheet],
         { defval: "" }
       );
-
       setPreview(rows.slice(0, 5));
     } catch (err: any) {
       setError("Preview failed: " + err.message);
     }
   };
 
-  /* ================= UPLOAD ================= */
   const handleUpload = async () => {
     if (!file) return;
 
@@ -50,14 +47,11 @@ const AdminFinalAssessmentUpload: React.FC = () => {
     setResult(null);
 
     try {
-      /* ---------- STEP 1: PRESIGN ---------- */
       const presignRes = await axios.post(
         `${baseURL}/api/final-assessment/generate-presigned-url`,
         {
           fileName: file.name,
           fileType: file.type,
-
-          // ✅ REQUIRED BY BACKEND
           courseTitle: "FinalAssessment",
         }
       );
@@ -68,12 +62,10 @@ const AdminFinalAssessmentUpload: React.FC = () => {
         throw new Error("Invalid presigned URL response");
       }
 
-      /* ---------- STEP 2: UPLOAD TO S3 ---------- */
       await axios.put(uploadUrl, file, {
         headers: { "Content-Type": file.type },
       });
 
-      /* ---------- STEP 3: NOTIFY BACKEND ---------- */
       const resp = await axios.post(
         `${baseURL}/api/final-assessment/upload-final-assessment`,
         { fileUrl }
@@ -92,79 +84,349 @@ const AdminFinalAssessmentUpload: React.FC = () => {
   };
 
   return (
-    <Card className="mb-4">
-      <Card.Body>
-        <h5>📥 Upload Final Assessment (Excel)</h5>
+    <div className="assessment-upload-container">
+      <Card className="upload-card">
+        <Card.Body className="card-body-custom">
+          <div className="upload-header">
+            <FaFileExcel className="upload-icon" />
+            <div>
+              <h5 className="upload-title">Upload Final Assessment</h5>
+              <p className="upload-subtitle">Upload Excel file (.xlsx, .xls) with assessment data</p>
+            </div>
+          </div>
 
-        {error && <Alert variant="danger">{error}</Alert>}
-        {result && (
-          <Alert variant="success">
-            Upload complete.
-            <pre className="mt-2 mb-0">
-              {JSON.stringify(result, null, 2)}
-            </pre>
-          </Alert>
-        )}
+          {error && (
+            <Alert variant="danger" className="custom-alert error-alert">
+              <FaTimesCircle className="alert-icon" />
+              {error}
+            </Alert>
+          )}
 
-        <Form.Group className="mb-3">
-          <Form.Control
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileChange}
-          />
-        </Form.Group>
+          {result && (
+            <Alert variant="success" className="custom-alert success-alert">
+              <FaCheckCircle className="alert-icon" />
+              <div>
+                <strong>Upload complete!</strong>
+                <pre className="result-preview">
+                  {JSON.stringify(result, null, 2)}
+                </pre>
+              </div>
+            </Alert>
+          )}
 
-        <div className="d-flex gap-2">
-          <Button
-            variant="secondary"
-            disabled={!file || uploading}
-            onClick={handlePreview}
-          >
-            Preview
-          </Button>
+          <Form.Group className="mb-4">
+            <Form.Label className="form-label-custom">
+              <FaFileExcel className="label-icon" />
+              Select Excel File
+            </Form.Label>
+            <Form.Control
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="file-input-custom"
+            />
+            <small className="form-text text-muted">
+              Supported formats: .xlsx, .xls
+            </small>
+          </Form.Group>
 
-          <Button
-            variant="primary"
-            disabled={!file || uploading}
-            onClick={handleUpload}
-          >
-            {uploading ? (
-              <>
-                <Spinner size="sm" animation="border" /> Uploading…
-              </>
-            ) : (
-              "Upload"
-            )}
-          </Button>
-        </div>
+          <div className="button-group">
+            <Button
+              variant="secondary"
+              className="preview-btn"
+              disabled={!file || uploading}
+              onClick={handlePreview}
+            >
+              <FaEye className="me-2" />
+              Preview
+            </Button>
 
-        {preview.length > 0 && (
-          <>
-            <hr />
-            <h6>Preview (first 5 rows)</h6>
-            <Table bordered size="sm">
-              <thead>
-                <tr>
-                  {Object.keys(preview[0]).map((h) => (
-                    <th key={h}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((r, i) => (
-                  <tr key={i}>
-                    {Object.keys(preview[0]).map((h) => (
-                      <td key={h}>{String(r[h] ?? "")}</td>
+            <Button
+              variant="primary"
+              className="upload-btn"
+              disabled={!file || uploading}
+              onClick={handleUpload}
+            >
+              {uploading ? (
+                <>
+                  <Spinner size="sm" animation="border" className="me-2" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FaUpload className="me-2" />
+                  Upload
+                </>
+              )}
+            </Button>
+          </div>
+
+          {file && (
+            <div className="file-info">
+              <FaFileExcel className="file-icon" />
+              <span className="file-name">{file.name}</span>
+              <span className="file-size">
+                ({(file.size / 1024).toFixed(2)} KB)
+              </span>
+            </div>
+          )}
+
+          {preview.length > 0 && (
+            <div className="preview-section">
+              <hr className="preview-divider" />
+              <h6 className="preview-title">
+                <FaEye className="me-2" />
+                Preview (First 5 rows)
+              </h6>
+              <div className="table-responsive">
+                <Table className="preview-table" bordered size="sm">
+                  <thead>
+                    <tr>
+                      {Object.keys(preview[0]).map((h) => (
+                        <th key={h}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((r, i) => (
+                      <tr key={i}>
+                        {Object.keys(preview[0]).map((h) => (
+                          <td key={h}>{String(r[h] ?? "")}</td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </>
-        )}
-      </Card.Body>
-    </Card>
+                  </tbody>
+                </Table>
+              </div>
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      <style>{`
+        .assessment-upload-container {
+          background: transparent;
+        }
+
+        .upload-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .card-body-custom {
+          padding: 1.5rem;
+        }
+
+        .upload-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+          padding-bottom: 1rem;
+          border-bottom: 1px solid #1f1f1f;
+        }
+
+        .upload-icon {
+          font-size: 2rem;
+          color: #ff7a00;
+        }
+
+        .upload-title {
+          color: #ffffff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .upload-subtitle {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          margin: 0.25rem 0 0 0;
+        }
+
+        .custom-alert {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+          padding: 1rem;
+          border-radius: 8px;
+        }
+
+        .error-alert {
+          background: rgba(220, 53, 69, 0.1);
+          border: 1px solid #dc3545;
+          color: #ff6b6b;
+        }
+
+        .success-alert {
+          background: rgba(40, 167, 69, 0.1);
+          border: 1px solid #28a745;
+          color: #28a745;
+        }
+
+        .alert-icon {
+          font-size: 1.25rem;
+          flex-shrink: 0;
+        }
+
+        .result-preview {
+          background: #000000;
+          color: #e5e5e5;
+          padding: 0.5rem;
+          border-radius: 6px;
+          margin-top: 0.5rem;
+          font-size: 0.75rem;
+          overflow-x: auto;
+        }
+
+        .form-label-custom {
+          color: #ff7a00;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .label-icon {
+          font-size: 0.9rem;
+        }
+
+        .file-input-custom {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.625rem;
+          border-radius: 8px;
+        }
+
+        .file-input-custom:focus {
+          background: #141414;
+          border-color: #ff7a00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+        }
+
+        .button-group {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .preview-btn {
+          background: #2c2c2c;
+          border: none;
+          padding: 0.625rem 1.5rem;
+          border-radius: 8px;
+          color: #ffffff;
+          transition: all 0.2s ease;
+        }
+
+        .preview-btn:hover:not(:disabled) {
+          background: #3a3a3a;
+        }
+
+        .upload-btn {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.625rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .upload-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+        }
+
+        .file-info {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          padding: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-top: 1rem;
+        }
+
+        .file-icon {
+          color: #ff7a00;
+          font-size: 1.25rem;
+        }
+
+        .file-name {
+          color: #ffffff;
+          font-weight: 500;
+        }
+
+        .file-size {
+          color: #8a8a8a;
+          font-size: 0.8rem;
+        }
+
+        .preview-section {
+          margin-top: 1.5rem;
+        }
+
+        .preview-divider {
+          border-color: #2c2c2c;
+          margin: 1rem 0;
+        }
+
+        .preview-title {
+          color: #ff7a00;
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+        }
+
+        .preview-table {
+          background: #000000;
+          color: #e5e5e5;
+        }
+
+        .preview-table thead th {
+          background: #0a0a0a;
+          color: #ff7a00;
+          border-bottom: 2px solid #ff7a00;
+        }
+
+        .preview-table tbody td {
+          border-color: #2c2c2c;
+        }
+
+        .preview-table tbody tr:hover {
+          background: #141414;
+        }
+
+        @media (max-width: 768px) {
+          .card-body-custom {
+            padding: 1rem;
+          }
+
+          .button-group {
+            flex-direction: column;
+          }
+
+          .preview-btn, .upload-btn {
+            width: 100%;
+          }
+
+          .upload-header {
+            flex-direction: column;
+            text-align: center;
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 

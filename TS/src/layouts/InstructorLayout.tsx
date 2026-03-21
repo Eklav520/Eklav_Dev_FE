@@ -20,15 +20,15 @@ import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
 import { ChildrenType } from '@/types/component-props'
-import { FaSignOutAlt } from 'react-icons/fa'
+import { FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
 import TrialWelcomeModal from './TrialWelcomeModal'
 
 // lazy parts
-const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
+const Banner = lazy(() => import('@/components/InstructorLayoutComponents/Banner'))
 const Footer = lazy(() => import('@/components/InstructorLayoutComponents/Footer'))
 const TopNavigationBar = lazy(() => import('@/components/InstructorLayoutComponents/TopNavigationBar'))
+import './studentLayout.css'
 
-// Minimal local menu item type for the VerticalMenu
 type MenuItemTypeLocal = {
   key: string
   label: string
@@ -37,7 +37,6 @@ type MenuItemTypeLocal = {
   icon?: IconType
   isTitle?: boolean
   children?: MenuItemTypeLocal[]
-  // forward any unknown fields
   [k: string]: any
 }
 
@@ -79,10 +78,13 @@ const InstructorLayout = ({ children }: ChildrenType) => {
   return (
     <>
       <Suspense>
-        <TopNavigationBar role={role} />
+        <TopNavigationBar
+          role={role}
+          onToggleMenu={toggleOffCanvasMenu}
+        />
       </Suspense>
 
-      <main>
+      <main className="instructor-main">
         <Banner toggleOffCanvas={toggleOffCanvasMenu} />
         <section className="pt-0 mt-3 mt-md-4">
           <Container fluid>
@@ -91,19 +93,28 @@ const InstructorLayout = ({ children }: ChildrenType) => {
                 {width >= 1200 ? (
                   <VerticalMenu role={role} />
                 ) : (
-                  <Offcanvas show={isOffCanvasMenuOpen} placement="end" onHide={toggleOffCanvasMenu}>
-                    <OffcanvasHeader className="bg-light" closeButton>
-                      <OffcanvasTitle>Menu</OffcanvasTitle>
-                    </OffcanvasHeader>
-                    <OffcanvasBody className="p-3 p-xl-0">
-                      <VerticalMenu role={role} />
+                  <Offcanvas
+                    show={isOffCanvasMenuOpen}
+                    placement="start"
+                    onHide={toggleOffCanvasMenu}
+                    backdrop
+                    scroll={false}
+                    restoreFocus={false}
+                    className="instructor-mobile-drawer"
+                  >
+                    <OffcanvasBody className="p-0">
+                      <div className="drawer-header">
+                        <div className="drawer-welcome">Welcome</div>
+                        <div className="drawer-name">{name}</div>
+                      </div>
+                      <VerticalMenu role={role} onItemClick={toggleOffCanvasMenu} />
                     </OffcanvasBody>
                   </Offcanvas>
                 )}
               </Col>
 
               <Col xl={10}>
-                <div className="main-content-wrapper p-4 rounded-4 shadow-sm bg-light">
+                <div className="main-content-wrapper">
                   <Suspense fallback={<Preloader />}>{children}</Suspense>
                 </div>
               </Col>
@@ -115,30 +126,80 @@ const InstructorLayout = ({ children }: ChildrenType) => {
       <Suspense>
         <Footer />
       </Suspense>
+
+      <style>{`
+        .instructor-main {
+          background: #000000;
+          min-height: 100vh;
+        }
+
+        .main-content-wrapper {
+          background: #0a0a0a;
+          border-radius: 12px;
+          padding: 1.5rem;
+          border: 1px solid #1f1f1f;
+          min-height: calc(100vh - 200px);
+        }
+
+        .instructor-mobile-drawer {
+          background: #000000 !important;
+        }
+
+        .drawer-header {
+          padding: 20px;
+          border-bottom: 1px solid #1f1f1f;
+          background: #000000;
+        }
+
+        .drawer-welcome {
+          font-size: 12px;
+          color: #ff7a00;
+          letter-spacing: 0.5px;
+          font-weight: 500;
+        }
+
+        .drawer-name {
+          font-size: 16px;
+          font-weight: 600;
+          color: #ffffff;
+          margin-top: 4px;
+        }
+
+        /* Custom scrollbar for dark theme */
+        .main-content-wrapper::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .main-content-wrapper::-webkit-scrollbar-track {
+          background: #1a1a1a;
+          border-radius: 4px;
+        }
+
+        .main-content-wrapper::-webkit-scrollbar-thumb {
+          background: #ff7a00;
+          border-radius: 4px;
+        }
+
+        .main-content-wrapper::-webkit-scrollbar-thumb:hover {
+          background: #ff944d;
+        }
+      `}</style>
     </>
   )
 }
 
-/* -------- VerticalMenu (same mechanics as Student layout) -------- */
-
-const VerticalMenu = ({ role }: { role?: string }) => {
+const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () => void }) => {
   const { pathname } = useLocation()
   const { removeSession } = useAuthContext()
 
-  // 1) Memoize source menu for stability
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
     const items = EKLAVADMIN_MENU_ITEMS as unknown as MenuItemTypeLocal[]
-
-    // ✅ collegeAdmin → only first 3 menu sections
     if (role === 'collegeAdmin') {
       return items.slice(0, 3)
     }
-
     return items
   }, [role])
 
-
-  // 2) Build a tree from baseMenu if needed (handles flat lists using parentKey)
   const tree = useMemo(() => {
     const hasNested = baseMenu.some((it) => Array.isArray(it.children) && it.children.length > 0)
     if (hasNested) return baseMenu
@@ -157,18 +218,8 @@ const VerticalMenu = ({ role }: { role?: string }) => {
     return roots
   }, [baseMenu])
 
-  // 3) Collapsible open state
   const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({})
 
-  const openKeysChanged = (a: Record<string, boolean>, b: Record<string, boolean>) => {
-    const aKeys = Object.keys(a)
-    const bKeys = Object.keys(b)
-    if (aKeys.length !== bKeys.length) return true
-    for (const k of aKeys) if (a[k] !== b[k]) return true
-    return false
-  }
-
-  // 4) Auto-open parents that contain the current route
   useEffect(() => {
     const newOpen: Record<string, boolean> = {}
 
@@ -181,22 +232,19 @@ const VerticalMenu = ({ role }: { role?: string }) => {
 
     walk(tree as MenuItemTypeLocal[])
 
-    if (openKeysChanged(openKeys, { ...openKeys, ...newOpen })) {
-      setOpenKeys((s) => ({ ...s, ...newOpen }))
-    }
-  }, [pathname, tree]) // eslint-disable-line react-hooks/exhaustive-deps
+    setOpenKeys((s) => ({ ...s, ...newOpen }))
+  }, [pathname, tree])
 
   const toggle = (key: string) => setOpenKeys((s) => ({ ...s, [key]: !s[key] }))
   const isActive = (item: MenuItemTypeLocal) => !!(item.url && pathname === item.url)
 
-  // 5) Render nodes
   const renderNode = (node: MenuItemTypeLocal) => {
     const Icon = node.icon
     const hasChildren = Array.isArray(node.children) && node.children.length > 0
 
     if (node.isTitle) {
       return (
-        <div key={node.key} className="px-3 py-2 text-sm fw-semibold text-white-50">
+        <div key={node.key} className="menu-title">
           {node.label}
         </div>
       )
@@ -205,35 +253,22 @@ const VerticalMenu = ({ role }: { role?: string }) => {
     if (hasChildren) {
       const open = !!openKeys[node.key]
       return (
-        <div key={node.key} className="mb-1">
+        <div key={node.key} className="menu-item-wrapper">
           <button
             type="button"
             onClick={() => toggle(node.key)}
-            className={clsx(
-              'list-group-item list-group-item-action d-flex align-items-center justify-content-between',
-              'px-3 py-2',
-            )}
+            className="menu-button"
           >
-            <div className="d-flex align-items-center">
-              {Icon && <Icon className="me-2" />}
+            <div className="menu-button-content">
+              {Icon && <Icon className="menu-icon" />}
               <span>{node.label}</span>
             </div>
-
-            <div
-              className="ms-2"
-              style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
+            <FaChevronRight className={`menu-chevron ${open ? 'open' : ''}`} />
           </button>
 
           <Collapse in={open}>
-            <div>
-              <div className="ms-3">
-                {(node.children || []).map((c) => renderNode(c))}
-              </div>
+            <div className="menu-children">
+              {(node.children || []).map((c) => renderNode(c))}
             </div>
           </Collapse>
         </div>
@@ -244,27 +279,150 @@ const VerticalMenu = ({ role }: { role?: string }) => {
       <Link
         key={node.key}
         to={node.url || '#'}
-        className={clsx('list-group-item list-group-item-action d-flex align-items-center px-3 py-2', {
-          active: isActive(node),
-        })}
+        className={`menu-link ${isActive(node) ? 'active' : ''}`}
+        onClick={() => onItemClick?.()}
       >
-        {Icon && <Icon className="me-2" />}
+        {Icon && <Icon className="menu-icon" />}
         <span>{node.label}</span>
       </Link>
     )
   }
 
   return (
-    <div className="bg-dark border rounded-3 pb-0 p-3 w-100">
-      <div className="list-group list-group-dark list-group-borderless collapse-list">
+    <div className="vertical-menu-container">
+      <div className="menu-list">
         {(tree as MenuItemTypeLocal[]).map((n) => renderNode(n))}
 
-        {/* Sign out (fixed item at end) */}
-        <Link className="list-group-item list-group-item-action d-flex align-items-center px-3 py-2 text-danger bg-danger-soft-hover" to="/auth/sign-in" onClick={removeSession}>
-          <FaSignOutAlt className="fa-fw me-2" />
+        <div className="menu-divider" />
+
+        <Link className="menu-link signout-link" to="/auth/sign-in" onClick={removeSession}>
+          <FaSignOutAlt className="menu-icon" />
           <span>Sign Out</span>
         </Link>
       </div>
+
+      <style>{`
+        .vertical-menu-container {
+          background: #000000;
+          border-radius: 12px;
+          border: 1px solid #1f1f1f;
+          width: 100%;
+          position: sticky;
+          top: 20px;
+        }
+
+        .menu-list {
+          padding: 1rem;
+        }
+
+        .menu-title {
+          padding: 0.75rem 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #ff7a00;
+          margin-top: 0.5rem;
+        }
+
+        .menu-title:first-child {
+          margin-top: 0;
+        }
+
+        .menu-item-wrapper {
+          margin-bottom: 0.25rem;
+        }
+
+        .menu-button {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.625rem 1rem;
+          background: transparent;
+          border: none;
+          border-radius: 8px;
+          color: #e5e5e5;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .menu-button:hover {
+          background: #1a1a1a;
+          color: #ff7a00;
+        }
+
+        .menu-button-content {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .menu-chevron {
+          font-size: 0.75rem;
+          transition: transform 0.2s ease;
+          color: #6c757d;
+        }
+
+        .menu-chevron.open {
+          transform: rotate(90deg);
+          color: #ff7a00;
+        }
+
+        .menu-children {
+          margin-left: 2rem;
+          padding-left: 0.5rem;
+          border-left: 1px solid #2c2c2c;
+        }
+
+        .menu-link {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.625rem 1rem;
+          border-radius: 8px;
+          color: #e5e5e5;
+          font-size: 0.875rem;
+          font-weight: 500;
+          text-decoration: none;
+          transition: all 0.2s ease;
+          margin-bottom: 0.25rem;
+        }
+
+        .menu-link:hover {
+          background: #1a1a1a;
+          color: #ff7a00;
+          text-decoration: none;
+        }
+
+        .menu-link.active {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          color: #ffffff;
+          box-shadow: 0 2px 8px rgba(255, 122, 0, 0.3);
+        }
+
+        .menu-icon {
+          font-size: 1rem;
+          min-width: 1.25rem;
+        }
+
+        .menu-divider {
+          height: 1px;
+          background: #1f1f1f;
+          margin: 1rem 0;
+        }
+
+        .signout-link {
+          color: #ff6b6b;
+        }
+
+        .signout-link:hover {
+          background: rgba(255, 107, 107, 0.1);
+          color: #ff6b6b;
+        }
+      `}</style>
     </div>
   )
 }

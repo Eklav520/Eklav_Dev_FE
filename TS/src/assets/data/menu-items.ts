@@ -54,7 +54,11 @@ import {
   BsUiRadiosGrid,
   BsWallet2,
 } from 'react-icons/bs'
-import { HiOutlineCodeBracketSquare, HiOutlinePuzzlePiece } from 'react-icons/hi2'
+import { HiOutlineCodeBracketSquare, HiOutlinePuzzlePiece, HiOutlineUserGroup } from 'react-icons/hi2'
+import { FaUserCog, FaChalkboardTeacher, FaVideo, FaFileUpload, FaComments } from 'react-icons/fa'
+import { MdOutlineAssessment, MdOutlineSchool, MdOutlineLocalOffer } from 'react-icons/md'
+
+import { AiOutlineCloudUpload } from 'react-icons/ai'
 
 import {
   FaBasketballBall,
@@ -62,9 +66,10 @@ import {
   FaBook,
   FaBookOpen,
   FaBriefcase,
-  FaChalkboardTeacher,
+  
   FaChartBar,
   FaCog,
+ 
   FaEdit,
   FaFacebook,
   FaLinkedinIn,
@@ -80,7 +85,7 @@ import {
   FaRobot,
   FaRunning,
   FaTrashAlt,
-  FaUserCog,
+
 } from 'react-icons/fa'
 import { FaChartLine, FaUserGraduate, FaUserTie, FaWallet } from 'react-icons/fa6'
 
@@ -254,13 +259,6 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/eklavadmin/manage-course',
         parentKey: 'eklavadmin',
       },
-      /*  {
-        key: 'internList',
-        label: 'Intern List',
-        icon: BsCardChecklist,
-        url: '/eklavadmin/intern-list',
-        parentKey: 'eklavadmin',
-      }, */
     ],
   },
   {
@@ -299,14 +297,14 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'onlineClasses',
         label: 'Online Classes',
-        icon: BsCameraVideo,
+        icon: FaVideo,
         url: '/eklavadmin/online-classes',
         parentKey: 'eklavadmin',
       },
       {
         key: 'InterviewDetails',
         label: 'Interview Details Upload',
-        icon: BsFileEarmarkArrowUp,
+        icon: AiOutlineCloudUpload,
         url: '/eklavadmin/admin-interview-details',
         parentKey: 'eklavadmin',
       },
@@ -315,12 +313,12 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'finalAssessmentActivities',
     label: 'Final Assessment',
-    icon: BsGrid,
+    icon: MdOutlineAssessment,
     children: [
       {
         key: 'uploadAssessments',
         label: 'Upload Assessments',
-        icon: BsCameraVideo,
+        icon: AiOutlineCloudUpload,
         url: '/eklavadmin/finalassessmentupload',
         parentKey: 'eklavadmin',
       },
@@ -336,35 +334,35 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'admin',
     label: 'Admin Chatbox',
-    icon: BsPeople,
+    icon: FaComments,
     url: '/eklavadmin/admin-chatbox',
     parentKey: 'eklavadmin',
   },
   {
     key: 'collegeDetails',
     label: 'Add College Details',
-    icon: FaUserCog,
+    icon: MdOutlineSchool,
     url: '/eklavadmin/college-details',
     parentKey: 'eklavadmin',
   },
   {
     key: 'instituteDetails',
     label: 'Add Institute Details',
-    icon: FaUserCog,
+    icon: HiOutlineUserGroup,
     url: '/eklavadmin/institute-details',
     parentKey: 'eklavadmin',
   },
   {
     key: 'adminreels',
     label: 'Admin Reels Upload',
-    icon: FaUserCog,
+    icon: FaVideo,
     url: '/eklavadmin/admin-reels',
     parentKey: 'eklavadmin',
   },
   {
     key: 'couponManagement',
     label: 'Manage Coupons',
-    icon: BsCreditCard2Front,
+    icon: MdOutlineLocalOffer,
     url: '/eklavadmin/coupon-management',
     parentKey: 'eklavadmin',
   },
@@ -466,13 +464,13 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/institute/final-assessment-upload',
         parentKey: 'instituteadmin',
       },
-      {
+      /* {
         key: 'assessmentResults',
         label: 'Assessment Results',
         icon: BsClipboardCheck,
         url: '/institute/final-assessment-results',
         parentKey: 'instituteadmin',
-      },
+      }, */
     ],
   },
 
@@ -1532,3 +1530,5 @@ export const ADMIN_MENU_ITEMS: MenuItemType[] = [
     ],
   },
 ]
+
+
