@@ -11,6 +11,7 @@ import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
 import { ChildrenType } from '@/types/component-props'
 import { FiLayers, FiChevronRight, FiMenu } from 'react-icons/fi'
+import './studentLayout.css'
 
 // lazy parts
 const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
@@ -49,6 +50,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [isHovering, setIsHovering] = useState(false)
   const isSidebarExpanded = !isCollapsed || isHovering
   const isOrangeTheme = isHovering && isCollapsed
+  const location = useLocation()
 
   useEffect(() => {
     const daysLeft = getRemainingTrialDays()
@@ -56,6 +58,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
       setShowTrialModal(true)
     }
   }, [])
+
+  useEffect(() => {
+    if (isOffCanvasMenuOpen) {
+      toggleOffCanvasMenu()
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     if (!token) return
@@ -303,13 +311,28 @@ const StudentLayout = ({ children }: ChildrenType) => {
           backdrop
           scroll={false}
           restoreFocus={false}
-          style={{ backgroundColor: '#1a1d21', color: '#fff' }}
+          className="custom-mobile-drawer"   // 👈 NEW
         >
-          <OffcanvasHeader closeButton style={{ color: '#fff', borderBottom: '1px solid #2c2f33' }}>
-            <OffcanvasTitle>Menu</OffcanvasTitle>
-          </OffcanvasHeader>
+          {/* ❌ REMOVED HEADER */}
+
           <OffcanvasBody className="p-0">
-            <VerticalMenu isCollapsed={false} />
+
+            {/* ✅ USER HEADER (ZOMATO STYLE) */}
+            <div style={{
+              padding: "16px",
+              borderBottom: "1px solid #2c2f33"
+            }}>
+              <div style={{ fontSize: "13px", color: "#aaa" }}>Welcome</div>
+              <div style={{ fontSize: "16px", fontWeight: "600" }}>
+                {userName}
+              </div>
+            </div>
+
+            {/* ✅ PASS CLOSE FUNCTION */}
+            <VerticalMenu
+              isCollapsed={false}
+              onItemClick={toggleOffCanvasMenu}
+            />
           </OffcanvasBody>
         </Offcanvas>
       )}
@@ -324,7 +347,13 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
 /* ================= VERTICAL MENU ================= */
 
-const VerticalMenu = ({ isCollapsed }: { isCollapsed: boolean }) => {
+const VerticalMenu = ({
+  isCollapsed,
+  onItemClick
+}: {
+  isCollapsed: boolean
+  onItemClick?: () => void
+}) => {
   const { pathname } = useLocation()
   const { user } = useAuthContext()
   const isApproved = user?.status === 'pending' || user?.status === 'approved'
@@ -447,6 +476,10 @@ const VerticalMenu = ({ isCollapsed }: { isCollapsed: boolean }) => {
       <Link
         key={node.key}
         to={node.url || '#'}
+        className="menu-item"
+        onClick={() => {
+          if (onItemClick) onItemClick()   // ✅ AUTO CLOSE
+        }}
         style={{
           display: 'flex',
           alignItems: 'center',

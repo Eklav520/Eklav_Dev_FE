@@ -1,0 +1,32 @@
+/* ===== ZOMATO STYLE DRAWER ===== */
+.custom-mobile-drawer {
+  width: 280px !important;
+  background: #1a1d21 !important;
+  color: #fff;
+  border-right: none !important;
+  transition: transform 0.35s ease-in-out !important;
+}
+
+/* Smooth slide */
+.offcanvas-start {
+  transform: translateX(-100%);
+}
+
+.offcanvas.show {
+  transform: translateX(0);
+}
+
+/* Backdrop blur */
+.offcanvas-backdrop.show {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* Menu animation */
+.menu-item {
+  transition: all 0.25s ease;
+}
+
+.menu-item:active {
+  transform: scale(0.96);
+}
