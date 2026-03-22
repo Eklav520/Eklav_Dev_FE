@@ -135,10 +135,12 @@ const EditProfile = () => {
         setSkills(profile.skills || [])
 
         if (profile.profileImage) {
-          let filename = profile.profileImage.replace(/\\/g, '/')
-          if (filename.startsWith('/')) filename = filename.substring(1)
-          if (!filename.startsWith('uploads/')) filename = 'uploads/' + filename
-          setServerImagePath(`${baseURL}/${filename}`)
+          const cleanPath = profile.profileImage.replace(/\\/g, '/')
+          const finalUrl = `${baseURL}${cleanPath}`
+
+          console.log("FINAL IMAGE URL:", finalUrl)
+
+          setServerImagePath(finalUrl)
         }
 
         if (profile.resume) {
@@ -225,7 +227,7 @@ const EditProfile = () => {
   }
 
   const onSubmit = async (data: any) => {
-   if (!data.college || data.college.trim() === '') {
+    if (!data.college || data.college.trim() === '') {
       setToastMessage('Please select a valid college from the list')
       setShowToast(true)
       return
