@@ -30,3 +30,36 @@
 .menu-item:active {
   transform: scale(0.96);
 }
+
+/* ===== ZOMATO STYLE DRAWER ===== */
+.custom-mobile-drawer {
+  width: 280px !important;
+  background: #000000 !important; /* Changed to black */
+  color: #fff;
+  border-right: 1px solid #ff7a00 !important; /* Orange border */
+  transition: transform 0.35s ease-in-out !important;
+}
+
+/* Smooth slide */
+.offcanvas-start {
+  transform: translateX(-100%);
+}
+
+.offcanvas.show {
+  transform: translateX(0);
+}
+
+/* Backdrop blur */
+.offcanvas-backdrop.show {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(4px);
+}
+
+/* Menu animation */
+.menu-item {
+  transition: all 0.25s ease;
+}
+
+.menu-item:active {
+  transform: scale(0.96);
+}

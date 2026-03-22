@@ -1,13 +1,26 @@
-
 import { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, Toast, ToastContainer } from 'react-bootstrap';
+import { Card, CardBody, CardHeader, Col, Toast, ToastContainer, Spinner } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
-import { BsPlus, BsX, BsSearch } from 'react-icons/bs';
+import {
+  BsPlus,
+  BsX,
+  BsSearch,
+  BsCamera,
+  BsTrash,
+  BsFileText,
+  BsBriefcase,
+  BsFileEarmarkPdf,  // For PDF file icon
+  BsFileEarmarkText, // For document icon
+  BsAward,           // Alternative for certificate
+  BsTrophy,          // Alternative for certificate
+  BsPatchCheck       // Alternative for certificate
+} from 'react-icons/bs';
 import { useAuthContext } from '@/context/useAuthContext';
 import avatar7 from '@/assets/images/avatar/07.jpg';
 import TextFormInput from '@/components/form/TextFormInput';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
+import { FaCertificate } from 'react-icons/fa';
 
 const schema = yup.object().shape({
   fullName: yup.string().required('Full name is required'),
@@ -54,17 +67,16 @@ const EditProfile = () => {
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
-  // Existing local state
   const [educationFields, setEducationFields] = useState<string[]>([])
   const [serverImagePath, setServerImagePath] = useState<string | null>(null)
   const [showToast, setShowToast] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [toastVariant, setToastVariant] = useState<'success' | 'danger'>('success')
   const [name, setName] = useState('Guest')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
   const fallbackUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'User')}`
 
-  // NEW: resume + certifications + skills
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [certFiles, setCertFiles] = useState<File[]>([])
@@ -72,10 +84,11 @@ const EditProfile = () => {
   const [serverCertPaths, setServerCertPaths] = useState<string[]>([])
   const [skills, setSkills] = useState<string[]>([])
   const [skillInput, setSkillInput] = useState('')
-  // ================= College Search (Auto Suggest) =================
+
   const [collegeQuery, setCollegeQuery] = useState('')
   const [collegeResults, setCollegeResults] = useState<{ _id: string; name: string; address: string; pincode: string; logo?: string }[]>([]);
   const [showCollegeList, setShowCollegeList] = useState(false);
+
   const yearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i);
   const departmentOptions = ['Computer Science and Engineering', 'Electronics and Communication Engineering', 'Electrical and Electronics Engineering', 'Mechanical Engineering', 'Civil Engineering', 'Information Technology', 'Artificial Intelligence and Machine Learning', 'Data Science', 'Internet of Things', 'Biomedical Engineering', 'Chemical Engineering', 'Master of Computer Applications', 'Bachelor of Technology'].sort();
   const [selectedCollege, setSelectedCollege] = useState<{
@@ -84,7 +97,6 @@ const EditProfile = () => {
     address: string
     pincode: string
   } | null>(null);
-
 
   useEffect(() => {
     const fetchColleges = async () => {
@@ -137,9 +149,6 @@ const EditProfile = () => {
         if (profile.profileImage) {
           const cleanPath = profile.profileImage.replace(/\\/g, '/')
           const finalUrl = `${baseURL}${cleanPath}`
-
-          console.log("FINAL IMAGE URL:", finalUrl)
-
           setServerImagePath(finalUrl)
         }
 
@@ -163,7 +172,6 @@ const EditProfile = () => {
       .catch((err) => console.error('Error fetching profile:', err))
   }, [token, reset, baseURL])
 
-  // Image change
   const onImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
@@ -172,42 +180,33 @@ const EditProfile = () => {
     }
   }
 
-  // Resume change (single)
   const onResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-
-      const allowedTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ];
+      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       const allowedExtensions = ['pdf', 'doc', 'docx'];
 
       const fileType = file.type;
       const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
 
       if (!allowedTypes.includes(fileType) || !allowedExtensions.includes(fileExtension)) {
-        alert('Please upload PDF/DOC/DOCX files.');
-        // Clear the input so invalid file is removed
+        setToastMessage('Please upload PDF/DOC/DOCX files.')
+        setToastVariant('danger')
+        setShowToast(true)
         e.target.value = '';
         return;
       }
 
-      // If file is valid, set the state
       setResumeFile(file);
     }
   };
 
-
-  // Certs change (multi)
   const onCertsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       setCertFiles(Array.from(e.target.files))
     }
   }
 
-  // Skills helpers
   const addSkill = () => {
     const s = skillInput.trim()
     if (!s) return
@@ -220,6 +219,7 @@ const EditProfile = () => {
     setValue('skills', next)
     setSkillInput('')
   }
+
   const removeSkill = (s: string) => {
     const next = skills.filter((x) => x !== s)
     setSkills(next)
@@ -229,11 +229,12 @@ const EditProfile = () => {
   const onSubmit = async (data: any) => {
     if (!data.college || data.college.trim() === '') {
       setToastMessage('Please select a valid college from the list')
+      setToastVariant('danger')
       setShowToast(true)
       return
     }
 
-    setIsSaving(true) // 🔥 start spinner
+    setIsSaving(true)
 
     try {
       const formData = new FormData()
@@ -269,201 +270,183 @@ const EditProfile = () => {
       const result = await res.json()
 
       setToastMessage('Profile updated successfully!')
+      setToastVariant('success')
       setShowToast(true)
 
       setResumeFile(null)
-      setCertFiles([])
+      setCertFiles(null as any)
     } catch (err) {
       console.error(err)
       setToastMessage('Failed to update profile. Please try again.')
+      setToastVariant('danger')
       setShowToast(true)
     } finally {
-      setIsSaving(false) // ✅ stop spinner
+      setIsSaving(false)
     }
   }
 
-
   return (
-    <>
-      <Card className="bg-transparent border rounded-3">
-        <CardHeader
-          className="border-bottom text-white"
-          style={{
-            background: 'linear-gradient(135deg, #ff7a00 0%, #ff9a3c 100%)',
-          }}
-        >
-          <h3 className="card-header-title mb-0">Update Profiless</h3>
+    <div className="edit-profile-container">
+      <Card className="profile-card">
+        <CardHeader className="profile-card-header">
+          <div className="header-content">
+            <div className="header-left">
+              <BsBriefcase className="header-icon" />
+              <div>
+                <h3 className="header-title">Update Profile</h3>
+                <p className="header-subtitle">Manage your personal information and documents</p>
+              </div>
+            </div>
+          </div>
         </CardHeader>
-        <CardBody>
-          <form className="row g-4" onSubmit={handleSubmit(onSubmit)}>
-            <Col xs={12}>
-              <label className="form-label">Profile picture</label>
-              <div className="d-flex align-items-center">
-                <label className="position-relative me-4">
-                  <span className="avatar avatar-xl">
+
+        <CardBody className="profile-card-body">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            {/* Profile Picture */}
+            <Col xs={12} className="mb-4">
+              <label className="form-label-custom">Profile Picture</label>
+              <div className="profile-picture-section">
+                <div className="avatar-container">
+                  <div className="avatar-wrapper">
                     <img
-                      className="avatar-img rounded-circle border border-white border-3 shadow"
+                      className="avatar-image"
                       src={imagePreviewUrl || serverImagePath || avatar7 || fallbackUrl}
                       alt="Profile avatar"
                       onError={(e) => (e.currentTarget.src = fallbackUrl)}
                     />
-                  </span>
-                  {imagePreviewUrl && (
-                    <button
-                      type="button"
-                      className="uploadremove"
-                      onClick={() => {
-                        setImageFile(null)
-                        setImagePreviewUrl(null)
-                      }}>
-                      <BsX className="bi bi-x text-white" />
-                    </button>
-                  )}
-                </label>
-                <label className="btn"
-                  style={{
-                    background: '#ff7a00',
-                    border: 'none',
-                    color: '#fff',
-                    fontWeight: 600,
-                  }}>
-                  Change
-                  <input className="form-control d-none" type="file" accept="image/*" onChange={onImageChange} />
-                </label>
-              </div>
-            </Col>
-
-            <TextFormInput name="fullName" maxLength={30} label="Full name *" control={control} containerClassName="col-md-6" />
-            {/*  <TextFormInput name="username" label="Username *" control={control} containerClassName="col-md-6" /> */}
-            <TextFormInput name="email" label="Email *" control={control} disabled containerClassName="col-md-6" />
-            <TextFormInput name="phoneNo" label="Phone number *" control={control} disabled containerClassName="col-md-6" />
-            {/*  <TextFormInput name="location" label="Location *" control={control} containerClassName="col-md-6" /> */}
-            {/* <TextFormInput name="college" label="College Name *" control={control} containerClassName="col-md-6" /> */}
-            {/* ✅ College autocomplete field */}
-            <Col md={6}>
-              <label className="form-label fw-semibold">College *</label>
-
-              <div className="position-relative">
-                {/* 🔍 Search icon (always visible) */}
-                <span
-                  className="position-absolute top-50 translate-middle-y text-muted"
-                  style={{ left: '12px', zIndex: 2 }}
-                >
-                  <BsSearch />
-                </span>
-
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ paddingLeft: '36px' }}
-                  placeholder="Search your college"
-                  autoComplete="off"
-                  value={collegeQuery}
-                  {...register('college')}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    setCollegeQuery(val)
-                    setValue('college', val)
-
-                    // invalidate previous selection
-                    setSelectedCollege(null)
-                    setShowCollegeList(true)
-                  }}
-                  onFocus={() => {
-                    if (collegeQuery.trim().length >= 1) {
-                      setShowCollegeList(true)
-                    }
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => setShowCollegeList(false), 150)
-                  }}
-                />
-
-                {/* helper text */}
-                {collegeQuery.length === 1 && (
-                  <small className="text-muted mt-1 d-block">
-                    Start typing to search and select your college
-                  </small>
-                )}
-
-                {/* Dropdown */}
-                {showCollegeList && collegeQuery.trim().length >= 1 && (
-                  <ul
-                    className="list-group position-absolute w-100 shadow-sm mt-1"
-                    style={{ zIndex: 1050 }}
-                  >
-                    {collegeResults.length > 0 ? (
-                      collegeResults.map((college) => (
-                        <li
-                          key={college._id}
-                          className="list-group-item list-group-item-action"
-                          style={{ cursor: 'pointer' }}
-                          onMouseDown={(e) => {
-                            e.preventDefault() // 🔥 prevents input blur before selection
-
-                            const display = `${college.name}, ${college.address}, ${college.pincode}`
-                            setCollegeQuery(display)
-                            setValue('college', display)
-                            setSelectedCollege(college)
-                            setShowCollegeList(false)
-                          }}
-                        >
-                          <strong>{college.name}</strong>
-                          <br />
-                          <small className="text-muted">
-                            {college.address}, {college.pincode}
-                          </small>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="list-group-item text-muted text-center">
-                        No colleges found
-                      </li>
+                    {imagePreviewUrl && (
+                      <button
+                        type="button"
+                        className="avatar-remove-btn"
+                        onClick={() => {
+                          setImageFile(null)
+                          setImagePreviewUrl(null)
+                        }}
+                      >
+                        <BsTrash />
+                      </button>
                     )}
-                  </ul>
-                )}
+                    <label className="avatar-upload-btn">
+                      <BsCamera />
+                      <input className="d-none" type="file" accept="image/*" onChange={onImageChange} />
+                    </label>
+                  </div>
+                </div>
               </div>
             </Col>
 
+            {/* Personal Information */}
+            <div className="form-section">
+              <h6 className="section-title">Personal Information</h6>
+              <div className="row g-4">
+                <TextFormInput name="fullName" maxLength={30} label="Full Name *" control={control} containerClassName="col-md-6" />
+                <TextFormInput name="email" label="Email Address *" control={control} disabled containerClassName="col-md-6" />
+                <TextFormInput name="phoneNo" label="Phone Number *" control={control} disabled containerClassName="col-md-6" />
+              </div>
+            </div>
 
-            {/* Joining Year */}
-            <Col md={3}>
-              <label className="form-label fw-semibold">Joining Year *</label>
-              <select className="form-select" {...register('joiningYear')}>
-                <option value="">Select Year</option>
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </Col>
+            {/* Academic Information */}
+            <div className="form-section">
+              <h6 className="section-title">Academic Information</h6>
+              <div className="row g-4">
+                {/* College Autocomplete */}
+                <Col md={6}>
+                  <label className="form-label-custom">College *</label>
+                  <div className="position-relative">
+                    <span className="search-icon">
+                      <BsSearch />
+                    </span>
+                    <input
+                      type="text"
+                      className="form-control-custom"
+                      style={{ paddingLeft: '2.5rem' }}
+                      placeholder="Search your college"
+                      autoComplete="off"
+                      value={collegeQuery}
+                      {...register('college')}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setCollegeQuery(val)
+                        setValue('college', val)
+                        setSelectedCollege(null)
+                        setShowCollegeList(true)
+                      }}
+                      onFocus={() => {
+                        if (collegeQuery.trim().length >= 1) {
+                          setShowCollegeList(true)
+                        }
+                      }}
+                      onBlur={() => {
+                        setTimeout(() => setShowCollegeList(false), 150)
+                      }}
+                    />
+                    {showCollegeList && collegeQuery.trim().length >= 1 && (
+                      <ul className="college-dropdown">
+                        {collegeResults.length > 0 ? (
+                          collegeResults.map((college) => (
+                            <li
+                              key={college._id}
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                const display = `${college.name}, ${college.address}, ${college.pincode}`
+                                setCollegeQuery(display)
+                                setValue('college', display)
+                                setSelectedCollege(college)
+                                setShowCollegeList(false)
+                              }}
+                            >
+                              <strong>{college.name}</strong>
+                              <small>{college.address}, {college.pincode}</small>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="text-center text-muted">No colleges found</li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </Col>
 
-            {/* Department */}
-            <Col md={3}>
-              <label className="form-label fw-semibold">Department *</label>
-              <select className="form-select" {...register('department')}>
-                <option value="">Select Department</option>
-                {departmentOptions.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </select>
-            </Col>
+                <Col md={3}>
+                  <label className="form-label-custom">Joining Year *</label>
+                  <select className="form-select-custom" {...register('joiningYear')}>
+                    <option value="">Select Year</option>
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </Col>
 
-            <Col xs={12}>
-              <label className="form-label">About me</label>
-              <textarea maxLength={500} className="form-control" rows={3} {...register('about')} />
-            </Col>
+                <Col md={3}>
+                  <label className="form-label-custom">Department *</label>
+                  <select className="form-select-custom" {...register('department')}>
+                    <option value="">Select Department</option>
+                    {departmentOptions.map((dept) => (
+                      <option key={dept} value={dept}>{dept}</option>
+                    ))}
+                  </select>
+                </Col>
+              </div>
+            </div>
 
-            <Col xs={12}>
-              <label className="form-label">Education</label>
+            {/* About Me */}
+            <div className="form-section">
+              <h6 className="section-title">About Me</h6>
+              <textarea
+                className="form-control-custom"
+                rows={4}
+                {...register('about')}
+                placeholder="Tell us about yourself, your interests, and career goals..."
+              />
+            </div>
 
+            {/* Education */}
+            <div className="form-section">
+              <h6 className="section-title">Education</h6>
               {educationFields.map((field, index) => (
-                <div key={index} className="d-flex align-items-center mb-2 gap-2">
+                <div key={index} className="education-field">
                   <input
-                    className="form-control"
+                    className="form-control-custom"
                     maxLength={100}
                     value={field}
                     placeholder={`Education ${index + 1}`}
@@ -474,274 +457,603 @@ const EditProfile = () => {
                       setValue('education', updated)
                     }}
                   />
-
-                  {/* ❌ Only show remove button if NOT the first input */}
                   {index > 0 && (
                     <button
                       type="button"
-                      className="btn btn-outline-danger btn-sm"
+                      className="remove-education-btn"
                       onClick={() => {
-                        // Remove the selected field but always keep at least one
                         if (educationFields.length > 1) {
                           const updated = educationFields.filter((_, i) => i !== index)
                           setEducationFields(updated)
                           setValue('education', updated)
                         }
                       }}
-                      aria-label="Remove education field">
-                      <BsX size={18} />
+                    >
+                      <BsX />
                     </button>
                   )}
                 </div>
               ))}
-
               <button
                 type="button"
-                className="btn btn-sm btn-light mb-0 mt-1"
+                className="add-more-btn"
                 onClick={() => {
                   const updated = [...educationFields, '']
                   setEducationFields(updated)
                   setValue('education', updated)
-                }}>
-                <BsPlus className="me-1" /> Add more
+                }}
+              >
+                <BsPlus className="me-1" /> Add Education
               </button>
-            </Col>
+            </div>
 
-            {/* Resume Upload */}
-            <Col xs={12} md={6}>
-              <label className="form-label">Resume (PDF/DOC/DOCX)</label>
-              <input
-                className="form-control"
-                type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={onResumeChange}
-              />
-              {serverResumePath && (
-                <small className="text-muted d-block mt-1">
-                  Current:{' '}
-                  <a href={serverResumePath} target="_blank" rel="noreferrer">
-                    View resume
-                  </a>
-                </small>
-              )}
-            </Col>
+            {/* Resume & Certifications */}
+            <div className="form-section">
+              <h6 className="section-title">Documents</h6>
+              <div className="row g-4">
+                <Col md={6}>
+                  <label className="form-label-custom">
+                    <BsFileText className="me-1" /> Resume (PDF/DOC/DOCX)
+                  </label>
+                  <input
+                    className="form-control-custom"
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={onResumeChange}
+                  />
+                  {serverResumePath && (
+                    <small className="form-hint">
+                      Current: <a href={serverResumePath} target="_blank" rel="noreferrer" className="file-link">View resume</a>
+                    </small>
+                  )}
+                </Col>
 
-            {/* Certifications Upload */}
-            <Col xs={12} md={6}>
-              <label className="form-label">Certifications (multiple files)</label>
-              <input
-                className="form-control"
-                type="file"
-                multiple
-                accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,application/pdf,image/*"
-                onChange={onCertsChange}
-              />
-              {serverCertPaths?.length > 0 && (
-                <small className="text-muted d-block mt-1">
-                  Current:
-                  <ul className="mb-0 mt-1">
-                    {serverCertPaths.map((p, idx) => (
-                      <li key={idx}>
-                        <a href={p} target="_blank" rel="noreferrer">
-                          Certification {idx + 1}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </small>
-              )}
-            </Col>
+                <Col md={6}>
+                  <label className="form-label-custom">
+                    <FaCertificate className="me-1" /> Certifications (Multiple files)
+                  </label>
+                  <input
+                    className="form-control-custom"
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+                    onChange={onCertsChange}
+                  />
+                  {serverCertPaths?.length > 0 && (
+                    <small className="form-hint">
+                      Current certifications:
+                      <ul className="cert-list">
+                        {serverCertPaths.map((p, idx) => (
+                          <li key={idx}>
+                            <a href={p} target="_blank" rel="noreferrer">Certification {idx + 1}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </small>
+                  )}
+                </Col>
+              </div>
+            </div>
 
-            {/* Skills (high-contrast chips) */}
-            <Col xs={12}>
-              <label className="form-label">Skill sets</label>
-              <div className="d-flex gap-2">
+            {/* Skills */}
+            <div className="form-section">
+              <h6 className="section-title">Skills</h6>
+              <div className="skills-input-wrapper">
                 <input
-                  className="form-control mb-2"
-                  placeholder="e.g. React, Node.js, MongoDB"
+                  className="skill-input-custom"
+                  placeholder="Type a skill and press Enter"
                   value={skillInput}
-                  maxLength={20} // ✅ limit input to 20 characters
+                  maxLength={20}
                   onChange={(e) => {
-                    const value = e.target.value
-                    if (value.length <= 20) {
-                      setSkillInput(value)
+                    if (e.target.value.length <= 20) {
+                      setSkillInput(e.target.value)
                     }
                   }}
                   onKeyDown={(e) => {
-                    // Add on Enter or comma
                     if (e.key === 'Enter' || e.key === ',') {
                       e.preventDefault()
                       addSkill()
                     }
-                    // Backspace on empty input removes last chip
                     if (e.key === 'Backspace' && !skillInput && skills.length) {
                       removeSkill(skills[skills.length - 1])
                     }
                   }}
                   onBlur={() => {
-                    // quick add on blur if they typed something
                     if (skillInput.trim()) addSkill()
                   }}
                 />
-                <button type="button" className="btn btn-sm"
-                  style={{
-                    background: '#ff7a00',
-                    color: '#fff',
-                    border: 'none'
-                  }} onClick={addSkill}>
+                <button type="button" className="add-skill-btn" onClick={addSkill}>
                   Add
                 </button>
               </div>
+              <small className="form-hint">Max 20 characters per skill. Press Enter or comma to add.</small>
 
-              {/* Optional hint */}
-              <small className="text-muted">Max 20 characters per skill</small>
-
-              <div className="mt-2 d-flex flex-wrap gap-2">
+              <div className="skills-container">
                 {skills.map((s) => (
-                  <span key={s} className="tag-chip">
-                    <span className="tag-text">{s}</span>
-                    <button type="button" className="chip-remove" aria-label={`Remove ${s}`} title="Remove" onClick={() => removeSkill(s)}>
-                      <BsX size={18} />
+                  <span key={s} className="skill-chip">
+                    <span className="skill-text">{s}</span>
+                    <button type="button" className="chip-remove" onClick={() => removeSkill(s)}>
+                      <BsX />
                     </button>
                   </span>
                 ))}
               </div>
-
               {errors?.skills && <div className="text-danger small mt-1">{String(errors.skills.message || '')}</div>}
-            </Col>
-
-            <div className="d-sm-flex justify-content-end">
-              <button
-                type="submit"
-                className="btn d-flex align-items-center gap-2"
-                style={{
-                  background: '#ff7a00',
-                  border: 'none',
-                  color: '#fff',
-                  fontWeight: 600,
-                }}
-                disabled={isSaving}
-              >
-                {isSaving && (
-                  <span
-                    className="spinner-border spinner-border-sm"
-                    role="status"
-                    aria-hidden="true"
-                  />
-                )}
-                {isSaving ? 'Saving...' : 'Save changes'}
-              </button>
             </div>
 
+            {/* Submit Button */}
+            <div className="form-actions">
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={isSaving}
+              >
+                {isSaving && <Spinner size="sm" animation="border" className="me-2" />}
+                {isSaving ? 'Saving Changes...' : 'Save Changes'}
+              </button>
+            </div>
           </form>
         </CardBody>
 
         <ToastContainer position="bottom-end" className="p-3">
-          <Toast bg="success" onClose={() => setShowToast(false)} show={showToast} delay={3000} autohide>
-            <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+          <Toast
+            bg={toastVariant}
+            onClose={() => setShowToast(false)}
+            show={showToast}
+            delay={3000}
+            autohide
+            className={`toast-custom toast-${toastVariant}`}
+          >
+            <Toast.Body>{toastMessage}</Toast.Body>
           </Toast>
         </ToastContainer>
       </Card>
 
-      {/* Chip + input styling for dark UI */}
       <style>{`
-        /* ===================== Tag & Skill Input (Theme Aware) ===================== */
+        .edit-profile-container {
+          background: #222529;
+          min-height: 100vh;
+          padding: 1rem;
+        }
 
-/* Defaults = LIGHT MODE */
-:root{
-  --chip-bg: rgba(17, 24, 39, .06);
-  --chip-border: rgba(17, 24, 39, .16);
-  --chip-text: #111827;
-  --chip-remove: #334155;
-  --chip-remove-hover-bg: rgba(17, 24, 39, .08);
+        .profile-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 16px;
+          overflow: hidden;
+        }
 
-  --skill-ph: rgba(51, 65, 85, .8);
-  --skill-bg: #ffffff;
-  --skill-border: #e5e7eb;
-  --skill-text: #0f172a;
-}
+        .profile-card-header {
+          background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+          border-bottom: 1px solid #ff7a00;
+          padding: 1.5rem;
+        }
 
-/* DARK MODE (any one selector you use) */
-[data-bs-theme="dark"], .dark, .theme-dark{
-  --chip-bg: rgba(255, 255, 255, .08);
-  --chip-border: rgba(255, 255, 255, .22);
-  --chip-text: #e5e7eb;
-  --chip-remove: #cbd5e1;
-  --chip-remove-hover-bg: rgba(255, 255, 255, .15);
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
 
-  --skill-ph: #94a3b8;
-  --skill-bg: rgba(255,255,255,.06);
-  --skill-border: rgba(255,255,255,.18);
-  --skill-text: #e5e7eb;
-}
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
 
-/* ---- Text input for adding skills ---- */
-.skill-input{
-  background: var(--skill-bg) !important;
-  color: var(--skill-text) !important;
-  border: 1px solid var(--skill-border) !important;
-  border-radius: 12px;
-  padding: .625rem .875rem;
-  box-shadow: none;
-}
-.skill-input::placeholder{
-  color: var(--skill-ph) !important;
-  opacity: 1;
-}
-.skill-input:focus{
-  outline: none;
-  border-color: rgba(99,102,241,.55) !important;  /* indigo ring */
-  box-shadow: 0 0 0 .2rem rgba(99,102,241,.18) !important;
-}
+        .header-icon {
+          font-size: 2rem;
+          color: #ff7a00;
+        }
 
-/* ---- Tag chip ---- */
-.tag-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:.35rem;
-  padding:.35rem .6rem;
-  border-radius:999px;
-  font-size:.85rem;
-  font-weight:600;
-  color: var(--chip-text);
-  background: var(--chip-bg);
-  border: 1px solid var(--chip-border);
-  backdrop-filter: blur(6px) saturate(140%);
-  -webkit-backdrop-filter: blur(6px) saturate(140%);
-}
-.tag-chip .tag-text{ line-height:1; }
+        .header-title {
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0;
+        }
 
-/* ---- Remove (X) button ---- */
-.chip-remove{
-  width:22px; height:22px;
-  display:inline-flex; align-items:center; justify-content:center;
-  border:none; border-radius:999px;
-  background:transparent;
-  color: var(--chip-remove);
-  padding:0; cursor:pointer;
-}
-.chip-remove:hover{
-  background: var(--chip-remove-hover-bg);
-  color: var(--chip-text);
-}
+        .header-subtitle {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          margin: 0.25rem 0 0 0;
+        }
 
-/* Optional: container spacing for chips row */
-.tags-wrap{
-  display:flex; flex-wrap:wrap; gap:.5rem;
-}
-  .skill-input {
-  height: calc(2.5rem + 2px); /* matches .form-control-lg */
-  font-size: 0.95rem;
-  border-radius: 0.375rem; /* same as TextFormInput */
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
-}
-.list-group-item:hover {
-  background-color: rgba(255,122,0,0.1);
-  border-left: 3px solid #ff7a00;
-}
+        .profile-card-body {
+          padding: 1.5rem;
+        }
 
+        .form-section {
+          margin-bottom: 2rem;
+          padding-bottom: 1.5rem;
+          border-bottom: 1px solid #1f1f1f;
+        }
+
+        .form-section:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .section-title {
+          color: #ff7a00;
+          font-size: 1rem;
+          font-weight: 600;
+          margin-bottom: 1.25rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .form-label-custom {
+          color: #ff7a00;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .form-control-custom, .form-select-custom {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.75rem;
+          border-radius: 8px;
+          width: 100%;
+          transition: all 0.2s ease;
+        }
+
+        .form-control-custom:focus, .form-select-custom:focus {
+          background: #141414;
+          border-color: #ff7a00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+          outline: none;
+        }
+
+        .form-control-custom::placeholder {
+          color: #6c757d;
+        }
+
+        .form-hint {
+          color: #6c757d;
+          font-size: 0.75rem;
+          margin-top: 0.5rem;
+          display: block;
+        }
+
+        .file-link {
+          color: #ff7a00;
+          text-decoration: none;
+        }
+
+        .file-link:hover {
+          color: #ff944d;
+          text-decoration: underline;
+        }
+
+        .cert-list {
+          margin-top: 0.5rem;
+          padding-left: 1rem;
+        }
+
+        .cert-list li {
+          margin-bottom: 0.25rem;
+        }
+
+        /* Profile Picture */
+        .profile-picture-section {
+          display: flex;
+          justify-content: center;
+        }
+
+        .avatar-container {
+          position: relative;
+        }
+
+        .avatar-wrapper {
+          position: relative;
+          display: inline-block;
+        }
+
+        .avatar-image {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid #ff7a00;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .avatar-remove-btn {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #dc3545;
+          border: none;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .avatar-remove-btn:hover {
+          background: #c82333;
+          transform: scale(1.05);
+        }
+
+        .avatar-upload-btn {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #ff7a00;
+          border: none;
+          color: #000000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .avatar-upload-btn:hover {
+          background: #ff944d;
+          transform: scale(1.05);
+        }
+
+        /* College Search */
+        .search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #ff7a00;
+        }
+
+        .college-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          margin-top: 4px;
+          padding: 0;
+          list-style: none;
+          z-index: 1000;
+          max-height: 250px;
+          overflow-y: auto;
+        }
+
+        .college-dropdown li {
+          padding: 0.75rem;
+          cursor: pointer;
+          border-bottom: 1px solid #2c2c2c;
+        }
+
+        .college-dropdown li:last-child {
+          border-bottom: none;
+        }
+
+        .college-dropdown li:hover {
+          background: rgba(255, 122, 0, 0.1);
+        }
+
+        .college-dropdown strong {
+          display: block;
+          color: #ffffff;
+        }
+
+        .college-dropdown small {
+          color: #8a8a8a;
+          font-size: 0.75rem;
+        }
+
+        /* Education Fields */
+        .education-field {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .education-field .form-control-custom {
+          flex: 1;
+        }
+
+        .remove-education-btn {
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          background: #dc3545;
+          border: none;
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .remove-education-btn:hover {
+          background: #c82333;
+        }
+
+        .add-more-btn {
+          background: rgba(255, 122, 0, 0.1);
+          border: 1px solid #ff7a00;
+          color: #ff7a00;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .add-more-btn:hover {
+          background: #ff7a00;
+          color: #000000;
+        }
+
+        /* Skills */
+        .skills-input-wrapper {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .skill-input-custom {
+          flex: 1;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.75rem;
+          border-radius: 8px;
+        }
+
+        .skill-input-custom:focus {
+          background: #141414;
+          border-color: #ff7a00;
+          outline: none;
+        }
+
+        .add-skill-btn {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .add-skill-btn:hover {
+          transform: translateY(-1px);
+        }
+
+        .skills-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          margin-top: 1rem;
+        }
+
+        .skill-chip {
+          background: rgba(255, 122, 0, 0.1);
+          border: 1px solid rgba(255, 122, 0, 0.3);
+          border-radius: 20px;
+          padding: 0.375rem 0.75rem;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: #ff7a00;
+        }
+
+        .skill-text {
+          font-weight: 500;
+        }
+
+        .chip-remove {
+          background: transparent;
+          border: none;
+          color: #ff7a00;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0;
+          cursor: pointer;
+        }
+
+        .chip-remove:hover {
+          color: #ffffff;
+        }
+
+        /* Form Actions */
+        .form-actions {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 2rem;
+          padding-top: 1rem;
+          border-top: 1px solid #1f1f1f;
+        }
+
+        .submit-btn {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 2rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+        }
+
+        .submit-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
+
+        /* Toast */
+        .toast-custom.toast-success {
+          background: #28a745;
+        }
+
+        .toast-custom.toast-danger {
+          background: #dc3545;
+        }
+
+        .toast-custom .toast-body {
+          color: white;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .profile-card-body {
+            padding: 1rem;
+          }
+
+          .header-title {
+            font-size: 1.25rem;
+          }
+
+          .skills-input-wrapper {
+            flex-direction: column;
+          }
+
+          .add-skill-btn {
+            width: 100%;
+          }
+
+          .form-actions {
+            justify-content: stretch;
+          }
+
+          .submit-btn {
+            width: 100%;
+          }
+
+          .education-field {
+            flex-direction: column;
+          }
+
+          .remove-education-btn {
+            width: 100%;
+          }
+        }
       `}</style>
-    </>
+    </div>
   )
 }
 

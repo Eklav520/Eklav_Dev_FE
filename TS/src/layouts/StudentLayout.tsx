@@ -73,7 +73,6 @@ const StudentLayout = ({ children }: ChildrenType) => {
       .then((res) => res.json())
       .then((profile) => {
         setRole(profile.role)
-        // Extract name from profile (adjust based on your API response)
         setUserName(profile.name || profile.fullName || 'Student')
       })
       .catch(() => { })
@@ -82,7 +81,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   // Toggle sidebar collapse
   const toggleSidebar = () => {
     setIsCollapsed(prev => !prev)
-    setIsHovering(false) // reset hover state
+    setIsHovering(false)
   }
 
   // Calculate sidebar width based on collapse state
@@ -98,9 +97,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
           left: 0,
           right: 0,
           zIndex: 1030,
-          backgroundColor: '#fff',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          height: '70px'
+          backgroundColor: '#000000', // Changed to black
+          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+          height: '70px',
+          borderBottom: '6px solid #ff7a00' // Added orange border
         }}>
           <TopNavigationBar
             role={role}
@@ -114,8 +114,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
       <div style={{
         display: 'flex',
         height: '100vh',
-        overflow: 'hidden', // Prevent double scrollbars
-        paddingTop: '70px' // Height of top navbar
+        overflow: 'hidden',
+        paddingTop: '70px',
+        backgroundColor: '#000000' // Added black background
       }}>
         {/* FIXED DESKTOP SIDEBAR */}
         {isDesktop && (
@@ -133,15 +134,14 @@ const StudentLayout = ({ children }: ChildrenType) => {
               bottom: 0,
               width: sidebarWidth,
               zIndex: 1020,
-              backgroundColor: isOrangeTheme ? '#1c1410' : '#1a1d21',
+              backgroundColor: isOrangeTheme ? '#0a0a0a' : '#000000', // Changed to black/dark gray
               borderRight: isOrangeTheme
-                ? '1px solid rgba(255,140,0,0.4)'
-                : '1px solid #2c2f33',
+                ? '1px solid #ff7a00' // Orange border
+                : '1px solid #1f1f1f', // Dark gray border
               boxShadow: isOrangeTheme
-                ? '2px 0 12px rgba(255,140,0,0.15)'
+                ? '2px 0 12px rgba(255, 122, 0, 0.2)'
                 : 'none',
               color: '#fff',
-
               transition: 'width 0.25s ease',
               overflowY: 'auto',
               overflowX: 'hidden',
@@ -151,7 +151,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             <div
               style={{
                 padding: '16px',
-                borderBottom: '1px solid #2c2f33',
+                borderBottom: '1px solid #1f1f1f', // Dark gray border
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -172,12 +172,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
                         height: '36px',
                         borderRadius: '8px',
                         background: isOrangeTheme
-                          ? 'linear-gradient(135deg, #ff8c00 0%, #ff6a00 100%)'
-                          : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                          ? 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)' // Orange gradient
+                          : 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)', // Always orange
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: '#fff',
+                        color: '#000000',
                         fontWeight: '600',
                         fontSize: '14px',
                       }}
@@ -188,7 +188,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
                       <div
                         style={{
                           fontSize: '12px',
-                          color: '#8f9bb3',
+                          color: '#8a8a8a', // Light gray
                           fontWeight: '400',
                         }}
                       >
@@ -211,20 +211,20 @@ const StudentLayout = ({ children }: ChildrenType) => {
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#8f9bb3',
+                      color: '#8a8a8a',
                       cursor: 'pointer',
                       padding: '6px',
                       borderRadius: '6px',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = isCollapsed
-                        ? '#2c2f33'
-                        : 'rgba(255,140,0,0.15)';
-                      e.currentTarget.style.color = '#fff';
+                        ? '#1f1f1f'
+                        : 'rgba(255, 122, 0, 0.15)';
+                      e.currentTarget.style.color = '#ff7a00';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#8f9bb3';
+                      e.currentTarget.style.color = '#8a8a8a';
                     }}
                   >
                     <FiMenu size={16} />
@@ -245,13 +245,11 @@ const StudentLayout = ({ children }: ChildrenType) => {
                       width: '40px',
                       height: '40px',
                       borderRadius: '8px',
-                      background: isOrangeTheme
-                        ? 'linear-gradient(135deg, #ff8c00 0%, #ff6a00 100%)'
-                        : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                      background: 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)', // Orange gradient
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#fff',
+                      color: '#000000',
                       fontWeight: '600',
                       fontSize: '16px',
                     }}
@@ -263,7 +261,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#8f9bb3',
+                      color: '#8a8a8a',
                       cursor: 'pointer',
                       padding: '4px',
                     }}
@@ -286,14 +284,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
           transition: 'margin-left 0.3s ease',
           overflowY: 'auto',
           height: '100%',
-          // Remove the backgroundColor override - let the original styles apply
+          backgroundColor: '#000000' // Added black background
         }}>
           <div style={{ padding: '24px' }}>
             <Suspense fallback={<Preloader />}>
-              {/* Banner component */}
-              {/* <Banner toggleOffCanvas={toggleOffCanvasMenu} /> */}
-
-              {/* Main content wrapper - don't override styles here either */}
               <div className="main-content-wrapper" style={{ marginTop: '20px' }}>
                 {children}
               </div>
@@ -311,24 +305,20 @@ const StudentLayout = ({ children }: ChildrenType) => {
           backdrop
           scroll={false}
           restoreFocus={false}
-          className="custom-mobile-drawer"   // 👈 NEW
+          className="custom-mobile-drawer"
         >
-          {/* ❌ REMOVED HEADER */}
-
           <OffcanvasBody className="p-0">
-
-            {/* ✅ USER HEADER (ZOMATO STYLE) */}
             <div style={{
               padding: "16px",
-              borderBottom: "1px solid #2c2f33"
+              borderBottom: "1px solid #1f1f1f",
+              background: '#000000'
             }}>
-              <div style={{ fontSize: "13px", color: "#aaa" }}>Welcome</div>
-              <div style={{ fontSize: "16px", fontWeight: "600" }}>
+              <div style={{ fontSize: "13px", color: "#ff7a00" }}>Welcome</div>
+              <div style={{ fontSize: "16px", fontWeight: "600", color: '#ffffff' }}>
                 {userName}
               </div>
             </div>
 
-            {/* ✅ PASS CLOSE FUNCTION */}
             <VerticalMenu
               isCollapsed={false}
               onItemClick={toggleOffCanvasMenu}
@@ -399,7 +389,7 @@ const VerticalMenu = ({
           padding: '12px 16px 8px',
           fontSize: '0.75rem',
           fontWeight: '600',
-          color: '#8f9bb3',
+          color: '#ff7a00', // Changed to orange
           textTransform: 'uppercase',
           letterSpacing: '0.5px'
         }}>
@@ -422,7 +412,7 @@ const VerticalMenu = ({
               justifyContent: isCollapsed ? 'center' : 'space-between',
               background: 'transparent',
               border: 'none',
-              color: pathname.startsWith(node.url || '#') ? '#fff' : '#b0b7c4',
+              color: pathname.startsWith(node.url || '#') ? '#ff7a00' : '#e5e5e5', // Orange for active
               cursor: 'pointer',
               transition: 'all 0.2s',
               borderRadius: '6px',
@@ -431,15 +421,15 @@ const VerticalMenu = ({
             onMouseEnter={(e) => {
               if (!pathname.startsWith(node.url || '#')) {
                 e.currentTarget.style.background = isCollapsed
-                  ? '#2c2f33'
-                  : 'rgba(255,140,0,0.15)'
-                e.currentTarget.style.color = '#fff'
+                  ? '#1f1f1f'
+                  : 'rgba(255, 122, 0, 0.15)'
+                e.currentTarget.style.color = '#ff7a00'
               }
             }}
             onMouseLeave={(e) => {
               if (!pathname.startsWith(node.url || '#')) {
                 e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = '#b0b7c4'
+                e.currentTarget.style.color = '#e5e5e5'
               }
             }}
           >
@@ -454,6 +444,7 @@ const VerticalMenu = ({
                 style={{
                   transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
                   transition: 'transform 0.2s',
+                  color: '#ff7a00' // Orange chevron
                 }}
               />
             )}
@@ -478,7 +469,7 @@ const VerticalMenu = ({
         to={node.url || '#'}
         className="menu-item"
         onClick={() => {
-          if (onItemClick) onItemClick()   // ✅ AUTO CLOSE
+          if (onItemClick) onItemClick()
         }}
         style={{
           display: 'flex',
@@ -487,8 +478,8 @@ const VerticalMenu = ({
           padding: isCollapsed ? '12px 0' : '10px 16px',
           gap: isCollapsed ? '0' : '12px',
           textDecoration: 'none',
-          color: isActive ? '#fff' : '#b0b7c4',
-          background: isActive ? '#2c2f33' : 'transparent',
+          color: isActive ? '#ff7a00' : '#e5e5e5', // Orange for active
+          background: isActive ? 'rgba(255, 122, 0, 0.15)' : 'transparent', // Orange background for active
           borderRadius: '6px',
           transition: 'all 0.2s',
           marginBottom: '2px',
@@ -497,15 +488,15 @@ const VerticalMenu = ({
         onMouseEnter={(e) => {
           if (!isActive) {
             e.currentTarget.style.background = isCollapsed
-              ? '#2c2f33'
-              : 'rgba(255,140,0,0.15)'
-            e.currentTarget.style.color = '#fff'
+              ? '#1f1f1f'
+              : 'rgba(255, 122, 0, 0.15)'
+            e.currentTarget.style.color = '#ff7a00'
           }
         }}
         onMouseLeave={(e) => {
           if (!isActive) {
             e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#b0b7c4'
+            e.currentTarget.style.color = '#e5e5e5'
           }
         }}
       >
@@ -529,3 +520,4 @@ const VerticalMenu = ({
 }
 
 export default StudentLayout
+
