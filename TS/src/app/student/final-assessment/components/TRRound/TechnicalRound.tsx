@@ -1,5 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ProgressBar, Spinner, Alert, Modal } from 'react-bootstrap'
+import { 
+  FaMicrophone, 
+  FaStop, 
+  FaArrowLeft, 
+  FaArrowRight, 
+  FaCheckCircle, 
+  FaClock, 
+  FaFileAlt, 
+  FaCode, 
+  FaVideo, 
+  FaDesktop,
+  FaExclamationTriangle,
+  FaUserGraduate,
+  FaBrain,
+  FaUpload,
+  FaSpinner
+} from 'react-icons/fa'
 
 // Proctoring
 import { useProctorGuard } from '../../helper/useProctorGuard'
@@ -42,7 +59,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const current = qs[idx]
   const progress = useMemo(() => (qs.length ? Math.round((idx / qs.length) * 100) : 0), [idx, qs.length])
 
-  // Check if it's the last question (15th question)
+  // Check if it's the last question
   const isLastQuestion = qs.length > 0 && idx === qs.length - 1
 
   // Dictation
@@ -78,7 +95,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const camVideoElRef = useRef<HTMLVideoElement | null>(null)
   const [interviewId, setInterviewId] = useState<string | null>(null)
 
-  // NEW: Loading state for interview panel setup
+  // Loading state for interview panel setup
   const [startingInterview, setStartingInterview] = useState(false)
 
   // Welcome intro flag
@@ -108,7 +125,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          // Time's up - auto submit
           handleAutoSubmit('Time expired - auto submitted')
           return 0
         }
@@ -182,14 +198,12 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       }
       setInterviewId(data.interviewId)
 
-      // Store the analysis results
       setResumeAnalysis({
         skills: data.skills || [],
         summary: data.summary || '',
         extractedText: data.extractedText || ''
       })
 
-      // Set the skills for question generation
       setResumeSkills(data.skills || [])
 
     } catch (e: any) {
@@ -235,12 +249,10 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       setQs(data.questions || [])
       setIdx(0)
 
-      // Initialize answers object
       const init: Record<string, string> = {}
       data.questions.forEach((q: TRQuestion) => (init[q._id] = ''))
       setTextAnswers(init)
 
-      // Start timer only when questions are loaded
       startTimer()
     } catch (e: any) {
       setUiErr(e.message || 'Failed to generate questions from resume')
@@ -476,7 +488,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
     mr.start(1000)
     setStarted(true)
-    arm() // start proctoring
+    arm()
     return true
   }
 
@@ -509,7 +521,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       return
     }
 
-    setStartingInterview(true) // Start loading indicator
+    setStartingInterview(true)
 
     try {
       const synth = window.speechSynthesis
@@ -520,7 +532,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     } catch { }
 
     try {
-      // 1) Ask for screen share from user gesture
       let preDisplay: MediaStream | null = null
       try {
         preDisplay = await (navigator.mediaDevices as any).getDisplayMedia({
@@ -533,17 +544,14 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         return
       }
 
-      // 2) Enter fullscreen from same gesture
       await enterFullscreenFromUserGesture()
 
-      // 3) Start session with granted display
       const ok = await startSession(preDisplay!)
       if (!ok || !mediaRecorderRef.current) {
         setStartingInterview(false)
         return
       }
 
-      // 4) Fetch questions based on resume
       await fetchQuestions()
     } catch (error: any) {
       setUiErr(error.message || 'Failed to start interview')
@@ -560,7 +568,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const uploadSessionToS3 = async (blob: Blob): Promise<string> => {
     if (!authToken) throw new Error('Auth required')
 
-    // 1️⃣ Get presigned URL
     const presignRes = await fetch(`${baseURL}/api/tr/presign/session`, {
       method: 'POST',
       headers: {
@@ -578,14 +585,13 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       throw new Error('Failed to get upload URL')
     }
 
-    // 2️⃣ Upload directly to S3
     await fetch(presignData.uploadUrl, {
       method: 'PUT',
       headers: { 'Content-Type': blob.type || 'video/webm' },
       body: blob,
     })
 
-    return presignData.fileUrl // ✅ final S3 URL
+    return presignData.fileUrl
   }
 
   const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
@@ -605,22 +611,17 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         finalBlob = sessionBlob
       }
 
-      // 1️⃣ Upload session video to S3 (if exists)
       let sessionMediaUrl = ''
       if (finalBlob && finalBlob.size > 0) {
-        sessionMediaUrl = await uploadSessionToS3(
-          new Blob([finalBlob], { type: 'video/webm' })
-        )
+        sessionMediaUrl = await uploadSessionToS3(new Blob([finalBlob], { type: 'video/webm' }))
       }
 
-      // 2️⃣ Prepare answers
       const answers = qs.map((q) => ({
         qid: q._id,
         questionText: q.question,
         textAnswer: (textAnswers[q._id] || '').trim(),
       }))
 
-      // 3️⃣ Submit JSON ONLY (small payload)
       const res = await fetch(`${baseURL}/api/tr/submit`, {
         method: 'POST',
         headers: {
@@ -638,7 +639,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             reason: reason || null,
             timeLeft,
           },
-          sessionMediaUrl, // ✅ S3 URL only
+          sessionMediaUrl,
         }),
       })
 
@@ -656,30 +657,26 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     }
   }
 
-
   const handleAutoSubmit = async (why: string) => {
     console.log('Auto-submitting due to:', why)
     await handleSubmit({ auto: true, reason: why })
   }
 
-  // FIXED: Auto-submit when violations reach limit - using useRef to prevent re-renders
   const autoSubmitTriggeredRef = useRef(false)
 
   useEffect(() => {
     const LIMIT = 2
     if (violationCount >= LIMIT && !autoSubmitTriggeredRef.current) {
       autoSubmitTriggeredRef.current = true
-      console.log('Violation limit reached, triggering auto-submit')
       handleAutoSubmit('Auto-submitted due to proctoring violations')
     }
-  }, [violationCount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [violationCount])
 
-  // Auto-submit when time expires
   useEffect(() => {
     if (timeLeft === 0 && timerActive) {
       handleAutoSubmit('Time expired - auto submitted')
     }
-  }, [timeLeft, timerActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [timeLeft, timerActive])
 
   useEffect(() => {
     if (current?.question) {
@@ -693,9 +690,8 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       }
       speakQuestion()
     }
-  }, [current?._id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [current?._id])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopTimer()
@@ -723,7 +719,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       disarm()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleCloseModal = () => {
     stopTimer()
@@ -753,13 +749,12 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     setResumeFile(file)
-    // Reset states when new file is selected
     if (file) {
       setResumeAnalysis(null)
       setResumeSkills([])
       setLoadErr('')
       setInterviewId(null)
-      autoSubmitTriggeredRef.current = false // Reset auto-submit flag
+      autoSubmitTriggeredRef.current = false
     }
   }
 
@@ -768,7 +763,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
   return (
     <>
-      {/* Proctor lock screen */}
       <ProctorLockModal
         show={proctorLocked && open}
         isFullscreen={isFullscreen}
@@ -787,125 +781,144 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         fullscreen
         backdrop="static"
         keyboard={false}
-        dialogClassName="tr-glass-modal"
-        contentClassName="tr-glass-content">
-        <Modal.Header closeButton className="glass-header">
-          <div className="header-content">
-            <h1>Technical Interview (TR)</h1>
-            <div className="contact-info">Upload your resume to generate personalized questions</div>
-            {/* Timer Display */}
+        className="tr-modal-custom"
+      >
+        <Modal.Header closeButton className="modal-header-custom">
+          <div className="header-content-custom">
+            <div>
+              <h1 className="modal-title-custom">Technical Interview (TR)</h1>
+              <p className="modal-subtitle">Upload your resume to generate personalized questions</p>
+            </div>
             {timerActive && (
-              <div className="timer-display">
-                Time Remaining: <span className={timeLeft < 300 ? 'text-warning' : ''}>{formatTime(timeLeft)}</span>
+              <div className="timer-display-custom">
+                <FaClock className="timer-icon" />
+                <span className={timeLeft < 300 ? 'time-warning' : ''}>{formatTime(timeLeft)}</span>
               </div>
             )}
           </div>
         </Modal.Header>
 
-        <Modal.Body className="tr-modal-body">
+        <Modal.Body className="modal-body-custom">
           {loadErr && (
-            <Alert variant="danger" className="mt-1">
-              {loadErr}
+            <Alert variant="danger" className="alert-custom alert-danger">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{loadErr}</span>
             </Alert>
           )}
           {uiErr && (
-            <Alert variant="warning" className="mt-1">
-              {uiErr}
+            <Alert variant="warning" className="alert-custom alert-warning">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{uiErr}</span>
             </Alert>
           )}
           {sessionErr && (
-            <Alert variant="warning" className="mt-1">
-              {sessionErr}
+            <Alert variant="warning" className="alert-custom alert-warning">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{sessionErr}</span>
             </Alert>
           )}
 
           {/* Resume Upload Section */}
           {!qs.length && !reviewing && !startingInterview && (
-            <div className="topic-selection-container">
-              <div className="glass-card">
-                <h3 className="hero-title">Upload Your Resume</h3>
-                <p className="hero-sub">
+            <div className="upload-section">
+              <div className="upload-card">
+                <div className="upload-icon-wrapper">
+                  <FaFileAlt className="upload-icon" />
+                </div>
+                <h3 className="upload-title">Upload Your Resume</h3>
+                <p className="upload-subtitle">
                   Upload your resume (PDF, DOC, DOCX). We'll analyze it and generate personalized interview questions.
                 </p>
 
-                <div className="upload-container mb-4">
+                <div className="upload-area">
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx"
-                    className="form-control mb-3"
+                    className="file-input-custom"
                     onChange={handleFileChange}
                     disabled={uploadingResume}
+                    id="resume-upload"
                   />
+                  <label htmlFor="resume-upload" className="file-label">
+                    <FaUpload className="me-2" />
+                    Choose File
+                  </label>
 
                   {resumeFile && (
-                    <div className="file-info mb-3">
-                      <strong>Selected file:</strong> {resumeFile.name}
-                      <span className="ms-2">({(resumeFile.size / 1024).toFixed(1)} KB)</span>
+                    <div className="file-info-custom">
+                      <strong>Selected:</strong> {resumeFile.name}
+                      <span className="file-size">({(resumeFile.size / 1024).toFixed(1)} KB)</span>
                     </div>
                   )}
 
                   <button
-                    className="analyze-btn mb-3"
+                    className="analyze-btn-custom"
                     onClick={uploadResume}
                     disabled={!resumeFile || uploadingResume || proctorLocked}
                   >
                     {uploadingResume ? (
                       <>
-                        <Spinner size="sm" className="me-2" />
+                        <FaSpinner className="spinner-icon" />
                         Analyzing Resume...
                       </>
-                    ) : 'Analyze Resume'}
+                    ) : (
+                      <>
+                        <FaBrain className="me-2" />
+                        Analyze Resume
+                      </>
+                    )}
                   </button>
                 </div>
 
                 {/* Resume Analysis Results */}
                 {resumeAnalysis && (
-                  <div className="analysis-results mb-4">
-                    <h4 style={{ color: '#0f172a', fontWeight: 800 }}>Resume Analysis Results</h4>
+                  <div className="analysis-results-custom">
+                    <h4 className="results-title">Resume Analysis Results</h4>
 
-                    <div className="skills-section mb-3">
+                    <div className="skills-section-custom">
                       <h5>Extracted Skills:</h5>
-                      <div className="topics-tags">
+                      <div className="skills-tags">
                         {resumeSkills.map((skill) => (
-                          <span key={skill} className="topic-tag">{skill}</span>
+                          <span key={skill} className="skill-tag">{skill}</span>
                         ))}
                       </div>
                     </div>
 
                     {resumeAnalysis.summary && (
-                      <div className="summary-section mb-3">
+                      <div className="summary-section-custom">
                         <h5>Resume Summary:</h5>
-                        <div className="summary-text">{resumeAnalysis.summary}</div>
+                        <div className="summary-text-custom">{resumeAnalysis.summary}</div>
                       </div>
                     )}
 
-                    <Alert variant="success" className="mb-3">
-                      ✓ Resume analyzed successfully! {resumeSkills.length} skills detected.
-                      {resumeSkills.length > 0 && (
-                        <div className="mt-2">
-                          <small>We'll generate questions based on: {resumeSkills.slice(0, 5).join(', ')}...</small>
-                        </div>
-                      )}
-                    </Alert>
+                    <div className="success-message">
+                      <FaCheckCircle className="success-icon" />
+                      <span>Resume analyzed successfully! {resumeSkills.length} skills detected.</span>
+                    </div>
                   </div>
                 )}
 
-                {/* Start Interview Button - Only show when resume is analyzed */}
+                {/* Start Interview Button */}
                 {resumeSkills.length > 0 && (
-                  <div className="start-section">
+                  <div className="start-section-custom">
                     <button
-                      className="start-interview-btn"
+                      className="start-interview-btn-custom"
                       disabled={loadingQs || proctorLocked || startingInterview}
                       onClick={handleStartInterview}
                     >
                       {startingInterview ? (
                         <>
-                          <Spinner size="sm" className="me-2" />
+                          <FaSpinner className="spinner-icon" />
                           Setting Up Interview...
                         </>
-                      ) : 'Start Interview'}
+                      ) : (
+                        <>
+                          <FaUserGraduate className="me-2" />
+                          Start Interview
+                        </>
+                      )}
                     </button>
-                    <p className="mt-2 mb-0 text-muted">
+                    <p className="start-hint">
                       15 personalized questions will be generated based on your resume
                     </p>
                   </div>
@@ -914,32 +927,26 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             </div>
           )}
 
-          {/* Loading State for Interview Setup */}
+          {/* Loading State */}
           {startingInterview && !qs.length && (
-            <div className="topic-selection-container">
-              <div className="glass-card text-center">
-                <h3 className="hero-title">Setting Up Interview</h3>
-                <div className="my-4">
-                  <Spinner animation="border" variant="primary" size="sm" />
+            <div className="loading-section">
+              <div className="loading-card">
+                <h3 className="loading-title">Setting Up Interview</h3>
+                <div className="loading-spinner-custom">
+                  <FaSpinner className="spinner-large" />
                 </div>
-                <p className="hero-sub">
-                  Please wait while we set up your interview session...
-                </p>
-                <div className="loading-steps mt-3">
-                  <div className="loading-step">
-                    <span className="step-icon">✓</span>
+                <p className="loading-text">Please wait while we set up your interview session...</p>
+                <div className="loading-steps-custom">
+                  <div className="loading-step done">
+                    <FaCheckCircle className="step-icon" />
                     <span>Resume Analyzed</span>
                   </div>
-                  <div className="loading-step">
-                    <span className="step-icon">
-                      {sessionErr ? '✗' : started ? '✓' : '...'}
-                    </span>
+                  <div className={`loading-step ${started ? 'done' : ''}`}>
+                    <span className="step-icon">{started ? '✓' : '...'}</span>
                     <span>Media Setup</span>
                   </div>
-                  <div className="loading-step">
-                    <span className="step-icon">
-                      {loadingQs ? '...' : qs.length > 0 ? '✓' : '...'}
-                    </span>
+                  <div className={`loading-step ${qs.length > 0 ? 'done' : ''}`}>
+                    <span className="step-icon">{qs.length > 0 ? '✓' : '...'}</span>
                     <span>Generating Questions</span>
                   </div>
                 </div>
@@ -949,38 +956,30 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
           {/* Interview Section */}
           {!!qs.length && !reviewing && !startingInterview && (
-            <div className="split-screen-grid">
-              <div className="left-panel">
-                <div className="question-container">
-                  <div className="question-header">
-                    <div className="progress-section">
+            <div className="interview-grid">
+              <div className="interview-left">
+                <div className="question-container-custom">
+                  <div className="question-header-custom">
+                    <div className="progress-area">
                       <span className="question-count">
                         Question {idx + 1} / {qs.length}
                       </span>
-                      <ProgressBar now={progress} className="custom-progress" />
+                      <ProgressBar now={progress} className="progress-bar-custom" />
                     </div>
-                    <div className="topics-tags">
-                      {resumeSkills.length > 0 ? (
-                        resumeSkills.map((skill) => (
-                          <span key={skill} className="topic-tag">
-                            {skill}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="topic-tag" style={{ opacity: 0.6 }}>
-                          Resume-based questions
-                        </span>
-                      )}
+                    <div className="skills-tags-small">
+                      {resumeSkills.slice(0, 5).map((skill) => (
+                        <span key={skill} className="skill-tag-small">{skill}</span>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="question-card glassy" aria-disabled={proctorLocked}>
-                    <div className="question-source-badge">
-                      <small className="text-muted">Generated from your resume</small>
+                  <div className="question-card-custom">
+                    <div className="question-source">
+                      <small>Generated from your resume</small>
                     </div>
-                    <h3 className="question-text">{current?.question}</h3>
+                    <h3 className="question-text-custom">{current?.question}</h3>
 
-                    <div className="answer-section">
+                    <div className="answer-section-custom">
                       <label>Your Answer</label>
                       <textarea
                         placeholder="Speak (Start) or type freely…"
@@ -991,103 +990,96 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                           setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
                           tick((x) => x + 1)
                         }}
-                        rows={8}
-                        className="answer-textarea"
+                        rows={6}
+                        className="answer-textarea-custom"
                         readOnly={proctorLocked}
                       />
                       {currentInterim && (
-                        <div className="interim-line">
-                          <em>
-                            {committedValue ? ' ' : ''}
-                            {currentInterim}
-                          </em>
+                        <div className="interim-line-custom">
+                          <em>{currentInterim}</em>
                         </div>
                       )}
-                      <div className="helper">{dictating ? "Listening… you can pause; text won't reset." : 'Press Start to speak.'}</div>
+                      <div className="helper-text">{dictating ? "Listening… you can pause; text won't reset." : 'Press Start to speak.'}</div>
                     </div>
 
-                    <div className="audio-controls">
+                    <div className="audio-controls-custom">
                       {!dictating ? (
-                        <button className="record-btn" onClick={startDictation} disabled={proctorLocked}>
-                          ▶︎ Start
+                        <button className="record-btn-custom" onClick={startDictation} disabled={proctorLocked}>
+                          <FaMicrophone className="me-2" /> Start
                         </button>
                       ) : (
-                        <button className="stop-record-btn" onClick={stopDictation} disabled={proctorLocked}>
-                          ⏹ Stop
+                        <button className="stop-record-btn-custom" onClick={stopDictation} disabled={proctorLocked}>
+                          <FaStop className="me-2" /> Stop
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="navigation-controls">
-                    <button className="nav-btn prev-btn" onClick={handlePrev} disabled={idx === 0 || proctorLocked}>
-                      ← Previous
+                  <div className="nav-controls-custom">
+                    <button className="nav-btn prev" onClick={handlePrev} disabled={idx === 0 || proctorLocked}>
+                      <FaArrowLeft className="me-2" /> Previous
                     </button>
-                    <div className="nav-group">
-                      {!isLastQuestion ? (
-                        <button className="nav-btn next-btn" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
-                          Next →
-                        </button>
-                      ) : (
-                        <button
-                          className="submit-btn"
-                          onClick={() => setReviewing(true)}
-                          disabled={proctorLocked}
-                          title="Review your answers before final submission">
-                          Review Answers
-                        </button>
-                      )}
-                    </div>
+                    {!isLastQuestion ? (
+                      <button className="nav-btn next" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
+                        Next <FaArrowRight className="ms-2" />
+                      </button>
+                    ) : (
+                      <button
+                        className="review-btn"
+                        onClick={() => setReviewing(true)}
+                        disabled={proctorLocked}
+                      >
+                        Review Answers
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Right panel */}
-              <div className="right-panel glassy">
-                <div className="video-container">
-                  <div className="video-section">
-                    <h4>Screen (Recording)</h4>
-                    <div className="video-preview">
-                      <video ref={setScreenVideoRef} muted playsInline autoPlay className="screen-video" />
+              <div className="interview-right">
+                <div className="video-panel">
+                  <div className="video-section-custom">
+                    <h4><FaDesktop className="me-2" /> Screen Recording</h4>
+                    <div className="video-preview-custom">
+                      <video ref={setScreenVideoRef} muted playsInline autoPlay className="video-element" />
                       {!started && !sessionBlob && (
-                        <div className="video-placeholder">
+                        <div className="video-placeholder-custom">
                           <div>Waiting for capture…</div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="video-section">
-                    <h4>Student Camera</h4>
-                    <div className="video-preview" style={{ aspectRatio: '4/3' }}>
-                      <video ref={setCamVideoRef} muted playsInline autoPlay className="student-video" />
+                  <div className="video-section-custom">
+                    <h4><FaVideo className="me-2" /> Student Camera</h4>
+                    <div className="video-preview-custom camera-preview">
+                      <video ref={setCamVideoRef} muted playsInline autoPlay className="video-element" />
                     </div>
                   </div>
 
-                  <div className="sharing-info">
-                    <span className="url-display">{started ? 'Screen, camera & mic are recording' : 'Recording stopped'}</span>
-                    {/* Timer in right panel */}
-                    {timerActive && (
-                      <div className="timer-panel">
-                        <strong>Time: {formatTime(timeLeft)}</strong>
-                        {isLastQuestion && (
-                          <div className="final-submit-note">
-                            <small>This is the final question. Click "Review Answers" to submit.</small>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="recording-status">
+                    <span className={`status-dot ${started ? 'active' : ''}`}></span>
+                    <span>{started ? 'Screen, camera & mic are recording' : 'Recording stopped'}</span>
                   </div>
 
-                  {/* Resume Skills Summary */}
-                  <div className="resume-skills-summary">
-                    <h5>Resume Skills</h5>
-                    <div className="skills-tags-small">
+                  {timerActive && (
+                    <div className="timer-panel-custom">
+                      <FaClock className="timer-icon" />
+                      <strong>Time: {formatTime(timeLeft)}</strong>
+                      {isLastQuestion && (
+                        <div className="final-note">This is the final question. Click "Review Answers" to submit.</div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="skills-summary-custom">
+                    <h5><FaCode className="me-2" /> Resume Skills</h5>
+                    <div className="skills-tags-compact">
                       {resumeSkills.slice(0, 8).map((skill) => (
-                        <span key={skill} className="skill-tag-small">{skill}</span>
+                        <span key={skill} className="skill-tag-compact">{skill}</span>
                       ))}
                       {resumeSkills.length > 8 && (
-                        <span className="skill-tag-small">+{resumeSkills.length - 8} more</span>
+                        <span className="skill-tag-compact">+{resumeSkills.length - 8} more</span>
                       )}
                     </div>
                   </div>
@@ -1098,61 +1090,60 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
           {/* Review Section */}
           {!!qs.length && reviewing && !startingInterview && (
-            <div className="left-panel">
-              <div className="question-container">
-                <div className="question-header" style={{ marginBottom: '1rem' }}>
+            <div className="review-section">
+              <div className="review-container">
+                <div className="review-header">
                   <h3>Review your answers</h3>
-                  <p className="text-muted">Click any question to edit, then submit.</p>
+                  <p>Click any question to edit, then submit.</p>
                   {timerActive && (
-                    <div className="timer-review">
+                    <div className="timer-review-custom">
+                      <FaClock className="timer-icon" />
                       <strong>Time Remaining: {formatTime(timeLeft)}</strong>
                     </div>
                   )}
                 </div>
-                <div className="question-card glassy" style={{ padding: '1rem' }}>
-                  <ol style={{ paddingLeft: '1.25rem', margin: 0 }}>
-                    {qs.map((q, i) => {
-                      const ans = (textAnswers[q._id] || '').trim()
-                      return (
-                        <li key={q._id} style={{ marginBottom: '1rem' }}>
-                          <div
-                            style={{ fontWeight: 600, marginBottom: 6, cursor: 'pointer' }}
-                            onClick={() => {
-                              if (proctorLocked) return
-                              setReviewing(false)
-                              setIdx(i)
-                            }}>
-                            Q{i + 1}. {q.question}
-                          </div>
-                          <div
-                            style={{ whiteSpace: 'pre-wrap', background: '#fff', border: '1px solid #e9ecef', borderRadius: 8, padding: '0.75rem' }}>
-                            {ans || <span style={{ color: '#dc3545' }}>No answer provided</span>}
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ol>
+
+                <div className="review-list">
+                  {qs.map((q, i) => {
+                    const ans = (textAnswers[q._id] || '').trim()
+                    return (
+                      <div key={q._id} className="review-item">
+                        <div
+                          className="review-question"
+                          onClick={() => {
+                            if (proctorLocked) return
+                            setReviewing(false)
+                            setIdx(i)
+                          }}
+                        >
+                          Q{i + 1}. {q.question}
+                        </div>
+                        <div className={`review-answer ${!ans ? 'empty' : ''}`}>
+                          {ans || <span>No answer provided</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
-                <div className="navigation-controls" style={{ marginTop: '1rem' }}>
-                  <button className="nav-btn prev-btn" onClick={() => setReviewing(false)} disabled={proctorLocked}>
-                    ← Back to questions
+                <div className="review-actions">
+                  <button className="back-btn" onClick={() => setReviewing(false)} disabled={proctorLocked}>
+                    <FaArrowLeft className="me-2" /> Back to questions
                   </button>
-                  <div className="nav-group">
-                    <button
-                      className="submit-btn"
-                      onClick={() => handleSubmit()}
-                      disabled={(!allAnswered && !proctorLocked) || submitting}
-                      title={allAnswered ? 'Submit all answers' : 'Answer all questions to enable submit'}>
-                      {submitting ? <Spinner size="sm" /> : 'Final Submit'}
-                    </button>
-                  </div>
+                  <button
+                    className="final-submit-btn"
+                    onClick={() => handleSubmit()}
+                    disabled={(!allAnswered && !proctorLocked) || submitting}
+                  >
+                    {submitting ? <FaSpinner className="spinner-icon" /> : <FaCheckCircle className="me-2" />}
+                    {submitting ? 'Submitting...' : 'Final Submit'}
+                  </button>
                 </div>
 
                 {sessionBlob && (
-                  <div style={{ marginTop: '1rem' }}>
+                  <div className="recording-preview">
                     <h6>Recorded session</h6>
-                    <video controls src={URL.createObjectURL(sessionBlob)} style={{ width: '100%', maxWidth: 720, borderRadius: 8 }} />
+                    <video controls src={URL.createObjectURL(sessionBlob)} className="session-video" />
                   </div>
                 )}
               </div>
@@ -1161,107 +1152,774 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         </Modal.Body>
       </Modal>
 
-      {/* Add additional styles */}
       <style>{`
-        .timer-display {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: rgba(255,255,255,0.9);
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-          font-weight: bold;
-          border: 2px solid #667eea;
+        .tr-modal-custom .modal-content {
+          background: #000000;
+          border: none;
+          border-radius: 0;
         }
-        
-        .timer-panel {
-          margin-top: 0.5rem;
-          padding: 0.5rem;
-          background: rgba(255,255,255,0.8);
-          border-radius: 6px;
+
+        /* Header */
+        .modal-header-custom {
+          background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+          border-bottom: 1px solid #ff7a00;
+          padding: 1.25rem 2rem;
+        }
+
+        .header-content-custom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .modal-title-custom {
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        .modal-subtitle {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          margin: 0.25rem 0 0 0;
+        }
+
+        .timer-display-custom {
+          background: rgba(255, 122, 0, 0.2);
+          border: 1px solid #ff7a00;
+          border-radius: 8px;
+          padding: 0.5rem 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .timer-icon {
+          color: #ff7a00;
+        }
+
+        .timer-display-custom span {
+          color: #ffffff;
+          font-weight: 600;
+          font-size: 1.25rem;
+        }
+
+        .time-warning {
+          color: #ff6b6b !important;
+        }
+
+        /* Body */
+        .modal-body-custom {
+          padding: 2rem;
+          overflow-y: auto;
+          background: #000000;
+        }
+
+        /* Alerts */
+        .alert-custom {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+        }
+
+        .alert-danger {
+          background: rgba(220, 53, 69, 0.1);
+          border: 1px solid #dc3545;
+          color: #ff6b6b;
+        }
+
+        .alert-warning {
+          background: rgba(255, 122, 0, 0.1);
+          border: 1px solid #ff7a00;
+          color: #ff7a00;
+        }
+
+        .alert-icon {
+          font-size: 1.25rem;
+        }
+
+        /* Upload Section */
+        .upload-section {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 70vh;
+        }
+
+        .upload-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 24px;
+          padding: 2.5rem;
+          max-width: 600px;
+          width: 100%;
           text-align: center;
         }
-        
-        .timer-review {
-          background: rgba(255,255,255,0.8);
-          padding: 0.5rem 1rem;
+
+        .upload-icon-wrapper {
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 122, 0, 0.1);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+        }
+
+        .upload-icon {
+          font-size: 2.5rem;
+          color: #ff7a00;
+        }
+
+        .upload-title {
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+        }
+
+        .upload-subtitle {
+          color: #8a8a8a;
+          margin-bottom: 1.5rem;
+        }
+
+        .upload-area {
+          margin: 1.5rem 0;
+        }
+
+        .file-input-custom {
+          display: none;
+        }
+
+        .file-label {
+          background: #2c2c2c;
+          color: #ffffff;
+          padding: 0.75rem 1.5rem;
           border-radius: 8px;
-          border: 1px solid #667eea;
-        }
-        
-        .final-submit-note {
-          margin-top: 0.25rem;
-          color: #28a745;
-          font-weight: 600;
-        }
-
-        .text-warning {
-          color: #dc3545 !important;
-          font-weight: bold;
-        }
-
-        .analyze-btn {
-          background: linear-gradient(135deg, #6c757d, #495057);
-          color: white;
-          border: none;
-          padding: 0.6rem 1.2rem;
-          border-radius: 999px;
-          font-weight: 600;
           cursor: pointer;
-          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
         }
 
-        .analyze-btn:disabled {
+        .file-label:hover {
+          background: #3a3a3a;
+        }
+
+        .file-info-custom {
+          margin-top: 1rem;
+          padding: 0.75rem;
+          background: #000000;
+          border-radius: 8px;
+          color: #e5e5e5;
+        }
+
+        .file-size {
+          color: #8a8a8a;
+          margin-left: 0.5rem;
+        }
+
+        .analyze-btn-custom {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          width: 100%;
+          margin-top: 1rem;
+          transition: all 0.2s ease;
+        }
+
+        .analyze-btn-custom:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+        }
+
+        .analyze-btn-custom:disabled {
           opacity: 0.6;
           cursor: not-allowed;
         }
 
-        .file-info {
-          background: rgba(0,0,0,0.05);
-          padding: 0.5rem;
-          border-radius: 8px;
-          font-size: 0.9rem;
+        /* Analysis Results */
+        .analysis-results-custom {
+          margin-top: 1.5rem;
+          padding: 1rem;
+          background: #000000;
+          border-radius: 12px;
+          border: 1px solid #1f1f1f;
         }
 
-        .analysis-results {
-          background: rgba(255,255,255,0.9);
+        .results-title {
+          color: #ff7a00;
+          font-size: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .skills-section-custom, .summary-section-custom {
+          margin-bottom: 1rem;
+        }
+
+        .skills-section-custom h5, .summary-section-custom h5 {
+          color: #8a8a8a;
+          font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .skills-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .skill-tag {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.8rem;
+        }
+
+        .summary-text-custom {
+          background: #0a0a0a;
+          padding: 0.75rem;
+          border-radius: 8px;
+          color: #e5e5e5;
+          font-size: 0.85rem;
+          line-height: 1.5;
+        }
+
+        .success-message {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem;
+          background: rgba(40, 167, 69, 0.1);
+          border-radius: 8px;
+          color: #28a745;
+        }
+
+        .success-icon {
+          font-size: 1rem;
+        }
+
+        /* Start Interview Button */
+        .start-section-custom {
+          margin-top: 1.5rem;
+        }
+
+        .start-interview-btn-custom {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          width: 100%;
+          transition: all 0.2s ease;
+        }
+
+        .start-interview-btn-custom:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+        }
+
+        .start-hint {
+          color: #8a8a8a;
+          font-size: 0.75rem;
+          margin-top: 0.75rem;
+        }
+
+        /* Loading Section */
+        .loading-section {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 70vh;
+        }
+
+        .loading-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 24px;
+          padding: 2.5rem;
+          text-align: center;
+          max-width: 500px;
+        }
+
+        .loading-title {
+          color: #ffffff;
+          font-size: 1.25rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .loading-spinner-custom {
+          margin: 2rem 0;
+        }
+
+        .spinner-large {
+          font-size: 2.5rem;
+          color: #ff7a00;
+          animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+          color: #8a8a8a;
+          margin-bottom: 2rem;
+        }
+
+        .loading-steps-custom {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .loading-step {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.75rem;
+          background: #000000;
+          border-radius: 8px;
+        }
+
+        .loading-step.done {
+          border-left: 3px solid #28a745;
+        }
+
+        .step-icon {
+          width: 24px;
+          text-align: center;
+        }
+
+        /* Interview Grid */
+        .interview-grid {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 1.5rem;
+          height: calc(100vh - 140px);
+        }
+
+        .interview-left {
+          overflow-y: auto;
+        }
+
+        .interview-right {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 16px;
+          padding: 1rem;
+          overflow-y: auto;
+        }
+
+        /* Question Container */
+        .question-container-custom {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .question-header-custom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .progress-area {
+          flex: 1;
+        }
+
+        .question-count {
+          color: #ff7a00;
+          font-size: 0.85rem;
+          display: block;
+          margin-bottom: 0.25rem;
+        }
+
+        .progress-bar-custom {
+          height: 6px;
+          background: #2c2c2c;
+        }
+
+        .progress-bar-custom .progress-bar {
+          background: linear-gradient(90deg, #ff7a00 0%, #ff944d 100%);
+        }
+
+        /* Question Card */
+        .question-card-custom {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 16px;
+          padding: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .question-source {
+          margin-bottom: 0.5rem;
+        }
+
+        .question-source small {
+          color: #8a8a8a;
+          font-size: 0.7rem;
+        }
+
+        .question-text-custom {
+          color: #ffffff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1.5;
+          margin-bottom: 1.5rem;
+        }
+
+        .answer-section-custom label {
+          color: #ff7a00;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .answer-textarea-custom {
+          width: 100%;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          padding: 1rem;
+          color: #e5e5e5;
+          resize: vertical;
+        }
+
+        .answer-textarea-custom:focus {
+          outline: none;
+          border-color: #ff7a00;
+        }
+
+        .interim-line-custom {
+          margin-top: 0.5rem;
+          color: #8a8a8a;
+          font-size: 0.85rem;
+        }
+
+        .helper-text {
+          margin-top: 0.5rem;
+          font-size: 0.7rem;
+          color: #8a8a8a;
+        }
+
+        .audio-controls-custom {
+          margin-top: 1rem;
+        }
+
+        .record-btn-custom, .stop-record-btn-custom {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .record-btn-custom {
+          background: rgba(255, 122, 0, 0.2);
+          border: 1px solid #ff7a00;
+          color: #ff7a00;
+        }
+
+        .record-btn-custom:hover:not(:disabled) {
+          background: #ff7a00;
+          color: #000000;
+        }
+
+        .stop-record-btn-custom {
+          background: rgba(220, 53, 69, 0.2);
+          border: 1px solid #dc3545;
+          color: #dc3545;
+        }
+
+        .stop-record-btn-custom:hover:not(:disabled) {
+          background: #dc3545;
+          color: #ffffff;
+        }
+
+        /* Navigation Controls */
+        .nav-controls-custom {
+          display: flex;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .nav-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          background: #2c2c2c;
+          border: none;
+          color: #e5e5e5;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+          background: #3a3a3a;
+        }
+
+        .nav-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .review-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          color: #000000;
+          font-weight: 600;
+        }
+
+        /* Video Panel */
+        .video-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .video-section-custom h4 {
+          color: #ff7a00;
+          font-size: 0.9rem;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+        }
+
+        .video-preview-custom {
+          background: #000000;
+          border-radius: 8px;
+          overflow: hidden;
+          aspect-ratio: 16/9;
+          position: relative;
+        }
+
+        .video-element {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .video-placeholder-custom {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #0a0a0a;
+          color: #8a8a8a;
+        }
+
+        .camera-preview {
+          aspect-ratio: 4/3;
+        }
+
+        .recording-status {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem;
+          background: #000000;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          color: #8a8a8a;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #dc3545;
+        }
+
+        .status-dot.active {
+          background: #28a745;
+          animation: pulse 1.5s infinite;
+        }
+
+        .timer-panel-custom {
+          background: #000000;
+          border: 1px solid #ff7a00;
+          border-radius: 8px;
+          padding: 0.75rem;
+          text-align: center;
+        }
+
+        .final-note {
+          color: #ff7a00;
+          font-size: 0.7rem;
+          margin-top: 0.25rem;
+        }
+
+        .skills-summary-custom {
+          background: #000000;
+          border-radius: 8px;
+          padding: 0.75rem;
+        }
+
+        .skills-summary-custom h5 {
+          color: #ff7a00;
+          font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .skills-tags-compact {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+        }
+
+        .skill-tag-compact {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          padding: 0.2rem 0.5rem;
+          border-radius: 20px;
+          font-size: 0.7rem;
+        }
+
+        /* Review Section */
+        .review-section {
+          height: 100%;
+          overflow-y: auto;
+        }
+
+        .review-container {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .review-header {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .review-header h3 {
+          color: #ffffff;
+          margin-bottom: 0.5rem;
+        }
+
+        .review-header p {
+          color: #8a8a8a;
+        }
+
+        .timer-review-custom {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #0a0a0a;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          margin-top: 1rem;
+        }
+
+        .review-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .review-item {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
           border-radius: 12px;
           padding: 1rem;
-          border: 1px solid rgba(0,0,0,0.1);
         }
 
-        .skills-section h5, .summary-section h5 {
-          font-size: 0.9rem;
-          font-weight: 700;
+        .review-question {
+          font-weight: 600;
+          color: #ff7a00;
           margin-bottom: 0.5rem;
-          color: #495057;
+          cursor: pointer;
         }
 
-        .summary-text {
-          background: #f8f9fa;
+        .review-question:hover {
+          text-decoration: underline;
+        }
+
+        .review-answer {
+          background: #000000;
           padding: 0.75rem;
           border-radius: 8px;
-          font-size: 0.9rem;
-          line-height: 1.5;
-          border: 1px solid #dee2e6;
+          color: #e5e5e5;
+          white-space: pre-wrap;
         }
 
-        .question-source-badge {
-          margin-bottom: 0.5rem;
+        .review-answer.empty {
+          color: #dc3545;
         }
 
-        .resume-skills-summary {
-          margin-top: 1rem;
-          padding: 0.75rem;
-          background: rgba(102,126,234,0.1);
+        .review-actions {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+        }
+
+        .back-btn {
+          padding: 0.75rem 1.5rem;
           border-radius: 8px;
+          background: #2c2c2c;
+          border: none;
+          color: #e5e5e5;
+          display: inline-flex;
+          align-items: center;
         }
 
-        .resume-skills-summary h5 {
-          font-size: 0.9rem;
-          margin-bottom: 0.5rem;
-          color: #495057;
+        .final-submit-btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          color: #000000;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .final-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .recording-preview {
+          margin-top: 2rem;
+        }
+
+        .session-video {
+          width: 100%;
+          border-radius: 8px;
+          margin-top: 0.5rem;
+        }
+
+        .spinner-icon {
+          animation: spin 1s linear infinite;
+          margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.1); }
         }
 
         .skills-tags-small {
@@ -1271,123 +1929,60 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
         }
 
         .skill-tag-small {
-          background: rgba(255,255,255,0.9);
-          color: #495057;
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
           padding: 0.2rem 0.5rem;
-          border-radius: 999px;
+          border-radius: 20px;
           font-size: 0.7rem;
-          border: 1px solid #dee2e6;
         }
 
-        /* Loading steps styles */
-        .loading-steps {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-          max-width: 300px;
-          margin: 0 auto;
+        /* Responsive */
+        @media (max-width: 1024px) {
+          .interview-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .interview-right {
+            order: 2;
+          }
         }
 
-        .loading-step {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          padding: 0.75rem;
-          background: rgba(255,255,255,0.8);
-          border-radius: 10px;
-          border: 1px solid rgba(0,0,0,0.1);
+        @media (max-width: 768px) {
+          .modal-header-custom {
+            padding: 1rem;
+          }
+          
+          .header-content-custom {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .modal-body-custom {
+            padding: 1rem;
+          }
+          
+          .upload-card {
+            padding: 1.5rem;
+          }
+          
+          .nav-controls-custom {
+            flex-direction: column;
+          }
+          
+          .nav-btn, .review-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .review-actions {
+            flex-direction: column;
+          }
+          
+          .back-btn, .final-submit-btn {
+            width: 100%;
+            justify-content: center;
+          }
         }
-
-        .step-icon {
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: #667eea;
-          color: white;
-          font-weight: bold;
-        }
-
-        /* Your existing styles remain... */
-        :root{
-          --bg1: rgba(102,126,234,0.12);
-          --bg2: rgba(118,75,162,0.12);
-          --glass-bg: rgba(255,255,255,0.18);
-          --glass-stroke: rgba(255,255,255,0.35);
-          --shadow: 0 10px 30px rgba(0,0,0,0.15);
-          --text-primary: #0f172a;
-          --text-secondary: #475569;
-          --brand1: #667eea;
-          --brand2: #764ba2;
-        }
-        .tr-glass-modal .modal-dialog { margin: 0; max-width: 100%; height: 100%; }
-        .tr-glass-content {
-          min-height: 100vh;
-          background:
-            radial-gradient(600px 200px at 50% 90%, rgba(118,75,162,0.18), transparent 60%),
-            radial-gradient(500px 200px at 20% 10%, rgba(102,126,234,0.18), transparent 60%),
-            linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
-          backdrop-filter: blur(18px) saturate(170%);
-          -webkit-backdrop-filter: blur(18px) saturate(170%);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          color: var(--text-primary);
-        }
-        .glass-header { 
-          background: rgba(255,255,255,0.25); 
-          backdrop-filter: blur(12px); 
-          -webkit-backdrop-filter: blur(12px); 
-          border-bottom: 1px solid rgba(255,255,255,0.35); 
-          position: relative; /* Needed for absolute positioning of timer */
-        }
-        .header-content { width: 100%; text-align: center; }
-        .header-content h1 { margin: 0; font-size: clamp(1.6rem, 1rem + 1.2vw, 2.2rem); font-weight: 800; background: linear-gradient(135deg, var(--brand1) 0%, var(--brand2) 100%); -webkit-background-clip: text; }
-        .contact-info { font-size: .95rem; color: #fff; margin-top: 0.25rem; }
-        .tr-modal-body { padding: 0; height: calc(100vh - 80px); }
-        .topic-selection-container { display: grid; place-items: center; height: 100%; padding: 2rem; }
-        .glass-card { background: rgba(255,255,255,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.55); border-radius: 24px; padding: 2.25rem; text-align: center; box-shadow: var(--shadow); max-width: 860px; width: 100%; }
-        .hero-title { font-size: clamp(1.4rem, 1rem + 0.8vw, 2rem); font-weight: 800; }
-        .hero-sub { color: var(--text-secondary); margin: 0 0 1rem; font-size: 1rem; }
-        .topics-grid { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin: 1rem 0 1.25rem; }
-        .topic-chip { padding: 0.65rem 1.2rem; border: 2px solid #e9ecef; border-radius: 999px; background: #fff; color: var(--text-primary); cursor: pointer; transition: all .2s ease; font-weight: 600; }
-        .topic-chip.selected { background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: white; border-color: transparent; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(102, 126, 234, 0.35); }
-        .start-interview-btn { background: linear-gradient(135deg, var(--brand1), var(--brand2)); color: white; border: none; padding: 0.8rem 1.3rem; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 20px rgba(118, 75, 162, 0.25); }
-        .start-interview-btn:disabled { opacity: .6; cursor: not-allowed; }
-        .split-screen-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 360px); gap: 1.25rem; height: 100%; padding: 1.25rem; }
-        .left-panel { padding: 0.5rem 0.75rem 1rem 0.75rem; overflow-y: auto; }
-        .right-panel { padding: 1rem; border-radius: 16px; background: var(--glass-bg); backdrop-filter: blur(16px) saturate(160%); -webkit-backdrop-filter: blur(16px) saturate(160%); border: 1px solid var(--glass-stroke); box-shadow: var(--shadow); overflow-y: auto; }
-        .glassy { background: rgba(255,255,255,0.9); border: 1px solid rgba(255,255,255,0.65); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow); }
-        .question-container { max-width: 1100px; margin: 0 auto; }
-        .question-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; gap: 1rem; }
-        .progress-section { flex: 1; }
-        .question-count { font-size: 1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 0.35rem; }
-        .custom-progress { height: 6px; background: rgba(102,126,234,0.18); border-radius: 999px; overflow: hidden; }
-        .custom-progress .progress-bar { background: linear-gradient(90deg, var(--brand1) 0%, var(--brand2) 100%); }
-        .topics-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-        .topic-tag { background: rgba(102,126,234,0.12); color: var(--brand1); padding: 0.25rem 0.6rem; border-radius: 999px; font-size: .8rem; font-weight: 600; border: 1px solid rgba(102,126,234,0.25); }
-        .question-card { border-radius: 16px; padding: 1.25rem 1.25rem 1rem; margin-bottom: 1rem; }
-        .question-text { color: var(--text-primary); font-size: clamp(1.1rem, 0.9rem + 0.8vw, 1.6rem); font-weight: 800; line-height: 1.45; margin-bottom: 0.9rem; }
-        .answer-section label { display: block; margin-bottom: 0.5rem; font-weight: 700; color: var(--text-primary); }
-        .answer-textarea { width: 100%; border: 2px solid #e9ecef; border-radius: 12px; padding: 1rem 1rem; background: #ffffff; color: #0f172a; line-height: 1.6; min-height: 220px; resize: vertical; }
-        .interim-line { margin-top: 6px; font-size: 0.95rem; color: var(--text-secondary); opacity: 0.9; }
-        .helper { margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
-        .audio-controls { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem; flex-wrap: wrap; }
-        .record-btn, .stop-record-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1.1rem; border: none; border-radius: 999px; font-weight: 700; cursor: pointer; }
-        .record-btn { background: rgba(102,126,234,0.12); color: var(--brand1); border: 2px solid var(--brand1); }
-        .stop-record-btn { background: rgba(220,53,69,0.10); color: #dc3545; border: 2px solid #dc3545; }
-        .navigation-controls { display: flex; justify-content: space-between; align-items: center; margin-top: .5rem; }
-        .nav-btn, .submit-btn { padding: 0.6rem 1.1rem; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
-        .prev-btn, .next-btn { background: rgba(108,117,125,0.12); color: #495057; border: 2px solid #adb5bd; }
-        .submit-btn { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; margin-left: 0.75rem; }
-        .video-container { height: 100%; display: flex; flex-direction: column; gap: 1rem; }
-        .video-section h4 { margin-bottom: 0.5rem; color: var(--text-primary); font-size: .98rem; font-weight: 800; }
-        .video-preview { background: #000; border-radius: 12px; overflow: hidden; position: relative; aspect-ratio: 16/9; }
-        .screen-video, .student-video { width: 100%; height: 100%; object-fit: cover; }
-        .video-placeholder { position: absolute; inset: 0; display: grid; place-items: center; background: #0f172a; color: #cbd5e1; font-size: .9rem; }
-        .sharing-info { background: rgba(255,255,255,0.7); padding: 0.8rem; border-radius: 10px; margin-top: auto; border: 1px solid rgba(255,255,255,0.6); }
-        .url-display { font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.5rem; }
-        @media (max-width: 1024px) { .split-screen-grid { grid-template-columns: 1fr; } .right-panel { order: 2; margin-top: 0.5rem; } }
       `}</style>
     </>
   )

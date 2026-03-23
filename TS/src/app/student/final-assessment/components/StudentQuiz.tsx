@@ -4,6 +4,7 @@ import { Modal, Button, Spinner, ProgressBar, Alert, Card } from 'react-bootstra
 import { useAuthContext } from '@/context/useAuthContext'
 import { useProctorGuard } from '../helper/useProctorGuard'
 import ProctorLockModal from '../components/ProctorLockModal'
+import { FaClock, FaCheckCircle, FaExclamationTriangle, FaVideo, FaDesktop, FaShieldAlt, FaArrowLeft, FaArrowRight } from 'react-icons/fa'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -173,7 +174,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     return key
   }
 
-
   const startStatusPolling = (tplId: string, tok: string) => {
     stopStatusPolling()
     statusPollRef.current = window.setInterval(async () => {
@@ -305,7 +305,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       }
 
       const displayStream =
-        preCapturedDisplay || (await (navigator.mediaDevices as any).getDisplayMedia({ video: { cursor: 'always' }, audio: false }))
+        preCapturedDisplay || await (navigator.mediaDevices as any).getDisplayMedia({ video: { cursor: 'always' }, audio: false })
 
       const combined = new MediaStream()
       displayStream.getVideoTracks().forEach((t: MediaStreamTrack) => combined.addTrack(t))
@@ -346,7 +346,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         }
       }, 250) as unknown as number
 
-      // Arm the proctor after a small grace period
       setTimeout(() => guard.arm(), 1500)
     } catch (err: any) {
       console.error('Recording failed', err)
@@ -378,7 +377,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     }
   }
 
-  // ⏱ auto-submit when time is over
   const handleAutoSubmit = async () => {
     if (submitLockRef.current) return
     if (submissionStatus === 'not_submitted') {
@@ -422,7 +420,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     setSubmissionStatus('submitting')
     setRecordingState('stopping')
 
-    // disarm proctor during submission/cleanup
     guard.disarm()
 
     try {
@@ -506,14 +503,8 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       try {
         const blob = getRecordingBlob()
         if (blob) {
-          const recordingUrl = await uploadQuizRecordingToS3(
-            blob,
-            jres.submissionId
-          )
-
+          const recordingUrl = await uploadQuizRecordingToS3(blob, jres.submissionId)
           setRecordingState('uploaded')
-
-          // (optional) update DB if needed
           await fetch(`${baseURL}/api/student/quiz-recording-linked`, {
             method: 'POST',
             headers: {
@@ -522,15 +513,13 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
             },
             body: JSON.stringify({
               submissionId: jres.submissionId,
-              s3Key: recordingUrl, // ✅ backend expects s3Key
+              s3Key: recordingUrl,
             }),
           })
-
         }
       } catch (e) {
         console.warn('Recording upload error', e)
       }
-
 
       setLatestSubmission({
         _id: jres.submissionId,
@@ -566,16 +555,13 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     }
   }
 
-  // 👉 Start handler (pre-capture display → fullscreen → open)
   const handleStart = async () => {
     try {
       preDisplayStreamRef.current = await (navigator.mediaDevices as any).getDisplayMedia({
         video: { cursor: 'always' },
         audio: false,
       })
-
       await guard.enterFullscreenFromUserGesture()
-
       open()
     } catch (e) {
       console.warn('Start cancelled or failed:', e)
@@ -584,38 +570,30 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
   }
 
   const startButton = (
-    <div style={{ padding: 8 }}>
-      <Button onClick={handleStart} disabled={show || loading} variant="primary">
-        Start Quiz (Enter Fullscreen)
-      </Button>
-    </div>
+    <Button onClick={handleStart} disabled={show || loading} className="start-quiz-btn">
+      <FaVideo className="me-2" /> Start Quiz (Enter Fullscreen)
+    </Button>
   )
 
   const statusCard = latestSubmission && (
-    <Card style={{ background: '#0b1114', color: '#e8f8f2', border: '1px solid rgba(255,255,255,0.08)', marginBottom: 12 }}>
+    <Card className="submission-status-card">
       <Card.Body>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="status-card-content">
           <div>
-            <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 6 }}>Your latest submission</div>
-            <div>
+            <div className="status-title">Your latest submission</div>
+            <div className="status-details">
               <strong>Status:</strong> {latestSubmission.status === 'pending' ? 'Pending evaluation' : latestSubmission.status}
               {latestSubmission.score != null && (
-                <>
-                  {' '}· <strong>Score:</strong> {latestSubmission.score}
-                </>
+                <> · <strong>Score:</strong> {latestSubmission.score}</>
               )}
               {latestSubmission.remarks && (
-                <>
-                  {' '}· <strong>Remarks:</strong> {latestSubmission.remarks}
-                </>
+                <> · <strong>Remarks:</strong> {latestSubmission.remarks}</>
               )}
             </div>
           </div>
-          <div>
-            <Button variant="outline-light" onClick={() => setShow(true)}>
-              View Details
-            </Button>
-          </div>
+          <Button variant="outline-light" onClick={() => setShow(true)}>
+            View Details
+          </Button>
         </div>
       </Card.Body>
     </Card>
@@ -635,212 +613,148 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         onAcknowledge={guard.acknowledge}
       />
 
-      {/* Quiz modal */}
-      <Modal show={show} onHide={handleCloseModal} fullscreen backdrop="static" keyboard={false} dialogClassName="quiz-modal">
-        <style>{`
-          .quiz-modal .modal-content { 
-            background: rgba(6,8,10,0.98); 
-            color: #e8f8f2; 
-            height: 100vh; 
-            border-radius: 0; 
-            border: none;
-          }
-          .quiz-modal .modal-header { 
-            border-bottom: 2px solid rgba(255,255,255,0.1);
-            background: rgba(0,0,0,0.3);
-          }
-          .quiz-left { width: 72%; padding: 28px; overflow-y: auto; float:left; }
-          .quiz-right { width: 28%; padding: 28px; float:right; background: rgba(0,0,0,0.2); height: 100%; border-left: 1px solid rgba(255,255,255,0.1); }
-          .option-btn { display:block; width:100%; text-align:left; padding:12px; margin-bottom:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); transition: all 0.2s; }
-          .option-btn:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
-          .option-btn.selected { border-color: rgba(13,110,253,0.9); background: rgba(13,110,253,0.15); }
-          .submission-status { padding: 12px; border-radius: 6px; margin-bottom: 16px; }
-          .status-pending { background: rgba(255,193,7,0.15); border: 1px solid rgba(255,193,7,0.3); }
-          .disabled-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.7); pointer-events: all; z-index: 1000; }
-          body.quiz-active { overflow: hidden; }
-        `}</style>
-
-        <Modal.Header style={{ border: 'none', padding: '16px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <Modal show={show} onHide={handleCloseModal} fullscreen backdrop="static" keyboard={false} className="quiz-modal">
+        <Modal.Header className="quiz-modal-header">
+          <div className="header-content">
             <div>
-              <h4 style={{ margin: 0, color: '#fff' }}>Quiz - {templateId ?? 'General'}</h4>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px' }}>
-                {guard.isFullscreen ? 'Fullscreen Mode Active' : 'Fullscreen inactive — press the top-right button to re-enter'}
+              <h4 className="quiz-title">Quiz Assessment</h4>
+              <div className="fullscreen-status">
+                {guard.isFullscreen ? (
+                  <><FaDesktop className="me-1" /> Fullscreen Mode Active</>
+                ) : (
+                  <><FaExclamationTriangle className="me-1" /> Fullscreen inactive — press button to re-enter</>
+                )}
               </div>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 700, fontSize: '24px', color: timeLeft && timeLeft < 300 ? '#ff6b6b' : '#4dabf7' }}>
+            <div className="timer-box">
+              <div className="timer-value" style={{ color: timeLeft && timeLeft < 300 ? '#ff6b6b' : '#ff7a00' }}>
                 {formatTime(timeLeft)}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.65)' }}>Time remaining</div>
+              <div className="timer-label">Time remaining</div>
             </div>
           </div>
         </Modal.Header>
 
-        <Modal.Body style={{ padding: 0, height: 'calc(100vh - 80px)' }}>
+        <Modal.Body className="quiz-modal-body">
           {guard.locked && submissionStatus === 'not_submitted' && (
-            <div
-              className="disabled-overlay"
-              style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                background: 'rgba(0,0,0,0.9)',
-              }}>
-              <div style={{ textAlign: 'center', color: '#fff' }}>
-                <h3 style={{ color: '#ff6b6b' }}>Quiz Locked</h3>
+            <div className="locked-overlay">
+              <div className="locked-content">
+                <FaExclamationTriangle className="locked-icon" />
+                <h3>Quiz Locked</h3>
                 <p>Please acknowledge the proctoring violation to continue</p>
                 {!guard.isFullscreen && (
-                  <div style={{ marginTop: 10 }}>
-                    <Button size="sm" variant="warning" onClick={guard.enterFullscreenFromUserGesture}>
-                      Re-enter Fullscreen
-                    </Button>
-                  </div>
+                  <Button variant="warning" onClick={guard.enterFullscreenFromUserGesture}>
+                    Re-enter Fullscreen
+                  </Button>
                 )}
               </div>
             </div>
           )}
 
-          <div style={{ display: 'flex', height: '100%' }}>
-            <div className="quiz-left">
+          <div className="quiz-layout">
+            <div className="quiz-main">
               {loading ? (
-                <div style={{ padding: 40, textAlign: 'center' }}>
-                  <Spinner animation="border" />
+                <div className="loading-state">
+                  <Spinner animation="border" variant="warning" />
                 </div>
               ) : error ? (
-                <div style={{ padding: 12 }}>
-                  <Alert variant="danger">{error}</Alert>
-                </div>
+                <Alert variant="danger" className="error-alert">{error}</Alert>
               ) : submissionStatus === 'submitted_pending' || latestSubmission?.status === 'pending' ? (
-                <div style={{ padding: 40, textAlign: 'center' }}>
-                  <Alert variant="warning" className="submission-status status-pending">
-                    <h4>✅ Quiz Submitted!</h4>
-                    <p>Your quiz has been submitted and is pending evaluation.</p>
-                    {latestSubmission?._id && (
-                      <p>
-                        <strong>Submission ID:</strong> {latestSubmission._id}
-                      </p>
-                    )}
-                    <p>This page will update automatically when your result is posted.</p>
-                  </Alert>
-                  <Button variant="primary" onClick={handleCloseModal}>
-                    Close
-                  </Button>
+                <div className="submitted-state">
+                  <FaCheckCircle className="submitted-icon" />
+                  <h4>Quiz Submitted!</h4>
+                  <p>Your quiz has been submitted and is pending evaluation.</p>
+                  {latestSubmission?._id && (
+                    <p><strong>Submission ID:</strong> {latestSubmission._id}</p>
+                  )}
+                  <p>This page will update automatically when your result is posted.</p>
+                  <Button variant="primary" onClick={handleCloseModal}>Close</Button>
                 </div>
               ) : submissionStatus === 'evaluated' || (latestSubmission && latestSubmission.status !== 'pending') ? (
-                <div style={{ padding: 40 }}>
-                  <Alert variant={latestSubmission?.status === 'passed' ? 'success' : 'danger'}>
+                <div className="result-state">
+                  <Alert variant={latestSubmission?.status === 'passed' ? 'success' : 'danger'} className="result-alert">
                     <h4>Result: {String(latestSubmission?.status).toUpperCase()}</h4>
                     {latestSubmission?.score != null && (
-                      <p>
-                        <strong>Score:</strong> {latestSubmission.score}
-                      </p>
+                      <p><strong>Score:</strong> {latestSubmission.score}</p>
                     )}
                     {latestSubmission?.remarks && (
-                      <p>
-                        <strong>Remarks:</strong> {latestSubmission.remarks}
-                      </p>
+                      <p><strong>Remarks:</strong> {latestSubmission.remarks}</p>
                     )}
-                    <Button variant="primary" onClick={handleCloseModal}>
-                      Close
-                    </Button>
+                    <Button variant="primary" onClick={handleCloseModal}>Close</Button>
                   </Alert>
                 </div>
               ) : (
                 <>
                   {questions.length === 0 ? (
-                    <div style={{ padding: 20 }}>No questions available</div>
+                    <div>No questions available</div>
                   ) : (
                     <>
                       {submissionStatus === 'submitting' && (
-                        <Alert variant="info" style={{ marginBottom: 16 }}>
+                        <Alert variant="info" className="submitting-alert">
                           <Spinner animation="border" size="sm" /> Submitting your quiz...
                         </Alert>
                       )}
 
-                      <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
-                        <div>
-                          Question {current + 1} / {questions.length}
-                        </div>
-                        <div>
-                          {Object.keys(answers).length}/{questions.length} answered
-                        </div>
+                      <div className="question-header">
+                        <div>Question {current + 1} / {questions.length}</div>
+                        <div className="answered-count">{Object.keys(answers).length}/{questions.length} answered</div>
                       </div>
 
-                      <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>{questions[current].question}</div>
+                      <div className="question-text">{questions[current].question}</div>
 
-                      {questions[current].options.map((opt) => {
-                        const selected = answers[current] === opt.key
-                        return (
-                          <button
-                            key={opt.key}
-                            className={`option-btn ${selected ? 'selected' : ''}`}
-                            onClick={() => handleSelectOption(current, opt.key)}
-                            disabled={submissionStatus !== 'not_submitted' || guard.locked}>
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                              <div
-                                style={{
-                                  width: 44,
-                                  height: 44,
-                                  borderRadius: 8,
-                                  background: 'rgba(255,255,255,0.03)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontWeight: 700,
-                                }}>
-                                {opt.key}
+                      <div className="options-list">
+                        {questions[current].options.map((opt) => {
+                          const selected = answers[current] === opt.key
+                          return (
+                            <button
+                              key={opt.key}
+                              className={`option-btn ${selected ? 'selected' : ''}`}
+                              onClick={() => handleSelectOption(current, opt.key)}
+                              disabled={submissionStatus !== 'not_submitted' || guard.locked}>
+                              <div className="option-content">
+                                <div className="option-key">{opt.key}</div>
+                                <div className="option-text">{opt.text}</div>
                               </div>
-                              <div style={{ flex: 1 }}>{opt.text}</div>
-                            </div>
-                          </button>
-                        )
-                      })}
+                            </button>
+                          )
+                        })}
+                      </div>
 
-                      <div style={{ marginTop: 18, display: 'flex', gap: 8 }}>
+                      <div className="navigation-buttons">
                         <Button
                           variant="outline-light"
                           onClick={() => goto(current - 1)}
                           disabled={current === 0 || submissionStatus !== 'not_submitted' || guard.locked}>
-                          Previous
+                          <FaArrowLeft className="me-2" /> Previous
                         </Button>
                         <Button
                           variant="outline-light"
                           onClick={() => goto(current + 1)}
                           disabled={current === questions.length - 1 || submissionStatus !== 'not_submitted' || guard.locked}>
-                          Next
+                          Next <FaArrowRight className="ms-2" />
                         </Button>
-                        <div style={{ marginLeft: 'auto' }}>
-                          <Button
-                            variant="danger"
-                            onClick={handleSubmitClicked}
-                            disabled={submissionStatus !== 'not_submitted' || recordingState !== 'recording' || guard.locked}>
-                            {submissionStatus === 'submitting' ? (
-                              <>
-                                <Spinner animation="border" size="sm" /> Submitting...
-                              </>
-                            ) : (
-                              'Submit Quiz'
-                            )}
-                          </Button>
-                        </div>
+                        <Button
+                          variant="danger"
+                          onClick={handleSubmitClicked}
+                          disabled={submissionStatus !== 'not_submitted' || recordingState !== 'recording' || guard.locked}
+                          className="submit-btn">
+                          {submissionStatus === 'submitting' ? (
+                            <><Spinner animation="border" size="sm" /> Submitting...</>
+                          ) : (
+                            'Submit Quiz'
+                          )}
+                        </Button>
                       </div>
 
-                      <div style={{ marginTop: 20 }}>
-                        <div style={{ marginBottom: 6, color: 'rgba(255,255,255,0.7)' }}>Jump to</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      <div className="jump-section">
+                        <div className="jump-label">Jump to question</div>
+                        <div className="jump-buttons">
                           {questions.map((_, i) => {
                             const answered = Boolean(answers[i])
-                            const cls =
-                              i === current
-                                ? 'btn btn-primary btn-sm'
-                                : answered
-                                  ? 'btn btn-outline-success btn-sm'
-                                  : 'btn btn-outline-secondary btn-sm'
                             return (
                               <button
                                 key={i}
-                                className={cls}
+                                className={`jump-btn ${i === current ? 'current' : ''} ${answered ? 'answered' : ''}`}
                                 onClick={() => goto(i)}
                                 disabled={submissionStatus !== 'not_submitted' || guard.locked}>
                                 {i + 1}
@@ -855,84 +769,69 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
               )}
             </div>
 
-            <div className="quiz-right">
+            <div className="quiz-sidebar">
               {!token && <Alert variant="warning">You are not logged in. Please log in to take the quiz.</Alert>}
 
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)' }}>Submission Status</div>
-                <div style={{ fontWeight: 700 }}>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Submission Status</div>
+                <div className="sidebar-value">
                   {latestSubmission
-                    ? latestSubmission.status === 'pending'
-                      ? '✅ Pending Evaluation'
-                      : 'Evaluated'
+                    ? latestSubmission.status === 'pending' ? '✅ Pending Evaluation' : 'Evaluated'
                     : (submissionStatus === 'not_submitted' && 'Not Submitted') ||
-                    (submissionStatus === 'submitting' && 'Submitting...') ||
-                    (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
-                    (submissionStatus === 'evaluated' && 'Evaluated')}
+                      (submissionStatus === 'submitting' && 'Submitting...') ||
+                      (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
+                      (submissionStatus === 'evaluated' && 'Evaluated')}
                 </div>
               </div>
 
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)' }}>Recording</div>
-                <div style={{ fontWeight: 700 }}>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Recording</div>
+                <div className="sidebar-value recording-status">
                   {recordingState === 'recording' ? '🔴 Recording...' : recordingState === 'uploaded' ? '✅ Uploaded' : '⏸️ Idle'}
                 </div>
-                {mediaError && <div style={{ marginTop: 8, color: '#ffb3b3' }}>{mediaError}</div>}
+                {mediaError && <div className="media-error">{mediaError}</div>}
               </div>
 
-              <div style={{ marginTop: 8, marginBottom: 18 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 6 }}>Webcam preview</div>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Webcam preview</div>
                 <video
                   ref={cameraVideoRef}
-                  width={160}
-                  height={120}
-                  style={{ borderRadius: 6, background: '#000', border: '2px solid rgba(255,255,255,0.1)' }}
+                  className="webcam-preview"
                   autoPlay
                   playsInline
                   muted
                 />
               </div>
 
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)' }}>Progress</div>
-                <div style={{ marginTop: 8 }}>
-                  <ProgressBar now={(Object.keys(answers).length / Math.max(questions.length, 1)) * 100} />
-                  <div style={{ marginTop: 6, color: 'rgba(255,255,255,0.7)' }}>
-                    {Object.keys(answers).length}/{questions.length} answered
-                  </div>
-                </div>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Progress</div>
+                <ProgressBar now={(Object.keys(answers).length / Math.max(questions.length, 1)) * 100} className="progress-bar-custom" />
+                <div className="progress-count">{Object.keys(answers).length}/{questions.length} answered</div>
               </div>
 
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Proctoring Status</div>
-                <div
-                  style={{
-                    padding: '8px',
-                    borderRadius: '4px',
-                    background: guard.violationCount > 0 ? 'rgba(255,77,79,0.2)' : 'rgba(76,175,80,0.2)',
-                    border: `1px solid ${guard.violationCount > 0 ? 'rgba(255,77,79,0.5)' : 'rgba(76,175,80,0.5)'}`,
-                  }}>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Proctoring Status</div>
+                <div className={`proctor-status ${guard.violationCount > 0 ? 'warning' : 'good'}`}>
+                  <FaShieldAlt className="me-2" />
                   <strong>Violations:</strong> {guard.violationCount} / {guard.maxViolations}
                   {guard.violationCount > 0 && (
-                    <div style={{ fontSize: '12px', color: '#ff6b6b', marginTop: '4px' }}>
+                    <div className="violation-warning">
                       {guard.violationCount >= guard.maxViolations ? 'Maximum reached - Quiz will auto-submit' : 'Please avoid tab switching'}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div style={{ flex: 1 }}>
-                <div style={{ color: 'rgba(255,255,255,0.65)', marginBottom: 8 }}>Guidance</div>
-                <ul style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px', paddingLeft: '20px' }}>
-                  <li>Screen + webcam recording is active</li>
-                  <li>
-                    <strong style={{ color: '#ff6b6b' }}>Do not switch tabs/windows</strong> - violations will be recorded
-                  </li>
-                  <li>Quiz auto-submits when timer ends or max violations reached</li>
+              <div className="sidebar-section">
+                <div className="sidebar-label">Guidance</div>
+                <ul className="guidance-list">
+                  <li><FaVideo className="me-2" /> Screen + webcam recording is active</li>
+                  <li><FaExclamationTriangle className="me-2" style={{ color: '#ff6b6b' }} /> Do not switch tabs/windows - violations will be recorded</li>
+                  <li><FaClock className="me-2" /> Quiz auto-submits when timer ends or max violations reached</li>
                   <li>Modal cannot be closed until quiz is submitted</li>
                   {!guard.isFullscreen && (
                     <li>
-                      <Button size="sm" variant="outline-light" onClick={guard.enterFullscreenFromUserGesture}>
+                      <Button size="sm" variant="outline-light" onClick={guard.enterFullscreenFromUserGesture} className="fullscreen-btn">
                         Enter Fullscreen
                       </Button>
                     </li>
@@ -940,32 +839,471 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
                 </ul>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+              <div className="sidebar-footer">
                 <Button
                   variant="secondary"
                   onClick={handleCloseModal}
                   disabled={submissionStatus === 'submitting' || guard.locked || submissionStatus === 'not_submitted'}
-                  title={submissionStatus === 'not_submitted' ? 'Cannot close during active quiz' : 'Close quiz'}>
+                  className="close-btn">
                   Close
                 </Button>
-                <div style={{ marginLeft: 'auto', alignSelf: 'center' }}>
-                  <Button variant="outline-light" disabled>
-                    {latestSubmission
-                      ? latestSubmission.status === 'pending'
-                        ? 'Submitted - Pending Evaluation'
-                        : 'Result Ready'
-                      : submissionStatus === 'submitted_pending'
-                        ? 'Submitted - Pending Evaluation'
-                        : submissionStatus === 'submitting'
-                          ? 'Submitting...'
-                          : 'Quiz Active - Do Not Close'}
-                  </Button>
+                <div className="status-badge">
+                  {latestSubmission
+                    ? latestSubmission.status === 'pending' ? 'Submitted - Pending Evaluation' : 'Result Ready'
+                    : submissionStatus === 'submitted_pending' ? 'Submitted - Pending Evaluation' : 'Quiz Active - Do Not Close'}
                 </div>
               </div>
             </div>
           </div>
         </Modal.Body>
       </Modal>
+
+      <style>{`
+        /* Container */
+        .quiz-modal .modal-content {
+          background: #000000;
+          border: none;
+          border-radius: 0;
+          height: 100vh;
+        }
+
+        /* Header */
+        .quiz-modal-header {
+          background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+          border-bottom: 1px solid #ff7a00;
+          padding: 1rem 1.5rem !important;
+        }
+
+        .header-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .quiz-title {
+          color: #ffffff;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        .fullscreen-status {
+          color: #ff7a00;
+          font-size: 0.8rem;
+          margin-top: 0.25rem;
+        }
+
+        .timer-box {
+          text-align: right;
+        }
+
+        .timer-value {
+          font-size: 2rem;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        .timer-label {
+          color: #8a8a8a;
+          font-size: 0.75rem;
+        }
+
+        /* Body */
+        .quiz-modal-body {
+          padding: 0 !important;
+          height: calc(100vh - 80px);
+          position: relative;
+        }
+
+        .quiz-layout {
+          display: flex;
+          height: 100%;
+        }
+
+        .quiz-main {
+          flex: 1;
+          padding: 2rem;
+          overflow-y: auto;
+        }
+
+        .quiz-sidebar {
+          width: 320px;
+          background: #0a0a0a;
+          border-left: 1px solid #1f1f1f;
+          padding: 1.5rem;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        /* Locked Overlay */
+        .locked-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.95);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 100;
+        }
+
+        .locked-content {
+          text-align: center;
+          color: #ffffff;
+        }
+
+        .locked-icon {
+          font-size: 4rem;
+          color: #ff6b6b;
+          margin-bottom: 1rem;
+        }
+
+        /* Question Styles */
+        .question-header {
+          display: flex;
+          justify-content: space-between;
+          margin-bottom: 1.5rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid #2c2c2c;
+          color: #ff7a00;
+        }
+
+        .question-text {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 1.5rem;
+          line-height: 1.5;
+        }
+
+        .options-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .option-btn {
+          width: 100%;
+          text-align: left;
+          padding: 1rem;
+          border-radius: 12px;
+          border: 1px solid #2c2c2c;
+          background: #0a0a0a;
+          color: #e5e5e5;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+
+        .option-btn:hover:not(:disabled) {
+          border-color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+        }
+
+        .option-btn.selected {
+          border-color: #ff7a00;
+          background: rgba(255, 122, 0, 0.15);
+        }
+
+        .option-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .option-content {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
+        .option-key {
+          width: 40px;
+          height: 40px;
+          background: #1a1a1a;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 700;
+          color: #ff7a00;
+        }
+
+        .option-text {
+          flex: 1;
+        }
+
+        /* Navigation */
+        .navigation-buttons {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+          flex-wrap: wrap;
+        }
+
+        .submit-btn {
+          margin-left: auto;
+        }
+
+        /* Jump Section */
+        .jump-section {
+          margin-top: 1.5rem;
+          padding-top: 1rem;
+          border-top: 1px solid #2c2c2c;
+        }
+
+        .jump-label {
+          color: #8a8a8a;
+          margin-bottom: 0.75rem;
+        }
+
+        .jump-buttons {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .jump-btn {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+          background: #0a0a0a;
+          border: 1px solid #2c2c2c;
+          color: #e5e5e5;
+          transition: all 0.2s ease;
+          cursor: pointer;
+        }
+
+        .jump-btn:hover:not(:disabled) {
+          border-color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+        }
+
+        .jump-btn.current {
+          background: #ff7a00;
+          border-color: #ff7a00;
+          color: #000000;
+        }
+
+        .jump-btn.answered {
+          border-color: #28a745;
+          color: #28a745;
+        }
+
+        /* Sidebar */
+        .sidebar-section {
+          margin-bottom: 1rem;
+        }
+
+        .sidebar-label {
+          color: #ff7a00;
+          font-size: 0.75rem;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.5rem;
+        }
+
+        .sidebar-value {
+          color: #ffffff;
+          font-weight: 500;
+        }
+
+        .recording-status {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .media-error {
+          color: #ff6b6b;
+          font-size: 0.75rem;
+          margin-top: 0.25rem;
+        }
+
+        .webcam-preview {
+          width: 100%;
+          height: 120px;
+          border-radius: 8px;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          object-fit: cover;
+        }
+
+        .progress-bar-custom .progress-bar {
+          background: #ff7a00;
+        }
+
+        .progress-count {
+          color: #8a8a8a;
+          font-size: 0.75rem;
+          margin-top: 0.25rem;
+          text-align: right;
+        }
+
+        .proctor-status {
+          padding: 0.75rem;
+          border-radius: 8px;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+        }
+
+        .proctor-status.good {
+          border-color: #28a745;
+        }
+
+        .proctor-status.warning {
+          border-color: #ff6b6b;
+          background: rgba(255, 107, 107, 0.1);
+        }
+
+        .violation-warning {
+          font-size: 0.7rem;
+          color: #ff6b6b;
+          margin-top: 0.25rem;
+        }
+
+        .guidance-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .guidance-list li {
+          color: #e5e5e5;
+          font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+        }
+
+        .fullscreen-btn {
+          width: 100%;
+          margin-top: 0.5rem;
+        }
+
+        .sidebar-footer {
+          margin-top: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .close-btn {
+          width: 100%;
+          background: #2c2c2c;
+          border: none;
+        }
+
+        .status-badge {
+          text-align: center;
+          font-size: 0.75rem;
+          color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+          padding: 0.5rem;
+          border-radius: 6px;
+        }
+
+        /* States */
+        .loading-state, .submitted-state, .result-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          text-align: center;
+          padding: 2rem;
+        }
+
+        .submitted-icon {
+          font-size: 4rem;
+          color: #28a745;
+          margin-bottom: 1rem;
+        }
+
+        .submitted-state h4, .result-state h4 {
+          color: #ffffff;
+          margin-bottom: 1rem;
+        }
+
+        .submitted-state p, .result-state p {
+          color: #8a8a8a;
+        }
+
+        /* Start Button */
+        .start-quiz-btn {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+        }
+
+        /* Status Card */
+        .submission-status-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          margin-bottom: 1rem;
+        }
+
+        .status-card-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .status-title {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 0.25rem;
+        }
+
+        .status-details {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+          .quiz-layout {
+            flex-direction: column;
+          }
+          
+          .quiz-sidebar {
+            width: 100%;
+            border-left: none;
+            border-top: 1px solid #1f1f1f;
+            max-height: 300px;
+          }
+          
+          .quiz-main {
+            padding: 1rem;
+          }
+          
+          .header-content {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .timer-box {
+            text-align: center;
+          }
+          
+          .navigation-buttons {
+            flex-direction: column;
+          }
+          
+          .submit-btn {
+            margin-left: 0;
+          }
+        }
+      `}</style>
     </>
   )
 }

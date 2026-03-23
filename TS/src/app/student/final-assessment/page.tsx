@@ -456,23 +456,19 @@ export default function StudentFinalAssessmentPage() {
 
       const data = await res.json()
 
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        const s = String(data.submission.status || 'pending').toLowerCase()
+   if (data?.success && data?.hasSubmission && data?.submission) {
+  const s = String(data.submission.status || 'pending').toLowerCase()
 
-        const trNext: RoundStatus =
-          s === 'passed' || s === 'evaluated'
-            ? PASSED
-            : s === 'failed'
-              ? FAILED
-              : PENDING
+  const trNext: RoundStatus =
+    s === 'passed' || s === 'evaluated'
+      ? PASSED
+      : s === 'failed'
+        ? FAILED
+        : PENDING
 
-        // ✅ Only update TR status from server
-        setRounds((prev) =>
-          prev.map((r) =>
-            r.key === 'tr' ? { ...r, status: trNext } : r
-          )
-        )
-      }
+  // ✅ FIX: use derive function to unlock HR
+  setRounds((prev) => deriveWithTRStatus(prev, trNext))
+}
 
       // ❌ REMOVE the "no submission → READY" block
     } catch {

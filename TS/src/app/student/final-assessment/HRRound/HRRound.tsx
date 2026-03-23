@@ -1,5 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ProgressBar, Spinner, Alert, Modal } from 'react-bootstrap'
+import { 
+  FaMicrophone, 
+  FaStop, 
+  FaArrowLeft, 
+  FaArrowRight, 
+  FaCheckCircle, 
+  FaClock, 
+  FaList, 
+  FaVideo, 
+  FaDesktop,
+  FaExclamationTriangle,
+  FaUserTie,
+  FaBrain,
+  FaSpinner,
+  FaPlay,
+  FaCheck
+} from 'react-icons/fa'
 
 import { useProctorGuard } from '../helper/useProctorGuard'
 import ProctorLockModal from '../components/ProctorLockModal'
@@ -34,7 +51,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
   const current = qs[idx]
   const progress = useMemo(() => (qs.length ? Math.round((idx / qs.length) * 100) : 0), [idx, qs.length])
 
-  // Check if it's the last question (10th question)
+  // Check if it's the last question
   const isLastQuestion = qs.length > 0 && idx === qs.length - 1
 
   // Dictation
@@ -51,7 +68,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
   const [submitting, setSubmitting] = useState(false)
   const [uiErr, setUiErr] = useState('')
 
-  // Recording (screen+cam+mic)
+  // Recording
   const [started, setStarted] = useState(false)
   const [sessionErr, setSessionErr] = useState('')
   const [sessionBlob, setSessionBlob] = useState<Blob | null>(null)
@@ -85,7 +102,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
-          // Time's up - auto submit
           handleAutoSubmit('Time expired - auto submitted')
           return 0
         }
@@ -241,7 +257,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     if (!authToken || selected.length === 0) return null
     setLoadingQs(true)
     try {
-      // CHANGED: Fetch only 10 questions instead of more
       const params = new URLSearchParams({ topics: selected.join(','), count: '10' })
       const res = await fetch(`${baseURL}/api/hr/questions?${params}`, { headers: { Authorization: `Bearer ${authToken}` } })
       const data = await res.json()
@@ -253,8 +268,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         arr.forEach((q) => (init[q._id] = ''))
         setTextAnswers(init)
         interimRef.current = {}
-
-        // Start timer when questions are loaded
         startTimer()
         return arr
       } else {
@@ -435,7 +448,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
     mr.start(1000)
     setStarted(true)
-    arm() // arm proctor when recording starts
+    arm()
     return true
   }
 
@@ -444,7 +457,7 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       mediaRecorderRef.current?.stop()
     } catch { }
     setStarted(false)
-    disarm() // disarm when recording ends
+    disarm()
   }
   const stopSessionAsync = (): Promise<Blob | null> => {
     if (!mediaRecorderRef.current || !started) return Promise.resolve(sessionBlob)
@@ -462,7 +475,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
   /* ======================= Flow ======================= */
   const handleStartInterview = async () => {
-    // 1) Ask for screen share from the *same user gesture*
     let preDisplay: MediaStream | null = null
     try {
       preDisplay = await (navigator.mediaDevices as any).getDisplayMedia({
@@ -474,10 +486,8 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       return
     }
 
-    // 2) Enter fullscreen from the *same* gesture before any other awaits
     await enterFullscreenFromUserGesture()
 
-    // 3) (optional) TTS warmup
     try {
       const s = window.speechSynthesis
       if (s) {
@@ -487,11 +497,9 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       }
     } catch { }
 
-    // 4) Start session with granted display stream
     const ok = await startSession(preDisplay!)
     if (!ok || !mediaRecorderRef.current) return
 
-    // 5) Load questions and speak
     const questions = await fetchQuestions()
     if (questions?.length) {
       suppressSpeakRef.current = true
@@ -531,8 +539,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     return fileUrl
   }
 
-
-  // Submit (supports auto-submit when violations cap reached)
   const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
     const { auto = false, reason } = opts || {}
     if (!authToken || qs.length === 0 || (!allAnswered && !auto)) return
@@ -548,22 +554,17 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         finalBlob = await stopSessionAsync()
       }
 
-      // 1️⃣ Upload HR session video to S3
       let sessionMediaUrl = ''
       if (finalBlob && finalBlob.size > 0) {
-        sessionMediaUrl = await uploadHRSessionToS3(
-          new Blob([finalBlob], { type: 'video/webm' })
-        )
+        sessionMediaUrl = await uploadHRSessionToS3(new Blob([finalBlob], { type: 'video/webm' }))
       }
 
-      // 2️⃣ Prepare answers
       const answers = qs.map((q) => ({
         qid: q._id,
         questionText: q.question,
         textAnswer: (textAnswers[q._id] || '').trim(),
       }))
 
-      // 3️⃣ Submit JSON only
       const res = await fetch(`${baseURL}/api/hr/submit`, {
         method: 'POST',
         headers: {
@@ -597,25 +598,22 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     }
   }
 
-
   const handleAutoSubmit = async (why: string) => {
     await handleSubmit({ auto: true, reason: why })
   }
 
-  // Auto-submit when violations reach limit
   useEffect(() => {
     const LIMIT = 2
     if (violationCount >= LIMIT) {
       handleAutoSubmit('Auto-submitted due to proctoring violations')
     }
-  }, [violationCount]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [violationCount])
 
-  // Auto-submit when time expires
   useEffect(() => {
     if (timeLeft === 0 && timerActive) {
       handleAutoSubmit('Time expired - auto submitted')
     }
-  }, [timeLeft, timerActive]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [timeLeft, timerActive])
 
   useEffect(() => {
     if (current?.question) {
@@ -627,10 +625,9 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
     }
   }, [current?._id])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopTimer() // Clean up timer
+      stopTimer()
       try {
         recRef.current?.stop()
       } catch { }
@@ -655,10 +652,10 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
       disarm()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleCloseModal = () => {
-    stopTimer() // Stop timer when closing
+    stopTimer()
     try {
       recRef.current?.stop()
     } catch { }
@@ -687,7 +684,6 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
   return (
     <>
-      {/* Proctor lock modal */}
       <ProctorLockModal
         show={proctorLocked && open}
         isFullscreen={isFullscreen}
@@ -706,44 +702,53 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         fullscreen
         backdrop="static"
         keyboard={false}
-        dialogClassName="tr-glass-modal"
-        contentClassName="tr-glass-content">
-        <Modal.Header closeButton className="glass-header">
-          <div className="header-content">
-            <h1>HR Interview</h1>
-            <div className="contact-info">Contact us at Research.3</div>
-            {/* Timer Display */}
+        className="hr-modal-custom"
+      >
+        <Modal.Header closeButton className="modal-header-custom">
+          <div className="header-content-custom">
+            <div>
+              <h1 className="modal-title-custom">HR Interview</h1>
+              <p className="modal-subtitle">Prepare for your HR round with personalized questions</p>
+            </div>
             {timerActive && (
-              <div className="timer-display">
-                Time Remaining: <span className={timeLeft < 300 ? 'text-warning' : ''}>{formatTime(timeLeft)}</span>
+              <div className="timer-display-custom">
+                <FaClock className="timer-icon" />
+                <span className={timeLeft < 300 ? 'time-warning' : ''}>{formatTime(timeLeft)}</span>
               </div>
             )}
           </div>
         </Modal.Header>
 
-        <Modal.Body className="tr-modal-body">
+        <Modal.Body className="modal-body-custom">
           {loadErr && (
-            <Alert variant="danger" className="mt-1">
-              {loadErr}
+            <Alert variant="danger" className="alert-custom alert-danger">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{loadErr}</span>
             </Alert>
           )}
           {uiErr && (
-            <Alert variant="warning" className="mt-1">
-              {uiErr}
+            <Alert variant="warning" className="alert-custom alert-warning">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{uiErr}</span>
             </Alert>
           )}
           {sessionErr && (
-            <Alert variant="warning" className="mt-1">
-              {sessionErr}
+            <Alert variant="warning" className="alert-custom alert-warning">
+              <FaExclamationTriangle className="alert-icon" />
+              <span>{sessionErr}</span>
             </Alert>
           )}
 
           {/* Topic selection */}
           {!qs.length && !reviewing && (
             <div className="topic-selection-container">
-              <div className="glass-card">
-                <h3 className="card-title">Select HR Topics</h3>
-                <p className="card-sub">Screen share, camera and mic are required. 10 questions • 30 minutes</p>
+              <div className="topic-card">
+                <div className="topic-icon-wrapper">
+                  <FaUserTie className="topic-icon" />
+                </div>
+                <h3 className="topic-title">Select HR Topics</h3>
+                <p className="topic-subtitle">Screen share, camera and mic are required. 10 questions • 30 minutes</p>
+                
                 <div className="topics-grid">
                   {allTopics.map((t) => (
                     <button
@@ -755,22 +760,37 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
                     </button>
                   ))}
                 </div>
-                <button className="start-interview-btn" disabled={!selected.length || loadingQs || proctorLocked} onClick={handleStartInterview}>
-                  {loadingQs ? <Spinner size="sm" /> : 'Start Interview'}
+                
+                <button 
+                  className="start-interview-btn-custom" 
+                  disabled={!selected.length || loadingQs || proctorLocked} 
+                  onClick={handleStartInterview}
+                >
+                  {loadingQs ? (
+                    <>
+                      <FaSpinner className="spinner-icon" />
+                      Loading Questions...
+                    </>
+                  ) : (
+                    <>
+                      <FaPlay className="me-2" />
+                      Start Interview
+                    </>
+                  )}
                 </button>
 
                 {(started || sessionBlob) && (
-                  <div style={{ marginTop: '1rem', display: 'grid', gap: 12 }}>
-                    <div>
-                      <h6>Screen (live)</h6>
-                      <div className="video-preview">
-                        <video ref={setScreenVideoRef} muted playsInline autoPlay className="screen-video" />
+                  <div className="preview-section">
+                    <div className="preview-item">
+                      <h6><FaDesktop className="me-2" /> Screen (live)</h6>
+                      <div className="video-preview-custom">
+                        <video ref={setScreenVideoRef} muted playsInline autoPlay className="video-element" />
                       </div>
                     </div>
-                    <div>
-                      <h6>Camera (live)</h6>
-                      <div className="video-preview" style={{ aspectRatio: '4/3' }}>
-                        <video ref={setCamVideoRef} muted playsInline autoPlay className="student-video" />
+                    <div className="preview-item">
+                      <h6><FaVideo className="me-2" /> Camera (live)</h6>
+                      <div className="video-preview-custom camera-preview">
+                        <video ref={setCamVideoRef} muted playsInline autoPlay className="video-element" />
                       </div>
                     </div>
                   </div>
@@ -781,29 +801,27 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
           {/* Interview */}
           {!!qs.length && !reviewing && (
-            <div className="split-screen-container">
-              <div className="left-panel">
-                <div className="question-container">
-                  <div className="question-header">
-                    <div className="progress-section">
+            <div className="interview-grid">
+              <div className="interview-left">
+                <div className="question-container-custom">
+                  <div className="question-header-custom">
+                    <div className="progress-area">
                       <span className="question-count">
                         Question {idx + 1} / {qs.length}
                       </span>
-                      <ProgressBar now={progress} className="custom-progress" />
+                      <ProgressBar now={progress} className="progress-bar-custom" />
                     </div>
-                    <div className="topics-tags">
+                    <div className="selected-topics">
                       {selected.map((s) => (
-                        <span key={s} className="topic-tag">
-                          {s}
-                        </span>
+                        <span key={s} className="topic-tag-custom">{s}</span>
                       ))}
                     </div>
                   </div>
 
-                  <div className="question-card" aria-disabled={proctorLocked}>
-                    <h3 className="question-text">{current?.question}</h3>
+                  <div className="question-card-custom">
+                    <h3 className="question-text-custom">{current?.question}</h3>
 
-                    <div className="answer-section">
+                    <div className="answer-section-custom">
                       <label>Your Answer</label>
                       <textarea
                         placeholder="Speak (Start) or type freely…"
@@ -814,93 +832,87 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
                           setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
                           tick((x) => x + 1)
                         }}
-                        className="answer-textarea"
+                        rows={6}
+                        className="answer-textarea-custom"
                         readOnly={proctorLocked}
                       />
                       {currentInterim && (
-                        <div className="interim-line">
-                          <em>
-                            {committedValue ? ' ' : ''}
-                            {currentInterim}
-                          </em>
+                        <div className="interim-line-custom">
+                          <em>{currentInterim}</em>
                         </div>
                       )}
-                      <div className="muted-tip">{dictating ? 'Listening… you can pause; text won’t reset.' : 'Press Start to speak.'}</div>
+                      <div className="helper-text">{dictating ? "Listening… you can pause; text won't reset." : 'Press Start to speak.'}</div>
                     </div>
 
-                    <div className="audio-controls">
+                    <div className="audio-controls-custom">
                       {!dictating ? (
-                        <button className="record-btn" onClick={startDictation} disabled={proctorLocked}>
-                          ▶︎ Start
+                        <button className="record-btn-custom" onClick={startDictation} disabled={proctorLocked}>
+                          <FaMicrophone className="me-2" /> Start
                         </button>
                       ) : (
-                        <button className="stop-record-btn" onClick={stopDictation} disabled={proctorLocked}>
-                          ⏹ Stop
+                        <button className="stop-record-btn-custom" onClick={stopDictation} disabled={proctorLocked}>
+                          <FaStop className="me-2" /> Stop
                         </button>
                       )}
                     </div>
                   </div>
 
-                  <div className="navigation-controls">
-                    <button className="nav-btn prev-btn" onClick={handlePrev} disabled={idx === 0 || proctorLocked}>
-                      ← Previous
+                  <div className="nav-controls-custom">
+                    <button className="nav-btn prev" onClick={handlePrev} disabled={idx === 0 || proctorLocked}>
+                      <FaArrowLeft className="me-2" /> Previous
                     </button>
-                    <div className="nav-group">
-                      {/* Show "Review Answers" on last question instead of "Next" */}
-                      {!isLastQuestion ? (
-                        <button className="nav-btn next-btn" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
-                          Next →
-                        </button>
-                      ) : (
-                        <button
-                          className="submit-btn"
-                          onClick={() => setReviewing(true)}
-                          disabled={proctorLocked}
-                          title="Review your answers before final submission">
-                          Review Answers
-                        </button>
-                      )}
-                    </div>
+                    {!isLastQuestion ? (
+                      <button className="nav-btn next" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
+                        Next <FaArrowRight className="ms-2" />
+                      </button>
+                    ) : (
+                      <button
+                        className="review-btn-custom"
+                        onClick={() => setReviewing(true)}
+                        disabled={proctorLocked}
+                      >
+                        <FaCheck className="me-2" /> Review Answers
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Preview rail */}
-              <div className="right-panel">
-                <div className="video-container">
-                  <div className="video-section">
-                    <h4>Screen (Recording)</h4>
-                    <div className="video-preview">
-                      <video ref={setScreenVideoRef} muted playsInline autoPlay className="screen-video" />
+              <div className="interview-right">
+                <div className="video-panel">
+                  <div className="video-section-custom">
+                    <h4><FaDesktop className="me-2" /> Screen Recording</h4>
+                    <div className="video-preview-custom">
+                      <video ref={setScreenVideoRef} muted playsInline autoPlay className="video-element" />
                       {!started && !sessionBlob && (
-                        <div className="video-placeholder">
+                        <div className="video-placeholder-custom">
                           <div>Waiting for capture…</div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="video-section">
-                    <h4>Student Camera</h4>
-                    <div className="video-preview" style={{ aspectRatio: '4/3' }}>
-                      <video ref={setCamVideoRef} muted playsInline autoPlay className="student-video" />
+                  <div className="video-section-custom">
+                    <h4><FaVideo className="me-2" /> Student Camera</h4>
+                    <div className="video-preview-custom camera-preview">
+                      <video ref={setCamVideoRef} muted playsInline autoPlay className="video-element" />
                     </div>
                   </div>
 
-                  <div className="sharing-info">
-                    <span className="url-display">{started ? 'Screen, camera & mic are recording' : 'Recording stopped'}</span>
-                    {/* Timer in right panel */}
-                    {timerActive && (
-                      <div className="timer-panel">
-                        <strong>Time: {formatTime(timeLeft)}</strong>
-                        {isLastQuestion && (
-                          <div className="final-submit-note">
-                            <small>This is the final question. Click "Review Answers" to submit.</small>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                  <div className="recording-status-custom">
+                    <span className={`status-dot ${started ? 'active' : ''}`}></span>
+                    <span>{started ? 'Screen, camera & mic are recording' : 'Recording stopped'}</span>
                   </div>
+
+                  {timerActive && (
+                    <div className="timer-panel-custom">
+                      <FaClock className="timer-icon" />
+                      <strong>Time: {formatTime(timeLeft)}</strong>
+                      {isLastQuestion && (
+                        <div className="final-note">This is the final question. Click "Review Answers" to submit.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -908,58 +920,60 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
 
           {/* Review */}
           {!!qs.length && reviewing && (
-            <div className="left-panel">
-              <div className="question-container">
-                <div className="question-header" style={{ marginBottom: '1rem' }}>
+            <div className="review-section">
+              <div className="review-container">
+                <div className="review-header">
                   <h3>Review your answers</h3>
-                  <p className="text-muted">Click any question to edit, then submit.</p>
+                  <p>Click any question to edit, then submit.</p>
                   {timerActive && (
-                    <div className="timer-review">
+                    <div className="timer-review-custom">
+                      <FaClock className="timer-icon" />
                       <strong>Time Remaining: {formatTime(timeLeft)}</strong>
                     </div>
                   )}
                 </div>
-                <div className="question-card" style={{ padding: '1rem' }}>
-                  <ol style={{ paddingLeft: '1.25rem', margin: 0 }}>
-                    {qs.map((q, i) => {
-                      const ans = (textAnswers[q._id] || '').trim()
-                      return (
-                        <li key={q._id} style={{ marginBottom: '1rem' }}>
-                          <div
-                            style={{ fontWeight: 600, marginBottom: 6, cursor: 'pointer' }}
-                            onClick={() => {
-                              if (proctorLocked) return
-                              setReviewing(false)
-                              setIdx(i)
-                            }}>
-                            Q{i + 1}. {q.question}
-                          </div>
-                          <div className="review-answer">{ans || <span className="review-empty">No answer provided</span>}</div>
-                        </li>
-                      )
-                    })}
-                  </ol>
+
+                <div className="review-list">
+                  {qs.map((q, i) => {
+                    const ans = (textAnswers[q._id] || '').trim()
+                    return (
+                      <div key={q._id} className="review-item">
+                        <div
+                          className="review-question"
+                          onClick={() => {
+                            if (proctorLocked) return
+                            setReviewing(false)
+                            setIdx(i)
+                          }}
+                        >
+                          Q{i + 1}. {q.question}
+                        </div>
+                        <div className={`review-answer-custom ${!ans ? 'empty' : ''}`}>
+                          {ans || <span>No answer provided</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
 
-                <div className="navigation-controls" style={{ marginTop: '1rem' }}>
-                  <button className="nav-btn prev-btn" onClick={() => setReviewing(false)} disabled={proctorLocked}>
-                    ← Back to questions
+                <div className="review-actions">
+                  <button className="back-btn" onClick={() => setReviewing(false)} disabled={proctorLocked}>
+                    <FaArrowLeft className="me-2" /> Back to questions
                   </button>
-                  <div className="nav-group">
-                    <button
-                      className="submit-btn"
-                      onClick={() => handleSubmit()}
-                      disabled={(!allAnswered && !proctorLocked) || submitting}
-                      title={allAnswered ? 'Submit all answers' : 'Answer all questions to enable submit'}>
-                      {submitting ? <Spinner size="sm" /> : 'Final Submit'}
-                    </button>
-                  </div>
+                  <button
+                    className="final-submit-btn"
+                    onClick={() => handleSubmit()}
+                    disabled={(!allAnswered && !proctorLocked) || submitting}
+                  >
+                    {submitting ? <FaSpinner className="spinner-icon" /> : <FaCheckCircle className="me-2" />}
+                    {submitting ? 'Submitting...' : 'Final Submit'}
+                  </button>
                 </div>
 
                 {sessionBlob && (
-                  <div style={{ marginTop: '1rem' }}>
+                  <div className="recording-preview-custom">
                     <h6>Recorded session</h6>
-                    <video controls src={URL.createObjectURL(sessionBlob)} style={{ width: '100%', maxWidth: 720, borderRadius: 8 }} />
+                    <video controls src={URL.createObjectURL(sessionBlob)} className="session-video" />
                   </div>
                 )}
               </div>
@@ -968,132 +982,669 @@ export default function HRRound({ baseURL, authToken, onClose, onSubmitted }: Pr
         </Modal.Body>
       </Modal>
 
-      {/* Add timer styles */}
       <style>{`
-        .timer-display {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: rgba(255,255,255,0.9);
-          padding: 0.5rem 1rem;
+        .hr-modal-custom .modal-content {
+          background: #000000;
+          border: none;
+          border-radius: 0;
+        }
+
+        /* Header */
+        .modal-header-custom {
+          background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+          border-bottom: 1px solid #ff7a00;
+          padding: 1.25rem 2rem;
+        }
+
+        .header-content-custom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .modal-title-custom {
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0;
+        }
+
+        .modal-subtitle {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          margin: 0.25rem 0 0 0;
+        }
+
+        .timer-display-custom {
+          background: rgba(255, 122, 0, 0.2);
+          border: 1px solid #ff7a00;
           border-radius: 8px;
-          font-weight: bold;
-          border: 2px solid #667eea;
-          color: #333;
-        }
-        
-        .timer-panel {
-          margin-top: 0.5rem;
-          padding: 0.5rem;
-          background: rgba(255,255,255,0.8);
-          border-radius: 6px;
-          text-align: center;
-          color: #333;
-        }
-        
-        .timer-review {
-          background: rgba(255,255,255,0.8);
           padding: 0.5rem 1rem;
-          border-radius: 8px;
-          border: 1px solid #667eea;
-          color: #333;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
         }
-        
-        .final-submit-note {
-          margin-top: 0.25rem;
-          color: #28a745;
+
+        .timer-icon {
+          color: #ff7a00;
+        }
+
+        .timer-display-custom span {
+          color: #ffffff;
           font-weight: 600;
+          font-size: 1.25rem;
         }
 
-        .text-warning {
-          color: #dc3545 !important;
-          font-weight: bold;
+        .time-warning {
+          color: #ff6b6b !important;
         }
 
-        .tr-glass-modal .modal-dialog { margin: 0; max-width: 100%; height: 100%; }
-        .tr-glass-content {
-          min-height: 100vh;
-          background:
-            radial-gradient(1200px 600px at 70% 10%, rgba(118,75,162,.16), transparent 60%),
-            radial-gradient(1000px 600px at 20% 90%, rgba(102,126,234,.18), transparent 60%),
-            linear-gradient(135deg, rgba(20,22,29,.75), rgba(20,22,29,.75));
-          backdrop-filter: blur(24px) saturate(180%);
-          -webkit-backdrop-filter: blur(24px) saturate(180%);
-          border: 1px solid rgba(255,255,255,0.12);
-          color: #e9ecef;
+        /* Body */
+        .modal-body-custom {
+          padding: 2rem;
+          overflow-y: auto;
+          background: #000000;
         }
-        .glass-header { 
-          background: rgba(255,255,255,0.06); 
-          backdrop-filter: blur(14px); 
-          border-bottom: 1px solid rgba(255,255,255,0.15); 
-          position: relative; /* Needed for absolute positioning of timer */
+
+        /* Alerts */
+        .alert-custom {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 1rem;
+          border-radius: 8px;
+          margin-bottom: 1rem;
         }
-        .header-content { width: 100%; text-align: center; }
-        .header-content h1 { margin: 0; font-size: 2rem; font-weight: 800; letter-spacing: .2px; background: linear-gradient(135deg,#a5b4fc 0%,#c084fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .contact-info { font-size: .95rem; color: var(--text-secondary); margin-top: 0.25rem; }
-        .tr-modal-body { padding: 0; height: calc(100vh - 80px); }
 
-        .topic-selection-container { display: flex; justify-content: center; align-items: center; height: 100%; padding: 2rem; }
-        .glass-card { background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.18); backdrop-filter: blur(22px) saturate(160%); border-radius: 20px; padding: 2.5rem; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.25); max-width: 820px; width: 100%; }
-        .card-title { color: #fff; margin-bottom: .25rem; font-weight: 700; }
-        .card-sub { color: rgba(255,255,255,.72); margin: 0 0 1rem; }
-        .topics-grid { display: flex; flex-wrap: wrap; gap: .75rem; justify-content: center; margin: 1rem 0 1.25rem; }
-        .topic-chip { padding: .7rem 1.2rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.18); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.25); cursor: pointer; transition: all .22s ease; font-weight: 600; backdrop-filter: blur(6px); }
-        .topic-chip:hover { transform: translateY(-1px); }
-        .topic-chip.selected { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-color: transparent; box-shadow: 0 6px 18px rgba(118,75,162,.35); }
-        .start-interview-btn { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; border: none; padding: .8rem 1.4rem; border-radius: 999px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
-        .start-interview-btn:disabled { opacity: .6; cursor: not-allowed; }
+        .alert-danger {
+          background: rgba(220, 53, 69, 0.1);
+          border: 1px solid #dc3545;
+          color: #ff6b6b;
+        }
 
-        .split-screen-container { display: grid; grid-template-columns: 1fr 360px; gap: 0; height: 100%; }
-        .left-panel { padding: 2rem 2.25rem; overflow-y: auto; }
-        .right-panel { background: rgba(255,255,255,0.06); backdrop-filter: blur(18px); border-left: 1px solid rgba(255,255,255,0.12); padding: 1.1rem; }
+        .alert-warning {
+          background: rgba(255, 122, 0, 0.1);
+          border: 1px solid #ff7a00;
+          color: #ff7a00;
+        }
 
-        .question-container { max-width: clamp(760px, 64vw, 1100px); margin: 0 auto; }
-        .question-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.25rem; }
-        .progress-section { flex: 1; }
-        .question-count { font-size: 1.05rem; font-weight: 700; color: #fff; display: block; margin-bottom: .5rem; }
-        .custom-progress { height: 6px; background: rgba(102,126,234,0.25); border-radius: 3px; overflow: hidden; }
-        .custom-progress .progress-bar { background: linear-gradient(90deg,#667eea 0%,#764ba2 100%); }
-        .topics-tags { display: flex; flex-wrap: wrap; gap: .5rem; }
-        .topic-tag { background: rgba(255,255,255,.22); color: #fff; padding: .28rem .75rem; border-radius: 14px; font-size: .82rem; font-weight: 600; border: 1px solid rgba(255,255,255,.28); text-shadow: 0 1px 1px rgba(0,0,0,.25); }
+        .alert-icon {
+          font-size: 1.25rem;
+        }
 
-        .question-card { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 1.35rem 1.5rem; box-shadow: 0 10px 28px rgba(0,0,0,.25); margin-bottom: 1.25rem; backdrop-filter: blur(18px); }
-        .question-text { color: #fff; font-size: 1.35rem; font-weight: 700; line-height: 1.45; margin-bottom: .9rem; }
+        /* Topic Selection */
+        .topic-selection-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          min-height: 70vh;
+        }
 
-        .answer-section label { display: block; margin-bottom: .5rem; font-weight: 700; color: rgba(255,255,255,.9); }
-        .answer-textarea { width: 100%; min-height: clamp(220px, 34vh, 460px); border: 2px solid rgba(255,255,255,.18); border-radius: 12px; padding: 1rem 1rem 1.25rem; font-size: 1.05rem; line-height: 1.55; resize: vertical; color: #111; background: rgba(255,255,255,.92); transition: border-color .2s ease, box-shadow .2s ease; }
-        .answer-textarea:focus { outline: none; border-color: rgba(102,126,234,.9); box-shadow: 0 0 0 3px rgba(102,126,234,.25); }
-        .interim-line { margin-top: 6px; font-size: .97rem; color: rgba(255,255,255,.85); opacity: .95; }
-        .muted-tip { margin-top: 6px; font-size: 12px; color: rgba(255,255,255,.6); }
+        .topic-card {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 24px;
+          padding: 2.5rem;
+          max-width: 700px;
+          width: 100%;
+          text-align: center;
+        }
 
-        .audio-controls { display: flex; align-items: center; gap: .75rem; margin-top: .85rem; flex-wrap: wrap; }
-        .record-btn, .stop-record-btn { display: flex; align-items: center; gap: .5rem; padding: .6rem 1.25rem; border: none; border-radius: 999px; font-weight: 700; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
-        .record-btn { background: rgba(102,126,234,.16); color: #cdd5ff; border: 1px solid rgba(102,126,234,.5); }
-        .record-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(102,126,234,.35); }
-        .stop-record-btn { background: rgba(220,53,69,.14); color: #ffb3bd; border: 1px solid rgba(220,53,69,.55); }
+        .topic-icon-wrapper {
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 122, 0, 0.1);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+        }
 
-        .navigation-controls { display: flex; justify-content: space-between; align-items: center; }
-        .nav-btn, .submit-btn { padding: .6rem 1.25rem; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
-        .prev-btn, .next-btn { background: rgba(108,117,125,.16); color: #d1d5db; border: 1px solid rgba(108,117,125,.45); }
-        .prev-btn:hover:not(:disabled), .next-btn:hover:not(:disabled) { transform: translateY(-1px); }
-        .submit-btn { background: linear-gradient(135deg,#28a745 0%,#20c997 100%); color: white; margin-left: .75rem; }
+        .topic-icon {
+          font-size: 2.5rem;
+          color: #ff7a00;
+        }
 
-        .video-container { height: 100%; display: flex; flex-direction: column; gap: 1rem; }
-        .video-section h4 { margin-bottom: .5rem; color: #fff; font-size: .95rem; font-weight: 700; }
-        .video-preview { background: #000; border-radius: 10px; overflow: hidden; position: relative; aspect-ratio: 16/9; }
-        .screen-video, .student-video { width: 100%; height: 100%; object-fit: cover; }
-        .video-placeholder { position: absolute; inset: 0; display: grid; place-items: center; background: #1a1a1a; color: #ccc; font-size: .9rem; }
-        .sharing-info { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,.14); padding: .8rem; border-radius: 10px; margin-top: auto; color: #e9ecef; }
-        .url-display { font-size: .8rem; color: rgba(255,255,255,.75); display: block; margin-bottom: .5rem; }
+        .topic-title {
+          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+        }
 
+        .topic-subtitle {
+          color: #8a8a8a;
+          margin-bottom: 1.5rem;
+        }
+
+        .topics-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          justify-content: center;
+          margin: 1.5rem 0;
+        }
+
+        .topic-chip {
+          padding: 0.6rem 1.2rem;
+          border-radius: 999px;
+          border: 1px solid #2c2c2c;
+          background: #000000;
+          color: #e5e5e5;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-weight: 500;
+        }
+
+        .topic-chip:hover {
+          border-color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+        }
+
+        .topic-chip.selected {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border-color: transparent;
+          color: #000000;
+        }
+
+        .start-interview-btn-custom {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          color: #000000;
+          font-weight: 600;
+          width: 100%;
+          transition: all 0.2s ease;
+        }
+
+        .start-interview-btn-custom:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+        }
+
+        .start-interview-btn-custom:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .preview-section {
+          margin-top: 1.5rem;
+          display: flex;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .preview-item {
+          flex: 1;
+          min-width: 200px;
+        }
+
+        .preview-item h6 {
+          color: #ff7a00;
+          font-size: 0.8rem;
+          margin-bottom: 0.5rem;
+        }
+
+        /* Interview Grid */
+        .interview-grid {
+          display: grid;
+          grid-template-columns: 1fr 320px;
+          gap: 1.5rem;
+          height: calc(100vh - 140px);
+        }
+
+        .interview-left {
+          overflow-y: auto;
+        }
+
+        .interview-right {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 16px;
+          padding: 1rem;
+          overflow-y: auto;
+        }
+
+        /* Question Container */
+        .question-container-custom {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .question-header-custom {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+
+        .progress-area {
+          flex: 1;
+        }
+
+        .question-count {
+          color: #ff7a00;
+          font-size: 0.85rem;
+          display: block;
+          margin-bottom: 0.25rem;
+        }
+
+        .progress-bar-custom {
+          height: 6px;
+          background: #2c2c2c;
+        }
+
+        .progress-bar-custom .progress-bar {
+          background: linear-gradient(90deg, #ff7a00 0%, #ff944d 100%);
+        }
+
+        .selected-topics {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .topic-tag-custom {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.75rem;
+        }
+
+        /* Question Card */
+        .question-card-custom {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 16px;
+          padding: 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .question-text-custom {
+          color: #ffffff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          line-height: 1.5;
+          margin-bottom: 1.5rem;
+        }
+
+        .answer-section-custom label {
+          color: #ff7a00;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .answer-textarea-custom {
+          width: 100%;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          padding: 1rem;
+          color: #e5e5e5;
+          resize: vertical;
+        }
+
+        .answer-textarea-custom:focus {
+          outline: none;
+          border-color: #ff7a00;
+        }
+
+        .interim-line-custom {
+          margin-top: 0.5rem;
+          color: #8a8a8a;
+          font-size: 0.85rem;
+        }
+
+        .helper-text {
+          margin-top: 0.5rem;
+          font-size: 0.7rem;
+          color: #8a8a8a;
+        }
+
+        .audio-controls-custom {
+          margin-top: 1rem;
+        }
+
+        .record-btn-custom, .stop-record-btn-custom {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .record-btn-custom {
+          background: rgba(255, 122, 0, 0.2);
+          border: 1px solid #ff7a00;
+          color: #ff7a00;
+        }
+
+        .record-btn-custom:hover:not(:disabled) {
+          background: #ff7a00;
+          color: #000000;
+        }
+
+        .stop-record-btn-custom {
+          background: rgba(220, 53, 69, 0.2);
+          border: 1px solid #dc3545;
+          color: #dc3545;
+        }
+
+        .stop-record-btn-custom:hover:not(:disabled) {
+          background: #dc3545;
+          color: #ffffff;
+        }
+
+        /* Navigation Controls */
+        .nav-controls-custom {
+          display: flex;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-top: 1rem;
+        }
+
+        .nav-btn {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          background: #2c2c2c;
+          border: none;
+          color: #e5e5e5;
+          display: inline-flex;
+          align-items: center;
+          transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+          background: #3a3a3a;
+        }
+
+        .nav-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .review-btn-custom {
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          color: #000000;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        /* Video Panel */
+        .video-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .video-section-custom h4 {
+          color: #ff7a00;
+          font-size: 0.9rem;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+        }
+
+        .video-preview-custom {
+          background: #000000;
+          border-radius: 8px;
+          overflow: hidden;
+          aspect-ratio: 16/9;
+          position: relative;
+        }
+
+        .video-element {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .video-placeholder-custom {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #0a0a0a;
+          color: #8a8a8a;
+        }
+
+        .camera-preview {
+          aspect-ratio: 4/3;
+        }
+
+        .recording-status-custom {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem;
+          background: #000000;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          color: #8a8a8a;
+        }
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #dc3545;
+        }
+
+        .status-dot.active {
+          background: #28a745;
+          animation: pulse 1.5s infinite;
+        }
+
+        .timer-panel-custom {
+          background: #000000;
+          border: 1px solid #ff7a00;
+          border-radius: 8px;
+          padding: 0.75rem;
+          text-align: center;
+        }
+
+        .final-note {
+          color: #ff7a00;
+          font-size: 0.7rem;
+          margin-top: 0.25rem;
+        }
+
+        /* Review Section */
+        .review-section {
+          height: 100%;
+          overflow-y: auto;
+        }
+
+        .review-container {
+          max-width: 900px;
+          margin: 0 auto;
+        }
+
+        .review-header {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .review-header h3 {
+          color: #ffffff;
+          margin-bottom: 0.5rem;
+        }
+
+        .review-header p {
+          color: #8a8a8a;
+        }
+
+        .timer-review-custom {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #0a0a0a;
+          padding: 0.5rem 1rem;
+          border-radius: 8px;
+          margin-top: 1rem;
+        }
+
+        .review-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+          margin-bottom: 2rem;
+        }
+
+        .review-item {
+          background: #0a0a0a;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          padding: 1rem;
+        }
+
+        .review-question {
+          font-weight: 600;
+          color: #ff7a00;
+          margin-bottom: 0.5rem;
+          cursor: pointer;
+        }
+
+        .review-question:hover {
+          text-decoration: underline;
+        }
+
+        .review-answer-custom {
+          background: #000000;
+          padding: 0.75rem;
+          border-radius: 8px;
+          color: #e5e5e5;
+          white-space: pre-wrap;
+        }
+
+        .review-answer-custom.empty {
+          color: #dc3545;
+        }
+
+        .review-actions {
+          display: flex;
+          gap: 1rem;
+          justify-content: center;
+        }
+
+        .back-btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          background: #2c2c2c;
+          border: none;
+          color: #e5e5e5;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .final-submit-btn {
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          border: none;
+          color: #000000;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .final-submit-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .recording-preview-custom {
+          margin-top: 2rem;
+        }
+
+        .session-video {
+          width: 100%;
+          border-radius: 8px;
+          margin-top: 0.5rem;
+        }
+
+        .spinner-icon {
+          animation: spin 1s linear infinite;
+          margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        /* Responsive */
         @media (max-width: 1024px) {
-          .split-screen-container { grid-template-columns: 1fr; }
-          .right-panel { width: 100%; }
+          .interview-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .interview-right {
+            order: 2;
+          }
         }
 
-        .review-answer{ white-space: pre-wrap; background: rgba(255,255,255,.98); color: #111; border: 1px solid rgba(0,0,0,.08); border-radius: 10px; padding: .85rem 1rem; line-height: 1.6; font-size: 1rem; box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); max-height: 260px; overflow: auto; }
-        .review-empty{ color: #dc3545; }
+        @media (max-width: 768px) {
+          .modal-header-custom {
+            padding: 1rem;
+          }
+          
+          .header-content-custom {
+            flex-direction: column;
+            text-align: center;
+          }
+          
+          .modal-body-custom {
+            padding: 1rem;
+          }
+          
+          .topic-card {
+            padding: 1.5rem;
+          }
+          
+          .nav-controls-custom {
+            flex-direction: column;
+          }
+          
+          .nav-btn, .review-btn-custom {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .review-actions {
+            flex-direction: column;
+          }
+          
+          .back-btn, .final-submit-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          
+          .preview-section {
+            flex-direction: column;
+          }
+        }
       `}</style>
     </>
   )
