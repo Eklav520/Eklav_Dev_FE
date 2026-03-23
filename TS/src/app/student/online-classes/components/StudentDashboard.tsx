@@ -2124,13 +2124,18 @@ const StudentDashboard: React.FC = () => {
           padding: 1.25rem;
         }
 
-        .section-title {
-          color: #fff;
-          margin-bottom: 1rem;
-          display: flex;
-          align-items: center;
-          font-size: 1rem;
-        }
+      .section-title {
+        display: flex;
+        align-items: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #fffefe; /* Highlight color */
+
+        margin-bottom: 1rem;
+        padding-bottom: 8px;
+
+        border-bottom: 2px solid rgba(255, 122, 0, 0.5);
+      }
 
         .instructor-header {
           display: flex;
