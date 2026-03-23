@@ -75,6 +75,7 @@ const EnglishVoicePractice: React.FC = () => {
 
   // 🔐 TTS TURN CONTROL
   const ttsCountRef = useRef(0)
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
 
   const fetchSpeakingHistory = async () => {
     if (!token) return
@@ -109,6 +110,17 @@ const EnglishVoicePractice: React.FC = () => {
       setLoadingHistory(false)
     }
   }
+
+  useEffect(() => {
+    const loadVoices = () => {
+      const v = speechSynthesis.getVoices()
+      if (v.length) setVoices(v)
+    }
+
+    loadVoices()
+
+    speechSynthesis.onvoiceschanged = loadVoices
+  }, [])
 
   const clearSilenceTimer = () => {
     if (silenceTimerRef.current) {
@@ -172,6 +184,18 @@ const EnglishVoicePractice: React.FC = () => {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
+
+  const fixSpeechText = async (text: string) => {
+    try {
+      const res = await axios.post(`${baseURL}/api/english/fix-speech`, {
+        text
+      })
+      return res.data.corrected || text
+    } catch {
+      return text
+    }
+  }
+
   /* ===================== MIC CONTROL ===================== */
   const startListening = () => {
     if (!sessionActiveRef.current || ttsCountRef.current > 0) return
@@ -184,9 +208,10 @@ const EnglishVoicePractice: React.FC = () => {
     } catch { }
 
     const rec = new SR()
-    rec.lang = 'en-US'
+    rec.lang = 'en-IN' // Indian English for better recognition of Indian accents
     rec.continuous = true
     rec.interimResults = true
+    rec.maxAlternatives = 1
 
     rec.onstart = () => {
       setIsListening(true)
@@ -202,7 +227,17 @@ const EnglishVoicePractice: React.FC = () => {
       let final = ''
 
       for (let i = 0; i < e.results.length; i++) {
-        const txt = e.results[i][0].transcript
+        const result = e.results[i][0]
+
+        const txt = result.transcript
+        const confidence = result.confidence || 0.5  // fallback
+
+        // 🔥 Ignore low-confidence speech
+        if (confidence < 0.6) {
+          console.log('Low confidence skipped:', txt)
+          continue
+        }
+
         e.results[i].isFinal ? (final += txt) : (interim += txt)
       }
 
@@ -220,21 +255,27 @@ const EnglishVoicePractice: React.FC = () => {
         speechPauseTimerRef.current = setTimeout(async () => {
 
           if (!sessionActiveRef.current) return
-
           if (text === lastUserRef.current) return
+
           lastUserRef.current = text
 
           setLiveSpeech('')
-          setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
 
+          // 🔥 CRITICAL FIX
+          clearSilenceTimer()   // ⛔ STOP timer before API
+
+          setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
           transcriptRef.current += `You: ${text}\n`
 
-          await sendToRob(text)
+          const cleanText = await fixSpeechText(text)
+          await sendToRob(cleanText)
 
-        }, 1800) // wait 1.8 seconds for user continuation
+          // ❌ DO NOT restart timer here
+
+        }, 2500)
       }
 
-      startSilenceTimer()
+      //startSilenceTimer()
     }
 
     rec.onend = () => {
@@ -294,7 +335,32 @@ const EnglishVoicePractice: React.FC = () => {
 
       onTTSStart()
 
-      const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
+      const utter = new SpeechSynthesisUtterance(
+        text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, '')
+      )
+
+      // 🎯 Find voices
+      const femaleVoice = voices.find(v =>
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('zira') ||
+        v.name.toLowerCase().includes('samantha')
+      )
+
+      const maleVoice = voices.find(v =>
+        v.name.toLowerCase().includes('male') ||
+        v.name.toLowerCase().includes('david') ||
+        v.name.toLowerCase().includes('alex')
+      )
+
+      // 🔥 Alternate voice each time (opposite feel)
+      if (ttsCountRef.current % 2 === 0) {
+        utter.voice = femaleVoice || voices[0]
+      } else {
+        utter.voice = maleVoice || voices[0]
+      }
+
+      utter.pitch = 1
+      utter.rate = 1
 
       utter.onend = async () => {
         await waitForTTS()
@@ -454,22 +520,24 @@ const EnglishVoicePractice: React.FC = () => {
                       </span>
                     )}
                   </h5>
-                  {history && (
-                    <p className="mb-0 attempts-text">
+                  <div className="attempts-text">
+                    <div>
                       {isTrialUser ? 'Free Attempts' : 'Monthly Attempts'}:{' '}
                       <strong>
-                        {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
+                        {history
+                          ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}`
+                          : '...'} {/* ✅ keeps height */}
                       </strong>
+                    </div>
 
-                      {isLimitReached && (
-                        <p className="trial-warning mt-1 mb-0 small">
-                          {isTrialUser
-                            ? 'Trial limit reached. Upgrade to continue practicing.'
-                            : 'Monthly limit reached. Try again next month.'}
-                        </p>
-                      )}
-                    </p>
-                  )}
+                    {isLimitReached && (
+                      <div className="trial-warning mt-1 small">
+                        {isTrialUser
+                          ? 'Trial limit reached. Upgrade to continue practicing.'
+                          : 'Monthly limit reached. Try again next month.'}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="d-flex align-items-center stats-container">
                   {history && history.highestScore !== null && (
@@ -1563,6 +1631,13 @@ const EnglishVoicePractice: React.FC = () => {
   font-size: 0.8rem;
   font-weight: 500;
   display: inline-block;
+}
+
+.attempts-text {
+  min-height: 10px;  /* ✅ prevents jump */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
   
