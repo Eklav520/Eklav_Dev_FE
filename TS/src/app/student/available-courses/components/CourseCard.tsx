@@ -1,7 +1,7 @@
 import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Button, Card, CardBody, CardTitle, Modal, Tab, Tabs, ProgressBar, CardHeader, Row, Col } from 'react-bootstrap'
+import { Badge, Button, Card, CardBody, CardTitle, Modal, Tab, Tabs, ProgressBar, CardHeader, Row, Col, Spinner, Toast, ToastContainer } from 'react-bootstrap'
 import {
   FaHeart,
   FaRegClock,
@@ -66,6 +66,8 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   const isPending = status === 'pending'
   const courseStatus = course?.courseStatus?.toLowerCase()
   const isComingSoon = courseStatus === 'coming-soon'
+  const [enrolling, setEnrolling] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
 
   const canEnroll =
     courseType === 'free'
@@ -173,10 +175,9 @@ const CourseCard = ({ course }: { course: CourseType }) => {
       return alert('You are not allowed to enroll in this course.')
     }
 
-    if (enrolledCourseIds.length >= 5)
-      return alert('You can only enroll in up to 5 courses.')
-
     try {
+      setEnrolling(true)
+
       const response = await fetch(`${baseURL}/enroll`, {
         method: 'POST',
         headers: {
@@ -188,11 +189,18 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
       const data = await response.json()
 
-      if (response.ok)
+      if (response.ok) {
         setEnrolledCourseIds((prev) => [...prev, courseId])
-      else alert('Enroll failed: ' + data.message)
+
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 3000)
+      } else {
+        alert('Enroll failed: ' + data.message)
+      }
     } catch {
       alert('Error enrolling')
+    } finally {
+      setEnrolling(false)
     }
   }
 
@@ -353,6 +361,23 @@ const CourseCard = ({ course }: { course: CourseType }) => {
         </button>
 
         <Modal.Body className="p-0">
+          <ToastContainer
+            position="top-end"
+            className="p-3"
+            style={{ position: 'fixed', zIndex: 99999 }}
+          >
+            <Toast
+              bg="success"
+              show={showSuccess}
+              onClose={() => setShowSuccess(false)}
+              delay={3000}
+              autohide
+            >
+              <Toast.Body className="text-white d-flex align-items-center gap-2">
+                <FaCheck /> Successfully Enrolled
+              </Toast.Body>
+            </Toast>
+          </ToastContainer>
           <div className="cc-modal-wrapper">
             {/* HERO */}
             <div className={`cc-hero ${showHero ? '' : 'no-img'}`}>
@@ -520,18 +545,26 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                                 borderColor: canEnroll ? '#ff7a00' : '#ccc',
                                 color: '#fff',
                               }}
-                              className="w-100 mt-3"
+                              className="w-100 mt-3 d-flex justify-content-center align-items-center gap-2"
                               onClick={() => handleEnroll(_id)}
                               disabled={
                                 enrolledCourseIds.includes(_id) ||
-                                !canEnroll
+                                !canEnroll ||
+                                enrolling
                               }
                             >
-                              {enrolledCourseIds.includes(_id)
-                                ? 'Already Enrolled'
-                                : !canEnroll && courseType === 'paid' && isPending
-                                  ? 'Premium Required'
-                                  : 'Enroll Now'}
+                              {enrolling ? (
+                                <>
+                                  <Spinner animation="border" size="sm" />
+                                  Enrolling...
+                                </>
+                              ) : enrolledCourseIds.includes(_id) ? (
+                                'Already Enrolled'
+                              ) : !canEnroll && courseType === 'paid' && isPending ? (
+                                'Premium Required'
+                              ) : (
+                                'Enroll Now'
+                              )}
                             </Button>
                           </div>
                           {courseFeatures.length > 0 && (
@@ -1009,7 +1042,36 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   cursor: not-allowed !important;
   opacity: 1 !important; /* override bootstrap fade */
 }
+ .cc-success-toast {
+  position: fixed;   /* 🔥 KEY FIX */
+  top: 20px;
+  right: 20px;
+
+  background: #22c55e;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  z-index: 99999;  /* 🔥 above modal */
+}
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
       `}</style>
+
+
     </>
   )
 }

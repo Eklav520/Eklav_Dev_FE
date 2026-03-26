@@ -85,8 +85,8 @@ const About = () => {
   ];
 
   const stats = [
-    { icon: <FaInfinity />, value: "1000+", label: "Courses" },
-    { icon: <FaAward />, value: "50K+", label: "Students" },
+    { icon: <FaInfinity />, value: "250+", label: "Courses" },
+    { icon: <FaAward />, value: "10K+", label: "Students" },
     { icon: <FaChartLine />, value: "95%", label: "Success" }
   ];
 

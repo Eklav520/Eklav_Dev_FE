@@ -218,6 +218,7 @@ const StudentDashboard: React.FC = () => {
   const [enrPageSize, setEnrPageSize] = useState(4) // Reduced from 6 for mobile
   const [imgError, setImgError] = useState(false);
   const [rating, setRating] = useState<number>(0)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'live' | 'upcoming' | 'completed'>('all')
 
   useEffect(() => {
     fetchAvailableClasses()
@@ -587,11 +588,25 @@ const StudentDashboard: React.FC = () => {
     })
   }, [availableClasses, searchTerm])
 
-  // Upcoming / Live
-  const upcomingClasses = useMemo(
-    () => (filteredAvailableClasses ?? []).filter(notNil).filter((cls) => isUpcoming(cls) || isLive(cls)),
-    [filteredAvailableClasses],
-  )
+  // ✅ PLACE HERE (top of component)
+  const getClassStatus = (cls: any) => {
+    const live = isLive(cls)
+    const upcoming = isUpcoming(cls)
+
+    if (live) return "live"
+    if (upcoming) return "upcoming"
+
+    return "completed"
+  }
+
+  // 👇 THEN your useMemo
+  const upcomingClasses = useMemo(() => {
+    let data = (filteredAvailableClasses ?? []).filter(notNil)
+
+    if (statusFilter === "all") return data
+
+    return data.filter((cls) => getClassStatus(cls) === statusFilter)
+  }, [filteredAvailableClasses, statusFilter])
 
   // Available
   const availTotalPages = Math.max(1, Math.ceil(upcomingClasses.length / availPageSize))
@@ -636,6 +651,19 @@ const StudentDashboard: React.FC = () => {
           <div className="header-left">
             <FaGraduationCap className="header-icon me-2" />
             <h1 className="dashboard-title mb-0">Learn With Industry Experts</h1>
+          </div>
+          <div className="status-filter d-flex gap-2 flex-wrap mt-2">
+            {["all", "live", "upcoming", "completed"].map((type) => (
+              <Button
+                key={type}
+                size="sm"
+                variant={statusFilter === type ? "primary" : "outline-secondary"}
+                onClick={() => setStatusFilter(type as any)}
+                className="text-capitalize"
+              >
+                {type}
+              </Button>
+            ))}
           </div>
 
           <div className="header-center">
@@ -698,8 +726,7 @@ const StudentDashboard: React.FC = () => {
                 <Row className="g-3 g-md-4">
                   {pagedUpcoming.map((cls) => {
                     const purchaseClosed = isPurchaseClosed(cls.purchaseLastDate)
-                    const classLive = isLive(cls)
-                    const classUpcoming = !classLive && isUpcoming(cls)
+                    const status = getClassStatus(cls)   // ✅ ADD THIS
                     const alreadyPurchased = enrolledClasses.some(
                       (e) => e._id === cls._id
                     )
@@ -708,26 +735,23 @@ const StudentDashboard: React.FC = () => {
                       <Col key={cls._id} lg={4} md={6} xs={12}>
                         <Card className="class-card premium">
                           <Card.Body>
-
                             <div className="class-header">
                               <div className="class-badges">
                                 <span
-                                  className={`badge status-badge ${purchaseClosed
-                                    ? "completed"
-                                    : classLive
-                                      ? "live"
-                                      : "upcoming"
+                                  className={`badge status-badge ${purchaseClosed ? "completed" : status
                                     }`}
                                 >
                                   {purchaseClosed
                                     ? "DATE CLOSED"
-                                    : classLive
+                                    : status === "live"
                                       ? "LIVE NOW"
-                                      : "UPCOMING"}
+                                      : status === "upcoming"
+                                        ? "UPCOMING"
+                                        : "COMPLETED"}
                                 </span>
                               </div>
 
-                              {classUpcoming && (
+                              {status === "upcoming" && (
                                 <div className="countdown">
                                   <FaClock className="me-1" />
                                   Starts in {getTimeUntilClass(cls)}
@@ -753,7 +777,7 @@ const StudentDashboard: React.FC = () => {
                                 <span>{cls.instructor?.name || "Instructor"}</span>
                               </div>
                             </div>
-                            
+
                             <div className="class-extra-info">
                               {cls.cost && (
                                 <div className="info-item">
@@ -823,6 +847,10 @@ const StudentDashboard: React.FC = () => {
                                 <Button className="action-btn btn-disabled" disabled>
                                   Date Closed
                                 </Button>
+                              ) : status === "completed" ? (
+                                <Button className="action-btn btn-disabled" disabled>
+                                  Completed
+                                </Button>
                               ) : (
                                 <Button
                                   className="action-btn btn-orange"
@@ -843,12 +871,12 @@ const StudentDashboard: React.FC = () => {
                   })}
                 </Row>
               )}
-              
+
               {/* Pagination for Available Classes */}
               {availTotalPages > 1 && (
                 <div className="pagination-container mt-4">
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={() => setAvailPage(p => Math.max(1, p - 1))}
                     disabled={availPage === 1}
                     className="pagination-btn"
@@ -858,8 +886,8 @@ const StudentDashboard: React.FC = () => {
                   <span className="pagination-info">
                     Page {availPage} of {availTotalPages}
                   </span>
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={() => setAvailPage(p => Math.min(availTotalPages, p + 1))}
                     disabled={availPage === availTotalPages}
                     className="pagination-btn"
@@ -884,13 +912,11 @@ const StudentDashboard: React.FC = () => {
               ) : (
                 <Row className="g-3 g-md-4">
                   {pagedEnrolled.filter(notNil).map((cls) => {
-                    const classLive = isLive(cls)
-                    const endDate = safeParseDateTime(cls.startDate, cls.endTime)
-                    const classCompleted = endDate ? endDate < new Date() : false
+                    const status = getClassStatus(cls)   // ✅ ADD THIS
 
                     return (
                       <Col key={cls._id} lg={6} md={6} xs={12}>
-                        <Card className={`enrollment-card ${classLive ? "live" : classCompleted ? "completed" : "upcoming"}`}>
+                        <Card className={`enrollment-card ${status}`}>
                           <Card.Body>
 
                             <h3 className="enrollment-title">{cls.title}</h3>
@@ -908,7 +934,7 @@ const StudentDashboard: React.FC = () => {
                               onClick={() => handleJoinClass(cls._id)}
                               className="join-button btn-orange mt-3 w-100"
                             >
-                              {classLive ? "Join Live Session" : "Join Class"}
+                              {status === 'live' ? "Join Live Session" : "Join Class"}
                             </Button>
 
                           </Card.Body>
@@ -918,12 +944,12 @@ const StudentDashboard: React.FC = () => {
                   })}
                 </Row>
               )}
-              
+
               {/* Pagination for Enrolled Classes */}
               {enrTotalPages > 1 && (
                 <div className="pagination-container mt-4">
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={() => setEnrPage(p => Math.max(1, p - 1))}
                     disabled={enrPage === 1}
                     className="pagination-btn"
@@ -933,8 +959,8 @@ const StudentDashboard: React.FC = () => {
                   <span className="pagination-info">
                     Page {enrPage} of {enrTotalPages}
                   </span>
-                  <Button 
-                    variant="outline-secondary" 
+                  <Button
+                    variant="outline-secondary"
                     onClick={() => setEnrPage(p => Math.min(enrTotalPages, p + 1))}
                     disabled={enrPage === enrTotalPages}
                     className="pagination-btn"
@@ -2524,6 +2550,16 @@ const StudentDashboard: React.FC = () => {
         /* Make column stretch */
         .row > [class*='col-'] {
           display: flex;
+        }
+        .status-filter button {
+          border-radius: 20px;
+          padding: 4px 12px;
+          font-weight: 500;
+        }
+
+        .status-filter .btn-primary {
+          background-color: #ff7a00;
+          border-color: #ff7a00;
         }
       `}</style>
     </>
