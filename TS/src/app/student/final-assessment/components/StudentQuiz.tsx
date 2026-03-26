@@ -13,7 +13,7 @@ type Option = { id?: string; key: string; text: string }
 type QuizQuestion = { id?: string; _id?: string; question: string; options: Option[] }
 
 type Props = {
-  templateId?: string
+  examId: string
   questionCount?: number
   onClose?: () => void
 }
@@ -54,7 +54,7 @@ function normalizeOptions(rawOptions: any[]): Option[] {
   })
 }
 
-const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose }) => {
+const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) => {
   const { user } = useAuthContext()
   const token = user?.token
 
@@ -72,10 +72,9 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('not_submitted')
   const [submissionResponse, setSubmissionResponse] = useState<any | null>(null)
 
-  const [serverTemplateId, setServerTemplateId] = useState<string | null>(null)
-
   const [latestSubmission, setLatestSubmission] = useState<ServerSubmission>(null)
   const statusPollRef = useRef<number | null>(null)
+  const [examStatus, setExamStatus] = useState("upcoming");
 
   // media refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -84,6 +83,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
   const startTimeRef = useRef<number | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null)
+  const displayStreamRef = useRef<MediaStream | null>(null) // Store display stream separately
 
   // Keep answers fresh for autosubmit
   const answersRef = useRef<Record<number, string>>({})
@@ -94,6 +94,9 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
 
   // Pre-captured display stream (to keep fullscreen stable)
   const preDisplayStreamRef = useRef<MediaStream | null>(null)
+  const submissionIdRef = useRef(
+    crypto.randomUUID?.() || Math.random().toString(36).slice(2)
+  )
 
   // ===== Shared Proctor Guard =====
   const guard = useProctorGuard(
@@ -104,40 +107,18 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       captureFullscreenExit: true,
     },
     {
-      onViolation: () => { },
-      onMaxReached: async (count: any, reason: any) => {
+      onViolation: (violationType, count) => {
+        console.log(`Violation detected: ${violationType}, Count: ${count}`);
+        // Optional: Show a toast or notification
+      },
+      onMaxReached: async (count, reason) => {
+        console.log(`Max violations reached: ${count}, Reason: ${reason}`);
         if (!submitLockRef.current && submissionStatus === 'not_submitted') {
           await submitQuiz(true, `Auto-submitted due to proctoring violations (${count}): ${reason}`)
         }
       },
     }
   )
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        if (!token || !templateId) return
-        const res = await fetch(`${baseURL}/api/student/submission-status/${templateId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        if (data?.success && data.hasSubmission && data.submission) {
-          setLatestSubmission(data.submission)
-          if (data.submission.status === 'pending') {
-            setSubmissionStatus('submitted_pending')
-            startStatusPolling(data.submission.templateId || (templateId as string), token)
-          } else {
-            setSubmissionStatus('evaluated')
-          }
-        }
-      } finally {
-        setStatusChecked(true)
-      }
-    }
-    fetchStatus()
-    return () => stopStatusPolling()
-  }, [templateId, token])
 
   useEffect(() => {
     return () => cleanupRecording()
@@ -174,70 +155,49 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
     return key
   }
 
-  const startStatusPolling = (tplId: string, tok: string) => {
-    stopStatusPolling()
-    statusPollRef.current = window.setInterval(async () => {
-      try {
-        const r = await fetch(`${baseURL}/api/student/submission-status/${tplId}`, {
-          headers: { Authorization: `Bearer ${tok}` },
-        })
-        if (!r.ok) return
-        const d = await r.json()
-        if (d?.success && d.hasSubmission && d.submission) {
-          setLatestSubmission(d.submission)
-          if (d.submission.status !== 'pending') {
-            setSubmissionStatus('evaluated')
-            stopStatusPolling()
-          }
-        }
-      } catch { }
-    }, 15000) as unknown as number
-  }
-  const stopStatusPolling = () => {
-    if (statusPollRef.current) {
-      window.clearInterval(statusPollRef.current)
-      statusPollRef.current = null
-    }
-  }
-
-  const open = () => {
+  const open = (stream?: MediaStream) => {
     setShow(true)
     setError(null)
     setSubmissionStatus('not_submitted')
     setSubmissionResponse(null)
-    setServerTemplateId(null)
     setAnswers({})
     answersRef.current = {}
     submitLockRef.current = false
-    guard.reset() // resets violations + disarms
-    initQuiz()
+    guard.reset()
+
+    initQuiz(stream) // ✅ pass here
   }
 
-  const initQuiz = async () => {
+  const initQuiz = async (capturedStream?: MediaStream) => {
     setLoading(true)
     setError(null)
     try {
       if (!token) throw new Error('You must be logged in to start the quiz.')
 
-      const res = await fetch(`${baseURL}/api/student/quiz-template/${templateId || 'default'}`, {
-        headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
+      if (!examId) {
+        throw new Error("Exam not loaded yet");
+      }
+
+      const res = await fetch(`${baseURL}/api/assessment/round/${examId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       })
+
       if (res.status === 401) throw new Error('Authentication required. Please log in again.')
       if (!res.ok) {
         const b = await res.json().catch(() => null)
         throw new Error(b?.message || `Failed to fetch quiz questions (${res.status})`)
       }
       const json = await res.json()
-      if (!json?.templateId || !Array.isArray(json?.questions)) {
-        throw new Error('Invalid quiz template response from server')
-      }
+      const questionsData = json?.data || json?.questions || [];
 
-      setServerTemplateId(String(json.templateId))
-      const pool: QuizQuestion[] = json.questions.map((q: any) => ({
-        id: q?._id || q?.id,
-        _id: q?._id || q?.id,
-        question: String(q?.question ?? '').trim() || '(no question text)',
-        options: normalizeOptions(q?.options || []),
+      if (!Array.isArray(questionsData)) {
+        throw new Error("Invalid response")
+      }
+      const pool: QuizQuestion[] = questionsData.map((q: any) => ({
+        id: q._id,
+        _id: q._id,
+        question: q.text || q.question,
+        options: normalizeOptions(q.options),
       }))
 
       if (pool.length === 0) {
@@ -253,11 +213,12 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       answersRef.current = {}
 
       const urlDur = Number(new URLSearchParams(location.search).get('dur'))
-      const dur = Number.isFinite(urlDur) && urlDur > 0 ? urlDur : Number(json?.durationSeconds ?? 20 * 60)
+      const dur = json.timeLimit || json.timeSeconds || 1200;
       setDurationSeconds(dur)
       setTimeLeft(dur)
 
-      await startRecording(dur, preDisplayStreamRef.current || undefined)
+      // Start recording with the captured display stream
+      await startRecording(dur, capturedStream || undefined)
     } catch (err: any) {
       console.error('initQuiz error', err)
       setError(String(err?.message || err || 'Could not start quiz'))
@@ -304,8 +265,11 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         cameraStream = null
       }
 
-      const displayStream =
-        preCapturedDisplay || await (navigator.mediaDevices as any).getDisplayMedia({ video: { cursor: 'always' }, audio: false })
+      let displayStream: MediaStream | null = preCapturedDisplay ?? null;
+
+      if (!displayStream) {
+        throw new Error("Screen stream not available. Please restart quiz.");
+      }
 
       const combined = new MediaStream()
       displayStream.getVideoTracks().forEach((t: MediaStreamTrack) => combined.addTrack(t))
@@ -346,12 +310,14 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         }
       }, 250) as unknown as number
 
+      // Arm the proctor guard after recording starts
       setTimeout(() => guard.arm(), 1500)
     } catch (err: any) {
       console.error('Recording failed', err)
       const msg = String(err?.message || err || 'Screen recording permission denied or not available.')
       setMediaError(msg)
       setRecordingState('idle')
+      throw err; // Re-throw to handle in initQuiz
     }
   }
 
@@ -368,6 +334,7 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         })
         combinedStreamRef.current = null
       }
+      // Don't stop display stream here as it might be needed
       if (timerIntervalRef.current) {
         window.clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
@@ -424,13 +391,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
 
     try {
       if (!token) throw new Error('Authentication required. Please log in and try again.')
-      if (!serverTemplateId) {
-        setError('Template not ready yet. Please wait a moment and try again.')
-        setSubmissionStatus('not_submitted')
-        setRecordingState('recording')
-        submitLockRef.current = false
-        return
-      }
 
       if (timerIntervalRef.current) {
         window.clearInterval(timerIntervalRef.current)
@@ -464,25 +424,22 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       })
 
       const timeTaken = startTimeRef.current ? Math.floor((Date.now() - startTimeRef.current) / 1000) : 0
-
-      const payload = {
-        templateId: serverTemplateId,
-        clientSubmissionId: submissionNonceRef.current,
-        answers: payloadAnswers,
-        timeTakenSeconds: timeTaken,
-        durationSeconds: durationSeconds ?? 0,
-        meta: {
-          clientRecordedAt: new Date().toISOString(),
-          autoSubmitted: !!auto,
-          proctorReason: reason || null,
-          proctorViolations: guard.violationCount,
+      const uploadRes = await fetch(`${baseURL}/api/assessment/complete-round`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      }
+        body: JSON.stringify({
+          examId,
+          roundType: "mcq",
 
-      const uploadRes = await fetch(`${baseURL}/api/student/submit-quiz`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
+          // 🔥 ADD THIS LINE
+          clientSubmissionId: submissionIdRef.current,
+
+          answers: payloadAnswers,
+          timeTakenSeconds: timeTaken,
+        })
       })
 
       if (uploadRes.status === 401) {
@@ -503,8 +460,9 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
       try {
         const blob = getRecordingBlob()
         if (blob) {
-          const recordingUrl = await uploadQuizRecordingToS3(blob, jres.submissionId)
-          setRecordingState('uploaded')
+          const mongoSubmissionId = jres.submissionId;
+
+          const recordingUrl = await uploadQuizRecordingToS3(blob, mongoSubmissionId);
           await fetch(`${baseURL}/api/student/quiz-recording-linked`, {
             method: 'POST',
             headers: {
@@ -512,10 +470,11 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              submissionId: jres.submissionId,
+              submissionId: mongoSubmissionId,
               s3Key: recordingUrl,
+              roundType: "mcq",
             }),
-          })
+          });
         }
       } catch (e) {
         console.warn('Recording upload error', e)
@@ -529,7 +488,6 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         submittedAt: new Date().toISOString(),
         evaluatedAt: null,
       })
-      startStatusPolling(serverTemplateId, token)
     } catch (err: any) {
       console.error('submit error', err)
       setError(err.message || 'Submission failed')
@@ -550,58 +508,45 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
 
   const handleCloseModal = () => {
     if (submissionStatus === 'submitted_pending' || submissionStatus === 'evaluated') {
+      // Clean up display stream when closing
+      if (displayStreamRef.current) {
+        displayStreamRef.current.getTracks().forEach(track => track.stop());
+        displayStreamRef.current = null;
+      }
       setShow(false)
       if (onClose) onClose()
     }
   }
 
   const handleStart = async () => {
+    console.log("START CLICKED"); // 👈 add this
     try {
-      preDisplayStreamRef.current = await (navigator.mediaDevices as any).getDisplayMedia({
-        video: { cursor: 'always' },
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
         audio: false,
-      })
-      await guard.enterFullscreenFromUserGesture()
-      open()
+      });
+
+      console.log("SCREEN SHARE SUCCESS"); // 👈 add
+
+      displayStreamRef.current = displayStream;
+      preDisplayStreamRef.current = displayStream;
+
+      await guard.enterFullscreenFromUserGesture();
+
+      open(displayStream);
     } catch (e) {
-      console.warn('Start cancelled or failed:', e)
-      preDisplayStreamRef.current = null
+      console.warn('Start cancelled or failed:', e);
     }
-  }
+  };
 
   const startButton = (
     <Button onClick={handleStart} disabled={show || loading} className="start-quiz-btn">
-      <FaVideo className="me-2" /> Start Quiz (Enter Fullscreen)
+      <FaVideo className="me-2" /> Start Quiz (Share Screen & Enter Fullscreen)
     </Button>
-  )
-
-  const statusCard = latestSubmission && (
-    <Card className="submission-status-card">
-      <Card.Body>
-        <div className="status-card-content">
-          <div>
-            <div className="status-title">Your latest submission</div>
-            <div className="status-details">
-              <strong>Status:</strong> {latestSubmission.status === 'pending' ? 'Pending evaluation' : latestSubmission.status}
-              {latestSubmission.score != null && (
-                <> · <strong>Score:</strong> {latestSubmission.score}</>
-              )}
-              {latestSubmission.remarks && (
-                <> · <strong>Remarks:</strong> {latestSubmission.remarks}</>
-              )}
-            </div>
-          </div>
-          <Button variant="outline-light" onClick={() => setShow(true)}>
-            View Details
-          </Button>
-        </div>
-      </Card.Body>
-    </Card>
   )
 
   return (
     <>
-      {latestSubmission ? statusCard : !show && startButton}
 
       <ProctorLockModal
         show={guard.locked && show && submissionStatus === 'not_submitted'}
@@ -612,6 +557,11 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
         onReenterFullscreen={guard.enterFullscreenFromUserGesture}
         onAcknowledge={guard.acknowledge}
       />
+      {!show && (
+        <Button onClick={handleStart} className="start-quiz-btn">
+          Start Quiz
+        </Button>
+      )}
 
       <Modal show={show} onHide={handleCloseModal} fullscreen backdrop="static" keyboard={false} className="quiz-modal">
         <Modal.Header className="quiz-modal-header">
@@ -778,9 +728,9 @@ const StudentQuiz: React.FC<Props> = ({ templateId, questionCount = 20, onClose 
                   {latestSubmission
                     ? latestSubmission.status === 'pending' ? '✅ Pending Evaluation' : 'Evaluated'
                     : (submissionStatus === 'not_submitted' && 'Not Submitted') ||
-                      (submissionStatus === 'submitting' && 'Submitting...') ||
-                      (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
-                      (submissionStatus === 'evaluated' && 'Evaluated')}
+                    (submissionStatus === 'submitting' && 'Submitting...') ||
+                    (submissionStatus === 'submitted_pending' && '✅ Pending Evaluation') ||
+                    (submissionStatus === 'evaluated' && 'Evaluated')}
                 </div>
               </div>
 

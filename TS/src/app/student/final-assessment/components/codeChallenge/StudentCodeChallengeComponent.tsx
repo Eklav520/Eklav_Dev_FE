@@ -69,11 +69,23 @@ type WebcamPosition = { right: number; bottom: number }
 
 // --- constants ---
 const LANGUAGES: Language[] = [
-  { id: 'javascript', name: 'JavaScript (Node)' },
+  { id: 'javascript', name: 'JavaScript (Node.js)' },
+  { id: 'java', name: 'Java' },
+  { id: 'cpp', name: 'C++ (GCC)' },
+  { id: 'c', name: 'C (GCC)' },
   { id: 'python', name: 'Python 3' },
-  { id: 'java', name: 'Java 11' },
-  { id: 'cpp', name: 'C++ (g++)' },
-]
+  { id: 'python2', name: 'Python 2' },
+  { id: 'csharp', name: 'C# (.NET)' },
+  { id: 'php', name: 'PHP' },
+  { id: 'ruby', name: 'Ruby' },
+  { id: 'swift', name: 'Swift' },
+  { id: 'kotlin', name: 'Kotlin' },
+  { id: 'go', name: 'Go' },
+  { id: 'rust', name: 'Rust' },
+  { id: 'typescript', name: 'TypeScript' },
+  { id: 'bash', name: 'Bash' },
+  { id: 'assembly', name: 'Assembly (NASM)' },
+];
 
 // --- utils: capability checks ---
 function isCanvasCaptureSupported() {
@@ -84,39 +96,67 @@ function isMediaRecorderSupported() {
 }
 
 // --- simple challenge loader hook ---
-function useChallengeLoader(baseURL: string, eventId: string) {
+function useChallengeLoader(baseURL: string, eventId: any) {
   const [challenge, setChallenge] = useState<Challenge | null>(null)
+  const { user } = useAuthContext();
+  const token = user?.token;
+
   useEffect(() => {
-    let mounted = true
-      ; (async () => {
-        try {
-          const res = await fetch(`${baseURL}/api/events/${eventId}/codechallenges`)
-          if (!res.ok) throw new Error(`Fetch failed ${res.status}`)
-          const arr: Challenge[] = await res.json()
-          if (!mounted) return
-          if (arr && arr.length > 0) setChallenge(arr[Math.floor(Math.random() * arr.length)])
-          else
-            setChallenge({
-              _id: 'demo-1',
-              title: 'Demo challenge',
-              description: 'Write a function that reverses a string.',
-              timeLimitSeconds: 15 * 60,
-            })
-        } catch (e) {
-          console.warn('fetch failed', e)
-          if (!mounted) return
+    let mounted = true;
+    console.log("EVENT ID:", eventId);
+
+    (async () => {
+      try {
+        if (!eventId) return; // ✅ prevent empty API call
+
+        const res = await fetch(
+          `${baseURL}/api/events/${eventId}/codechallenges`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
+
+        const data = await res.json();
+        console.log("API RESPONSE:", data);
+
+        const arr: Challenge[] = data?.challenges || []; // ✅ FIX
+        console.log("CHALLENGES ARRAY:", arr);
+
+        if (!mounted) return;
+
+        if (arr.length > 0) {
+          setChallenge(arr[Math.floor(Math.random() * arr.length)]);
+        } else {
           setChallenge({
-            _id: 'demo-1',
-            title: 'Demo challenge',
-            description: 'Write a function that reverses a string.',
+            _id: "demo-1",
+            title: "Demo challenge",
+            description: "Write a function that reverses a string.",
             timeLimitSeconds: 15 * 60,
-          })
+          });
         }
-      })()
+      } catch (e) {
+        console.warn("fetch failed", e);
+
+        if (!mounted) return;
+
+        setChallenge({
+          _id: "demo-1",
+          title: "Demo challenge",
+          description: "Write a function that reverses a string.",
+          timeLimitSeconds: 15 * 60,
+        });
+      }
+    })();
+
     return () => {
-      mounted = false
-    }
-  }, [baseURL, eventId])
+      mounted = false;
+    };
+  }, [baseURL, eventId, token]);
+
   return { challenge }
 }
 
@@ -418,6 +458,52 @@ const ChallengeDescription: React.FC<{ challenge: Challenge }> = ({ challenge })
   )
 }
 
+const DEFAULT_CODE: Record<string, string> = {
+  javascript: `function main(input) {
+  console.log(input);
+}`,
+
+  python: `def main():
+    print(input())
+
+if __name__ == "__main__":
+    main()`,
+
+  cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    string s;
+    cin >> s;
+    cout << s;
+}`,
+
+  java: `import java.util.*;
+
+public class Main {
+  public static void main(String[] args) {
+    Scanner sc = new Scanner(System.in);
+    String s = sc.next();
+    System.out.println(s);
+  }
+}`,
+
+  c: `#include <stdio.h>
+
+int main() {
+    char s[100];
+    scanf("%s", s);
+    printf("%s", s);
+}`,
+
+  assembly: `section .text
+global _start
+
+_start:
+    mov eax, 1
+    int 0x80`,
+};
+
 const LanguageSelector: React.FC<{ language: string; onLanguageChange: (l: string) => void }> = ({ language, onLanguageChange }) => (
   <div style={{ padding: 20, position: 'relative' }}>
     <label style={{ display: 'block', marginBottom: 8, color: '#cbd5e1' }}>Select Language</label>
@@ -552,10 +638,22 @@ const CodeEditor: React.FC<{
   const getMonacoLanguage = (lang: string) => {
     switch (lang) {
       case 'javascript': return 'javascript';
+      case 'typescript': return 'typescript';
       case 'python': return 'python';
+      case 'python2': return 'python';
       case 'java': return 'java';
       case 'cpp': return 'cpp';
-      default: return 'javascript';
+      case 'c': return 'c';
+      case 'csharp': return 'csharp';
+      case 'go': return 'go';
+      case 'rust': return 'rust';
+      case 'php': return 'php';
+      case 'ruby': return 'ruby';
+      case 'swift': return 'swift';
+      case 'kotlin': return 'kotlin';
+      case 'bash': return 'shell';
+      case 'assembly': return 'asm';
+      default: return 'plaintext';
     }
   };
 
@@ -2024,10 +2122,9 @@ const CollapsibleOutputPanel: React.FC<{
 }
 
 /* ---------- Main component ---------- */
-/* ---------- Main component ---------- */
 export default function StudentCodeChallengeComponent({
   baseURL = (import.meta && (import.meta as any).env?.VITE_API_BASE_URL) || '',
-  eventId = 'demoEventId',
+  eventId,
   startOpen = false,
   hidePreview = false,
   onClose,
@@ -3066,7 +3163,11 @@ export default function StudentCodeChallengeComponent({
                 <div style={{ position: 'relative', minWidth: 150 }}>
                   <select
                     value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
+                    onChange={(e) => {
+                      const selectedLang = e.target.value;
+                      setLanguage(selectedLang);
+                      setCode(DEFAULT_CODE[selectedLang] || "");
+                    }}
                     style={{
                       width: '100%',
                       padding: '8px 16px 8px 40px',

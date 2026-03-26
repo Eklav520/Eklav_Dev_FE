@@ -9,6 +9,7 @@ import {
   Row,
   Alert,
 } from "react-bootstrap";
+import { useAuthContext } from "@/context/useAuthContext";
 
 type MatchType = "trimmed" | "exact" | "regex";
 
@@ -34,13 +35,11 @@ type Message = {
 };
 
 type Props = {
-  eventId?: string;
   onCreated?: (challenge: any) => void;
 };
 
 export default function AdminCreateProblem({
-  eventId = "demoEventId",
-  onCreated = () => {},
+  onCreated = () => { },
 }: Props) {
   const [title, setTitle] = useState<string>("");
   const [slug, setSlug] = useState<string>("");
@@ -48,6 +47,7 @@ export default function AdminCreateProblem({
   const [timeLimitMinutes, setTimeLimitMinutes] = useState<number>(60);
   const [maxScore, setMaxScore] = useState<number>(100);
   const baseURL = import.meta.env.VITE_API_BASE_URL;
+  const { user } = useAuthContext()
 
   const [positiveTests, setPositiveTests] = useState<TestCase[]>([]);
   const [negativeTests, setNegativeTests] = useState<TestCase[]>([]);
@@ -56,6 +56,30 @@ export default function AdminCreateProblem({
   const [loading, setLoading] = useState<boolean>(false);
   const [message, setMessage] = useState<Message | null>(null);
   const [showJsonPreview, setShowJsonPreview] = useState<boolean>(false);
+  const [examId, setExamId] = useState<string>("");
+  const [exams, setExams] = useState<any[]>([]);
+
+
+  useEffect(() => {
+  const fetchExams = async () => {
+    try {
+      const res = await axios.get(
+        `${baseURL}/api/assessment/admin/exams`,
+        {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
+      );
+
+      setExams(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch exams", err);
+    }
+  };
+
+  fetchExams();
+}, []);
 
   // auto-generate slug
   useEffect(() => {
@@ -123,6 +147,11 @@ export default function AdminCreateProblem({
     e?.preventDefault();
     setMessage(null);
 
+    if (!examId) {
+      setMessage({ type: "error", text: "Invalid examId" });
+      return;
+    }
+
     const v = validateForm();
     if (v) {
       setMessage({ type: "error", text: v });
@@ -142,12 +171,20 @@ export default function AdminCreateProblem({
     };
 
     setLoading(true);
+
     try {
-      const url = `${baseURL}/api/events/${eventId}/codechallenges`;
-      const res = await axios.post(url, payload);
+      const url = `${baseURL}/api/events/${examId}/codechallenges`; // ✅ FIXED
+
+      const res = await axios.post(url, payload, {
+        headers: {
+          Authorization: `Bearer ${user?.token}`,
+        },
+      });
+
       setMessage({ type: "success", text: "Challenge created successfully." });
       setLoading(false);
       onCreated && onCreated(res.data);
+
     } catch (err: any) {
       setLoading(false);
       console.error(err);
@@ -189,6 +226,23 @@ export default function AdminCreateProblem({
           {message.text}
         </Alert>
       )}
+
+      <Form.Group className="mb-3">
+  <Form.Label>Select Exam</Form.Label>
+  <Form.Control
+    as="select"
+    value={examId}
+    onChange={(e) => setExamId(e.target.value)}
+  >
+    <option value="">Select Exam</option>
+
+    {exams.map((exam: any) => (
+      <option key={exam._id} value={exam._id}>
+        {exam.title}
+      </option>
+    ))}
+  </Form.Control>
+</Form.Group>
 
       <Form onSubmit={handleSubmit}>
         <Row className="mb-3">

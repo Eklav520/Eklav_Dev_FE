@@ -23,50 +23,44 @@ const FAILED: RoundStatus = 'failed'
 // states we should not clobber (server/user-driven)
 const PERSIST_STATUSES: readonly RoundStatus[] = [PENDING, IN_PROGRESS, PASSED, FAILED] as const
 
-const initialRounds: { key: RoundKey; label: string; status: RoundStatus }[] = [
-  { key: 'quiz', label: 'Quiz', status: READY },
-  { key: 'code', label: 'Code Challenge', status: LOCKED },
-  { key: 'tr', label: 'Technical Round (TR)', status: LOCKED },
-  { key: 'hr', label: 'HR Round', status: LOCKED },
+const initialRounds: { key: RoundKey; label: string; status: RoundStatus, approvalStatus: string }[] = [
+  { key: 'quiz', label: 'Quiz', status: READY, approvalStatus: "pending" },
+  { key: 'code', label: 'Code Challenge', status: LOCKED, approvalStatus: "pending" },
+  { key: 'tr', label: 'Technical Round (TR)', status: LOCKED, approvalStatus: "pending" },
+  { key: 'hr', label: 'HR Round', status: LOCKED, approvalStatus: "pending" },
 ]
 
-const statusBadge = (s: RoundStatus) => {
+const statusBadge = (s: RoundStatus, approvalStatus?: string) => {
   switch (s) {
     case READY:
       return <Badge style={{ backgroundColor: '#ff7a00' }}>
         Ready
       </Badge>
+
     case IN_PROGRESS:
       return <Badge style={{ backgroundColor: '#ff9a3c' }}>
         In Progress
       </Badge>
+
     case PENDING:
-      return <Badge bg="warning">Pending evaluation</Badge>
+      return (
+        <Badge bg="warning" text="dark">
+          {approvalStatus === "approved"
+            ? "Evaluated"
+            : "Pending evaluation"}
+        </Badge>
+      )
+
     case PASSED:
       return <Badge bg="success">Passed</Badge>
+
     case FAILED:
       return <Badge bg="danger">Failed</Badge>
+
     case LOCKED:
     default:
       return <Badge bg="secondary">Locked</Badge>
   }
-}
-
-/** QUIZ -> CODE unlocks (preserve code state if already active/terminal) */
-function deriveWithQuizStatus(
-  prev: { key: RoundKey; label: string; status: RoundStatus }[],
-  quizStatus: RoundStatus,
-): { key: RoundKey; label: string; status: RoundStatus }[] {
-  return prev.map((r) => {
-    if (r.key === 'quiz') return { ...r, status: quizStatus }
-    if (r.key === 'code') {
-      const prevStatus = r.status
-      if (PERSIST_STATUSES.includes(prevStatus)) return r
-      if (prevStatus === LOCKED && quizStatus === PASSED) return { ...r, status: READY }
-      return r
-    }
-    return r
-  })
 }
 
 /** CODE -> TR unlocks (preserve TR state if already active/terminal) */
@@ -194,10 +188,6 @@ export default function StudentFinalAssessmentPage() {
   const studentId = (user as any)?._id ?? (user as any)?.id ?? undefined
   const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
   const templateId = 'default'
-  const ASSESSMENT_DAY = 20
-  const START_HOUR = 19   // 10 AM
-  const END_HOUR = 20
-  const END_MINUTE = 30   // 1 PM
   const status = user?.status?.toLowerCase()
   // TEMP: disable starting assessment (enable later)
   //const ENABLE_START_BUTTON = false
@@ -226,6 +216,111 @@ export default function StudentFinalAssessmentPage() {
   const [pendingRound, setPendingRound] = useState<RoundKey | null>(null)
   const [warningConfirmed, setWarningConfirmed] = useState(false)
   const [trialUsed, setTrialUsed] = useState(false)
+  const [examId, setExamId] = useState<string>("");
+  const [examInfo, setExamInfo] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const now = currentTime;
+  const [examStatus, setExamStatus] = useState("upcoming");
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [autoRefreshing, setAutoRefreshing] = useState(false);
+
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // every second
+
+    return () => clearInterval(interval);
+  }, []);
+
+
+  useEffect(() => {
+    if (!examInfo) return;
+
+    const startDate = new Date(examInfo.startDate);
+    const endDate = new Date(examInfo.endDate);
+
+    const [sh, sm] = examInfo.startTime.split(":").map(Number);
+    const [eh, em] = examInfo.endTime.split(":").map(Number);
+
+    const start = new Date(startDate);
+    start.setHours(sh, sm, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(eh, em, 0, 0);
+
+    const nowTime = currentTime.getTime();
+
+    // ✅ EXISTING STATUS LOGIC
+    if (nowTime >= start.getTime() && nowTime <= end.getTime()) {
+      setExamStatus("active");
+    } else if (nowTime > end.getTime()) {
+      setExamStatus("expired");
+    } else {
+      setExamStatus("upcoming");
+    }
+
+    // 🔥 NEW: countdown calculation
+    const diff = Math.floor((start.getTime() - nowTime) / 1000);
+    setTimeLeft(diff);
+
+    // 🔥 NEW: enable auto refresh if < 20 sec
+    if (diff > 0 && diff <= 20) {
+      setAutoRefreshing(true);
+    } else {
+      setAutoRefreshing(false);
+    }
+
+  }, [examInfo, currentTime]);
+
+
+  useEffect(() => {
+    if (!autoRefreshing) return;
+
+    const interval = setInterval(() => {
+      console.log("⏳ Auto refreshing exam status...");
+
+      // ✅ ONLY refresh status, NOT examId
+      startAssessment();
+
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [autoRefreshing]);
+
+  useEffect(() => {
+    const fetchExam = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assessment/current-exam`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = await res.json();
+
+        // ✅ ONLY set once (IMPORTANT)
+        if (data?.examId && !examId) {
+          setExamId(data.examId);
+
+          if (data?.exam?.rounds?.length > 0) {
+            const round = data.exam.rounds[0];
+
+            setExamInfo({
+              title: data.exam.title,
+              startDate: round.startDate,
+              endDate: round.endDate,
+              startTime: round.startTime,
+              endTime: round.endTime,
+            });
+          }
+        }
+
+      } catch (err) {
+        console.error("Failed to fetch exam", err);
+      }
+    };
+
+    if (token) fetchExam();
+  }, [token]); // ❗ don't add examId here
 
   const labelFor = (k: RoundKey) => (rounds.find((r) => r.key === k)?.label) || k.toUpperCase()
   const coerceScore = (sub: any) => {
@@ -235,19 +330,70 @@ export default function StudentFinalAssessmentPage() {
   }
   const coerceFeedback = (sub: any) => sub?.feedback ?? sub?.comments ?? sub?.notes ?? ''
 
-  const isAssessmentWindow = () => {
-    const now = new Date()
+  const startAssessment = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/assessment/start/${examId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const currentDay = now.getDate()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
+      const data = await res.json();
+      if (!data.success) return;
 
-    // Last day of current month
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).getDate()
+      const allowedRounds = data.allowedRounds || [];
+      const completedRounds = data.progress?.completedRounds || [];
+      const currentRound = data.progress?.currentRound;
 
-    // Allow from 20th until end of month
-    return currentDay >= ASSESSMENT_DAY && currentDay <= lastDayOfMonth
-  }
+      setRounds((prev) =>
+        prev.map((r) => {
+          const mapKey =
+            r.key === "quiz"
+              ? "mcq"
+              : r.key === "code"
+                ? "coding"
+                : r.key;
+
+          // ✅ 1. NOT PART OF EXAM → LOCK
+          if (!allowedRounds.includes(mapKey)) {
+            return { ...r, status: LOCKED };
+          }
+
+          // ✅ 2. CURRENT ROUND → READY
+          // ✅ COMPLETED HAS PRIORITY
+          if (completedRounds.includes(mapKey)) {
+            return { ...r, status: PENDING };
+          }
+
+          // ✅ CURRENT ONLY IF NOT COMPLETED
+          if (currentRound === mapKey) {
+            return { ...r, status: READY };
+          }
+
+          // ✅ 3. COMPLETED → PENDING
+          if (completedRounds.includes(mapKey)) {
+            return { ...r, status: PENDING };
+          }
+
+          // ✅ 4. ELSE → LOCKED
+          return { ...r, status: LOCKED };
+        })
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (token && examId) startAssessment();
+  }, [token, examId]);
+
+  useEffect(() => {
+    if (examId) {
+      fetchResultStatus();
+    }
+  }, [examId]);
 
 
 
@@ -258,23 +404,75 @@ export default function StudentFinalAssessmentPage() {
     setWarningConfirmed(false)
   }
 
+  const fetchResultStatus = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/assessment/result/${examId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      if (!data.success) return;
+
+      const allowedRounds = data.allowedRounds || [];
+
+      setRounds(prev =>
+        prev.map(r => {
+          const mapKey =
+            r.key === "quiz"
+              ? "mcq"
+              : r.key === "code"
+                ? "coding"
+                : r.key;
+
+          // ✅ 1. NOT PART OF EXAM → DO NOTHING
+          if (!allowedRounds.includes(mapKey)) {
+            return r;
+          }
+
+          // ✅ 2. ONLY UPDATE QUIZ RESULT
+          if (r.key === "quiz") {
+            return {
+              ...r,
+              approvalStatus: data.approvalStatus || "pending",
+              status:
+                data.approvalStatus === "approved"
+                  ? (data.status === "pass" ? PASSED : FAILED)
+                  : PENDING
+            };
+          }
+
+          // ✅ 3. DO NOT FORCE OTHER ROUNDS
+          return r;
+        })
+      );
+
+    } catch (err) {
+      console.error("Result fetch error", err);
+    }
+  };
+
   // Confirm and start the round after warning
   const handleConfirmStart = () => {
-    if (!pendingRound) return
+    if (!pendingRound) return;
 
-    setWarningOpen(false)
-    setWarningConfirmed(true)
+    console.log("Starting round:", pendingRound);
 
-    // Update round status to in_progress
-    setRounds((rs) => rs.map((r) => (r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r)))
-    setActiveRound(pendingRound)
-    setStarted(true)
+    setWarningOpen(false);
 
-    // Special handling for code challenge
-    if (pendingRound === 'code') {
-      setStartCodeNow(true)
-    }
-  }
+
+    // 🔥 ensure state updates properly
+    setTimeout(() => {
+      setActiveRound(pendingRound);
+      setStarted(true);
+
+      setRounds((rs) =>
+        rs.map((r) =>
+          r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r
+        )
+      );
+    }, 100);
+  };
+
 
   const openReview = async (kind: RoundKey) => {
     if (!token) return
@@ -288,18 +486,15 @@ export default function StudentFinalAssessmentPage() {
     try {
       /* -------- Submission API -------- */
       let url = ''
+
       switch (kind) {
         case 'quiz':
           url = `${API_BASE}/api/student/submission-status/${templateId}`
           break
         case 'code':
-          url = `${API_BASE}/api/student/code-latest`
-          break
         case 'tr':
-          url = `${API_BASE}/api/tr/submission/latest`
-          break
         case 'hr':
-          url = `${API_BASE}/api/hr/submission/latest`
+          url = `${API_BASE}/api/assessment/current/${examId}`
           break
       }
 
@@ -307,23 +502,41 @@ export default function StudentFinalAssessmentPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
 
-      if (!res.ok && (kind === 'tr' || kind === 'hr')) {
-        res = await fetch(`${API_BASE}/api/${kind}/status/latest`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-      }
-
-      if (!res.ok) throw new Error('Failed to load review')
+      if (!res.ok) throw new Error('Failed to load submission')
 
       const data = await res.json()
       const submission = data?.submission ?? null
 
-      const statusRaw =
-        (submission?.status || data?.status || 'pending')
-          .toString()
-          .toLowerCase() as RoundStatus
+      /* -------- 🔥 RESULT API (IMPORTANT) -------- */
+      let resultData: any = null
 
-      /* -------- Profile API (Admin Feedback) -------- */
+      try {
+        const resultRes = await fetch(
+          `${API_BASE}/api/assessment/result/${examId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
+
+        if (resultRes.ok) {
+          resultData = await resultRes.json()
+        }
+      } catch (err) {
+        console.warn("Result API not available")
+      }
+
+      /* -------- STATUS LOGIC -------- */
+
+      const isApproved = resultData?.approvalStatus === "approved"
+
+      let finalStatus = "pending"
+
+      if (isApproved) {
+        finalStatus =
+          resultData?.status === "pass" ? "Passed" : "Failed"
+      }
+
+      /* -------- Profile API -------- */
       let latestProfileFeedback = null
 
       const profileRes = await fetch(`${API_BASE}/profile`, {
@@ -339,15 +552,26 @@ export default function StudentFinalAssessmentPage() {
         latestProfileFeedback = fb.length ? fb[fb.length - 1] : null
       }
 
-      /* -------- Final State -------- */
+      /* -------- FINAL STATE -------- */
       setReviewData({
         submission,
-        status: statusRaw,
+
+        // 🔥 FINAL STATUS
+        status: finalStatus,
+
+        approvalStatus: resultData?.approvalStatus || "pending",
+
         feedback: coerceFeedback(submission),
-        ...coerceScore(submission),
+
+        // 🔥 SCORE FROM RESULT API
+        score: isApproved ? resultData?.scores?.mcq : null,
+        max: isApproved ? resultData?.mcq?.total : null,
+        displayScore: isApproved ? resultData?.mcq?.display : null,
+
         answers: submission?.answers || null,
         profileFeedback: latestProfileFeedback,
       })
+
     } catch (e: any) {
       setReviewError(e?.message || 'Failed to load review')
     } finally {
@@ -355,40 +579,73 @@ export default function StudentFinalAssessmentPage() {
     }
   }
 
-
-
   // ----- QUIZ STATUS -----
   const fetchQuizStatus = async () => {
-    if (!token) {
+    if (!token || !examId) {
       setStatusChecked(true)
       return
     }
+
     try {
-      const res = await fetch(`${API_BASE}/api/student/submission-status/${templateId}`, {
+      const res = await fetch(`${API_BASE}/api/assessment/current/${examId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
+
       if (!res.ok) {
         setStatusChecked(true)
         return
       }
+
       const data = await res.json()
-      let quizNext: RoundStatus = READY
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        if (status === 'pending') {
-          setTrialUsed(true)
+      console.log("START API:", data);
+
+      /*
+        response:
+        {
+          currentRound: "mcq",
+          completedRounds: ["mcq"],
+          status: "in-progress",
+          allowedRounds: ["mcq","coding","tr"],
+          isCurrentRoundActive: true
         }
-        const s = String(data.submission.status || '').toLowerCase()
-        if (s === 'passed' || s === 'evaluated') quizNext = PASSED
-        else if (s === 'failed') quizNext = FAILED
-        else quizNext = PENDING
+      */
+
+      const completed = data.completedRounds || []
+      const current = data.currentRound
+
+      let quizNext: RoundStatus = LOCKED
+
+      if (completed.includes("mcq")) {
+        // ✅ Already attempted
+        if (data.status === "completed") {
+          quizNext = PENDING   // or PASSED if evaluated
+        } else {
+          quizNext = PENDING   // still under review
+        }
+      } else if (current === "mcq") {
+        quizNext = READY
       }
 
-      setRounds((prev) => deriveWithQuizStatus(prev, quizNext))
 
-      if (quizNext === PENDING) startPolling()
-      else stopPolling()
-    } catch {
-      // ignore
+      setRounds((prev) =>
+        prev.map((r) => {
+          if (r.key === "quiz") {
+            return { ...r, status: quizNext }
+          }
+
+          // 🔥 unlock coding if quiz passed AND enabled
+          if (r.key === "code") {
+            if (completed.includes("mcq") && data.allowedRounds.includes("coding")) {
+              return { ...r, status: READY }
+            }
+          }
+
+          return r
+        })
+      )
+
+    } catch (err) {
+      console.error(err)
     } finally {
       setStatusChecked(true)
     }
@@ -430,7 +687,16 @@ export default function StudentFinalAssessmentPage() {
         const codeNext: RoundStatus = s === 'passed' ? PASSED : s === 'failed' ? FAILED : PENDING
 
         // Update both Code and (conditionally) TR (to READY) based on Code
-        setRounds((prev) => deriveWithCodeStatus(prev, codeNext))
+        setRounds((prev) => {
+          const updated = deriveWithCodeStatus(prev, codeNext);
+
+          return updated.map((r, index) => ({
+            ...r,
+
+            // 🔥 VERY IMPORTANT: bring back approvalStatus
+            approvalStatus: prev[index]?.approvalStatus || "pending"
+          }));
+        });
       }
     } catch {
       /* ignore */
@@ -456,19 +722,38 @@ export default function StudentFinalAssessmentPage() {
 
       const data = await res.json()
 
-   if (data?.success && data?.hasSubmission && data?.submission) {
-  const s = String(data.submission.status || 'pending').toLowerCase()
+      if (data?.success && data?.hasSubmission && data?.submission) {
+        const s = String(data.submission.status || 'pending').toLowerCase()
 
-  const trNext: RoundStatus =
-    s === 'passed' || s === 'evaluated'
-      ? PASSED
-      : s === 'failed'
-        ? FAILED
-        : PENDING
+        const trNext: RoundStatus =
+          s === 'passed' || s === 'evaluated'
+            ? PASSED
+            : s === 'failed'
+              ? FAILED
+              : PENDING
 
-  // ✅ FIX: use derive function to unlock HR
-  setRounds((prev) => deriveWithTRStatus(prev, trNext))
-}
+        // ✅ FIX: use derive function to unlock HR
+        setRounds((prev) => {
+          const updated = deriveWithTRStatus(prev, trNext);
+
+          return updated.map((r) => {
+            const old = prev.find(p => p.key === r.key);
+
+            return {
+              ...r,
+
+              // ✅ preserve approval
+              approvalStatus: old?.approvalStatus || "pending",
+
+              // 🔥 IMPORTANT: control UI visibility
+              status:
+                old?.approvalStatus === "approved"
+                  ? r.status
+                  : PENDING
+            };
+          });
+        });
+      }
 
       // ❌ REMOVE the "no submission → READY" block
     } catch {
@@ -512,6 +797,7 @@ export default function StudentFinalAssessmentPage() {
   // Code: Start -> open modal
   const handleStartCode = () => {
     handleStartWithWarning('code')
+    setStartCodeNow(true);
   }
 
   // TR: Start -> open TR component
@@ -532,51 +818,65 @@ export default function StudentFinalAssessmentPage() {
     setStartCodeNow(false)
   }
 
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString();
+  };
+
   // Code: Submitted -> pending then refresh
-  const handleCodeSubmitted = () => {
-    setRounds((rs) => rs.map((r) => (r.key === 'code' ? { ...r, status: PENDING } : r)))
-    setActiveRound(null)
-    setStarted(false)
-    setStartCodeNow(false)
-    fetchCodeLatest()
-  }
+  const handleCodeSubmitted = async () => {
+    try {
+      // 🔥 ADD THIS API CALL
+      await fetch(`${API_BASE}/api/assessment/complete-round`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          examId,
+          roundType: "coding",
+        }),
+      });
 
-  const quizRound = rounds.find((r) => r.key === 'quiz')!
-  const codeRound = rounds.find((r) => r.key === 'code')!
-  const trRound = rounds.find((r) => r.key === 'tr')!
-  const hrRound = rounds.find((r) => r.key === 'hr')!
+    } catch (err) {
+      console.error("Complete round error", err);
+    }
 
-  /*   const canStart = (r: { key: RoundKey; status: RoundStatus }) =>
-      ENABLE_START_BUTTON &&
-      r.status === READY &&
-      (r.key !== 'quiz' || statusChecked) &&
-      (r.key !== 'tr' || trStatusChecked) &&
-      (r.key !== 'hr' || hrStatusChecked) */
+
+    setActiveRound(null);
+    setStarted(false);
+    setStartCodeNow(false);
+
+    // 🔥 IMPORTANT: refresh from backend
+    startAssessment();   // 👈 ADD THIS
+  };
+
 
   const canStart = (r: { key: RoundKey; status: RoundStatus }) => {
-    if (r.status !== READY) return false
+    // ❌ Only READY can start
+    if (r.status !== READY) return false;
 
-    if (status === 'pending' && trialUsed) return false
+    // ❌ Trial restriction
+    if (status === 'pending' && trialUsed) return false;
 
-    if (status !== 'approved' && status !== 'pending') return false
+    // ❌ User status restriction
+    if (status !== 'approved' && status !== 'pending') return false;
 
-    // ⏳ Time restriction ONLY for quiz
+    // ⏳ Quiz time restriction
     if (r.key === 'quiz') {
-      if (!isAssessmentWindow()) return false
-      return statusChecked
+      if (examStatus !== "active") return false;
+      return statusChecked;
     }
 
-    // 🔓 Code unlock only if quiz passed
-    if (r.key === 'code') {
-      const quiz = rounds.find((x) => x.key === 'quiz')
-      return quiz?.status === PASSED
-    }
+    // 🔥 REMOVE THIS COMPLETELY:
+    // if (r.key === 'code') return true;
 
-    if (r.key === 'tr') return trStatusChecked
-    if (r.key === 'hr') return hrStatusChecked
+    // ✅ TR & HR checks
+    if (r.key === 'tr') return trStatusChecked;
+    if (r.key === 'hr') return hrStatusChecked;
 
-    return false
-  }
+    return true;
+  };
 
 
   return (
@@ -613,12 +913,52 @@ export default function StudentFinalAssessmentPage() {
 
         <div style={{ display: 'flex', gap: 24 }}>
           <div style={{ width: 420 }}>
-            <Alert variant="warning">
-              Final Assessment opens on the <b>20th of every month</b> and remains available
-              until the <b>end of the month</b>. You can attempt the exam at any time during
-              this period.
-            </Alert>
+            <Alert
+              style={{
+                background: "rgba(255,122,0,0.08)",
+                borderColor: "#ff7a00",
+                color: "#fff"
+              }}
+            >
+              {examInfo && (
+                <>
+                  <div><b>📅 Exam Schedule</b></div>
 
+                  <div className="small mt-2">
+                    🟢 Starts: {formatDate(examInfo.startDate)} {examInfo.startTime}
+                  </div>
+
+                  <div className="small">
+                    🔴 Ends: {formatDate(examInfo.endDate)} {examInfo.endTime}
+                  </div>
+
+                  <div className="mt-2">
+                    {examStatus === "upcoming" && (
+                      <>
+                        {autoRefreshing ? (
+                          <div className="d-flex align-items-center gap-2">
+                            <Spinner animation="border" size="sm" />
+                            <span style={{ color: "#ffc107" }}>
+                              Starting in {timeLeft}s...
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ color: "#ffc107" }}>
+                            ⏳ Not started yet
+                          </span>
+                        )}
+                      </>
+                    )}
+                    {examStatus === "active" && (
+                      <span style={{ color: "#28a745" }}>✅ Live now</span>
+                    )}
+                    {examInfo.status === "expired" && (
+                      <span style={{ color: "#dc3545" }}>❌ Exam closed</span>
+                    )}
+                  </div>
+                </>
+              )}
+            </Alert>
             {status === 'pending' && trialUsed && (
               <Alert variant="danger">
                 🚫 Trial users are allowed only one Final Assessment attempt.
@@ -632,9 +972,9 @@ export default function StudentFinalAssessmentPage() {
                 let displayStatus = r.status
 
                 // ⏳ Only quiz should appear locked outside allowed time
-                if (r.key === 'quiz' && r.status === READY && !isAssessmentWindow()) {
-                  displayStatus = LOCKED
-                }
+                /*  if (r.key === 'quiz' && examStatus !== "active") {
+                   displayStatus = LOCKED
+                 } */
                 return (
                   <ListGroup.Item
                     as="li"
@@ -669,28 +1009,7 @@ export default function StudentFinalAssessmentPage() {
                     <div className="d-flex align-items-center gap-2">
                       {statusBadge(displayStatus)}
 
-                      {startable && (
-                        <Button
-                          size="sm"
-                          disabled={!startable}
-                          onClick={() => {
-                            if (!startable) return
 
-                            if (r.key === 'quiz') handleStartQuiz()
-                            else if (r.key === 'code') handleStartCode()
-                            else if (r.key === 'tr') handleStartTR()
-                            else if (r.key === 'hr') handleStartHR()
-                          }}
-                          style={{
-                            backgroundColor: startable ? '#ff7a00' : '#555',
-                            borderColor: startable ? '#ff7a00' : '#555',
-                            cursor: startable ? 'pointer' : 'not-allowed',
-                            opacity: startable ? 1 : 0.6,
-                          }}
-                        >
-                          Start
-                        </Button>
-                      )}
 
                       {/* Checking gates */}
                       {isQuiz && r.status === READY && !statusChecked && (
@@ -709,16 +1028,22 @@ export default function StudentFinalAssessmentPage() {
                         </Button>
                       )}
 
-                      {(r.status === PENDING || r.status === PASSED || r.status === FAILED) && (
-                        <Button
-                          size="sm"
-                          variant="outline-secondary"
-                          onClick={() => openReview(r.key)}>
-                          View
-                        </Button>
+                      {r.status !== LOCKED && r.status !== READY && (
+                        <>
+                          {r.approvalStatus === "approved" && (
+                            <Button
+                              size="sm"
+                              variant="outline-success"
+                              onClick={() => openReview(r.key)}
+                            >
+                              View Result
+                            </Button>
+                          )}
+                        </>
                       )}
 
                       <Button
+
                         size="sm"
                         disabled={!startable}
                         onClick={() => {
@@ -801,13 +1126,15 @@ export default function StudentFinalAssessmentPage() {
       </Card>
 
       {/* Quiz modal */}
-      {started && activeRound === 'quiz' && <StudentQuiz questionCount={20} onClose={() => handleQuizClose(true)} />}
+      {started && activeRound === 'quiz' && (
+        <StudentQuiz questionCount={20} examId={examId} onClose={() => handleQuizClose(true)} />
+      )}
 
       {/* Code challenge (modal-only; no preview in parent) */}
       {started && activeRound === 'code' && (
         <StudentCodeChallengeComponent
           baseURL={API_BASE}
-          eventId="demoEventId" // replace with your real event id
+          eventId={examId}// replace with your real event id
           startOpen={startCodeNow}
           hidePreview
           onClose={handleCodeCancel}
@@ -937,19 +1264,25 @@ export default function StudentFinalAssessmentPage() {
 
           {!reviewLoading && !reviewError && reviewData && (
             <>
-              <div className="d-flex align-items-center justify-content-between mb-2">
+              <div className="d-flex justify-content-between">
                 <div>
-                  <div className="text-muted small">Status</div>
-                  {statusBadge((reviewData.status || 'pending') as RoundStatus)}
+                  <strong>Status</strong><br />
+
+                  <Badge bg={
+                    reviewData.status === "Passed"
+                      ? "success"
+                      : reviewData.status === "Failed"
+                        ? "danger"
+                        : "warning"
+                  }>
+                    {reviewData.status}
+                  </Badge>
                 </div>
 
-                {(reviewData.score != null || reviewData.max != null) && (
-                  <div className="text-end">
-                    <div className="text-muted small">Score / Rating</div>
-                    <div className="fw-semibold">
-                      {reviewData.score != null ? reviewData.score : '--'}
-                      {reviewData.max != null ? <> / {reviewData.max}</> : null}
-                    </div>
+                {reviewData.approvalStatus === "approved" && (
+                  <div>
+                    <strong>Score</strong><br />
+                    {reviewData.displayScore || reviewData.score}
                   </div>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card, Button, Nav, Tab } from 'react-bootstrap'
 import PageMetaData from '@/components/PageMetaData'
 import AdminQuizUpload from './components/QuizComponents/AdminQuizUpload'
@@ -7,42 +7,60 @@ import AdminManageChallenges from './components/CodeChallenegeComponents/AdminMa
 import InterviewQuestions from './components/InterviewQuestions/InterviewQuestions'
 import AdminReview from './components/AdminReview'
 import HRInterviewQuestions from './components/HRRoundQuestions/HRInterviewQuestions'
-import { 
-  FaFileAlt, 
-  FaCode, 
-  FaComments, 
-  FaUserTie, 
-  FaBook, 
+import {
+  FaFileAlt,
+  FaCode,
+  FaComments,
+  FaUserTie,
+  FaBook,
   FaCheckCircle,
   FaTasks
 } from 'react-icons/fa'
+import AssessmentConfig from './components/AssessmentConfig'
+import { useAuthContext } from '@/context/useAuthContext'
 
 export default function FinalAssessmentPage() {
-  const [activeTab, setActiveTab] = useState('quiz')
+  const baseURL = import.meta.env.VITE_API_BASE_URL || "";
+  const [activeTab, setActiveTab] = useState('config')
+  const [examId, setExamId] = useState<string>("")
+  const { user } = useAuthContext()
 
   const tabs = [
+    { id: 'config', label: 'Assessment Config', icon: FaCheckCircle, color: '#ffc107' },
     { id: 'quiz', label: 'Quiz Assessment', icon: FaFileAlt, color: '#ff7a00' },
     { id: 'code', label: 'Code Challenge', icon: FaCode, color: '#28a745' },
     { id: 'tr', label: 'TR Interview', icon: FaComments, color: '#17a2b8' },
-    { id: 'hr', label: 'HR Interview', icon: FaUserTie, color: '#fd7e14' }
+    { id: 'hr', label: 'HR Interview', icon: FaUserTie, color: '#fd7e14' },
+    
   ]
 
   return (
     <div className="final-assessment-container">
       <PageMetaData title="Admin - Assessments" />
+      {!examId && (
+        <div className="alert alert-warning text-center">
+          ⚠ Please configure or select an exam first to continue
+        </div>
+      )}
       {/* Tabs Navigation */}
       <div className="tabs-navigation">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
-          >
-            <tab.icon className="tab-icon" />
-            <span>{tab.label}</span>
-            {activeTab === tab.id && <div className="tab-indicator" />}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const isDisabled = !examId && tab.id !== "config";
+
+          return (
+            <button
+              key={tab.id}
+              disabled={isDisabled}
+              className={`tab-button ${activeTab === tab.id ? 'active' : ''} ${isDisabled ? 'disabled-tab' : ''}`}
+              onClick={() => !isDisabled && setActiveTab(tab.id)}
+            >
+              <tab.icon className="tab-icon" />
+              <span>{tab.label}</span>
+
+              {activeTab === tab.id && <div className="tab-indicator" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* Content Area */}
@@ -86,9 +104,9 @@ export default function FinalAssessmentPage() {
                     <p className="card-subtitle">View and manage existing coding challenges</p>
                   </div>
                 </div>
-                <AdminManageChallenges 
-                  eventId={'demoEventId'} 
-                  baseURL={import.meta.env.VITE_API_BASE_URL} 
+                <AdminManageChallenges
+                  eventId={examId}
+                  baseURL={import.meta.env.VITE_API_BASE_URL}
                 />
               </Card.Body>
             </Card>
@@ -121,6 +139,23 @@ export default function FinalAssessmentPage() {
                 </div>
               </div>
               <HRInterviewQuestions />
+            </Card.Body>
+          </Card>
+        )}
+
+        {activeTab === 'config' && (
+          <Card className="assessment-card">
+            <Card.Body className="card-body-custom">
+              <div className="card-header-custom">
+                <FaCheckCircle className="card-icon" />
+                <div>
+                  <h5 className="card-title">Assessment Configuration</h5>
+                  <p className="card-subtitle">
+                    Enable/Disable rounds and set exam timing
+                  </p>
+                </div>
+              </div>
+              <AssessmentConfig examId={examId} setExamId={setExamId} />
             </Card.Body>
           </Card>
         )}
