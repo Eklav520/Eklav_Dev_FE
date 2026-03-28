@@ -193,7 +193,6 @@ const AdminJobForm: React.FC = () => {
       </Row>
 
       {/* ✅ RICH TEXT EDITOR */}
-      {/* ✅ RICH TEXT EDITOR */}
       <Form.Group className="mb-4">
         <Form.Label>Key Highlights</Form.Label>
 

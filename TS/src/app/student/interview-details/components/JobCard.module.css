@@ -186,9 +186,9 @@
   }
 }
 /* Make modal wider – scoped safely */
-:global(.job-details-modal) {
+/* :global(.job-details-modal) {
   max-width: 90vw;
-}
+} */
 
 @media (max-width: 992px) {
   :global(.job-details-modal) {
