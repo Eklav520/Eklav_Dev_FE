@@ -15,6 +15,7 @@ type QuizQuestion = { id?: string; _id?: string; question: string; options: Opti
 type Props = {
   examId: string
   questionCount?: number
+  stream?: MediaStream
   onClose?: () => void
 }
 
@@ -54,7 +55,7 @@ function normalizeOptions(rawOptions: any[]): Option[] {
   })
 }
 
-const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) => {
+const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, stream }) => {
   const { user } = useAuthContext()
   const token = user?.token
 
@@ -71,6 +72,8 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null)
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>('not_submitted')
   const [submissionResponse, setSubmissionResponse] = useState<any | null>(null)
+  const [altTabViolation, setAltTabViolation] = useState(false)
+  const [altTabViolationCount, setAltTabViolationCount] = useState(0)
 
   const [latestSubmission, setLatestSubmission] = useState<ServerSubmission>(null)
   const statusPollRef = useRef<number | null>(null)
@@ -83,7 +86,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
   const startTimeRef = useRef<number | null>(null)
   const timerIntervalRef = useRef<number | null>(null)
   const cameraVideoRef = useRef<HTMLVideoElement | null>(null)
-  const displayStreamRef = useRef<MediaStream | null>(null) // Store display stream separately
+  const displayStreamRef = useRef<MediaStream | null>(null)
 
   // Keep answers fresh for autosubmit
   const answersRef = useRef<Record<number, string>>({})
@@ -98,6 +101,36 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
     crypto.randomUUID?.() || Math.random().toString(36).slice(2)
   )
 
+  // Custom violation handler - now accepts number or string
+  const handleViolation = (violationType: number | string) => {
+    const typeStr = typeof violationType === 'number' ? `violation_${violationType}` : violationType
+    console.log(`Violation detected: ${typeStr}`)
+    
+    if (typeStr === 'visibility_change' || typeStr === 'focus_loss' || typeStr === 'violation_1' || typeStr === 'violation_2') {
+      setAltTabViolation(true)
+      setAltTabViolationCount(prev => {
+        const newCount = prev + 1
+        
+        // Show alert popup for Alt+Tab
+        alert(`⚠️ PROCTORING VIOLATION: Alt+Tab or window switching is not allowed!\n\nViolation ${newCount} of ${MAX_VIOLATIONS}. Further violations may result in auto-submission.`)
+        
+        // Check if max violations reached
+        if (newCount >= MAX_VIOLATIONS && !submitLockRef.current && submissionStatus === 'not_submitted') {
+          setTimeout(() => {
+            submitQuiz(true, `Auto-submitted due to proctoring violations (${newCount}): ${typeStr}`)
+          }, 500)
+        }
+        
+        return newCount
+      })
+      
+      // Auto-hide the violation message after 3 seconds
+      setTimeout(() => {
+        setAltTabViolation(false)
+      }, 3000)
+    }
+  }
+
   // ===== Shared Proctor Guard =====
   const guard = useProctorGuard(
     {
@@ -107,22 +140,146 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
       captureFullscreenExit: true,
     },
     {
-      onViolation: (violationType, count) => {
-        console.log(`Violation detected: ${violationType}, Count: ${count}`);
-        // Optional: Show a toast or notification
+      onViolation: (count: number, reason: string) => {
+        console.log(`Violation detected: Count ${count}, Reason: ${reason}`);
+        handleViolation(reason);
       },
-      onMaxReached: async (count, reason) => {
+      onMaxReached: async (count: number, reason?: string) => {
         console.log(`Max violations reached: ${count}, Reason: ${reason}`);
         if (!submitLockRef.current && submissionStatus === 'not_submitted') {
-          await submitQuiz(true, `Auto-submitted due to proctoring violations (${count}): ${reason}`)
+          await submitQuiz(true, `Auto-submitted due to proctoring violations (${count}): ${reason || 'Max violations reached'}`)
         }
       },
     }
   )
 
+  // ===== Disable ESC key to prevent exiting fullscreen =====
+  useEffect(() => {
+    const disableEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (show && submissionStatus === 'not_submitted') {
+          e.preventDefault()
+          e.stopPropagation()
+          
+          // Show violation alert
+          alert('⚠️ PROCTORING VIOLATION: ESC key is disabled during the quiz!\n\nExiting fullscreen is not allowed.')
+          
+          // Trigger violation
+          handleViolation('fullscreen_exit')
+          
+          // Re-enter fullscreen immediately
+          if (!document.fullscreenElement) {
+            guard.enterFullscreenFromUserGesture()
+          }
+          
+          return false
+        }
+      }
+    }
+    
+    // ===== Detect Alt+Tab and window switching =====
+    const handleVisibilityChange = () => {
+      if (show && submissionStatus === 'not_submitted' && document.hidden) {
+        console.log('Tab/window switching detected')
+        
+        // Show violation popup
+        setAltTabViolation(true)
+        setAltTabViolationCount(prev => {
+          const newCount = prev + 1
+          
+          // Check if max violations reached
+          if (newCount >= MAX_VIOLATIONS && !submitLockRef.current && submissionStatus === 'not_submitted') {
+            setTimeout(() => {
+              submitQuiz(true, 'Auto-submitted due to Alt+Tab violations')
+            }, 500)
+          }
+          
+          return newCount
+        })
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          setAltTabViolation(false)
+        }, 3000)
+      }
+    }
+    
+    const handleWindowBlur = () => {
+      if (show && submissionStatus === 'not_submitted') {
+        console.log('Window focus lost - possible Alt+Tab')
+        
+        // Show violation popup
+        setAltTabViolation(true)
+        setAltTabViolationCount(prev => {
+          const newCount = prev + 1
+          
+          // Check if max violations reached
+          if (newCount >= MAX_VIOLATIONS && !submitLockRef.current && submissionStatus === 'not_submitted') {
+            setTimeout(() => {
+              submitQuiz(true, 'Auto-submitted due to Alt+Tab violations')
+            }, 500)
+          }
+          
+          return newCount
+        })
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          setAltTabViolation(false)
+        }, 3000)
+        
+        // Focus back to window
+        window.focus()
+      }
+    }
+    
+    document.addEventListener('keydown', disableEsc)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('blur', handleWindowBlur)
+    
+    return () => {
+      document.removeEventListener('keydown', disableEsc)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('blur', handleWindowBlur)
+    }
+  }, [show, submissionStatus, guard, altTabViolationCount])
+
+  // ===== Auto-start camera =====
+  const autoStartCamera = async () => {
+    try {
+      const cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 320, height: 240, facingMode: 'user' },
+        audio: false,
+      })
+      
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = cameraStream
+        cameraVideoRef.current.muted = true
+        cameraVideoRef.current.playsInline = true
+        cameraVideoRef.current.autoplay = true
+        await cameraVideoRef.current.play().catch(() => {})
+      }
+      
+      return cameraStream
+    } catch (camErr) {
+      console.warn('Camera access denied or failed', camErr)
+      setMediaError((prev) =>
+        prev ? prev + ' | Camera not available' : 'Camera not available'
+      )
+      return null
+    }
+  }
+
+  useEffect(() => {
+    if (stream) {
+      open(stream);
+    }
+  }, [stream]);
+
   useEffect(() => {
     return () => cleanupRecording()
   }, [])
+
 
   const uploadQuizRecordingToS3 = async (blob: Blob, submissionId: string) => {
     const presignRes = await fetch(`${baseURL}/api/student/presign/quiz-recording`, {
@@ -164,8 +321,10 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
     answersRef.current = {}
     submitLockRef.current = false
     guard.reset()
+    setAltTabViolation(false)
+    setAltTabViolationCount(0)
 
-    initQuiz(stream) // ✅ pass here
+    initQuiz(stream)
   }
 
   const initQuiz = async (capturedStream?: MediaStream) => {
@@ -178,6 +337,9 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         throw new Error("Exam not loaded yet");
       }
 
+      // Auto-start camera first
+      const cameraStream = await autoStartCamera()
+      
       const res = await fetch(`${baseURL}/api/assessment/round/${examId}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -212,13 +374,12 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
       setAnswers({})
       answersRef.current = {}
 
-      const urlDur = Number(new URLSearchParams(location.search).get('dur'))
       const dur = json.timeLimit || json.timeSeconds || 1200;
       setDurationSeconds(dur)
       setTimeLeft(dur)
 
-      // Start recording with the captured display stream
-      await startRecording(dur, capturedStream || undefined)
+      // Start recording with the captured display stream and camera
+      await startRecording(dur, capturedStream || undefined, cameraStream)
     } catch (err: any) {
       console.error('initQuiz error', err)
       setError(String(err?.message || err || 'Could not start quiz'))
@@ -249,58 +410,92 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
     }
   }
 
-  const startRecording = async (initialDuration: number, preCapturedDisplay?: MediaStream) => {
+  const startRecording = async (initialDuration: number, preCapturedDisplay?: MediaStream, preCapturedCamera?: MediaStream | null) => {
     setMediaError(null)
+
     try {
-      let cameraStream: MediaStream | null = null
-      try {
-        cameraStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: 'user' },
-          audio: false,
-        })
-        attachStreamToVideo(cameraVideoRef.current, cameraStream)
-      } catch (camErr) {
-        console.warn('Camera access denied or failed', camErr)
-        setMediaError((prev) => (prev ? prev + ' | Camera not available' : 'Camera not available'))
-        cameraStream = null
+      let cameraStream: MediaStream | null = preCapturedCamera || null
+
+      // 🎥 Camera - if not already started, start now
+      if (!cameraStream) {
+        try {
+          cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 320, height: 240, facingMode: 'user' },
+            audio: false,
+          })
+          attachStreamToVideo(cameraVideoRef.current, cameraStream)
+        } catch (camErr) {
+          console.warn('Camera access denied or failed', camErr)
+          setMediaError((prev) =>
+            prev ? prev + ' | Camera not available' : 'Camera not available'
+          )
+          cameraStream = null
+        }
       }
 
-      let displayStream: MediaStream | null = preCapturedDisplay ?? null;
+      // 🖥 Screen (must already exist)
+      let displayStream: MediaStream | null = preCapturedDisplay ?? null
 
       if (!displayStream) {
-        throw new Error("Screen stream not available. Please restart quiz.");
+        throw new Error("Screen stream not available. Please restart quiz.")
       }
 
+      // 🎬 Combine streams
       const combined = new MediaStream()
-      displayStream.getVideoTracks().forEach((t: MediaStreamTrack) => combined.addTrack(t))
-      if (cameraStream) cameraStream.getVideoTracks().forEach((t) => combined.addTrack(t))
+      displayStream.getVideoTracks().forEach((t) => combined.addTrack(t))
+      if (cameraStream) {
+        cameraStream.getVideoTracks().forEach((t) => combined.addTrack(t))
+      }
 
       combinedStreamRef.current = combined
 
+      // 🎥 Recorder config
       const options: any = {}
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) options.mimeType = 'video/webm;codecs=vp9'
-      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) options.mimeType = 'video/webm;codecs=vp8'
-      else options.mimeType = 'video/webm'
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+        options.mimeType = 'video/webm;codecs=vp9'
+      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+        options.mimeType = 'video/webm;codecs=vp8'
+      } else {
+        options.mimeType = 'video/webm'
+      }
 
       const mr = new MediaRecorder(combined, options)
       mediaRecorderRef.current = mr
       recordedChunksRef.current = []
 
       mr.ondataavailable = (ev: BlobEvent) => {
-        if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data)
+        if (ev.data && ev.data.size > 0) {
+          recordedChunksRef.current.push(ev.data)
+        }
       }
 
+      // 🚀 START RECORDING
       mr.start(1000)
       setRecordingState('recording')
       startTimeRef.current = Date.now()
 
+      // ✅ IMPORTANT: ARM PROCTOR IMMEDIATELY
+      guard.arm()
+
+      // 🔒 Ensure fullscreen is active and prevent ESC exit
+      if (!document.fullscreenElement) {
+        await guard.enterFullscreenFromUserGesture()
+      }
+
+      // ⏱ Timer
       const quizStart = Date.now()
       const initial = initialDuration
-      if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current)
+
+      if (timerIntervalRef.current) {
+        window.clearInterval(timerIntervalRef.current)
+      }
+
       timerIntervalRef.current = window.setInterval(() => {
         const elapsed = Math.floor((Date.now() - quizStart) / 1000)
         const remaining = Math.max(0, initial - elapsed)
+
         setTimeLeft(remaining)
+
         if (remaining === 0) {
           if (timerIntervalRef.current) {
             window.clearInterval(timerIntervalRef.current)
@@ -310,14 +505,17 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         }
       }, 250) as unknown as number
 
-      // Arm the proctor guard after recording starts
-      setTimeout(() => guard.arm(), 1500)
     } catch (err: any) {
       console.error('Recording failed', err)
-      const msg = String(err?.message || err || 'Screen recording permission denied or not available.')
+
+      const msg = String(
+        err?.message || err || 'Screen recording permission denied or not available.'
+      )
+
       setMediaError(msg)
       setRecordingState('idle')
-      throw err; // Re-throw to handle in initQuiz
+
+      throw err
     }
   }
 
@@ -334,7 +532,6 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         })
         combinedStreamRef.current = null
       }
-      // Don't stop display stream here as it might be needed
       if (timerIntervalRef.current) {
         window.clearInterval(timerIntervalRef.current)
         timerIntervalRef.current = null
@@ -433,10 +630,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         body: JSON.stringify({
           examId,
           roundType: "mcq",
-
-          // 🔥 ADD THIS LINE
           clientSubmissionId: submissionIdRef.current,
-
           answers: payloadAnswers,
           timeTakenSeconds: timeTaken,
         })
@@ -508,7 +702,6 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
 
   const handleCloseModal = () => {
     if (submissionStatus === 'submitted_pending' || submissionStatus === 'evaluated') {
-      // Clean up display stream when closing
       if (displayStreamRef.current) {
         displayStreamRef.current.getTracks().forEach(track => track.stop());
         displayStreamRef.current = null;
@@ -517,33 +710,6 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
       if (onClose) onClose()
     }
   }
-
-  const handleStart = async () => {
-    console.log("START CLICKED"); // 👈 add this
-    try {
-      const displayStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
-
-      console.log("SCREEN SHARE SUCCESS"); // 👈 add
-
-      displayStreamRef.current = displayStream;
-      preDisplayStreamRef.current = displayStream;
-
-      await guard.enterFullscreenFromUserGesture();
-
-      open(displayStream);
-    } catch (e) {
-      console.warn('Start cancelled or failed:', e);
-    }
-  };
-
-  const startButton = (
-    <Button onClick={handleStart} disabled={show || loading} className="start-quiz-btn">
-      <FaVideo className="me-2" /> Start Quiz (Share Screen & Enter Fullscreen)
-    </Button>
-  )
 
   return (
     <>
@@ -557,11 +723,33 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         onReenterFullscreen={guard.enterFullscreenFromUserGesture}
         onAcknowledge={guard.acknowledge}
       />
-      {!show && (
-        <Button onClick={handleStart} className="start-quiz-btn">
-          Start Quiz
-        </Button>
-      )}
+
+      {/* Alt+Tab Violation Popup */}
+      <Modal show={altTabViolation} centered backdrop="static" keyboard={false} className="violation-modal">
+        <Modal.Header className="violation-modal-header">
+          <Modal.Title>
+            <FaExclamationTriangle className="me-2" /> Proctoring Violation Detected
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="violation-modal-body">
+          <div className="violation-content">
+            <FaExclamationTriangle className="violation-icon" />
+            <h5>Alt+Tab / Window Switching is NOT Allowed!</h5>
+            <p>This action has been recorded as a violation.</p>
+            <p className="violation-count">Violation {altTabViolationCount} / {MAX_VIOLATIONS}</p>
+            {altTabViolationCount >= MAX_VIOLATIONS && (
+              <p className="violation-warning-text">⚠️ Maximum violations reached. Quiz will auto-submit on next violation.</p>
+            )}
+            <Button 
+              variant="danger" 
+              onClick={() => setAltTabViolation(false)}
+              className="mt-3"
+            >
+              I Understand
+            </Button>
+          </div>
+        </Modal.Body>
+      </Modal>
 
       <Modal show={show} onHide={handleCloseModal} fullscreen backdrop="static" keyboard={false} className="quiz-modal">
         <Modal.Header className="quiz-modal-header">
@@ -570,7 +758,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
               <h4 className="quiz-title">Quiz Assessment</h4>
               <div className="fullscreen-status">
                 {guard.isFullscreen ? (
-                  <><FaDesktop className="me-1" /> Fullscreen Mode Active</>
+                  <><FaDesktop className="me-1" /> Fullscreen Mode Active (ESC Disabled)</>
                 ) : (
                   <><FaExclamationTriangle className="me-1" /> Fullscreen inactive — press button to re-enter</>
                 )}
@@ -743,7 +931,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
               </div>
 
               <div className="sidebar-section">
-                <div className="sidebar-label">Webcam preview</div>
+                <div className="sidebar-label">Webcam preview (Auto-started)</div>
                 <video
                   ref={cameraVideoRef}
                   className="webcam-preview"
@@ -766,7 +954,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
                   <strong>Violations:</strong> {guard.violationCount} / {guard.maxViolations}
                   {guard.violationCount > 0 && (
                     <div className="violation-warning">
-                      {guard.violationCount >= guard.maxViolations ? 'Maximum reached - Quiz will auto-submit' : 'Please avoid tab switching'}
+                      {guard.violationCount >= guard.maxViolations ? 'Maximum reached - Quiz will auto-submit' : 'Please avoid tab switching and Alt+Tab'}
                     </div>
                   )}
                 </div>
@@ -776,13 +964,14 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
                 <div className="sidebar-label">Guidance</div>
                 <ul className="guidance-list">
                   <li><FaVideo className="me-2" /> Screen + webcam recording is active</li>
-                  <li><FaExclamationTriangle className="me-2" style={{ color: '#ff6b6b' }} /> Do not switch tabs/windows - violations will be recorded</li>
+                  <li><FaExclamationTriangle className="me-2" style={{ color: '#ff6b6b' }} /> Do not use Alt+Tab or switch windows - violations will be recorded</li>
+                  <li><FaExclamationTriangle className="me-2" style={{ color: '#ff6b6b' }} /> ESC key is disabled - cannot exit fullscreen</li>
                   <li><FaClock className="me-2" /> Quiz auto-submits when timer ends or max violations reached</li>
                   <li>Modal cannot be closed until quiz is submitted</li>
                   {!guard.isFullscreen && (
                     <li>
                       <Button size="sm" variant="outline-light" onClick={guard.enterFullscreenFromUserGesture} className="fullscreen-btn">
-                        Enter Fullscreen
+                        Enter Fullscreen (ESC Disabled)
                       </Button>
                     </li>
                   )}
@@ -1217,6 +1406,64 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose }) =
         .status-details {
           color: #8a8a8a;
           font-size: 0.85rem;
+        }
+
+        /* Violation Modal */
+        .violation-modal .modal-content {
+          background: #1a1a2e;
+          border: 2px solid #ff6b6b;
+          border-radius: 12px;
+        }
+
+        .violation-modal-header {
+          background: linear-gradient(135deg, #ff6b6b 0%, #dc3545 100%);
+          border-bottom: none;
+          color: #ffffff;
+        }
+
+        .violation-modal-header .modal-title {
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+        }
+
+        .violation-modal-body {
+          background: #0a0a1a;
+          padding: 2rem;
+          text-align: center;
+        }
+
+        .violation-content {
+          text-align: center;
+        }
+
+        .violation-icon {
+          font-size: 4rem;
+          color: #ff6b6b;
+          margin-bottom: 1rem;
+        }
+
+        .violation-content h5 {
+          color: #ffffff;
+          margin-bottom: 1rem;
+        }
+
+        .violation-content p {
+          color: #cccccc;
+          margin-bottom: 0.5rem;
+        }
+
+        .violation-count {
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #ff6b6b;
+          margin-top: 0.5rem;
+        }
+
+        .violation-warning-text {
+          color: #ffaa44;
+          font-weight: 500;
+          margin-top: 0.5rem;
         }
 
         /* Responsive */
