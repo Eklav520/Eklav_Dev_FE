@@ -296,20 +296,30 @@ const ProblemStatement = () => {
     const numberMatches = input.match(/-?\d+/g)
 
     if (arrayMatches && arrayMatches.length === 1 && numberMatches && numberMatches.length >= 2) {
-      const nums = JSON.parse(arrayMatches[0])
-      const target = Number(numberMatches[numberMatches.length - 1])
+      try {
+        const nums = JSON.parse(arrayMatches[0])
+        const target = Number(numberMatches[numberMatches.length - 1])
 
-      return {
-        ...tc,
-        input: JSON.stringify([nums, target]),
+        return {
+          ...tc,
+          input: JSON.stringify([nums, target]),
+        }
+      } catch (e) {
+        console.error('Error parsing nums:', e)
+        return tc
       }
     }
 
-    // Case 3: l1=[...], l2=[...] (Add Two Numbers)
+    // Case 3: Multiple arrays (e.g., Add Two Numbers, MST edges)
     if (arrayMatches && arrayMatches.length >= 2) {
-      return {
-        ...tc,
-        input: JSON.stringify(arrayMatches.map((arr) => JSON.parse(arr))),
+      try {
+        return {
+          ...tc,
+          input: JSON.stringify(arrayMatches.map((arr) => JSON.parse(arr))),
+        }
+      } catch (e) {
+        console.error('Error parsing arrays:', e)
+        return tc
       }
     }
 
@@ -411,13 +421,23 @@ const ProblemStatement = () => {
           failed: selectedProblem?.testCases.length,
           passPercentage: 0,
         },
-        testCaseResults: selectedProblem?.testCases.map((tc, index) => ({
-          testCaseId: index + 1,
-          status: 'FAIL',
-          expected: JSON.parse(tc.output),
-          received: null,
-          message: error.message || 'Evaluation failed',
-        })),
+        testCaseResults: selectedProblem?.testCases.map((tc, index) => {
+          const expected = (() => {
+            try {
+              return JSON.parse(tc.output)
+            } catch (e) {
+              console.error('Error parsing output:', e)
+              return tc.output
+            }
+          })()
+          return {
+            testCaseId: index + 1,
+            status: 'FAIL',
+            expected,
+            received: null,
+            message: error.message || 'Evaluation failed',
+          }
+        }),
         feedback: {
           verdict: 'REJECTED',
           remarks: error.message || 'Evaluation failed',
