@@ -49,17 +49,17 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
   const firstPart =
     tenantName.length > 1
       ? tenantName.charAt(0).toUpperCase() + tenantName.charAt(1).toLowerCase()
-      : tenantName.charAt(0).toUpperCase();
+      : tenantName.charAt(0).toUpperCase()
 
-  const restPart = tenantName.slice(2);
+  const restPart = tenantName.slice(2)
 
   return (
     <Link
-      className="navbar-brand d-flex align-items-center"
+      className="navbar-brand d-flex align-items-center gap-1"
       style={{
         overflow: "visible",
         maxWidth: "none",
-        flexShrink: 0   // 🔥 ADD THIS (CRITICAL)
+        flexShrink: 0
       }}
       to={getDashboardLink()}
     >
@@ -96,7 +96,6 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
       )}
 
       {/* ✅ CASE 3: FALLBACK STYLED NAME */}
-      {/* ✅ CASE 3: FALLBACK STYLED NAME */}
       {!isDefaultEklav && !tenantLogo && (
         <span
           style={{
@@ -105,11 +104,10 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             letterSpacing: "1px",
             display: "flex",
             alignItems: "center",
-            whiteSpace: "nowrap",       // ✅ Prevent wrapping
-            overflow: "visible",        // ✅ Ensure no cut
-            maxWidth: "100%"            // ✅ Allow full usage
+            whiteSpace: "nowrap"
           }}
         >
+          {/* First 2 letters (brand color) */}
           <span
             style={{
               color: themeColor,
@@ -119,9 +117,10 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             {firstPart}
           </span>
 
+          {/* Remaining letters (auto theme color) */}
           <span
             style={{
-              color: "#ffffff",
+              color: "var(--bs-body-color)", // ✅ FIX: works for both white & dark BG
               display: "inline-block"
             }}
           >
