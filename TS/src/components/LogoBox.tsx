@@ -88,6 +88,7 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
       )}
 
       {/* ✅ CASE 3: FALLBACK STYLED NAME */}
+      {/* ✅ CASE 3: FALLBACK STYLED NAME */}
       {!isDefaultEklav && !tenantLogo && (
         <span
           style={{
@@ -95,7 +96,10 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             fontWeight: "800",
             letterSpacing: "1px",
             display: "flex",
-            alignItems: "center"
+            alignItems: "center",
+            whiteSpace: "nowrap",       // ✅ Prevent wrapping
+            overflow: "visible",        // ✅ Ensure no cut
+            maxWidth: "100%"            // ✅ Allow full usage
           }}
         >
           <span
@@ -107,7 +111,12 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             {firstPart}
           </span>
 
-          <span style={{ color: "#ffffff" }}>
+          <span
+            style={{
+              color: "#ffffff",
+              display: "inline-block"
+            }}
+          >
             {restPart}
           </span>
         </span>
