@@ -54,7 +54,15 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
   const restPart = tenantName.slice(2);
 
   return (
-    <Link className="navbar-brand d-flex align-items-center" to={getDashboardLink()}>
+    <Link
+      className="navbar-brand d-flex align-items-center"
+      style={{
+        overflow: "visible",
+        maxWidth: "none",
+        flexShrink: 0   // 🔥 ADD THIS (CRITICAL)
+      }}
+      to={getDashboardLink()}
+    >
 
       {/* ✅ CASE 1: DEFAULT EKLAV */}
       {isDefaultEklav && (
