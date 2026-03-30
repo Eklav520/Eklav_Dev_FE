@@ -1,6 +1,7 @@
 import logo from '@/assets/images/logo_black.png'
 import logoLight from '@/assets/images/logo_white.png'
 import { Link } from 'react-router-dom'
+import useTenant from '@/utils/tenant'   // ✅ ADD
 
 interface Tenant {
   name?: string
@@ -15,7 +16,11 @@ interface LogoBoxProps {
   tenant?: Tenant | null
 }
 
-const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
+const LogoBox = ({ height, width, role, tenant: tenantProp }: LogoBoxProps) => {
+
+  // ✅ AUTO FETCH TENANT (fallback if not passed)
+  const tenantContext = useTenant()
+  const tenant = tenantProp || tenantContext
 
   // 🔹 Normalize role
   const normalizedRole =
@@ -64,7 +69,7 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
       to={getDashboardLink()}
     >
 
-      {/* ✅ CASE 1: DEFAULT EKLAV */}
+      {/* ✅ DEFAULT EKLAV */}
       {isDefaultEklav && (
         <>
           <img
@@ -84,7 +89,7 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
         </>
       )}
 
-      {/* ✅ CASE 2: TENANT LOGO */}
+      {/* ✅ TENANT LOGO */}
       {!isDefaultEklav && tenantLogo && (
         <img
           height={height}
@@ -95,7 +100,7 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
         />
       )}
 
-      {/* ✅ CASE 3: FALLBACK STYLED NAME */}
+      {/* ✅ FALLBACK TEXT LOGO */}
       {!isDefaultEklav && !tenantLogo && (
         <span
           style={{
@@ -112,7 +117,7 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             {firstPart}
           </span>
 
-          {/* Remaining letters (light/dark aware) */}
+          {/* Remaining letters */}
           <span className="light-mode-item" style={{ color: "#000" }}>
             {restPart}
           </span>

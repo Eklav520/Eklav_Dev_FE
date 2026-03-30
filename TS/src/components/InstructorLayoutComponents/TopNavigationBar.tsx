@@ -4,6 +4,7 @@ import AppMenu from '@/components/TopNavbar/components/AppMenu'
 import ProfileDropdown from '@/components/TopNavbar/components/ProfileDropdown'
 import { useLayoutContext } from '@/context/useLayoutContext'
 import { Container } from 'react-bootstrap'
+import useTenant from '@/utils/tenant'   // ✅ ADD
 
 interface TopNavigationBarProps {
   role: string
@@ -12,6 +13,7 @@ interface TopNavigationBarProps {
 
 const TopNavigationBar = ({ role, onToggleMenu }: TopNavigationBarProps) => {
   const { appMenuControl } = useLayoutContext()
+  const tenant = useTenant()   // ✅ ADD
 
   return (
     <TopNavbar>
@@ -20,10 +22,9 @@ const TopNavigationBar = ({ role, onToggleMenu }: TopNavigationBarProps) => {
         className="d-flex align-items-center px-3"
         style={{ height: 64 }}
       >
-        {/* ✅ LEFT SECTION */}
+        {/* LEFT */}
         <div className="d-flex align-items-center gap-2">
 
-          {/* MOBILE MENU */}
           <button
             onClick={onToggleMenu}
             className="d-xl-none"
@@ -37,10 +38,9 @@ const TopNavigationBar = ({ role, onToggleMenu }: TopNavigationBarProps) => {
             ☰
           </button>
 
-          {/* LOGO */}
-          <LogoBox height={36} role={role} />
+          {/* ✅ FIXED */}
+          <LogoBox height={36} role={role} tenant={tenant} />
 
-          {/* PANEL TITLE */}
           <h5
             className="mb-0 fw-semibold d-none d-md-block"
             style={{ color: '#ff7a00', whiteSpace: 'nowrap' }}
@@ -49,7 +49,7 @@ const TopNavigationBar = ({ role, onToggleMenu }: TopNavigationBarProps) => {
           </h5>
         </div>
 
-        {/* ✅ CENTER MENU */}
+        {/* CENTER */}
         <div className="d-none d-lg-flex flex-grow-1 justify-content-center">
           <AppMenu
             mobileMenuOpen={appMenuControl.open}
@@ -59,7 +59,7 @@ const TopNavigationBar = ({ role, onToggleMenu }: TopNavigationBarProps) => {
           />
         </div>
 
-        {/* ✅ RIGHT SECTION */}
+        {/* RIGHT */}
         <div className="d-flex align-items-center ms-auto">
           <ProfileDropdown className="ms-2" />
         </div>
