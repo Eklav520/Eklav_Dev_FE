@@ -7,6 +7,7 @@ import HeroMovingTopics from "./HeroMovingTopics";
 import TrustedCompanies from "./TrustedCompanies";
 import About from "./About";
 import ForgotPassword from "../forgot-password/components/ForgotPassword";
+import useTenant from "@/utils/tenant";
 
 // Lazy-loaded components
 const Footer = lazy(() => import("./Footer"));
@@ -53,13 +54,12 @@ interface Video {
   category: string;
 }
 
-const VIDEOS: Video[] = [
+const getVideos = (tenantName: string): Video[] => [
   {
     url: "https://www.youtube.com/watch?v=yQrXkWJtntc",
     embedUrl: "https://www.youtube.com/embed/yQrXkWJtntc",
     title: "Platform Overview",
-    description:
-      "Explore how Eklav helps students build industry-ready skills through real-world projects and expert guidance.",
+    description: `Explore how ${tenantName} helps students build industry-ready skills through real-world projects and expert guidance.`,
     stats: "2.5K+ views",
     duration: "3:45",
     category: "Overview"
@@ -155,17 +155,23 @@ const NavigationScrollEffect = memo(() => {
 NavigationScrollEffect.displayName = 'NavigationScrollEffect';
 
 // Video Showcase Component
-const VideoShowcase: FC = () => {
+const VideoShowcase: FC<{ tenantName: string }> = ({ tenantName }) => {
   const [activeVideoIndex, setActiveVideoIndex] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const videoRefs = useRef<(HTMLIFrameElement | null)[]>([]);
 
-  const categories = ['all', ...new Set(VIDEOS.map(v => v.category))];
+  const videos = getVideos(tenantName);
 
-  const filteredVideos = selectedCategory === 'all'
-    ? VIDEOS
-    : VIDEOS.filter(v => v.category === selectedCategory);
+  const categories: string[] = [
+    "all",
+    ...Array.from(new Set(videos.map((v) => v.category)))
+  ];
+
+  const filteredVideos =
+    selectedCategory === "all"
+      ? videos
+      : videos.filter((v) => v.category === selectedCategory);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -232,21 +238,33 @@ const VideoShowcase: FC = () => {
   return (
     <section className="video-showcase w-100">
       <div className="video-showcase-header">
-        <h2>See Eklav in Action</h2>
-        <p>Explore our platform through these featured videos and see how we're transforming tech education</p>
+        <h2>See {tenantName} in Action</h2>
+        <p>
+          Explore how {tenantName} helps students through these featured videos
+          and see how we're transforming tech education
+        </p>
       </div>
 
       {/* Category Filters */}
       <div className="category-filters">
-        {categories.map(category => (
-          <button
-            key={category}
-            className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(category)}
-          >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
-          </button>
-        ))}
+        {categories.map((category: string, index: number) => {
+          const label =
+            typeof category === "string"
+              ? category.charAt(0).toUpperCase() + category.slice(1)
+              : "All";
+
+          return (
+            <button
+              key={category || index}
+              className={`category-btn ${selectedCategory === category ? "active" : ""
+                }`}
+              onClick={() => setSelectedCategory(category)}
+              type="button"
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
       <Container fluid className="px-3 px-xl-4">
@@ -260,15 +278,14 @@ const VideoShowcase: FC = () => {
           className="video-carousel"
           wrap={false}
         >
-          {filteredVideos.map((video, index) => {
-            const originalIndex = VIDEOS.findIndex(v => v.url === video.url);
+          {(filteredVideos || []).map((video: any, index: any) => {
             return (
-              <Carousel.Item key={originalIndex}>
+              <Carousel.Item key={index}>
                 <div className="video-wrapper">
                   <div className="video-container">
                     <div className="ratio ratio-16x9">
                       <iframe
-                        ref={el => videoRefs.current[originalIndex] = el}
+                        ref={(el) => (videoRefs.current[index] = el)}
                         src={`${video.embedUrl}?enablejsapi=1&autoplay=0&rel=0&modestbranding=1&controls=1`}
                         title={video.title}
                         allowFullScreen
@@ -278,11 +295,14 @@ const VideoShowcase: FC = () => {
                       />
                     </div>
 
-                    {/* Video Overlay with Play Button */}
-                    {!isVideoPlaying && activeVideoIndex === originalIndex && (
-                      <div className="video-overlay" onClick={() => handleVideoSelect(originalIndex)}>
+                    {/* Overlay */}
+                    {!isVideoPlaying && activeVideoIndex === index && (
+                      <div
+                        className="video-overlay"
+                        onClick={() => handleVideoSelect(index)}
+                      >
                         <div className="play-button">
-                          <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+                          <svg width="60" height="60" viewBox="0 0 60 60">
                             <circle cx="30" cy="30" r="28" stroke="#ff9800" strokeWidth="2" />
                             <circle cx="30" cy="30" r="24" fill="#ff9800" fillOpacity="0.2" />
                             <path d="M42 30L24 40V20L42 30Z" fill="#ff9800" />
@@ -294,11 +314,11 @@ const VideoShowcase: FC = () => {
 
                   <div className="video-content">
                     <h3 className="video-title">{video.title}</h3>
-                    <p className="video-description">
-                      {video.description}
-                    </p>
+                    <p className="video-description">{video.description}</p>
+
                     <div className="video-meta">
                       <span className="video-category">{video.category}</span>
+
                       <div className="video-stats">
                         <span>
                           <i className="bi bi-eye"></i> {video.stats}
@@ -315,21 +335,26 @@ const VideoShowcase: FC = () => {
           })}
         </Carousel>
 
-        {/* Video Thumbnails */}
+        {/* 🔥 THUMBNAILS */}
         <div className="video-thumbnails">
-          {filteredVideos.map((video, idx) => {
-            const originalIndex = VIDEOS.findIndex(v => v.url === video.url);
+          {(filteredVideos || []).map((video: any, index: any) => {
             const videoId = getYouTubeId(video.url);
+
             return (
               <div
-                key={originalIndex}
-                className={`video-thumb ${originalIndex === activeVideoIndex ? 'active' : ''}`}
-                onClick={() => handleVideoSelect(originalIndex)}
+                key={index}
+                className={`video-thumb ${index === activeVideoIndex ? "active" : ""
+                  }`}
+                onClick={() => handleVideoSelect(index)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && handleVideoSelect(originalIndex)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && handleVideoSelect(index)
+                }
                 style={{
-                  backgroundImage: videoId ? `url(https://img.youtube.com/vi/${videoId}/mqdefault.jpg)` : 'none'
+                  backgroundImage: videoId
+                    ? `url(https://img.youtube.com/vi/${videoId}/mqdefault.jpg)`
+                    : "none",
                 }}
               >
                 <div className="thumb-overlay">
@@ -992,6 +1017,9 @@ GlobalStyles.displayName = 'GlobalStyles';
 
 // ========== MAIN COMPONENT ==========
 const AuthLayout: FC<ChildrenType> = ({ children }) => {
+  const tenant = useTenant();
+  const tenantName = tenant?.name || "Eklav";
+  const tenantLogo = tenant?.logo || logo; // fallback to default logo
   const { toggle: toggleOffCanvasMenu } = useToggle();
   const [showModal, setShowModal] = useState(false);
   const [authType, setAuthType] = useState<"signin" | "signup" | "forgot">("signin");
@@ -1064,7 +1092,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
               lg={12}
               className="d-flex flex-column align-items-center justify-content-start px-4 px-xl-5 position-relative auth-left"
             >
-              <VideoShowcase />
+              <VideoShowcase tenantName={tenantName} />
             </Col>
           </Row>
 
@@ -1096,9 +1124,9 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
         <div className="auth-modal-header">
           <h4 className="mb-0 fw-bold text-white auth-modal-title">
             {authType === "signin"
-              ? "Welcome To Eklav 👋"
+              ? `Welcome To ${tenantName} 👋`
               : authType === "signup"
-                ? "Create Your Account"
+                ? `Create Your ${tenantName} Account`
                 : "Reset Your Password 🔐"}
           </h4>
 

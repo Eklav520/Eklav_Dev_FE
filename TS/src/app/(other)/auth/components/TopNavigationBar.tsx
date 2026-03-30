@@ -2,6 +2,7 @@ import { FC, memo } from "react";
 import { Container, Button } from "react-bootstrap";
 import LogoBox from "@/components/LogoBox";
 import TopNavbar from "@/components/TopNavbar";
+import useTenant from "@/utils/tenant";
 
 // Define the props interface
 interface TopNavigationBarProps {
@@ -10,6 +11,7 @@ interface TopNavigationBarProps {
 }
 
 const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSignupClick }) => {
+  const tenant = useTenant();
   return (
     <TopNavbar>
       <Container
@@ -17,7 +19,7 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         className="d-flex align-items-center justify-content-between px-3 px-md-4"
         style={{ height: 64 }}
       >
-        <LogoBox height={36} width={140} />
+        <LogoBox height={36} width={140} tenant={tenant}/>
 
         <div className="d-flex align-items-center gap-3">
           <Button
