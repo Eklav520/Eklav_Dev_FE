@@ -22,8 +22,8 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
     typeof role === 'string'
       ? role.toLowerCase()
       : typeof role === 'object' && role?.role
-      ? role.role.toLowerCase()
-      : ''
+        ? role.role.toLowerCase()
+        : ''
 
   // 🔹 Route based on role
   const getDashboardLink = () => {
@@ -46,8 +46,12 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
   const isDefaultEklav = tenantName.toLowerCase() === "eklav"
 
   // 🔹 Safe name split
-  const firstPart = tenantName.slice(0, 2).toUpperCase()
-  const restPart = tenantName.slice(2)
+  const firstPart =
+    tenantName.length > 1
+      ? tenantName.charAt(0).toUpperCase() + tenantName.charAt(1).toLowerCase()
+      : tenantName.charAt(0).toUpperCase();
+
+  const restPart = tenantName.slice(2);
 
   return (
     <Link className="navbar-brand d-flex align-items-center" to={getDashboardLink()}>

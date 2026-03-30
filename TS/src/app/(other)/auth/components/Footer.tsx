@@ -2,8 +2,17 @@ import { Link } from 'react-router-dom'
 import { Col, Container, Row } from 'react-bootstrap'
 import { FaFacebook, FaInstagram, FaLinkedinIn, FaTwitter, FaApple, FaGooglePlay } from 'react-icons/fa'
 import logoLight from '@/assets/images/logo_white.png'
+import useTenant from '@/utils/tenant'
 
 const Footer = () => {
+  const tenant = useTenant()
+
+  const tenantName = tenant?.name?.trim() || "Eklav"
+  const tenantLogo = tenant?.logo
+  const themeColor = tenant?.themeColor || "#ff9800"
+
+  const isDefaultEklav = tenantName.toLowerCase() === "eklav"
+
   return (
     <footer className="footer-section w-100">
       <style>{`
@@ -194,8 +203,6 @@ const Footer = () => {
           transform: translateY(-2px);
         }
 
-        
-
         .copyright-text {
           color: #9aa4b2;
           font-size: 14px;
@@ -239,6 +246,23 @@ const Footer = () => {
           color: #1a1d23;
           border-color: transparent;
           box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        /* Tenant Logo Text Styles */
+        .tenant-logo-text {
+          font-size: 20px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          letter-spacing: 0.5px;
+        }
+
+        .tenant-logo-primary {
+          margin-right: 2px;
+        }
+
+        .tenant-logo-secondary {
+          color: #ffffff;
         }
 
         /* Responsive */
@@ -299,13 +323,17 @@ const Footer = () => {
             padding: 10px 25px;
             font-size: 14px;
           }
+          
+          .tenant-logo-text {
+            font-size: 18px;
+          }
         }
       `}</style>
 
       <Container>
         {/* CTA Section */}
         <div className="cta-section">
-          <h2 className="cta-title">Ready to Transform Your Career?</h2>
+          <h2 className="cta-title">Ready to Transform Your Career {tenantName}?</h2>
           <p className="cta-description">
             Explore our course bundles designed to take you from beginner to job-ready,
             with skills that top companies demand.
@@ -341,14 +369,12 @@ const Footer = () => {
           </Col>
 
           <Col md={3} sm={6} className="footer-column">
-            <h4 className="footer-column-title">Explore Our Courses</h4>
+            <h4 className="footer-column-title">Courses</h4>
             <ul className="footer-links-list">
-              <li><Link to="#">Eklav DSA</Link></li>
-              <li><Link to="#">Eklav React</Link></li>
-              <li><Link to="#">Eklav Node</Link></li>
-              <li><Link to="#">Eklav Frontend System Design</Link></li>
-              <li><Link to="#">Eklav JavaScript</Link></li>
-              <li><Link to="#">Crack Frontend Interview</Link></li>
+              <li><Link to="#">{tenantName} DSA</Link></li>
+              <li><Link to="#">{tenantName} React</Link></li>
+              <li><Link to="#">{tenantName} Node</Link></li>
+              <li><Link to="#">{tenantName} JavaScript</Link></li>
             </ul>
           </Col>
 
@@ -402,21 +428,70 @@ const Footer = () => {
         <Row className="footer-bottom align-items-center">
           <Col md={4} className="text-center text-md-start">
             <div className="footer-logo">
-              <Link to="/" aria-label="Eklav - Go to homepage">
-                <img
-                  src={logoLight}
-                  alt="Eklav Logo"
-                  height={36}
-                  width={126}
-                  loading="lazy"
-                />
+              <Link to="/" aria-label={`${tenantName} homepage`}>
+                {/* Case 1: Default Eklav - Show Eklav logo */}
+                {isDefaultEklav && (
+                  <img
+                    src={logoLight}
+                    alt="Eklav Logo"
+                    height={36}
+                    width={126}
+                    loading="lazy"
+                  />
+                )}
+
+                {/* Case 2: Tenant with custom logo - Show tenant logo */}
+                {!isDefaultEklav && tenantLogo && (
+                  <img
+                    src={tenantLogo}
+                    alt={tenantName}
+                    height={36}
+                    style={{ maxWidth: '126px', objectFit: 'contain' }}
+                    loading="lazy"
+                  />
+                )}
+
+                {/* Case 3: Tenant without logo - Show tenant name as text logo */}
+                {!isDefaultEklav && !tenantLogo && (() => {
+                  const safeName = (tenantName || "Eklav").trim();
+
+                  // ✅ First letter CAPS
+                  const firstChar = safeName.charAt(0).toUpperCase();
+
+                  // ✅ Second letter small
+                  const secondChar = safeName.charAt(1)
+                    ? safeName.charAt(1).toLowerCase()
+                    : "";
+
+                  // ✅ First two letters (orange)
+                  const firstPart = firstChar + secondChar;
+
+                  // ✅ Remaining letters (white)
+                  const restPart = safeName.slice(2);
+
+                  return (
+                    <span className="tenant-logo-text">
+                      <span
+                        className="tenant-logo-primary"
+                        style={{ color: themeColor }}
+                      >
+                        {firstPart}
+                      </span>
+
+                      <span className="tenant-logo-secondary">
+                        {restPart}
+                      </span>
+                    </span>
+                  );
+                })()}
               </Link>
             </div>
           </Col>
 
           <Col md={4} className="text-center">
             <div className="copyright-text">
-              Copyrights © {new Date().getFullYear()} <span className="highlight">Eklav</span>. All rights reserved
+              Copyrights © {new Date().getFullYear()}{" "}
+              <span className="highlight">{tenantName}</span>. All rights reserved
             </div>
           </Col>
 
