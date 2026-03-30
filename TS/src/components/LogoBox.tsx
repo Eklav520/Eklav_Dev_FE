@@ -107,23 +107,16 @@ const LogoBox = ({ height, width, role, tenant }: LogoBoxProps) => {
             whiteSpace: "nowrap"
           }}
         >
-          {/* First 2 letters (brand color) */}
-          <span
-            style={{
-              color: themeColor,
-              marginRight: "2px"
-            }}
-          >
+          {/* First 2 letters */}
+          <span style={{ color: themeColor, marginRight: "2px" }}>
             {firstPart}
           </span>
 
-          {/* Remaining letters (auto theme color) */}
-          <span
-            style={{
-              color: "var(--bs-body-color)", // ✅ FIX: works for both white & dark BG
-              display: "inline-block"
-            }}
-          >
+          {/* Remaining letters (light/dark aware) */}
+          <span className="light-mode-item" style={{ color: "#000" }}>
+            {restPart}
+          </span>
+          <span className="dark-mode-item" style={{ color: "#fff" }}>
             {restPart}
           </span>
         </span>
