@@ -9,7 +9,7 @@ const Footer = () => {
 
   const tenantName = tenant?.name?.trim() || "Eklav"
   const tenantLogo = tenant?.logo
-  const themeColor = tenant?.themeColor || "#ff9800"
+  const themeColor = tenant?.themeColor || "#f97316"
 
   const isDefaultEklav = tenantName.toLowerCase() === "eklav"
 
@@ -38,7 +38,7 @@ const Footer = () => {
           font-size: 36px;
           font-weight: 700;
           margin-bottom: 15px;
-          background: linear-gradient(135deg, #fff 0%, #ff9800 100%);
+          background: linear-gradient(135deg, #fff 0%, #f97316 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -54,7 +54,7 @@ const Footer = () => {
         .cta-button {
           display: inline-block;
           padding: 12px 32px;
-          background: linear-gradient(135deg, #ff9800, #f57c00);
+          background: linear-gradient(135deg, #f97316, #ea580c);
           color: white;
           text-decoration: none;
           border-radius: 30px;
@@ -96,12 +96,12 @@ const Footer = () => {
           background: rgba(255, 152, 0, 0.2);
           transform: translateY(-2px);
           color: white;
-          border-color: #ff9800;
+          border-color: #f97316;
         }
 
         .app-button svg {
           font-size: 20px;
-          color: #ff9800;
+          color: #f97316;
         }
 
         /* Footer Links */
@@ -129,7 +129,7 @@ const Footer = () => {
           left: 0;
           width: 30px;
           height: 2px;
-          background: #ff9800;
+          background: #f97316;
         }
 
         .footer-links-list {
@@ -150,7 +150,7 @@ const Footer = () => {
         }
 
         .footer-links-list a:hover {
-          color: #ff9800;
+          color: #f97316;
           padding-left: 5px;
         }
 
@@ -162,7 +162,7 @@ const Footer = () => {
         }
 
         .contact-info a {
-          color: #ff9800;
+          color: #f97316;
           text-decoration: none;
         }
 
@@ -179,7 +179,7 @@ const Footer = () => {
         }
 
         .made-with svg {
-          color: #ff4444;
+          color: #f97316;
           animation: heartbeat 1.5s ease infinite;
         }
 
@@ -209,7 +209,7 @@ const Footer = () => {
         }
 
         .copyright-text .highlight {
-          color: #ff9800;
+          color: #f97316;
           font-weight: 500;
         }
 
@@ -241,7 +241,7 @@ const Footer = () => {
         }
 
         .social-link:hover {
-          background: #ff9800;
+          background: #f97316;
           transform: translateY(-3px);
           color: #1a1d23;
           border-color: transparent;
