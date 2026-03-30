@@ -2132,6 +2132,8 @@ export default function StudentCodeChallengeComponent({
   onChallengeResolved,
   authToken,
   studentId,
+  activeRound,
+  completedRounds,
 }: {
   baseURL?: string
   eventId?: string
@@ -2142,6 +2144,8 @@ export default function StudentCodeChallengeComponent({
   onChallengeResolved?: (cid: string) => void
   authToken?: string
   studentId?: string
+  activeRound?: string
+  completedRounds?: string[]
 }) {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { user } = useAuthContext()
@@ -2168,6 +2172,7 @@ export default function StudentCodeChallengeComponent({
   const recordingPreviewRef = useRef<HTMLVideoElement | null>(null)
   const submittingRef = useRef(false)
   const [showOnlyProgramOutput, setShowOnlyProgramOutput] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
 
   // recording
   const {
@@ -2394,40 +2399,65 @@ export default function StudentCodeChallengeComponent({
     }
   }
 
-  // Modal-first, then try to start capture; revert if denied
+  useEffect(() => {
+    if (!activeRound) {
+      setModalOpen(false); // exam finished
+    }
+  }, [activeRound]);
+
   async function openModalAndStart() {
-    if (!challenge) return
+    if (!challenge) return;
 
-    // 1️⃣ Open modal first
-    setModalOpen(true)
-
-    // wait one paint so refs exist
-    await new Promise((r) => requestAnimationFrame(r))
-
-    // 2️⃣ Start recording AFTER modal renders
-    const ok = await startScreenAndCamRecording()
-    if (!ok) {
-      setStatusMessage('Screen share permission is required.')
-      setModalOpen(false)
-      return
+    // 🔥 NEW: BLOCK IF NOT ACTIVE
+    if (activeRound !== "code") {
+      setStatusMessage("This round is locked");
+      return;
     }
 
-    setTimeLeft(challenge.timeLimitSeconds ?? 30 * 60)
-    setCamPos({ right: 20, bottom: 20 })
-    resetViolations()
-    setOutputExpanded(false)
+    // 🔥 NEW: BLOCK IF COMPLETED
+    if (completedRounds?.includes("coding")) {
+      setStatusMessage("Already completed");
+      return;
+    }
 
-    setTimeout(enterFullscreen, 300)
+    setModalOpen(true);
+
+    await new Promise((r) => requestAnimationFrame(r));
+
+    const ok = await startScreenAndCamRecording();
+    if (!ok) {
+      setStatusMessage('Screen share permission is required.');
+      setModalOpen(false);
+      return;
+    }
+
+    setTimeLeft(challenge.timeLimitSeconds ?? 30 * 60);
+    resetViolations();
+
   }
 
 
   // auto-open when parent asks (also gated)
+useEffect(() => {
+  console.log("EFFECT RUN:", {
+    startOpen,
+    challenge,
+    modalOpen
+  });
+
+  if (startOpen && challenge && !modalOpen) {
+    console.log("🔥 Auto opening modal...");
+    openModalAndStart();
+  }
+}, [startOpen, challenge, modalOpen]);
+
   useEffect(() => {
-    if (startOpen && challenge && !modalOpen) {
-      openModalAndStart()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startOpen, challenge])
+    console.log("CHILD PROPS:", {
+      startOpen,
+      activeRound,
+      challenge
+    });
+  }, [startOpen, activeRound, challenge]);
 
   function closeModalAndCleanup() {
     try {
@@ -3009,6 +3039,7 @@ export default function StudentCodeChallengeComponent({
       console.error(err)
     } finally {
       setIsRunning(false)
+      submittingRef.current = false
     }
   }
 

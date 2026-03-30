@@ -25,7 +25,7 @@ type ServerSubmission = null | {
   _id: string
   status: 'pending' | 'passed' | 'failed' | 'evaluated' | string
   score?: number | null
-  remarks?: string | null
+  remarks?: string | null 
   submittedAt?: string
   evaluatedAt?: string | null
 }
@@ -169,7 +169,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
           
           // Re-enter fullscreen immediately
           if (!document.fullscreenElement) {
-            guard.enterFullscreenFromUserGesture()
+            guard.enterFullscreen()
           }
           
           return false
@@ -479,7 +479,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
 
       // 🔒 Ensure fullscreen is active and prevent ESC exit
       if (!document.fullscreenElement) {
-        await guard.enterFullscreenFromUserGesture()
+        await guard.enterFullscreen()
       }
 
       // ⏱ Timer
@@ -700,6 +700,19 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
   }
 
+  const handleEnterFullscreen = async () => {
+    try {
+      const elem = document.documentElement
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen()
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen()
+      }
+    } catch (err) {
+      console.warn('Fullscreen request failed', err)
+    }
+  }
+
   const handleCloseModal = () => {
     if (submissionStatus === 'submitted_pending' || submissionStatus === 'evaluated') {
       if (displayStreamRef.current) {
@@ -720,7 +733,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
         isFullscreen={guard.isFullscreen}
         remaining={Math.max(0, guard.maxViolations - guard.violationCount)}
         disabledAcknowledge={guard.violationCount >= guard.maxViolations}
-        onReenterFullscreen={guard.enterFullscreenFromUserGesture}
+        onReenterFullscreen={handleEnterFullscreen}
         onAcknowledge={guard.acknowledge}
       />
 
@@ -781,7 +794,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
                 <h3>Quiz Locked</h3>
                 <p>Please acknowledge the proctoring violation to continue</p>
                 {!guard.isFullscreen && (
-                  <Button variant="warning" onClick={guard.enterFullscreenFromUserGesture}>
+                  <Button variant="warning" onClick={guard.enterFullscreen}>
                     Re-enter Fullscreen
                   </Button>
                 )}
@@ -970,7 +983,7 @@ const StudentQuiz: React.FC<Props> = ({ examId, questionCount = 20, onClose, str
                   <li>Modal cannot be closed until quiz is submitted</li>
                   {!guard.isFullscreen && (
                     <li>
-                      <Button size="sm" variant="outline-light" onClick={guard.enterFullscreenFromUserGesture} className="fullscreen-btn">
+                      <Button size="sm" variant="outline-light" onClick={handleEnterFullscreen} className="fullscreen-btn">
                         Enter Fullscreen (ESC Disabled)
                       </Button>
                     </li>

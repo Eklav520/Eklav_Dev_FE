@@ -61,25 +61,28 @@ export default function AdminCreateProblem({
 
 
   useEffect(() => {
-  const fetchExams = async () => {
-    try {
-      const res = await axios.get(
-        `${baseURL}/api/assessment/admin/exams`,
-        {
-          headers: {
-            Authorization: `Bearer ${user?.token}`,
-          },
-        }
-      );
+    const fetchExams = async () => {
+      try {
+        const res = await axios.get(
+          `${baseURL}/api/assessment/admin/exams`,
+          {
+            headers: {
+              Authorization: `Bearer ${user?.token}`,
+            },
+          }
+        );
 
-      setExams(res.data || []);
-    } catch (err) {
-      console.error("Failed to fetch exams", err);
-    }
-  };
+        console.log("EXAMS API:", res.data);
 
-  fetchExams();
-}, []);
+        setExams(res.data.exams || []); // ✅ FIXED
+      } catch (err) {
+        console.error("Failed to fetch exams", err);
+        setExams([]);
+      }
+    };
+
+    fetchExams();
+  }, []);
 
   // auto-generate slug
   useEffect(() => {
@@ -228,21 +231,21 @@ export default function AdminCreateProblem({
       )}
 
       <Form.Group className="mb-3">
-  <Form.Label>Select Exam</Form.Label>
-  <Form.Control
-    as="select"
-    value={examId}
-    onChange={(e) => setExamId(e.target.value)}
-  >
-    <option value="">Select Exam</option>
+        <Form.Label>Select Exam</Form.Label>
+        <Form.Control
+          as="select"
+          value={examId}
+          onChange={(e) => setExamId(e.target.value)}
+        >
+          <option value="">Select Exam</option>
 
-    {exams.map((exam: any) => (
-      <option key={exam._id} value={exam._id}>
-        {exam.title}
-      </option>
-    ))}
-  </Form.Control>
-</Form.Group>
+          {exams.map((exam: any) => (
+            <option key={exam._id} value={exam._id}>
+              {exam.title}
+            </option>
+          ))}
+        </Form.Control>
+      </Form.Group>
 
       <Form onSubmit={handleSubmit}>
         <Row className="mb-3">

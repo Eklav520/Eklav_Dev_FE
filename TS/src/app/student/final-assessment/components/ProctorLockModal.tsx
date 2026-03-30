@@ -1,19 +1,19 @@
 // src/components/ProctorLockModal.tsx
 import React from 'react'
-import { Button, Modal } from 'react-bootstrap'
+import { Modal, Button, Alert } from 'react-bootstrap'
+import { FaExclamationTriangle, FaDesktop, FaShieldAlt } from 'react-icons/fa'
 
-type Props = {
+interface ProctorLockModalProps {
   show: boolean
   message: string
   isFullscreen: boolean
   remaining: number
   disabledAcknowledge?: boolean
-  onReenterFullscreen?: () => void
-  onAcknowledge?: () => void
-  title?: string
+  onReenterFullscreen: () => void
+  onAcknowledge: () => void
 }
 
-const ProctorLockModal: React.FC<Props> = ({
+const ProctorLockModal: React.FC<ProctorLockModalProps> = ({
   show,
   message,
   isFullscreen,
@@ -21,48 +21,70 @@ const ProctorLockModal: React.FC<Props> = ({
   disabledAcknowledge,
   onReenterFullscreen,
   onAcknowledge,
-  title = '⚠️ Proctoring Violation Detected',
 }) => {
   return (
-    <Modal show={show} onHide={() => {}} backdrop="static" keyboard={false} centered>
-      <div
-        style={{
-          background: '#200',
-          color: '#fff',
-          border: '3px solid #ff4d4f',
-          borderRadius: 12,
-        }}>
-        <Modal.Header style={{ border: 'none' }}>
-          <Modal.Title style={{ color: '#ff4d4f', fontWeight: 800 }}>{title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <p style={{ whiteSpace: 'pre-wrap', fontSize: 16, lineHeight: 1.5 }}>{message}</p>
-
-          {!isFullscreen && onReenterFullscreen && (
-            <div style={{ marginTop: 12 }}>
-              <Button variant="warning" onClick={onReenterFullscreen}>
-                Re-enter Fullscreen
-              </Button>
-            </div>
-          )}
-
-          <div
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              padding: 12,
-              borderRadius: 8,
-              marginTop: 16,
-              fontSize: 14,
-            }}>
-            <strong>Remaining Violations:</strong> {remaining}
-          </div>
-        </Modal.Body>
-        <Modal.Footer style={{ borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-          <Button variant="light" onClick={onAcknowledge} disabled={disabledAcknowledge}>
-            {disabledAcknowledge ? 'Limit reached' : 'I Understand — Continue'}
+    <Modal show={show} centered backdrop="static" keyboard={false} className="proctor-lock-modal">
+      <Modal.Header className="bg-danger bg-opacity-10 border-danger">
+        <Modal.Title>
+          <FaExclamationTriangle className="me-2 text-danger" />
+          Assessment Locked - Proctoring Violation
+        </Modal.Title>
+      </Modal.Header>
+      
+      <Modal.Body>
+        <Alert variant="danger" className="mb-3">
+          <FaShieldAlt className="me-2" />
+          {message}
+        </Alert>
+        
+        <div className="mb-3">
+          <strong>Remaining violations before auto-submission:</strong>{' '}
+          <span className="text-warning">{remaining}</span>
+        </div>
+        
+        {!isFullscreen && (
+          <Button 
+            variant="warning" 
+            onClick={onReenterFullscreen}
+            className="mb-3 w-100"
+          >
+            <FaDesktop className="me-2" />
+            Re-enter Fullscreen Mode
           </Button>
-        </Modal.Footer>
-      </div>
+        )}
+        
+        <div className="text-muted small">
+          <strong>⚠️ Strict Proctoring Rules:</strong>
+          <ul className="mt-2 mb-0">
+            <li>Do not switch tabs or windows</li>
+            <li>Do not use Alt+Tab, Ctrl+Tab, or other system shortcuts</li>
+            <li>ESC key is disabled - cannot exit fullscreen</li>
+            <li>Right-click is disabled</li>
+            <li>Screen recording is active</li>
+          </ul>
+        </div>
+      </Modal.Body>
+      
+      <Modal.Footer>
+        <Button
+          variant="danger"
+          onClick={onAcknowledge}
+          disabled={disabledAcknowledge}
+        >
+          I Understand - Continue
+        </Button>
+      </Modal.Footer>
+      
+      <style>{`
+        .proctor-lock-modal .modal-content {
+          background: #1a1a2e;
+          border: 2px solid #dc3545;
+        }
+        
+        .proctor-lock-modal .modal-header {
+          border-bottom-color: #dc3545;
+        }
+      `}</style>
     </Modal>
   )
 }

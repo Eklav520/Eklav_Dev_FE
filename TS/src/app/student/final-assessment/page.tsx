@@ -12,6 +12,16 @@ import AssessmentCompaniesMarquee from './AssessmentCompaniesMarquee'
 type RoundKey = 'quiz' | 'code' | 'tr' | 'hr'
 type RoundStatus = 'locked' | 'ready' | 'in_progress' | 'pending' | 'passed' | 'failed'
 
+type Round = {
+  key: RoundKey
+  label: string
+  status: RoundStatus
+  approvalStatus?: string
+  currentRound?: string
+  activeRound?: string
+  completedRounds?: string[]
+}
+
 // Typed status constants
 const LOCKED: RoundStatus = 'locked'
 const READY: RoundStatus = 'ready'
@@ -31,35 +41,68 @@ const initialRounds: { key: RoundKey; label: string; status: RoundStatus, approv
 ]
 
 const statusBadge = (s: RoundStatus, approvalStatus?: string) => {
+  const baseStyle = {
+    padding: '6px 10px',
+    borderRadius: 8,
+    fontWeight: 500,
+    fontSize: 12,
+  }
+
   switch (s) {
     case READY:
-      return <Badge style={{ backgroundColor: '#ff7a00' }}>
-        Ready
-      </Badge>
+      return (
+        <Badge style={{ ...baseStyle, backgroundColor: '#ff7a00' }}>
+          Ready
+        </Badge>
+      )
 
     case IN_PROGRESS:
-      return <Badge style={{ backgroundColor: '#ff9a3c' }}>
-        In Progress
-      </Badge>
+      return (
+        <Badge style={{ ...baseStyle, backgroundColor: '#ff9a3c' }}>
+          In Progress
+        </Badge>
+      )
 
     case PENDING:
       return (
-        <Badge bg="warning" text="dark">
-          {approvalStatus === "approved"
-            ? "Evaluated"
-            : "Pending evaluation"}
+        <Badge
+          style={{
+            ...baseStyle,
+            backgroundColor: '#fbbf24',
+            color: '#1a1a2e',
+          }}
+        >
+          {approvalStatus === "approved" ? "Evaluated" : "Pending"}
         </Badge>
       )
 
     case PASSED:
-      return <Badge bg="success">Passed</Badge>
+      return (
+        <Badge style={{ ...baseStyle, backgroundColor: '#22c55e' }}>
+          Passed
+        </Badge>
+      )
 
     case FAILED:
-      return <Badge bg="danger">Failed</Badge>
+      return (
+        <Badge style={{ ...baseStyle, backgroundColor: '#dc3545' }}>
+          Failed
+        </Badge>
+      )
 
     case LOCKED:
     default:
-      return <Badge bg="secondary">Locked</Badge>
+      return (
+        <Badge
+          style={{
+            ...baseStyle,
+            backgroundColor: '#6c757d',
+            opacity: 0.8,
+          }}
+        >
+          Locked
+        </Badge>
+      )
   }
 }
 
@@ -104,44 +147,6 @@ const getScheduleStatusBadge = (roundInfo: any, roundStatus: RoundStatus) => {
   return <Badge bg="secondary">Locked</Badge>
 }
 
-/** CODE -> TR unlocks (preserve TR state if already active/terminal) */
-function deriveWithCodeStatus(
-  prev: { key: RoundKey; label: string; status: RoundStatus }[],
-  codeStatus: RoundStatus,
-): { key: RoundKey; label: string; status: RoundStatus }[] {
-  return prev.map((r) => {
-    if (r.key === 'code') return { ...r, status: codeStatus }
-    if (r.key === 'tr') {
-      const prevStatus = r.status
-      if (PERSIST_STATUSES.includes(prevStatus)) return r
-      if (prevStatus === LOCKED && codeStatus === PASSED) return { ...r, status: READY }
-      return r
-    }
-    return r
-  })
-}
-
-/** TR -> HR unlocks (preserve HR state if already active/terminal) */
-function deriveWithTRStatus(
-  prev: { key: RoundKey; label: string; status: RoundStatus }[],
-  trStatus: RoundStatus,
-): { key: RoundKey; label: string; status: RoundStatus }[] {
-  return prev.map((r) => {
-    if (r.key === 'tr') {
-      // TR is source-of-truth from server
-      return { ...r, status: trStatus }
-    }
-    if (r.key === 'hr') {
-      const prevStatus = r.status
-      if (PERSIST_STATUSES.includes(prevStatus)) return r
-      if (prevStatus === LOCKED && trStatus === PASSED) {
-        return { ...r, status: READY } // 🔓 unlock HR when TR passed
-      }
-      return r
-    }
-    return r
-  })
-}
 
 // Violation warnings for each round type
 const VIOLATION_WARNINGS = {
@@ -415,7 +420,7 @@ export default function StudentFinalAssessmentPage() {
   const templateId = 'default'
   const status = user?.status?.toLowerCase()
 
-  const [rounds, setRounds] = useState(initialRounds)
+  const [rounds, setRounds] = useState<Round[]>(initialRounds)
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
   const [started, setStarted] = useState(false)
   const [statusChecked, setStatusChecked] = useState(false)
@@ -449,6 +454,7 @@ export default function StudentFinalAssessmentPage() {
   const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [capturedStream, setCapturedStream] = useState<MediaStream | null>(null);
+  const [completedRounds, setCompletedRounds] = useState<string[]>([])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -457,6 +463,10 @@ export default function StudentFinalAssessmentPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+
+
+
 
   // Auto-refresh logic for upcoming rounds
   useEffect(() => {
@@ -546,16 +556,41 @@ export default function StudentFinalAssessmentPage() {
 
         const data = await res.json();
 
-        if (data?.examId && !examId) {
-          setExamId(data.examId);
+        if (!data.success) return;
 
-          if (data?.rounds?.length > 0) {
-            setExamInfo({
-              title: data.title,
-              rounds: data.rounds
-            });
-          }
-        }
+        setExamId(data.examId);
+        setExamInfo({
+          title: data.title,
+          rounds: data.rounds,
+        });
+
+        // ✅ IMPORTANT: sync completed rounds
+        setCompletedRounds(data.completedRounds || []);
+
+        // 🔥 MAP UI STATE FROM BACKEND
+        setRounds((prev) =>
+          prev.map((r) => {
+            const mapKey =
+              r.key === "quiz"
+                ? "mcq"
+                : r.key === "code"
+                  ? "coding"
+                  : r.key;
+
+            // ✅ COMPLETED
+            if (data.completedRounds?.includes(mapKey)) {
+              return { ...r, status: PENDING }; // or create COMPLETED
+            }
+
+            // ✅ ACTIVE
+            if (data.activeRound === mapKey) {
+              return { ...r, status: READY };
+            }
+
+            return { ...r, status: LOCKED };
+          })
+        );
+
       } catch (err) {
         console.error("Failed to fetch exam", err);
       }
@@ -572,60 +607,61 @@ export default function StudentFinalAssessmentPage() {
   }
   const coerceFeedback = (sub: any) => sub?.feedback ?? sub?.comments ?? sub?.notes ?? ''
 
-  const startAssessment = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/assessment/start/${examId}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      if (!data.success) return;
-
-      const allowedRounds = data.allowedRounds || [];
-      const completedRounds = data.progress?.completedRounds || [];
-      const currentRound = data.activeRound;
-
-      setRounds((prev) =>
-        prev.map((r) => {
-          const mapKey =
-            r.key === "quiz"
-              ? "mcq"
-              : r.key === "code"
-                ? "coding"
-                : r.key;
-
-          if (!allowedRounds.includes(mapKey)) {
+  /*   const startAssessment = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assessment/start/${examId}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        const data = await res.json();
+        if (!data.success) return;
+  
+        const allowedRounds = data.allowedRounds || [];
+        const completedRounds = data.progress?.completedRounds || [];
+        setCompletedRounds(completedRounds);
+        const currentRound = data.activeRound;
+  
+        setRounds((prev) =>
+          prev.map((r) => {
+            const mapKey =
+              r.key === "quiz"
+                ? "mcq"
+                : r.key === "code"
+                  ? "coding"
+                  : r.key;
+  
+            if (!allowedRounds.includes(mapKey)) {
+              return { ...r, status: LOCKED };
+            }
+  
+            if (currentRound === mapKey) {
+              return { ...r, status: READY };
+            }
+  
+            if (completedRounds.includes(mapKey)) {
+              return { ...r, status: PENDING };
+            }
+  
             return { ...r, status: LOCKED };
-          }
+          })
+        );
+      } catch (err) {
+        console.error(err);
+      }
+    }; */
 
-          if (currentRound === mapKey) {
-            return { ...r, status: READY };
-          }
+  /*   useEffect(() => {
+      if (token && examId) startAssessment();
+    }, [token, examId]); */
 
-          if (completedRounds.includes(mapKey)) {
-            return { ...r, status: PENDING };
-          }
-
-          return { ...r, status: LOCKED };
-        })
-      );
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    if (token && examId) startAssessment();
-  }, [token, examId]);
-
-  useEffect(() => {
-    if (examId) {
-      fetchResultStatus();
-    }
-  }, [examId]);
+  /*  useEffect(() => {
+     if (examId) {
+       fetchResultStatus();
+     }
+   }, [examId]); */
 
   const handleStartWithWarning = (roundKey: RoundKey) => {
     setPendingRound(roundKey)
@@ -633,75 +669,86 @@ export default function StudentFinalAssessmentPage() {
     setWarningConfirmed(false)
   }
 
-  const fetchResultStatus = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/assessment/result/${examId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await res.json();
-      if (!data.success) return;
-
-      const allowedRounds = data.allowedRounds || [];
-
-      setRounds(prev =>
-        prev.map(r => {
-          const mapKey =
-            r.key === "quiz"
-              ? "mcq"
-              : r.key === "code"
-                ? "coding"
-                : r.key;
-
-          if (!allowedRounds.includes(mapKey)) {
+  /*   const fetchResultStatus = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assessment/result/${examId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+  
+        const data = await res.json();
+        setCompletedRounds(data.completedRounds || []);
+        if (!data.success) return;
+  
+        setRounds(prev =>
+          prev.map(r => {
+            // ✅ QUIZ
+            if (r.key === "quiz") {
+              let nextStatus: RoundStatus = PENDING;
+  
+              if (data.approvalStatus === "approved") {
+                nextStatus = data.status === "pass" ? PASSED : FAILED;
+              }
+  
+              return {
+                ...r,
+                approvalStatus: data.approvalStatus || "pending",
+                status: nextStatus
+              };
+            }
+  
+            // ✅ CODE unlock
+            if (r.key === "code") {
+              if (data.approvalStatus === "approved" && data.status === "pass") {
+                return { ...r, status: READY };
+              }
+            }
+  
             return r;
-          }
+          })
+        );
+      } catch (err) {
+        console.error("Result fetch error", err);
+      }
+    }; */
 
-          if (r.key === "quiz") {
-            return {
-              ...r,
-              approvalStatus: data.approvalStatus || "pending",
-              status:
-                data.approvalStatus === "approved"
-                  ? (data.status === "pass" ? PASSED : FAILED)
-                  : PENDING
-            };
-          }
+  const handleConfirmStart = async () => {
+    if (!pendingRound) return;
 
-          return r;
-        })
+    setWarningOpen(false);
+
+    try {
+      // ✅ STEP 1: FULLSCREEN FIRST
+      const elem = document.documentElement;
+
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if ((elem as any).webkitRequestFullscreen) {
+        await (elem as any).webkitRequestFullscreen();
+      }
+
+      // ✅ STEP 2: SET ROUND STATE
+      setActiveRound(pendingRound);
+      setStarted(true);
+
+      // 🔥 IMPORTANT: trigger code modal start
+      if (pendingRound === "code") {
+        setStartCodeNow(true);
+      }
+
+      // ✅ STEP 3: Update round status
+      setRounds((rs) =>
+        rs.map((r) =>
+          r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r
+        )
       );
+
     } catch (err) {
-      console.error("Result fetch error", err);
+      console.error("Fullscreen failed:", err);
     }
   };
 
-const handleConfirmStart = async () => {
-  if (!pendingRound) return;
-
-  setWarningOpen(false);
-
-  setTimeout(async () => {
-    setActiveRound(pendingRound);
-    setStarted(true);
-
-    // ✅ ENTER FULLSCREEN HERE
-    const elem = document.documentElement;
-    if (elem.requestFullscreen) {
-      await elem.requestFullscreen().catch(() => {});
-    }
-
-    setRounds((rs) =>
-      rs.map((r) =>
-        r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r
-      )
-    );
-  }, 100);
-};
-
   const openReview = async (kind: RoundKey) => {
     if (!token) return
-
     setReviewKind(kind)
     setReviewOpen(true)
     setReviewLoading(true)
@@ -791,179 +838,51 @@ const handleConfirmStart = async () => {
     }
   }
 
-  const fetchQuizStatus = async () => {
-    if (!token || !examId) {
-      setStatusChecked(true)
-      return
-    }
+  /*  const fetchQuizStatus = async () => {
+     if (!token || !examId) return;
+ 
+     try {
+       const res = await fetch(`${API_BASE}/api/assessment/current/${examId}`, {
+         headers: { Authorization: `Bearer ${token}` },
+       });
+ 
+       if (!res.ok) return;
+ 
+       const data = await res.json();
+ 
+       const completed = data.completedRounds || [];
+       const current = data.currentRound;
+ 
+       setRounds(prev =>
+         prev.map(r => {
+           if (r.key === "quiz") {
+             if (completed.includes("mcq")) return { ...r, status: PENDING };
+             if (current === "mcq") return { ...r, status: READY };
+           }
+ 
+           if (r.key === "code") {
+             if (completed.includes("mcq")) return { ...r, status: READY };
+           }
+ 
+           return r;
+         })
+       );
+ 
+     } catch (err) {
+       console.error(err);
+     } finally {
+       setStatusChecked(true);
+     }
+   };
+ 
+   useEffect(() => {
+     if (token && examId) {
+       fetchQuizStatus()
+       fetchResultStatus()
+     }
+   }, [token, examId])
+  */
 
-    try {
-      const res = await fetch(`${API_BASE}/api/assessment/current/${examId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (!res.ok) {
-        setStatusChecked(true)
-        return
-      }
-
-      const data = await res.json()
-      console.log("START API:", data);
-
-      const completed = data.completedRounds || []
-      const current = data.currentRound
-
-      let quizNext: RoundStatus = LOCKED
-
-      if (completed.includes("mcq")) {
-        if (data.status === "completed") {
-          quizNext = PENDING
-        } else {
-          quizNext = PENDING
-        }
-      } else if (current === "mcq") {
-        quizNext = READY
-      }
-
-      setRounds((prev) =>
-        prev.map((r) => {
-          if (r.key === "quiz") {
-            return { ...r, status: quizNext }
-          }
-
-          if (r.key === "code") {
-            if (completed.includes("mcq") && data.allowedRounds.includes("coding")) {
-              return { ...r, status: READY }
-            }
-          }
-
-          return r
-        })
-      )
-
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setStatusChecked(true)
-    }
-  }
-
-  const startPolling = () => {
-    stopPolling()
-    pollRef.current = window.setInterval(fetchQuizStatus, 15000) as unknown as number
-  }
-  const stopPolling = () => {
-    if (pollRef.current) {
-      window.clearInterval(pollRef.current)
-      pollRef.current = null
-    }
-  }
-
-  useEffect(() => {
-    ; (async () => {
-      await fetchCodeLatest()
-      await fetchTRLatest()
-      await fetchHRLatest()
-      await fetchQuizStatus()
-    })()
-    return () => stopPolling()
-  }, [token, templateId])
-
-  const fetchCodeLatest = async () => {
-    if (!token) return
-    try {
-      const res = await fetch(`${API_BASE}/api/student/code-latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        const s = String(data.submission.status || PENDING).toLowerCase()
-        const codeNext: RoundStatus = s === 'passed' ? PASSED : s === 'failed' ? FAILED : PENDING
-
-        setRounds((prev) => {
-          const updated = deriveWithCodeStatus(prev, codeNext);
-
-          return updated.map((r, index) => ({
-            ...r,
-            approvalStatus: prev[index]?.approvalStatus || "pending"
-          }));
-        });
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  const fetchTRLatest = async () => {
-    if (!token) {
-      setTrStatusChecked(true)
-      return
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/tr/status/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (!res.ok) {
-        return
-      }
-
-      const data = await res.json()
-
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        const s = String(data.submission.status || 'pending').toLowerCase()
-
-        const trNext: RoundStatus =
-          s === 'passed' || s === 'evaluated'
-            ? PASSED
-            : s === 'failed'
-              ? FAILED
-              : PENDING
-
-        setRounds((prev) => {
-          const updated = deriveWithTRStatus(prev, trNext);
-
-          return updated.map((r) => {
-            const old = prev.find(p => p.key === r.key);
-
-            return {
-              ...r,
-              approvalStatus: old?.approvalStatus || "pending",
-              status:
-                old?.approvalStatus === "approved"
-                  ? r.status
-                  : PENDING
-            };
-          });
-        });
-      }
-    } catch {
-      // ❌ Do NOT unlock TR here
-    } finally {
-      setTrStatusChecked(true)
-    }
-  }
-
-  const fetchHRLatest = async () => {
-    if (!token) {
-      setHrStatusChecked(true)
-      return
-    }
-    try {
-      const res = await fetch(`${API_BASE}/api/hr/status/latest`, { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) return
-      const data = await res.json()
-      if (data?.success && data?.hasSubmission && data?.submission) {
-        const s = String(data.submission.status || 'pending').toLowerCase()
-        const hrNext: RoundStatus = s === 'passed' || s === 'evaluated' ? PASSED : s === 'failed' ? FAILED : PENDING
-        setRounds((prev) => prev.map((r) => (r.key === 'hr' ? { ...r, status: hrNext } : r)))
-      }
-    } finally {
-      setHrStatusChecked(true)
-    }
-  }
 
   const handleStartQuiz = async () => {
     try {
@@ -988,14 +907,12 @@ const handleConfirmStart = async () => {
     setActiveRound(null)
     setStarted(false)
     setRounds((rs) => rs.map((r) => (r.key === 'quiz' ? { ...r, status: submittedPending ? PENDING : READY } : r)))
-    fetchQuizStatus()
+    //fetchQuizStatus()
   }
 
   const handleStartCode = () => {
     handleStartWithWarning('code')
-    setStartCodeNow(true);
   }
-
   const handleStartTR = () => {
     handleStartWithWarning('tr')
   }
@@ -1005,7 +922,6 @@ const handleConfirmStart = async () => {
   }
 
   const handleCodeCancel = async () => {
-    await fetchCodeLatest()
     setActiveRound(null)
     setStarted(false)
     setStartCodeNow(false)
@@ -1041,9 +957,6 @@ const handleConfirmStart = async () => {
     setActiveRound(null);
     setStarted(false);
     setStartCodeNow(false);
-
-    // optional refresh
-    await fetchCodeLatest();   // 👈 ensure sync
   };
 
   const canStart = (r: { key: RoundKey; status: RoundStatus }) => {
@@ -1093,10 +1006,97 @@ const handleConfirmStart = async () => {
     return `${minutes} minute${minutes > 1 ? 's' : ''}`;
   };
 
+  const ExamSummaryCard = ({ examInfo }: any) => {
+    if (!examInfo?.rounds?.length) return null;
+
+    const now = new Date();
+
+    // Find active or nearest upcoming round
+    let selectedRound = examInfo.rounds.find(
+      (r: any) =>
+        now >= new Date(r.startDateTime) &&
+        now <= new Date(r.endDateTime)
+    );
+
+    if (!selectedRound) {
+      selectedRound = examInfo.rounds
+        .filter((r: any) => new Date(r.startDateTime) > now)
+        .sort(
+          (a: any, b: any) =>
+            new Date(a.startDateTime).getTime() -
+            new Date(b.startDateTime).getTime()
+        )[0];
+    }
+
+    if (!selectedRound) {
+      selectedRound = examInfo.rounds[0]; // fallback
+    }
+
+    const start = new Date(selectedRound.startDateTime);
+    const end = new Date(selectedRound.endDateTime);
+
+    const isActive = now >= start && now <= end;
+    const isUpcoming = now < start;
+    const isExpired = now > end;
+
+    const getStatus = () => {
+      if (isActive) return { text: "Active", color: "#22c55e" };
+      if (isUpcoming) return { text: "Upcoming", color: "#ffaa44" };
+      if (isExpired) return { text: "Expired", color: "#dc3545" };
+      return { text: "Unknown", color: "#999" };
+    };
+
+    const mapRoundName: any = {
+      mcq: "Quiz",
+      coding: "Code Challenge",
+      tr: "Technical Round",
+      hr: "HR Round",
+    };
+
+    const status = getStatus();
+
+    return (
+      <Card
+        className="mb-4 p-4"
+        style={{
+          borderRadius: 16,
+          background: "rgba(255,255,255,0.04)",
+          borderLeft: `4px solid ${status.color}`,
+        }}
+      >
+        <div className="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 style={{ margin: 0, color: "#fff" }}>
+              {examInfo.title}
+            </h4>
+
+            <div style={{ fontSize: 14, color: "#aaa", marginTop: 6 }}>
+              {mapRoundName[selectedRound.roundType]}
+            </div>
+
+            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
+              {start.toLocaleString()} → {end.toLocaleTimeString()}
+            </div>
+          </div>
+
+          <Badge
+            style={{
+              backgroundColor: status.color,
+              fontSize: 14,
+              padding: "8px 12px",
+            }}
+          >
+            {status.text}
+          </Badge>
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <>
       <PageMetaData title="Final Assessment" />
-
+      <ExamSummaryCard examInfo={examInfo} />
       <Card className="bg-transparent border rounded-4 p-4 mb-4">
         <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-2">
           <h4 className="mb-0" style={{ color: '#ff7a00' }}>
@@ -1115,14 +1115,12 @@ const handleConfirmStart = async () => {
             <strong>🔄 Auto-refresh:</strong> Page will automatically refresh in {getNextRefreshDisplay()} to enable the start button for the upcoming round.
           </Alert>
         )}
-
         {autoRefreshing && (
           <Alert variant="warning" className="mb-3 py-2 px-3">
             <Spinner animation="border" size="sm" className="me-2" />
             <strong>Refreshing page...</strong> Please wait while we prepare your assessment.
           </Alert>
         )}
-
         {/* Four Round Cards at Top - Display Only */}
         <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
           {rounds.map((round, index) => (
@@ -1167,11 +1165,11 @@ const handleConfirmStart = async () => {
                     className="d-flex justify-content-between align-items-start"
                     style={{
                       background:
-                        r.status === LOCKED
-                          ? 'rgba(255,255,255,0.02)'
-                          : r.status === READY
-                            ? 'rgba(255,122,0,0.06)'
-                            : undefined,
+                        r.status === READY
+                          ? 'rgba(255,122,0,0.08)'
+                          : r.status === PENDING
+                            ? 'rgba(255,193,7,0.08)'
+                            : 'rgba(255,255,255,0.02)',
 
                       borderLeft:
                         r.status === READY
@@ -1185,7 +1183,8 @@ const handleConfirmStart = async () => {
                                 : '3px solid rgba(255,255,255,0.08)',
 
                       transition: 'all 0.25s ease',
-                    }}>
+                    }}
+                  >
                     <div className="ms-2 me-auto">
                       <div className="fw-semibold">{r.label}</div>
                       <div className="small text-muted">Round {idx + 1}</div>
@@ -1323,6 +1322,8 @@ const handleConfirmStart = async () => {
           onSubmitted={handleCodeSubmitted}
           authToken={token}
           studentId={studentId}
+          activeRound={activeRound}
+          completedRounds={completedRounds}
         />
       )}
 
@@ -1339,7 +1340,6 @@ const handleConfirmStart = async () => {
             setRounds((rs) => rs.map((r) => (r.key === 'tr' ? { ...r, status: PENDING } : r)))
             setActiveRound(null)
             setStarted(false)
-            await fetchTRLatest()
           }}
         />
       )}
