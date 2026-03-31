@@ -1,41 +1,51 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { ProgressBar, Spinner, Alert, Modal } from 'react-bootstrap'
-import { 
-  FaMicrophone, 
-  FaStop, 
-  FaArrowLeft, 
-  FaArrowRight, 
-  FaCheckCircle, 
-  FaClock, 
-  FaFileAlt, 
-  FaCode, 
-  FaVideo, 
-  FaDesktop,
+import { ProgressBar, Spinner, Alert, Modal, Button, Form } from 'react-bootstrap'
+import {
+  FaMicrophone,
+  FaStop,
+  FaArrowLeft,
+  FaArrowRight,
+  FaCheckCircle,
+  FaClock,
+  FaFileAlt,
+  FaCode,
+  FaVideo,
   FaExclamationTriangle,
   FaUserGraduate,
   FaBrain,
   FaUpload,
-  FaSpinner
+  FaSpinner,
+  FaBook,
+  FaQuestionCircle
 } from 'react-icons/fa'
-
-// Proctoring
-import { useProctorGuard } from '../../helper/useProctorGuard'
-import ProctorLockModal from '../ProctorLockModal'
+import { useAuthContext } from "@/context/useAuthContext"
 
 // ---- Types ----
 type TRQuestion = { _id: string; topic: string; question: string }
 type Props = {
-  baseURL: string
-  authToken: string | undefined
-  onClose: () => void
-  onSubmitted: () => void
+  examId: string
+  duration?: number
+  onSubmitted?: () => void
+  baseURL?: string
 }
 
-export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitted }: Props) {
+type QuestionGenerationMode = 'resume' | 'topic'
+
+export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL }: Props) {
+  const { user } = useAuthContext()
+  const token = user?.token
   const [open, setOpen] = useState(true)
+  const [initError, setInitError] = useState<string | null>(null)
+
+  // ===== MODE SELECTION =====
+  const [generationMode, setGenerationMode] = useState<QuestionGenerationMode | null>(null)
+  const [selectedTopic, setSelectedTopic] = useState('')
+  const [availableTopics, setAvailableTopics] = useState<string[]>([])
+  const [topicQuestionsCount, setTopicQuestionsCount] = useState(15)
+  const [loadingTopics, setLoadingTopics] = useState(false)
 
   // ===== TIMER STATE =====
-  const [timeLeft, setTimeLeft] = useState(45 * 60) // 45 minutes in seconds
+  const [timeLeft, setTimeLeft] = useState(duration)
   const [timerActive, setTimerActive] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -59,7 +69,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const current = qs[idx]
   const progress = useMemo(() => (qs.length ? Math.round((idx / qs.length) * 100) : 0), [idx, qs.length])
 
-  // Check if it's the last question
   const isLastQuestion = qs.length > 0 && idx === qs.length - 1
 
   // Dictation
@@ -76,48 +85,92 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
   const [submitting, setSubmitting] = useState(false)
   const [uiErr, setUiErr] = useState('')
 
-  // Recording
-  const [started, setStarted] = useState(false)
-  const [sessionErr, setSessionErr] = useState('')
-  const [sessionBlob, setSessionBlob] = useState<Blob | null>(null)
-
-  const displayStreamRef = useRef<MediaStream | null>(null)
-  const cameraStreamRef = useRef<MediaStream | null>(null)
-  const micStreamRef = useRef<MediaStream | null>(null)
-  const combinedStreamRef = useRef<MediaStream | null>(null)
-
+  // Camera Recording
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [isRecording, setIsRecording] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const recordedChunksRef = useRef<BlobPart[]>([])
-  const stopResolveRef = useRef<(b: Blob | null) => void>()
+  const recordedChunksRef = useRef<Blob[]>([])
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [cameraError, setCameraError] = useState<string | null>(null)
 
-  // Preview refs
-  const screenVideoElRef = useRef<HTMLVideoElement | null>(null)
-  const camVideoElRef = useRef<HTMLVideoElement | null>(null)
   const [interviewId, setInterviewId] = useState<string | null>(null)
-
-  // Loading state for interview panel setup
   const [startingInterview, setStartingInterview] = useState(false)
-
-  // Welcome intro flag
   const welcomePlayedRef = useRef(false)
 
-  // ===== Proctor hook =====
-  const {
-    locked,
-    violationCount,
-    isFullscreen,
-    acknowledge,
-    arm,
-    disarm,
-  } = useProctorGuard({
-    maxViolations: 2,
-    lockMessage: 'Tab switching is not allowed during the TR interview.',
-  } as any)
+  // ===== FETCH AVAILABLE TOPICS =====
+  useEffect(() => {
+    const fetchTopics = async () => {
+      if (!token) return
+      setLoadingTopics(true)
+      try {
+        const res = await fetch(`${baseURL}/api/tr/topics`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.success) {
+          setAvailableTopics(data.topics || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch topics', err)
+      } finally {
+        setLoadingTopics(false)
+      }
+    }
+    fetchTopics()
+  }, [token, baseURL])
 
-  const proctorLocked = locked
-  const VIOLATION_LIMIT = 2
-  const remaining = Math.max(0, VIOLATION_LIMIT - violationCount)
-  const lockMsg = 'Tab switching is not allowed during the TR interview.'
+  // ===== CAMERA RECORDING =====
+  const startCameraRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        },
+        audio: true,
+      })
+
+      setCameraStream(stream)
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        videoRef.current.play().catch(e => console.log('Video play error:', e))
+      }
+
+      const recorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm'
+      })
+      mediaRecorderRef.current = recorder
+      recordedChunksRef.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunksRef.current.push(e.data)
+        }
+      }
+
+      recorder.start(1000)
+      setIsRecording(true)
+      setCameraError(null)
+    } catch (err) {
+      console.error("Camera error", err)
+      setCameraError("Unable to access camera. Please ensure camera permissions are granted.")
+    }
+  }
+
+  const stopCameraRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop()
+    }
+
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop())
+      setCameraStream(null)
+    }
+
+    setIsRecording(false)
+  }
 
   // ===== TIMER FUNCTIONS =====
   const startTimer = () => {
@@ -125,6 +178,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
+          clearInterval(timerRef.current!)
           handleAutoSubmit('Time expired - auto submitted')
           return 0
         }
@@ -147,29 +201,9 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  const setScreenVideoRef = (el: HTMLVideoElement | null) => {
-    screenVideoElRef.current = el
-    if (el && displayStreamRef.current && !el.srcObject) attachStream(el, displayStreamRef.current)
-  }
-  const setCamVideoRef = (el: HTMLVideoElement | null) => {
-    camVideoElRef.current = el
-    if (el && cameraStreamRef.current && !el.srcObject) attachStream(el, cameraStreamRef.current)
-  }
-  const attachStream = (el: HTMLVideoElement, stream: MediaStream) => {
-    try {
-      if (el.srcObject === stream) return
-      el.srcObject = stream
-      el.muted = true
-      el.playsInline = true
-      const tryPlay = () => el.play().catch(() => { })
-      el.onloadedmetadata = tryPlay
-      tryPlay()
-    } catch { }
-  }
-
   /* ======================= Resume Upload & Analysis ======================= */
   const uploadResume = async () => {
-    if (!authToken || !resumeFile) {
+    if (!token || !resumeFile) {
       setLoadErr('Please select a resume file')
       return
     }
@@ -186,7 +220,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       const res = await fetch(`${baseURL}/api/tr/resume/upload`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${token}`,
         },
         body: form,
       })
@@ -213,31 +247,38 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     }
   }
 
-  /* ======================= Fetch Questions ======================= */
-  const fetchQuestions = async () => {
-    if (!authToken || !resumeFile) {
-      setUiErr('Please upload and analyze resume first')
-      return
-    }
-
-    if (resumeSkills.length === 0) {
-      setUiErr('No skills extracted from resume. Please upload a different resume.')
-      return
-    }
+  /* ======================= Generate Questions ======================= */
+  const generateQuestions = async () => {
+    if (!token) return
 
     setLoadingQs(true)
     setUiErr('')
 
     try {
-      const res = await fetch(`${baseURL}/api/tr/resume/start`, {
+      let endpoint = ''
+      let payload = {}
+
+      if (generationMode === 'resume') {
+        if (!interviewId) {
+          throw new Error('Please upload and analyze resume first')
+        }
+        endpoint = `${baseURL}/api/tr/resume/start`
+        payload = { interviewId, examId }
+      } else if (generationMode === 'topic') {
+        if (!selectedTopic) {
+          throw new Error('Please select a topic')
+        }
+        endpoint = `${baseURL}/api/tr/topic/generate`
+        payload = { topic: selectedTopic, questionCount: topicQuestionsCount, examId }
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          interviewId,
-        }),
+        body: JSON.stringify(payload),
       })
 
       const data = await res.json()
@@ -255,7 +296,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
       startTimer()
     } catch (e: any) {
-      setUiErr(e.message || 'Failed to generate questions from resume')
+      setUiErr(e.message || 'Failed to generate questions')
     } finally {
       setLoadingQs(false)
     }
@@ -385,139 +426,14 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     if (dictating) stopDictation()
   }, [idx])
 
-  /* ============ Capture (screen + cam + mic) ============ */
-  const chooseMime = () =>
-    MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-      ? 'video/webm;codecs=vp9,opus'
-      : MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')
-        ? 'video/webm;codecs=vp8,opus'
-        : 'video/webm'
-
-  const enterFullscreenFromUserGesture = async (): Promise<boolean> => {
-    const el: any = document.documentElement
-    try {
-      if (el.requestFullscreen) await el.requestFullscreen()
-      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
-      else return false
-      return true
-    } catch {
-      return false
-    }
-  }
-
-  const startSession = async (preDisplay?: MediaStream) => {
-    setSessionErr('')
-    setStarted(false)
-    setSessionBlob(null)
-    recordedChunksRef.current = []
-
-    let display: MediaStream
-    if (preDisplay) {
-      display = preDisplay
-    } else {
-      try {
-        display = await (navigator.mediaDevices as any).getDisplayMedia({
-          video: { cursor: 'always', frameRate: { ideal: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false,
-        })
-      } catch {
-        setSessionErr('Screen sharing is required to start the interview.')
-        return false
-      }
-    }
-
-    let camera: MediaStream | null = null
-    let mic: MediaStream | null = null
-    try {
-      camera = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false,
-      })
-      mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false })
-    } catch {
-      display.getTracks().forEach((t) => t.stop())
-      setSessionErr('Camera & microphone permissions are required.')
-      return false
-    }
-
-    displayStreamRef.current = display
-    cameraStreamRef.current = camera!
-    micStreamRef.current = mic!
-
-    if (screenVideoElRef.current) attachStream(screenVideoElRef.current, display)
-    if (camVideoElRef.current) attachStream(camVideoElRef.current, camera!)
-
-    const combined = new MediaStream([...display.getVideoTracks(), ...camera!.getVideoTracks(), ...mic!.getAudioTracks()])
-    combinedStreamRef.current = combined
-
-    const mimeType = chooseMime()
-    const mr = new MediaRecorder(combined, { mimeType })
-    mediaRecorderRef.current = mr
-
-    mr.ondataavailable = (e) => e.data && e.data.size && recordedChunksRef.current.push(e.data)
-    mr.onstop = () => {
-      const blob = new Blob(recordedChunksRef.current, { type: mimeType })
-      setSessionBlob(blob)
-
-      try {
-        combined.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        display.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        camera!.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        mic!.getTracks().forEach((t) => t.stop())
-      } catch { }
-
-      combinedStreamRef.current = null
-      displayStreamRef.current = null
-      cameraStreamRef.current = null
-      micStreamRef.current = null
-
-      if (stopResolveRef.current) {
-        stopResolveRef.current(blob)
-        stopResolveRef.current = undefined
-      }
-    }
-
-    display.getVideoTracks()[0].onended = () => stopSession()
-
-    mr.start(1000)
-    setStarted(true)
-    arm()
-    return true
-  }
-
-  const stopSession = () => {
-    try {
-      mediaRecorderRef.current?.stop()
-    } catch { }
-    setStarted(false)
-    disarm()
-  }
-
-  const stopSessionAsync = (): Promise<Blob | null> => {
-    if (!mediaRecorderRef.current || !started) return Promise.resolve(sessionBlob)
-    return new Promise<Blob | null>((resolve) => {
-      stopResolveRef.current = resolve
-      try {
-        mediaRecorderRef.current!.stop()
-      } catch {
-        resolve(null)
-      }
-      setStarted(false)
-      disarm()
-    })
-  }
-
   /* ======================= Flow control ======================= */
   const handleStartInterview = async () => {
-    if (!resumeFile || resumeSkills.length === 0 || !interviewId) {
+    if (generationMode === 'resume' && (!resumeFile || resumeSkills.length === 0 || !interviewId)) {
       setUiErr('Please upload and analyze resume first')
+      return
+    }
+    if (generationMode === 'topic' && !selectedTopic) {
+      setUiErr('Please select a topic')
       return
     }
 
@@ -531,33 +447,9 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       }
     } catch { }
 
-    try {
-      let preDisplay: MediaStream | null = null
-      try {
-        preDisplay = await (navigator.mediaDevices as any).getDisplayMedia({
-          video: { cursor: 'always', frameRate: { ideal: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } },
-          audio: false,
-        })
-      } catch {
-        setSessionErr('Screen sharing is required to start the interview.')
-        setStartingInterview(false)
-        return
-      }
-
-      await enterFullscreenFromUserGesture()
-
-      const ok = await startSession(preDisplay!)
-      if (!ok || !mediaRecorderRef.current) {
-        setStartingInterview(false)
-        return
-      }
-
-      await fetchQuestions()
-    } catch (error: any) {
-      setUiErr(error.message || 'Failed to start interview')
-    } finally {
-      setStartingInterview(false)
-    }
+    await startCameraRecording()
+    await generateQuestions()
+    setStartingInterview(false)
   }
 
   const handleNext = () => setIdx((i) => Math.min(i + 1, qs.length - 1))
@@ -565,17 +457,17 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
   const allAnswered = qs.length > 0 && qs.every((q) => (textAnswers[q._id] || '').trim().length > 0)
 
-  const uploadSessionToS3 = async (blob: Blob): Promise<string> => {
-    if (!authToken) throw new Error('Auth required')
+  const uploadRecordingToS3 = async (blob: Blob): Promise<string> => {
+    if (!token) throw new Error('Auth required')
 
     const presignRes = await fetch(`${baseURL}/api/tr/presign/session`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${authToken}`,
+        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        fileName: `session_${Date.now()}.webm`,
+        fileName: `tr_recording_${Date.now()}.webm`,
         fileType: blob.type || 'video/webm',
       }),
     })
@@ -594,9 +486,8 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     return presignData.fileUrl
   }
 
-  const handleSubmit = async (opts?: { auto?: boolean; reason?: string }) => {
-    const { auto = false, reason } = opts || {}
-    if (!authToken || qs.length === 0 || (!allAnswered && !auto)) return
+  const handleSubmit = async () => {
+    if (!token || qs.length === 0) return
 
     stopTimer()
     setSubmitting(true)
@@ -604,16 +495,22 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     try {
       stopDictation()
 
-      let finalBlob: Blob | null = null
-      if (started && mediaRecorderRef.current) {
-        finalBlob = await stopSessionAsync()
-      } else {
-        finalBlob = sessionBlob
-      }
+      let recordingUrl = ''
+      if (mediaRecorderRef.current && isRecording) {
+        const blobPromise = new Promise<Blob>((resolve) => {
+          if (mediaRecorderRef.current) {
+            mediaRecorderRef.current.onstop = () => {
+              const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+              resolve(blob)
+            }
+            mediaRecorderRef.current.stop()
+          }
+        })
 
-      let sessionMediaUrl = ''
-      if (finalBlob && finalBlob.size > 0) {
-        sessionMediaUrl = await uploadSessionToS3(new Blob([finalBlob], { type: 'video/webm' }))
+        const blob = await blobPromise
+        if (blob && blob.size > 0) {
+          recordingUrl = await uploadRecordingToS3(blob)
+        }
       }
 
       const answers = qs.map((q) => ({
@@ -625,28 +522,27 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       const res = await fetch(`${baseURL}/api/tr/submit`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${authToken}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          examId,
           interviewId,
-          resumeSkills,
-          resumeSummary: resumeAnalysis?.summary || '',
+          generationMode,
+          topic: generationMode === 'topic' ? selectedTopic : undefined,
+          resumeSkills: generationMode === 'resume' ? resumeSkills : undefined,
+          resumeSummary: generationMode === 'resume' ? resumeAnalysis?.summary || '' : undefined,
           answers,
-          proctorMeta: {
-            autoSubmitted: auto,
-            violations: violationCount,
-            reason: reason || null,
-            timeLeft,
-          },
-          sessionMediaUrl,
+          recordingUrl,
+          timeLeft,
         }),
       })
 
       const data = await res.json()
       if (data?.success) {
+        stopCameraRecording()
         setOpen(false)
-        onSubmitted()
+        onSubmitted?.()
       } else {
         setUiErr(data?.error || 'Submit failed')
       }
@@ -659,18 +555,8 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
   const handleAutoSubmit = async (why: string) => {
     console.log('Auto-submitting due to:', why)
-    await handleSubmit({ auto: true, reason: why })
+    await handleSubmit()
   }
-
-  const autoSubmitTriggeredRef = useRef(false)
-
-  useEffect(() => {
-    const LIMIT = 2
-    if (violationCount >= LIMIT && !autoSubmitTriggeredRef.current) {
-      autoSubmitTriggeredRef.current = true
-      handleAutoSubmit('Auto-submitted due to proctoring violations')
-    }
-  }, [violationCount])
 
   useEffect(() => {
     if (timeLeft === 0 && timerActive) {
@@ -698,26 +584,11 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       try {
         recRef.current?.stop()
       } catch { }
-      try {
-        mediaRecorderRef.current?.stop()
-      } catch { }
-      try {
-        combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch { }
-      try {
-        micStreamRef.current?.getTracks().forEach((t) => t.stop())
-      } catch { }
+      stopCameraRecording()
       try {
         window.speechSynthesis?.cancel()
       } catch { }
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
-      disarm()
     }
   }, [])
 
@@ -726,24 +597,9 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
     try {
       recRef.current?.stop()
     } catch { }
-    try {
-      mediaRecorderRef.current?.stop()
-    } catch { }
-    try {
-      combinedStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch { }
-    try {
-      displayStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch { }
-    try {
-      cameraStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch { }
-    try {
-      micStreamRef.current?.getTracks().forEach((t) => t.stop())
-    } catch { }
+    stopCameraRecording()
     setOpen(false)
-    disarm()
-    onClose()
+    onSubmitted?.()
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -754,40 +610,233 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
       setResumeSkills([])
       setLoadErr('')
       setInterviewId(null)
-      autoSubmitTriggeredRef.current = false
     }
   }
 
   const committedValue = (() => (!current ? '' : textAnswers[current._id] || ''))()
   const currentInterim = dictating && current ? interimRef.current[current._id] || '' : ''
 
+  // Mode Selection Component
+  const ModeSelection = () => (
+    <div className="mode-selection-section">
+      <div className="mode-selection-header">
+        <h3 className="mode-title">Choose Question Generation Method</h3>
+        <p className="mode-subtitle">Select how you want to generate your technical interview questions</p>
+      </div>
+
+      <div className="mode-options">
+        <div
+          className={`mode-card ${generationMode === 'resume' ? 'active' : ''}`}
+          onClick={() => setGenerationMode('resume')}
+        >
+          <div className="mode-icon-wrapper">
+            <FaUserGraduate className="mode-icon" />
+          </div>
+          <div className="mode-card-content">
+            <h4 className="mode-card-title">Resume-Based Questions</h4>
+            <p className="mode-card-description">
+              Upload your resume and get personalized questions based on your skills and experience
+            </p>
+            <div className="mode-features">
+              <span>✓ Personalized questions</span>
+              <span>✓ Based on your skills</span>
+              <span>✓ Industry-relevant topics</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`mode-card ${generationMode === 'topic' ? 'active' : ''}`}
+          onClick={() => setGenerationMode('topic')}
+        >
+          <div className="mode-icon-wrapper">
+            <FaBook className="mode-icon" />
+          </div>
+          <div className="mode-card-content">
+            <h4 className="mode-card-title">Topic-Based Questions</h4>
+            <p className="mode-card-description">
+              Select a specific topic and get questions from our question bank
+            </p>
+            <div className="mode-features">
+              <span>✓ Specific topic focus</span>
+              <span>✓ Choose question count</span>
+              <span>✓ Standardized questions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  // Topic Selection Component
+  const TopicSelection = () => (
+    <div className="topic-selection-section">
+      <div className="topic-selection-header">
+        <FaQuestionCircle className="topic-header-icon" />
+        <div>
+          <h4 className="topic-title">Select a Topic</h4>
+          <p className="topic-subtitle">Choose a technical topic for your interview questions</p>
+        </div>
+      </div>
+
+      <Form.Group className="topic-select-group">
+        <Form.Label className="topic-label">Technical Topic</Form.Label>
+        {loadingTopics ? (
+          <div className="topic-loading">
+            <Spinner animation="border" size="sm" />
+            <span>Loading topics...</span>
+          </div>
+        ) : (
+          <Form.Control
+            as="select"
+            value={selectedTopic}
+            onChange={(e) => setSelectedTopic(e.target.value)}
+            className="topic-select"
+          >
+            <option value="">-- Select a topic --</option>
+            {availableTopics.map((topic) => (
+              <option key={topic} value={topic}>{topic}</option>
+            ))}
+          </Form.Control>
+        )}
+      </Form.Group>
+
+      <Form.Group className="question-count-group">
+        <Form.Label className="topic-label">Number of Questions</Form.Label>
+        <Form.Control
+          type="number"
+          min={5}
+          max={30}
+          value={topicQuestionsCount}
+          onChange={(e) => setTopicQuestionsCount(Math.min(30, Math.max(5, parseInt(e.target.value) || 15)))}
+          className="question-count-input"
+        />
+        <small className="count-hint">Choose between 5-30 questions</small>
+      </Form.Group>
+    </div>
+  )
+
+  // Resume Upload Component
+  const ResumeUpload = () => (
+    <div className="upload-section">
+      <div className="upload-card">
+        <div className="upload-icon-wrapper">
+          <FaFileAlt className="upload-icon" />
+        </div>
+        <h3 className="upload-title">Upload Your Resume</h3>
+        <p className="upload-subtitle">
+          Upload your resume (PDF, DOC, DOCX). We'll analyze it and generate personalized interview questions.
+        </p>
+
+        <div className="upload-area">
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            className="file-input-custom"
+            onChange={handleFileChange}
+            disabled={uploadingResume}
+            id="resume-upload"
+          />
+          <label htmlFor="resume-upload" className="file-label">
+            <FaUpload className="me-2" />
+            Choose File
+          </label>
+
+          {resumeFile && (
+            <div className="file-info-custom">
+              <strong>Selected:</strong> {resumeFile.name}
+              <span className="file-size">({(resumeFile.size / 1024).toFixed(1)} KB)</span>
+            </div>
+          )}
+
+          <button
+            className="analyze-btn-custom"
+            onClick={uploadResume}
+            disabled={!resumeFile || uploadingResume}
+          >
+            {uploadingResume ? (
+              <>
+                <FaSpinner className="spinner-icon" />
+                Analyzing Resume...
+              </>
+            ) : (
+              <>
+                <FaBrain className="me-2" />
+                Analyze Resume
+              </>
+            )}
+          </button>
+        </div>
+
+        {resumeAnalysis && (
+          <div className="analysis-results-custom">
+            <h4 className="results-title">Resume Analysis Results</h4>
+
+            <div className="skills-section-custom">
+              <h5>Extracted Skills:</h5>
+              <div className="skills-tags">
+                {resumeSkills.map((skill) => (
+                  <span key={skill} className="skill-tag">{skill}</span>
+                ))}
+              </div>
+            </div>
+
+            {resumeAnalysis.summary && (
+              <div className="summary-section-custom">
+                <h5>Resume Summary:</h5>
+                <div className="summary-text-custom">{resumeAnalysis.summary}</div>
+              </div>
+            )}
+
+            <div className="success-message">
+              <FaCheckCircle className="success-icon" />
+              <span>Resume analyzed successfully! {resumeSkills.length} skills detected.</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <>
-      <ProctorLockModal
-        show={proctorLocked && open}
-        isFullscreen={isFullscreen}
-        title="⚠️ Proctoring Violation Detected"
-        message={lockMsg}
-        remaining={remaining}
-        onReenterFullscreen={() => {
-          void enterFullscreenFromUserGesture()
-        }}
-        onAcknowledge={acknowledge}
-      />
+      {/* Camera Error Modal */}
+      <Modal show={!!cameraError} centered backdrop="static" onHide={() => setCameraError(null)}>
+        <Modal.Body style={{ background: "#111", color: "#fff", border: "1px solid #ff6b35" }} className="text-center">
+          <h5 style={{ color: "#ff6b35" }}>📹 Camera Required</h5>
+          <p>{cameraError}</p>
+          <p className="text-warning small">Please allow camera access to continue with the interview.</p>
+          <Button
+            style={{ background: "#ff6b35", border: "none" }}
+            onClick={() => {
+              setCameraError(null)
+              startCameraRecording()
+            }}
+          >
+            Try Again
+          </Button>
+        </Modal.Body>
+      </Modal>
 
-      <Modal
-        show={open}
-        onHide={handleCloseModal}
-        fullscreen
-        backdrop="static"
-        keyboard={false}
-        className="tr-modal-custom"
-      >
+     <Modal
+  show={open}
+  onHide={handleCloseModal}
+  fullscreen
+  backdrop="static"
+  keyboard={false}
+  className="tr-modal-custom"
+  container={document.body}   // ✅ FIX
+  style={{ zIndex: 9999999 }} // ✅ FIX
+>
         <Modal.Header closeButton className="modal-header-custom">
           <div className="header-content-custom">
             <div>
               <h1 className="modal-title-custom">Technical Interview (TR)</h1>
-              <p className="modal-subtitle">Upload your resume to generate personalized questions</p>
+              <p className="modal-subtitle">
+                {generationMode === 'resume' ? 'Resume-based personalized interview' :
+                  generationMode === 'topic' ? `Topic-based interview - ${selectedTopic || 'Select topic'}` :
+                    'Choose how to generate questions'}
+              </p>
             </div>
             {timerActive && (
               <div className="timer-display-custom">
@@ -811,99 +860,22 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
               <span>{uiErr}</span>
             </Alert>
           )}
-          {sessionErr && (
-            <Alert variant="warning" className="alert-custom alert-warning">
-              <FaExclamationTriangle className="alert-icon" />
-              <span>{sessionErr}</span>
-            </Alert>
-          )}
 
-          {/* Resume Upload Section */}
-          {!qs.length && !reviewing && !startingInterview && (
-            <div className="upload-section">
-              <div className="upload-card">
-                <div className="upload-icon-wrapper">
-                  <FaFileAlt className="upload-icon" />
-                </div>
-                <h3 className="upload-title">Upload Your Resume</h3>
-                <p className="upload-subtitle">
-                  Upload your resume (PDF, DOC, DOCX). We'll analyze it and generate personalized interview questions.
-                </p>
+          {(!generationMode || generationMode === null) && !qs.length && !startingInterview && <ModeSelection />}
+          {generationMode === 'resume' && !qs.length && !startingInterview && resumeSkills.length === 0 && <ResumeUpload />}
+          {generationMode === 'topic' && !qs.length && !startingInterview && !selectedTopic && <TopicSelection />}
 
-                <div className="upload-area">
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    className="file-input-custom"
-                    onChange={handleFileChange}
-                    disabled={uploadingResume}
-                    id="resume-upload"
-                  />
-                  <label htmlFor="resume-upload" className="file-label">
-                    <FaUpload className="me-2" />
-                    Choose File
-                  </label>
-
-                  {resumeFile && (
-                    <div className="file-info-custom">
-                      <strong>Selected:</strong> {resumeFile.name}
-                      <span className="file-size">({(resumeFile.size / 1024).toFixed(1)} KB)</span>
-                    </div>
-                  )}
-
-                  <button
-                    className="analyze-btn-custom"
-                    onClick={uploadResume}
-                    disabled={!resumeFile || uploadingResume || proctorLocked}
-                  >
-                    {uploadingResume ? (
-                      <>
-                        <FaSpinner className="spinner-icon" />
-                        Analyzing Resume...
-                      </>
-                    ) : (
-                      <>
-                        <FaBrain className="me-2" />
-                        Analyze Resume
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* Resume Analysis Results */}
-                {resumeAnalysis && (
-                  <div className="analysis-results-custom">
-                    <h4 className="results-title">Resume Analysis Results</h4>
-
-                    <div className="skills-section-custom">
-                      <h5>Extracted Skills:</h5>
-                      <div className="skills-tags">
-                        {resumeSkills.map((skill) => (
-                          <span key={skill} className="skill-tag">{skill}</span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {resumeAnalysis.summary && (
-                      <div className="summary-section-custom">
-                        <h5>Resume Summary:</h5>
-                        <div className="summary-text-custom">{resumeAnalysis.summary}</div>
-                      </div>
-                    )}
-
-                    <div className="success-message">
-                      <FaCheckCircle className="success-icon" />
-                      <span>Resume analyzed successfully! {resumeSkills.length} skills detected.</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Start Interview Button */}
-                {resumeSkills.length > 0 && (
-                  <div className="start-section-custom">
+          {generationMode && !qs.length && !startingInterview && (
+            <div className="start-interview-container">
+              {generationMode === 'resume' && resumeSkills.length > 0 && (
+                <div className="ready-section">
+                  <div className="ready-card">
+                    <FaCheckCircle className="ready-icon" />
+                    <h4>Ready to Start!</h4>
+                    <p>Your resume has been analyzed. {resumeSkills.length} skills detected.</p>
                     <button
                       className="start-interview-btn-custom"
-                      disabled={loadingQs || proctorLocked || startingInterview}
+                      disabled={startingInterview}
                       onClick={handleStartInterview}
                     >
                       {startingInterview ? (
@@ -914,20 +886,43 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                       ) : (
                         <>
                           <FaUserGraduate className="me-2" />
-                          Start Interview
+                          Start Resume-Based Interview
                         </>
                       )}
                     </button>
-                    <p className="start-hint">
-                      15 personalized questions will be generated based on your resume
-                    </p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {generationMode === 'topic' && selectedTopic && (
+                <div className="ready-section">
+                  <div className="ready-card">
+                    <FaBook className="ready-icon" />
+                    <h4>Ready to Start!</h4>
+                    <p>Topic: <strong>{selectedTopic}</strong> • Questions: <strong>{topicQuestionsCount}</strong></p>
+                    <button
+                      className="start-interview-btn-custom"
+                      disabled={startingInterview}
+                      onClick={handleStartInterview}
+                    >
+                      {startingInterview ? (
+                        <>
+                          <FaSpinner className="spinner-icon" />
+                          Setting Up Interview...
+                        </>
+                      ) : (
+                        <>
+                          <FaQuestionCircle className="me-2" />
+                          Start Topic-Based Interview
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Loading State */}
           {startingInterview && !qs.length && (
             <div className="loading-section">
               <div className="loading-card">
@@ -939,11 +934,11 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                 <div className="loading-steps-custom">
                   <div className="loading-step done">
                     <FaCheckCircle className="step-icon" />
-                    <span>Resume Analyzed</span>
+                    <span>{generationMode === 'resume' ? 'Resume Analyzed' : 'Topic Selected'}</span>
                   </div>
-                  <div className={`loading-step ${started ? 'done' : ''}`}>
-                    <span className="step-icon">{started ? '✓' : '...'}</span>
-                    <span>Media Setup</span>
+                  <div className={`loading-step ${isRecording ? 'done' : ''}`}>
+                    <span className="step-icon">{isRecording ? '✓' : '...'}</span>
+                    <span>Camera Setup</span>
                   </div>
                   <div className={`loading-step ${qs.length > 0 ? 'done' : ''}`}>
                     <span className="step-icon">{qs.length > 0 ? '✓' : '...'}</span>
@@ -954,7 +949,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             </div>
           )}
 
-          {/* Interview Section */}
           {!!qs.length && !reviewing && !startingInterview && (
             <div className="interview-grid">
               <div className="interview-left">
@@ -966,16 +960,23 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                       </span>
                       <ProgressBar now={progress} className="progress-bar-custom" />
                     </div>
-                    <div className="skills-tags-small">
-                      {resumeSkills.slice(0, 5).map((skill) => (
-                        <span key={skill} className="skill-tag-small">{skill}</span>
-                      ))}
-                    </div>
+                    {generationMode === 'resume' && resumeSkills.length > 0 && (
+                      <div className="skills-tags-small">
+                        {resumeSkills.slice(0, 5).map((skill) => (
+                          <span key={skill} className="skill-tag-small">{skill}</span>
+                        ))}
+                      </div>
+                    )}
+                    {generationMode === 'topic' && selectedTopic && (
+                      <div className="topic-badge">
+                        <FaBook className="me-1" /> {selectedTopic}
+                      </div>
+                    )}
                   </div>
 
                   <div className="question-card-custom">
                     <div className="question-source">
-                      <small>Generated from your resume</small>
+                      <small>Generated from {generationMode === 'resume' ? 'your resume' : `topic: ${selectedTopic}`}</small>
                     </div>
                     <h3 className="question-text-custom">{current?.question}</h3>
 
@@ -985,14 +986,13 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                         placeholder="Speak (Start) or type freely…"
                         value={committedValue}
                         onChange={(e) => {
-                          if (!current || proctorLocked) return
+                          if (!current) return
                           interimRef.current[current._id] = ''
                           setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
                           tick((x) => x + 1)
                         }}
                         rows={6}
                         className="answer-textarea-custom"
-                        readOnly={proctorLocked}
                       />
                       {currentInterim && (
                         <div className="interim-line-custom">
@@ -1004,11 +1004,11 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
 
                     <div className="audio-controls-custom">
                       {!dictating ? (
-                        <button className="record-btn-custom" onClick={startDictation} disabled={proctorLocked}>
+                        <button className="record-btn-custom" onClick={startDictation}>
                           <FaMicrophone className="me-2" /> Start
                         </button>
                       ) : (
-                        <button className="stop-record-btn-custom" onClick={stopDictation} disabled={proctorLocked}>
+                        <button className="stop-record-btn-custom" onClick={stopDictation}>
                           <FaStop className="me-2" /> Stop
                         </button>
                       )}
@@ -1016,19 +1016,15 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                   </div>
 
                   <div className="nav-controls-custom">
-                    <button className="nav-btn prev" onClick={handlePrev} disabled={idx === 0 || proctorLocked}>
+                    <button className="nav-btn prev" onClick={handlePrev} disabled={idx === 0}>
                       <FaArrowLeft className="me-2" /> Previous
                     </button>
                     {!isLastQuestion ? (
-                      <button className="nav-btn next" onClick={handleNext} disabled={idx === qs.length - 1 || proctorLocked}>
+                      <button className="nav-btn next" onClick={handleNext} disabled={idx === qs.length - 1}>
                         Next <FaArrowRight className="ms-2" />
                       </button>
                     ) : (
-                      <button
-                        className="review-btn"
-                        onClick={() => setReviewing(true)}
-                        disabled={proctorLocked}
-                      >
+                      <button className="review-btn" onClick={() => setReviewing(true)}>
                         Review Answers
                       </button>
                     )}
@@ -1039,27 +1035,26 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
               <div className="interview-right">
                 <div className="video-panel">
                   <div className="video-section-custom">
-                    <h4><FaDesktop className="me-2" /> Screen Recording</h4>
-                    <div className="video-preview-custom">
-                      <video ref={setScreenVideoRef} muted playsInline autoPlay className="video-element" />
-                      {!started && !sessionBlob && (
+                    <h4><FaVideo className="me-2" /> Camera Recording</h4>
+                    <div className="video-preview-custom camera-preview">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="video-element"
+                      />
+                      {!isRecording && !cameraStream && (
                         <div className="video-placeholder-custom">
-                          <div>Waiting for capture…</div>
+                          <div>Camera not started</div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="video-section-custom">
-                    <h4><FaVideo className="me-2" /> Student Camera</h4>
-                    <div className="video-preview-custom camera-preview">
-                      <video ref={setCamVideoRef} muted playsInline autoPlay className="video-element" />
-                    </div>
-                  </div>
-
                   <div className="recording-status">
-                    <span className={`status-dot ${started ? 'active' : ''}`}></span>
-                    <span>{started ? 'Screen, camera & mic are recording' : 'Recording stopped'}</span>
+                    <span className={`status-dot ${isRecording ? 'active' : ''}`}></span>
+                    <span>{isRecording ? 'Camera is recording' : 'Recording stopped'}</span>
                   </div>
 
                   {timerActive && (
@@ -1072,23 +1067,24 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                     </div>
                   )}
 
-                  <div className="skills-summary-custom">
-                    <h5><FaCode className="me-2" /> Resume Skills</h5>
-                    <div className="skills-tags-compact">
-                      {resumeSkills.slice(0, 8).map((skill) => (
-                        <span key={skill} className="skill-tag-compact">{skill}</span>
-                      ))}
-                      {resumeSkills.length > 8 && (
-                        <span className="skill-tag-compact">+{resumeSkills.length - 8} more</span>
-                      )}
+                  {generationMode === 'resume' && resumeSkills.length > 0 && (
+                    <div className="skills-summary-custom">
+                      <h5><FaCode className="me-2" /> Resume Skills</h5>
+                      <div className="skills-tags-compact">
+                        {resumeSkills.slice(0, 8).map((skill) => (
+                          <span key={skill} className="skill-tag-compact">{skill}</span>
+                        ))}
+                        {resumeSkills.length > 8 && (
+                          <span className="skill-tag-compact">+{resumeSkills.length - 8} more</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Review Section */}
           {!!qs.length && reviewing && !startingInterview && (
             <div className="review-section">
               <div className="review-container">
@@ -1111,7 +1107,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                         <div
                           className="review-question"
                           onClick={() => {
-                            if (proctorLocked) return
                             setReviewing(false)
                             setIdx(i)
                           }}
@@ -1127,25 +1122,18 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
                 </div>
 
                 <div className="review-actions">
-                  <button className="back-btn" onClick={() => setReviewing(false)} disabled={proctorLocked}>
+                  <button className="back-btn" onClick={() => setReviewing(false)}>
                     <FaArrowLeft className="me-2" /> Back to questions
                   </button>
                   <button
                     className="final-submit-btn"
-                    onClick={() => handleSubmit()}
-                    disabled={(!allAnswered && !proctorLocked) || submitting}
+                    onClick={handleSubmit}
+                    disabled={(!allAnswered) || submitting}
                   >
                     {submitting ? <FaSpinner className="spinner-icon" /> : <FaCheckCircle className="me-2" />}
                     {submitting ? 'Submitting...' : 'Final Submit'}
                   </button>
                 </div>
-
-                {sessionBlob && (
-                  <div className="recording-preview">
-                    <h6>Recorded session</h6>
-                    <video controls src={URL.createObjectURL(sessionBlob)} className="session-video" />
-                  </div>
-                )}
               </div>
             </div>
           )}
@@ -1157,13 +1145,16 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           background: #000000;
           border: none;
           border-radius: 0;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
         }
 
-        /* Header */
         .modal-header-custom {
           background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
           border-bottom: 1px solid #ff7a00;
           padding: 1.25rem 2rem;
+          flex-shrink: 0;
         }
 
         .header-content-custom {
@@ -1212,14 +1203,215 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           color: #ff6b6b !important;
         }
 
-        /* Body */
         .modal-body-custom {
           padding: 2rem;
           overflow-y: auto;
           background: #000000;
+          flex: 1;
         }
 
-        /* Alerts */
+        .mode-selection-section {
+          max-width: 1000px;
+          margin: 0 auto;
+          padding: 2rem;
+        }
+
+        .mode-selection-header {
+          text-align: center;
+          margin-bottom: 2.5rem;
+        }
+
+        .mode-title {
+          color: #ffffff;
+          font-size: 1.75rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+        }
+
+        .mode-subtitle {
+          color: #8a8a8a;
+          font-size: 1rem;
+        }
+
+        .mode-options {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .mode-card {
+          background: #0a0a0a;
+          border: 2px solid #2c2c2c;
+          border-radius: 16px;
+          padding: 1.5rem;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .mode-card:hover {
+          transform: translateY(-4px);
+          border-color: #ff7a00;
+          background: #111;
+        }
+
+        .mode-card.active {
+          border-color: #ff7a00;
+          background: linear-gradient(135deg, #0a1a0a 0%, #0a0a0a 100%);
+          box-shadow: 0 8px 24px rgba(255, 122, 0, 0.2);
+        }
+
+        .mode-icon-wrapper {
+          width: 60px;
+          height: 60px;
+          background: rgba(255, 122, 0, 0.1);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 1rem;
+        }
+
+        .mode-icon {
+          font-size: 2rem;
+          color: #ff7a00;
+        }
+
+        .mode-card-title {
+          color: #ffffff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+
+        .mode-card-description {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          margin-bottom: 1rem;
+          line-height: 1.5;
+        }
+
+        .mode-features {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .mode-features span {
+          font-size: 0.75rem;
+          color: #ff7a00;
+          background: rgba(255, 122, 0, 0.1);
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+        }
+
+        .topic-selection-section {
+          max-width: 500px;
+          margin: 0 auto;
+          padding: 2rem;
+          background: #0a0a0a;
+          border-radius: 16px;
+          border: 1px solid #2c2c2c;
+        }
+
+        .topic-selection-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .topic-header-icon {
+          font-size: 2rem;
+          color: #ff7a00;
+        }
+
+        .topic-title {
+          color: #ffffff;
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .topic-subtitle {
+          color: #8a8a8a;
+          font-size: 0.8rem;
+          margin: 0.25rem 0 0 0;
+        }
+
+        .topic-select-group, .question-count-group {
+          margin-bottom: 1.5rem;
+        }
+
+        .topic-label {
+          color: #ff7a00;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .topic-select, .question-count-input {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.75rem;
+          border-radius: 8px;
+          width: 100%;
+        }
+
+        .topic-select:focus, .question-count-input:focus {
+          border-color: #ff7a00;
+          outline: none;
+        }
+
+        .topic-loading {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: #8a8a8a;
+          padding: 0.75rem;
+        }
+
+        .count-hint {
+          color: #6c757d;
+          font-size: 0.7rem;
+          display: block;
+          margin-top: 0.25rem;
+        }
+
+        .start-interview-container {
+          max-width: 500px;
+          margin: 2rem auto;
+        }
+
+        .ready-section {
+          margin-top: 1rem;
+        }
+
+        .ready-card {
+          background: linear-gradient(135deg, #0a2a0a 0%, #0a0a0a 100%);
+          border: 1px solid #28a745;
+          border-radius: 16px;
+          padding: 2rem;
+          text-align: center;
+        }
+
+        .ready-icon {
+          font-size: 3rem;
+          color: #28a745;
+          margin-bottom: 1rem;
+        }
+
+        .ready-card h4 {
+          color: #ffffff;
+          font-size: 1.25rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .ready-card p {
+          color: #8a8a8a;
+          margin-bottom: 1.5rem;
+        }
+
         .alert-custom {
           display: flex;
           align-items: center;
@@ -1245,12 +1437,11 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           font-size: 1.25rem;
         }
 
-        /* Upload Section */
         .upload-section {
           display: flex;
           justify-content: center;
           align-items: center;
-          min-height: 70vh;
+          min-height: 60vh;
         }
 
         .upload-card {
@@ -1349,7 +1540,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           cursor: not-allowed;
         }
 
-        /* Analysis Results */
         .analysis-results-custom {
           margin-top: 1.5rem;
           padding: 1rem;
@@ -1411,11 +1601,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           font-size: 1rem;
         }
 
-        /* Start Interview Button */
-        .start-section-custom {
-          margin-top: 1.5rem;
-        }
-
         .start-interview-btn-custom {
           background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
           border: none;
@@ -1432,13 +1617,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
         }
 
-        .start-hint {
-          color: #8a8a8a;
-          font-size: 0.75rem;
-          margin-top: 0.75rem;
-        }
-
-        /* Loading Section */
         .loading-section {
           display: flex;
           justify-content: center;
@@ -1500,7 +1678,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           text-align: center;
         }
 
-        /* Interview Grid */
         .interview-grid {
           display: grid;
           grid-template-columns: 1fr 320px;
@@ -1520,7 +1697,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           overflow-y: auto;
         }
 
-        /* Question Container */
         .question-container-custom {
           max-width: 900px;
           margin: 0 auto;
@@ -1555,7 +1731,16 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           background: linear-gradient(90deg, #ff7a00 0%, #ff944d 100%);
         }
 
-        /* Question Card */
+        .topic-badge {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          padding: 0.25rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.75rem;
+          display: flex;
+          align-items: center;
+        }
+
         .question-card-custom {
           background: #0a0a0a;
           border: 1px solid #1f1f1f;
@@ -1650,7 +1835,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           color: #ffffff;
         }
 
-        /* Navigation Controls */
         .nav-controls-custom {
           display: flex;
           justify-content: space-between;
@@ -1687,7 +1871,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           font-weight: 600;
         }
 
-        /* Video Panel */
         .video-panel {
           display: flex;
           flex-direction: column;
@@ -1706,7 +1889,7 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           background: #000000;
           border-radius: 8px;
           overflow: hidden;
-          aspect-ratio: 16/9;
+          aspect-ratio: 4/3;
           position: relative;
         }
 
@@ -1724,10 +1907,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           justify-content: center;
           background: #0a0a0a;
           color: #8a8a8a;
-        }
-
-        .camera-preview {
-          aspect-ratio: 4/3;
         }
 
         .recording-status {
@@ -1793,7 +1972,20 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           font-size: 0.7rem;
         }
 
-        /* Review Section */
+        .skills-tags-small {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+        }
+
+        .skill-tag-small {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          padding: 0.2rem 0.5rem;
+          border-radius: 20px;
+          font-size: 0.7rem;
+        }
+
         .review-section {
           height: 100%;
           overflow-y: auto;
@@ -1897,16 +2089,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           cursor: not-allowed;
         }
 
-        .recording-preview {
-          margin-top: 2rem;
-        }
-
-        .session-video {
-          width: 100%;
-          border-radius: 8px;
-          margin-top: 0.5rem;
-        }
-
         .spinner-icon {
           animation: spin 1s linear infinite;
           margin-right: 0.5rem;
@@ -1922,21 +2104,6 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
           50% { opacity: 0.5; transform: scale(1.1); }
         }
 
-        .skills-tags-small {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.25rem;
-        }
-
-        .skill-tag-small {
-          background: rgba(255, 122, 0, 0.1);
-          color: #ff7a00;
-          padding: 0.2rem 0.5rem;
-          border-radius: 20px;
-          font-size: 0.7rem;
-        }
-
-        /* Responsive */
         @media (max-width: 1024px) {
           .interview-grid {
             grid-template-columns: 1fr;
@@ -1961,6 +2128,10 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             padding: 1rem;
           }
           
+          .mode-options {
+            grid-template-columns: 1fr;
+          }
+          
           .upload-card {
             padding: 1.5rem;
           }
@@ -1982,6 +2153,38 @@ export default function TechnicalRound({ baseURL, authToken, onClose, onSubmitte
             width: 100%;
             justify-content: center;
           }
+        }
+          /* 🔥 MODAL FIX - VERY IMPORTANT */
+        .modal-backdrop {
+          z-index: 9999998 !important;
+        }
+
+        .tr-modal-custom {
+          z-index: 9999999 !important;
+        }
+
+        .tr-modal-custom .modal-dialog {
+          max-width: 100% !important;
+          margin: 0 !important;
+        }
+
+        .tr-modal-custom .modal-content {
+          position: fixed !important;
+          inset: 0 !important;
+          z-index: 9999999 !important;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Ensure body fills space */
+        .tr-modal-custom .modal-body {
+          flex: 1;
+          overflow-y: auto;
+        }
+
+        /* Prevent background scroll */
+        body.modal-open {
+          overflow: hidden !important;
         }
       `}</style>
     </>

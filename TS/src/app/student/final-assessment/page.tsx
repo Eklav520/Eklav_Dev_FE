@@ -3,6 +3,7 @@ import { Card, Button, Spinner, Alert, Modal, Badge } from "react-bootstrap"
 import StudentQuiz from "./components/StudentQuiz"
 import StudentCodeChallengeComponent from "./components/codeChallenge/StudentCodeChallengeComponent"
 import { useAuthContext } from "@/context/useAuthContext"
+import TechnicalRound from "./components/TRRound/TechnicalRound"
 
 type RoundKey = "mcq" | "coding" | "tr" | "hr"
 
@@ -28,92 +29,98 @@ type Assessment = {
 // ✅ SVG ICON COMPONENTS
 const AssessmentIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M4 4H20V20H4V4Z" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
-    <path d="M8 7H16M8 11H14M8 15H12" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M17 17L19 19" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M4 4H20V20H4V4Z" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M8 7H16M8 11H14M8 15H12" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M17 17L19 19" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
+const CloseIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 )
 
 const MCQIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="9" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
-    <path d="M9 12L11 14L15 10" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="12" cy="12" r="9" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M9 12L11 14L15 10" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
 const CodingIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="4" width="18" height="16" rx="2" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
-    <path d="M8 10L6 12L8 14M16 10L18 12L16 14M12 9L10 15" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+    <rect x="3" y="4" width="18" height="16" rx="2" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M8 10L6 12L8 14M16 10L18 12L16 14M12 9L10 15" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
 const TechnicalIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
-    <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
   </svg>
 )
 
 const HRIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="8" r="4" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
-    <path d="M5 20V19C5 14.5 8 12 12 12C16 12 19 14.5 19 19V20" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <circle cx="12" cy="8" r="4" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M5 20V19C5 14.5 8 12 12 12C16 12 19 14.5 19 19V20" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
   </svg>
 )
 
 const ClockIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
 const QuestionIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M9 9C9 7.5 10 6 12 6C14 6 15 7.5 15 9C15 10.5 14 11 12 12V13M12 17H12.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M9 9C9 7.5 10 6 12 6C14 6 15 7.5 15 9C15 10.5 14 11 12 12V13M12 17H12.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
 const TargetIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <circle cx="12" cy="12" r="2" fill="currentColor" />
   </svg>
 )
 
 const CalendarIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M8 3V6M16 3V6M3 10H21" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M8 3V6M16 3V6M3 10H21" stroke="currentColor" strokeWidth="1.5" />
   </svg>
 )
 
 const LockIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M8 11V7C8 4.5 10 3 12 3C14 3 16 4.5 16 7V11" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M8 11V7C8 4.5 10 3 12 3C14 3 16 4.5 16 7V11" stroke="currentColor" strokeWidth="1.5" />
   </svg>
 )
 
 const UnlockIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-    <path d="M8 11V7C8 5 9 4 12 4C14 4 15 5 16 7" stroke="currentColor" strokeWidth="1.5"/>
+    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M8 11V7C8 5 9 4 12 4C14 4 15 5 16 7" stroke="currentColor" strokeWidth="1.5" />
   </svg>
 )
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
   </svg>
 )
 
 // Helper functions
 function getRoundIcon(type: string) {
-  switch(type) {
+  switch (type) {
     case 'mcq': return <MCQIcon />
     case 'coding': return <CodingIcon />
     case 'tr': return <TechnicalIcon />
@@ -190,20 +197,20 @@ export default function StudentAssessmentController() {
           headers: { Authorization: `Bearer ${token}` },
         })
         const examData = await examRes.json()
-        
+
         if (examData.success && examData.exam) {
           const now = new Date()
           const formattedRounds = examData.exam.rounds.map((r: any) => {
             const startDate = new Date(r.startDateTime)
             const endDate = new Date(r.endDateTime)
             let status: "upcoming" | "active" | "completed" = "upcoming"
-            
+
             if (now >= startDate && now <= endDate) {
               status = "active"
             } else if (now > endDate) {
               status = "completed"
             }
-            
+
             return {
               roundType: r.roundType,
               status: status,
@@ -266,7 +273,12 @@ export default function StudentAssessmentController() {
 
       setActiveRound(round.roundType)
       setIsRunning(true)
-      setShowAssessmentModal(false)
+
+      // 🔥 Delay closing modal (IMPORTANT FIX)
+      setTimeout(() => {
+        setShowAssessmentModal(false)
+      }, 100)
+
       setStartingRound(null)
     } catch (err) {
       console.error("Start round error", err)
@@ -298,9 +310,9 @@ export default function StudentAssessmentController() {
       const refreshRes = await fetch(`${API_BASE}/api/assessment/current-exam`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      
+
       const refreshData = await refreshRes.json()
-      
+
       if (refreshData.success && refreshData.examId === selectedAssessment._id) {
         setRounds(refreshData.rounds || [])
         setActiveRound(refreshData.activeRound)
@@ -314,7 +326,7 @@ export default function StudentAssessmentController() {
 
     setIsRunning(false)
     setActiveRound(null)
-    
+
     if (examStatus === "completed") {
       alert("🎉 Congratulations! You have successfully completed all rounds! 🎉")
       setSelectedAssessment(null)
@@ -326,9 +338,9 @@ export default function StudentAssessmentController() {
   }
 
   const isRoundCompleted = (roundType: string) => completedRounds.includes(roundType)
-  
+
   const isRoundActive = (round: Round) => round.status === "active" && !isRoundCompleted(round.roundType)
-  
+
   const getRoundStatus = (round: Round) => {
     if (isRoundCompleted(round.roundType)) return { text: "Completed", color: "#28a745" }
     if (round.status === "active") return { text: "Available", color: "#ff6b35" }
@@ -340,7 +352,7 @@ export default function StudentAssessmentController() {
     const minutes = Math.floor(seconds / 60)
     const hours = Math.floor(minutes / 60)
     const remainingMinutes = minutes % 60
-    
+
     if (hours > 0) return `${hours}h ${remainingMinutes}m`
     return `${minutes} minutes`
   }
@@ -364,9 +376,9 @@ export default function StudentAssessmentController() {
       {!isRunning && !selectedAssessment && (
         <div className="container py-5">
           <div className="text-center mb-5">
-            <h1 style={{ 
-              color: "#fff", 
-              fontSize: "2.5rem", 
+            <h1 style={{
+              color: "#fff",
+              fontSize: "2.5rem",
               fontWeight: "bold",
               background: "linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%)",
               WebkitBackgroundClip: "text",
@@ -383,9 +395,9 @@ export default function StudentAssessmentController() {
           <div className="row g-4">
             {assessments.map((assessment) => (
               <div key={assessment._id} className="col-md-6 col-lg-4">
-                <Card 
-                  style={{ 
-                    background: "#111", 
+                <Card
+                  style={{
+                    background: "#111",
                     border: "1px solid #333",
                     cursor: "pointer",
                     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
@@ -405,9 +417,9 @@ export default function StudentAssessmentController() {
                   onClick={() => handleSelectAssessment(assessment)}
                 >
                   <Card.Body>
-                    <div style={{ 
-                      width: "50px", 
-                      height: "50px", 
+                    <div style={{
+                      width: "50px",
+                      height: "50px",
                       background: "rgba(255, 107, 53, 0.1)",
                       borderRadius: "12px",
                       display: "flex",
@@ -449,20 +461,21 @@ export default function StudentAssessmentController() {
         </div>
       )}
 
-      {/* Fullscreen Assessment Modal */}
-      <Modal 
-        show={showAssessmentModal} 
+      {/* Fullscreen Assessment Modal with Custom Close Button */}
+      <Modal
+        show={showAssessmentModal}
         onHide={handleCloseModal}
         fullscreen={true}
         backdrop="static"
         className="assessment-modal"
       >
-        <Modal.Header 
-          style={{ 
+        <Modal.Header
+          style={{
             background: "linear-gradient(135deg, #0a0a0a 0%, #111 100%)",
             borderBottom: "2px solid #ff6b35",
             color: "#fff",
-            padding: "1.5rem 2rem"
+            padding: "1.5rem 2rem",
+            position: "relative"
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
@@ -488,10 +501,38 @@ export default function StudentAssessmentController() {
               )}
             </div>
           </div>
+
+          {/* Custom Close Button */}
+          <button
+            onClick={handleCloseModal}
+            style={{
+              background: "rgba(255, 255, 255, 0.1)",
+              border: "none",
+              borderRadius: "12px",
+              width: "40px",
+              height: "40px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              color: "#fff"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(255, 107, 53, 0.2)"
+              e.currentTarget.style.transform = "scale(1.05)"
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(255, 255, 255, 0.1)"
+              e.currentTarget.style.transform = "scale(1)"
+            }}
+          >
+            <CloseIcon />
+          </button>
         </Modal.Header>
-        
-        <Modal.Body style={{ 
-          background: "#000", 
+
+        <Modal.Body style={{
+          background: "#000",
           color: "#fff",
           padding: "2rem"
         }}>
@@ -515,29 +556,29 @@ export default function StudentAssessmentController() {
                     <TargetIcon />
                     <span style={{ color: "#888" }}>Exam Status:</span>
                   </div>
-                  <Badge 
-                    style={{ 
-                      background: examStatus === "active" ? "#28a745" : 
-                                 examStatus === "completed" ? "#6c757d" : "#ffc107",
+                  <Badge
+                    style={{
+                      background: examStatus === "active" ? "#28a745" :
+                        examStatus === "completed" ? "#6c757d" : "#ffc107",
                       padding: "8px 16px",
                       fontSize: "0.9rem",
                       borderRadius: "8px"
                     }}
                   >
-                    {examStatus === "active" ? "IN PROGRESS" : 
-                     examStatus === "completed" ? "COMPLETED" : "UPCOMING"}
+                    {examStatus === "active" ? "IN PROGRESS" :
+                      examStatus === "completed" ? "COMPLETED" : "UPCOMING"}
                   </Badge>
                 </div>
               </div>
-              
+
               {/* Rounds Progress */}
               <div style={{ marginBottom: "2rem" }}>
                 <h5 style={{ color: "#ff6b35", marginBottom: "1rem", fontSize: "1rem", fontWeight: "bold" }}>
                   Assessment Progress
                 </h5>
-                <div style={{ 
-                  background: "#111", 
-                  borderRadius: "12px", 
+                <div style={{
+                  background: "#111",
+                  borderRadius: "12px",
                   padding: "1rem",
                   display: "flex",
                   gap: "1rem",
@@ -555,11 +596,11 @@ export default function StudentAssessmentController() {
                           textAlign: "center",
                           padding: "0.75rem",
                           borderRadius: "8px",
-                          background: isCompleted ? "rgba(40, 167, 69, 0.15)" : 
-                                     isActive ? "rgba(255, 107, 53, 0.15)" : 
-                                     "rgba(51, 51, 51, 0.3)",
-                          border: `1px solid ${isCompleted ? "#28a745" : 
-                                    isActive ? "#ff6b35" : "#333"}`
+                          background: isCompleted ? "rgba(40, 167, 69, 0.15)" :
+                            isActive ? "rgba(255, 107, 53, 0.15)" :
+                              "rgba(51, 51, 51, 0.3)",
+                          border: `1px solid ${isCompleted ? "#28a745" :
+                            isActive ? "#ff6b35" : "#333"}`
                         }}
                       >
                         <div style={{ marginBottom: "8px" }}>{getRoundIcon(round.roundType)}</div>
@@ -581,12 +622,12 @@ export default function StudentAssessmentController() {
                   })}
                 </div>
               </div>
-              
+
               {/* Rounds List */}
               <h5 style={{ color: "#ff6b35", marginBottom: "1.5rem", fontSize: "1rem", fontWeight: "bold" }}>
                 Available Rounds
               </h5>
-              
+
               {rounds.length === 0 ? (
                 <div className="text-center py-5">
                   <p style={{ color: "#888" }}>No rounds available for this assessment.</p>
@@ -597,12 +638,12 @@ export default function StudentAssessmentController() {
                     const status = getRoundStatus(round)
                     const isActive = isRoundActive(round)
                     const isCompleted = isRoundCompleted(round.roundType)
-                    
+
                     return (
-                      <Card 
-                        key={index} 
-                        style={{ 
-                          background: "#111", 
+                      <Card
+                        key={index}
+                        style={{
+                          background: "#111",
                           border: `1px solid ${isActive ? "#ff6b35" : "#333"}`,
                           transition: "all 0.3s ease",
                           overflow: "hidden"
@@ -627,8 +668,8 @@ export default function StudentAssessmentController() {
                                   <h4 style={{ color: "#ff6b35", marginBottom: "6px", fontSize: "1.35rem", fontWeight: "bold" }}>
                                     {round.roundType.toUpperCase()} Round
                                   </h4>
-                                  <Badge 
-                                    style={{ 
+                                  <Badge
+                                    style={{
                                       background: status.color,
                                       fontSize: "0.75rem",
                                       padding: "4px 10px",
@@ -639,12 +680,12 @@ export default function StudentAssessmentController() {
                                   </Badge>
                                 </div>
                               </div>
-                              
-                              <div style={{ 
-                                display: "grid", 
-                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
-                                gap: "1rem", 
-                                marginTop: "1rem" 
+
+                              <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                                gap: "1rem",
+                                marginTop: "1rem"
                               }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#888", fontSize: "0.9rem" }}>
                                   <QuestionIcon />
@@ -661,7 +702,7 @@ export default function StudentAssessmentController() {
                                   </div>
                                 )}
                               </div>
-                              
+
                               {round.startDateTime && (
                                 <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #333" }}>
                                   <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "#666", flexWrap: "wrap" }}>
@@ -677,7 +718,7 @@ export default function StudentAssessmentController() {
                                 </div>
                               )}
                             </div>
-                            
+
                             <div className="text-end">
                               <Button
                                 style={{
@@ -722,17 +763,17 @@ export default function StudentAssessmentController() {
             </>
           )}
         </Modal.Body>
-        
-        <Modal.Footer style={{ 
-          background: "#111", 
+
+        <Modal.Footer style={{
+          background: "#111",
           borderTop: "1px solid #333",
           padding: "1rem 2rem"
         }}>
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={handleCloseModal}
-            style={{ 
-              background: "#333", 
+            style={{
+              background: "#333",
               border: "none",
               padding: "0.6rem 1.5rem",
               transition: "all 0.3s ease",
@@ -767,21 +808,26 @@ export default function StudentAssessmentController() {
         </div>
       )}
 
+      {isRunning && roundConfig?.type === "tr" && selectedAssessment && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "#000",
+          zIndex: 9999999   // 🔥 increase this
+        }}>
+          <TechnicalRound
+            examId={selectedAssessment._id}
+            duration={roundConfig.duration}
+            onSubmitted={handleRoundSubmit}
+          />
+        </div>
+      )}
+
       <style>{`
         .assessment-modal .modal-content {
           background: #000;
           border-radius: 0;
           height: 100vh;
-        }
-        
-        .assessment-modal .modal-header .btn-close {
-          filter: invert(1);
-          opacity: 0.8;
-          background-size: 1rem;
-        }
-        
-        .assessment-modal .modal-header .btn-close:hover {
-          opacity: 1;
         }
         
         @keyframes slideIn {
