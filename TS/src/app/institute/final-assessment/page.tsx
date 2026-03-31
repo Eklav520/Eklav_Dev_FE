@@ -94,22 +94,6 @@ export default function FinalAssessmentPage() {
                 <AdminCreateProblem />
               </Card.Body>
             </Card>
-
-            <Card className="assessment-card">
-              <Card.Body className="card-body-custom">
-                <div className="card-header-custom">
-                  <FaTasks className="card-icon" />
-                  <div>
-                    <h5 className="card-title">Manage Challenges</h5>
-                    <p className="card-subtitle">View and manage existing coding challenges</p>
-                  </div>
-                </div>
-                <AdminManageChallenges
-                  eventId={examId}
-                  baseURL={import.meta.env.VITE_API_BASE_URL}
-                />
-              </Card.Body>
-            </Card>
           </div>
         )}
 

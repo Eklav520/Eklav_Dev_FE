@@ -1,1554 +1,822 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Card, Button, ListGroup, Badge, Modal, Spinner, Alert } from 'react-bootstrap'
-import PageMetaData from '@/components/PageMetaData'
-import StudentQuiz from './components/StudentQuiz'
-import { useAuthContext } from '@/context/useAuthContext'
-import StudentCodeChallengeComponent from './components/codeChallenge/StudentCodeChallengeComponent'
-import TechnicalRound from './components/TRRound/TechnicalRound'
-import HRRound from './HRRound/HRRound'
-import StarRating from '@/app/eklavadmin/final-assessment-details/components/StarRating'
-import AssessmentCompaniesMarquee from './AssessmentCompaniesMarquee'
+import React, { useEffect, useState } from "react"
+import { Card, Button, Spinner, Alert, Modal, Badge } from "react-bootstrap"
+import StudentQuiz from "./components/StudentQuiz"
+import StudentCodeChallengeComponent from "./components/codeChallenge/StudentCodeChallengeComponent"
+import { useAuthContext } from "@/context/useAuthContext"
 
-type RoundKey = 'quiz' | 'code' | 'tr' | 'hr'
-type RoundStatus = 'locked' | 'ready' | 'in_progress' | 'pending' | 'passed' | 'failed'
+type RoundKey = "mcq" | "coding" | "tr" | "hr"
 
 type Round = {
-  key: RoundKey
-  label: string
-  status: RoundStatus
-  approvalStatus?: string
-  currentRound?: string
-  activeRound?: string
-  completedRounds?: string[]
+  roundType: RoundKey
+  status: "upcoming" | "active" | "completed"
+  pickCount: number
+  timeSeconds: number
+  passPercentage?: number
+  startDateTime?: string
+  endDateTime?: string
 }
 
-// Typed status constants
-const LOCKED: RoundStatus = 'locked'
-const READY: RoundStatus = 'ready'
-const IN_PROGRESS: RoundStatus = 'in_progress'
-const PENDING: RoundStatus = 'pending'
-const PASSED: RoundStatus = 'passed'
-const FAILED: RoundStatus = 'failed'
-
-// states we should not clobber (server/user-driven)
-const PERSIST_STATUSES: readonly RoundStatus[] = [PENDING, IN_PROGRESS, PASSED, FAILED] as const
-
-const initialRounds: { key: RoundKey; label: string; status: RoundStatus, approvalStatus: string }[] = [
-  { key: 'quiz', label: 'Quiz', status: READY, approvalStatus: "pending" },
-  { key: 'code', label: 'Code Challenge', status: LOCKED, approvalStatus: "pending" },
-  { key: 'tr', label: 'Technical Round (TR)', status: LOCKED, approvalStatus: "pending" },
-  { key: 'hr', label: 'HR Round', status: LOCKED, approvalStatus: "pending" },
-]
-
-const statusBadge = (s: RoundStatus, approvalStatus?: string) => {
-  const baseStyle = {
-    padding: '6px 10px',
-    borderRadius: 8,
-    fontWeight: 500,
-    fontSize: 12,
-  }
-
-  switch (s) {
-    case READY:
-      return (
-        <Badge style={{ ...baseStyle, backgroundColor: '#ff7a00' }}>
-          Ready
-        </Badge>
-      )
-
-    case IN_PROGRESS:
-      return (
-        <Badge style={{ ...baseStyle, backgroundColor: '#ff9a3c' }}>
-          In Progress
-        </Badge>
-      )
-
-    case PENDING:
-      return (
-        <Badge
-          style={{
-            ...baseStyle,
-            backgroundColor: '#fbbf24',
-            color: '#1a1a2e',
-          }}
-        >
-          {approvalStatus === "approved" ? "Evaluated" : "Pending"}
-        </Badge>
-      )
-
-    case PASSED:
-      return (
-        <Badge style={{ ...baseStyle, backgroundColor: '#22c55e' }}>
-          Passed
-        </Badge>
-      )
-
-    case FAILED:
-      return (
-        <Badge style={{ ...baseStyle, backgroundColor: '#dc3545' }}>
-          Failed
-        </Badge>
-      )
-
-    case LOCKED:
-    default:
-      return (
-        <Badge
-          style={{
-            ...baseStyle,
-            backgroundColor: '#6c757d',
-            opacity: 0.8,
-          }}
-        >
-          Locked
-        </Badge>
-      )
-  }
+type Assessment = {
+  _id: string
+  title: string
+  description?: string
+  activeRound: RoundKey | null
+  createdAt: string
+  rounds?: Round[]
 }
 
-// Get schedule-based status badge for round cards
-const getScheduleStatusBadge = (roundInfo: any, roundStatus: RoundStatus) => {
-  if (!roundInfo) {
-    return <Badge bg="secondary">Not Scheduled</Badge>
-  }
+// ✅ SVG ICON COMPONENTS
+const AssessmentIcon = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 4H20V20H4V4Z" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M8 7H16M8 11H14M8 15H12" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M17 17L19 19" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
 
-  const now = new Date();
-  const startTime = new Date(roundInfo.startDateTime);
-  const endTime = new Date(roundInfo.endDateTime);
+const MCQIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="9" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M9 12L11 14L15 10" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
 
-  // If round is already passed/failed/completed, show the original status
-  if (roundStatus === PASSED) {
-    return <Badge bg="success">Passed</Badge>
-  }
-  if (roundStatus === FAILED) {
-    return <Badge bg="danger">Failed</Badge>
-  }
-  if (roundStatus === IN_PROGRESS) {
-    return <Badge style={{ backgroundColor: '#ff9a3c' }}>In Progress</Badge>
-  }
-  if (roundStatus === PENDING) {
-    return <Badge bg="warning" text="dark">Pending Evaluation</Badge>
-  }
-  if (roundStatus === READY) {
-    return <Badge style={{ backgroundColor: '#ff7a00' }}>Ready to Start</Badge>
-  }
+const CodingIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="4" width="18" height="16" rx="2" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M8 10L6 12L8 14M16 10L18 12L16 14M12 9L10 15" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
 
-  // Check schedule status for locked rounds
-  if (now < startTime) {
-    return <Badge style={{ backgroundColor: '#ffaa44', color: '#1a1a2e' }}>📅 Upcoming</Badge>
-  }
-  if (now >= startTime && now <= endTime) {
-    return <Badge style={{ backgroundColor: '#22c55e' }}>✅ Active</Badge>
-  }
-  if (now > endTime) {
-    return <Badge bg="danger">⌛ Expired</Badge>
-  }
+const TechnicalIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M2 17L12 22L22 17M2 12L12 17L22 12" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+  </svg>
+)
 
-  return <Badge bg="secondary">Locked</Badge>
-}
+const HRIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="8" r="4" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+    <path d="M5 20V19C5 14.5 8 12 12 12C16 12 19 14.5 19 19V20" stroke="#ff6b35" strokeWidth="1.5" fill="none"/>
+  </svg>
+)
 
+const ClockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M12 6V12L16 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
 
-// Violation warnings for each round type
-const VIOLATION_WARNINGS = {
-  quiz: {
-    title: "Important: Quiz Rules & Violation Warnings",
-    warnings: [
-      "🚫 STRICTLY NO CHEATING: Any form of cheating will result in immediate disqualification",
-      "📹 Screen & Webcam Recording: Your screen and webcam will be recorded throughout the quiz",
-      "🔒 No New Tabs: Do not open new browser tabs or switch to other applications",
-      "📵 No Mobile Phones: Keep mobile devices away during the assessment",
-      "🤫 No External Help: Do not seek help from others or use external resources",
-      "⏰ Time Limit: The quiz must be completed within the allocated time",
-      "⚠️ Violation Consequences: Any violation will lead to automatic failure and may result in permanent ban from future assessments"
-    ],
-    instructions: [
-      "Ensure you have a stable internet connection",
-      "Close all unnecessary applications and browser tabs",
-      "Make sure your webcam is working properly",
-      "Find a quiet, well-lit environment without distractions",
-      "Have your student ID ready for verification if required"
-    ]
-  },
-  code: {
-    title: "Code Challenge: Rules & Violation Warnings",
-    warnings: [
-      "🚫 PLAGIARISM PROHIBITED: All code must be your own original work",
-      "🔍 Code Similarity Detection: Your code will be checked against existing solutions",
-      "🌐 Restricted Browsing: Only allowed documentation sites are permitted",
-      "📹 Screen Recording Active: Your coding activity is being monitored",
-      "🚷 No Code Sharing: Do not share or discuss solutions with others",
-      "⏱️ Time Tracking: The time taken for each problem is recorded",
-      "⚠️ Violation Consequences: Plagiarism or cheating will result in immediate failure and permanent record"
-    ],
-    instructions: [
-      "Use proper coding standards and comments",
-      "Test your code thoroughly before submission",
-      "Only use approved documentation (if specified)",
-      "Focus on writing clean, efficient code",
-      "Save your work regularly"
-    ]
-  },
-  tr: {
-    title: "Technical Round: Guidelines & Important Notes",
-    warnings: [
-      "🎤 Audio/Video Recording: This interview will be recorded for evaluation",
-      "🧠 Demonstrate Problem-Solving: Explain your thought process clearly",
-      "🚫 No Pre-written Answers: Do not read from prepared scripts",
-      "💻 No IDE Assistance: Solve problems without coding assistance tools",
-      "📝 Whiteboard Thinking: Use the shared editor to demonstrate your approach",
-      "⏰ Punctuality: Be on time and prepared for the scheduled session",
-      "⚠️ Professional Conduct: Unprofessional behavior may lead to disqualification"
-    ],
-    instructions: [
-      "Have your development environment ready (if required)",
-      "Prepare to explain your past projects and experiences",
-      "Be ready to solve problems on a virtual whiteboard",
-      "Practice clear communication of technical concepts",
-      "Review fundamental computer science concepts"
-    ]
-  },
-  hr: {
-    title: "HR Round: Professional Conduct Guidelines",
-    warnings: [
-      "🎥 Video Conference Etiquette: Maintain professional appearance and background",
-      "🤝 Authentic Responses: Be genuine in your answers - do not memorize responses",
-      "🚫 Misrepresentation: Do not falsify qualifications or experiences",
-      "📞 No External Assistance: This is an individual assessment",
-      "⏰ Respect Time: Join the meeting on time and be prepared",
-      "👔 Professional Attire: Dress appropriately for the interview",
-      "⚠️ Integrity Check: Any dishonesty will result in immediate rejection"
-    ],
-    instructions: [
-      "Research the company and position beforehand",
-      "Prepare examples of your achievements and experiences",
-      "Think about your career goals and motivations",
-      "Prepare thoughtful questions for the interviewer",
-      "Practice professional communication skills"
-    ]
+const QuestionIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M9 9C9 7.5 10 6 12 6C14 6 15 7.5 15 9C15 10.5 14 11 12 12V13M12 17H12.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
+
+const TargetIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <circle cx="12" cy="12" r="2" fill="currentColor"/>
+  </svg>
+)
+
+const CalendarIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="6" width="18" height="15" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M8 3V6M16 3V6M3 10H21" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+)
+
+const LockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M8 11V7C8 4.5 10 3 12 3C14 3 16 4.5 16 7V11" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+)
+
+const UnlockIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="11" width="14" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+    <path d="M8 11V7C8 5 9 4 12 4C14 4 15 5 16 7" stroke="currentColor" strokeWidth="1.5"/>
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+)
+
+// Helper functions
+function getRoundIcon(type: string) {
+  switch(type) {
+    case 'mcq': return <MCQIcon />
+    case 'coding': return <CodingIcon />
+    case 'tr': return <TechnicalIcon />
+    case 'hr': return <HRIcon />
+    default: return <AssessmentIcon />
   }
 }
 
-// Round Card Component - No start button, just display info
-const RoundCard = ({ round, index, examInfo }: any) => {
-  const mapKey: any = {
-    quiz: "mcq",
-    code: "coding",
-    tr: "tr",
-    hr: "hr"
-  };
-
-  const roundInfo = examInfo?.rounds?.find((r: any) => r.roundType === mapKey[round.key]);
-  const now = new Date();
-  const startTime = roundInfo ? new Date(roundInfo.startDateTime) : null;
-  const endTime = roundInfo ? new Date(roundInfo.endDateTime) : null;
-
-  const isUpcoming = startTime && now < startTime;
-  const isActive = startTime && endTime && now >= startTime && now <= endTime;
-  const isExpired = endTime && now > endTime;
-
-  // Calculate time remaining for active rounds
-  const [timeRemaining, setTimeRemaining] = useState<string>("");
-
-  useEffect(() => {
-    if (!isActive || !endTime) return;
-
-    const interval = setInterval(() => {
-      const diff = endTime.getTime() - new Date().getTime();
-      if (diff <= 0) {
-        setTimeRemaining("Expired");
-        clearInterval(interval);
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeRemaining(`${hours}h ${minutes}m ${seconds}s`);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [endTime, isActive]);
-
-  const getRoundColor = () => {
-    if (round.status === PASSED) return "#22c55e";
-    if (round.status === FAILED) return "#dc3545";
-    if (round.status === READY) return "#ff7a00";
-    if (round.status === IN_PROGRESS) return "#ff9a3c";
-    if (round.status === PENDING) return "#ffb347";
-    // For locked rounds, show color based on schedule
-    if (isActive) return "#22c55e";
-    if (isUpcoming) return "#ffaa44";
-    if (isExpired) return "#dc3545";
-    return "#6c757d";
-  };
-
-  const getDateTimeDisplay = () => {
-    if (!roundInfo) {
-      return (
-        <div>
-          <div style={{ fontSize: 13, color: "#888" }}>
-            📅 Not Scheduled
-          </div>
-        </div>
-      );
-    }
-    if (!startTime) {
-      return (
-        <div>
-          <div style={{ fontSize: 13, color: "#888" }}>
-            📅 Schedule pending
-          </div>
-        </div>
-      );
-    }
-
-    const dateStr = startTime.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-    const timeStr = startTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-    const endTimeStr = endTime ? endTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    }) : '';
-
-    if (isActive) {
-      return (
-        <div>
-          <div style={{ fontSize: 13, color: "#22c55e", fontWeight: 500 }}>
-            ✅ Active • {timeRemaining} remaining
-          </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-            {dateStr} • {timeStr} - {endTimeStr}
-          </div>
-        </div>
-      );
-    }
-
-    if (isUpcoming) {
-      return (
-        <div>
-          <div style={{ fontSize: 13, color: "#ffaa44", fontWeight: 500 }}>
-            📅 Upcoming
-          </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-            {dateStr} • {timeStr} - {endTimeStr}
-          </div>
-        </div>
-      );
-    }
-
-    if (isExpired) {
-      return (
-        <div>
-          <div style={{ fontSize: 13, color: "#dc3545", fontWeight: 500 }}>
-            ⌛ Expired
-          </div>
-          <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-            {dateStr} • {timeStr} - {endTimeStr}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <div style={{ fontSize: 13, color: "#888" }}>
-          📅 Scheduled
-        </div>
-        <div style={{ fontSize: 11, color: "#888", marginTop: 4 }}>
-          {dateStr} • {timeStr} - {endTimeStr}
-        </div>
-      </div>
-    );
-  };
-
-  const getDuration = () => {
-    if (!roundInfo) return null;
-    const duration = Math.floor((new Date(roundInfo.endDateTime).getTime() - new Date(roundInfo.startDateTime).getTime()) / (1000 * 60));
-    return duration;
-  };
-
-  const duration = getDuration();
-
-  // Get schedule-based status badge
-  const scheduleBadge = getScheduleStatusBadge(roundInfo, round.status);
-
-  return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: "200px",
-        background: "rgba(255,255,255,0.05)",
-        borderRadius: 12,
-        padding: "20px 16px",
-        borderTop: `3px solid ${getRoundColor()}`,
-        transition: "all 0.3s ease",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-        <div>
-          <h5 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "#fff" }}>
-            {round.label}
-          </h5>
-          <div style={{ fontSize: 12, color: "#888", marginTop: 4 }}>
-            Round {index + 1} of 4
-          </div>
-        </div>
-        {scheduleBadge}
-      </div>
-
-      {getDateTimeDisplay()}
-
-      {duration && duration > 0 && (
-        <div style={{ fontSize: 11, color: "#888", marginTop: 12 }}>
-          ⏱️ Duration: {duration} minutes
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default function StudentFinalAssessmentPage() {
+export default function StudentAssessmentController() {
   const { user } = useAuthContext()
   const token = user?.token
-  const studentId = (user as any)?._id ?? (user as any)?.id ?? undefined
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
-  const templateId = 'default'
-  const status = user?.status?.toLowerCase()
+  const API_BASE = import.meta.env.VITE_API_BASE_URL
 
-  const [rounds, setRounds] = useState<Round[]>(initialRounds)
+  const [loading, setLoading] = useState(true)
+  const [assessments, setAssessments] = useState<Assessment[]>([])
+  const [selectedAssessment, setSelectedAssessment] = useState<any>(null)
+  const [rounds, setRounds] = useState<Round[]>([])
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
-  const [started, setStarted] = useState(false)
-  const [statusChecked, setStatusChecked] = useState(false)
-  const pollRef = useRef<number | null>(null)
-
-  // TR status gate (so we don't flash HR start before we know TR status)
-  const [trStatusChecked, setTrStatusChecked] = useState(false)
-  const [hrStatusChecked, setHrStatusChecked] = useState(false)
-
-  const [startCodeNow, setStartCodeNow] = useState(false)
-
-  // ----- Review modal state -----
-  const [reviewOpen, setReviewOpen] = useState(false)
-  const [reviewKind, setReviewKind] = useState<RoundKey | null>(null)
-  const [reviewLoading, setReviewLoading] = useState(false)
-  const [reviewError, setReviewError] = useState<string | null>(null)
-  const [reviewData, setReviewData] = useState<any | null>(null)
-
-  // ----- Warning modal state -----
-  const [warningOpen, setWarningOpen] = useState(false)
-  const [pendingRound, setPendingRound] = useState<RoundKey | null>(null)
-  const [warningConfirmed, setWarningConfirmed] = useState(false)
-  const [trialUsed, setTrialUsed] = useState(false)
-  const [examId, setExamId] = useState<string>("");
-  const [examInfo, setExamInfo] = useState<any>(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const now = currentTime;
-  const [examStatus, setExamStatus] = useState("upcoming");
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [autoRefreshing, setAutoRefreshing] = useState(false);
-  const [nextRefreshTime, setNextRefreshTime] = useState<Date | null>(null);
-  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [capturedStream, setCapturedStream] = useState<MediaStream | null>(null);
   const [completedRounds, setCompletedRounds] = useState<string[]>([])
+  const [examStatus, setExamStatus] = useState<string>("")
 
+  const [isRunning, setIsRunning] = useState(false)
+  const [roundConfig, setRoundConfig] = useState<any>(null)
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false)
+  const [modalLoading, setModalLoading] = useState(false)
+  const [startingRound, setStartingRound] = useState<string | null>(null)
+
+  // Fetch assessments
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+    const fetchAssessments = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/assessment/admin/exams`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
 
-    return () => clearInterval(interval);
-  }, []);
+        const data = await res.json()
 
-
-
-
-
-  // Auto-refresh logic for upcoming rounds
-  useEffect(() => {
-    if (!examInfo?.rounds) return;
-
-    // Find the next upcoming round that is not started yet
-    const upcomingRounds = examInfo.rounds.filter((round: any) => {
-      const startTime = new Date(round.startDateTime);
-      const now = new Date();
-      return startTime > now && round.enabled;
-    });
-
-    if (upcomingRounds.length === 0) {
-      setNextRefreshTime(null);
-      return;
-    }
-
-    // Find the nearest upcoming round
-    const nearestRound = upcomingRounds.reduce((nearest: any, current: any) => {
-      const currentStart = new Date(current.startDateTime);
-      const nearestStart = nearest ? new Date(nearest.startDateTime) : null;
-      if (!nearestStart || currentStart < nearestStart) {
-        return current;
-      }
-      return nearest;
-    }, null);
-
-    if (nearestRound) {
-      const startTime = new Date(nearestRound.startDateTime);
-      const now = new Date();
-      const timeUntilStart = startTime.getTime() - now.getTime();
-
-      // If less than 2 minutes until start, set refresh for 20 seconds before start
-      if (timeUntilStart <= 120000 && timeUntilStart > 0) {
-        const refreshDelay = Math.max(0, timeUntilStart - 20000); // Refresh 20 seconds before start
-
-        if (refreshTimeoutRef.current) {
-          clearTimeout(refreshTimeoutRef.current);
+        if (!data.success) {
+          console.error("Failed to fetch assessments")
+          return
         }
 
-        refreshTimeoutRef.current = setTimeout(() => {
-          console.log("Auto-refreshing page to enable start button...");
-          setAutoRefreshing(true);
-          window.location.reload();
-        }, refreshDelay);
-
-        const refreshTime = new Date(now.getTime() + refreshDelay);
-        setNextRefreshTime(refreshTime);
-      } else {
-        setNextRefreshTime(null);
+        setAssessments(data.exams || [])
+      } catch (err) {
+        console.error("Fetch assessments error", err)
+      } finally {
+        setLoading(false)
       }
     }
 
-    return () => {
-      if (refreshTimeoutRef.current) {
-        clearTimeout(refreshTimeoutRef.current);
-      }
-    };
-  }, [examInfo, currentTime]);
+    if (token) fetchAssessments()
+  }, [token])
 
-  useEffect(() => {
-    if (!examInfo?.rounds) return;
-
-    const now = new Date();
-
-    const active = examInfo.rounds.find((r: any) => {
-      return (
-        r.enabled &&
-        now >= new Date(r.startDateTime) &&
-        now <= new Date(r.endDateTime)
-      );
-    });
-
-    if (active) {
-      setExamStatus("active");
-    } else {
-      setExamStatus("inactive");
-    }
-  }, [examInfo, currentTime]);
-
-  useEffect(() => {
-    const fetchExam = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/assessment/current-exam`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        const data = await res.json();
-
-        if (!data.success) return;
-
-        setExamId(data.examId);
-        setExamInfo({
-          title: data.title,
-          rounds: data.rounds,
-        });
-
-        // ✅ IMPORTANT: sync completed rounds
-        setCompletedRounds(data.completedRounds || []);
-
-        // 🔥 MAP UI STATE FROM BACKEND
-        setRounds((prev) =>
-          prev.map((r) => {
-            const mapKey =
-              r.key === "quiz"
-                ? "mcq"
-                : r.key === "code"
-                  ? "coding"
-                  : r.key;
-
-            // ✅ COMPLETED
-            if (data.completedRounds?.includes(mapKey)) {
-              return { ...r, status: PENDING }; // or create COMPLETED
-            }
-
-            // ✅ ACTIVE
-            if (data.activeRound === mapKey) {
-              return { ...r, status: READY };
-            }
-
-            return { ...r, status: LOCKED };
-          })
-        );
-
-      } catch (err) {
-        console.error("Failed to fetch exam", err);
-      }
-    };
-
-    if (token) fetchExam();
-  }, [token]);
-
-  const labelFor = (k: RoundKey) => (rounds.find((r) => r.key === k)?.label) || k.toUpperCase()
-  const coerceScore = (sub: any) => {
-    const score = sub?.score ?? sub?.totalScore ?? sub?.marks ?? sub?.avgRating ?? null
-    const max = sub?.maxScore ?? sub?.total ?? null
-    return { score, max }
-  }
-  const coerceFeedback = (sub: any) => sub?.feedback ?? sub?.comments ?? sub?.notes ?? ''
-
-  /*   const startAssessment = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/assessment/start/${examId}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-  
-        const data = await res.json();
-        if (!data.success) return;
-  
-        const allowedRounds = data.allowedRounds || [];
-        const completedRounds = data.progress?.completedRounds || [];
-        setCompletedRounds(completedRounds);
-        const currentRound = data.activeRound;
-  
-        setRounds((prev) =>
-          prev.map((r) => {
-            const mapKey =
-              r.key === "quiz"
-                ? "mcq"
-                : r.key === "code"
-                  ? "coding"
-                  : r.key;
-  
-            if (!allowedRounds.includes(mapKey)) {
-              return { ...r, status: LOCKED };
-            }
-  
-            if (currentRound === mapKey) {
-              return { ...r, status: READY };
-            }
-  
-            if (completedRounds.includes(mapKey)) {
-              return { ...r, status: PENDING };
-            }
-  
-            return { ...r, status: LOCKED };
-          })
-        );
-      } catch (err) {
-        console.error(err);
-      }
-    }; */
-
-  /*   useEffect(() => {
-      if (token && examId) startAssessment();
-    }, [token, examId]); */
-
-  /*  useEffect(() => {
-     if (examId) {
-       fetchResultStatus();
-     }
-   }, [examId]); */
-
-  const handleStartWithWarning = (roundKey: RoundKey) => {
-    setPendingRound(roundKey)
-    setWarningOpen(true)
-    setWarningConfirmed(false)
-  }
-
-  /*   const fetchResultStatus = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/assessment/result/${examId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-  
-        const data = await res.json();
-        setCompletedRounds(data.completedRounds || []);
-        if (!data.success) return;
-  
-        setRounds(prev =>
-          prev.map(r => {
-            // ✅ QUIZ
-            if (r.key === "quiz") {
-              let nextStatus: RoundStatus = PENDING;
-  
-              if (data.approvalStatus === "approved") {
-                nextStatus = data.status === "pass" ? PASSED : FAILED;
-              }
-  
-              return {
-                ...r,
-                approvalStatus: data.approvalStatus || "pending",
-                status: nextStatus
-              };
-            }
-  
-            // ✅ CODE unlock
-            if (r.key === "code") {
-              if (data.approvalStatus === "approved" && data.status === "pass") {
-                return { ...r, status: READY };
-              }
-            }
-  
-            return r;
-          })
-        );
-      } catch (err) {
-        console.error("Result fetch error", err);
-      }
-    }; */
-
-  const handleConfirmStart = async () => {
-    if (!pendingRound) return;
-
-    setWarningOpen(false);
+  // Fetch exam details
+  const handleSelectAssessment = async (assessment: Assessment) => {
+    setSelectedAssessment(assessment)
+    setShowAssessmentModal(true)
+    setModalLoading(true)
 
     try {
-      // ✅ STEP 1: FULLSCREEN FIRST
-      const elem = document.documentElement;
-
-      if (elem.requestFullscreen) {
-        await elem.requestFullscreen();
-      } else if ((elem as any).webkitRequestFullscreen) {
-        await (elem as any).webkitRequestFullscreen();
-      }
-
-      // ✅ STEP 2: SET ROUND STATE
-      setActiveRound(pendingRound);
-      setStarted(true);
-
-      // 🔥 IMPORTANT: trigger code modal start
-      if (pendingRound === "code") {
-        setStartCodeNow(true);
-      }
-
-      // ✅ STEP 3: Update round status
-      setRounds((rs) =>
-        rs.map((r) =>
-          r.key === pendingRound ? { ...r, status: IN_PROGRESS } : r
-        )
-      );
-
-    } catch (err) {
-      console.error("Fullscreen failed:", err);
-    }
-  };
-
-  const openReview = async (kind: RoundKey) => {
-    if (!token) return
-    setReviewKind(kind)
-    setReviewOpen(true)
-    setReviewLoading(true)
-    setReviewError(null)
-    setReviewData(null)
-
-    try {
-      let url = ''
-
-      switch (kind) {
-        case 'quiz':
-          url = `${API_BASE}/api/student/submission-status/${templateId}`
-          break
-        case 'code':
-        case 'tr':
-        case 'hr':
-          url = `${API_BASE}/api/assessment/current/${examId}`
-          break
-      }
-
-      let res = await fetch(url, {
+      const res = await fetch(`${API_BASE}/api/assessment/current-exam`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-
-      if (!res.ok) throw new Error('Failed to load submission')
 
       const data = await res.json()
-      const submission = data?.submission ?? null
 
-      let resultData: any = null
-
-      try {
-        const resultRes = await fetch(
-          `${API_BASE}/api/assessment/result/${examId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        )
-
-        if (resultRes.ok) {
-          resultData = await resultRes.json()
+      if (data.success && data.examId === assessment._id) {
+        setRounds(data.rounds || [])
+        setActiveRound(data.activeRound)
+        setCompletedRounds(data.completedRounds || [])
+        setExamStatus(data.status)
+      } else {
+        const examRes = await fetch(`${API_BASE}/api/assessment/admin/exam/${assessment._id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const examData = await examRes.json()
+        
+        if (examData.success && examData.exam) {
+          const now = new Date()
+          const formattedRounds = examData.exam.rounds.map((r: any) => {
+            const startDate = new Date(r.startDateTime)
+            const endDate = new Date(r.endDateTime)
+            let status: "upcoming" | "active" | "completed" = "upcoming"
+            
+            if (now >= startDate && now <= endDate) {
+              status = "active"
+            } else if (now > endDate) {
+              status = "completed"
+            }
+            
+            return {
+              roundType: r.roundType,
+              status: status,
+              pickCount: r.pickCount,
+              timeSeconds: r.timeSeconds,
+              passPercentage: r.passPercentage,
+              startDateTime: r.startDateTime,
+              endDateTime: r.endDateTime
+            }
+          })
+          setRounds(formattedRounds)
+          setCompletedRounds([])
+          setExamStatus("upcoming")
         }
-      } catch (err) {
-        console.warn("Result API not available")
       }
-
-      const isApproved = resultData?.approvalStatus === "approved"
-
-      let finalStatus = "pending"
-
-      if (isApproved) {
-        finalStatus =
-          resultData?.status === "pass" ? "Passed" : "Failed"
-      }
-
-      let latestProfileFeedback = null
-
-      const profileRes = await fetch(`${API_BASE}/profile`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (profileRes.ok) {
-        const profileJson = await profileRes.json()
-        const fb = Array.isArray(profileJson?.feedback)
-          ? profileJson.feedback
-          : []
-
-        latestProfileFeedback = fb.length ? fb[fb.length - 1] : null
-      }
-
-      setReviewData({
-        submission,
-        status: finalStatus,
-        approvalStatus: resultData?.approvalStatus || "pending",
-        feedback: coerceFeedback(submission),
-        score: isApproved ? resultData?.scores?.mcq : null,
-        max: isApproved ? resultData?.mcq?.total : null,
-        displayScore: isApproved ? resultData?.mcq?.display : null,
-        answers: submission?.answers || null,
-        profileFeedback: latestProfileFeedback,
-      })
-
-    } catch (e: any) {
-      setReviewError(e?.message || 'Failed to load review')
+    } catch (err) {
+      console.error("Fetch exam details error", err)
     } finally {
-      setReviewLoading(false)
+      setModalLoading(false)
     }
   }
 
-  /*  const fetchQuizStatus = async () => {
-     if (!token || !examId) return;
- 
-     try {
-       const res = await fetch(`${API_BASE}/api/assessment/current/${examId}`, {
-         headers: { Authorization: `Bearer ${token}` },
-       });
- 
-       if (!res.ok) return;
- 
-       const data = await res.json();
- 
-       const completed = data.completedRounds || [];
-       const current = data.currentRound;
- 
-       setRounds(prev =>
-         prev.map(r => {
-           if (r.key === "quiz") {
-             if (completed.includes("mcq")) return { ...r, status: PENDING };
-             if (current === "mcq") return { ...r, status: READY };
-           }
- 
-           if (r.key === "code") {
-             if (completed.includes("mcq")) return { ...r, status: READY };
-           }
- 
-           return r;
-         })
-       );
- 
-     } catch (err) {
-       console.error(err);
-     } finally {
-       setStatusChecked(true);
-     }
-   };
- 
-   useEffect(() => {
-     if (token && examId) {
-       fetchQuizStatus()
-       fetchResultStatus()
-     }
-   }, [token, examId])
-  */
+  const handleCloseModal = () => {
+    setShowAssessmentModal(false)
+    setTimeout(() => {
+      setSelectedAssessment(null)
+      setRounds([])
+      setActiveRound(null)
+      setCompletedRounds([])
+      setExamStatus("")
+      setStartingRound(null)
+    }, 300)
+  }
 
-
-  const handleStartQuiz = async () => {
+  const handleStartRound = async (round: Round) => {
+    setStartingRound(round.roundType)
     try {
-      const elem = document.getElementById("quiz-root");
-      if (elem) {
-        await elem.requestFullscreen();
+      const startRes = await fetch(`${API_BASE}/api/assessment/start/${selectedAssessment._id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const startData = await startRes.json()
+
+      if (!startData.success) {
+        alert(startData.message || "Cannot start this round")
+        setStartingRound(null)
+        return
       }
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: false,
-      });
 
-      setCapturedStream(stream); // ✅ correct
-      handleStartWithWarning("quiz");
+      setRoundConfig({
+        questionCount: round.pickCount,
+        duration: round.timeSeconds,
+        type: round.roundType,
+        passPercentage: round.passPercentage
+      })
 
-    } catch (e) {
-      console.warn("Screen share cancelled");
+      setActiveRound(round.roundType)
+      setIsRunning(true)
+      setShowAssessmentModal(false)
+      setStartingRound(null)
+    } catch (err) {
+      console.error("Start round error", err)
+      alert("Failed to start round")
+      setStartingRound(null)
     }
-  };
-
-  const handleQuizClose = (submittedPending = true) => {
-    setActiveRound(null)
-    setStarted(false)
-    setRounds((rs) => rs.map((r) => (r.key === 'quiz' ? { ...r, status: submittedPending ? PENDING : READY } : r)))
-    //fetchQuizStatus()
   }
 
-  const handleStartCode = () => {
-    handleStartWithWarning('code')
-  }
-  const handleStartTR = () => {
-    handleStartWithWarning('tr')
-  }
-
-  const handleStartHR = () => {
-    handleStartWithWarning('hr')
-  }
-
-  const handleCodeCancel = async () => {
-    setActiveRound(null)
-    setStarted(false)
-    setStartCodeNow(false)
-  }
-
-  const handleCodeSubmitted = async () => {
+  const handleRoundSubmit = async () => {
     try {
-      await fetch(`${API_BASE}/api/assessment/complete-round`, {
+      const submitRes = await fetch(`${API_BASE}/api/assessment/complete-round`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          examId,
-          roundType: "coding",
+          examId: selectedAssessment._id,
+          roundType: roundConfig?.type,
         }),
-      });
+      })
 
-      // ✅ Immediately update UI
-      setRounds((prev) =>
-        prev.map((r) =>
-          r.key === "code"
-            ? { ...r, status: "pending" } // 👈 THIS IS KEY
-            : r
-        )
-      );
+      const submitData = await submitRes.json()
+
+      if (!submitData.success) {
+        console.error("Submit failed", submitData.message)
+      }
+
+      const refreshRes = await fetch(`${API_BASE}/api/assessment/current-exam`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      
+      const refreshData = await refreshRes.json()
+      
+      if (refreshData.success && refreshData.examId === selectedAssessment._id) {
+        setRounds(refreshData.rounds || [])
+        setActiveRound(refreshData.activeRound)
+        setCompletedRounds(refreshData.completedRounds || [])
+        setExamStatus(refreshData.status)
+      }
 
     } catch (err) {
-      console.error("Complete round error", err);
+      console.error("Submit error", err)
     }
 
-    setActiveRound(null);
-    setStarted(false);
-    setStartCodeNow(false);
-  };
+    setIsRunning(false)
+    setActiveRound(null)
+    
+    if (examStatus === "completed") {
+      alert("🎉 Congratulations! You have successfully completed all rounds! 🎉")
+      setSelectedAssessment(null)
+      setRounds([])
+      setShowAssessmentModal(false)
+    } else {
+      setShowAssessmentModal(true)
+    }
+  }
 
-  const canStart = (r: { key: RoundKey; status: RoundStatus }) => {
-    if (r.status !== READY) return false;
+  const isRoundCompleted = (roundType: string) => completedRounds.includes(roundType)
+  
+  const isRoundActive = (round: Round) => round.status === "active" && !isRoundCompleted(round.roundType)
+  
+  const getRoundStatus = (round: Round) => {
+    if (isRoundCompleted(round.roundType)) return { text: "Completed", color: "#28a745" }
+    if (round.status === "active") return { text: "Available", color: "#ff6b35" }
+    if (round.status === "completed") return { text: "Ended", color: "#dc3545" }
+    return { text: "Upcoming", color: "#ffc107" }
+  }
 
-    if (activeRound && r.key !== activeRound) return false;
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    
+    if (hours > 0) return `${hours}h ${remainingMinutes}m`
+    return `${minutes} minutes`
+  }
 
-    if (!examInfo?.rounds) return false;
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "Not scheduled"
+    return new Date(dateString).toLocaleString()
+  }
 
-    const map: any = {
-      quiz: "mcq",
-      code: "coding",
-      tr: "tr",
-      hr: "hr"
-    };
-
-    const round = examInfo.rounds.find(
-      (x: any) => x.roundType === map[r.key]
-    );
-
-    if (!round) return false;
-
-    const now = new Date();
-
+  if (loading) {
     return (
-      now >= new Date(round.startDateTime) &&
-      now <= new Date(round.endDateTime)
-    );
-  };
-
-  const handleViewResult = (roundKey: RoundKey) => {
-    openReview(roundKey);
-  };
-
-  // Format next refresh time display
-  const getNextRefreshDisplay = () => {
-    if (!nextRefreshTime) return null;
-    const now = new Date();
-    const diff = nextRefreshTime.getTime() - now.getTime();
-    if (diff <= 0) return null;
-
-    const seconds = Math.floor(diff / 1000);
-    if (seconds <= 60) {
-      return `${seconds} seconds`;
-    }
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
-  };
-
-  const ExamSummaryCard = ({ examInfo }: any) => {
-    if (!examInfo?.rounds?.length) return null;
-
-    const now = new Date();
-
-    // Find active or nearest upcoming round
-    let selectedRound = examInfo.rounds.find(
-      (r: any) =>
-        now >= new Date(r.startDateTime) &&
-        now <= new Date(r.endDateTime)
-    );
-
-    if (!selectedRound) {
-      selectedRound = examInfo.rounds
-        .filter((r: any) => new Date(r.startDateTime) > now)
-        .sort(
-          (a: any, b: any) =>
-            new Date(a.startDateTime).getTime() -
-            new Date(b.startDateTime).getTime()
-        )[0];
-    }
-
-    if (!selectedRound) {
-      selectedRound = examInfo.rounds[0]; // fallback
-    }
-
-    const start = new Date(selectedRound.startDateTime);
-    const end = new Date(selectedRound.endDateTime);
-
-    const isActive = now >= start && now <= end;
-    const isUpcoming = now < start;
-    const isExpired = now > end;
-
-    const getStatus = () => {
-      if (isActive) return { text: "Active", color: "#22c55e" };
-      if (isUpcoming) return { text: "Upcoming", color: "#ffaa44" };
-      if (isExpired) return { text: "Expired", color: "#dc3545" };
-      return { text: "Unknown", color: "#999" };
-    };
-
-    const mapRoundName: any = {
-      mcq: "Quiz",
-      coding: "Code Challenge",
-      tr: "Technical Round",
-      hr: "HR Round",
-    };
-
-    const status = getStatus();
-
-    return (
-      <Card
-        className="mb-4 p-4"
-        style={{
-          borderRadius: 16,
-          background: "rgba(255,255,255,0.04)",
-          borderLeft: `4px solid ${status.color}`,
-        }}
-      >
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            <h4 style={{ margin: 0, color: "#fff" }}>
-              {examInfo.title}
-            </h4>
-
-            <div style={{ fontSize: 14, color: "#aaa", marginTop: 6 }}>
-              {mapRoundName[selectedRound.roundType]}
-            </div>
-
-            <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
-              {start.toLocaleString()} → {end.toLocaleTimeString()}
-            </div>
-          </div>
-
-          <Badge
-            style={{
-              backgroundColor: status.color,
-              fontSize: 14,
-              padding: "8px 12px",
-            }}
-          >
-            {status.text}
-          </Badge>
-        </div>
-      </Card>
-    );
-  };
+      <div className="d-flex justify-content-center align-items-center" style={{ height: "100vh", background: "#000" }}>
+        <Spinner animation="border" variant="light" />
+      </div>
+    )
+  }
 
   return (
-    <>
-      <PageMetaData title="Final Assessment" />
-      <ExamSummaryCard examInfo={examInfo} />
-      <Card className="bg-transparent border rounded-4 p-4 mb-4">
-        <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-2">
-          <h4 className="mb-0" style={{ color: '#ff7a00' }}>
-            Final Assessment
-          </h4>
-
-          <Alert variant="danger" className="mb-0 py-2 px-3">
-            <strong>⚠️ Important:</strong>{' '}
-            Available exclusively in the <b>Premium Version</b>
-          </Alert>
-        </div>
-
-        {/* Auto-refresh info banner */}
-        {nextRefreshTime && getNextRefreshDisplay() && (
-          <Alert variant="info" className="mb-3 py-2 px-3" style={{ fontSize: 13 }}>
-            <strong>🔄 Auto-refresh:</strong> Page will automatically refresh in {getNextRefreshDisplay()} to enable the start button for the upcoming round.
-          </Alert>
-        )}
-        {autoRefreshing && (
-          <Alert variant="warning" className="mb-3 py-2 px-3">
-            <Spinner animation="border" size="sm" className="me-2" />
-            <strong>Refreshing page...</strong> Please wait while we prepare your assessment.
-          </Alert>
-        )}
-        {/* Four Round Cards at Top - Display Only */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-          {rounds.map((round, index) => (
-            <RoundCard
-              key={round.key}
-              round={round}
-              index={index}
-              examInfo={examInfo}
-            />
-          ))}
-        </div>
-
-        <Alert
-          style={{
-            backgroundColor: 'rgba(255,122,0,0.08)',
-            borderColor: '#ff7a00',
-            color: '#ff7a00',
-          }}
-        >
-          <strong>⚠️ Important:</strong> All rounds are monitored and recorded. Any violation of assessment rules will result in immediate disqualification.
-          Please read all warnings carefully before starting each round.
-        </Alert>
-
-        <div style={{ display: 'flex', gap: 24 }}>
-          <div style={{ width: 420 }}>
-            {status === 'pending' && trialUsed && (
-              <Alert variant="danger">
-                🚫 Trial users are allowed only one Final Assessment attempt.
-                Please upgrade to Premium.
-              </Alert>
-            )}
-            <ListGroup as="ol" numbered>
-              {rounds.map((r, idx) => {
-                const isQuiz = r.key === 'quiz'
-                const startable = canStart(r)
-                let displayStatus = r.status
-
-                return (
-                  <ListGroup.Item
-                    as="li"
-                    key={r.key}
-                    className="d-flex justify-content-between align-items-start"
-                    style={{
-                      background:
-                        r.status === READY
-                          ? 'rgba(255,122,0,0.08)'
-                          : r.status === PENDING
-                            ? 'rgba(255,193,7,0.08)'
-                            : 'rgba(255,255,255,0.02)',
-
-                      borderLeft:
-                        r.status === READY
-                          ? '3px solid #ff7a00'
-                          : r.status === PASSED
-                            ? '3px solid #22c55e'
-                            : r.status === FAILED
-                              ? '3px solid #dc3545'
-                              : r.status === PENDING
-                                ? '3px solid #ffb347'
-                                : '3px solid rgba(255,255,255,0.08)',
-
-                      transition: 'all 0.25s ease',
-                    }}
-                  >
-                    <div className="ms-2 me-auto">
-                      <div className="fw-semibold">{r.label}</div>
-                      <div className="small text-muted">Round {idx + 1}</div>
-                    </div>
-
-                    <div className="d-flex align-items-center gap-2">
-                      {statusBadge(displayStatus)}
-
-                      {isQuiz && r.status === READY && !statusChecked && (
-                        <Button size="sm" variant="outline-secondary" disabled>
-                          Checking...
-                        </Button>
-                      )}
-                      {r.key === 'tr' && r.status === READY && !trStatusChecked && (
-                        <Button size="sm" variant="outline-secondary" disabled>
-                          Checking...
-                        </Button>
-                      )}
-                      {r.key === 'hr' && r.status === READY && !hrStatusChecked && (
-                        <Button size="sm" variant="outline-secondary" disabled>
-                          Checking...
-                        </Button>
-                      )}
-
-                      {r.status !== LOCKED && r.status !== READY && (
-                        <>
-                          {r.approvalStatus === "approved" && (
-                            <Button
-                              size="sm"
-                              variant="outline-success"
-                              onClick={() => openReview(r.key)}
-                            >
-                              View Result
-                            </Button>
-                          )}
-                        </>
-                      )}
-
-                      <Button
-                        size="sm"
-                        disabled={!startable}
-                        onClick={() => {
-                          if (!startable) return
-
-                          if (r.key === 'quiz') handleStartQuiz()
-                          else if (r.key === 'code') handleStartCode()
-                          else if (r.key === 'tr') handleStartTR()
-                          else if (r.key === 'hr') handleStartHR()
-                        }}
-                        style={{
-                          backgroundColor: startable ? '#ff7a00' : '#444',
-                          borderColor: startable ? '#ff7a00' : '#444',
-                          cursor: startable ? 'pointer' : 'not-allowed',
-                          opacity: startable ? 1 : 0.5,
-                        }}
-                      >
-                        Start
-                      </Button>
-                    </div>
-                  </ListGroup.Item>
-                )
-              })}
-            </ListGroup>
+    <div style={{ background: "#000", minHeight: "100vh", color: "#fff" }}>
+      {/* Assessments List */}
+      {!isRunning && !selectedAssessment && (
+        <div className="container py-5">
+          <div className="text-center mb-5">
+            <h1 style={{ 
+              color: "#fff", 
+              fontSize: "2.5rem", 
+              fontWeight: "bold",
+              background: "linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text"
+            }}>
+              Available Assessments
+            </h1>
+            <p style={{ color: "#888", fontSize: "1.1rem", marginTop: "1rem" }}>
+              Select an assessment to begin your journey
+            </p>
           </div>
 
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <Card
-              className="p-4"
-              style={{
-                overflow: "hidden",
-                position: "relative",
-                borderRadius: 16,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 600,
-                  marginBottom: 20,
-                  color: "#ff7a00",
-                }}
-              >
-                Industry-Level Interviews
+          <div className="row g-4">
+            {assessments.map((assessment) => (
+              <div key={assessment._id} className="col-md-6 col-lg-4">
+                <Card 
+                  style={{ 
+                    background: "#111", 
+                    border: "1px solid #333",
+                    cursor: "pointer",
+                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    overflow: "hidden"
+                  }}
+                  className="h-100"
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-8px)"
+                    e.currentTarget.style.borderColor = "#ff6b35"
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(255, 107, 53, 0.2)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)"
+                    e.currentTarget.style.borderColor = "#333"
+                    e.currentTarget.style.boxShadow = "none"
+                  }}
+                  onClick={() => handleSelectAssessment(assessment)}
+                >
+                  <Card.Body>
+                    <div style={{ 
+                      width: "50px", 
+                      height: "50px", 
+                      background: "rgba(255, 107, 53, 0.1)",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: "1rem"
+                    }}>
+                      <AssessmentIcon />
+                    </div>
+                    <Card.Title style={{ color: "#ff6b35", fontSize: "1.5rem", fontWeight: "bold" }}>
+                      {assessment.title}
+                    </Card.Title>
+                    <Card.Text style={{ color: "#888", marginTop: "1rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
+                        <CalendarIcon />
+                        <span>Created: {new Date(assessment.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      {assessment.activeRound && (
+                        <div className="mt-2">
+                          <Badge style={{ background: "#ff6b35", padding: "4px 8px" }}>
+                            Active: {assessment.activeRound.toUpperCase()}
+                          </Badge>
+                        </div>
+                      )}
+                    </Card.Text>
+                  </Card.Body>
+                </Card>
               </div>
-
-              <div
-                style={{
-                  background: "rgba(255,122,0,0.06)",
-                  padding: 16,
-                  borderRadius: 12,
-                  marginBottom: 24,
-                }}
-              >
-                <p className="small mb-2">
-                  <strong>Quiz:</strong> Screen & webcam monitored. After submission it becomes{" "}
-                  <em>Pending</em> until admin review.
-                </p>
-                <p className="small mb-0">
-                  <strong>Code Challenge:</strong> Unlocks after Quiz is{" "}
-                  <em>Passed</em>. Passing Code unlocks <strong>TR</strong>, then <strong>HR</strong>.
-                </p>
-              </div>
-
-              <div style={{ marginBottom: 24 }}>
-                <AssessmentCompaniesMarquee />
-              </div>
-
-              <Alert variant="danger" className="small mb-0">
-                <strong>🚫 Violation Policy:</strong> Cheating, plagiarism, or misconduct
-                will result in immediate failure and possible permanent ban.
-              </Alert>
-            </Card>
+            ))}
           </div>
-        </div>
-      </Card>
 
-      {/* Quiz modal */}
-      {started && activeRound === 'quiz' && (
-        <StudentQuiz
-          questionCount={20}
-          examId={examId}
-          onClose={() => handleQuizClose(true)}
-          stream={capturedStream || undefined}
-        />
-      )}
-
-      {/* Code challenge */}
-      {started && activeRound === 'code' && (
-        <StudentCodeChallengeComponent
-          baseURL={API_BASE}
-          eventId={examId}
-          startOpen={startCodeNow}
-          hidePreview
-          onClose={handleCodeCancel}
-          onSubmitted={handleCodeSubmitted}
-          authToken={token}
-          studentId={studentId}
-          activeRound={activeRound}
-          completedRounds={completedRounds}
-        />
-      )}
-
-      {/* TR modal */}
-      {started && activeRound === 'tr' && (
-        <TechnicalRound
-          baseURL={API_BASE}
-          authToken={token}
-          onClose={() => {
-            setActiveRound(null)
-            setStarted(false)
-          }}
-          onSubmitted={async () => {
-            setRounds((rs) => rs.map((r) => (r.key === 'tr' ? { ...r, status: PENDING } : r)))
-            setActiveRound(null)
-            setStarted(false)
-          }}
-        />
-      )}
-
-      {/* HR modal */}
-      {started && activeRound === 'hr' && (
-        <HRRound
-          baseURL={API_BASE}
-          authToken={token}
-          onClose={() => {
-            setActiveRound(null)
-            setStarted(false)
-          }}
-          onSubmitted={async () => {
-            setRounds((rs) => rs.map((r) => (r.key === 'hr' ? { ...r, status: 'pending' as RoundStatus } : r)))
-            setActiveRound(null)
-            setStarted(false)
-          }}
-        />
-      )}
-
-      {/* Warning Modal */}
-      <Modal show={warningOpen} onHide={() => setWarningOpen(false)} centered size="lg">
-        <Modal.Header closeButton className="bg-warning bg-opacity-10">
-          <Modal.Title>
-            ⚠️ {pendingRound ? VIOLATION_WARNINGS[pendingRound].title : 'Important Warning'}
-          </Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          {pendingRound && (
-            <>
-              <Alert variant="danger" className="mb-4">
-                <h6 className="alert-heading">🚫 STRICT VIOLATION WARNINGS:</h6>
-                <ul className="mb-0">
-                  {VIOLATION_WARNINGS[pendingRound].warnings.map((warning, index) => (
-                    <li key={index} className="small">{warning}</li>
-                  ))}
-                </ul>
+          {assessments.length === 0 && (
+            <div className="text-center mt-5">
+              <Alert variant="dark" style={{ background: "#111", borderColor: "#333", color: "#888" }}>
+                No assessments available at the moment.
               </Alert>
-
-              <Card className="mb-3">
-                <Card.Header className="bg-primary bg-opacity-10">
-                  <strong>📋 Preparation Instructions:</strong>
-                </Card.Header>
-                <Card.Body>
-                  <ul className="mb-0">
-                    {VIOLATION_WARNINGS[pendingRound].instructions.map((instruction, index) => (
-                      <li key={index} className="small">{instruction}</li>
-                    ))}
-                  </ul>
-                </Card.Body>
-              </Card>
-
-              <div className="form-check mb-3">
-                <input
-                  className="form-check-input"
-                  type="checkbox"
-                  id="warningConfirmation"
-                  checked={warningConfirmed}
-                  onChange={(e) => setWarningConfirmed(e.target.checked)}
-                />
-                <label className="form-check-label small" htmlFor="warningConfirmation">
-                  <strong>I understand and agree to all the rules and warnings above.</strong> I confirm that I will not engage in any form of cheating or misconduct during this assessment.
-                </label>
-              </div>
-            </>
-          )}
-        </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setWarningOpen(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmStart}
-            disabled={!warningConfirmed}
-            style={{
-              backgroundColor: warningConfirmed ? '#ff7a00' : '#ccc',
-              borderColor: warningConfirmed ? '#ff7a00' : '#ccc',
-            }}
-          >
-            I Understand - Start Assessment
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Review Modal */}
-      <Modal show={reviewOpen} onHide={() => setReviewOpen(false)} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>{reviewKind ? `${labelFor(reviewKind)} — Review` : 'Review'}</Modal.Title>
-        </Modal.Header>
-
-        <Modal.Body>
-          {reviewLoading && (
-            <div className="d-flex align-items-center gap-2">
-              <Spinner animation="border" size="sm" />
-              <span>Loading…</span>
             </div>
           )}
+        </div>
+      )}
 
-          {!reviewLoading && reviewError && <Alert variant="danger">{reviewError}</Alert>}
-
-          {!reviewLoading && !reviewError && reviewData && (
+      {/* Fullscreen Assessment Modal */}
+      <Modal 
+        show={showAssessmentModal} 
+        onHide={handleCloseModal}
+        fullscreen={true}
+        backdrop="static"
+        className="assessment-modal"
+      >
+        <Modal.Header 
+          style={{ 
+            background: "linear-gradient(135deg, #0a0a0a 0%, #111 100%)",
+            borderBottom: "2px solid #ff6b35",
+            color: "#fff",
+            padding: "1.5rem 2rem"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: 1 }}>
+            <div style={{
+              width: "56px",
+              height: "56px",
+              background: "rgba(255, 107, 53, 0.2)",
+              borderRadius: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <AssessmentIcon />
+            </div>
+            <div style={{ flex: 1 }}>
+              <Modal.Title style={{ color: "#ff6b35", fontSize: "2rem", fontWeight: "bold", marginBottom: "4px" }}>
+                {selectedAssessment?.title}
+              </Modal.Title>
+              {selectedAssessment?.description && (
+                <p style={{ color: "#888", margin: 0, fontSize: "0.9rem" }}>
+                  {selectedAssessment.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </Modal.Header>
+        
+        <Modal.Body style={{ 
+          background: "#000", 
+          color: "#fff",
+          padding: "2rem"
+        }}>
+          {modalLoading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" variant="light" />
+              <p className="mt-3" style={{ color: "#888" }}>Loading assessment details...</p>
+            </div>
+          ) : (
             <>
-              <div className="d-flex justify-content-between">
-                <div>
-                  <strong>Status</strong><br />
-
-                  <Badge bg={
-                    reviewData.status === "Passed"
-                      ? "success"
-                      : reviewData.status === "Failed"
-                        ? "danger"
-                        : "warning"
-                  }>
-                    {reviewData.status}
+              {/* Exam Status Header */}
+              <div style={{
+                background: "linear-gradient(135deg, #0a0a0a 0%, #111 100%)",
+                borderRadius: "12px",
+                padding: "1.25rem",
+                marginBottom: "2rem",
+                border: "1px solid #333"
+              }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <TargetIcon />
+                    <span style={{ color: "#888" }}>Exam Status:</span>
+                  </div>
+                  <Badge 
+                    style={{ 
+                      background: examStatus === "active" ? "#28a745" : 
+                                 examStatus === "completed" ? "#6c757d" : "#ffc107",
+                      padding: "8px 16px",
+                      fontSize: "0.9rem",
+                      borderRadius: "8px"
+                    }}
+                  >
+                    {examStatus === "active" ? "IN PROGRESS" : 
+                     examStatus === "completed" ? "COMPLETED" : "UPCOMING"}
                   </Badge>
                 </div>
-
-                {reviewData.approvalStatus === "approved" && (
-                  <div>
-                    <strong>Score</strong><br />
-                    {reviewData.displayScore || reviewData.score}
-                  </div>
-                )}
               </div>
-
-              {reviewData.feedback ? (
-                <Card className="mb-3">
-                  <Card.Body>
-                    <div className="fw-semibold mb-1">Feedback</div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{reviewData.feedback}</div>
-                  </Card.Body>
-                </Card>
-              ) : (
-                <div className="text-muted small mb-3">No general feedback provided.</div>
-              )}
-
-              {reviewData.profileFeedback ? (
-                <Card className="mb-3 border-primary">
-                  <Card.Body>
-                    <div className="fw-semibold mb-1">Admin Feedback</div>
-
-                    {reviewData.profileFeedback.rating != null && (
-                      <div className="d-flex align-items-center gap-2 mb-2">
-                        <span className="text-muted small">Rating:</span>
-                        <StarRating rating={reviewData.profileFeedback.rating} readOnly />
-                        <span className="text-muted small">
-                          ({reviewData.profileFeedback.rating}/5)
-                        </span>
-                      </div>
-                    )}
-
-                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                      {reviewData.profileFeedback.text}
-                    </div>
-
-                    <div className="text-muted small mt-2">
-                      {new Date(reviewData.profileFeedback.date).toLocaleString()}
-                    </div>
-                  </Card.Body>
-                </Card>
-              ) : (
-                <div className="text-muted small mb-3">
-                  No profile feedback provided yet.
-                </div>
-              )}
-
-              {Array.isArray(reviewData.answers) && reviewData.answers.length > 0 && (
-                <>
-                  <div className="fw-semibold mb-2">Per-question review</div>
-                  <ListGroup variant="flush">
-                    {reviewData.answers.map((a: any, i: number) => (
-                      <ListGroup.Item key={a.qid || i} className="px-0">
-                        <div className="fw-semibold mb-1">
-                          Q{i + 1} {a.topic ? <span className="text-muted">· {a.topic}</span> : null}
+              
+              {/* Rounds Progress */}
+              <div style={{ marginBottom: "2rem" }}>
+                <h5 style={{ color: "#ff6b35", marginBottom: "1rem", fontSize: "1rem", fontWeight: "bold" }}>
+                  Assessment Progress
+                </h5>
+                <div style={{ 
+                  background: "#111", 
+                  borderRadius: "12px", 
+                  padding: "1rem",
+                  display: "flex",
+                  gap: "1rem",
+                  flexWrap: "wrap"
+                }}>
+                  {rounds.map((round, idx) => {
+                    const isCompleted = isRoundCompleted(round.roundType)
+                    const isActive = isRoundActive(round)
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          flex: 1,
+                          minWidth: "100px",
+                          textAlign: "center",
+                          padding: "0.75rem",
+                          borderRadius: "8px",
+                          background: isCompleted ? "rgba(40, 167, 69, 0.15)" : 
+                                     isActive ? "rgba(255, 107, 53, 0.15)" : 
+                                     "rgba(51, 51, 51, 0.3)",
+                          border: `1px solid ${isCompleted ? "#28a745" : 
+                                    isActive ? "#ff6b35" : "#333"}`
+                        }}
+                      >
+                        <div style={{ marginBottom: "8px" }}>{getRoundIcon(round.roundType)}</div>
+                        <div style={{ fontSize: "11px", color: "#888", marginTop: "4px", fontWeight: 500 }}>
+                          {round.roundType.toUpperCase()}
                         </div>
-
-                        {a.questionText && (
-                          <div className="text-muted mb-1">{a.questionText}</div>
-                        )}
-
-                        <div className="small">
-                          <span className="text-muted">Rating: </span>
-                          <strong>{a.rating ?? '—'}</strong>
-                        </div>
-
-                        {a.feedback && (
-                          <div className="small mt-1">
-                            <span className="text-muted">Feedback: </span>
-                            {a.feedback}
+                        {isCompleted && (
+                          <div style={{ fontSize: "10px", color: "#28a745", marginTop: "4px", display: "flex", alignItems: "center", justifyContent: "center", gap: "4px" }}>
+                            <CheckIcon /> Completed
                           </div>
                         )}
-                      </ListGroup.Item>
-                    ))}
-                  </ListGroup>
-                </>
+                        {isActive && !isCompleted && (
+                          <div style={{ fontSize: "10px", color: "#ff6b35", marginTop: "4px" }}>
+                            Available Now
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              
+              {/* Rounds List */}
+              <h5 style={{ color: "#ff6b35", marginBottom: "1.5rem", fontSize: "1rem", fontWeight: "bold" }}>
+                Available Rounds
+              </h5>
+              
+              {rounds.length === 0 ? (
+                <div className="text-center py-5">
+                  <p style={{ color: "#888" }}>No rounds available for this assessment.</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {rounds.map((round, index) => {
+                    const status = getRoundStatus(round)
+                    const isActive = isRoundActive(round)
+                    const isCompleted = isRoundCompleted(round.roundType)
+                    
+                    return (
+                      <Card 
+                        key={index} 
+                        style={{ 
+                          background: "#111", 
+                          border: `1px solid ${isActive ? "#ff6b35" : "#333"}`,
+                          transition: "all 0.3s ease",
+                          overflow: "hidden"
+                        }}
+                      >
+                        <Card.Body style={{ padding: "1.5rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "1.5rem" }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "1rem", flexWrap: "wrap" }}>
+                                <div style={{
+                                  width: "48px",
+                                  height: "48px",
+                                  background: isActive ? "rgba(255, 107, 53, 0.2)" : "rgba(51, 51, 51, 0.5)",
+                                  borderRadius: "12px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}>
+                                  {getRoundIcon(round.roundType)}
+                                </div>
+                                <div>
+                                  <h4 style={{ color: "#ff6b35", marginBottom: "6px", fontSize: "1.35rem", fontWeight: "bold" }}>
+                                    {round.roundType.toUpperCase()} Round
+                                  </h4>
+                                  <Badge 
+                                    style={{ 
+                                      background: status.color,
+                                      fontSize: "0.75rem",
+                                      padding: "4px 10px",
+                                      borderRadius: "6px"
+                                    }}
+                                  >
+                                    {status.text}
+                                  </Badge>
+                                </div>
+                              </div>
+                              
+                              <div style={{ 
+                                display: "grid", 
+                                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", 
+                                gap: "1rem", 
+                                marginTop: "1rem" 
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#888", fontSize: "0.9rem" }}>
+                                  <QuestionIcon />
+                                  Questions: <strong style={{ color: "#fff" }}>{round.pickCount}</strong>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#888", fontSize: "0.9rem" }}>
+                                  <ClockIcon />
+                                  Duration: <strong style={{ color: "#fff" }}>{formatDuration(round.timeSeconds)}</strong>
+                                </div>
+                                {round.passPercentage && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#888", fontSize: "0.9rem" }}>
+                                    <TargetIcon />
+                                    Pass: <strong style={{ color: "#fff" }}>{round.passPercentage}%</strong>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {round.startDateTime && (
+                                <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #333" }}>
+                                  <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.8rem", color: "#666", flexWrap: "wrap" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <CalendarIcon />
+                                      Start: {formatDate(round.startDateTime)}
+                                    </div>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                      <ClockIcon />
+                                      End: {formatDate(round.endDateTime)}
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="text-end">
+                              <Button
+                                style={{
+                                  background: isActive && !isCompleted ? "linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%)" : "#333",
+                                  border: "none",
+                                  padding: "0.75rem 2rem",
+                                  fontWeight: "bold",
+                                  borderRadius: "10px",
+                                  cursor: isActive && !isCompleted ? "pointer" : "not-allowed",
+                                  opacity: isActive && !isCompleted ? 1 : 0.6,
+                                  minWidth: "140px",
+                                  transition: "all 0.3s ease",
+                                  fontSize: "0.95rem"
+                                }}
+                                disabled={!isActive || isCompleted}
+                                onClick={() => handleStartRound(round)}
+                              >
+                                {startingRound === round.roundType ? (
+                                  <Spinner animation="border" size="sm" />
+                                ) : isCompleted ? (
+                                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                    <CheckIcon /> Completed
+                                  </span>
+                                ) : isActive ? (
+                                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                    <UnlockIcon /> Start Round
+                                  </span>
+                                ) : (
+                                  <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                    <LockIcon /> Locked
+                                  </span>
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        </Card.Body>
+                      </Card>
+                    )
+                  })}
+                </div>
               )}
             </>
           )}
         </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setReviewOpen(false)}>
+        
+        <Modal.Footer style={{ 
+          background: "#111", 
+          borderTop: "1px solid #333",
+          padding: "1rem 2rem"
+        }}>
+          <Button 
+            variant="secondary" 
+            onClick={handleCloseModal}
+            style={{ 
+              background: "#333", 
+              border: "none",
+              padding: "0.6rem 1.5rem",
+              transition: "all 0.3s ease",
+              borderRadius: "8px"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "#444"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "#333"}
+          >
             Close
           </Button>
         </Modal.Footer>
       </Modal>
-    </>
+
+      {/* Quiz Round */}
+      {isRunning && roundConfig?.type === "mcq" && selectedAssessment && (
+        <div style={{ position: "fixed", inset: 0, width: "100vw", height: "100vh", background: "#000", zIndex: 999999 }}>
+          <StudentQuiz
+            examId={selectedAssessment._id}
+            duration={roundConfig.duration}
+            onSubmit={handleRoundSubmit}
+          />
+        </div>
+      )}
+
+      {/* Coding Round */}
+      {isRunning && roundConfig?.type === "coding" && selectedAssessment && (
+        <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 999999 }}>
+          <StudentCodeChallengeComponent
+            eventId={selectedAssessment._id}
+            onSubmitted={handleRoundSubmit}
+          />
+        </div>
+      )}
+
+      <style>{`
+        .assessment-modal .modal-content {
+          background: #000;
+          border-radius: 0;
+          height: 100vh;
+        }
+        
+        .assessment-modal .modal-header .btn-close {
+          filter: invert(1);
+          opacity: 0.8;
+          background-size: 1rem;
+        }
+        
+        .assessment-modal .modal-header .btn-close:hover {
+          opacity: 1;
+        }
+        
+        @keyframes slideIn {
+          from {
+            transform: translateY(20px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        
+        .modal-content {
+          animation: slideIn 0.3s ease-out;
+        }
+        
+        ::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: #111;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: #ff6b35;
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: #ff9a5c;
+        }
+      `}</style>
+    </div>
   )
 }
