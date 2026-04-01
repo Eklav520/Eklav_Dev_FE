@@ -318,24 +318,92 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   const currentChallenge = challenges[currentQuestionIndex]
   const [showQuestionPanel, setShowQuestionPanel] = useState(true)
   const [results, setResults] = useState<Record<string, JudgeResult>>({})
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunks = useRef<Blob[]>([])
 
   // ================= CAMERA RECORDING =================
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' },
-        audio: false,
+        video: { width: { ideal: 320 }, height: { ideal: 240 } },
+        audio: true,
       })
+
       setCameraStream(stream)
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream
       }
-      setCameraError(null)
+
+      /* 🎥 START RECORDING */
+      const recorder = new MediaRecorder(stream, {
+        mimeType: "video/webm"
+      })
+
+      mediaRecorderRef.current = recorder
+      recordedChunks.current = []
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          recordedChunks.current.push(e.data)
+        }
+      }
+
+      recorder.start(1000)
+
     } catch (err) {
-      console.error('Camera error:', err)
-      setCameraError('Unable to access camera. Please ensure camera permissions are granted.')
+      console.error("Camera error:", err)
+      setCameraError("Unable to access camera")
     }
   }
+
+  const stopAndUploadRecording = async () => {
+    return new Promise<string>((resolve) => {
+      const recorder = mediaRecorderRef.current
+
+      if (!recorder) return resolve("")
+
+      recorder.onstop = async () => {
+        try {
+          const blob = new Blob(recordedChunks.current, {
+            type: "video/webm"
+          })
+
+          if (!blob.size) return resolve("")
+
+          const fileName = `coding_${Date.now()}.webm`
+
+          const presignRes = await fetch(`${baseURL}/api/assessment/presign/session`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              fileName,
+              fileType: "video/webm",
+            }),
+          })
+
+          const { uploadUrl, fileUrl } = await presignRes.json()
+
+          await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "video/webm" },
+            body: blob,
+          })
+
+          resolve(fileUrl)
+        } catch (err) {
+          console.error("Upload error:", err)
+          resolve("")
+        }
+      }
+
+      recorder.stop()
+    })
+  }
+
 
   const stopCamera = () => {
     if (cameraStream) {
@@ -606,6 +674,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   const handleSubmit = async (auto = false) => {
     if (submitted) return
     setSubmitted(true)
+    const sessionMediaUrl = await stopAndUploadRecording()
     stopCamera()
 
     try {
@@ -621,6 +690,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
         body: JSON.stringify({
           examId: eventId,
           roundType: 'coding',
+          sessionMediaUrl,
           autoSubmitted: auto,
           language,
 
@@ -630,12 +700,21 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
             return {
               questionId: c._id,
               code: codes[c._id],
-              testResults: res?.tests || []
+
+              testResults: res?.tests?.map(t => ({
+                input: t.input,
+                expected: t.expected,
+                actual: t.actual,
+                passed: t.passed
+              })) || [],
+
+              testsPassed: res?.tests?.filter(t => t.passed).length || 0,
+              testsTotal: res?.tests?.length || 0
             }
           }),
 
           completedQuestions: challenges.map(c => c._id),
-        }),
+        })
       })
 
       onSubmitted?.()

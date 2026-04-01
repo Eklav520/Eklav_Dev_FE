@@ -4,6 +4,7 @@ import StudentQuiz from "./components/StudentQuiz"
 import StudentCodeChallengeComponent from "./components/codeChallenge/StudentCodeChallengeComponent"
 import { useAuthContext } from "@/context/useAuthContext"
 import TechnicalRound from "./components/TRRound/TechnicalRound"
+import HRRound from "./HRRound/HRRound"
 
 type RoundKey = "mcq" | "coding" | "tr" | "hr"
 
@@ -816,6 +817,16 @@ export default function StudentAssessmentController() {
           zIndex: 9999999   // 🔥 increase this
         }}>
           <TechnicalRound
+            examId={selectedAssessment._id}
+            duration={roundConfig.duration}
+            onSubmitted={handleRoundSubmit}
+          />
+        </div>
+      )}
+
+      {isRunning && roundConfig?.type === "hr" && selectedAssessment && (
+        <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 9999999 }}>
+          <HRRound
             examId={selectedAssessment._id}
             duration={roundConfig.duration}
             onSubmitted={handleRoundSubmit}

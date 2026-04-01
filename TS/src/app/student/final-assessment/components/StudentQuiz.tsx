@@ -29,7 +29,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   const [error, setError] = useState<string | null>(null)
 
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeLeft, setTimeLeft] = useState(duration)
   const [submitted, setSubmitted] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
@@ -90,11 +90,11 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
       mediaRecorderRef.current.stop()
     }
-    
+
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop())
     }
-    
+
     setIsRecording(false)
   }
 
@@ -117,7 +117,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         setQuestions(formatted)
 
         if (data.timeLimit) setTimeLeft(data.timeLimit)
-        
+
         startCameraRecording()
       } catch (err: any) {
         setError(err.message)
@@ -127,7 +127,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     }
 
     if (token) fetchQuestions()
-    
+
     return () => {
       stopCameraRecording()
     }
@@ -157,7 +157,13 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   // ================= SELECT OPTION =================
   const selectOption = (key: string) => {
     if (submitted) return
-    setAnswers({ ...answers, [current]: key })
+
+    const q = questions[current]
+
+    setAnswers({
+      ...answers,
+      [q.id]: key   // 🔥 use question ID
+    })
   }
 
   // ================= SUBMIT =================
@@ -168,12 +174,71 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     stopCameraRecording()
 
     try {
-      const payload = questions.map((q, index) => ({
-        questionId: q.id,
-        selectedKey: answers[index] || null,
+      let recordingUrl = ""
+
+      /* =========================
+         1. UPLOAD VIDEO (S3)
+      ========================= */
+      if (recordedChunks.current.length > 0) {
+        const blob = new Blob(recordedChunks.current, { type: "video/webm" })
+        const fileName = `quiz_${Date.now()}.webm`
+
+        // 🔥 Get presigned URL
+        const presignRes = await fetch(`${API_BASE}/api/assessment/presign/session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            fileName,
+            fileType: "video/webm",
+          }),
+        })
+
+        if (!presignRes.ok) {
+          throw new Error("Failed to get upload URL")
+        }
+
+        const presignData = await presignRes.json()
+
+        if (!presignData?.uploadUrl || !presignData?.fileUrl) {
+          throw new Error("Invalid presign response")
+        }
+
+        // 🔥 Upload to S3
+        const uploadRes = await fetch(presignData.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "video/webm",
+          },
+          body: blob,
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error("Video upload failed")
+        }
+
+        recordingUrl = presignData.fileUrl
+      }
+
+      /* =========================
+         2. FORMAT ANSWERS
+      ========================= */
+      const formattedAnswers = questions.map((q) => ({
+        qid: q.id,
+        questionText: q.text,
+        textAnswer: answers[q.id] || "",
+        mediaPath: "",
+        mediaType: "none",
+        rating: 0,
+        feedback: ""
       }))
 
-      await fetch(`${API_BASE}/api/assessment/complete-round`, {
+      /* =========================
+         3. SUBMIT ROUND
+      ========================= */
+      const submitRes = await fetch(`${API_BASE}/api/assessment/complete-round`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -182,12 +247,22 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         body: JSON.stringify({
           examId,
           roundType: "mcq",
-          answers: payload,
+          answers: formattedAnswers,
+          sessionMediaUrl: recordingUrl,
+          submittedAt: new Date(),
           autoSubmitted: auto,
         }),
       })
+
+      if (!submitRes.ok) {
+        throw new Error("Failed to submit exam")
+      }
+
     } catch (err) {
-      console.error(err)
+      console.error("❌ Submit Error:", err)
+
+      // Optional: show user alert
+      alert("Something went wrong while submitting. Please try again.")
     }
 
     onSubmit?.()
@@ -205,7 +280,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
       <Spinner animation="border" variant="light" />
     </div>
   )
-  
+
   if (error) return (
     <Alert variant="dark" style={{ background: "#111", color: "#ff6b35", borderColor: "#ff6b35" }} className="m-3">
       {error}
@@ -220,7 +295,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           <h5 style={{ color: "#ff6b35" }}>📹 Camera Required</h5>
           <p>{cameraError}</p>
           <p className="text-warning small">Please allow camera access to continue with the exam.</p>
-          <Button 
+          <Button
             style={{ background: "#ff6b35", border: "none" }}
             onClick={() => {
               setCameraError(null)
@@ -237,7 +312,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         <Modal.Body style={{ background: "#111", color: "#fff", border: "1px solid #ff6b35" }} className="text-center">
           <h5 style={{ color: "#ff6b35" }}>⏰ Time Warning</h5>
           <p>Only 5 minutes remaining!</p>
-          <Button 
+          <Button
             style={{ background: "#ff6b35", border: "none" }}
             onClick={() => setShowWarning(false)}
           >
@@ -258,14 +333,14 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           </div>
 
           {/* Question Card - Prominent and spacious */}
-          <Card 
-            style={{ 
-              background: "#111", 
+          <Card
+            style={{
+              background: "#111",
               border: "1px solid #ff6b35",
               color: "#fff",
               marginBottom: "25px",
               borderRadius: "12px"
-            }} 
+            }}
             className="p-4"
           >
             <div style={{ fontSize: "1.2rem", lineHeight: "1.6", fontWeight: "500" }}>
@@ -281,8 +356,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                 key={opt.key}
                 className="w-100 mb-2 text-start"
                 style={{
-                  background: answers[current] === opt.key ? "#ff6b35" : "#111",
-                  border: answers[current] === opt.key ? "none" : "1px solid #333",
+                  background: answers[questions[current].id] === opt.key ? "#ff6b35" : "#111",
+                  border: answers[questions[current].id] === opt.key ? "none" : "1px solid #333",
                   color: "#fff",
                   justifyContent: "flex-start",
                   padding: "12px 16px",
@@ -293,19 +368,19 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                 onClick={() => selectOption(opt.key)}
                 disabled={submitted}
                 onMouseEnter={(e) => {
-                  if (answers[current] !== opt.key) {
+                  if (answers[questions[current].id] !== opt.key) {
                     e.currentTarget.style.background = "#222"
                     e.currentTarget.style.borderColor = "#ff6b35"
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (answers[current] !== opt.key) {
+                  if (answers[questions[current].id] !== opt.key) {
                     e.currentTarget.style.background = "#111"
                     e.currentTarget.style.borderColor = "#333"
                   }
                 }}
               >
-                <b style={{ marginRight: "12px", color: "#ff6b35", fontSize: "1rem" }}>{opt.key}.</b> 
+                <b style={{ marginRight: "12px", color: "#ff6b35", fontSize: "1rem" }}>{opt.key}.</b>
                 {opt.text}
               </Button>
             ))}
@@ -313,8 +388,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
           {/* Navigation Buttons */}
           <div className="d-flex justify-content-between mt-auto pt-3">
-            <Button 
-              disabled={current === 0} 
+            <Button
+              disabled={current === 0}
               onClick={() => setCurrent(p => p - 1)}
               style={{
                 background: current === 0 ? "#333" : "#ff6b35",
@@ -327,7 +402,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
               ← Previous
             </Button>
             {current === questions.length - 1 ? (
-              <Button 
+              <Button
                 style={{
                   background: "#28a745",
                   border: "none",
@@ -341,7 +416,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                 Submit Exam
               </Button>
             ) : (
-              <Button 
+              <Button
                 onClick={() => setCurrent(p => p + 1)}
                 style={{
                   background: "#ff6b35",
@@ -357,10 +432,10 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         </div>
 
         {/* Sidebar - Compact with Timer and Navigator */}
-        <div style={{ 
-          width: "280px", 
-          padding: "20px 15px", 
-          background: "#111", 
+        <div style={{
+          width: "280px",
+          padding: "20px 15px",
+          background: "#111",
           borderLeft: "1px solid #333",
           display: "flex",
           flexDirection: "column",
@@ -373,11 +448,11 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
             <h2 style={{ color: "#ff6b35", fontSize: "1.8rem", fontWeight: "bold", margin: 0 }}>
               {formatTime(timeLeft)}
             </h2>
-            <ProgressBar 
+            <ProgressBar
               now={(Object.keys(answers).length / questions.length) * 100}
               style={{ background: "#333", height: "4px", marginTop: "10px" }}
             >
-              <ProgressBar 
+              <ProgressBar
                 now={(Object.keys(answers).length / questions.length) * 100}
                 style={{ background: "#ff6b35" }}
               />
@@ -390,8 +465,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           {/* Question Navigator - Compact Grid */}
           <div>
             <h6 style={{ color: "#ff6b35", marginBottom: "12px", fontSize: "0.9rem" }}>Quick Navigation</h6>
-            <div style={{ 
-              display: "grid", 
+            <div style={{
+              display: "grid",
               gridTemplateColumns: "repeat(6, 1fr)",
               gap: "6px"
             }}>
@@ -402,7 +477,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                   style={{
                     width: "100%",
                     aspectRatio: "1",
-                    background: i === current ? "#ff6b35" : answers[i] ? "#28a745" : "#222",
+                    background: i === current ? "#ff6b35" : answers[questions[i].id] ? "#28a745" : "#222",
                     border: i === current ? "2px solid #fff" : "none",
                     color: "#fff",
                     fontWeight: "bold",
@@ -412,12 +487,12 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                     transition: "all 0.2s"
                   }}
                   onMouseEnter={(e) => {
-                    if (i !== current && !answers[i]) {
+                    if (i !== current && !answers[questions[i].id]) {
                       e.currentTarget.style.background = "#333"
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (i !== current && !answers[i]) {
+                    if (i !== current && !answers[questions[i].id]) {
                       e.currentTarget.style.background = "#222"
                     }
                   }}
@@ -430,16 +505,16 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
           {/* Camera Preview - Small and at bottom */}
           {cameraStream && (
-            <div style={{ 
+            <div style={{
               marginTop: "auto",
-              background: "#000", 
-              borderRadius: "8px", 
+              background: "#000",
+              borderRadius: "8px",
               overflow: "hidden",
               border: "1px solid #ff6b35"
             }}>
-              <div style={{ 
-                background: "#ff6b35", 
-                padding: "4px 8px", 
+              <div style={{
+                background: "#ff6b35",
+                padding: "4px 8px",
                 fontSize: "10px",
                 color: "#fff",
                 display: "flex",
@@ -448,7 +523,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
               }}>
                 <span>📹 Recording</span>
                 {isRecording && (
-                  <span style={{ 
+                  <span style={{
                     display: "inline-block",
                     width: "8px",
                     height: "8px",
@@ -473,7 +548,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           )}
 
           {/* Submit Button at Bottom */}
-          <Button 
+          <Button
             style={{
               background: "#dc3545",
               border: "none",
