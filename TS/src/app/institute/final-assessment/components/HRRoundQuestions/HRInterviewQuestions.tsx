@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { useAuthContext } from '@/context/useAuthContext';
 import { 
@@ -12,8 +12,10 @@ import {
   FaPlus,
   FaTrash,
   FaUsers,
-  FaBriefcase
+  FaBriefcase,
+  FaBook
 } from 'react-icons/fa';
+import axios from 'axios';
 
 type UploadResult =
   | {
@@ -34,7 +36,43 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
 
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [examId, setExamId] = useState("");
+  const [exams, setExams] = useState<any[]>([]);
+  const [selectedExamTitle, setSelectedExamTitle] = useState("");
   const [result, setResult] = useState<UploadResult>(null);
+
+  // Fetch exams on component mount
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const res = await axios.get(
+          `${baseURL}/api/assessment/admin/exams`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setExams(res.data.exams || []);
+      } catch (err) {
+        console.error("Failed to fetch exams", err);
+      }
+    };
+
+    if (token) {
+      fetchExams();
+    }
+  }, [token]);
+
+  // Update selected exam title when examId changes
+  useEffect(() => {
+    if (examId) {
+      const selectedExam = exams.find(exam => exam._id === examId)
+      setSelectedExamTitle(selectedExam?.title || "")
+    } else {
+      setSelectedExamTitle("")
+    }
+  }, [examId, exams])
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setResult(null);
@@ -42,7 +80,15 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file) {
+      setResult({ success: false, error: 'Please select a file to upload' });
+      return;
+    }
+    
+    if (!examId) {
+      setResult({ success: false, error: 'Please select an exam first' });
+      return;
+    }
 
     const headers: Record<string, string> = {};
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -56,6 +102,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
     try {
       const formData = new FormData();
       formData.append('excelFile', file);
+      formData.append('examId', examId);
 
       const endpoint = `${baseURL}/admin/hr/upload-questions`;
       const res = await fetch(endpoint, {
@@ -73,6 +120,14 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
         return;
       }
       setResult(data);
+      
+      // Clear file after successful upload
+      if (data.success) {
+        setFile(null);
+        // Reset file input
+        const fileInput = document.getElementById('fileInput') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+      }
     } catch (e: any) {
       setResult({ success: false, error: e?.message || 'Upload failed' });
     } finally {
@@ -89,13 +144,15 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
       'Culture Fit,Why do you want to work here?',
       'Problem Solving,Describe a challenging problem you solved.',
       'Adaptability,How do you handle change in the workplace?',
+      'Motivation,What motivates you to do your best work?',
+      'Conflict Resolution,How do you handle disagreements with colleagues?',
     ].join('\n');
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'HRInterviewQuestionsTemplate.csv';
+    a.download = `HRInterviewQuestions_${selectedExamTitle || 'Template'}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -114,6 +171,43 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           </div>
         </div>
 
+        {/* Exam Selection Section */}
+        <div className="exam-section">
+          <div className="exam-info">
+            <FaBook className="exam-icon" />
+            <span>Select Exam for HR Questions</span>
+          </div>
+          <Form.Group className="exam-select-group">
+            <Form.Label className="exam-label">
+              Choose Assessment
+            </Form.Label>
+            <Form.Control
+              as="select"
+              value={examId}
+              onChange={(e) => setExamId(e.target.value)}
+              className="exam-select"
+            >
+              <option value="">-- Select Exam --</option>
+              {exams.map((exam: any) => (
+                <option key={exam._id} value={exam._id}>
+                  {exam.title}
+                </option>
+              ))}
+            </Form.Control>
+            {selectedExamTitle && (
+              <div className="selected-exam-badge">
+                <FaCheckCircle className="badge-icon" />
+                <span>Selected: <strong>{selectedExamTitle}</strong></span>
+              </div>
+            )}
+            {!examId && (
+              <small className="exam-warning">
+                ⚠ Please select an exam before uploading HR questions
+              </small>
+            )}
+          </Form.Group>
+        </div>
+
         {/* Template Download */}
         <div className="template-section">
           <div className="template-info">
@@ -124,6 +218,8 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
             variant="link" 
             className="template-download-btn"
             onClick={downloadTemplate}
+            disabled={!examId}
+            title={!examId ? "Please select an exam first" : "Download template"}
           >
             <FaDownload className="me-2" />
             Download CSV Template
@@ -132,7 +228,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
 
         {/* File Upload Area */}
         <div className="file-upload-area">
-          <Form.Group controlId="excelFileInput">
+          <Form.Group controlId="fileInput">
             <Form.Label className="upload-label">
               <FaFileExcel className="label-icon" />
               Select Excel File (.xlsx / .xls)
@@ -142,6 +238,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
               accept=".xlsx,.xls"
               onChange={onFile}
               className="file-input"
+              disabled={!examId}
             />
             <small className="file-hint">
               Supported formats: .xlsx, .xls | Maximum file size: 10MB
@@ -164,17 +261,17 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           <Button 
             className="upload-btn"
             onClick={handleUpload} 
-            disabled={!file || loading}
+            disabled={!file || !examId || loading}
           >
             {loading ? (
               <>
                 <FaSpinner className="spinner-icon" />
-                Uploading Questions...
+                Uploading to {selectedExamTitle || 'Exam'}...
               </>
             ) : (
               <>
                 <FaUpload className="me-2" />
-                Upload HR Questions
+                Upload HR Questions to {selectedExamTitle || 'Exam'}
               </>
             )}
           </Button>
@@ -299,6 +396,82 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           margin: 0.25rem 0 0 0;
         }
 
+        /* Exam Section */
+        .exam-section {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 12px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .exam-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid #2c2c2c;
+          color: #ff7a00;
+          font-weight: 500;
+        }
+
+        .exam-icon {
+          font-size: 1rem;
+          color: #ff7a00;
+        }
+
+        .exam-select-group {
+          margin-bottom: 0;
+        }
+
+        .exam-label {
+          color: #ff7a00;
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .exam-select {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.625rem;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+
+        .exam-select:focus {
+          background: #141414;
+          border-color: #ff7a00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+        }
+
+        .selected-exam-badge {
+          background: rgba(40, 167, 69, 0.1);
+          border: 1px solid #28a745;
+          border-radius: 6px;
+          padding: 0.5rem;
+          margin-top: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: #28a745;
+        }
+
+        .badge-icon {
+          font-size: 0.75rem;
+        }
+
+        .exam-warning {
+          color: #ffc107;
+          font-size: 0.7rem;
+          margin-top: 0.5rem;
+          display: block;
+        }
+
         /* Template Section */
         .template-section {
           background: #000000;
@@ -343,10 +516,15 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           transition: all 0.2s ease;
         }
 
-        .template-download-btn:hover {
+        .template-download-btn:hover:not(:disabled) {
           background: #ff7a00;
           color: #000000;
           text-decoration: none;
+        }
+
+        .template-download-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         /* File Upload Area */
@@ -372,7 +550,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           border: 1px solid #2c2c2c;
           color: #ffffff;
           padding: 0.625rem;
-          border-radius: 8px;
+          borderRadius: 8px;
           cursor: pointer;
         }
 
@@ -380,6 +558,11 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           background: #141414;
           border-color: #ff7a00;
           box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+        }
+
+        .file-input:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         .file-input::file-selector-button {
@@ -392,7 +575,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           cursor: pointer;
         }
 
-        .file-input::file-selector-button:hover {
+        .file-input::file-selector-button:hover:not(:disabled) {
           background: #3a3a3a;
         }
 
@@ -597,6 +780,10 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
 
           .header-icon-wrapper {
             margin: 0 auto;
+          }
+
+          .exam-section {
+            padding: 0.75rem;
           }
         }
       `}</style>
