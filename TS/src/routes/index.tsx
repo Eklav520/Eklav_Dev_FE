@@ -113,6 +113,7 @@ const InstituteCourses = lazy(() => import('@/app/institute//manage-course/page'
 const InstituteOnlineClasses = lazy(() => import('@/app/institute/online-classes/page'))
 const InstituteJobOpenings = lazy(() => import('@/app/institute/interview-details/page'))
 const InstituteFinalAssessmentUpload = lazy(() => import('@/app/institute/final-assessment/page'))
+const InstituteFinalAssessmentResults = lazy(() => import('@/app/institute/final-assessment-details/page'))
 const InstituteEditProfile = lazy(() => import('@/app/institute/edit-profile/page'))
 const AddStudent = lazy(() => import('@/app/institute/studentDetails/pages'))
 
@@ -695,6 +696,11 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     path: '/institute/final-assessment-upload',
     name: 'Final Assessment Upload',
     element: <InstituteFinalAssessmentUpload />,
+  },
+  {
+    path: '/institute/final-assessment-results',
+    name: 'Final Assessment Results',
+    element: <InstituteFinalAssessmentResults />,
   },
 
   {
