@@ -19,7 +19,7 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         className="d-flex align-items-center justify-content-between px-3 px-md-4"
         style={{ height: 64 }}
       >
-       <LogoBox height={36} tenant={tenant} />
+        <LogoBox height={36} tenant={tenant} />
 
         <div className="d-flex align-items-center gap-3">
           <Button
@@ -30,12 +30,14 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
             Login
           </Button>
 
-          <Button
-            className="rounded-pill px-4 nav-signup-btn"
-            onClick={onSignupClick}
-          >
-            Sign Up
-          </Button>
+          {onSignupClick && (
+            <Button
+              className="rounded-pill px-4 nav-signup-btn"
+              onClick={onSignupClick}
+            >
+              Sign Up
+            </Button>
+          )}
         </div>
       </Container>
 
