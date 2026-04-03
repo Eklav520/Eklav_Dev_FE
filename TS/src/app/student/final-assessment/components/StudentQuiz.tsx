@@ -41,7 +41,25 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const answersRef = useRef(answers)
+  const questionsRef = useRef(questions)
+  const submittingRef = useRef(false)
+  const [submitting, setSubmitting] = useState(false)
 
+  useEffect(() => {
+    questionsRef.current = questions
+  }, [questions])
+
+
+  useEffect(() => {
+    answersRef.current = answers
+  }, [answers])
+
+  useEffect(() => {
+    if (questions.length > 0 && !cameraStream) {
+      startCameraRecording()
+    }
+  }, [questions])
 
   useEffect(() => {
     if (!loading && videoRef.current && cameraStream) {
@@ -55,6 +73,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
   // ================= CAMERA RECORDING =================
   const startCameraRecording = async () => {
+    console.log("🎥 Starting camera...")
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -64,6 +83,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         },
         audio: true,
       })
+      console.log("✅ Camera stream:", stream)
 
       setCameraStream(stream)
       const recorder = new MediaRecorder(stream, {
@@ -123,9 +143,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
         if (data.timeLimit) setTimeLeft(data.timeLimit)
 
-        setTimeout(() => {
-          startCameraRecording()
-        }, 300)
+        startCameraRecording()
       } catch (err: any) {
         setError(err.message)
       } finally {
@@ -150,7 +168,14 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
         if (prev <= 1) {
           clearInterval(timer)
-          handleSubmit(true)
+
+          console.log("⏰ Timer ended - triggering auto submit")
+
+          setTimeout(() => {
+            console.log("⏳ Delayed submit after timer")
+            handleSubmit(true)
+          }, 300)
+
           return 0
         }
 
@@ -159,7 +184,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [submitted])
+  }, [submitted, questions])
 
   // ================= SELECT OPTION =================
   const selectOption = (key: string) => {
@@ -167,17 +192,50 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
     const q = questions[current]
 
-    setAnswers(prev => ({
-      ...prev,
-      [q.id]: key
-    }))
+    if (!q) {
+      console.error("❌ Question not found at index:", current)
+      return
+    }
+
+    console.log("🟢 Selecting Answer:", {
+      questionId: q.id,
+      selected: key,
+      currentIndex: current
+    })
+
+    setAnswers(prev => {
+      const updated = {
+        ...prev,
+        [q.id]: key
+      }
+
+      console.log("🧠 Updated Answers State:", updated)
+      return updated
+    })
   }
 
   // ================= SUBMIT =================
   const handleSubmit = async (auto = false) => {
-    if (submitted) return
+    if (submitted || submittingRef.current) return
 
-    setSubmitted(true)
+    submittingRef.current = true
+    setSubmitting(true)
+
+    console.log("🚀 Submit triggered | auto:", auto)
+
+    console.log("📊 Questions at submit:", questions)
+    console.log("🧠 Answers state:", answersRef.current)
+
+    const latestQuestions = questionsRef.current
+
+    // 🚫 Important fix: release lock if blocked here
+    if (!latestQuestions || latestQuestions.length === 0) {
+      console.error("❌ No questions available. Skipping submit.")
+      submittingRef.current = false
+      setSubmitting(false)
+      return
+    }
+
     stopCameraRecording()
 
     try {
@@ -187,10 +245,11 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
          1. UPLOAD VIDEO (S3)
       ========================= */
       if (recordedChunks.current.length > 0) {
+        console.log("📹 Uploading recorded video...")
+
         const blob = new Blob(recordedChunks.current, { type: "video/webm" })
         const fileName = `quiz_${Date.now()}.webm`
 
-        // 🔥 Get presigned URL
         const presignRes = await fetch(`${API_BASE}/api/assessment/presign/session`, {
           method: "POST",
           headers: {
@@ -213,7 +272,6 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           throw new Error("Invalid presign response")
         }
 
-        // 🔥 Upload to S3
         const uploadRes = await fetch(presignData.uploadUrl, {
           method: "PUT",
           headers: {
@@ -227,26 +285,42 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         }
 
         recordingUrl = presignData.fileUrl
+        console.log("✅ Video uploaded:", recordingUrl)
       }
 
       /* =========================
          2. FORMAT ANSWERS
       ========================= */
-      const formattedAnswers = questions
-        .map((q) => ({
-          qid: q.id,
-          questionText: q.text,
-          textAnswer: answers[q.id] || "",
-          mediaPath: "",
-          mediaType: "none",
-          rating: 0,
-          feedback: ""
-        }))
-        .filter(a => a.textAnswer !== "") // 🔥 CRITICAL
+
+      const latestAnswers = { ...answersRef.current }
+
+      const formattedAnswers = latestQuestions.map((q) => ({
+        qid: q.id,
+        questionText: q.text,
+        textAnswer: latestAnswers[q.id] || "",
+        mediaPath: "",
+        mediaType: "none",
+        rating: 0,
+        feedback: ""
+      }))
+
+      console.log("📦 Final Answers Payload:", formattedAnswers)
+
+      // 🚫 Prevent empty submit
+      if (formattedAnswers.length === 0) {
+        console.error("❌ No answers found. Blocking API call.")
+        submittingRef.current = false
+        setSubmitting(false)
+        alert("No answers captured. Please try again.")
+        return
+      }
 
       /* =========================
          3. SUBMIT ROUND
       ========================= */
+
+      console.log("📡 Sending API request...")
+
       const submitRes = await fetch(`${API_BASE}/api/assessment/complete-round`, {
         method: "POST",
         headers: {
@@ -264,18 +338,27 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
       })
 
       if (!submitRes.ok) {
+        const errText = await submitRes.text()
+        console.error("❌ API Error Response:", errText)
         throw new Error("Failed to submit exam")
       }
 
+      console.log("✅ Submit success")
+
+      setSubmitted(true)
+
     } catch (err) {
       console.error("❌ Submit Error:", err)
-
-      // Optional: show user alert
       alert("Something went wrong while submitting. Please try again.")
+    } finally {
+      // ✅ ALWAYS RUN (success or error)
+      submittingRef.current = false
+      setSubmitting(false)
     }
 
     onSubmit?.()
   }
+
 
   const formatTime = (t: number) => {
     const m = Math.floor(t / 60)
@@ -294,6 +377,119 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     <Alert variant="dark" style={{ background: "#111", color: "#ff6b35", borderColor: "#ff6b35" }} className="m-3">
       {error}
     </Alert>
+  )
+
+  if (submitting) return (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        background: "#000000",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        zIndex: 9999,
+        backdropFilter: "blur(0px)",
+      }}
+    >
+      {/* Professional custom spinner with orange accent */}
+      <div
+        style={{
+          width: "64px",
+          height: "64px",
+          border: "3px solid rgba(255, 255, 255, 0.1)",
+          borderTop: "3px solid #ff6b35",
+          borderRight: "3px solid rgba(255, 107, 53, 0.4)",
+          borderRadius: "50%",
+          animation: "spinnerRotate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite",
+          boxShadow: "0 0 12px rgba(255, 107, 53, 0.3)",
+        }}
+      />
+
+      <p
+        style={{
+          color: "#ffffff",
+          marginTop: "24px",
+          fontSize: "1rem",
+          fontWeight: 500,
+          letterSpacing: "0.3px",
+          background: "rgba(255, 107, 53, 0.1)",
+          padding: "8px 20px",
+          borderRadius: "40px",
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        {timeLeft === 0
+          ? "⏰ Time's up! Submitting..."
+          : "Submitting your exam..."}
+      </p>
+
+      {/* Optional subtle loading dots indicator */}
+      <div
+        style={{
+          display: "flex",
+          gap: "6px",
+          marginTop: "12px",
+        }}
+      >
+        <span
+          style={{
+            width: "6px",
+            height: "6px",
+            backgroundColor: "#ff6b35",
+            borderRadius: "50%",
+            animation: "dotPulse 1.4s ease-in-out infinite",
+            animationDelay: "0s",
+          }}
+        />
+        <span
+          style={{
+            width: "6px",
+            height: "6px",
+            backgroundColor: "#ff6b35",
+            borderRadius: "50%",
+            animation: "dotPulse 1.4s ease-in-out infinite",
+            animationDelay: "0.2s",
+          }}
+        />
+        <span
+          style={{
+            width: "6px",
+            height: "6px",
+            backgroundColor: "#ff6b35",
+            borderRadius: "50%",
+            animation: "dotPulse 1.4s ease-in-out infinite",
+            animationDelay: "0.4s",
+          }}
+        />
+      </div>
+
+      <style>{`
+      @keyframes spinnerRotate {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+      
+      @keyframes dotPulse {
+        0%, 60%, 100% {
+          transform: scale(1);
+          opacity: 0.4;
+        }
+        30% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+    `}</style>
+    </div>
   )
 
   return (
@@ -410,33 +606,19 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
             >
               ← Previous
             </Button>
-            {current === questions.length - 1 ? (
-              <Button
-                style={{
-                  background: "#28a745",
-                  border: "none",
-                  padding: "8px 32px",
-                  borderRadius: "6px",
-                  fontWeight: "500"
-                }}
-                onClick={() => handleSubmit(false)}
-                disabled={submitted}
-              >
-                Submit Exam
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setCurrent(p => p + 1)}
-                style={{
-                  background: "#ff6b35",
-                  border: "none",
-                  padding: "8px 24px",
-                  borderRadius: "6px"
-                }}
-              >
-                Next →
-              </Button>
-            )}
+            <Button
+              onClick={() => setCurrent(p => p + 1)}
+              disabled={current === questions.length - 1}
+              style={{
+                background: current === questions.length - 1 ? "#333" : "#ff6b35",
+                border: "none",
+                padding: "8px 24px",
+                borderRadius: "6px",
+                cursor: current === questions.length - 1 ? "not-allowed" : "pointer"
+              }}
+            >
+              Next →
+            </Button>
           </div>
         </div>
 
@@ -512,50 +694,47 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
             </div>
           </div>
 
-          {/* Camera Preview - Small and at bottom */}
-          {cameraStream && (
-            <div style={{
-              marginTop: "auto",
-              background: "#000",
-              borderRadius: "8px",
-              overflow: "hidden",
-              border: "1px solid #ff6b35"
-            }}>
+          <div style={{
+            marginTop: "auto",
+            background: "#000",
+            borderRadius: "8px",
+            overflow: "hidden",
+            border: "1px solid #ff6b35",
+            minHeight: "120px"
+          }}>
+            {cameraStream ? (
+              <>
+                <div style={{
+                  background: "#ff6b35",
+                  padding: "4px 8px",
+                  fontSize: "10px",
+                  color: "#fff",
+                  display: "flex",
+                  justifyContent: "space-between"
+                }}>
+                  <span>📹 Recording</span>
+                  {isRecording && <span>●</span>}
+                </div>
+
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  style={{ width: "100%" }}
+                />
+              </>
+            ) : (
               <div style={{
-                background: "#ff6b35",
-                padding: "4px 8px",
-                fontSize: "10px",
-                color: "#fff",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
+                color: "#888",
+                textAlign: "center",
+                padding: "20px",
+                fontSize: "12px"
               }}>
-                <span>📹 Recording</span>
-                {isRecording && (
-                  <span style={{
-                    display: "inline-block",
-                    width: "8px",
-                    height: "8px",
-                    background: "#ff0000",
-                    borderRadius: "50%",
-                    animation: "pulse 1s infinite"
-                  }}></span>
-                )}
+                🎥 Camera not started
               </div>
-              <video
-                ref={videoRef}
-                autoPlay
-                muted
-                playsInline
-                style={{
-                  width: "100%",
-                  height: "auto",
-                  background: "#000",
-                  display: "block"
-                }}
-              />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Submit Button at Bottom */}
           <Button
