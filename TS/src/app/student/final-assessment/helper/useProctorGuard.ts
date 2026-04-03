@@ -4,27 +4,30 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 type ProctorGuardOptions = {
   maxViolations?: number
   lockMessage?: string
-  enabled?: boolean                 // allow disabling for non-proctored flows
-  captureFullscreenExit?: boolean   // treat exiting fullscreen as violation
+  enabled?: boolean
+  captureFullscreenExit?: boolean
+  autoReenterFullscreen?: boolean
+  preventEscFullscreen?: boolean
 }
 
 type ProctorGuard = {
-  // state
   locked: boolean
   message: string
   violationCount: number
   maxViolations: number
   isFullscreen: boolean
-
-  // controls
-  arm: () => void                   // start counting violations (after you’re ready)
+  isRecording: boolean
+  recordingStream: MediaStream | null
+  arm: () => void
   disarm: () => void
   reset: () => void
-  acknowledge: () => void           // clear lock (if not exceeded max)
+  acknowledge: () => void
   setMessage: (m: string) => void
-
-  // helpers
-  enterFullscreenFromUserGesture: () => Promise<boolean>
+  enterFullscreen: () => Promise<boolean>
+  startRecording: (options?: { withAudio?: boolean }) => Promise<MediaStream | null>
+  stopRecording: () => void
+  getRecordingBlob: () => Blob | null
+  uploadRecording: (submissionId: string, roundType: string) => Promise<string | null>
 }
 
 export function useProctorGuard(
@@ -33,21 +36,32 @@ export function useProctorGuard(
     lockMessage = 'Tab switching is not allowed during the assessment.',
     enabled = true,
     captureFullscreenExit = true,
+    autoReenterFullscreen = true,
+    preventEscFullscreen = true,
   }: ProctorGuardOptions,
   {
     onViolation,
     onMaxReached,
+    onRecordingStart,
+    onRecordingStop,
   }: {
     onViolation?: (count: number, reason: string) => void
     onMaxReached?: (count: number, reason: string) => void
+    onRecordingStart?: () => void
+    onRecordingStop?: () => void
   } = {}
 ): ProctorGuard {
   const [locked, setLocked] = useState(false)
   const [message, setMessage] = useState(lockMessage)
   const [violationCount, setViolationCount] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState<boolean>(!!document.fullscreenElement)
-
+  const [isRecording, setIsRecording] = useState(false)
+  
   const armedRef = useRef(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const recordingStreamRef = useRef<MediaStream | null>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
 
   const raise = useCallback(
     (reason: string) => {
@@ -57,6 +71,9 @@ export function useProctorGuard(
         const next = prev + 1
         setMessage(`${lockMessage}\nViolation: ${reason}\nViolations: ${next}/${maxViolations}`)
         setLocked(true)
+
+        // Show alert popup for violations
+        alert(`⚠️ PROCTORING VIOLATION: ${reason}\n\nViolation ${next} of ${maxViolations}. Further violations may result in auto-submission.`)
 
         onViolation?.(next, reason)
 
@@ -72,9 +89,11 @@ export function useProctorGuard(
   const arm = useCallback(() => {
     armedRef.current = true
   }, [])
+  
   const disarm = useCallback(() => {
     armedRef.current = false
   }, [])
+  
   const reset = useCallback(() => {
     setLocked(false)
     setMessage(lockMessage)
@@ -84,18 +103,17 @@ export function useProctorGuard(
 
   const acknowledge = useCallback(() => {
     setLocked((prev) => {
-      // don’t unlock if max already exceeded — calling screen should take action
       if (violationCount >= maxViolations) return prev
       return false
     })
   }, [violationCount, maxViolations])
 
-  const enterFullscreenFromUserGesture = useCallback(async () => {
-    const el: any = document.documentElement
+  const enterFullscreen = useCallback(async () => {
+    const el = document.documentElement
     try {
       if (el.requestFullscreen) await el.requestFullscreen()
-      else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen()
-      else if (el.msRequestFullscreen) await el.msRequestFullscreen()
+      else if ((el as any).webkitRequestFullscreen) await (el as any).webkitRequestFullscreen()
+      else if ((el as any).msRequestFullscreen) await (el as any).msRequestFullscreen()
       else return false
       return true
     } catch {
@@ -103,68 +121,230 @@ export function useProctorGuard(
     }
   }, [])
 
-  // global listeners
+  const startRecording = useCallback(async (options: { withAudio?: boolean } = {}) => {
+    try {
+      // Get screen stream
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: options.withAudio || false,
+      })
+      
+      recordingStreamRef.current = screenStream
+
+      // Try to get camera stream
+      try {
+        const cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 320, height: 240, facingMode: 'user' },
+          audio: false,
+        })
+        cameraStreamRef.current = cameraStream
+        
+        // Combine streams if both available
+        const combinedStream = new MediaStream()
+        screenStream.getVideoTracks().forEach(track => combinedStream.addTrack(track))
+        cameraStream.getVideoTracks().forEach(track => combinedStream.addTrack(track))
+        recordingStreamRef.current = combinedStream
+      } catch (camErr) {
+        console.warn('Camera access denied:', camErr)
+      }
+
+      // Configure recorder
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm'
+      
+      const mediaRecorder = new MediaRecorder(recordingStreamRef.current, { mimeType })
+      mediaRecorderRef.current = mediaRecorder
+      recordedChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          recordedChunksRef.current.push(event.data)
+        }
+      }
+
+      mediaRecorder.start(1000)
+      setIsRecording(true)
+      onRecordingStart?.()
+
+      return recordingStreamRef.current
+    } catch (err) {
+      console.error('Failed to start recording:', err)
+      return null
+    }
+  }, [onRecordingStart])
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+    }
+    
+    if (recordingStreamRef.current) {
+      recordingStreamRef.current.getTracks().forEach(track => track.stop())
+      recordingStreamRef.current = null
+    }
+    
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach(track => track.stop())
+      cameraStreamRef.current = null
+    }
+    
+    setIsRecording(false)
+    onRecordingStop?.()
+  }, [onRecordingStop])
+
+  const getRecordingBlob = useCallback(() => {
+    if (recordedChunksRef.current.length === 0) return null
+    return new Blob(recordedChunksRef.current, { type: 'video/webm' })
+  }, [])
+
+  const uploadRecording = useCallback(async (submissionId: string, roundType: string) => {
+    const blob = getRecordingBlob()
+    if (!blob) return null
+    
+    const baseURL = import.meta.env.VITE_API_BASE_URL || ''
+    const token = localStorage.getItem('token')
+    
+    try {
+      // Get presigned URL
+      const presignRes = await fetch(`${baseURL}/api/student/presign/recording`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          submissionId,
+          roundType,
+          fileName: `recording_${submissionId}_${Date.now()}.webm`,
+          fileType: 'video/webm',
+        }),
+      })
+      
+      if (!presignRes.ok) throw new Error('Failed to get upload URL')
+      
+      const { uploadUrl, key } = await presignRes.json()
+      
+      // Upload to S3
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'video/webm' },
+        body: blob,
+      })
+      
+      if (!uploadRes.ok) throw new Error('Upload failed')
+      
+      return key
+    } catch (err) {
+      console.error('Recording upload failed:', err)
+      return null
+    }
+  }, [getRecordingBlob])
+
+  // Prevent ESC key from exiting fullscreen
+  useEffect(() => {
+    if (!enabled || !preventEscFullscreen) return
+    
+    const preventEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        if (armedRef.current && isFullscreen) {
+          e.preventDefault()
+          e.stopPropagation()
+          raise('ESC key pressed - exiting fullscreen prevented')
+          
+          // Re-enter fullscreen if auto-reenter is enabled
+          if (autoReenterFullscreen) {
+            enterFullscreen()
+          }
+        }
+      }
+    }
+    
+    document.addEventListener('keydown', preventEsc, true)
+    return () => document.removeEventListener('keydown', preventEsc, true)
+  }, [enabled, preventEscFullscreen, autoReenterFullscreen, isFullscreen, raise, enterFullscreen])
+
+  // Global event listeners for proctoring
   useEffect(() => {
     if (!enabled) return
 
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        raise('Tab/window hidden')
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        raise('Tab/window switched')
         setTimeout(() => window.focus(), 50)
       }
     }
-    const onBlur = () => {
-      raise('Window lost focus')
+    
+    const onWindowBlur = () => {
+      raise('Window focus lost')
       setTimeout(() => window.focus(), 50)
     }
+    
     const onFullscreenChange = () => {
       const active = !!document.fullscreenElement
       setIsFullscreen(active)
-      if (!active && captureFullscreenExit) {
-        raise('Exited fullscreen')
+      
+      if (!active && captureFullscreenExit && armedRef.current) {
+        raise('Exited fullscreen mode')
+        
+        if (autoReenterFullscreen) {
+          enterFullscreen()
+        }
       }
     }
+    
     const onKeyDown = (e: KeyboardEvent) => {
-      // You can expand this list; many OS-level combos can’t be fully blocked
+      if (!armedRef.current) return
+      
       const key = e.key.toLowerCase()
-      if (
-        key === 'escape' ||
-        (e.ctrlKey && e.shiftKey && key === 'i') ||
-        (e.ctrlKey && key === 'tab') ||
-        (e.altKey && key === 'tab')
-      ) {
+      const blockedKeys = ['escape', 'f12', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11']
+      
+      if (blockedKeys.includes(key)) {
         e.preventDefault()
         e.stopPropagation()
-        raise(`Keyboard shortcut attempted: ${e.key}`)
+        raise(`Blocked key pressed: ${key}`)
+      }
+      
+      // Block Alt+Tab, Ctrl+Tab, Alt+F4, etc.
+      if ((e.altKey && key === 'tab') || 
+          (e.ctrlKey && key === 'tab') ||
+          (e.altKey && key === 'f4') ||
+          (e.ctrlKey && e.shiftKey && key === 'i')) {
+        e.preventDefault()
+        e.stopPropagation()
+        raise(`System shortcut attempted: ${e.key}`)
       }
     }
+    
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault()
       raise('Right-click context menu attempted')
     }
+    
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      // prevents accidental refresh/close during a live attempt
-      e.preventDefault()
-      e.returnValue = ''
-      return ''
+      if (armedRef.current) {
+        e.preventDefault()
+        e.returnValue = 'Assessment in progress. Are you sure you want to leave?'
+        return e.returnValue
+      }
     }
 
-    document.addEventListener('visibilitychange', onVisibility)
-    window.addEventListener('blur', onBlur)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('blur', onWindowBlur)
     document.addEventListener('fullscreenchange', onFullscreenChange)
     document.addEventListener('keydown', onKeyDown, true)
     document.addEventListener('contextmenu', onContextMenu, true)
     window.addEventListener('beforeunload', onBeforeUnload)
 
     return () => {
-      document.removeEventListener('visibilitychange', onVisibility)
-      window.removeEventListener('blur', onBlur)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('blur', onWindowBlur)
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       document.removeEventListener('keydown', onKeyDown, true)
       document.removeEventListener('contextmenu', onContextMenu, true)
       window.removeEventListener('beforeunload', onBeforeUnload)
     }
-  }, [enabled, captureFullscreenExit, raise])
+  }, [enabled, captureFullscreenExit, autoReenterFullscreen, raise, enterFullscreen])
 
   return {
     locked,
@@ -172,12 +352,17 @@ export function useProctorGuard(
     violationCount,
     maxViolations,
     isFullscreen,
-
+    isRecording,
+    recordingStream: recordingStreamRef.current,
     arm,
     disarm,
     reset,
     acknowledge,
     setMessage,
-    enterFullscreenFromUserGesture,
+    enterFullscreen,
+    startRecording,
+    stopRecording,
+    getRecordingBlob,
+    uploadRecording,
   }
 }

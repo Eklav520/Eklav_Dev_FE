@@ -464,13 +464,13 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/institute/final-assessment-upload',
         parentKey: 'instituteadmin',
       },
-      /* {
+      {
         key: 'assessmentResults',
         label: 'Assessment Results',
         icon: BsClipboardCheck,
         url: '/institute/final-assessment-results',
         parentKey: 'instituteadmin',
-      }, */
+      },
     ],
   },
 

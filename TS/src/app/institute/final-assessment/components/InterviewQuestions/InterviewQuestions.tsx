@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Form, Button, Alert, Spinner } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import { 
@@ -10,8 +10,11 @@ import {
   FaSpinner,
   FaDatabase,
   FaPlus,
-  FaTrash
+  FaTrash,
+  FaBook,
+  FaGraduationCap
 } from 'react-icons/fa'
+import axios from 'axios'
 
 type IQProps = {
   apiBase?: 'tr' | 'hr';
@@ -24,6 +27,9 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
 
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
+  const [examId, setExamId] = useState("")
+  const [exams, setExams] = useState<any[]>([])
+  const [selectedExamTitle, setSelectedExamTitle] = useState("")
   const [result, setResult] = useState<null | {
     success?: boolean
     message?: string
@@ -34,13 +40,55 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
     skipped?: number
   }>(null)
 
+  // Fetch exams on component mount
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const res = await axios.get(
+          `${baseURL}/api/assessment/admin/exams`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        setExams(res.data.exams || []);
+      } catch (err) {
+        console.error("Failed to fetch exams", err);
+      }
+    };
+
+    if (token) {
+      fetchExams();
+    }
+  }, [token]);
+
+  // Update selected exam title when examId changes
+  useEffect(() => {
+    if (examId) {
+      const selectedExam = exams.find(exam => exam._id === examId)
+      setSelectedExamTitle(selectedExam?.title || "")
+    } else {
+      setSelectedExamTitle("")
+    }
+  }, [examId, exams])
+
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     setResult(null)
     setFile(e.target.files?.[0] || null)
   }
 
   const handleUpload = async () => {
-    if (!file) return
+    if (!file) {
+      setResult({ success: false, error: 'Please select a file to upload' })
+      return
+    }
+    
+    if (!examId) {
+      setResult({ success: false, error: 'Please select an exam first' })
+      return
+    }
+
     if (!token) {
       setResult({ success: false, error: 'Not authenticated' })
       return
@@ -48,9 +96,11 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
 
     setLoading(true)
     setResult(null)
+    
     try {
       const formData = new FormData()
       formData.append('excelFile', file)
+      formData.append('examId', examId)
 
       const res = await fetch(`${baseURL}/admin/${apiBase}/upload-questions`, {
         method: 'POST',
@@ -62,6 +112,14 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
 
       const data = await res.json()
       setResult(data)
+      
+      // Clear file after successful upload
+      if (data.success) {
+        setFile(null)
+        // Reset file input
+        const fileInput = document.getElementById('fileInput') as HTMLInputElement
+        if (fileInput) fileInput.value = ''
+      }
     } catch (e: any) {
       setResult({ success: false, error: e?.message || 'Upload failed' })
     } finally {
@@ -76,13 +134,15 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
       'React,What are React hooks?',
       'JavaScript,Explain closures in JavaScript.',
       'HTML,What are semantic HTML elements?',
+      'Node.js,What is event loop in Node.js?',
+      'Database,Explain ACID properties.',
     ].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${apiBase.toUpperCase()}_InterviewQuestionsTemplate.csv`
+    a.download = `${apiBase.toUpperCase()}_InterviewQuestions_${selectedExamTitle || 'Template'}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -91,18 +151,59 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
     return apiBase === 'tr' ? 'Technical Interview Questions' : 'HR Interview Questions'
   }
 
+  const getIcon = () => {
+    return apiBase === 'tr' ? <FaGraduationCap className="header-icon" /> : <FaBook className="header-icon" />
+  }
+
   return (
     <div className="interview-upload-container">
       <div className="upload-wrapper">
         {/* Header */}
         <div className="upload-header">
           <div className="header-icon-wrapper">
-            <FaFileExcel className="header-icon" />
+            {getIcon()}
           </div>
           <div className="header-text">
             <h4 className="upload-title">{getTitle()}</h4>
             <p className="upload-subtitle">Upload Excel file with interview questions</p>
           </div>
+        </div>
+
+        {/* Exam Selection Section */}
+        <div className="exam-section">
+          <div className="exam-info">
+            <FaBook className="exam-icon" />
+            <span>Select Exam for Questions</span>
+          </div>
+          <Form.Group className="exam-select-group">
+            <Form.Label className="exam-label">
+              Choose Assessment
+            </Form.Label>
+            <Form.Control
+              as="select"
+              value={examId}
+              onChange={(e) => setExamId(e.target.value)}
+              className="exam-select"
+            >
+              <option value="">-- Select Exam --</option>
+              {exams.map((exam: any) => (
+                <option key={exam._id} value={exam._id}>
+                  {exam.title}
+                </option>
+              ))}
+            </Form.Control>
+            {selectedExamTitle && (
+              <div className="selected-exam-badge">
+                <FaCheckCircle className="badge-icon" />
+                <span>Selected: <strong>{selectedExamTitle}</strong></span>
+              </div>
+            )}
+            {!examId && (
+              <small className="exam-warning">
+                ⚠ Please select an exam before uploading questions
+              </small>
+            )}
+          </Form.Group>
         </div>
 
         {/* Template Download */}
@@ -115,6 +216,8 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
             variant="link" 
             className="template-download-btn"
             onClick={downloadTemplate}
+            disabled={!examId}
+            title={!examId ? "Please select an exam first" : "Download template"}
           >
             <FaDownload className="me-2" />
             Download CSV Template
@@ -123,7 +226,7 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
 
         {/* File Upload Area */}
         <div className="file-upload-area">
-          <Form.Group controlId="excelFileInput">
+          <Form.Group controlId="fileInput">
             <Form.Label className="upload-label">
               <FaFileExcel className="label-icon" />
               Select Excel File (.xlsx / .xls)
@@ -133,6 +236,7 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
               accept=".xlsx,.xls"
               onChange={onFile}
               className="file-input"
+              disabled={!examId}
             />
             <small className="file-hint">
               Supported formats: .xlsx, .xls | Maximum file size: 10MB
@@ -155,17 +259,17 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           <Button 
             className="upload-btn"
             onClick={handleUpload} 
-            disabled={!file || loading}
+            disabled={!file || !examId || loading}
           >
             {loading ? (
               <>
                 <FaSpinner className="spinner-icon" />
-                Uploading...
+                Uploading to {selectedExamTitle || 'Exam'}...
               </>
             ) : (
               <>
                 <FaUpload className="me-2" />
-                Upload Questions
+                Upload Questions to {selectedExamTitle || 'Exam'}
               </>
             )}
           </Button>
@@ -290,6 +394,82 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           margin: 0.25rem 0 0 0;
         }
 
+        /* Exam Section */
+        .exam-section {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          border-radius: 12px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .exam-info {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-bottom: 1rem;
+          padding-bottom: 0.75rem;
+          border-bottom: 1px solid #2c2c2c;
+          color: #ff7a00;
+          font-weight: 500;
+        }
+
+        .exam-icon {
+          font-size: 1rem;
+          color: #ff7a00;
+        }
+
+        .exam-select-group {
+          margin-bottom: 0;
+        }
+
+        .exam-label {
+          color: #ff7a00;
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin-bottom: 0.5rem;
+          display: block;
+        }
+
+        .exam-select {
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.625rem;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+
+        .exam-select:focus {
+          background: #141414;
+          border-color: #ff7a00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+        }
+
+        .selected-exam-badge {
+          background: rgba(40, 167, 69, 0.1);
+          border: 1px solid #28a745;
+          border-radius: 6px;
+          padding: 0.5rem;
+          margin-top: 0.75rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.85rem;
+          color: #28a745;
+        }
+
+        .badge-icon {
+          font-size: 0.75rem;
+        }
+
+        .exam-warning {
+          color: #ffc107;
+          font-size: 0.7rem;
+          margin-top: 0.5rem;
+          display: block;
+        }
+
         /* Template Section */
         .template-section {
           background: #000000;
@@ -334,10 +514,15 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           transition: all 0.2s ease;
         }
 
-        .template-download-btn:hover {
+        .template-download-btn:hover:not(:disabled) {
           background: #ff7a00;
           color: #000000;
           text-decoration: none;
+        }
+
+        .template-download-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         /* File Upload Area */
@@ -373,6 +558,11 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
         }
 
+        .file-input:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .file-input::file-selector-button {
           background: #2c2c2c;
           border: none;
@@ -383,7 +573,7 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           cursor: pointer;
         }
 
-        .file-input::file-selector-button:hover {
+        .file-input::file-selector-button:hover:not(:disabled) {
           background: #3a3a3a;
         }
 

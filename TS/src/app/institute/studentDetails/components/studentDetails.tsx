@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Card, Button, Form, Table, Modal, Spinner, Alert } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaUserGraduate, FaPlus, FaTrash, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity } from 'react-icons/fa'
+import { FaUserGraduate, FaPlus, FaTrash, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload } from 'react-icons/fa'
+import BulkUploadStudents from './BulkUploadStudents'
 
 type Student = {
   name: string
@@ -39,6 +40,7 @@ const InstituteAdmin: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
 
   /* ============================
      FETCH PROFILE (GET INSTITUTE)
@@ -153,10 +155,19 @@ const InstituteAdmin: React.FC = () => {
                 <p className="header-subtitle">Manage students enrolled in your institute</p>
               </div>
             </div>
-            <Button className="add-student-btn" onClick={() => setShowModal(true)}>
-              <FaPlus className="me-2" />
-              Add Student
-            </Button>
+            <div className="button-group">
+              <Button className="add-student-btn" onClick={() => setShowModal(true)}>
+                <FaPlus className="me-2" />
+                Add Student
+              </Button>
+              <Button
+                className="bulk-upload-btn"
+                onClick={() => setShowBulkUpload(true)}
+              >
+                <FaUpload className="me-2" />
+                Bulk Upload
+              </Button>
+            </div>
           </div>
         </Card.Header>
 
@@ -229,19 +240,19 @@ const InstituteAdmin: React.FC = () => {
                                 {stu.fullname || stu.name}
                               </span>
                             </div>
-                          </td>
-                          <td>
+                           </td>
+                           <td>
                             <div className="student-email-cell">
                               <FaEnvelope className="email-icon" />
                               <span>{stu.email}</span>
                             </div>
-                          </td>
-                          <td>
+                           </td>
+                           <td>
                             <div className="student-phone-cell">
                               <FaPhone className="phone-icon" />
                               <span>{stu.phoneNumber || 'Not provided'}</span>
                             </div>
-                          </td>
+                           </td>
                           <td className="text-center">
                             <Button
                               size="sm"
@@ -251,8 +262,8 @@ const InstituteAdmin: React.FC = () => {
                               <FaTrash />
                               <span className="ms-1">Delete</span>
                             </Button>
-                          </td>
-                        </tr>
+                           </td>
+                         </tr>
                       ))}
                     </tbody>
                   </Table>
@@ -264,9 +275,9 @@ const InstituteAdmin: React.FC = () => {
       </Card>
 
       {/* Create Student Modal */}
-      <Modal 
-        show={showModal} 
-        onHide={() => setShowModal(false)} 
+      <Modal
+        show={showModal}
+        onHide={() => setShowModal(false)}
         centered
         className="student-modal"
       >
@@ -357,8 +368,8 @@ const InstituteAdmin: React.FC = () => {
                 Cancel
               </Button>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="submit-btn"
                 disabled={submitting}
               >
@@ -378,6 +389,15 @@ const InstituteAdmin: React.FC = () => {
           </Form>
         </Modal.Body>
       </Modal>
+
+      {/* Bulk Upload Modal */}
+      <BulkUploadStudents
+        show={showBulkUpload}
+        onHide={() => setShowBulkUpload(false)}
+        onSuccess={() => {
+          fetchStudents();
+        }}
+      />
 
       <style>{`
         .institute-admin-container {
@@ -432,6 +452,12 @@ const InstituteAdmin: React.FC = () => {
           margin: 0.25rem 0 0 0;
         }
 
+        .button-group {
+          display: flex;
+          gap: 1rem;
+          align-items: center;
+        }
+
         .add-student-btn {
           background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
           border: none;
@@ -445,6 +471,23 @@ const InstituteAdmin: React.FC = () => {
         .add-student-btn:hover {
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
+          background: linear-gradient(135deg, #ff944d 0%, #ffaa66 100%);
+        }
+
+        .bulk-upload-btn {
+          background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);
+          border: none;
+          padding: 0.625rem 1.5rem;
+          border-radius: 8px;
+          color: #ffffff;
+          font-weight: 600;
+          transition: all 0.2s ease;
+        }
+
+        .bulk-upload-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+          background: linear-gradient(135deg, #34ce57 0%, #40e06d 100%);
         }
 
         .card-body-custom {
@@ -789,7 +832,12 @@ const InstituteAdmin: React.FC = () => {
             align-items: flex-start;
           }
 
-          .add-student-btn {
+          .button-group {
+            width: 100%;
+            flex-direction: column;
+          }
+
+          .add-student-btn, .bulk-upload-btn {
             width: 100%;
           }
 

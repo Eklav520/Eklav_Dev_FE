@@ -1,12 +1,15 @@
 import React, { useRef, useState } from "react";
+import { useEffect } from "react";
 import { Card, Form, Button, Alert, Spinner, Table } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import axios from "axios";
 import { FaFileExcel, FaUpload, FaEye, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { useAuthContext } from "@/context/useAuthContext";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "";
 
 const AdminFinalAssessmentUpload: React.FC = () => {
+  const { user } = useAuthContext()
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [file, setFile] = useState<File | null>(null);
@@ -14,6 +17,29 @@ const AdminFinalAssessmentUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [examId, setExamId] = useState("");
+  const [exams, setExams] = useState([]);
+
+  useEffect(() => {
+    const fetchExams = async () => {
+      try {
+        const res = await axios.get(
+          `${baseURL}/api/assessment/admin/exams`,   // 🔥 your exams API
+          {
+            headers: {
+              Authorization: `Bearer ${user?.token}`,
+            },
+          }
+        );
+
+      setExams(res.data.exams || []);
+      } catch (err) {
+        console.error("Failed to fetch exams", err);
+      }
+    };
+
+    fetchExams();
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null);
@@ -40,6 +66,12 @@ const AdminFinalAssessmentUpload: React.FC = () => {
   };
 
   const handleUpload = async () => {
+    /* ✅ ADD HERE (TOP OF FUNCTION) */
+    if (!examId) {
+      alert("Please select exam");
+      return;
+    }
+
     if (!file) return;
 
     setUploading(true);
@@ -53,14 +85,15 @@ const AdminFinalAssessmentUpload: React.FC = () => {
           fileName: file.name,
           fileType: file.type,
           courseTitle: "FinalAssessment",
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
         }
       );
 
       const { uploadUrl, fileUrl } = presignRes.data;
-
-      if (!uploadUrl || !fileUrl) {
-        throw new Error("Invalid presigned URL response");
-      }
 
       await axios.put(uploadUrl, file, {
         headers: { "Content-Type": file.type },
@@ -68,10 +101,21 @@ const AdminFinalAssessmentUpload: React.FC = () => {
 
       const resp = await axios.post(
         `${baseURL}/api/final-assessment/upload-final-assessment`,
-        { fileUrl }
+        { fileUrl, examId },
+        {
+          headers: {
+            Authorization: `Bearer ${user?.token}`,
+          },
+        }
       );
 
-      setResult(resp.data);
+      /* ✅ UPDATED RESULT */
+      setResult({
+        message: "Upload Success",
+        count: resp.data.inserted || 0,
+        details: resp.data.data || []
+      });
+
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ||
@@ -87,38 +131,67 @@ const AdminFinalAssessmentUpload: React.FC = () => {
     <div className="assessment-upload-container">
       <Card className="upload-card">
         <Card.Body className="card-body-custom">
+
+          {/* ================= EXAM SELECT ================= */}
+          <Form.Group className="mb-3">
+            <Form.Label>Select Exam</Form.Label>
+            <Form.Control
+              as="select"
+              value={examId}
+              onChange={(e) => setExamId(e.target.value)}
+            >
+              <option value="">-- Select Exam --</option>
+              {exams.map((exam: any) => (
+                <option key={exam._id} value={exam._id}>
+                  {exam.title}
+                </option>
+              ))}
+            </Form.Control>
+
+            {!examId && (
+              <small className="text-danger">
+                ⚠ Please select an exam before uploading
+              </small>
+            )}
+          </Form.Group>
+
+          {/* ================= HEADER ================= */}
           <div className="upload-header">
             <FaFileExcel className="upload-icon" />
             <div>
-              <h5 className="upload-title">Upload Final Assessment</h5>
-              <p className="upload-subtitle">Upload Excel file (.xlsx, .xls) with assessment data</p>
+              <h5 className="upload-title">Upload MCQ Questions</h5>
+              <p className="upload-subtitle">
+                Upload Excel (.xlsx, .xls) with MCQ data
+              </p>
             </div>
           </div>
 
+          {/* ================= ERROR ================= */}
           {error && (
             <Alert variant="danger" className="custom-alert error-alert">
               <FaTimesCircle className="alert-icon" />
-              {error}
+              <div>{error}</div>
             </Alert>
           )}
 
+          {/* ================= SUCCESS ================= */}
           {result && (
             <Alert variant="success" className="custom-alert success-alert">
               <FaCheckCircle className="alert-icon" />
               <div>
-                <strong>Upload complete!</strong>
-                <pre className="result-preview">
-                  {JSON.stringify(result, null, 2)}
-                </pre>
+                <strong>Upload Successful 🎉</strong>
+                <div>Inserted Questions: {result.count}</div>
               </div>
             </Alert>
           )}
 
+          {/* ================= FILE INPUT ================= */}
           <Form.Group className="mb-4">
             <Form.Label className="form-label-custom">
               <FaFileExcel className="label-icon" />
               Select Excel File
             </Form.Label>
+
             <Form.Control
               ref={fileRef}
               type="file"
@@ -126,11 +199,13 @@ const AdminFinalAssessmentUpload: React.FC = () => {
               onChange={handleFileChange}
               className="file-input-custom"
             />
+
             <small className="form-text text-muted">
-              Supported formats: .xlsx, .xls
+              Only Excel files are supported
             </small>
           </Form.Group>
 
+          {/* ================= BUTTONS ================= */}
           <div className="button-group">
             <Button
               variant="secondary"
@@ -145,7 +220,7 @@ const AdminFinalAssessmentUpload: React.FC = () => {
             <Button
               variant="primary"
               className="upload-btn"
-              disabled={!file || uploading}
+              disabled={!file || !examId || uploading}
               onClick={handleUpload}
             >
               {uploading ? (
@@ -162,23 +237,29 @@ const AdminFinalAssessmentUpload: React.FC = () => {
             </Button>
           </div>
 
+          {/* ================= FILE INFO ================= */}
           {file && (
             <div className="file-info">
               <FaFileExcel className="file-icon" />
-              <span className="file-name">{file.name}</span>
-              <span className="file-size">
-                ({(file.size / 1024).toFixed(2)} KB)
-              </span>
+              <div>
+                <div className="file-name">{file.name}</div>
+                <div className="file-size">
+                  {(file.size / 1024).toFixed(2)} KB
+                </div>
+              </div>
             </div>
           )}
 
+          {/* ================= PREVIEW ================= */}
           {preview.length > 0 && (
             <div className="preview-section">
               <hr className="preview-divider" />
+
               <h6 className="preview-title">
                 <FaEye className="me-2" />
-                Preview (First 5 rows)
+                Preview (First 5 Rows)
               </h6>
+
               <div className="table-responsive">
                 <Table className="preview-table" bordered size="sm">
                   <thead>
@@ -201,6 +282,7 @@ const AdminFinalAssessmentUpload: React.FC = () => {
               </div>
             </div>
           )}
+
         </Card.Body>
       </Card>
 
