@@ -32,7 +32,7 @@ const AdminFinalAssessmentUpload: React.FC = () => {
           }
         );
 
-      setExams(res.data.exams || []);
+        setExams(res.data.exams || []);
       } catch (err) {
         console.error("Failed to fetch exams", err);
       }
@@ -95,8 +95,12 @@ const AdminFinalAssessmentUpload: React.FC = () => {
 
       const { uploadUrl, fileUrl } = presignRes.data;
 
-      await axios.put(uploadUrl, file, {
-        headers: { "Content-Type": file.type },
+      await fetch(uploadUrl, {
+        method: "PUT",   // ✅ MUST BE PUT
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
       });
 
       const resp = await axios.post(

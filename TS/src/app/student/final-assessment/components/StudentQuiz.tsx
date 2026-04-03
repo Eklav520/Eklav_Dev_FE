@@ -160,10 +160,10 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
     const q = questions[current]
 
-    setAnswers({
-      ...answers,
-      [q.id]: key   // 🔥 use question ID
-    })
+    setAnswers(prev => ({
+      ...prev,
+      [q.id]: key
+    }))
   }
 
   // ================= SUBMIT =================
@@ -225,15 +225,17 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
       /* =========================
          2. FORMAT ANSWERS
       ========================= */
-      const formattedAnswers = questions.map((q) => ({
-        qid: q.id,
-        questionText: q.text,
-        textAnswer: answers[q.id] || "",
-        mediaPath: "",
-        mediaType: "none",
-        rating: 0,
-        feedback: ""
-      }))
+      const formattedAnswers = questions
+        .map((q) => ({
+          qid: q.id,
+          questionText: q.text,
+          textAnswer: answers[q.id] || "",
+          mediaPath: "",
+          mediaType: "none",
+          rating: 0,
+          feedback: ""
+        }))
+        .filter(a => a.textAnswer !== "") // 🔥 CRITICAL
 
       /* =========================
          3. SUBMIT ROUND
@@ -537,6 +539,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
                 ref={videoRef}
                 autoPlay
                 muted
+                playsInline
                 style={{
                   width: "100%",
                   height: "auto",
