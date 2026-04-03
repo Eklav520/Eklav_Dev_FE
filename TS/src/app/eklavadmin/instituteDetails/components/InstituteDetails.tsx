@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Table, Modal, Spinner, Alert } from 'react-bootstrap'
+import { Card, Button, Form, Table, Modal, Spinner, Alert, Badge, Pagination, Row, Col } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
+import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList } from 'react-icons/fa'
+import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
 
 type Institute = {
   _id: string
@@ -10,22 +12,77 @@ type Institute = {
   phone?: string
   domain?: string
   dbName?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+// Professional Pagination Component
+const InstitutePagination: React.FC<{
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}> = ({ currentPage, totalPages, onPageChange }) => {
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = []
+    const maxVisible = 5
+    
+    if (totalPages <= maxVisible + 2) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i)
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) pages.push(i)
+        pages.push('...')
+        pages.push(totalPages)
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1)
+        pages.push('...')
+        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
+      } else {
+        pages.push(1)
+        pages.push('...')
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
+        pages.push('...')
+        pages.push(totalPages)
+      }
+    }
+    return pages
+  }
+
+  return (
+    <div className="institute-pagination">
+      <div className="pagination-info">
+        <FaInfoCircle className="me-1" size={12} />
+        Page {currentPage} of {totalPages}
+      </div>
+      <div className="pagination-controls">
+        <button className="pagination-btn" onClick={() => onPageChange(1)} disabled={currentPage === 1}>«</button>
+        <button className="pagination-btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>‹</button>
+        {getPageNumbers().map((page, idx) => (
+          page === '...' ? <span key={`dots-${idx}`} className="pagination-dots">...</span> :
+          <button key={idx} className={`pagination-btn ${currentPage === page ? 'active' : ''}`} onClick={() => onPageChange(page as number)}>{page}</button>
+        ))}
+        <button className="pagination-btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>›</button>
+        <button className="pagination-btn" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>»</button>
+      </div>
+      <div className="pagination-stats">
+        Showing {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalPages * 10)} of {totalPages * 10}+ Institutes
+      </div>
+    </div>
+  )
 }
 
 const InstituteAdmin: React.FC = () => {
-
   const { user } = useAuthContext()
   const token = user?.token
 
   const [institutes, setInstitutes] = useState<Institute[]>([])
+  const [filteredInstitutes, setFilteredInstitutes] = useState<Institute[]>([])
   const [editing, setEditing] = useState<Institute | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Institute | null>(null)
 
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    phone: ''
-  })
-
+  const [form, setForm] = useState({ name: '', email: '', phone: '' })
   const [adminForm, setAdminForm] = useState({
     fullname: '',
     email: '',
@@ -36,28 +93,27 @@ const InstituteAdmin: React.FC = () => {
 
   const [showModal, setShowModal] = useState(false)
   const [showAdminModal, setShowAdminModal] = useState(false)
-
   const [adminError, setAdminError] = useState<string | null>(null)
   const [showReset, setShowReset] = useState(false)
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [copiedDomain, setCopiedDomain] = useState<string | null>(null)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
+  const institutesPerPage = 10
 
   const fetchInstitutes = async () => {
     if (!token) return
-
     try {
       setLoading(true)
-
       const res = await axios.get(`${baseURL}/api/institute/institutes`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-
-      setInstitutes(res.data?.institutes || [])
+      const data = res.data?.institutes || []
+      setInstitutes(data)
+      setFilteredInstitutes(data)
       setError(null)
-
     } catch (err) {
       console.error(err)
       setError("Failed to fetch institutes")
@@ -70,105 +126,103 @@ const InstituteAdmin: React.FC = () => {
     fetchInstitutes()
   }, [token])
 
+  // Filter institutes based on search
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredInstitutes(institutes)
+    } else {
+      const filtered = institutes.filter(inst =>
+        inst.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inst.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (inst.phone && inst.phone.includes(searchTerm)) ||
+        (inst.domain && inst.domain.toLowerCase().includes(searchTerm.toLowerCase()))
+      )
+      setFilteredInstitutes(filtered)
+    }
+    setCurrentPage(1)
+  }, [searchTerm, institutes])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!token) return
-
     try {
       setLoading(true)
-
       if (editing) {
-        await axios.put(
-          `${baseURL}/api/institute/updateInstitute/${editing._id}`,
-          form,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await axios.put(`${baseURL}/api/institute/updateInstitute/${editing._id}`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setSuccessMessage('Institute updated successfully!')
       } else {
-        await axios.post(
-          `${baseURL}/api/institute/createInstitute`,
-          form,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
+        await axios.post(`${baseURL}/api/institute/createInstitute`, form, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        setSuccessMessage('Institute created successfully!')
       }
-
       setForm({ name: '', email: '', phone: '' })
       setEditing(null)
       setShowModal(false)
-
       fetchInstitutes()
-
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error(err)
-      alert("Operation failed")
+      setError("Operation failed")
+      setTimeout(() => setError(null), 3000)
     } finally {
       setLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this institute?")) return
-
     try {
-      await axios.delete(
-        `${baseURL}/api/institute/deleteInstitute/${id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      setLoading(true)
+      await axios.delete(`${baseURL}/api/institute/deleteInstitute/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccessMessage('Institute deleted successfully!')
+      setShowDeleteConfirm(null)
       fetchInstitutes()
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error(err)
-      alert("Delete failed")
+      setError("Delete failed")
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleEdit = (inst: Institute) => {
     setEditing(inst)
-    setForm({
-      name: inst.name,
-      email: inst.email,
-      phone: inst.phone || ''
-    })
+    setForm({ name: inst.name, email: inst.email, phone: inst.phone || '' })
     setShowModal(true)
   }
 
   const openCreateAdmin = (inst: Institute) => {
     setAdminError(null)
     setShowReset(false)
-
-    setAdminForm({
-      fullname: '',
-      email: '',
-      phoneNo: '',
-      password: '',
-      instituteId: inst._id
-    })
-
+    setAdminForm({ fullname: '', email: '', phoneNo: '', password: '', instituteId: inst._id })
     setShowAdminModal(true)
   }
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault()
-
     try {
       setLoading(true)
       setAdminError(null)
-
-      await axios.post(
-        `${baseURL}/api/institute/createAdmin`,
-        adminForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      alert("Institute Admin Created Successfully")
+      await axios.post(`${baseURL}/api/institute/createAdmin`, adminForm, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccessMessage('Institute Admin Created Successfully!')
       setShowAdminModal(false)
-
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err: any) {
-
       if (err?.response?.data?.message === "User already exists") {
         setAdminError("User already exists. You can reset password.")
         setShowReset(true)
       } else {
         console.error(err)
-        alert("Failed to create admin")
+        setError("Failed to create admin")
+        setTimeout(() => setError(null), 3000)
       }
     } finally {
       setLoading(false)
@@ -177,316 +231,715 @@ const InstituteAdmin: React.FC = () => {
 
   const handleResetPassword = async () => {
     try {
-      await axios.post(
-        `${baseURL}/api/institute/reset-password`,
-        {
-          email: adminForm.email,
-          newPassword: adminForm.password
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-
-      alert("Password reset successfully")
+      await axios.post(`${baseURL}/api/institute/reset-password`, {
+        email: adminForm.email,
+        newPassword: adminForm.password
+      }, { headers: { Authorization: `Bearer ${token}` } })
+      setSuccessMessage("Password reset successfully")
       setShowAdminModal(false)
-
+      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error(err)
-      alert("Password reset failed")
+      setError("Password reset failed")
+      setTimeout(() => setError(null), 3000)
     }
   }
 
+  const handleCopyDomain = (domain: string) => {
+    navigator.clipboard.writeText(`https://${domain}`)
+    setCopiedDomain(domain)
+    setTimeout(() => setCopiedDomain(null), 2000)
+  }
+
+  // Pagination
+  const totalPages = Math.ceil(filteredInstitutes.length / institutesPerPage)
+  const paginatedInstitutes = filteredInstitutes.slice(
+    (currentPage - 1) * institutesPerPage,
+    currentPage * institutesPerPage
+  )
+
+  // Generate domain preview
+  const getDomainPreview = (name: string) => {
+    return name ? `${name.toLowerCase().replace(/\s+/g, '')}.eklav.in` : ''
+  }
+
   return (
+    <>
+      <div className="institute-admin-dashboard">
+        {/* Header Section */}
+        <div className="dashboard-header mb-4">
+          <div className="header-left">
+            <div className="header-icon">
+              <FaUniversity />
+            </div>
+            <div>
+              <h2 className="text-white mb-1">Institute Management</h2>
+              <p className="text-muted mb-0">Manage and oversee all registered institutes</p>
+            </div>
+          </div>
+          <Button
+            className="add-institute-btn"
+            onClick={() => {
+              setEditing(null)
+              setForm({ name: '', email: '', phone: '' })
+              setShowModal(true)
+            }}
+          >
+            <FaPlus className="me-2" />
+            Add Institute
+          </Button>
+        </div>
 
-    <Card className="p-4 shadow-sm border-0">
+        {/* Success/Error Messages */}
+        {successMessage && (
+          <Alert variant="success" className="custom-alert" onClose={() => setSuccessMessage(null)} dismissible>
+            <FaCheck className="me-2" />
+            {successMessage}
+          </Alert>
+        )}
+        {error && (
+          <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
+            <FaTimes className="me-2" />
+            {error}
+          </Alert>
+        )}
 
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="fw-semibold">🏫 Institute Management</h4>
+        {/* Stats Cards */}
+        <Row className="g-3 mb-4">
+          <Col md={4}>
+            <Card className="stat-card bg-dark-lighter border-secondary">
+              <Card.Body className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="text-muted mb-1">Total Institutes</h6>
+                  <h2 className="text-white mb-0">{institutes.length}</h2>
+                </div>
+                <div className="stat-icon bg-orange">
+                  <FaBuilding size={24} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4}>
+            <Card className="stat-card bg-dark-lighter border-secondary">
+              <Card.Body className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="text-muted mb-1">Active Domains</h6>
+                  <h2 className="text-white mb-0">{institutes.filter(i => i.domain).length}</h2>
+                </div>
+                <div className="stat-icon bg-success">
+                  <MdVerified size={24} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+          <Col md={4}>
+            <Card className="stat-card bg-dark-lighter border-secondary">
+              <Card.Body className="d-flex align-items-center justify-content-between">
+                <div>
+                  <h6 className="text-muted mb-1">Total Admins</h6>
+                  <h2 className="text-white mb-0">—</h2>
+                </div>
+                <div className="stat-icon bg-info">
+                  <FaUserGraduate size={24} />
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
+        </Row>
 
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setForm({ name: '', email: '', phone: '' })
-            setShowModal(true)
-          }}
-        >
-          ➕ Add Institute
-        </Button>
+        {/* Search Bar */}
+        <Card className="bg-dark border-secondary mb-4">
+          <Card.Body>
+            <div className="search-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search by institute name, email, phone or domain..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button className="clear-search" onClick={() => setSearchTerm('')}>
+                  <FaTimes />
+                </button>
+              )}
+            </div>
+            <div className="filter-info mt-2">
+              <Badge bg="secondary" className="me-2">
+                <FaFilter className="me-1" size={10} />
+                Total Records: {filteredInstitutes.length}
+              </Badge>
+              {searchTerm && (
+                <Badge bg="orange" className="me-2">
+                  Search: "{searchTerm}"
+                </Badge>
+              )}
+            </div>
+          </Card.Body>
+        </Card>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="loading-container">
+            <Spinner animation="border" variant="orange" />
+            <p className="mt-2 text-muted">Loading institutes...</p>
+          </div>
+        )}
+
+        {/* Institutes Table */}
+        {!loading && (
+          <Card className="bg-dark border-secondary">
+            <div className="table-responsive">
+              <table className="institute-table">
+                <thead>
+                  <tr>
+                    <th>Institute Name</th>
+                    <th>Contact Info</th>
+                    <th>Domain</th>
+                    <th className="text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedInstitutes.length > 0 ? (
+                    paginatedInstitutes.map((inst) => (
+                      <tr key={inst._id}>
+                        <td>
+                          <div className="institute-name">
+                            <FaBuilding className="text-orange me-2" size={16} />
+                            <strong>{inst.name}</strong>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="contact-info">
+                            <div className="contact-item">
+                              <MdEmail className="text-muted me-1" size={12} />
+                              <small>{inst.email}</small>
+                            </div>
+                            {inst.phone && (
+                              <div className="contact-item mt-1">
+                                <MdPhone className="text-muted me-1" size={12} />
+                                <small>{inst.phone}</small>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {inst.domain ? (
+                            <div className="domain-info">
+                              <Badge bg="dark" className="domain-badge">
+                                <MdDomain className="me-1" />
+                                {inst.domain}
+                              </Badge>
+                              <div className="domain-actions mt-1">
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  className="domain-link"
+                                  onClick={() => window.open(`https://${inst.domain}`, "_blank")}
+                                >
+                                  <FaExternalLinkAlt size={12} /> Open Portal
+                                </Button>
+                                <Button
+                                  variant="link"
+                                  size="sm"
+                                  className="domain-link"
+                                  onClick={() => handleCopyDomain(inst.domain!)}
+                                >
+                                  {copiedDomain === inst.domain ? <FaCheck className="text-success" /> : <FaCopy size={12} />}
+                                  {copiedDomain === inst.domain ? ' Copied!' : ' Copy URL'}
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Badge bg="secondary">No Domain</Badge>
+                          )}
+                        </td>
+                        <td className="action-buttons">
+                          <Button
+                            variant="outline-orange"
+                            size="sm"
+                            onClick={() => handleEdit(inst)}
+                            title="Edit Institute"
+                          >
+                            <FaEdit />
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => setShowDeleteConfirm(inst)}
+                            title="Delete Institute"
+                          >
+                            <FaTrash />
+                          </Button>
+                          <Button
+                            variant="outline-success"
+                            size="sm"
+                            onClick={() => openCreateAdmin(inst)}
+                            title="Create Admin"
+                          >
+                            <FaUserPlus />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="empty-state">
+                        <div className="empty-state-content">
+                          <FaBuilding size={48} className="text-muted mb-3" />
+                          <h5>No Institutes Found</h5>
+                          <p className="text-muted">Get started by adding your first institute</p>
+                          <Button
+                            variant="orange"
+                            onClick={() => {
+                              setEditing(null)
+                              setForm({ name: '', email: '', phone: '' })
+                              setShowModal(true)
+                            }}
+                          >
+                            <FaPlus className="me-2" />
+                            Add Institute
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <InstitutePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
+            )}
+          </Card>
+        )}
       </div>
 
-      {loading && <Spinner animation="border" />}
-      {error && <Alert variant="danger">{error}</Alert>}
-
-      <Table bordered hover responsive>
-
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Domain</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          {institutes.map((inst) => (
-
-            <tr key={inst._id}>
-
-              <td>{inst.name}</td>
-              <td>{inst.email}</td>
-              <td>{inst.phone || '-'}</td>
-
-              <td>
-                {inst.domain ? (
-                  <a href={`https://${inst.domain}`} target="_blank" rel="noreferrer">
-                    {inst.domain}
-                  </a>
-                ) : '-'}
-              </td>
-
-              <td>
-
-                <Button
-                  size="sm"
-                  variant="outline-primary"
-                  className="me-2"
-                  onClick={() => handleEdit(inst)}
-                >
-                  Edit
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline-danger"
-                  className="me-2"
-                  onClick={() => handleDelete(inst._id)}
-                >
-                  Delete
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline-success"
-                  className="me-2"
-                  onClick={() => openCreateAdmin(inst)}
-                >
-                  Create Admin
-                </Button>
-
-                {inst.domain && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline-info"
-                      className="me-2"
-                      onClick={() => window.open(`https://${inst.domain}`, "_blank")}
-                    >
-                      Open Portal
-                    </Button>
-
-                    <Button
-                      size="sm"
-                      variant="outline-secondary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`https://${inst.domain}`)
-                        alert("Login URL copied")
-                      }}
-                    >
-                      Copy URL
-                    </Button>
-                  </>
-                )}
-
-              </td>
-
-            </tr>
-
-          ))}
-
-        </tbody>
-
-      </Table>
-
-      {/* Create Admin Modal */}
-
-      <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} centered>
-
-        <Modal.Header closeButton>
-          <Modal.Title>
-            Create Admin for {
-              institutes.find(i => i._id === adminForm.instituteId)?.name
-            }
+      {/* Create/Edit Institute Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              {editing ? <FaEdit className="text-orange" /> : <FaPlus className="text-orange" />}
+              <span>{editing ? 'Edit Institute' : 'Add New Institute'}</span>
+            </div>
           </Modal.Title>
         </Modal.Header>
+        <Modal.Body className="bg-dark">
+          <Form onSubmit={handleSubmit}>
+            <Row className="g-4">
+              <Col md={12}>
+                <Form.Label className="text-muted">Institute Name</Form.Label>
+                <div className="input-with-icon">
+                  <FaBuilding className="input-icon" />
+                  <Form.Control
+                    type="text"
+                    placeholder="Enter institute name"
+                    required
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+              <Col md={12}>
+                <Form.Label className="text-muted">Domain Preview</Form.Label>
+                <div className="domain-preview">
+                  <MdDomain className="preview-icon" />
+                  <code className="preview-text">{getDomainPreview(form.name)}</code>
+                </div>
+                <small className="text-muted">This domain will be automatically generated</small>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="text-muted">Email Address</Form.Label>
+                <div className="input-with-icon">
+                  <MdEmail className="input-icon" />
+                  <Form.Control
+                    type="email"
+                    placeholder="admin@institute.com"
+                    required
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="text-muted">Phone Number</Form.Label>
+                <div className="input-with-icon">
+                  <MdPhone className="input-icon" />
+                  <Form.Control
+                    type="tel"
+                    placeholder="+91XXXXXXXXXX"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+            </Row>
+            <div className="modal-actions mt-4">
+              <Button variant="secondary" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="orange" disabled={loading}>
+                {loading ? <FaSpinner className="spinning" /> : (editing ? 'Update Institute' : 'Create Institute')}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
 
-        <Modal.Body>
-
-          {adminError && <Alert variant="warning">{adminError}</Alert>}
-
+      {/* Create Admin Modal */}
+      <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} centered size="lg" className="admin-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              <MdAdminPanelSettings className="text-orange" size={24} />
+              <span>Create Admin for {institutes.find(i => i._id === adminForm.instituteId)?.name}</span>
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          {adminError && <Alert variant="warning" className="mb-3">{adminError}</Alert>}
           <Form onSubmit={handleCreateAdmin}>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Full Name</Form.Label>
-              <Form.Control
-                required
-                value={adminForm.fullname}
-                onChange={(e) =>
-                  setAdminForm({ ...adminForm, fullname: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control
-                required
-                type="email"
-                value={adminForm.email}
-                onChange={(e) =>
-                  setAdminForm({ ...adminForm, email: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Phone</Form.Label>
-              <Form.Control
-                value={adminForm.phoneNo}
-                onChange={(e) =>
-                  setAdminForm({ ...adminForm, phoneNo: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Password</Form.Label>
-              <Form.Control
-                required
-                type="password"
-                value={adminForm.password}
-                onChange={(e) =>
-                  setAdminForm({ ...adminForm, password: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <div className="text-end">
-
+            <Row className="g-4">
+              <Col md={12}>
+                <Form.Label className="text-muted">Full Name</Form.Label>
+                <div className="input-with-icon">
+                  <FaUserGraduate className="input-icon" />
+                  <Form.Control
+                    required
+                    placeholder="Enter admin full name"
+                    value={adminForm.fullname}
+                    onChange={(e) => setAdminForm({ ...adminForm, fullname: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="text-muted">Email Address</Form.Label>
+                <div className="input-with-icon">
+                  <MdEmail className="input-icon" />
+                  <Form.Control
+                    required
+                    type="email"
+                    placeholder="admin@institute.com"
+                    value={adminForm.email}
+                    onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+              <Col md={6}>
+                <Form.Label className="text-muted">Phone Number</Form.Label>
+                <div className="input-with-icon">
+                  <MdPhone className="input-icon" />
+                  <Form.Control
+                    placeholder="+91XXXXXXXXXX"
+                    value={adminForm.phoneNo}
+                    onChange={(e) => setAdminForm({ ...adminForm, phoneNo: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+              <Col md={12}>
+                <Form.Label className="text-muted">Password</Form.Label>
+                <div className="input-with-icon">
+                  <FaKey className="input-icon" />
+                  <Form.Control
+                    required
+                    type="password"
+                    placeholder="Enter secure password"
+                    value={adminForm.password}
+                    onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
+                    className="bg-dark-lighter border-secondary text-white"
+                  />
+                </div>
+              </Col>
+            </Row>
+            <div className="modal-actions mt-4">
+              <Button variant="secondary" onClick={() => setShowAdminModal(false)}>
+                Cancel
+              </Button>
               {showReset && (
-                <Button
-                  variant="outline-warning"
-                  className="me-2"
-                  onClick={handleResetPassword}
-                >
+                <Button variant="warning" onClick={handleResetPassword}>
                   Reset Password
                 </Button>
               )}
-
-              <Button
-                variant="secondary"
-                className="me-2"
-                onClick={() => setShowAdminModal(false)}
-              >
-                Cancel
+              <Button type="submit" variant="orange" disabled={loading}>
+                {loading ? <FaSpinner className="spinning" /> : 'Create Admin'}
               </Button>
-
-              <Button type="submit" variant="success" disabled={loading}>
-                {loading ? "Creating..." : "Create Admin"}
-              </Button>
-
             </div>
-
           </Form>
-
         </Modal.Body>
-
       </Modal>
 
-      {/* Create / Edit Institute Modal */}
-
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
-
-        <Modal.Header closeButton>
-          <Modal.Title>
-            {editing ? "Edit Institute" : "Add Institute"}
-          </Modal.Title>
+      {/* Delete Confirmation Modal */}
+      <Modal show={!!showDeleteConfirm} onHide={() => setShowDeleteConfirm(null)} centered className="delete-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">Confirm Delete</Modal.Title>
         </Modal.Header>
-
-        <Modal.Body>
-
-          <Form onSubmit={handleSubmit}>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                required
-                value={form.name}
-                onChange={(e) =>
-                  setForm({ ...form, name: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            {/* 🔥 Domain Preview */}
-            <Form.Group className="mb-3">
-              <Form.Label>Domain Preview</Form.Label>
-              <Form.Control
-                disabled
-                value={
-                  form.name
-                    ? `${form.name.toLowerCase().replace(/\s+/g, '')}.eklav.in`
-                    : ''
-                }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Email</Form.Label>
-              <Form.Control
-                required
-                type="email"
-                value={form.email}
-                onChange={(e) =>
-                  setForm({ ...form, email: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <Form.Group className="mb-3">
-              <Form.Label>Phone</Form.Label>
-              <Form.Control
-                value={form.phone}
-                onChange={(e) =>
-                  setForm({ ...form, phone: e.target.value })
-                }
-              />
-            </Form.Group>
-
-            <div className="text-end">
-
-              <Button
-                variant="secondary"
-                className="me-2"
-                onClick={() => setShowModal(false)}
-              >
-                Cancel
-              </Button>
-
-              <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? "Saving..." : editing ? "Update" : "Create"}
-              </Button>
-
-            </div>
-
-          </Form>
-
+        <Modal.Body className="bg-dark text-white">
+          <div className="text-center py-3">
+            <FaTrash size={48} className="text-danger mb-3" />
+            <h5>Are you sure?</h5>
+            <p className="text-muted">
+              You are about to delete <strong>{showDeleteConfirm?.name}</strong>. This action cannot be undone.
+            </p>
+          </div>
         </Modal.Body>
-
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setShowDeleteConfirm(null)}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm._id)}>
+            Delete Institute
+          </Button>
+        </Modal.Footer>
       </Modal>
 
-    </Card>
+      {/* Global Styles */}
+      <style>{`
+        .institute-admin-dashboard { padding: 0; }
+        
+        .dashboard-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+          padding: 1.5rem;
+          border-radius: 16px;
+          border: 1px solid rgba(255, 140, 0, 0.2);
+        }
+        
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        
+        .header-icon {
+          width: 48px;
+          height: 48px;
+          background: rgba(255, 140, 0, 0.1);
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #ff8c00;
+          font-size: 24px;
+        }
+        
+        .add-institute-btn {
+          background: #ff8c00;
+          border: none;
+          padding: 0.5rem 1.5rem;
+          font-weight: 500;
+          transition: all 0.3s ease;
+        }
+        
+        .add-institute-btn:hover {
+          background: #e67e00;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+        }
+        
+        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
+        
+        .stat-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+        }
+        
+        .bg-orange { background-color: #ff8c00; }
+        .bg-dark-lighter { background-color: #2a2a2a; }
+        .text-orange { color: #ff8c00; }
+        .border-orange { border-color: #ff8c00; }
+        
+        .search-wrapper { position: relative; }
+        .search-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #6c757d;
+        }
+        .search-input {
+          width: 100%;
+          padding: 0.75rem 2.5rem 0.75rem 2.5rem;
+          background: #2a2a2a;
+          border: 1px solid #3a3a3a;
+          border-radius: 12px;
+          color: white;
+          transition: all 0.2s;
+        }
+        .search-input:focus {
+          outline: none;
+          border-color: #ff8c00;
+          box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
+        }
+        .clear-search {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          background: none;
+          border: none;
+          color: #6c757d;
+          cursor: pointer;
+        }
+        .clear-search:hover { color: #ff8c00; }
+        
+        .institute-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .institute-table thead th {
+          padding: 1rem;
+          text-align: left;
+          color: #6c757d;
+          font-weight: 500;
+          border-bottom: 1px solid #3a3a3a;
+        }
+        .institute-table tbody tr {
+          border-bottom: 1px solid #2a2a2a;
+          transition: background 0.2s;
+        }
+        .institute-table tbody tr:hover { background: rgba(255, 140, 0, 0.05); }
+        .institute-table td { padding: 1rem; }
+        
+        .institute-name { color: white; font-weight: 500; }
+        .contact-info { font-size: 0.875rem; }
+        .contact-item { color: #adb5bd; }
+        
+        .domain-badge {
+          background: #2a2a2a !important;
+          color: #ff8c00 !important;
+          padding: 0.5rem 1rem;
+          font-weight: 500;
+        }
+        .domain-actions { display: flex; gap: 0.5rem; }
+        .domain-link {
+          padding: 0;
+          font-size: 0.75rem;
+          color: #ff8c00;
+          text-decoration: none;
+        }
+        .domain-link:hover { color: #e67e00; }
+        
+        .action-buttons { display: flex; gap: 0.5rem; justify-content: center; }
+        .action-buttons button { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+        
+        .empty-state { text-align: center; padding: 3rem !important; }
+        .empty-state-content { display: flex; flex-direction: column; align-items: center; }
+        
+        .input-with-icon { position: relative; }
+        .input-icon {
+          position: absolute;
+          left: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #6c757d;
+        }
+        .input-with-icon input,
+        .input-with-icon textarea { padding-left: 2.5rem; }
+        
+        .domain-preview {
+          background: #2a2a2a;
+          border: 1px solid #3a3a3a;
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .preview-icon { color: #ff8c00; }
+        .preview-text { color: #adb5bd; font-family: monospace; }
+        
+        .modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 1rem;
+          padding-top: 1rem;
+          border-top: 1px solid #3a3a3a;
+        }
+        
+        .spinning { animation: spin 1s linear infinite; }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        .loading-container { text-align: center; padding: 3rem; }
+        
+        .institute-pagination {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1rem 1.5rem;
+          background: #1e1e1e;
+          border-radius: 12px;
+          border-top: 1px solid #3a3a3a;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+        
+        .pagination-btn {
+          min-width: 36px;
+          height: 36px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #2a2a2a;
+          border: 1px solid #3a3a3a;
+          color: #e0e0e0;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .pagination-btn:hover:not(:disabled) {
+          background: #ff8c00;
+          border-color: #ff8c00;
+          color: white;
+        }
+        .pagination-btn.active {
+          background: #ff8c00;
+          border-color: #ff8c00;
+          color: white;
+        }
+        .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .pagination-dots { color: #6c757d; padding: 0 0.5rem; }
+        
+        .custom-alert { border-radius: 12px; border: none; }
+        
+        .btn-outline-orange {
+          border-color: #ff8c00;
+          color: #ff8c00;
+        }
+        .btn-outline-orange:hover {
+          background-color: #ff8c00;
+          color: white;
+        }
+        
+        .modal-content { background-color: #1a1a1a; }
+        .modal-header { border-bottom-color: #2a2a2a; }
+        .modal-footer { border-top-color: #2a2a2a; }
+        
+        .form-control:focus, .form-select:focus {
+          border-color: #ff8c00;
+          box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25);
+        }
+      `}</style>
+    </>
   )
 }
 
