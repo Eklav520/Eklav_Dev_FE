@@ -1325,7 +1325,7 @@ const StudentDashboard: React.FC = () => {
       <Modal
         show={showPurchaseModal}
         onHide={() => setShowPurchaseModal(false)}
-        className="professional-modal"
+        className="purchase-modal"
         centered
         size="sm"
       >
@@ -1940,46 +1940,38 @@ const StudentDashboard: React.FC = () => {
           color: var(--text-muted);
           font-size: 0.85rem;
         }
-        .professional-modal.modal {
-          background: rgba(2, 6, 23, 0.75);
-          backdrop-filter: blur(14px);
-          -webkit-backdrop-filter: blur(14px);
+
+        /* ===== Modal Styles ===== */
+        .professional-modal .modal-content {
+          background: var(--bg-deep-1);
+          border: 1px solid var(--glass-border);
+          border-radius: 20px;
+          backdrop-filter: blur(14px) saturate(140%);
+          -webkit-backdrop-filter: blur(14px) saturate(140%);
+          box-shadow: 0 22px 70px rgba(2,8,23,.55);
+          color: var(--text-main);
         }
 
-      .professional-modal .modal-dialog {
-          max-width: 380px;
-          margin: auto;
-        }
-              .professional-modal .modal-content {
-          background: linear-gradient(145deg, rgba(30,41,59,0.9), rgba(15,23,42,0.95));
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 18px;
-          padding: 1.8rem 1.5rem;
-          box-shadow: 0 25px 80px rgba(0,0,0,0.6);
-          text-align: center;
+        .professional-modal .modal-header {
+          border-bottom: 1px solid var(--glass-border);
+          padding: 1rem;
         }
 
-        /* Optional: tighter content */
-        .purchase-modal-content {
-          text-align: center;
+        .professional-modal .modal-header .btn-close {
+          filter: invert(1) grayscale(100%) brightness(200%);
+          font-size: 0.8rem;
         }
 
-        /* Price styling */
-        .price-display {
-          font-size: 1.8rem;
-          font-weight: 600;
-          color: #22c55e;
+        .professional-modal .modal-dialog {
+          margin: 0;
+          height: 100vh;
+          max-width: 100vw;
         }
 
-        /* Buttons spacing */
-        .purchase-actions {
-          display: flex;
-          gap: 10px;
-        }
-          .professional-modal .modal-backdrop {
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          background: rgba(0, 0, 0, 0.4) !important;
+        .professional-modal .modal-dialog-scrollable .modal-body {
+          max-height: calc(100vh - 70px);
+          overflow-y: auto;
+          padding: 1rem;
         }
 
         /* Modal Layout */
@@ -2510,51 +2502,30 @@ const StudentDashboard: React.FC = () => {
           padding: 1rem;
         }
 
-       .purchase-info {
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 14px;
-          padding: 1rem;
-          margin-top: 1rem;
+        .purchase-info {
+          background: rgba(255,255,255,.05);
+          border: 1px solid var(--glass-border);
+          border-radius: 16px;
+          padding: 1.25rem;
         }
 
-      .purchase-class-title {
-          font-size: 0.95rem;
-          color: #cbd5f5;
-          margin-bottom: 0.5rem;
+        .purchase-class-title {
+          font-size: 1rem;
+          margin-bottom: 1rem;
+          word-break: break-word;
         }
 
         .price-display {
-          font-size: 2rem;
+          font-size: 1.5rem;
           font-weight: 700;
-          color: #4ade80;
+          color: #86efac;
         }
 
-       .purchase-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 1.5rem;
-          }
-
-          .purchase-actions .btn {
-            flex: 1;
-            border-radius: 999px;
-            padding: 0.6rem;
-            font-weight: 600;
-          }
-
-          /* Cancel */
-          .purchase-actions .btn-outline-light {
-            border: 1px solid rgba(255,255,255,0.2);
-            color: #cbd5f5;
-          }
-
-          /* Confirm */
-          .purchase-actions .btn-orange {
-            background: linear-gradient(135deg, #f97316, #ea580c);
-            border: none;
-            box-shadow: 0 8px 25px rgba(249,115,22,0.4);
-          }
+        .purchase-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
 
         @media (min-width: 576px) {
           .purchase-actions {
@@ -2590,6 +2561,122 @@ const StudentDashboard: React.FC = () => {
           background-color: #ff7a00;
           border-color: #ff7a00;
         }
+          .purchase-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 1.5rem;
+}
+
+.purchase-actions .btn {
+  flex: 1;
+  border-radius: 999px;
+  padding: 0.6rem;
+  font-weight: 600;
+}
+
+/* Cancel */
+.purchase-actions .btn-outline-light {
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #cbd5f5;
+}
+
+/* Confirm */
+.purchase-actions .btn-orange {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border: none;
+  box-shadow: 0 8px 25px rgba(249,115,22,0.4);
+}
+  .purchase-info {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.purchase-class-title {
+  font-size: 0.95rem;
+  color: #cbd5f5;
+  margin-bottom: 0.5rem;
+}
+
+.price-display {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+  .professional-modal.modal {
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* ===== PURCHASE MODAL ONLY ===== */
+
+.purchase-modal.modal {
+  background: rgba(2, 6, 23, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.purchase-modal .modal-dialog {
+  max-width: 380px;
+  margin: auto;
+}
+
+.purchase-modal .modal-content {
+  background: linear-gradient(145deg, rgba(30,41,59,0.95), rgba(15,23,42,0.98));
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 18px;
+  padding: 1.8rem 1.5rem;
+  box-shadow: 0 25px 80px rgba(0,0,0,0.6);
+  text-align: center;
+}
+
+/* Purchase Card */
+.purchase-modal .purchase-info {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.purchase-modal .purchase-class-title {
+  font-size: 0.95rem;
+  color: #cbd5f5;
+  margin-bottom: 0.5rem;
+}
+
+.purchase-modal .price-display {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+/* Buttons */
+.purchase-modal .purchase-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 1.5rem;
+}
+
+.purchase-modal .btn {
+  flex: 1;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.purchase-modal .btn-outline-light {
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #cbd5f5;
+}
+
+.purchase-modal .btn-orange {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  border: none;
+  box-shadow: 0 8px 25px rgba(249,115,22,0.4);
+}
       `}</style>
     </>
   )
