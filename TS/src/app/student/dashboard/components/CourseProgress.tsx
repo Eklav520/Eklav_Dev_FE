@@ -27,17 +27,15 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
       : 0
 
   return (
-    <Card
-      className="border-0 shadow-lg overflow-hidden"
-      style={{
-        borderRadius: '16px',
-        background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)',
-        minHeight: '600px',
-        height: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+   <Card
+  className="border-0 shadow-lg h-100"
+  style={{
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)',
+    display: 'flex',
+    flexDirection: 'column',
+  }}
+>
       <div style={{ flexShrink: 0 }}>
         <Card.Header
           className="border-0 text-white px-3 px-md-4 py-4"
