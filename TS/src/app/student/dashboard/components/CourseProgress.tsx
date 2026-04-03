@@ -27,15 +27,15 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
       : 0
 
   return (
-   <Card
-  className="border-0 shadow-lg h-100"
-  style={{
-    borderRadius: '16px',
-    background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)',
-    display: 'flex',
-    flexDirection: 'column',
-  }}
->
+    <Card
+      className="border-0 shadow-lg h-100"
+      style={{
+        borderRadius: '16px',
+        background: 'linear-gradient(135deg, #ff7a00 0%, #2a2a2a 60%, #121212 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       <div style={{ flexShrink: 0 }}>
         <Card.Header
           className="border-0 text-white px-3 px-md-4 py-4"
@@ -225,9 +225,9 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
               background: 'rgba(255,122,0,0.05)',
             }}
           >
-            <div 
-              className="text-white fw-semibold me-2" 
-              style={{ 
+            <div
+              className="text-white fw-semibold me-2"
+              style={{
                 fontSize: 'clamp(0.85rem, 3vw, 1rem)',
                 wordBreak: 'break-word',
                 flex: '1 1 auto'
@@ -235,9 +235,9 @@ const CourseProgress = ({ enrolledCourses, remainingCourses }: Props) => {
             >
               {course.name}
             </div>
-            <small 
-              className="text-white-50" 
-              style={{ 
+            <small
+              className="text-white-50"
+              style={{
                 fontSize: 'clamp(0.7rem, 2.5vw, 0.875rem)',
                 whiteSpace: 'nowrap'
               }}
