@@ -42,6 +42,17 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
 
+
+  useEffect(() => {
+    if (!loading && videoRef.current && cameraStream) {
+      videoRef.current.srcObject = cameraStream
+
+      videoRef.current.play().catch(() => {
+        console.log("Autoplay blocked")
+      })
+    }
+  }, [cameraStream, loading])
+
   // ================= CAMERA RECORDING =================
   const startCameraRecording = async () => {
     try {
@@ -55,12 +66,6 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
       })
 
       setCameraStream(stream)
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.style.display = "block"
-      }
-
       const recorder = new MediaRecorder(stream, {
         mimeType: 'video/webm'
       })
@@ -118,7 +123,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
         if (data.timeLimit) setTimeLeft(data.timeLimit)
 
-        startCameraRecording()
+        setTimeout(() => {
+          startCameraRecording()
+        }, 300)
       } catch (err: any) {
         setError(err.message)
       } finally {
