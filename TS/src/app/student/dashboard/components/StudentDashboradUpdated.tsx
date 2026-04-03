@@ -163,40 +163,40 @@ const StudentDashboardUpdated: React.FC = () => {
     subtitle,
   }
 
-const kpis = [
-  {
-    label: 'Courses Available',
-    value: dashboardSummary?.coursesAvailable?.value || 0,
-    icon: FaClock,
-    color: '#ff7a00',
-    bgColor: 'rgba(255,122,0,0.1)',
-    trend: dashboardSummary?.coursesAvailable?.trend || 0,
-  },
-  {
-    label: 'Enrolled Courses',
-    value: dashboardSummary?.enrolledCourses?.value || 0,
-    icon: FaBookOpen,
-    color: '#ff7a00',
-    bgColor: 'rgba(255,122,0,0.1)',
-    trend: dashboardSummary?.enrolledCourses?.trend || 0,
-  },
-  {
-    label: 'Accuracy',
-    value: dashboardSummary?.accuracy?.value || 0,
-    icon: FaBullseye,
-    color: '#ff7a00',
-    bgColor: 'rgba(255,122,0,0.1)',
-    trend: dashboardSummary?.accuracy?.trend || 0,
-  },
-  {
-    label: 'Rank',
-    value: dashboardSummary?.rank?.value || 0,
-    icon: FaTrophy,
-    color: '#ff7a00',
-    bgColor: 'rgba(255,122,0,0.1)',
-    trend: dashboardSummary?.rank?.trend || 0,
-  },
-]
+  const kpis = [
+    {
+      label: 'Courses Available',
+      value: dashboardSummary?.coursesAvailable?.value || 0,
+      icon: FaClock,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.coursesAvailable?.trend || 0,
+    },
+    {
+      label: 'Enrolled Courses',
+      value: dashboardSummary?.enrolledCourses?.value || 0,
+      icon: FaBookOpen,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.enrolledCourses?.trend || 0,
+    },
+    {
+      label: 'Accuracy',
+      value: dashboardSummary?.accuracy?.value || 0,
+      icon: FaBullseye,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.accuracy?.trend || 0,
+    },
+    {
+      label: 'Rank',
+      value: dashboardSummary?.rank?.value || 0,
+      icon: FaTrophy,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.rank?.trend || 0,
+    },
+  ]
 
   /* ================= JSX ================= */
   return (
@@ -211,9 +211,9 @@ const kpis = [
       <HeroSection student={student} />
       <KPISection kpis={kpis} />
 
-      <Row className="g-3 mb-4 align-items-stretch">
-        <Col xs={12} lg={4} className="d-flex">
-          <div style={{ height: '600px', display: 'flex', width: '100%' }}>
+      <Row className="g-3 mb-4">
+        <Col xs={12} lg={4}>
+          <div style={{ height: '600px', width: '100%' }}>
             <CourseProgress
               enrolledCourses={enrolledCourses}
               remainingCourses={remainingCourses}
@@ -221,13 +221,13 @@ const kpis = [
           </div>
         </Col>
 
-        <Col xs={12} lg={4} className="d-flex">
+        <Col xs={12} lg={4}>
           <div style={{ height: '600px', width: '100%' }}>
             <EnglishSkills />
           </div>
         </Col>
 
-        <Col xs={12} lg={4} className="d-flex">
+        <Col xs={12} lg={4}>
           <div style={{ height: '600px', width: '100%' }}>
             <SelfPreparation />
           </div>
