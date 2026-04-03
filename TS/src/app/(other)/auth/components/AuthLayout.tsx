@@ -1027,6 +1027,10 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
   // Generate particles only once
   const particles = useMemo(() => generateParticles(LAYOUT_CONFIG.particles.count), []);
 
+  const isSubdomain = typeof window !== "undefined" &&
+    window.location.hostname !== "eklav.in" &&
+    !window.location.hostname.startsWith("www");
+
   const handleOpen = (type: "signin" | "signup" | "forgot") => {
     setAuthType(type);
     setShowModal(true);
@@ -1068,7 +1072,10 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
       {/* Fixed Navigation */}
       <div className="fixed-navigation">
         <Suspense fallback={<LoadingFallback />}>
-          <TopNavigationBar onLoginClick={() => handleOpen("signin")} onSignupClick={() => handleOpen("signup")} />
+          <TopNavigationBar
+            onLoginClick={() => handleOpen("signin")}
+            onSignupClick={!isSubdomain ? () => handleOpen("signup") : undefined}
+          />
         </Suspense>
       </div>
 
