@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useAuthContext } from '@/context/useAuthContext';
 import CodeEditor from './CodeEditor';
 
 interface Problem {
@@ -17,6 +18,8 @@ interface TestResult {
 }
 
 export default function ProblemDetail() {
+  const { user } = useAuthContext();
+  const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const { id } = useParams();
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -25,16 +28,26 @@ export default function ProblemDetail() {
   const [results, setResults] = useState<TestResult[]>([]);
 
   useEffect(() => {
-  if (!id) return;
-  fetch(`${baseURL}/admin/problems/${id}`)
-    .then(res => res.json())
-    .then(data => setProblem(data));
-}, [id]);
+    if (!id || !token) return;
+    fetch(`${baseURL}/admin/problems/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(res => res.json())
+      .then(data => setProblem(data));
+  }, [id, token]);
 
   const submitCode = async () => {
+    if (!token) return;
+
     const response = await fetch(`${baseURL}/submit`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
         problemId: id,
         code,

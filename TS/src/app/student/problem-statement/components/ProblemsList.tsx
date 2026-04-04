@@ -23,6 +23,7 @@ const getRankLabel = (completed: number, total: number) => {
 }
 
 type Props = {
+  problems: Problem[]
   selectedId?: number
   completedIds: number[]
   onSelect: (p: Problem) => void
@@ -30,31 +31,13 @@ type Props = {
 
 const PAGE_SIZE = 10
 
-const ProblemsList = ({ selectedId, completedIds, onSelect }: Props) => {
+const ProblemsList = ({ problems,selectedId, completedIds, onSelect }: Props) => {
   /* -------------------- STATE -------------------- */
-  const [problems, setProblems] = useState<Problem[]>([])
-  const [loading, setLoading] = useState(true)
-
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
   const [difficulty, setDifficulty] =
     useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All')
 
-  /* -------------------- FETCH -------------------- */
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await fetchProblems()
-        setProblems(data)
-      } catch (err) {
-        console.error('Failed to load problems', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    load()
-  }, [])
 
   /* -------------------- METRICS -------------------- */
   const total = problems.length
@@ -85,14 +68,6 @@ const ProblemsList = ({ selectedId, completedIds, onSelect }: Props) => {
   const start = (page - 1) * PAGE_SIZE
   const visibleProblems = filteredProblems.slice(start, start + PAGE_SIZE)
 
-  /* -------------------- LOADING -------------------- */
-  if (loading) {
-    return (
-      <Card className="p-3 text-center text-muted">
-        Loading programs...
-      </Card>
-    )
-  }
 
   /* -------------------- UI -------------------- */
   return (

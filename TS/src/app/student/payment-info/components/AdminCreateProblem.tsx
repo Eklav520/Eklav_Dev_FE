@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuthContext } from '@/context/useAuthContext';
 
 interface TestCase {
   input: string;
@@ -14,6 +15,8 @@ interface ProblemForm {
 }
 
 export default function AdminCreateProblem() {
+  const { user } = useAuthContext();
+  const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const [form, setForm] = useState<ProblemForm>({
     title: '',
@@ -29,9 +32,14 @@ export default function AdminCreateProblem() {
   });
 
   const handleSubmit = async () => {
+    if (!token) return;
+
     const response = await fetch(`${baseURL}/admin/create-problem`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify(form),
     });
     if (response.ok) {

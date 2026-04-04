@@ -214,17 +214,28 @@ const ProblemStatement = () => {
   /* ---------------- LOAD PROBLEMS ---------------- */
 
   useEffect(() => {
+    if (!token) {
+      console.log("⏳ Waiting for token...")
+      return
+    }
+
     const loadProblems = async () => {
+      console.log("🚀 Calling fetchProblems with token:", token)
+
       setLoadingProblems(true)
 
-      const data = await fetchProblems()
-      setProblems(data)
-
-      setLoadingProblems(false)
+      try {
+        const data = await fetchProblems(token)  // ✅ FIX HERE
+        setProblems(data)
+      } catch (err) {
+        console.error("❌ Failed to load problems", err)
+      } finally {
+        setLoadingProblems(false)
+      }
     }
 
     loadProblems()
-  }, [])
+  }, [token]) // ✅ IMPORTANT
 
   useEffect(() => {
     const fetchCompletedProblems = async () => {
@@ -542,13 +553,13 @@ const ProblemStatement = () => {
             <div className="flex-grow-1 overflow-auto p-3">
               {activeTab === 'problemsList' && (
                 <ProblemsList
+                  problems={problems}   // ✅ ADD THIS LINE
                   selectedId={selectedProblem?.id}
                   completedIds={completedIds}
                   onSelect={(p) => {
                     setIsProblemLoading(true)
                     setSelectedProblem(p)
                     setActiveTab('description')
-                    // Reset code to default for new problem
                     setCode(DEFAULT_CODE[language])
                     setIsProblemLoading(false)
                   }}

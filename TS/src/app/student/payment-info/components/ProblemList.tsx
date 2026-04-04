@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthContext } from '@/context/useAuthContext';
 
 interface Problem {
   _id: string;
@@ -7,14 +8,23 @@ interface Problem {
 }
 
 export default function ProblemList() {
+  const { user } = useAuthContext();
+  const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const [problems, setProblems] = useState<Problem[]>([]);
 
   useEffect(() => {
-    fetch(`${baseURL}/admin/problems`)
+    if (!token) return;
+
+    fetch(`${baseURL}/admin/problems`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    })
       .then(res => res.json())
       .then(data => setProblems(data));
-  }, []);
+  }, [token]);
 
   return (
     <div className="container mt-4">

@@ -16,8 +16,23 @@ export type Problem = {
 const baseURL = import.meta.env.VITE_API_BASE_URL
 
 export const fetchProblems = async (): Promise<Problem[]> => {
-  const res = await fetch(`${baseURL}/api/dashboard/adminProblems`)
+  const token = localStorage.getItem('token')
+  console.log('Token from localStorage:', token)
+
+  if (!token) {
+    throw new Error('No authentication token found')
+  }
+
+  const res = await fetch(`${baseURL}/api/dashboard/adminProblems`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+
+  console.log('Response status:', res.status)
   const data = await res.json()
+  console.log('Response data:', data)
 
   return data.map((p: any, index: number): Problem => ({
     id: index + 1,
