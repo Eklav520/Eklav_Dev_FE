@@ -56,6 +56,7 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     const [examList, setExamList] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState("");
+    const [description, setDescription] = useState("");
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -84,9 +85,10 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     const handleExamChange = (selectedExamId: string) => {
         setExamId?.(selectedExamId);
         
-        // Clear title when "Create New Exam" is selected
+        // Clear title and description when "Create New Exam" is selected
         if (!selectedExamId) {
             setTitle("");
+            setDescription("");
             // Reset rounds to default state
             setRounds([
                 { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
@@ -121,6 +123,7 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                 if (data.success) {
                     const exam = data.exam;
                     setTitle(exam.title);
+                    setDescription(exam.description || "");
 
                     const updatedRounds = rounds.map((defaultRound) => {
                         const existing = exam.rounds.find(
@@ -241,6 +244,7 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                 },
                 body: JSON.stringify({
                     title: title.trim(),
+                    description: description.trim(),
                     rounds: payloadRounds,
                 }),
             });
@@ -348,6 +352,25 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                                 {examId 
                                     ? 'Title is locked when editing existing exam' 
                                     : 'Enter a descriptive title for your new exam'}
+                            </small>
+                        </div>
+                    </div>
+
+                    <div className="form-row-group">
+                        <div className="form-group-full">
+                            <label className="form-label">
+                                <FaInfoCircle className="label-icon" />
+                                Exam Description
+                            </label>
+                            <textarea
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Enter a description or instructions students will see before starting the exam"
+                                className="form-input-custom form-textarea-custom"
+                                rows={4}
+                            />
+                            <small className="form-hint">
+                                This description will display to students while they take the exam.
                             </small>
                         </div>
                     </div>

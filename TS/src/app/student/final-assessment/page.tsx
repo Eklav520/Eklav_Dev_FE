@@ -84,6 +84,14 @@ const QuestionIcon = () => (
   </svg>
 )
 
+const InfoIcon = () => (
+  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M12 8V12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    <path d="M12 16H12.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 const TargetIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
@@ -189,6 +197,12 @@ export default function StudentAssessmentController() {
       const data = await res.json()
 
       if (data.success && data.examId === assessment._id) {
+        const examDescription = data.description || data.exam?.description || assessment.description || ""
+
+        setSelectedAssessment((prev: any) => ({
+          ...prev,
+          description: prev?.description || examDescription,
+        }))
         setRounds(data.rounds || [])
         setActiveRound(data.activeRound)
         setCompletedRounds(data.completedRounds || [])
@@ -222,6 +236,7 @@ export default function StudentAssessmentController() {
               endDateTime: r.endDateTime
             }
           })
+          setSelectedAssessment(examData.exam)
           setRounds(formattedRounds)
           setCompletedRounds([])
           setExamStatus("upcoming")
@@ -433,6 +448,12 @@ export default function StudentAssessmentController() {
                     <Card.Title style={{ color: "#ff6b35", fontSize: "1.5rem", fontWeight: "bold" }}>
                       {assessment.title}
                     </Card.Title>
+                    {assessment.description && (
+                      <Card.Text style={{ color: "#ffc107", marginTop: "0.75rem", fontSize: "0.95rem", lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <InfoIcon />
+                        <span>{assessment.description}</span>
+                      </Card.Text>
+                    )}
                     <Card.Text style={{ color: "#888", marginTop: "1rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" }}>
                         <CalendarIcon />
@@ -496,8 +517,9 @@ export default function StudentAssessmentController() {
                 {selectedAssessment?.title}
               </Modal.Title>
               {selectedAssessment?.description && (
-                <p style={{ color: "#888", margin: 0, fontSize: "0.9rem" }}>
-                  {selectedAssessment.description}
+                <p style={{ color: "#ffc107", margin: 0, fontSize: "0.95rem", lineHeight: 1.6, display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                  <InfoIcon />
+                  <span>{selectedAssessment.description}</span>
                 </p>
               )}
             </div>
