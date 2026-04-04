@@ -13,6 +13,7 @@ import wordpressBook from "../images/worspress-book.png";
 import uiuxBook from "../images/UI-UX-book.png";
 import csharpBook from "../images/csharp-book.png";
 import cBook from "../images/c-book.png";
+import genAI from "../images/Gen-AI.png";
 
 export const booksList = [
   { id: "c", title: "C Programming", image: cBook },
@@ -24,6 +25,7 @@ export const booksList = [
   { id: "javascript", title: "JavaScript Deep Dive", image: jsBook },
   { id: "csharp", title: "C# Programming", image: csharpBook },
   { id: "dsa", title: "Data Structures & Algorithms", image: dsaBook },
+  { id: "genAI", title: "Generative AI", image: genAI },
   /* { id: "mysql", title: "MySQL Databases", image: mysqlBook },
   { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
   { id: "genai", title: "Generative AI", image: genAiBook },

@@ -1,0 +1,1786 @@
+{
+    "id": "genai-advanced-detailed",
+    "title": "Gen AI Programming Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "ch1",
+            "title": "Foundations of AI, ML & Deep Learning",
+            "description": "Complete understanding of Artificial Intelligence, Machine Learning, and Deep Learning fundamentals",
+            "pages": [
+                {
+                    "id": "ch1-p1",
+                    "title": "What is Artificial Intelligence?",
+                    "content": "Artificial Intelligence (AI) refers to the simulation of human intelligence in machines. It enables machines to think, reason, learn, and make decisions. AI systems can perform tasks such as speech recognition, decision-making, visual perception, and language translation.",
+                    "exampleCode": "# Simple AI logic\nif temperature > 30:\n    print('Turn ON AC')",
+                    "keyPoints": [
+                        "AI mimics human intelligence",
+                        "Used in automation and decision making",
+                        "Includes learning and reasoning",
+                        "Foundation of modern technologies"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does AI simulate?",
+                            "options": [
+                                "Human intelligence",
+                                "Storage",
+                                "Networking",
+                                "Hardware"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "AI simulates human intelligence."
+                        }
+                    ]
+                },
+                {
+                    "id": "ch1-p2",
+                    "title": "Machine Learning Explained",
+                    "content": "Machine Learning (ML) is a subset of AI that allows systems to learn from data without being explicitly programmed. ML models improve performance as they are exposed to more data.",
+                    "exampleCode": "from sklearn.linear_model import LinearRegression\nmodel = LinearRegression()",
+                    "keyPoints": [
+                        "Learns from data",
+                        "Improves over time",
+                        "Used in predictions",
+                        "Core of AI systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch1-p3",
+                    "title": "Types of Machine Learning",
+                    "content": "Machine Learning has three main types: Supervised Learning (labeled data), Unsupervised Learning (no labels), and Reinforcement Learning (reward-based learning).",
+                    "exampleCode": "# Supervised example\nX = [1,2,3]\ny = [2,4,6]",
+                    "keyPoints": [
+                        "Supervised learning uses labeled data",
+                        "Unsupervised finds patterns",
+                        "Reinforcement uses rewards",
+                        "Different use cases"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch1-p4",
+                    "title": "Introduction to Deep Learning",
+                    "content": "Deep Learning is a subset of ML that uses neural networks with multiple layers. It is used in complex tasks like image recognition, NLP, and speech processing.",
+                    "exampleCode": "# Neural network concept",
+                    "keyPoints": [
+                        "Uses neural networks",
+                        "Handles complex data",
+                        "Powers modern AI",
+                        "Requires large datasets"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch1-p5",
+                    "title": "Applications of AI",
+                    "content": "AI is used in healthcare, finance, education, automation, chatbots, recommendation systems, and more.",
+                    "exampleCode": "# Example chatbot logic",
+                    "keyPoints": [
+                        "Healthcare diagnosis",
+                        "Finance predictions",
+                        "Chatbots",
+                        "Self-driving cars"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch2",
+            "title": "Introduction to Generative AI",
+            "description": "Deep dive into generative AI concepts, models, and applications",
+            "pages": [
+                {
+                    "id": "ch2-p1",
+                    "title": "What is Generative AI?",
+                    "content": "Generative AI refers to systems that can generate new content such as text, images, audio, video, and code. These models learn patterns from existing data and create similar but new outputs.",
+                    "exampleCode": "# Text generation example",
+                    "keyPoints": [
+                        "Creates new data",
+                        "Learns from datasets",
+                        "Used in content generation",
+                        "Core of ChatGPT and image AI"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch2-p2",
+                    "title": "Generative vs Predictive AI",
+                    "content": "Predictive AI predicts outcomes based on input data, while Generative AI creates new outputs such as text, images, or music.",
+                    "exampleCode": "# Predict vs Generate",
+                    "keyPoints": [
+                        "Predictive = forecast",
+                        "Generative = create",
+                        "Different use cases",
+                        "Generative is more complex"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch2-p3",
+                    "title": "Types of Generative Models",
+                    "content": "Generative AI includes models such as GANs (image generation), VAEs (probability-based models), Transformers (text generation), and Diffusion models (high-quality image generation).",
+                    "exampleCode": "# GAN concept",
+                    "keyPoints": [
+                        "GANs generate images",
+                        "Transformers generate text",
+                        "Diffusion models for realism",
+                        "VAEs for probability modeling"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch2-p4",
+                    "title": "Real-World Applications",
+                    "content": "Generative AI is used in chatbots, image generation, code assistants, video creation, content writing, and AI interview systems.",
+                    "exampleCode": "# Chatbot example",
+                    "keyPoints": [
+                        "ChatGPT",
+                        "DALL·E",
+                        "AI coding assistants",
+                        "Marketing automation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch2-p5",
+                    "title": "Limitations of Generative AI",
+                    "content": "Generative AI can produce hallucinations (incorrect outputs), bias, and security risks. It requires careful design and evaluation.",
+                    "exampleCode": "# No code",
+                    "keyPoints": [
+                        "Hallucination problem",
+                        "Bias in models",
+                        "Data dependency",
+                        "Security risks"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch3",
+            "title": "Neural Networks & Deep Learning",
+            "description": "Detailed understanding of neural networks, layers, and training process",
+            "pages": [
+                {
+                    "id": "ch3-p1",
+                    "title": "What is a Neural Network?",
+                    "content": "A neural network is a system inspired by the human brain that processes data through layers of interconnected nodes (neurons).",
+                    "exampleCode": "# Basic neuron",
+                    "keyPoints": [
+                        "Inspired by brain",
+                        "Processes input data",
+                        "Used in deep learning",
+                        "Multiple layers"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch3-p2",
+                    "title": "Perceptron Model",
+                    "content": "A perceptron is the simplest form of a neural network that takes inputs, applies weights, and produces output.",
+                    "exampleCode": "output = sum(inputs * weights) + bias",
+                    "keyPoints": [
+                        "Basic building block",
+                        "Uses weights",
+                        "Binary output",
+                        "Foundation of NN"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch3-p3",
+                    "title": "Activation Functions",
+                    "content": "Activation functions determine whether a neuron should be activated. Common ones include ReLU, Sigmoid, and Tanh.",
+                    "exampleCode": "# ReLU\nmax(0, x)",
+                    "keyPoints": [
+                        "Adds non-linearity",
+                        "ReLU most popular",
+                        "Sigmoid for probability",
+                        "Tanh for balanced output"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch3-p4",
+                    "title": "Forward & Backpropagation",
+                    "content": "Forward propagation computes outputs, while backpropagation updates weights based on error.",
+                    "exampleCode": "# Training loop",
+                    "keyPoints": [
+                        "Forward pass",
+                        "Error calculation",
+                        "Backprop updates weights",
+                        "Improves model"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch3-p5",
+                    "title": "Training Neural Networks",
+                    "content": "Training involves feeding data, calculating loss, and updating weights using optimizers like Gradient Descent.",
+                    "exampleCode": "# Gradient descent",
+                    "keyPoints": [
+                        "Loss function",
+                        "Optimization",
+                        "Epochs",
+                        "Model improvement"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch4",
+            "title": "Transformers Architecture",
+            "description": "In-depth understanding of transformer models, attention mechanism, and architecture behind modern LLMs",
+            "pages": [
+                {
+                    "id": "ch4-p1",
+                    "title": "Introduction to Transformers",
+                    "content": "Transformers are deep learning models designed to process sequential data efficiently. Unlike RNNs, transformers process all inputs in parallel, making them faster and more scalable.",
+                    "exampleCode": "# Transformer concept",
+                    "keyPoints": [
+                        "Parallel processing",
+                        "Faster than RNNs",
+                        "Handles long sequences",
+                        "Used in GPT, BERT"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p2",
+                    "title": "Self-Attention Mechanism",
+                    "content": "Self-attention allows the model to focus on important words in a sentence by assigning weights to each token.",
+                    "exampleCode": "attention_score = Query * Key",
+                    "keyPoints": [
+                        "Captures relationships",
+                        "Weights important words",
+                        "Core of transformer",
+                        "Improves context understanding"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p3",
+                    "title": "Query, Key, Value Explained",
+                    "content": "Each word is converted into Query, Key, and Value vectors. The attention mechanism compares queries with keys to compute importance.",
+                    "exampleCode": "score = Q * K / sqrt(d)",
+                    "keyPoints": [
+                        "Q compares",
+                        "K represents data",
+                        "V stores info",
+                        "Used in attention"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p4",
+                    "title": "Multi-Head Attention",
+                    "content": "Multi-head attention allows the model to focus on different parts of the sentence simultaneously.",
+                    "exampleCode": "# Multiple attention heads",
+                    "keyPoints": [
+                        "Parallel attention layers",
+                        "Captures multiple relationships",
+                        "Improves learning",
+                        "Core transformer feature"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p5",
+                    "title": "Positional Encoding",
+                    "content": "Transformers do not process data sequentially, so positional encoding is used to give information about token positions.",
+                    "exampleCode": "# Positional encoding",
+                    "keyPoints": [
+                        "Adds sequence order",
+                        "Uses sine/cosine functions",
+                        "Important for context",
+                        "Used in all transformers"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p6",
+                    "title": "Encoder-Decoder Architecture",
+                    "content": "Transformers consist of encoders (process input) and decoders (generate output).",
+                    "exampleCode": "# Encoder-Decoder flow",
+                    "keyPoints": [
+                        "Encoder reads input",
+                        "Decoder generates output",
+                        "Used in translation",
+                        "Foundation of NLP models"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch4-p7",
+                    "title": "Applications of Transformers",
+                    "content": "Transformers are used in chatbots, translation, summarization, and code generation.",
+                    "exampleCode": "# NLP tasks",
+                    "keyPoints": [
+                        "ChatGPT",
+                        "Google Translate",
+                        "Code assistants",
+                        "Text summarization"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch5",
+            "title": "Large Language Models (LLMs)",
+            "description": "Deep understanding of LLMs, training process, and working of models like GPT",
+            "pages": [
+                {
+                    "id": "ch5-p1",
+                    "title": "What are Large Language Models?",
+                    "content": "LLMs are deep learning models trained on massive text datasets to understand and generate human-like language.",
+                    "exampleCode": "prompt = 'Explain recursion'",
+                    "keyPoints": [
+                        "Trained on large data",
+                        "Generates human-like text",
+                        "Understands context",
+                        "Used in chatbots"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p2",
+                    "title": "How LLMs are Trained",
+                    "content": "LLMs are trained using self-supervised learning where the model predicts the next word in a sentence.",
+                    "exampleCode": "# Next token prediction",
+                    "keyPoints": [
+                        "Self-supervised learning",
+                        "Next token prediction",
+                        "Massive datasets",
+                        "Long training time"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p3",
+                    "title": "Tokenization in LLMs",
+                    "content": "Text is broken into tokens before processing. Tokens can be words, subwords, or characters.",
+                    "exampleCode": "tokens = tokenizer(text)",
+                    "keyPoints": [
+                        "Text → tokens",
+                        "Improves processing",
+                        "Important step",
+                        "Used in embeddings"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p4",
+                    "title": "Context Window",
+                    "content": "Context window defines how much text the model can remember at once.",
+                    "exampleCode": "# Context length",
+                    "keyPoints": [
+                        "Limited memory",
+                        "Measured in tokens",
+                        "Important for prompts",
+                        "Impacts performance"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p5",
+                    "title": "Fine-Tuning vs Pretraining",
+                    "content": "Pretraining is done on large datasets, while fine-tuning adapts the model for specific tasks.",
+                    "exampleCode": "# Fine-tuning",
+                    "keyPoints": [
+                        "Pretraining general",
+                        "Fine-tuning specific",
+                        "Improves accuracy",
+                        "Domain adaptation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p6",
+                    "title": "Popular LLMs",
+                    "content": "Popular models include GPT, BERT, LLaMA, and Claude.",
+                    "exampleCode": "# Models",
+                    "keyPoints": [
+                        "GPT for generation",
+                        "BERT for understanding",
+                        "LLaMA open source",
+                        "Claude conversational AI"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch5-p7",
+                    "title": "Limitations of LLMs",
+                    "content": "LLMs may produce incorrect or biased outputs and require careful usage.",
+                    "exampleCode": "# No code",
+                    "keyPoints": [
+                        "Hallucination",
+                        "Bias",
+                        "Data dependency",
+                        "Compute heavy"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch6",
+            "title": "Tokenization & Embeddings",
+            "description": "Understanding how text is converted into numerical representations for AI models",
+            "pages": [
+                {
+                    "id": "ch6-p1",
+                    "title": "What is Tokenization?",
+                    "content": "Tokenization is the process of splitting text into smaller units called tokens.",
+                    "exampleCode": "tokens = text.split()",
+                    "keyPoints": [
+                        "Breaks text",
+                        "Preprocessing step",
+                        "Used in NLP",
+                        "Important for LLMs"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p2",
+                    "title": "Types of Tokenization",
+                    "content": "Tokenization types include word-level, character-level, and subword tokenization.",
+                    "exampleCode": "# Subword tokenization",
+                    "keyPoints": [
+                        "Word tokens",
+                        "Character tokens",
+                        "Subword tokens",
+                        "Used in GPT"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p3",
+                    "title": "What are Embeddings?",
+                    "content": "Embeddings convert text into numerical vectors that represent meaning.",
+                    "exampleCode": "embedding = [0.21, 0.45, 0.98]",
+                    "keyPoints": [
+                        "Vector representation",
+                        "Captures meaning",
+                        "Used in search",
+                        "Core AI concept"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p4",
+                    "title": "Word Embeddings vs Sentence Embeddings",
+                    "content": "Word embeddings represent individual words, while sentence embeddings represent full sentences.",
+                    "exampleCode": "# Embedding difference",
+                    "keyPoints": [
+                        "Word-level meaning",
+                        "Sentence-level context",
+                        "Used in NLP tasks",
+                        "Different use cases"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p5",
+                    "title": "Similarity Search",
+                    "content": "Embeddings allow similarity comparison using cosine similarity.",
+                    "exampleCode": "# Cosine similarity",
+                    "keyPoints": [
+                        "Measure similarity",
+                        "Used in search engines",
+                        "Important in RAG",
+                        "Vector comparison"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p6",
+                    "title": "Embedding Models",
+                    "content": "Models like OpenAI embeddings, Word2Vec, and Sentence Transformers generate embeddings.",
+                    "exampleCode": "# Embedding model",
+                    "keyPoints": [
+                        "Pretrained models",
+                        "High accuracy",
+                        "Used in apps",
+                        "Fast processing"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch6-p7",
+                    "title": "Applications of Embeddings",
+                    "content": "Embeddings are used in search engines, recommendation systems, chatbots, and semantic search.",
+                    "exampleCode": "# Application",
+                    "keyPoints": [
+                        "Search systems",
+                        "Chatbots",
+                        "Recommendations",
+                        "AI assistants"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch7",
+            "title": "Prompt Engineering (Advanced)",
+            "description": "Mastering advanced prompt design techniques to control and optimize LLM outputs",
+            "pages": [
+                {
+                    "id": "ch7-p1",
+                    "title": "What is Prompt Engineering?",
+                    "content": "Prompt engineering is the process of designing effective inputs to guide AI models toward desired outputs. It plays a critical role in improving accuracy and relevance.",
+                    "exampleCode": "prompt = 'Explain recursion with examples in Python'",
+                    "keyPoints": [
+                        "Controls AI behavior",
+                        "Improves output quality",
+                        "Essential for LLM usage",
+                        "Requires experimentation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p2",
+                    "title": "Zero-Shot Prompting",
+                    "content": "Zero-shot prompting involves giving instructions without any examples.",
+                    "exampleCode": "Translate this sentence to French: Hello",
+                    "keyPoints": [
+                        "No examples",
+                        "Relies on model knowledge",
+                        "Simple prompts",
+                        "Quick results"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p3",
+                    "title": "Few-Shot Prompting",
+                    "content": "Few-shot prompting includes examples to guide the model.",
+                    "exampleCode": "Q: 2+2\nA: 4\nQ: 3+3\nA:",
+                    "keyPoints": [
+                        "Uses examples",
+                        "Improves accuracy",
+                        "Guides model behavior",
+                        "Widely used"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p4",
+                    "title": "Chain-of-Thought Prompting",
+                    "content": "Encourages models to think step-by-step before answering.",
+                    "exampleCode": "Let's think step by step",
+                    "keyPoints": [
+                        "Improves reasoning",
+                        "Useful for complex problems",
+                        "Step-by-step logic",
+                        "Better explanations"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p5",
+                    "title": "Role-Based Prompting",
+                    "content": "Assigning roles to AI improves output quality.",
+                    "exampleCode": "You are a senior software engineer. Explain system design.",
+                    "keyPoints": [
+                        "Context-based output",
+                        "Improves relevance",
+                        "Simulates expertise",
+                        "Used in interviews"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p6",
+                    "title": "Prompt Structuring Techniques",
+                    "content": "Structuring prompts with instructions, constraints, and examples yields better results.",
+                    "exampleCode": "Instruction + Context + Output format",
+                    "keyPoints": [
+                        "Clear instructions",
+                        "Add constraints",
+                        "Define output format",
+                        "Improves consistency"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p7",
+                    "title": "Advanced Prompt Patterns",
+                    "content": "Patterns include ReAct, Tree-of-Thought, and multi-step reasoning prompts.",
+                    "exampleCode": "# ReAct pattern",
+                    "keyPoints": [
+                        "Reason + Act",
+                        "Multi-step thinking",
+                        "Improves decision making",
+                        "Used in agents"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch7-p8",
+                    "title": "Prompt Optimization",
+                    "content": "Iteratively refining prompts improves output performance.",
+                    "exampleCode": "# Prompt tuning",
+                    "keyPoints": [
+                        "Iterative improvement",
+                        "Test variations",
+                        "Evaluate outputs",
+                        "Optimize results"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch8",
+            "title": "Fine-Tuning Models",
+            "description": "Customizing large language models using domain-specific data",
+            "pages": [
+                {
+                    "id": "ch8-p1",
+                    "title": "What is Fine-Tuning?",
+                    "content": "Fine-tuning is the process of training a pre-trained model on specific datasets to adapt it for particular tasks.",
+                    "exampleCode": "# Fine-tuning loop",
+                    "keyPoints": [
+                        "Customizes model",
+                        "Uses domain data",
+                        "Improves accuracy",
+                        "Task-specific outputs"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p2",
+                    "title": "Pretraining vs Fine-Tuning",
+                    "content": "Pretraining uses large datasets, while fine-tuning uses smaller, task-specific datasets.",
+                    "exampleCode": "# Training stages",
+                    "keyPoints": [
+                        "Pretraining = general",
+                        "Fine-tuning = specific",
+                        "Improves performance",
+                        "Efficient learning"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p3",
+                    "title": "Supervised Fine-Tuning (SFT)",
+                    "content": "SFT involves training models using labeled input-output pairs.",
+                    "exampleCode": "# Input-output pairs",
+                    "keyPoints": [
+                        "Labeled data",
+                        "Controlled training",
+                        "Improves quality",
+                        "Common approach"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p4",
+                    "title": "Reinforcement Learning from Human Feedback (RLHF)",
+                    "content": "RLHF improves models using human feedback to rank outputs.",
+                    "exampleCode": "# Reward model",
+                    "keyPoints": [
+                        "Human feedback",
+                        "Reward signals",
+                        "Improves alignment",
+                        "Used in ChatGPT"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p5",
+                    "title": "Dataset Preparation",
+                    "content": "Preparing clean, high-quality datasets is crucial for fine-tuning success.",
+                    "exampleCode": "# Dataset cleaning",
+                    "keyPoints": [
+                        "Clean data",
+                        "Remove noise",
+                        "Structured format",
+                        "Quality matters"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p6",
+                    "title": "Training Process",
+                    "content": "Fine-tuning involves epochs, loss calculation, and optimization.",
+                    "exampleCode": "# Training loop",
+                    "keyPoints": [
+                        "Epochs",
+                        "Loss function",
+                        "Optimization",
+                        "Model improvement"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch8-p7",
+                    "title": "Challenges in Fine-Tuning",
+                    "content": "Fine-tuning can be expensive and requires large compute resources.",
+                    "exampleCode": "# GPU usage",
+                    "keyPoints": [
+                        "High cost",
+                        "Requires GPUs",
+                        "Data dependency",
+                        "Risk of overfitting"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch9",
+            "title": "LoRA & PEFT (Efficient Fine-Tuning)",
+            "description": "Efficient techniques for fine-tuning large models with minimal resources",
+            "pages": [
+                {
+                    "id": "ch9-p1",
+                    "title": "What is PEFT?",
+                    "content": "Parameter Efficient Fine-Tuning (PEFT) reduces the number of trainable parameters, making fine-tuning more efficient.",
+                    "exampleCode": "# PEFT concept",
+                    "keyPoints": [
+                        "Less parameters",
+                        "Faster training",
+                        "Lower cost",
+                        "Efficient models"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p2",
+                    "title": "Introduction to LoRA",
+                    "content": "LoRA (Low-Rank Adaptation) modifies only a small subset of parameters instead of the full model.",
+                    "exampleCode": "# LoRA adaptation",
+                    "keyPoints": [
+                        "Low-rank updates",
+                        "Efficient tuning",
+                        "Widely used",
+                        "Low compute cost"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p3",
+                    "title": "How LoRA Works",
+                    "content": "LoRA injects trainable low-rank matrices into the model layers.",
+                    "exampleCode": "# Matrix decomposition",
+                    "keyPoints": [
+                        "Matrix decomposition",
+                        "Adds small layers",
+                        "Keeps base model fixed",
+                        "Efficient training"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p4",
+                    "title": "Advantages of LoRA",
+                    "content": "LoRA reduces training cost and memory usage significantly.",
+                    "exampleCode": "# Benefits",
+                    "keyPoints": [
+                        "Low memory usage",
+                        "Faster training",
+                        "Scalable",
+                        "Cost-effective"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p5",
+                    "title": "Other PEFT Techniques",
+                    "content": "Other techniques include adapters, prefix tuning, and prompt tuning.",
+                    "exampleCode": "# Adapter concept",
+                    "keyPoints": [
+                        "Adapters",
+                        "Prefix tuning",
+                        "Prompt tuning",
+                        "Flexible approaches"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p6",
+                    "title": "When to Use LoRA vs Fine-Tuning",
+                    "content": "LoRA is preferred when resources are limited, while full fine-tuning is used for maximum accuracy.",
+                    "exampleCode": "# Comparison",
+                    "keyPoints": [
+                        "LoRA = efficient",
+                        "Fine-tuning = accurate",
+                        "Choose based on use case",
+                        "Cost vs performance"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch9-p7",
+                    "title": "Real-World Use Cases",
+                    "content": "LoRA is used in chatbots, domain-specific assistants, and enterprise AI systems.",
+                    "exampleCode": "# Use case",
+                    "keyPoints": [
+                        "Chatbots",
+                        "Enterprise AI",
+                        "Custom assistants",
+                        "Scalable deployment"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch10",
+            "title": "Vector Databases & Semantic Search",
+            "description": "Understanding vector databases, embeddings storage, and semantic similarity search systems",
+            "pages": [
+                {
+                    "id": "ch10-p1",
+                    "title": "What is a Vector Database?",
+                    "content": "A vector database stores data in the form of embeddings (numerical vectors) instead of traditional rows and columns. It is optimized for similarity search.",
+                    "exampleCode": "# Store embedding\nvector_db.insert(embedding)",
+                    "keyPoints": [
+                        "Stores embeddings",
+                        "Optimized for search",
+                        "Used in AI systems",
+                        "Faster than traditional DB for similarity"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p2",
+                    "title": "Traditional DB vs Vector DB",
+                    "content": "Traditional databases use exact matching, while vector databases use similarity matching.",
+                    "exampleCode": "# SQL vs vector search",
+                    "keyPoints": [
+                        "SQL uses exact match",
+                        "Vector DB uses similarity",
+                        "Better for AI",
+                        "Handles unstructured data"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p3",
+                    "title": "Embeddings Storage",
+                    "content": "Embeddings are stored as high-dimensional vectors that represent semantic meaning.",
+                    "exampleCode": "embedding = [0.23, 0.67, 0.91]",
+                    "keyPoints": [
+                        "High-dimensional vectors",
+                        "Capture meaning",
+                        "Used for search",
+                        "Efficient storage"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p4",
+                    "title": "Similarity Search",
+                    "content": "Similarity search finds vectors closest to the query using metrics like cosine similarity.",
+                    "exampleCode": "# Cosine similarity",
+                    "keyPoints": [
+                        "Find similar data",
+                        "Uses cosine similarity",
+                        "Core of AI search",
+                        "Used in RAG"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p5",
+                    "title": "Popular Vector Databases",
+                    "content": "Popular vector databases include Pinecone, Weaviate, FAISS, and Milvus.",
+                    "exampleCode": "# Pinecone example",
+                    "keyPoints": [
+                        "Pinecone cloud DB",
+                        "FAISS local search",
+                        "Milvus scalable",
+                        "Weaviate flexible"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p6",
+                    "title": "Indexing Techniques",
+                    "content": "Vector databases use indexing techniques like HNSW and IVF for fast retrieval.",
+                    "exampleCode": "# Indexing",
+                    "keyPoints": [
+                        "HNSW graph",
+                        "Fast retrieval",
+                        "Efficient search",
+                        "Scalable systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch10-p7",
+                    "title": "Use Cases of Vector Databases",
+                    "content": "Used in chatbots, recommendation systems, semantic search, and AI assistants.",
+                    "exampleCode": "# Use case",
+                    "keyPoints": [
+                        "Search engines",
+                        "Chatbots",
+                        "Recommendations",
+                        "AI assistants"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch11",
+            "title": "Retrieval-Augmented Generation (RAG)",
+            "description": "Combining vector search with LLMs to build accurate and context-aware AI systems",
+            "pages": [
+                {
+                    "id": "ch11-p1",
+                    "title": "What is RAG?",
+                    "content": "RAG combines retrieval systems with language models to generate responses based on external knowledge.",
+                    "exampleCode": "# RAG flow\nretrieve_docs()\nllm.generate()",
+                    "keyPoints": [
+                        "Retrieval + Generation",
+                        "Uses external data",
+                        "Improves accuracy",
+                        "Reduces hallucination"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p2",
+                    "title": "Why RAG is Important",
+                    "content": "RAG helps overcome LLM limitations by providing real-time data and context.",
+                    "exampleCode": "# External knowledge",
+                    "keyPoints": [
+                        "Real-time data",
+                        "More accurate",
+                        "Better context",
+                        "Enterprise usage"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p3",
+                    "title": "RAG Architecture",
+                    "content": "RAG consists of embedding model, vector DB, retriever, and LLM generator.",
+                    "exampleCode": "# Architecture",
+                    "keyPoints": [
+                        "Embedding layer",
+                        "Vector storage",
+                        "Retriever",
+                        "LLM output"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p4",
+                    "title": "RAG Pipeline Step-by-Step",
+                    "content": "Steps include document ingestion, embedding, storage, retrieval, and response generation.",
+                    "exampleCode": "# Pipeline",
+                    "keyPoints": [
+                        "Data ingestion",
+                        "Embedding creation",
+                        "Vector storage",
+                        "Query retrieval",
+                        "LLM response"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p5",
+                    "title": "Chunking Strategies",
+                    "content": "Large documents are split into smaller chunks for better retrieval.",
+                    "exampleCode": "# Chunking",
+                    "keyPoints": [
+                        "Improves retrieval",
+                        "Smaller chunks",
+                        "Better context",
+                        "Efficient search"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p6",
+                    "title": "RAG vs Fine-Tuning",
+                    "content": "RAG uses external data, while fine-tuning modifies the model itself.",
+                    "exampleCode": "# Comparison",
+                    "keyPoints": [
+                        "RAG = external data",
+                        "Fine-tuning = internal training",
+                        "Flexible vs static",
+                        "Different use cases"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch11-p7",
+                    "title": "Real-World Applications",
+                    "content": "Used in enterprise chatbots, document Q&A systems, and knowledge assistants.",
+                    "exampleCode": "# Chatbot system",
+                    "keyPoints": [
+                        "Customer support bots",
+                        "Enterprise search",
+                        "AI assistants",
+                        "Knowledge systems"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch12",
+            "title": "LangChain Framework",
+            "description": "Building production-ready LLM applications using LangChain",
+            "pages": [
+                {
+                    "id": "ch12-p1",
+                    "title": "Introduction to LangChain",
+                    "content": "LangChain is a framework for building applications powered by LLMs using chains, memory, and tools.",
+                    "exampleCode": "from langchain import OpenAI",
+                    "keyPoints": [
+                        "LLM framework",
+                        "Workflow automation",
+                        "Supports tools",
+                        "Used in production apps"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p2",
+                    "title": "Chains in LangChain",
+                    "content": "Chains combine multiple steps into a workflow.",
+                    "exampleCode": "chain.run()",
+                    "keyPoints": [
+                        "Sequential execution",
+                        "Reusable workflows",
+                        "Modular design",
+                        "Flexible pipelines"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p3",
+                    "title": "Prompt Templates",
+                    "content": "Templates standardize prompts for consistent output.",
+                    "exampleCode": "template = 'Explain {topic}'",
+                    "keyPoints": [
+                        "Reusable prompts",
+                        "Dynamic inputs",
+                        "Consistent output",
+                        "Easy integration"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p4",
+                    "title": "Memory in LangChain",
+                    "content": "Memory allows the model to retain context across conversations.",
+                    "exampleCode": "# Memory store",
+                    "keyPoints": [
+                        "Conversation history",
+                        "Context retention",
+                        "Improves UX",
+                        "Chat applications"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p5",
+                    "title": "Tools & Agents",
+                    "content": "Agents can use external tools like APIs, databases, and calculators.",
+                    "exampleCode": "# Agent usage",
+                    "keyPoints": [
+                        "Tool integration",
+                        "Autonomous behavior",
+                        "Decision making",
+                        "Advanced AI systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p6",
+                    "title": "LangChain with RAG",
+                    "content": "LangChain integrates easily with RAG pipelines.",
+                    "exampleCode": "# RAG chain",
+                    "keyPoints": [
+                        "Combine retrieval + LLM",
+                        "Improves accuracy",
+                        "Production ready",
+                        "Scalable"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch12-p7",
+                    "title": "Building Applications",
+                    "content": "LangChain is used to build chatbots, assistants, and automation systems.",
+                    "exampleCode": "# Chatbot app",
+                    "keyPoints": [
+                        "Full-stack apps",
+                        "Backend integration",
+                        "Real-time AI",
+                        "Production systems"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch13",
+            "title": "AI Agents & Autonomous Systems",
+            "description": "Understanding AI agents, decision-making systems, and autonomous workflows",
+            "pages": [
+                {
+                    "id": "ch13-p1",
+                    "title": "What are AI Agents?",
+                    "content": "AI agents are systems that can perceive their environment, make decisions, and take actions to achieve specific goals.",
+                    "exampleCode": "# Agent logic\nobserve()\ndecide()\nact()",
+                    "keyPoints": [
+                        "Autonomous decision-making",
+                        "Goal-oriented systems",
+                        "Interact with environment",
+                        "Used in automation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p2",
+                    "title": "Components of an Agent",
+                    "content": "Agents consist of perception, reasoning, memory, and action modules.",
+                    "exampleCode": "# Agent structure",
+                    "keyPoints": [
+                        "Perception",
+                        "Reasoning",
+                        "Memory",
+                        "Action execution"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p3",
+                    "title": "Types of AI Agents",
+                    "content": "Types include reactive agents, goal-based agents, and learning agents.",
+                    "exampleCode": "# Agent types",
+                    "keyPoints": [
+                        "Reactive agents",
+                        "Goal-based agents",
+                        "Learning agents",
+                        "Hybrid systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p4",
+                    "title": "Agents with Tools",
+                    "content": "Agents can use tools like APIs, databases, and search engines to perform tasks.",
+                    "exampleCode": "# Tool usage",
+                    "keyPoints": [
+                        "API integration",
+                        "External tools",
+                        "Dynamic actions",
+                        "Real-world applications"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p5",
+                    "title": "Planning & Reasoning",
+                    "content": "Agents use reasoning techniques like chain-of-thought and planning algorithms.",
+                    "exampleCode": "# Planning",
+                    "keyPoints": [
+                        "Step-by-step reasoning",
+                        "Decision trees",
+                        "Planning algorithms",
+                        "Improved accuracy"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p6",
+                    "title": "Multi-Agent Systems",
+                    "content": "Multiple agents collaborate to solve complex problems.",
+                    "exampleCode": "# Multi-agent",
+                    "keyPoints": [
+                        "Collaboration",
+                        "Distributed systems",
+                        "Task division",
+                        "Scalable solutions"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch13-p7",
+                    "title": "Real-World Applications",
+                    "content": "Agents are used in automation, robotics, customer support, and AI assistants.",
+                    "exampleCode": "# Use case",
+                    "keyPoints": [
+                        "Customer support bots",
+                        "Automation systems",
+                        "AI copilots",
+                        "Enterprise workflows"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch14",
+            "title": "Multimodal AI",
+            "description": "Understanding AI systems that process multiple data types like text, images, and audio",
+            "pages": [
+                {
+                    "id": "ch14-p1",
+                    "title": "What is Multimodal AI?",
+                    "content": "Multimodal AI refers to models that can process and generate multiple types of data such as text, images, audio, and video.",
+                    "exampleCode": "# Multimodal input",
+                    "keyPoints": [
+                        "Multiple data types",
+                        "Text + Image + Audio",
+                        "Advanced AI systems",
+                        "Improved understanding"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p2",
+                    "title": "Text + Image Models",
+                    "content": "Models like CLIP connect text and images for understanding and retrieval.",
+                    "exampleCode": "# CLIP example",
+                    "keyPoints": [
+                        "Text-image alignment",
+                        "Used in search",
+                        "Visual understanding",
+                        "Image retrieval"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p3",
+                    "title": "Image Generation Models",
+                    "content": "Models like DALL·E and Stable Diffusion generate images from text prompts.",
+                    "exampleCode": "# Image prompt",
+                    "keyPoints": [
+                        "Text-to-image",
+                        "Creative AI",
+                        "Used in design",
+                        "Marketing applications"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p4",
+                    "title": "Speech & Audio Models",
+                    "content": "AI models can convert speech to text and generate audio.",
+                    "exampleCode": "# Speech recognition",
+                    "keyPoints": [
+                        "Speech-to-text",
+                        "Text-to-speech",
+                        "Voice assistants",
+                        "Audio generation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p5",
+                    "title": "Video Generation",
+                    "content": "AI can generate and edit videos using generative models.",
+                    "exampleCode": "# Video AI",
+                    "keyPoints": [
+                        "AI video creation",
+                        "Editing automation",
+                        "Content generation",
+                        "Future of media"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p6",
+                    "title": "Fusion Techniques",
+                    "content": "Combining multiple modalities improves understanding and performance.",
+                    "exampleCode": "# Fusion",
+                    "keyPoints": [
+                        "Data fusion",
+                        "Better context",
+                        "Improved accuracy",
+                        "Cross-modal learning"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch14-p7",
+                    "title": "Applications of Multimodal AI",
+                    "content": "Used in autonomous vehicles, healthcare, content creation, and assistants.",
+                    "exampleCode": "# Use case",
+                    "keyPoints": [
+                        "Healthcare analysis",
+                        "Self-driving cars",
+                        "Content creation",
+                        "AI assistants"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch15",
+            "title": "Diffusion Models & Image Generation",
+            "description": "Understanding diffusion models and how AI generates high-quality images",
+            "pages": [
+                {
+                    "id": "ch15-p1",
+                    "title": "What are Diffusion Models?",
+                    "content": "Diffusion models generate data by gradually removing noise from random inputs.",
+                    "exampleCode": "# Diffusion concept",
+                    "keyPoints": [
+                        "Noise to image",
+                        "Stepwise process",
+                        "High-quality output",
+                        "Used in Stable Diffusion"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p2",
+                    "title": "Forward Diffusion Process",
+                    "content": "Noise is gradually added to data until it becomes random.",
+                    "exampleCode": "# Add noise",
+                    "keyPoints": [
+                        "Adds noise",
+                        "Destroys structure",
+                        "Controlled process",
+                        "Training phase"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p3",
+                    "title": "Reverse Diffusion Process",
+                    "content": "The model learns to remove noise step by step to reconstruct data.",
+                    "exampleCode": "# Remove noise",
+                    "keyPoints": [
+                        "Denoising process",
+                        "Reconstructs data",
+                        "Generates images",
+                        "Core generation step"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p4",
+                    "title": "Stable Diffusion",
+                    "content": "Stable Diffusion is a popular model for generating high-quality images efficiently.",
+                    "exampleCode": "# Stable diffusion",
+                    "keyPoints": [
+                        "Efficient model",
+                        "High-quality images",
+                        "Open-source",
+                        "Widely used"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p5",
+                    "title": "Latent Space",
+                    "content": "Diffusion models operate in latent space to improve efficiency.",
+                    "exampleCode": "# Latent representation",
+                    "keyPoints": [
+                        "Compressed space",
+                        "Efficient computation",
+                        "Faster generation",
+                        "Better scaling"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p6",
+                    "title": "Prompting for Image Generation",
+                    "content": "Well-crafted prompts improve image quality and control.",
+                    "exampleCode": "A futuristic city at sunset, ultra realistic",
+                    "keyPoints": [
+                        "Detailed prompts",
+                        "Style control",
+                        "Quality improvement",
+                        "Creative flexibility"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch15-p7",
+                    "title": "Applications of Diffusion Models",
+                    "content": "Used in design, art, gaming, marketing, and film production.",
+                    "exampleCode": "# Use case",
+                    "keyPoints": [
+                        "Digital art",
+                        "Game design",
+                        "Marketing visuals",
+                        "Film industry"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch16",
+            "title": "AI Safety & Ethics",
+            "description": "Understanding responsible AI usage, risks, and ethical considerations",
+            "pages": [
+                {
+                    "id": "ch16-p1",
+                    "title": "What is AI Safety?",
+                    "content": "AI safety ensures that AI systems behave as intended without causing harm.",
+                    "exampleCode": "# Safety rules",
+                    "keyPoints": [
+                        "Prevent harmful outputs",
+                        "Ensure reliability",
+                        "Control behavior",
+                        "Safe deployment"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch16-p2",
+                    "title": "Bias in AI Models",
+                    "content": "AI models can reflect biases present in training data.",
+                    "exampleCode": "# Bias example",
+                    "keyPoints": [
+                        "Data bias",
+                        "Fairness issues",
+                        "Ethical concern",
+                        "Needs mitigation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch16-p3",
+                    "title": "Hallucination in LLMs",
+                    "content": "LLMs may generate incorrect or misleading information.",
+                    "exampleCode": "# Hallucination",
+                    "keyPoints": [
+                        "Incorrect outputs",
+                        "Confidence issues",
+                        "Requires validation",
+                        "Common problem"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch16-p4",
+                    "title": "AI Alignment",
+                    "content": "Ensuring AI systems follow human values and intentions.",
+                    "exampleCode": "# Alignment",
+                    "keyPoints": [
+                        "Human-centered AI",
+                        "Value alignment",
+                        "Safe behavior",
+                        "Ethical systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch16-p5",
+                    "title": "Responsible AI Practices",
+                    "content": "Includes transparency, accountability, and fairness in AI systems.",
+                    "exampleCode": "# Best practices",
+                    "keyPoints": [
+                        "Transparency",
+                        "Accountability",
+                        "Fairness",
+                        "Privacy protection"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch16-p6",
+                    "title": "Security Risks in AI",
+                    "content": "AI systems can be vulnerable to attacks like prompt injection.",
+                    "exampleCode": "# Security",
+                    "keyPoints": [
+                        "Prompt injection",
+                        "Data leakage",
+                        "Model misuse",
+                        "Security threats"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch17",
+            "title": "Evaluation Metrics for AI",
+            "description": "Measuring performance and quality of AI models",
+            "pages": [
+                {
+                    "id": "ch17-p1",
+                    "title": "Why Evaluation Matters",
+                    "content": "Evaluation helps measure model performance and reliability.",
+                    "exampleCode": "# Evaluation",
+                    "keyPoints": [
+                        "Measure performance",
+                        "Ensure quality",
+                        "Track improvement",
+                        "Compare models"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch17-p2",
+                    "title": "Accuracy & Precision",
+                    "content": "Accuracy measures correctness, while precision measures relevance.",
+                    "exampleCode": "# Metrics",
+                    "keyPoints": [
+                        "Accuracy",
+                        "Precision",
+                        "Recall",
+                        "F1 score"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch17-p3",
+                    "title": "BLEU & ROUGE Scores",
+                    "content": "Used to evaluate text generation quality.",
+                    "exampleCode": "# BLEU score",
+                    "keyPoints": [
+                        "Text evaluation",
+                        "NLP metrics",
+                        "Similarity scores",
+                        "Used in translation"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch17-p4",
+                    "title": "Human Evaluation",
+                    "content": "Human feedback is critical for evaluating AI outputs.",
+                    "exampleCode": "# Human feedback",
+                    "keyPoints": [
+                        "Subjective evaluation",
+                        "Quality judgment",
+                        "Important for LLMs",
+                        "Used in RLHF"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch17-p5",
+                    "title": "Evaluation Challenges",
+                    "content": "Evaluating generative AI is complex due to subjective outputs.",
+                    "exampleCode": "# Challenges",
+                    "keyPoints": [
+                        "Subjectivity",
+                        "Multiple correct answers",
+                        "Hard to automate",
+                        "Requires benchmarks"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch18",
+            "title": "Deployment & Scaling of AI Systems",
+            "description": "Deploying AI models in production and scaling them efficiently",
+            "pages": [
+                {
+                    "id": "ch18-p1",
+                    "title": "Model Deployment Basics",
+                    "content": "Deploying AI models involves exposing them via APIs for real-world use.",
+                    "exampleCode": "app.listen(3000)",
+                    "keyPoints": [
+                        "API deployment",
+                        "Backend integration",
+                        "Real-time usage",
+                        "Production systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch18-p2",
+                    "title": "Cloud Deployment",
+                    "content": "Cloud platforms like AWS, Azure, and GCP are used for scaling AI models.",
+                    "exampleCode": "# Cloud setup",
+                    "keyPoints": [
+                        "Scalable infrastructure",
+                        "Cloud hosting",
+                        "Managed services",
+                        "High availability"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch18-p3",
+                    "title": "Model Optimization",
+                    "content": "Optimizing models reduces latency and cost.",
+                    "exampleCode": "# Optimization",
+                    "keyPoints": [
+                        "Reduce latency",
+                        "Cost efficiency",
+                        "Model compression",
+                        "Faster inference"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch18-p4",
+                    "title": "Scaling Strategies",
+                    "content": "Scaling involves load balancing and distributed systems.",
+                    "exampleCode": "# Scaling",
+                    "keyPoints": [
+                        "Load balancing",
+                        "Distributed systems",
+                        "Horizontal scaling",
+                        "Performance tuning"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch18-p5",
+                    "title": "Monitoring & Logging",
+                    "content": "Monitoring ensures reliability and tracks system performance.",
+                    "exampleCode": "# Logs",
+                    "keyPoints": [
+                        "Error tracking",
+                        "Performance monitoring",
+                        "Logging",
+                        "Alerts"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch19",
+            "title": "Real-World Projects",
+            "description": "Hands-on projects to apply generative AI concepts",
+            "pages": [
+                {
+                    "id": "ch19-p1",
+                    "title": "ChatGPT Clone",
+                    "content": "Build a chatbot using LLM APIs and a frontend interface.",
+                    "exampleCode": "// React + Node",
+                    "keyPoints": [
+                        "Frontend + backend",
+                        "API integration",
+                        "Real-time chat",
+                        "UI design"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch19-p2",
+                    "title": "RAG-Based Chatbot",
+                    "content": "Build a chatbot using vector database and retrieval system.",
+                    "exampleCode": "# RAG chatbot",
+                    "keyPoints": [
+                        "Vector DB",
+                        "Embeddings",
+                        "Retrieval system",
+                        "Context-aware responses"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch19-p3",
+                    "title": "AI Interview System",
+                    "content": "Build an AI system that asks questions and evaluates answers.",
+                    "exampleCode": "# Interview bot",
+                    "keyPoints": [
+                        "Question generation",
+                        "Evaluation",
+                        "Feedback system",
+                        "AI scoring"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch19-p4",
+                    "title": "Image Generator App",
+                    "content": "Build an app that generates images from text prompts.",
+                    "exampleCode": "# Image app",
+                    "keyPoints": [
+                        "Text-to-image",
+                        "Prompt design",
+                        "Creative AI",
+                        "UI integration"
+                    ],
+                    "quiz": []
+                }
+            ]
+        },
+        {
+            "id": "ch20",
+            "title": "Future of Generative AI",
+            "description": "Exploring trends, advancements, and future opportunities in AI",
+            "pages": [
+                {
+                    "id": "ch20-p1",
+                    "title": "What is AGI?",
+                    "content": "Artificial General Intelligence (AGI) refers to machines with human-level intelligence.",
+                    "exampleCode": "# AGI concept",
+                    "keyPoints": [
+                        "Human-level intelligence",
+                        "General problem solving",
+                        "Future goal",
+                        "Advanced AI"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch20-p2",
+                    "title": "Autonomous AI Systems",
+                    "content": "Future AI systems will operate independently with minimal human input.",
+                    "exampleCode": "# Autonomous AI",
+                    "keyPoints": [
+                        "Self-operating systems",
+                        "AI agents",
+                        "Automation",
+                        "Decision making"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch20-p3",
+                    "title": "AI in Industries",
+                    "content": "AI is transforming healthcare, finance, education, and more.",
+                    "exampleCode": "# Industry use",
+                    "keyPoints": [
+                        "Healthcare AI",
+                        "Finance automation",
+                        "EdTech",
+                        "Smart systems"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch20-p4",
+                    "title": "Challenges Ahead",
+                    "content": "Challenges include ethics, regulation, and control.",
+                    "exampleCode": "# Challenges",
+                    "keyPoints": [
+                        "Ethical issues",
+                        "Regulation",
+                        "Control risks",
+                        "Security"
+                    ],
+                    "quiz": []
+                },
+                {
+                    "id": "ch20-p5",
+                    "title": "Career Opportunities in AI",
+                    "content": "AI offers roles like AI Engineer, ML Engineer, Prompt Engineer, and Data Scientist.",
+                    "exampleCode": "# Careers",
+                    "keyPoints": [
+                        "AI Engineer",
+                        "ML Engineer",
+                        "Prompt Engineer",
+                        "High demand"
+                    ],
+                    "quiz": []
+                }
+            ]
+        }
+    ]
+}

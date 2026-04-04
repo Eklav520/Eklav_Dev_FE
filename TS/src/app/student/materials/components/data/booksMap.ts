@@ -7,6 +7,7 @@ import cBook from "./cBook.json"
 import { htmlBook } from "./htmlBook"
 import { csharpBook } from "./csharpBook"
 import dsaBook from "./dsaBook.json"
+import genAI from "./genAI.json"
 
 
 export const booksMap: Record<string, any> = {
@@ -19,4 +20,5 @@ export const booksMap: Record<string, any> = {
   html: htmlBook,
   csharp: csharpBook,
   dsa: dsaBook,
+  genAI: genAI,
 }

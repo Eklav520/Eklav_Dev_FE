@@ -19,6 +19,7 @@ import TutorLayout from '@/layouts/TutorLayout'
 import InstituteAdminLayout from '@/layouts/InstituteAdminLayout'
 
 import { useAuthContext } from '@/context/useAuthContext'
+import ProtectedRoute from './ProtectedRoute'
 
 const AppRouter = (props: RouteProps) => {
 
@@ -78,9 +79,11 @@ const AppRouter = (props: RouteProps) => {
           key={idx + route.name}
           path={route.path}
           element={
-            isAuthenticated
-              ? <InstructorLayout {...props}>{route.element}</InstructorLayout>
-              : redirectToLogin(route.path)
+            <ProtectedRoute allowedRoles={['tutor', 'admin']}>
+              <InstructorLayout {...props}>
+                {route.element}
+              </InstructorLayout>
+            </ProtectedRoute>
           }
         />
       ))}
@@ -91,9 +94,11 @@ const AppRouter = (props: RouteProps) => {
           key={idx + route.name}
           path={route.path}
           element={
-            isAuthenticated
-              ? <InstituteAdminLayout {...props}>{route.element}</InstituteAdminLayout>
-              : redirectToLogin(route.path)
+            <ProtectedRoute allowedRoles={['instituteAdmin']}>
+              <InstituteAdminLayout {...props}>
+                {route.element}
+              </InstituteAdminLayout>
+            </ProtectedRoute>
           }
         />
       ))}
@@ -104,9 +109,11 @@ const AppRouter = (props: RouteProps) => {
           key={idx + route.name}
           path={route.path}
           element={
-            isAuthenticated
-              ? <TutorLayout {...props}>{route.element}</TutorLayout>
-              : redirectToLogin(route.path || '/')
+            <ProtectedRoute allowedRoles={['tutor']}>
+              <TutorLayout {...props}>
+                {route.element}
+              </TutorLayout>
+            </ProtectedRoute>
           }
         />
       ))}
@@ -117,9 +124,11 @@ const AppRouter = (props: RouteProps) => {
           key={idx + route.name}
           path={route.path}
           element={
-            isAuthenticated
-              ? <StudentLayout {...props}>{route.element}</StudentLayout>
-              : redirectToLogin(route.path || '/')
+            <ProtectedRoute allowedRoles={['student']}>
+              <StudentLayout {...props}>
+                {route.element}
+              </StudentLayout>
+            </ProtectedRoute>
           }
         />
       ))}
@@ -130,9 +139,11 @@ const AppRouter = (props: RouteProps) => {
           key={idx + route.name}
           path={route.path}
           element={
-            isAuthenticated
-              ? <AdminLayout {...props}>{route.element}</AdminLayout>
-              : redirectToLogin(route.path || '/')
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminLayout {...props}>
+                {route.element}
+              </AdminLayout>
+            </ProtectedRoute>
           }
         />
       ))}
