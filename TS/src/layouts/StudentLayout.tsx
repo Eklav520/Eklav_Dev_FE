@@ -52,6 +52,14 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const isOrangeTheme = isHovering && isCollapsed
   const location = useLocation()
 
+  const hostname = window.location.hostname
+
+  // extract subdomain (coredatalabs from coredatalabs.eklav.in)
+  const subdomain = hostname.split(".")[0]
+
+  // main domain check
+  const isMainDomain = hostname === "eklav.in" || hostname === "www.eklav.in"
+
   useEffect(() => {
     const daysLeft = getRemainingTrialDays()
     if (daysLeft >= 0) {
@@ -273,7 +281,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
             </div>
 
             {/* ===== Menu Items ===== */}
-            <VerticalMenu isCollapsed={!isSidebarExpanded} />
+            <VerticalMenu
+              isCollapsed={!isSidebarExpanded}
+              isMainDomain={isMainDomain}
+            />
           </aside>
         )}
 
@@ -339,10 +350,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
 const VerticalMenu = ({
   isCollapsed,
-  onItemClick
+  onItemClick,
+  isMainDomain
 }: {
   isCollapsed: boolean
   onItemClick?: () => void
+  isMainDomain?: boolean
 }) => {
   const { pathname } = useLocation()
   const { user } = useAuthContext()
@@ -350,11 +363,18 @@ const VerticalMenu = ({
   const alwaysEnabledKeys = ['dashboard', 'subscriptions']
 
   const filteredMenu = useMemo(() => {
-    return STUDENT_MENU_ITEMS.map((item) => ({
+    let items = STUDENT_MENU_ITEMS
+
+    // ✅ Hide subscription for subdomains
+    if (!isMainDomain) {
+      items = items.filter(item => item.key !== "subscriptions")
+    }
+
+    return items.map((item) => ({
       ...item,
       isDisabled: !isApproved && !alwaysEnabledKeys.includes(item.key),
     }))
-  }, [isApproved])
+  }, [isApproved, isMainDomain])
 
   const tree = useMemo(() => filteredMenu, [filteredMenu])
 
