@@ -26,6 +26,9 @@ const About = () => {
 
   // 🔥 fallback (important)
   const tenantName = tenant?.name || "Eklav";
+  
+  // Check if current tenant is coredatalabs
+  const isCoreDataLabs = tenant?.name === "coredatalabs" || window?.location?.hostname === "coredatalabs.eklav.in";
 
   console.log("Tenant Info:", tenant);
 
@@ -128,6 +131,19 @@ const About = () => {
                   students move from{" "}
                   <strong className="text-orange">Campus to Career</strong>.
                 </span>
+                
+                {/* Conditionally render only for coredatalabs tenant */}
+                {isCoreDataLabs && (
+                  <>
+                    <br />
+                    <span className="ai-strategy-text">
+                      <strong className="text-orange">AI Strategy & Advanced Data Science Partner</strong><br />
+                      Supporting global AI companies with talent intelligence, model deployment, and scalable solutions for 12+ years.
+                    </span>
+                  </>
+                )}
+                
+                <br />
                 <span className="mission-text">
                   Our mission is to provide powerful learning tools, AI practice
                   systems, and real industry training — all at an affordable cost.
