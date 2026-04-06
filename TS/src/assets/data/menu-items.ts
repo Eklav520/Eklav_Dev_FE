@@ -445,14 +445,14 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'createTask',
         label: 'Create Task',
-        icon: BsBriefcase,
+        icon: BsPencilSquare,
         url: '/institute/freelencing',
         parentKey: 'instituteadmin',
       },
       {
         key: 'taskList',
         label: 'Task List',
-        icon: BsBriefcase,
+        icon: BsCardChecklist,
         url: '/institute/freelencing/tasks',
         parentKey: 'instituteadmin',
       },
