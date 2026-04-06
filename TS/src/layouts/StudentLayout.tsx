@@ -333,6 +333,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             <VerticalMenu
               isCollapsed={false}
               onItemClick={toggleOffCanvasMenu}
+              isMainDomain={isMainDomain}
             />
           </OffcanvasBody>
         </Offcanvas>
