@@ -438,6 +438,28 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   },
 
   {
+    key: 'freelencing',
+    label: 'Freelencing',
+    icon: BsBriefcase,
+    children: [
+      {
+        key: 'createTask',
+        label: 'Create Task',
+        icon: BsPencilSquare,
+        url: '/institute/freelencing',
+        parentKey: 'instituteadmin',
+      },
+      {
+        key: 'taskList',
+        label: 'Task List',
+        icon: BsCardChecklist,
+        url: '/institute/freelencing/tasks',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
+
+  {
     key: 'jobOpenings',
     label: 'Job Openings',
     icon: BsBriefcase,
@@ -592,6 +614,28 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       }
       /* { key: 'communicationSkills', label: 'Communication Skills', icon: FaRegCommentDots, url: '/student/course-resume', parentKey: 'courses' }, */
       /* { key: 'mockInterviewVideos', label: 'Mock Interview Videos', icon: FaRegFileVideo, url: '/student/bookmark', parentKey: 'courses' }, */
+    ],
+  },
+
+  {
+    key: 'freelancing',
+    label: 'Freelancing Tasks',
+    icon: FaBriefcase,
+    children: [
+      {
+        key: 'freelancingAvailableTasks',
+        label: 'Available Tasks',
+        icon: BsBriefcase,
+        url: '/student/freelancing/available-tasks',
+        parentKey: 'freelancing',
+      },
+      {
+        key: 'freelancingMyTasks',
+        label: 'My Tasks',
+        icon: BsFolderCheck,
+        url: '/student/freelancing/my-tasks',
+        parentKey: 'freelancing',
+      },
     ],
   },
 

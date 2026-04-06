@@ -116,8 +116,11 @@ const InstituteFinalAssessmentUpload = lazy(() => import('@/app/institute/final-
 const InstituteFinalAssessmentResults = lazy(() => import('@/app/institute/final-assessment-details/page'))
 const InstituteEditProfile = lazy(() => import('@/app/institute/edit-profile/page'))
 const AddStudent = lazy(() => import('@/app/institute/studentDetails/pages'))
+const FreelancingPage = lazy(() => import('@/app/institute/freelencing/pages'))
+const FreelancingTaskListPage = lazy(() => import('@/app/institute/freelencing/task-list/page'))
 
 //Student
+const StudentFreelancing = lazy(() => import('@/app/student/freelencing/pages'))
 const LeadershipBoard = lazy(() => import('@/app/student/leadership-board/page'))
 const StudentDashboard = lazy(() => import('@/app/student/dashboard/page'))
 const StudentChallengeList = lazy(() => import('@/app/student/code-challenge/page'))
@@ -709,6 +712,17 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     element: <AddStudent/>,
   },
 
+  {
+    path: '/institute/freelencing',
+    name: 'Freelencing',
+    element: <FreelancingPage/>,
+  },
+
+  {
+    path: '/institute/freelencing/tasks',
+    name: 'Freelencing Tasks',
+    element: <FreelancingTaskListPage/>,
+  },
 
   {
     path: '/institute/edit-profile',
@@ -743,6 +757,21 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/online-classes',
     name: 'OnlineClasses',
     element: <OnlineClasses />,
+  },
+  {
+    path: '/student/freelancing',
+    name: 'Freelancing',
+    element: <StudentFreelancing />,
+  },
+  {
+    path: '/student/freelancing/available-tasks',
+    name: 'Freelancing Available Tasks',
+    element: <StudentFreelancing />,
+  },
+  {
+    path: '/student/freelancing/my-tasks',
+    name: 'Freelancing My Tasks',
+    element: <StudentFreelancing />,
   },
   {
     path: '/student/available-courses',
