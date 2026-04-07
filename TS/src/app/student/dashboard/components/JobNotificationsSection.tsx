@@ -58,7 +58,19 @@ const JobNotificationsSection: React.FC = () => {
       
       if (!response.ok) throw new Error('Failed to fetch jobs')
       
-      const allJobs: Job[] = await response.json()
+      const data = await response.json()
+      
+      // Handle different response formats
+      let allJobs: Job[] = []
+      if (Array.isArray(data)) {
+        allJobs = data
+      } else if (data?.jobs && Array.isArray(data.jobs)) {
+        allJobs = data.jobs
+      } else if (data?.data && Array.isArray(data.data)) {
+        allJobs = data.data
+      } else if (data?.results && Array.isArray(data.results)) {
+        allJobs = data.results
+      }
       
       const tenDaysAgo = new Date()
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
@@ -75,6 +87,7 @@ const JobNotificationsSection: React.FC = () => {
     } catch (err: any) {
       console.error('Error fetching jobs:', err)
       setError(err.message)
+      setJobs([])
     } finally {
       setLoading(false)
     }

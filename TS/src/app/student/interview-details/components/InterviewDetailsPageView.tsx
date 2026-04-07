@@ -80,9 +80,23 @@ const InterviewDetailsPageView = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (!res.ok) throw new Error('Failed to fetch jobs')
-      setJobs(await res.json())
+      const data = await res.json()
+      
+      // Handle different response formats
+      if (Array.isArray(data)) {
+        setJobs(data)
+      } else if (data?.jobs && Array.isArray(data.jobs)) {
+        setJobs(data.jobs)
+      } else if (data?.data && Array.isArray(data.data)) {
+        setJobs(data.data)
+      } else if (data?.results && Array.isArray(data.results)) {
+        setJobs(data.results)
+      } else {
+        setJobs([])
+      }
     } catch (err: any) {
       setError(err.message)
+      setJobs([])
     } finally {
       setLoading(false)
     }
@@ -91,6 +105,10 @@ const InterviewDetailsPageView = () => {
   /* Filter logic */
   const filteredJobs = useMemo(() => {
     setCurrentPage(1)
+
+    if (!Array.isArray(jobs)) {
+      return []
+    }
 
     return jobs.filter(job => {
       const domainMatch = domain ? job.domain === domain : true
