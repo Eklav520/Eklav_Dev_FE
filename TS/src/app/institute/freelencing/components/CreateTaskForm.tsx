@@ -255,6 +255,7 @@ const CreateTask = () => {
       }
 
       setSubmitSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       setTimeout(() => {
         navigate("/institute/freelencing");
       }, 2000);
@@ -262,6 +263,7 @@ const CreateTask = () => {
       console.error("Error creating task:", error);
       const message = error instanceof Error ? error.message : "Failed to create task. Please try again.";
       setSubmitError(message);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setSubmitting(false);
     }
@@ -943,11 +945,11 @@ const CreateTask = () => {
         /* Toast Notifications */
         .toast-notification {
           position: fixed;
-          top: 1.25rem;
-          left: 1.25rem;
+          top: 1rem;
+          right: 1.5rem;
           z-index: 99999;
           max-width: 340px;
-          width: calc(100vw - 2.5rem);
+          width: calc(100vw - 3rem);
           border-radius: 12px;
           padding: 1rem 1rem 1rem 1.25rem;
           display: flex;
@@ -958,7 +960,7 @@ const CreateTask = () => {
         }
 
         @keyframes toastSlideIn {
-          from { opacity: 0; transform: translateX(-30px); }
+          from { opacity: 0; transform: translateX(30px); }
           to   { opacity: 1; transform: translateX(0); }
         }
 

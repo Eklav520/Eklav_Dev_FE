@@ -147,6 +147,10 @@ const TaskListManager = () => {
     Record<string, { adminReviewStatus: "pending" | "approved" | "rejected"; adminFeedback: string }>
   >({});
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<FreelancingTask | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   const sortedTasks = useMemo(
     () => [...tasks].sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()),
     [tasks]
@@ -441,6 +445,44 @@ const TaskListManager = () => {
     }
   };
 
+  const openDeleteModal = (task: FreelancingTask) => {
+    setTaskToDelete(task);
+    setShowDeleteModal(true);
+  };
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
+  };
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete?._id || !token) return;
+    setDeleting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
+    try {
+      const response = await fetch(`${tasksEndpoint}/${taskToDelete._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        let message = "Failed to delete task";
+        try {
+          const data = await response.json();
+          message = data?.message || data?.error || message;
+        } catch { /* keep fallback */ }
+        throw new Error(message);
+      }
+      setSuccessMessage(`Task "${taskToDelete.title}" deleted successfully.`);
+      closeDeleteModal();
+      fetchTasks();
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to delete task");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getCategoryLabel = (value: string) => {
     return CATEGORIES.find(c => c.value === value)?.label || value || "-";
   };
@@ -611,7 +653,15 @@ const TaskListManager = () => {
                             onClick={() => openSubmissionsModal(task)}
                             className="action-btn"
                           >
-                            📋 Submissions
+                            📋 View
+                          </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => openDeleteModal(task)}
+                            className="action-btn"
+                          >
+                            🗑️ Delete
                           </Button>
                         </div>
                       </div>
@@ -711,6 +761,33 @@ const TaskListManager = () => {
           )}
         </Card.Body>
       </Card>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={closeDeleteModal} centered size="sm" className="task-modal">
+        <Modal.Header closeButton>
+          <Modal.Title>
+            <span className="modal-icon">🗑️</span>
+            Delete Task
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p style={{ color: "#ccc", marginBottom: "0.5rem" }}>
+            Are you sure you want to delete:
+          </p>
+          <p style={{ color: "#fff", fontWeight: 600 }}>"{taskToDelete?.title}"</p>
+          <p style={{ color: "#ff6b6b", fontSize: "0.82rem", marginBottom: 0 }}>
+            ⚠️ This action cannot be undone.
+          </p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeDeleteModal} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={handleDeleteTask} disabled={deleting}>
+            {deleting ? <Spinner animation="border" size="sm" /> : "🗑️ Delete"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal show={showEditModal} onHide={closeEditModal} size="xl" centered className="task-modal">
@@ -1551,6 +1628,7 @@ const TaskListManager = () => {
 
         /* Empty State */
         .empty-state {
+          grid-column: 1 / -1;
           text-align: center;
           padding: 3rem;
         }
