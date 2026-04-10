@@ -1,5 +1,5 @@
-import React from 'react'
-import { Card, Button, Badge } from 'react-bootstrap'
+import React, { useMemo, useState } from 'react'
+import { Card, Button, Badge, Modal } from 'react-bootstrap'
 import {
   FaEye,
   FaMapMarkerAlt,
@@ -32,6 +32,12 @@ export interface Job {
 
   isRead: boolean   // ✅ NEW
   tag?: string
+  attachments?: Array<{
+    fileName?: string
+    fileUrl?: string
+    mimeType?: string
+    size?: number
+  }>
 }
 
 interface Props {
@@ -40,6 +46,8 @@ interface Props {
 }
 
 const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
+  const [previewOpen, setPreviewOpen] = useState(false)
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return isNaN(date.getTime())
@@ -75,6 +83,16 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
         .trim()
         .slice(0, 140)
       : ''
+
+  const firstImageAttachment = useMemo(() => {
+    const list = job.attachments || []
+    return list.find((att) => {
+      const mime = (att.mimeType || '').toLowerCase()
+      if (mime.startsWith('image/')) return true
+      const src = (att.fileUrl || att.fileName || '').toLowerCase()
+      return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'].some((ext) => src.includes(ext))
+    })
+  }, [job.attachments])
 
   return (
     <Card
@@ -209,46 +227,81 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
             </small>
           </div>
 
-          <div className="d-flex align-items-center gap-2">
-            {job.isRead && (
-              <Badge
-                pill
-                style={{
-                  backgroundColor: '#ff7a00',
-                  color: '#fff'
-                }}
+          <div className={styles.footerRight}>
+            {firstImageAttachment?.fileUrl && (
+              <button
+                type="button"
+                className={`${styles.previewThumbButton} ${styles.previewThumbFloating}`}
+                onClick={() => setPreviewOpen(true)}
+                title="Click to view image"
               >
-
-                Marked as Read
-              </Badge>
+                <img
+                  src={firstImageAttachment.fileUrl}
+                  alt={firstImageAttachment.fileName || 'Job attachment'}
+                  className={styles.previewThumbImage}
+                />
+              </button>
             )}
 
-            <Button
-              style={{
-                backgroundColor: 'transparent',
-                borderColor: '#ff7a00',
-                color: '#ff7a00'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#ff7a00'
-                e.currentTarget.style.color = '#fff'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent'
-                e.currentTarget.style.color = '#ff7a00'
-              }}
+            <div className="d-flex align-items-center gap-2">
+              {job.isRead && (
+                <Badge
+                  pill
+                  style={{
+                    backgroundColor: '#ff7a00',
+                    color: '#fff'
+                  }}
+                >
+                  Marked as Read
+                </Badge>
+              )}
 
-              size="sm"
-              onClick={() => onViewDetails(job)}
-              className={styles.detailsButton}
-            >
-              <FaEye size={12} className="me-1" />
-              Details
-            </Button>
+              <Button
+                style={{
+                  backgroundColor: 'transparent',
+                  borderColor: '#ff7a00',
+                  color: '#ff7a00'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff7a00'
+                  e.currentTarget.style.color = '#fff'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.color = '#ff7a00'
+                }}
+                size="sm"
+                onClick={() => onViewDetails(job)}
+                className={styles.detailsButton}
+              >
+                <FaEye size={12} className="me-1" />
+                Details
+              </Button>
+            </div>
           </div>
         </div>
 
       </Card.Body>
+
+      <Modal
+        show={previewOpen}
+        onHide={() => setPreviewOpen(false)}
+        centered
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>{firstImageAttachment?.fileName || 'Attachment Preview'}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#0f1115' }}>
+          {firstImageAttachment?.fileUrl && (
+            <img
+              src={firstImageAttachment.fileUrl}
+              alt={firstImageAttachment.fileName || 'Attachment preview'}
+              style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 8 }}
+            />
+          )}
+        </Modal.Body>
+      </Modal>
     </Card>
   )
 }

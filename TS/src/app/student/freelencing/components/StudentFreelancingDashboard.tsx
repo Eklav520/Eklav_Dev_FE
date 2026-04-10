@@ -103,7 +103,14 @@ const formatDate = (d?: string | null) => {
   const dt = new Date(d)
   return isNaN(dt.getTime())
     ? d
-    : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    : dt.toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
 }
 
 const isDeadlinePast = (d?: string | null) => {
