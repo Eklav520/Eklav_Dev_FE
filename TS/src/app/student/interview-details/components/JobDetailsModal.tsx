@@ -39,6 +39,12 @@ interface Job {
   expiryDate: string
   isRead: boolean
   tag?: string
+  attachments?: Array<{
+    fileName?: string
+    fileUrl?: string
+    mimeType?: string
+    size?: number
+  }>
 }
 
 interface Props {
@@ -61,6 +67,12 @@ const JobDetailsModal: React.FC<Props> = ({
   const [isRead, setIsRead] = useState(false)
   const [loading, setLoading] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const [previewAttachment, setPreviewAttachment] = useState<{
+    fileName?: string
+    fileUrl?: string
+    mimeType?: string
+    size?: number
+  } | null>(null)
 
   useEffect(() => {
     if (job) {
@@ -138,6 +150,15 @@ const JobDetailsModal: React.FC<Props> = ({
       default: return { icon: '🏢', color: '#6c757d' }
     }
   }
+
+  const isImageAttachment = (attachment: { fileName?: string; fileUrl?: string; mimeType?: string }) => {
+    if ((attachment.mimeType || '').startsWith('image/')) return true
+    const url = (attachment.fileUrl || attachment.fileName || '').toLowerCase()
+    return ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp'].some(ext => url.includes(ext))
+  }
+
+  const imageAttachments = (job.attachments || []).filter(isImageAttachment)
+  const otherAttachments = (job.attachments || []).filter(att => !isImageAttachment(att))
 
   const expiryInfo = getExpiryText()
   const ExpiryIcon = expiryInfo.icon
@@ -297,6 +318,60 @@ const JobDetailsModal: React.FC<Props> = ({
               </div>
             )}
 
+            {(job.attachments || []).length > 0 && (
+              <div className="attachments-section">
+                <h6 className="section-title">
+                  <FaEye className="section-icon" />
+                  Attachments
+                </h6>
+
+                {imageAttachments.length > 0 && (
+                  <>
+                    <p className="attachment-subtitle">Images</p>
+                    <div className="attachment-grid">
+                      {imageAttachments.map((attachment, index) => (
+                        <button
+                          key={`${attachment.fileUrl || attachment.fileName || 'img'}-${index}`}
+                          type="button"
+                          className="image-attachment-btn"
+                          onClick={() => setPreviewAttachment(attachment)}
+                        >
+                          <img
+                            src={attachment.fileUrl}
+                            alt={attachment.fileName || `Attachment ${index + 1}`}
+                            className="attachment-image"
+                          />
+                          <span className="attachment-caption">
+                            {attachment.fileName || `Image ${index + 1}`}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {otherAttachments.length > 0 && (
+                  <>
+                    <p className="attachment-subtitle mt-3">Files</p>
+                    <div className="file-attachment-list">
+                      {otherAttachments.map((attachment, index) => (
+                        <a
+                          key={`${attachment.fileUrl || attachment.fileName || 'file'}-${index}`}
+                          href={attachment.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="file-attachment-link"
+                        >
+                          <FaExternalLinkAlt className="me-2" />
+                          {attachment.fileName || `File ${index + 1}`}
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Expiry Alert */}
             {isExpired && (
               <div className="expiry-alert">
@@ -348,6 +423,52 @@ const JobDetailsModal: React.FC<Props> = ({
               </Button>
             )}
           </div>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={!!previewAttachment}
+        onHide={() => setPreviewAttachment(null)}
+        centered
+        size="lg"
+        className="image-preview-modal"
+      >
+        <Modal.Header closeButton className="image-preview-header">
+          <Modal.Title className="image-preview-title">Attachment Preview</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="image-preview-body">
+          {previewAttachment?.fileUrl && (
+            <img
+              src={previewAttachment.fileUrl}
+              alt={previewAttachment.fileName || 'Attachment preview'}
+              className="preview-image"
+            />
+          )}
+          <div className="preview-meta">
+            <div><strong>Name:</strong> {previewAttachment?.fileName || 'N/A'}</div>
+            <div><strong>Type:</strong> {previewAttachment?.mimeType || 'Image'}</div>
+            <div>
+              <strong>Size:</strong>{' '}
+              {typeof previewAttachment?.size === 'number'
+                ? `${(previewAttachment.size / 1024).toFixed(1)} KB`
+                : 'N/A'}
+            </div>
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="image-preview-footer">
+          {previewAttachment?.fileUrl && (
+            <Button
+              className="action-btn share-btn"
+              onClick={() => window.open(previewAttachment.fileUrl, '_blank')}
+            >
+              <FaExternalLinkAlt className="me-2" />
+              Open Original
+            </Button>
+          )}
+          <Button className="close-btn" onClick={() => setPreviewAttachment(null)}>
+            <FaTimes className="me-2" />
+            Close
+          </Button>
         </Modal.Footer>
       </Modal>
 
@@ -619,6 +740,119 @@ const JobDetailsModal: React.FC<Props> = ({
 
         .highlights-content li {
           margin-bottom: 0.5rem;
+        }
+
+        .attachments-section {
+          background: #000000;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          padding: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .attachment-subtitle {
+          color: #bdbdbd;
+          font-size: 0.85rem;
+          margin-bottom: 0.75rem;
+        }
+
+        .attachment-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 0.9rem;
+        }
+
+        .image-attachment-btn {
+          border: 1px solid #2d2d2d;
+          background: #0f0f0f;
+          border-radius: 10px;
+          padding: 0.45rem;
+          text-align: left;
+          transition: all 0.2s ease;
+          cursor: pointer;
+          color: #e5e5e5;
+        }
+
+        .image-attachment-btn:hover {
+          border-color: #ff7a00;
+          transform: translateY(-2px);
+        }
+
+        .attachment-image {
+          width: 100%;
+          height: 120px;
+          object-fit: cover;
+          border-radius: 8px;
+          display: block;
+          background: #1a1a1a;
+        }
+
+        .attachment-caption {
+          display: block;
+          margin-top: 0.5rem;
+          font-size: 0.78rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .file-attachment-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .file-attachment-link {
+          color: #ffb069;
+          text-decoration: none;
+          border: 1px solid #2d2d2d;
+          border-radius: 8px;
+          padding: 0.55rem 0.75rem;
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+        }
+
+        .file-attachment-link:hover {
+          border-color: #ff7a00;
+          color: #ff7a00;
+        }
+
+        .image-preview-modal .modal-content {
+          background: #0a0a0a;
+          border: 1px solid #2a2a2a;
+        }
+
+        .image-preview-header,
+        .image-preview-footer {
+          border-color: #1f1f1f;
+          background: #0a0a0a;
+        }
+
+        .image-preview-title {
+          color: #ff7a00;
+          font-size: 1rem;
+        }
+
+        .image-preview-body {
+          background: #000000;
+        }
+
+        .preview-image {
+          width: 100%;
+          max-height: 60vh;
+          object-fit: contain;
+          border-radius: 8px;
+          border: 1px solid #2a2a2a;
+          background: #0f0f0f;
+        }
+
+        .preview-meta {
+          margin-top: 0.9rem;
+          color: #d2d2d2;
+          display: grid;
+          gap: 0.35rem;
+          font-size: 0.84rem;
         }
 
         /* Expiry Alert */

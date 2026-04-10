@@ -43,6 +43,12 @@ export interface Job {
   isExpired: boolean
   isRead: boolean
   tag?: string
+  attachments?: Array<{
+    fileName?: string
+    fileUrl?: string
+    mimeType?: string
+    size?: number
+  }>
 }
 
 const PAGE_SIZE = 10

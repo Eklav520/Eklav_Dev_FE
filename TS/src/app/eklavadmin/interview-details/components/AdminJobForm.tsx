@@ -15,7 +15,9 @@ import {
   FaTimesCircle,
   FaClock,
   FaChartLine,
-  FaUsers
+  FaUsers,
+  FaFileUpload,
+  FaTimes
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -42,6 +44,7 @@ const AdminJobForm: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [attachments, setAttachments] = useState<File[]>([])
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -52,6 +55,16 @@ const AdminJobForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files ? Array.from(e.target.files) : []
+    setAttachments(prev => [...prev, ...selected])
+    e.target.value = ''
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -59,23 +72,40 @@ const AdminJobForm: React.FC = () => {
     setSuccessMessage('')
 
     try {
+      const payload = new FormData()
+      payload.append('title', formData.title)
+      payload.append('company', formData.company)
+      payload.append('experience', formData.experience)
+      payload.append('salary', formData.salary)
+      payload.append('location', formData.location)
+      payload.append('skills', formData.skills)
+      payload.append('highlights', formData.highlights)
+      payload.append('jobType', formData.jobType)
+      payload.append('domain', formData.domain)
+      payload.append('expiryDate', formData.expiryDate)
+      payload.append('logo', formData.logo)
+      payload.append('tag', formData.tag)
+
+      attachments.forEach(file => payload.append('attachments', file))
+
       const response = await fetch(`${baseURL}/jobs`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}` // ✅ VERY IMPORTANT
         },
-        body: JSON.stringify({
-          ...formData,
-          skills: formData.skills
-            .split(',')
-            .map(s => s.trim())
-            .filter(Boolean),
-          highlights: formData.highlights
-        })
+        body: payload
       })
 
-      if (!response.ok) throw new Error('Failed to create job')
+      if (!response.ok) {
+        let message = 'Failed to create job'
+        try {
+          const data = await response.json()
+          message = data?.message || data?.error || message
+        } catch {
+          // keep fallback
+        }
+        throw new Error(message)
+      }
 
       setSuccessMessage('Job posted successfully')
 
@@ -93,6 +123,7 @@ const AdminJobForm: React.FC = () => {
         logo: '',
         tag: ''
       })
+      setAttachments([])
     } catch (err: any) {
       setErrorMessage(err.message || 'Something went wrong')
     } finally {
@@ -324,6 +355,42 @@ const AdminJobForm: React.FC = () => {
             </small>
           </Form.Group>
 
+          <Form.Group className="form-group-custom">
+            <Form.Label className="form-label-custom">
+              <FaFileUpload className="label-icon" />
+              Attachments (Images/PDF)
+            </Form.Label>
+            <Form.Control
+              type="file"
+              multiple
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
+              onChange={handleAttachmentChange}
+              className="form-control-custom"
+            />
+            <small className="form-hint">
+              You can upload multiple images or PDF files.
+            </small>
+
+            {attachments.length > 0 && (
+              <div className="attachment-list">
+                {attachments.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="attachment-item">
+                    <span className="attachment-name">
+                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                    </span>
+                    <button
+                      type="button"
+                      className="remove-attachment-btn"
+                      onClick={() => removeAttachment(index)}
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Form.Group>
+
           <div className="form-actions">
             <Button
               type="submit"
@@ -493,6 +560,45 @@ const AdminJobForm: React.FC = () => {
           font-size: 0.75rem;
           margin-top: 0.5rem;
           display: block;
+        }
+
+        .attachment-list {
+          margin-top: 0.75rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .attachment-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          background: #111111;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          padding: 0.5rem 0.75rem;
+        }
+
+        .attachment-name {
+          color: #d9d9d9;
+          font-size: 0.82rem;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .remove-attachment-btn {
+          border: none;
+          background: transparent;
+          color: #ff7a00;
+          cursor: pointer;
+          padding: 0.2rem;
+          line-height: 1;
+        }
+
+        .remove-attachment-btn:hover {
+          color: #ff944d;
         }
 
         /* Quill Editor */
