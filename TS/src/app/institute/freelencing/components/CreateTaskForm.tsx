@@ -196,6 +196,12 @@ const CreateTask = () => {
     setCurrentStep(prev => prev - 1);
   };
 
+  const formatDateTime = (value: string) => {
+    if (!value) return "?";
+    const dt = new Date(value);
+    return Number.isNaN(dt.getTime()) ? "?" : dt.toLocaleString();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -400,12 +406,12 @@ const CreateTask = () => {
           <Form.Group className="mb-4">
             <Form.Label>Start Date</Form.Label>
             <Form.Control
-              type="date"
+              type="datetime-local"
               name="startDate"
               value={formData.startDate}
               onChange={handleChange}
             />
-            <Form.Text className="text-muted">When should the task begin? (optional)</Form.Text>
+            <Form.Text className="text-muted">When should the task begin? (date and time) (optional)</Form.Text>
           </Form.Group>
         </Col>
         
@@ -413,12 +419,12 @@ const CreateTask = () => {
           <Form.Group className="mb-4">
             <Form.Label>Deadline</Form.Label>
             <Form.Control
-              type="date"
+              type="datetime-local"
               name="deadline"
               value={formData.deadline}
               onChange={handleChange}
             />
-            <Form.Text className="text-muted">When is the task due? (optional)</Form.Text>
+            <Form.Text className="text-muted">When is the task due? (date and time) (optional)</Form.Text>
           </Form.Group>
         </Col>
       </Row>
@@ -543,7 +549,7 @@ const CreateTask = () => {
           <span className="summary-label">Timeline:</span>
           <span className="summary-value">
             {formData.startDate || formData.deadline ? (
-              `${formData.startDate ? new Date(formData.startDate).toLocaleDateString() : "?"} → ${formData.deadline ? new Date(formData.deadline).toLocaleDateString() : "?"}`
+              `${formData.startDate ? formatDateTime(formData.startDate) : "?"} → ${formData.deadline ? formatDateTime(formData.deadline) : "?"}`
             ) : "Not specified"}
           </span>
         </div>
