@@ -14,6 +14,7 @@ import GlowMic from './GlowMic'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { EditorView } from '@codemirror/view'
 
 type AnswerItem = {
   question: string
@@ -32,6 +33,174 @@ type AnswerItem = {
   exampleProgram?: { title: string; language: string; code: string } | null
   fixedExampleCode?: string
 }
+
+const isCodeLanguage = (language?: string) => {
+  const lang = (language || '').toLowerCase().trim()
+  if (!lang) return false
+  return !['text', 'plain', 'plaintext', 'natural-language', 'narrative'].includes(lang)
+}
+
+const TECH_KEYWORDS = [
+  'html', 'css', 'javascript', 'js', 'react', 'node', 'express',
+  'java', 'python', 'c++', 'coding', 'code', 'programming', 'sql',
+  'api', 'function', 'class', 'async', 'await', 'algorithm', 'database',
+  'sass', 'less', 'preprocessor'
+]
+
+const isLikelyTechnicalQuestion = (question: string, topic: string) => {
+  const source = `${question} ${topic}`.toLowerCase()
+  return TECH_KEYWORDS.some((k) => source.includes(k))
+}
+
+const summarizeNarrative = (text: string) => {
+  const cleaned = text.replace(/\s+/g, ' ').trim()
+  if (!cleaned) return 'Generated example from explanation'
+  const firstSentence = cleaned.split('.').find(Boolean)?.trim() || cleaned
+  return firstSentence.length > 90 ? `${firstSentence.slice(0, 87)}...` : firstSentence
+}
+
+const generateExampleCode = (question: string, narrative: string) => {
+  const q = `${question} ${narrative}`.toLowerCase()
+
+  if (q.includes('this') && q.includes('javascript')) {
+    return `const user = {
+  name: 'Asha',
+  greet() {
+    console.log('Hello, ' + this.name); // this -> user
+  },
+};
+
+user.greet();
+
+function regularFunction() {
+  console.log(this); // depends on call-site
+}
+
+const arrowFunction = () => {
+  console.log(this); // lexical this (inherits from parent scope)
+};`
+  }
+
+  if (q.includes('sass') || q.includes('less') || q.includes('preprocessor')) {
+    return `$primary-color: #d97706;
+$spacing: 12px;
+
+.card {
+  padding: $spacing;
+  border: 1px solid $primary-color;
+
+  .title {
+    color: $primary-color;
+  }
+}
+
+@mixin center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero {
+  @include center;
+}`
+  }
+
+  return `// Auto-generated code example from backend narrative.
+function exampleProgram() {
+  const concept = ${JSON.stringify(narrative || question)};
+  console.log('Concept:', concept);
+}
+
+exampleProgram();`
+}
+
+const normalizeExampleProgram = (
+  raw: any,
+  question: string,
+  topic: string
+): { title: string; language: string; code: string } | null => {
+  if (!raw) return null
+
+  const isTechnical = isLikelyTechnicalQuestion(question, topic)
+
+  if (typeof raw === 'string') {
+    if (!isTechnical) {
+      return {
+        title: 'Real-world example',
+        language: 'text',
+        code: raw,
+      }
+    }
+
+    return {
+      title: summarizeNarrative(raw),
+      language: 'javascript',
+      code: generateExampleCode(question, raw),
+    }
+  }
+
+  const language = (raw.language || '').toLowerCase()
+  const code = typeof raw.code === 'string' ? raw.code : ''
+  const title = typeof raw.title === 'string' ? raw.title : 'Example Program'
+
+  if (!isCodeLanguage(language)) {
+    if (!isTechnical) {
+      return {
+        title: title || 'Real-world example',
+        language: 'text',
+        code,
+      }
+    }
+
+    return {
+      title: `${title} • ${summarizeNarrative(code)}`,
+      language: 'javascript',
+      code: generateExampleCode(question, code),
+    }
+  }
+
+  return {
+    title,
+    language: raw.language || 'javascript',
+    code,
+  }
+}
+
+const formatCodeSnippet = (code?: string) => {
+  if (!code) return ''
+
+  const compact = code.replace(/\r\n/g, '\n').trim()
+  if (!compact) return ''
+
+  // Preserve already formatted code.
+  if (compact.includes('\n')) return compact
+
+  // Basic readable formatting for one-line snippets from API.
+  let formatted = compact
+    .replace(/;\s*(?=[A-Za-z_$])/g, ';\n')
+    .replace(/\{\s*/g, '{\n  ')
+    .replace(/\s*\}/g, '\n}')
+    .replace(/\}\s*(?=[A-Za-z_$])/g, '}\n')
+
+  // Simple indentation pass.
+  let indent = 0
+  formatted = formatted
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      if (line.startsWith('}')) indent = Math.max(indent - 1, 0)
+      const out = `${'  '.repeat(indent)}${line}`
+      if (line.endsWith('{')) indent += 1
+      return out
+    })
+    .join('\n')
+
+  return formatted
+}
+
+const normalizeCodeForCompare = (code?: string) =>
+  (code || '').replace(/\s+/g, ' ').trim().toLowerCase()
 interface Props {
   interviewId: string
   questions: string[]
@@ -752,13 +921,21 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setLoadingEvaluation(true)
     setRobotStatus('processing')
 
-    const payload = {
+    const technicalQuestion = isLikelyTechnicalQuestion(currentQuestion, title)
+
+    const payload: any = {
       topic: title,
       question: currentQuestion,
       answer: {
         theory: finalTheory,
         example: exampleCode,
       },
+    }
+
+    if (technicalQuestion) {
+      payload.exampleProgramRequired = true
+      payload.exampleProgramFormat = 'code'
+      payload.exampleProgramLanguage = 'javascript'
     }
 
     try {
@@ -772,6 +949,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       })
 
       const data = await res.json()
+      const normalizedExampleProgram = normalizeExampleProgram(data.exampleProgram, currentQuestion, title)
 
       const newAnswer: AnswerItem = {
         question: currentQuestion,
@@ -784,7 +962,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
         idealAnswer: data.idealAnswer,
         improvementTips: data.improvementTips || [],
         rating: data.rating?.total ?? 0,
-        exampleProgram: data.exampleProgram ?? null,
+        exampleProgram: normalizedExampleProgram,
         fixedExampleCode: data.fixedExampleCode || '',
       }
 
@@ -894,7 +1072,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
           idealAnswer: serverItem.idealAnswer ?? ans.idealAnswer,
           improvementTips: serverItem.improvementTips ?? ans.improvementTips,
           rating: serverItem.rating ?? ans.rating,
-          exampleProgram: serverItem.exampleProgram ?? ans.exampleProgram,
+          exampleProgram: normalizeExampleProgram(serverItem.exampleProgram ?? ans.exampleProgram, ans.question, title),
         }
       })
 
@@ -1078,6 +1256,13 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       currentExample.trim().length > 0 ||
       currentAnswer.trim().length > 0
     )
+
+  const formattedFixedExampleCode = formatCodeSnippet(currentFeedback?.fixedExampleCode || '')
+  const formattedExampleProgramCode = formatCodeSnippet(currentFeedback?.exampleProgram?.code || '')
+  const currentExampleProgramIsCode = isCodeLanguage(currentFeedback?.exampleProgram?.language)
+  const hasDistinctFixedExampleCode =
+    !!formattedFixedExampleCode &&
+    normalizeCodeForCompare(formattedFixedExampleCode) !== normalizeCodeForCompare(formattedExampleProgramCode)
 
 
   return (
@@ -1440,19 +1625,39 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 {item.exampleProgram && (
                   <>
                     <p><strong>Example Program:</strong></p>
-                    <pre
-                      style={{
-                        background: '#f5f5f5',
-                        padding: '12px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        overflowX: 'auto',
-                      }}
-                    >
-                      {typeof item.exampleProgram === 'string'
-                        ? item.exampleProgram
-                        : item.exampleProgram.code}
-                    </pre>
+                    {isCodeLanguage((item.exampleProgram as any)?.language) ? (
+                      <pre
+                        style={{
+                          background: '#f5f5f5',
+                          padding: '12px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          overflowX: 'auto',
+                        }}
+                      >
+                        {formatCodeSnippet(
+                          typeof item.exampleProgram === 'string'
+                            ? item.exampleProgram
+                            : item.exampleProgram.code
+                        )}
+                      </pre>
+                    ) : (
+                      <div
+                        style={{
+                          background: '#f5f5f5',
+                          padding: '12px',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          lineHeight: 1.6,
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {typeof item.exampleProgram === 'string'
+                          ? item.exampleProgram
+                          : item.exampleProgram.code}
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -1552,7 +1757,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
               )}
 
               {/* FIXED EXAMPLE CODE */}
-              {currentFeedback.fixedExampleCode && (
+              {hasDistinctFixedExampleCode && currentExampleProgramIsCode && (
                 <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <div className="d-flex align-items-center">
@@ -1563,10 +1768,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                   </div>
                   <div className="mt-2 rounded-2 overflow-hidden border border-dark">
                     <CodeMirror
-                      value={currentFeedback.fixedExampleCode}
+                      value={formattedFixedExampleCode}
                       height="180px"
                       theme={oneDark}
-                      extensions={[javascript()]}
+                      extensions={[javascript(), EditorView.lineWrapping]}
                       editable={false}
                       basicSetup={{
                         lineNumbers: true,
@@ -1594,18 +1799,33 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                     </Badge>
                   </div>
                   <div className="mt-2 rounded-2 overflow-hidden border border-dark">
-                    <CodeMirror
-                      value={currentFeedback.exampleProgram.code}
-                      height="240px"
-                      theme={oneDark}
-                      extensions={[javascript()]}
-                      editable={false}
-                      basicSetup={{
-                        lineNumbers: true,
-                        highlightActiveLineGutter: false,
-                        foldGutter: false,
-                      }}
-                    />
+                    {currentExampleProgramIsCode ? (
+                      <CodeMirror
+                        value={formattedExampleProgramCode}
+                        height="240px"
+                        theme={oneDark}
+                        extensions={[javascript(), EditorView.lineWrapping]}
+                        editable={false}
+                        basicSetup={{
+                          lineNumbers: true,
+                          highlightActiveLineGutter: false,
+                          foldGutter: false,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="p-3"
+                        style={{
+                          color: '#f8f9fa',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.7,
+                          fontSize: '15px',
+                        }}
+                      >
+                        {currentFeedback.exampleProgram.code}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
