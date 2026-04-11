@@ -7,6 +7,16 @@ import 'quill/dist/quill.snow.css'
 const AdminJobForm: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
+  const requiredFieldFallbacks = {
+    title: 'Untitled Job',
+    company: 'Confidential Company',
+    jobType: 'Fresher',
+    domain: 'Tech',
+    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0]
+  }
+
   const [formData, setFormData] = useState({
     title: '',
     company: '',
@@ -47,6 +57,11 @@ const AdminJobForm: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          title: formData.title.trim() || requiredFieldFallbacks.title,
+          company: formData.company.trim() || requiredFieldFallbacks.company,
+          jobType: formData.jobType || requiredFieldFallbacks.jobType,
+          domain: formData.domain || requiredFieldFallbacks.domain,
+          expiryDate: formData.expiryDate || requiredFieldFallbacks.expiryDate,
           skills: formData.skills
             .split(',')
             .map(s => s.trim())
@@ -96,7 +111,6 @@ const AdminJobForm: React.FC = () => {
               name="title"
               value={formData.title}
               onChange={handleChange}
-              required
             />
           </Form.Group>
 
@@ -106,7 +120,6 @@ const AdminJobForm: React.FC = () => {
               name="company"
               value={formData.company}
               onChange={handleChange}
-              required
             />
           </Form.Group>
 
@@ -116,7 +129,6 @@ const AdminJobForm: React.FC = () => {
               name="jobType"
               value={formData.jobType}
               onChange={handleChange}
-              required
             >
               <option value="">Select</option>
               <option>Internship</option>
@@ -131,7 +143,6 @@ const AdminJobForm: React.FC = () => {
               name="domain"
               value={formData.domain}
               onChange={handleChange}
-              required
             >
               <option value="">Select</option>
               <option>Tech</option>
@@ -176,7 +187,6 @@ const AdminJobForm: React.FC = () => {
               name="expiryDate"
               value={formData.expiryDate}
               onChange={handleChange}
-              required
             />
           </Form.Group>
 

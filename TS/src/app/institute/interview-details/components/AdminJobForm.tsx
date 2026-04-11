@@ -65,6 +65,16 @@ const AdminJobForm: React.FC = () => {
     setAttachments(prev => prev.filter((_, i) => i !== index))
   }
 
+  const requiredFieldFallbacks = {
+    title: 'Untitled Job',
+    company: 'Confidential Company',
+    jobType: 'Fresher',
+    domain: 'Tech',
+    expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split('T')[0]
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -73,16 +83,16 @@ const AdminJobForm: React.FC = () => {
 
     try {
       const payload = new FormData()
-      payload.append('title', formData.title)
-      payload.append('company', formData.company)
+      payload.append('title', formData.title.trim() || requiredFieldFallbacks.title)
+      payload.append('company', formData.company.trim() || requiredFieldFallbacks.company)
       payload.append('experience', formData.experience)
       payload.append('salary', formData.salary)
       payload.append('location', formData.location)
       payload.append('skills', formData.skills)
       payload.append('highlights', formData.highlights)
-      payload.append('jobType', formData.jobType)
-      payload.append('domain', formData.domain)
-      payload.append('expiryDate', formData.expiryDate)
+      payload.append('jobType', formData.jobType || requiredFieldFallbacks.jobType)
+      payload.append('domain', formData.domain || requiredFieldFallbacks.domain)
+      payload.append('expiryDate', formData.expiryDate || requiredFieldFallbacks.expiryDate)
       payload.append('logo', formData.logo)
       payload.append('tag', formData.tag)
 
@@ -179,7 +189,6 @@ const AdminJobForm: React.FC = () => {
                   onChange={handleChange}
                   placeholder="e.g., Senior React Developer"
                   className="form-control-custom"
-                  required
                 />
               </Form.Group>
 
@@ -194,7 +203,6 @@ const AdminJobForm: React.FC = () => {
                   onChange={handleChange}
                   placeholder="Company name"
                   className="form-control-custom"
-                  required
                 />
               </Form.Group>
 
@@ -208,7 +216,6 @@ const AdminJobForm: React.FC = () => {
                   value={formData.jobType}
                   onChange={handleChange}
                   className="form-select-custom"
-                  required
                 >
                   <option value="">Select job type</option>
                   <option>Internship</option>
@@ -227,7 +234,6 @@ const AdminJobForm: React.FC = () => {
                   value={formData.domain}
                   onChange={handleChange}
                   className="form-select-custom"
-                  required
                 >
                   <option value="">Select domain</option>
                   <option>Tech</option>
@@ -290,7 +296,6 @@ const AdminJobForm: React.FC = () => {
                   value={formData.expiryDate}
                   onChange={handleChange}
                   className="form-control-custom"
-                  required
                 />
               </Form.Group>
 
