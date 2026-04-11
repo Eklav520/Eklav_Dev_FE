@@ -82,38 +82,71 @@ const AdminJobForm: React.FC = () => {
     setSuccessMessage('')
 
     try {
-      const payload = new FormData()
-      payload.append('title', formData.title.trim() || requiredFieldFallbacks.title)
-      payload.append('company', formData.company.trim() || requiredFieldFallbacks.company)
-      payload.append('experience', formData.experience)
-      payload.append('salary', formData.salary)
-      payload.append('location', formData.location)
-      payload.append('skills', formData.skills)
-      payload.append('highlights', formData.highlights)
-      payload.append('jobType', formData.jobType || requiredFieldFallbacks.jobType)
-      payload.append('domain', formData.domain || requiredFieldFallbacks.domain)
-      payload.append('expiryDate', formData.expiryDate || requiredFieldFallbacks.expiryDate)
-      payload.append('logo', formData.logo)
-      payload.append('tag', formData.tag)
+      const jobPayload = {
+        title: formData.title.trim() || requiredFieldFallbacks.title,
+        company: formData.company.trim() || requiredFieldFallbacks.company,
+        experience: formData.experience,
+        salary: formData.salary,
+        location: formData.location,
+        skills: formData.skills,
+        highlights: formData.highlights,
+        jobType: formData.jobType || requiredFieldFallbacks.jobType,
+        domain: formData.domain || requiredFieldFallbacks.domain,
+        expiryDate: formData.expiryDate || requiredFieldFallbacks.expiryDate,
+        logo: formData.logo,
+        tag: formData.tag
+      }
 
+      const payload = new FormData()
+      Object.entries(jobPayload).forEach(([key, value]) => {
+        payload.append(key, value)
+      })
       attachments.forEach(file => payload.append('attachments', file))
 
-      const response = await fetch(`${baseURL}/jobs`, {
+      let response = await fetch(`${baseURL}/jobs`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}` // ✅ VERY IMPORTANT
+          Authorization: `Bearer ${token}`
         },
         body: payload
       })
 
+      let errorData: any = null
       if (!response.ok) {
-        let message = 'Failed to create job'
         try {
-          const data = await response.json()
-          message = data?.message || data?.error || message
+          errorData = await response.json()
         } catch {
-          // keep fallback
+          errorData = null
         }
+
+        const missingRequiredFields =
+          errorData?.error === 'Missing required fields' &&
+          Array.isArray(errorData?.required)
+
+        // Some production environments fail to parse multipart text fields.
+        // Retry with JSON so required fields are correctly parsed server-side.
+        if (missingRequiredFields) {
+          response = await fetch(`${baseURL}/jobs`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(jobPayload)
+          })
+
+          if (!response.ok) {
+            try {
+              errorData = await response.json()
+            } catch {
+              errorData = null
+            }
+          }
+        }
+      }
+
+      if (!response.ok) {
+        const message = errorData?.message || errorData?.error || 'Failed to create job'
         throw new Error(message)
       }
 
