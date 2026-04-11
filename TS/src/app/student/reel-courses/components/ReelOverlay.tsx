@@ -31,20 +31,41 @@ const ReelOverlay = ({
           marginBottom: 10,
         }}
       >
-        <img
-          src={
-            userAvatar ||
-            "https://ui-avatars.com/api/?name=" + username
-          }
-          alt={username}
+        {userAvatar ? (
+          <img
+            src={userAvatar}
+            alt={username}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              (e.currentTarget.nextSibling as HTMLElement)?.style.setProperty("display", "flex");
+            }}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              objectFit: "cover",
+              border: "2px solid #fff",
+            }}
+          />
+        ) : null}
+        <div
           style={{
             width: 36,
             height: 36,
             borderRadius: "50%",
-            objectFit: "cover",
+            background: "#ff6b00",
             border: "2px solid #fff",
+            display: userAvatar ? "none" : "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontWeight: 700,
+            fontSize: 16,
+            color: "#fff",
+            flexShrink: 0,
           }}
-        />
+        >
+          {username.charAt(0).toUpperCase()}
+        </div>
 
         <span
           style={{

@@ -183,7 +183,7 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
 
       <ReelOverlay
         username={profile?.fullName || "User"}
-        userAvatar={profile?.profileImage || ""}
+        userAvatar={profile?.profileImage ? `${baseURL}${profile.profileImage}` : ""}
         description={reel.description || reel.title}
         music="Original Audio"
       />
