@@ -236,7 +236,7 @@ const ReadingPractice: React.FC = () => {
                 <FaBookOpen className="me-2" />
                 Reading Challenge
                 <span className="progress-indicator">
-                  {String(currentQ + 1).padStart(3, '0')} / {String(prompt?.questions.length || 0).padStart(3, '0')}
+                  {String(currentQ + 1).padStart(3, '0')} / {String(prompt?.questions?.length || 0).padStart(3, '0')}
                 </span>
               </Card.Header>
 
