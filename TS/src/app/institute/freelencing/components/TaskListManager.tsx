@@ -116,6 +116,43 @@ const EXPERIENCE_LEVELS = [
   { value: "expert", label: "Expert (8+ years)", icon: "🏆" },
 ];
 
+// ── Conversation thread helpers ──────────────────────────────────────────────
+type TLMThreadMsg = { role: 'student' | 'admin'; text: string; ts: Date | null; idx: number }
+type TLMThreadChain = { student: TLMThreadMsg; admin: TLMThreadMsg | null }
+
+const tlmParseField = (str: string | undefined, role: 'student' | 'admin'): TLMThreadMsg[] => {
+  if (!str?.trim()) return []
+  const sep = role === 'student'
+    ? /===STUDENT\[(\d+)\]:([^=]*)===\n?/
+    : /===ADMIN\[(\d+)\]:([^=]*)===\n?/
+  const parts = str.split(new RegExp(sep.source, 'g'))
+  const result: TLMThreadMsg[] = []
+  if (parts[0].trim()) result.push({ role, text: parts[0].trim(), ts: null, idx: 0 })
+  for (let i = 1; i < parts.length; i += 3) {
+    const idx = parseInt(parts[i], 10)
+    const tsStr = parts[i + 1]
+    const text = (parts[i + 2] || '').trim()
+    if (!isNaN(idx) && text) result.push({ role, text, ts: new Date(tsStr), idx })
+  }
+  return result
+}
+
+const tlmBuildThread = (codeDesc?: string, adminFeedback?: string): TLMThreadChain[] => {
+  const students = tlmParseField(codeDesc, 'student')
+  const admins = tlmParseField(adminFeedback, 'admin')
+  const adminMap = new Map(admins.map((a) => [a.idx, a]))
+  return students.map((s) => ({
+    student: s,
+    admin: adminMap.get(s.idx) || null,
+  }))
+}
+
+const tlmFmtTs = (ts: Date | null) => {
+  if (!ts) return ''
+  return ts.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const TaskListManager = () => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -360,7 +397,7 @@ const TaskListManager = () => {
               : submission.adminReviewStatus === "rejected"
                 ? "rejected"
                 : "pending",
-          adminFeedback: submission.adminFeedback || "",
+            adminFeedback: "",
         };
       });
       setReviewDrafts(draftMap);
@@ -405,6 +442,21 @@ const TaskListManager = () => {
     setErrorMessage("");
     setSuccessMessage("");
 
+    // Build appended feedback: append new message to existing history
+    const submissionRecord = submissions.find((s) => s._id === submissionId)
+    const existingFeedback = submissionRecord?.adminFeedback || ''
+    const newEntry = draft.adminFeedback.trim()
+    let appendedFeedback = existingFeedback
+    if (newEntry) {
+      // Count existing admin messages to get the index (corresponds to a student message index)
+      const adminCount = (existingFeedback.match(/===ADMIN\[(\d+)\]:/g) || []).length
+      const ts = new Date().toISOString()
+      // Reply with same index as latest student message (which would be adminCount)
+      appendedFeedback = existingFeedback
+        ? `${existingFeedback}\n===ADMIN[${adminCount}]:${ts}===\n${newEntry}`
+        : `===ADMIN[0]:${ts}===\n${newEntry}`
+    }
+
     try {
       const response = await fetch(
         `${baseURL}/api/institute/freelancing/submissions/${submissionId}/review`,
@@ -416,7 +468,7 @@ const TaskListManager = () => {
           },
           body: JSON.stringify({
             adminReviewStatus: draft.adminReviewStatus,
-            adminFeedback: draft.adminFeedback,
+            adminFeedback: appendedFeedback,
           }),
         }
       );
@@ -1147,9 +1199,7 @@ const TaskListManager = () => {
                   adminReviewStatus: "pending" as const,
                   adminFeedback: "",
                 };
-                const isApprovedAndLocked = submission.adminReviewStatus === "approved";
-
-                return (
+                  return (
                   <Card key={submission._id} className="submission-card">
                     <Card.Body>
                       {/* Student Header */}
@@ -1183,15 +1233,41 @@ const TaskListManager = () => {
                         </div>
                       )}
 
-                      {submission.codeDescription && (
-                        <div className="submission-field">
-                          <div className="field-label">📝 Submission Notes</div>
-                          <div
-                            className="field-content rich-text"
-                            dangerouslySetInnerHTML={{ __html: submission.codeDescription }}
-                          />
-                        </div>
-                      )}
+                      {(() => {
+                        const chains = tlmBuildThread(submission.codeDescription, submission.adminFeedback)
+                        if (chains.length === 0) return null
+                        return (
+                          <div className="submission-field">
+                            <div className="field-label">💬 Conversation Thread</div>
+                            <div className="tlm-thread">
+                              {chains.map((chain, i) => (
+                                <div key={i} className="tlm-chain">
+                                  {/* Student message */}
+                                  <div className="tlm-bubble tlm-bubble-student">
+                                    <div className="tlm-bubble-header">
+                                      <span className="tlm-bubble-role">
+                                        🧑‍💻 {submission.studentId?.name || 'Student'}
+                                      </span>
+                                      {chain.student.ts && <span className="tlm-bubble-time">{tlmFmtTs(chain.student.ts)}</span>}
+                                    </div>
+                                    <p className="tlm-bubble-text">{chain.student.text}</p>
+                                  </div>
+                                  {/* Admin reply (if exists, indented) */}
+                                  {chain.admin && (
+                                    <div className="tlm-bubble tlm-bubble-admin tlm-admin-reply">
+                                      <div className="tlm-bubble-header">
+                                        <span className="tlm-bubble-role">👨‍💼 You (Admin)</span>
+                                        {chain.admin.ts && <span className="tlm-bubble-time">{tlmFmtTs(chain.admin.ts)}</span>}
+                                      </div>
+                                      <p className="tlm-bubble-text">{chain.admin.text}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      })()}
 
                       {submission.attachments && submission.attachments.length > 0 && (
                         <div className="submission-field">
@@ -1210,13 +1286,6 @@ const TaskListManager = () => {
                       <div className="review-section">
                         <div className="review-section-title">Admin Review</div>
                         
-                        {isApprovedAndLocked && submission.adminFeedback && (
-                          <div className="existing-feedback">
-                            <div className="feedback-label">Previous Feedback:</div>
-                            <div className="feedback-content">{submission.adminFeedback}</div>
-                          </div>
-                        )}
-
                         <div className="review-form">
                           <Row className="g-2">
                             <Col md={4}>
@@ -1231,7 +1300,6 @@ const TaskListManager = () => {
                                       e.target.value
                                     )
                                   }
-                                  disabled={isApprovedAndLocked}
                                   className="review-select"
                                 >
                                   <option value="pending">⏳ Pending (Needs Work)</option>
@@ -1242,7 +1310,7 @@ const TaskListManager = () => {
                             </Col>
                             <Col md={6}>
                               <Form.Group>
-                                <Form.Label>Feedback</Form.Label>
+                                  <Form.Label>New Feedback</Form.Label>
                                 <Form.Control
                                   as="textarea"
                                   rows={2}
@@ -1254,8 +1322,7 @@ const TaskListManager = () => {
                                       e.target.value
                                     )
                                   }
-                                  placeholder="Provide feedback for the student..."
-                                  disabled={isApprovedAndLocked}
+                                    placeholder="Add new feedback message..."
                                   className="review-feedback-input"
                                 />
                               </Form.Group>
@@ -1267,12 +1334,10 @@ const TaskListManager = () => {
                                   variant="orange"
                                   className="save-review-btn"
                                   onClick={() => handleSubmitReview(submission._id)}
-                                  disabled={submissionsSavingId === submission._id || isApprovedAndLocked}
+                                    disabled={submissionsSavingId === submission._id}
                                 >
                                   {submissionsSavingId === submission._id ? (
                                     <Spinner animation="border" size="sm" />
-                                  ) : isApprovedAndLocked ? (
-                                    "✓ Approved"
                                   ) : (
                                     "Save Review"
                                   )}
@@ -2102,6 +2167,89 @@ const TaskListManager = () => {
           color: #ffffff;
           transform: translateY(-2px);
         }
+
+          .tlm-thread {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .tlm-chain {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+          }
+
+          .tlm-bubble {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            max-width: 85%;
+          }
+
+          .tlm-bubble-student {
+            align-self: flex-start;
+            align-items: flex-start;
+          }
+
+          .tlm-bubble-admin {
+            align-self: flex-start;
+            align-items: flex-start;
+          }
+
+          .tlm-admin-reply {
+            margin-left: 2.5rem;
+            opacity: 0.95;
+          }
+
+          .tlm-bubble-header {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+          }
+
+          .tlm-bubble-role {
+            font-size: 0.72rem;
+            font-weight: 600;
+          }
+
+          .tlm-bubble-student .tlm-bubble-role {
+            color: #64b5f6;
+          }
+
+          .tlm-bubble-admin .tlm-bubble-role {
+            color: #ff9a5c;
+          }
+
+          .tlm-bubble-time {
+            font-size: 0.65rem;
+            color: #666666;
+          }
+
+          .tlm-bubble-text {
+            margin: 0;
+            padding: 0.65rem 0.85rem;
+            border-radius: 12px;
+            font-size: 0.84rem;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+          }
+
+          .tlm-bubble-student .tlm-bubble-text {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.22);
+            color: #c7e3fb;
+            border-bottom-left-radius: 4px;
+          }
+
+          .tlm-bubble-admin .tlm-bubble-text {
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.22);
+            color: #ffd1bd;
+            border-bottom-right-radius: 4px;
+          }
 
         /* Responsive */
         @media (max-width: 768px) {

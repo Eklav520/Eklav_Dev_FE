@@ -81,7 +81,7 @@ const JobNotificationsSection: React.FC = () => {
       })
       
       const shuffled = [...recentJobs].sort(() => 0.5 - Math.random())
-      const selectedJobs = shuffled.slice(0, Math.min(4, shuffled.length))
+      const selectedJobs = shuffled.slice(0, Math.min(3, shuffled.length))
       
       setJobs(selectedJobs)
     } catch (err: any) {
@@ -177,13 +177,24 @@ const JobNotificationsSection: React.FC = () => {
                     
                     <div className="job-content-dark">
                       <div className="job-title-section-dark">
-                        <h6 className="job-title-dark">{job.title}</h6>
-                        {isUrgent && (
-                          <span className="urgent-tag-dark">
-                            <TrendingUp size={10} />
-                            Urgent
-                          </span>
-                        )}
+                        <div className="job-title-left-dark">
+                          <h6 className="job-title-dark">{job.title}</h6>
+                          {isUrgent && (
+                            <span className="urgent-tag-dark">
+                              <TrendingUp size={10} />
+                              Urgent
+                            </span>
+                          )}
+                        </div>
+
+                        <Button
+                          variant="link"
+                          className="view-btn-dark"
+                          onClick={() => window.open('/student/interview-details', '_blank')}
+                        >
+                          <Eye size={16} />
+                          <span>View</span>
+                        </Button>
                       </div>
                       
                       <p className="company-name-dark">{job.company}</p>
@@ -211,14 +222,6 @@ const JobNotificationsSection: React.FC = () => {
                       </div>
                     </div>
                     
-                    <Button
-                      variant="link"
-                      className="view-btn-dark"
-                      onClick={() => window.open('/student/interview-details', '_blank')}
-                    >
-                      <Eye size={16} />
-                      <span>View</span>
-                    </Button>
                   </div>
                 </div>
               )
@@ -364,10 +367,18 @@ const JobNotificationsSection: React.FC = () => {
 
         .job-title-section-dark {
           display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .job-title-left-dark {
+          display: flex;
           align-items: center;
           gap: 0.5rem;
           flex-wrap: wrap;
-          margin-bottom: 0.25rem;
+          min-width: 0;
         }
 
         .job-title-dark {
@@ -439,7 +450,7 @@ const JobNotificationsSection: React.FC = () => {
           align-items: center;
           gap: 0.35rem;
           color: #ff7a00 !important;
-          padding: 0.4rem 0.7rem;
+          padding: 0.3rem 0.65rem;
           font-size: 0.75rem;
           font-weight: 500;
           text-decoration: none;
@@ -448,6 +459,7 @@ const JobNotificationsSection: React.FC = () => {
           white-space: nowrap;
           flex-shrink: 0;
           background: rgba(255, 122, 0, 0.05);
+          margin-left: auto;
         }
 
         .view-btn-dark:hover {
@@ -560,6 +572,15 @@ const JobNotificationsSection: React.FC = () => {
           
           .job-title-dark {
             font-size: 0.85rem;
+          }
+
+          .job-title-section-dark {
+            gap: 0.5rem;
+          }
+
+          .view-btn-dark {
+            padding: 0.25rem 0.55rem;
+            font-size: 0.7rem;
           }
         }
       `}</style>
