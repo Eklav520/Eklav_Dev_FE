@@ -921,15 +921,19 @@ const JobDetailsModal: React.FC<Props> = ({
         .modal-footer-custom {
           background: #000000;
           border-top: 1px solid #1f1f1f;
-          padding: 1rem 2rem;
+          padding: 0.9rem 1.5rem;
           position: sticky;
           bottom: 0;
           z-index: 10;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          flex-wrap: wrap;
-          gap: 1rem;
+          flex-wrap: nowrap;
+          gap: 0.75rem;
+        }
+
+        .modal-footer-custom > * {
+          margin: 0;
         }
 
         .expiry-info {
@@ -938,6 +942,8 @@ const JobDetailsModal: React.FC<Props> = ({
           gap: 0.5rem;
           font-size: 0.85rem;
           font-weight: 500;
+          flex: 1 1 auto;
+          min-width: 0;
         }
 
         .expiry-icon {
@@ -950,18 +956,32 @@ const JobDetailsModal: React.FC<Props> = ({
 
         .footer-actions {
           display: flex;
-          gap: 0.75rem;
+          gap: 0.6rem;
+          align-items: center;
+          justify-content: flex-end;
+          flex: 0 0 auto;
+          margin-left: auto;
+        }
+
+        .footer-actions .btn {
+          margin: 0 !important;
+          height: 44px;
+          min-width: 150px;
+          padding: 0 1rem;
+          font-size: 0.95rem;
+          line-height: 1;
+          white-space: nowrap;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .close-btn {
           background: #2c2c2c;
           border: none;
-          padding: 0.625rem 1.5rem;
           border-radius: 8px;
           color: #ffffff;
           transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
         }
 
         .close-btn:hover {
@@ -971,13 +991,10 @@ const JobDetailsModal: React.FC<Props> = ({
         .mark-read-btn {
           background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
           border: none;
-          padding: 0.625rem 1.5rem;
           border-radius: 8px;
           color: #000000;
           font-weight: 600;
           transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
         }
 
         .mark-read-btn:hover:not(:disabled) {
@@ -988,12 +1005,9 @@ const JobDetailsModal: React.FC<Props> = ({
         .read-btn {
           background: #28a745;
           border: none;
-          padding: 0.625rem 1.5rem;
           border-radius: 8px;
           color: #ffffff;
           font-weight: 600;
-          display: inline-flex;
-          align-items: center;
         }
 
         .spinner-small {
@@ -1061,16 +1075,20 @@ const JobDetailsModal: React.FC<Props> = ({
           .modal-footer-custom {
             flex-direction: column;
             padding: 1rem;
+            align-items: stretch;
           }
 
           .footer-actions {
             width: 100%;
             flex-direction: column;
+            gap: 0.5rem;
           }
 
           .close-btn, .mark-read-btn, .read-btn {
             width: 100%;
             justify-content: center;
+            min-width: 0;
+            height: 42px;
           }
 
           .expiry-info {
