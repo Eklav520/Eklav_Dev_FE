@@ -94,6 +94,20 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
     })
   }, [job.attachments])
 
+  const getFileExtension = (fileName?: string, fileUrl?: string) => {
+    const raw = fileName || fileUrl || ''
+    const withoutQuery = raw.split('?')[0]
+    const clean = decodeURIComponent(withoutQuery)
+    const filePart = clean.split('/').pop() || ''
+    const extMatch = filePart.match(/\.([a-zA-Z0-9]+)$/)
+    return extMatch ? extMatch[1].toLowerCase() : ''
+  }
+
+  const displayImageName = useMemo(() => {
+    if (!firstImageAttachment) return 'Attachment Preview'
+    return job.title
+  }, [firstImageAttachment, job.title])
+
   return (
     <Card
       className={`border-0 shadow-sm ${styles.jobCard}`}
@@ -290,13 +304,13 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
         size="lg"
       >
         <Modal.Header closeButton>
-          <Modal.Title>{firstImageAttachment?.fileName || 'Attachment Preview'}</Modal.Title>
+          <Modal.Title>{displayImageName}</Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ background: '#0f1115' }}>
           {firstImageAttachment?.fileUrl && (
             <img
               src={firstImageAttachment.fileUrl}
-              alt={firstImageAttachment.fileName || 'Attachment preview'}
+              alt={displayImageName}
               style={{ width: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 8 }}
             />
           )}

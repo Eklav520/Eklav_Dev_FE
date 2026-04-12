@@ -160,6 +160,25 @@ const JobDetailsModal: React.FC<Props> = ({
   const imageAttachments = (job.attachments || []).filter(isImageAttachment)
   const otherAttachments = (job.attachments || []).filter(att => !isImageAttachment(att))
 
+  const getFileExtension = (attachment: { fileName?: string; fileUrl?: string }) => {
+    const raw = attachment.fileName || attachment.fileUrl || ''
+    const withoutQuery = raw.split('?')[0]
+    const clean = decodeURIComponent(withoutQuery)
+    const filePart = clean.split('/').pop() || ''
+    const extMatch = filePart.match(/\.([a-zA-Z0-9]+)$/)
+    return extMatch ? extMatch[1].toLowerCase() : ''
+  }
+
+  const getAttachmentDisplayName = (
+    attachment: { fileName?: string; fileUrl?: string },
+    index: number,
+    type: 'image' | 'file'
+  ) => {
+    const extension = getFileExtension(attachment)
+    const base = `${job.title} ${type === 'image' ? `Image ${index + 1}` : `Attachment ${index + 1}`}`
+    return extension ? `${base}.${extension}` : base
+  }
+
   const expiryInfo = getExpiryText()
   const ExpiryIcon = expiryInfo.icon
   const isExpired = new Date(job.expiryDate) < new Date()
@@ -338,11 +357,11 @@ const JobDetailsModal: React.FC<Props> = ({
                         >
                           <img
                             src={attachment.fileUrl}
-                            alt={attachment.fileName || `Attachment ${index + 1}`}
+                            alt={getAttachmentDisplayName(attachment, index, 'image')}
                             className="attachment-image"
                           />
                           <span className="attachment-caption">
-                            {attachment.fileName || `Image ${index + 1}`}
+                            {getAttachmentDisplayName(attachment, index, 'image')}
                           </span>
                         </button>
                       ))}
@@ -363,7 +382,7 @@ const JobDetailsModal: React.FC<Props> = ({
                           className="file-attachment-link"
                         >
                           <FaExternalLinkAlt className="me-2" />
-                          {attachment.fileName || `File ${index + 1}`}
+                          {getAttachmentDisplayName(attachment, index, 'file')}
                         </a>
                       ))}
                     </div>
@@ -445,7 +464,22 @@ const JobDetailsModal: React.FC<Props> = ({
             />
           )}
           <div className="preview-meta">
-            <div><strong>Name:</strong> {previewAttachment?.fileName || 'N/A'}</div>
+            <div>
+              <strong>Name:</strong>{' '}
+              {previewAttachment
+                ? getAttachmentDisplayName(
+                    previewAttachment,
+                    imageAttachments.findIndex(
+                      (att) => (att.fileUrl || att.fileName) === (previewAttachment.fileUrl || previewAttachment.fileName)
+                    ) >= 0
+                      ? imageAttachments.findIndex(
+                          (att) => (att.fileUrl || att.fileName) === (previewAttachment.fileUrl || previewAttachment.fileName)
+                        )
+                      : 0,
+                    'image'
+                  )
+                : 'N/A'}
+            </div>
             <div><strong>Type:</strong> {previewAttachment?.mimeType || 'Image'}</div>
             <div>
               <strong>Size:</strong>{' '}
