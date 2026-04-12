@@ -18,6 +18,9 @@ interface ChatBoxProps {
   position?: 'bottom-right' | 'bottom-left';
 }
 
+const CHAT_BUTTON_SIZE = 54;
+const CHAT_ICON_SIZE = 19;
+
 const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
   const { user } = useAuthContext();
   const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -234,8 +237,8 @@ const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
   };
 
   const positionStyles = {
-    'bottom-right': { bottom: '20px', right: '20px' },
-    'bottom-left': { bottom: '20px', left: '20px' }
+    'bottom-right': { bottom: '14px', right: '14px' },
+    'bottom-left': { bottom: '14px', left: '14px' }
   };
 
   // Format time to 12-hour format with AM/PM
@@ -279,7 +282,7 @@ const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
       className="position-fixed"
       style={{
         ...positionStyles[position],
-        zIndex: 1060
+        zIndex: 1040
       }}
     >
       {/* Chat Widget */}
@@ -440,8 +443,8 @@ const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
         variant="primary"
         className="rounded-circle shadow-lg d-flex align-items-center justify-content-center"
         style={{
-          width: '64px',
-          height: '64px',
+          width: `${CHAT_BUTTON_SIZE}px`,
+          height: `${CHAT_BUTTON_SIZE}px`,
           position: 'relative',
           border: 'none',
           transition: 'all 0.3s ease'
@@ -454,7 +457,7 @@ const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
           e.currentTarget.style.transform = 'scale(1)';
         }}
       >
-        <BsChatDots size={22} />
+        <BsChatDots size={CHAT_ICON_SIZE} />
         {unreadCount > 0 && (
           <Badge
             bg="danger"
@@ -462,9 +465,9 @@ const ChatBox = ({ position = 'bottom-right' }: ChatBoxProps) => {
             style={{
               top: '-2px',
               right: '-2px',
-              fontSize: '0.7rem',
-              minWidth: '20px',
-              height: '20px',
+              fontSize: '0.65rem',
+              minWidth: '18px',
+              height: '18px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center'
