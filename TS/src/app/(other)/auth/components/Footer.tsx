@@ -109,6 +109,12 @@ const Footer = () => {
           margin-bottom: 40px;
         }
 
+        .footer-links > .footer-column {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
         .footer-column {
           margin-bottom: 30px;
         }
@@ -355,26 +361,27 @@ const Footer = () => {
         </div>
 
         {/* Footer Links */}
-        <Row className="footer-links">
+        <Row className="footer-links justify-content-center align-items-start g-4">
           <Col md={3} sm={6} className="footer-column">
-            <h4 className="footer-column-title">Navigation</h4>
+            <h4 className="footer-column-title">AI Based Courses</h4>
             <ul className="footer-links-list">
-              <li><Link to="#">Be Someone's Inspiration</Link></li>
-              <li><Link to="#">Courses</Link></li>
-              <li><Link to="#">Blog</Link></li>
-              <li><Link to="#">Gift a course</Link></li>
-              <li><Link to="#">Become Affiliate</Link></li>
-              <li><Link to="#">Need Help</Link></li>
+              <li><Link to="#">{tenantName} AI/ML</Link></li>
+              <li><Link to="#">{tenantName} Data Science</Link></li>
+              <li><Link to="#">{tenantName} Python</Link></li>
+              <li><Link to="#">{tenantName} Prompt Engineering</Link></li>
+              <li><Link to="#">{tenantName} GenAI Apps</Link></li>
             </ul>
           </Col>
 
           <Col md={3} sm={6} className="footer-column">
-            <h4 className="footer-column-title">Courses</h4>
+            <h4 className="footer-column-title">Domain Based Courses</h4>
             <ul className="footer-links-list">
               <li><Link to="#">{tenantName} DSA</Link></li>
               <li><Link to="#">{tenantName} React</Link></li>
               <li><Link to="#">{tenantName} Node</Link></li>
-              <li><Link to="#">{tenantName} JavaScript</Link></li>
+              <li><Link to="#">{tenantName} Full Stack</Link></li>
+              <li><Link to="#">{tenantName} DevOps</Link></li>
+              <li><Link to="#">{tenantName} Cybersecurity</Link></li>
             </ul>
           </Col>
 
@@ -395,7 +402,7 @@ const Footer = () => {
             <ul className="footer-links-list">
               <li>
                 <a
-                  href="https://instagram.com/eklav.in"
+                  href="https://www.instagram.com/eklav_in/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

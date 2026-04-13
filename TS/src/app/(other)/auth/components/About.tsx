@@ -18,10 +18,16 @@ import {
   FaBriefcase,
   FaCalendarCheck,
 } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import "./About.css";
 import useTenant from "@/utils/tenant";
 
-const About = () => {
+type AboutProps = {
+  onStartJourneyClick?: () => void;
+};
+
+const About = ({ onStartJourneyClick }: AboutProps) => {
+  const navigate = useNavigate();
   const tenant = useTenant();
 
   // 🔥 fallback (important)
@@ -191,10 +197,10 @@ const About = () => {
                     <p className="feature-description">
                       {feature.description}
                     </p>
-                    <div className="feature-link">
+                   {/*  <div className="feature-link">
                       <span>Explore</span>
                       <FaArrowRight className="arrow-icon" />
-                    </div>
+                    </div> */}
                   </Card.Body>
                 </Card>
               </Col>
@@ -215,7 +221,10 @@ const About = () => {
                 interviews, and gain real project experience — all within a
                 single platform.
               </p>
-              <button className="btn-mission">
+              <button
+                className="btn-mission"
+                onClick={() => (onStartJourneyClick ? onStartJourneyClick() : navigate('/auth/sign-in'))}
+              >
                 Start Your Journey
                 <FaArrowRight className="btn-icon" />
               </button>

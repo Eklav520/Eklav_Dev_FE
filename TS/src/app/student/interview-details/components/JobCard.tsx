@@ -43,9 +43,10 @@ export interface Job {
 interface Props {
   job: Job
   onViewDetails: (job: Job) => void
+  canViewDetails?: boolean
 }
 
-const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
+const JobCard: React.FC<Props> = ({ job, onViewDetails, canViewDetails = false }) => {
   const [previewOpen, setPreviewOpen] = useState(false)
 
   const formatDate = (dateString: string) => {
@@ -285,7 +286,9 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails }) => {
                   e.currentTarget.style.color = '#ff7a00'
                 }}
                 size="sm"
-                onClick={() => onViewDetails(job)}
+                onClick={() => canViewDetails && onViewDetails(job)}
+                disabled={!canViewDetails}
+                title={!canViewDetails ? 'Available only for approved subscription' : 'View job details'}
                 className={styles.detailsButton}
               >
                 <FaEye size={12} className="me-1" />

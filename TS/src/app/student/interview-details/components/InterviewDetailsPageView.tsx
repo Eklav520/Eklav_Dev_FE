@@ -57,6 +57,7 @@ const InterviewDetailsPageView = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
+  const isSubscriptionApproved = (user?.status || '').toLowerCase() === 'approved'
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -318,6 +319,7 @@ const InterviewDetailsPageView = () => {
                     key={job._id} 
                     job={job} 
                     onViewDetails={setSelectedJob} 
+                    canViewDetails={isSubscriptionApproved}
                   />
                 ))}
               </div>

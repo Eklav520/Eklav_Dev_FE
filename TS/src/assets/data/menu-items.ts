@@ -703,12 +703,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         icon: FaBriefcase, // 💼 jobs
         url: '/student/interview-details',
       },
-      /* {
+      {
         key: 'ATSchecker',
         label: 'ATS Checker',
-        icon: FaBriefcase, // 💼 jobs
+        icon: FaChartLine, // 📈 ATS analysis score
         url: '/student/ats-checker',
-      }, */
+      },
       /* {
         key: 'blog',
         label: 'Blog',
