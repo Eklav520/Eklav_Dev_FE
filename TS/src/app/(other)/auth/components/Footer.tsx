@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Col, Container, Row } from 'react-bootstrap'
-import { FaFacebook, FaInstagram, FaLinkedinIn, FaTwitter, FaApple, FaGooglePlay } from 'react-icons/fa'
+import { FaFacebook, FaInstagram, FaLinkedinIn, FaApple, FaGooglePlay } from 'react-icons/fa'
+import { FaXTwitter } from 'react-icons/fa6'
 import logoLight from '@/assets/images/logo_white.png'
 import useTenant from '@/utils/tenant'
 
@@ -338,7 +339,7 @@ const Footer = () => {
 
       <Container>
         {/* CTA Section */}
-        <div className="cta-section">
+        {/* <div className="cta-section">
           <h2 className="cta-title">Ready to Transform Your Career {tenantName}?</h2>
           <p className="cta-description">
             Explore our course bundles designed to take you from beginner to job-ready,
@@ -358,7 +359,7 @@ const Footer = () => {
               <span>GET IT ON Google Play</span>
             </a>
           </div>
-        </div>
+        </div> */}
 
         {/* Footer Links */}
         <Row className="footer-links justify-content-center align-items-start g-4">
@@ -506,7 +507,7 @@ const Footer = () => {
             <ul className="social-list">
               <li className="social-item">
                 <Link
-                  to="https://instagram.com"
+                  to="https://www.instagram.com/eklav_in"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="social-link"
@@ -534,7 +535,18 @@ const Footer = () => {
                   className="social-link"
                   aria-label="Follow us on Twitter"
                 >
-                  <FaTwitter />
+                  <FaXTwitter />
+                </Link>
+              </li>
+              <li className="social-item">
+                <Link
+                  to="https://www.linkedin.com/company/eklav/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="social-link"
+                  aria-label="Follow us on LinkedIn"
+                >
+                  <FaLinkedinIn />
                 </Link>
               </li>
             </ul>

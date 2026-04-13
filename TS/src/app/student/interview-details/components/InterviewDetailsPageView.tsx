@@ -57,7 +57,8 @@ const InterviewDetailsPageView = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
-  const isSubscriptionApproved = (user?.status || '').toLowerCase() === 'approved'
+  const normalizedUserStatus = (user?.status || '').trim().toLowerCase()
+  const isSubscriptionApproved = normalizedUserStatus === 'approved'
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -177,6 +178,12 @@ const InterviewDetailsPageView = () => {
             </Button>
           </div>
         </div>
+
+        {!!token && !isSubscriptionApproved && (
+          <Alert className="premium-access-alert">
+            <strong>Premium Access:</strong> Job details are visible only for approved subscribed students.
+          </Alert>
+        )}
 
         {/* Filters Section */}
         {showFilters && (
@@ -460,6 +467,14 @@ const InterviewDetailsPageView = () => {
           margin-left: 0.5rem;
           border-radius: 20px;
           padding: 0.25rem 0.5rem;
+        }
+
+        .premium-access-alert {
+          background: rgba(255, 122, 0, 0.12);
+          border: 1px solid #ff7a00;
+          color: #ffd7b0;
+          border-radius: 10px;
+          margin-bottom: 1.5rem;
         }
 
         /* Filters Section */
