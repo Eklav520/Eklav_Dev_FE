@@ -146,6 +146,7 @@ const Materials = lazy(() => import('@/app/student/materials/page'))
 const InterviewDetails = lazy(() => import('@/app/student/interview-details/page'))
 const Aptitude = lazy(() => import('@/app/student/Aptitude Preparation/page'))
 const Resume = lazy(() => import('@/app/student/resume-preparation/page'))
+const Atschecker = lazy(() => import('@/app/student/atsChecker/pages'))
 const StudentBlog = lazy(() => import('@/app/student/student-Blog/page'))
 const OnlineClasses = lazy(() => import('@/app/student/online-classes/page'))
 const AttendInterview = lazy(() => import('@/app/student/attend-interview/page'))
@@ -847,6 +848,11 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/resume',
     name: 'Resume Prepare',
     element: <Resume />,
+  },
+  {
+    path: '/student/ats-checker',
+    name: 'ATS Checker',
+    element: <Atschecker />,
   },
   {
     path: '/student/selfInterview',

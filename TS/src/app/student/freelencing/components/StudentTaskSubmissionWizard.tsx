@@ -348,20 +348,60 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
                 <h3 className="step-title">Submit Your Work</h3>
                 <p className="step-description">Provide your code repository link and upload necessary files</p>
 
-                <Form.Group className="form-group-modern">
-                  <Form.Label>Code Repository / Drive Link</Form.Label>
-                  <Form.Control
-                    type="url"
-                    value={codeLink}
-                    onChange={(e) => setCodeLink(e.target.value)}
-                    placeholder={submission?.codeLink || 'https://github.com/your-repo or https://drive.google.com/...'}
-                    className="form-control-lg"
-                    disabled={!isEditableStatus}
-                  />
-                  <Form.Text className="text-muted">
-                    Share the link to your code repository (GitHub, GitLab) or Google Drive folder
-                  </Form.Text>
-                </Form.Group>
+                <div className="submission-box">
+                  <div className="submission-box-title">Upload Files + Repository</div>
+                  <Form.Group className="form-group-modern mb-3">
+                    <Form.Label>Upload Files</Form.Label>
+                    <Form.Control
+                      type="file"
+                      multiple
+                      onChange={handleAddFiles}
+                      className="file-input-modern"
+                      accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.sql,.json"
+                      disabled={!isEditableStatus}
+                    />
+                    <Form.Text className="text-muted">
+                      Upload code zip/source files, screenshots, and docs (Max 10MB per file). You can select files multiple times.
+                    </Form.Text>
+                  </Form.Group>
+
+                  {files.length > 0 && (
+                    <div className="file-list mt-2 mb-3">
+                      <h6>Files to upload ({files.length}):</h6>
+                      {files.map((file, idx) => (
+                        <div key={idx} className="file-item">
+                          <span className="file-icon">📎</span>
+                          <span className="file-name">{file.name}</span>
+                          <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            className="ms-auto py-0 px-2"
+                            onClick={() => handleRemoveSelectedFile(idx)}
+                            disabled={!isEditableStatus}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <Form.Group className="form-group-modern mb-0">
+                    <Form.Label>Code Repository / Drive Link</Form.Label>
+                    <Form.Control
+                      type="url"
+                      value={codeLink}
+                      onChange={(e) => setCodeLink(e.target.value)}
+                      placeholder={submission?.codeLink || 'https://github.com/your-repo or https://drive.google.com/...'}
+                      className="form-control-lg"
+                      disabled={!isEditableStatus}
+                    />
+                    <Form.Text className="text-muted">
+                      Share the link to your code repository (GitHub, GitLab) or Google Drive folder
+                    </Form.Text>
+                  </Form.Group>
+                </div>
 
                 <Form.Group className="form-group-modern">
                   <Form.Label>Submission Notes</Form.Label>
@@ -376,43 +416,6 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
                     />
                   </div>
                 </Form.Group>
-
-                <Form.Group className="form-group-modern">
-                  <Form.Label>Upload Files</Form.Label>
-                  <Form.Control
-                    type="file"
-                    multiple
-                    onChange={handleAddFiles}
-                    className="file-input-modern"
-                    accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg"
-                    disabled={!isEditableStatus}
-                  />
-                  <Form.Text className="text-muted">
-                    Upload code zip, screenshots, documentation (Max 10MB per file). You can select files multiple times.
-                  </Form.Text>
-                </Form.Group>
-
-                {files.length > 0 && (
-                  <div className="file-list">
-                    <h6>Files to upload ({files.length}):</h6>
-                    {files.map((file, idx) => (
-                      <div key={idx} className="file-item">
-                        <span className="file-icon">📎</span>
-                        <span className="file-name">{file.name}</span>
-                        <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
-                        <Button
-                          size="sm"
-                          variant="outline-danger"
-                          className="ms-auto py-0 px-2"
-                          onClick={() => handleRemoveSelectedFile(idx)}
-                          disabled={!isEditableStatus}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
 
                 <Form.Check
                   type="checkbox"
@@ -440,9 +443,9 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
 
                 <div className="action-buttons">
                   {isEditableStatus ? (
-                    <Button 
-                      className="btn-submit" 
-                      onClick={handleSubmitStep2} 
+                    <Button
+                      className="btn-submit"
+                      onClick={handleSubmitStep2}
                       disabled={submitting}
                     >
                       {submitting ? (
@@ -548,16 +551,16 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
           Close
         </Button>
         {activeStep > 1 && (
-          <Button 
-            variant="outline-orange" 
+          <Button
+            variant="outline-orange"
             onClick={() => setActiveStep((activeStep - 1) as 1 | 2 | 3)}
           >
             ← Back
           </Button>
         )}
         {activeStep < 3 && (
-          <Button 
-            className="btn-primary-custom" 
+          <Button
+            className="btn-primary-custom"
             onClick={() => {
               if (activeStep === 1) {
                 if (!isEditableStatus && canAccessStep3) {
@@ -882,6 +885,21 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
         .step-description {
           color: #888888;
           margin-bottom: 1.5rem;
+        }
+
+        .submission-box {
+          margin-bottom: 1rem;
+          padding: 1rem 1.1rem;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 107, 53, 0.24);
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(255, 107, 53, 0.03));
+        }
+
+        .submission-box-title {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: #ffb08f;
+          margin-bottom: 0.65rem;
         }
 
         .form-group-modern {
