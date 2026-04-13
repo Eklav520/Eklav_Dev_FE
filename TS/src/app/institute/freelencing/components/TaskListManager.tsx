@@ -400,6 +400,10 @@ const TaskListManager = () => {
 
     const draft = reviewDrafts[submissionId];
     if (!draft) return;
+    if (draft.adminReviewStatus === "pending") {
+      setErrorMessage("Please select Approved or Rejected before saving review.");
+      return;
+    }
 
     setSubmissionsSavingId(submissionId);
     setErrorMessage("");
@@ -1223,7 +1227,7 @@ const TaskListManager = () => {
                               <Form.Group>
                                 <Form.Label>Review Status</Form.Label>
                                 <Form.Select
-                                  value={draft.adminReviewStatus}
+                                  value={draft.adminReviewStatus === "pending" ? "" : draft.adminReviewStatus}
                                   onChange={(e) =>
                                     handleReviewDraftChange(
                                       submission._id,
@@ -1234,7 +1238,9 @@ const TaskListManager = () => {
                                   disabled={isApprovedAndLocked}
                                   className="review-select"
                                 >
-                                  <option value="pending">⏳ Pending (Needs Work)</option>
+                                  <option value="" disabled>
+                                    Select status
+                                  </option>
                                   <option value="approved">✅ Approved</option>
                                   <option value="rejected">❌ Rejected</option>
                                 </Form.Select>
@@ -1267,7 +1273,11 @@ const TaskListManager = () => {
                                   variant="orange"
                                   className="save-review-btn"
                                   onClick={() => handleSubmitReview(submission._id)}
-                                  disabled={submissionsSavingId === submission._id || isApprovedAndLocked}
+                                  disabled={
+                                    submissionsSavingId === submission._id ||
+                                    isApprovedAndLocked ||
+                                    draft.adminReviewStatus === "pending"
+                                  }
                                 >
                                   {submissionsSavingId === submission._id ? (
                                     <Spinner animation="border" size="sm" />

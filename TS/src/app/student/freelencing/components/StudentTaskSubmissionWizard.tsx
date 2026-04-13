@@ -69,40 +69,50 @@ const formatDate = (d?: string | null) => {
 }
 
 const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSubmitted }: Props) => {
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1)
-  const [submittedThisSession, setSubmittedThisSession] = useState(false)
+  const [activeStep, setActiveStep] = useState<1 | 2>(1)
   const [codeLink, setCodeLink] = useState('')
   const [codeDescription, setCodeDescription] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [replaceAttachments, setReplaceAttachments] = useState(false)
+  const [lockedByRecentSubmit, setLockedByRecentSubmit] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   const submission = task?.mySubmission
-  const canAccessStep3 = submission?.status === 'completed' || submittedThisSession
-  const isEditableStatus = (submission?.adminReviewStatus || 'pending') === 'pending'
+  const isReviewPending =
+    submission?.status === 'completed' && (!submission?.adminReviewStatus || submission.adminReviewStatus === 'pending')
+  const isEditableStatus =
+    !submission ||
+    submission.status !== 'completed' ||
+    submission.adminReviewStatus === 'rejected'
+  const isSubmissionLocked = isReviewPending || lockedByRecentSubmit
+  const canEditSubmission = isEditableStatus && !isSubmissionLocked
 
   useEffect(() => {
     if (show) {
       setActiveStep(1)
-      setSubmittedThisSession(false)
       setSuccess('')
       setError('')
+      setLockedByRecentSubmit(false)
     }
   }, [show, task?._id])
 
   useEffect(() => {
-    if (activeStep === 3 && !canAccessStep3) {
-      setActiveStep(2)
+    if (!submission) {
+      setLockedByRecentSubmit(false)
+      return
     }
-  }, [activeStep, canAccessStep3])
 
-  useEffect(() => {
-    if (activeStep === 2 && !isEditableStatus) {
-      setActiveStep(canAccessStep3 ? 3 : 1)
+    if (submission.adminReviewStatus === 'rejected') {
+      setLockedByRecentSubmit(false)
+      return
     }
-  }, [activeStep, isEditableStatus, canAccessStep3])
+
+    if (submission.status === 'completed') {
+      setLockedByRecentSubmit(true)
+    }
+  }, [submission?.status, submission?.adminReviewStatus])
 
   const adminLabel = useMemo(() => {
     const status = submission?.adminReviewStatus || 'pending'
@@ -120,6 +130,10 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
 
   const handleSubmitStep2 = async () => {
     if (!task?._id || !token) return
+    if (!canEditSubmission) {
+      setError('Submission is locked while waiting for admin review.')
+      return
+    }
 
     setSubmitting(true)
     setError('')
@@ -145,9 +159,9 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
         throw new Error(data?.error || 'Failed to upload submission')
       }
 
-      setSuccess('✅ Step 2 completed! Your work has been submitted to admin for review.')
-      setSubmittedThisSession(true)
-      setActiveStep(3)
+      setSuccess('✅ Submitted successfully! Your work is now with admin for review.')
+      setLockedByRecentSubmit(true)
+      setActiveStep(2)
       await onSubmitted()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to submit')
@@ -212,14 +226,9 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
                 <div className="step-label">Task Details</div>
               </div>
               <div className="step-line"></div>
-              <div className={`step ${activeStep === 2 ? 'active' : activeStep > 2 ? 'completed' : ''}`}>
+              <div className={`step ${activeStep === 2 ? 'active' : ''}`}>
                 <div className="step-circle">2</div>
-                <div className="step-label">Submit Work</div>
-              </div>
-              <div className="step-line"></div>
-              <div className={`step ${activeStep === 3 ? 'active' : ''}`}>
-                <div className="step-circle">3</div>
-                <div className="step-label">Review Status</div>
+                <div className="step-label">Submit & Review</div>
               </div>
             </div>
 
@@ -345,201 +354,211 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
             {/* Step 2: Upload Work */}
             {activeStep === 2 && (
               <div className="step-content">
-                <h3 className="step-title">Submit Your Work</h3>
-                <p className="step-description">Provide your code repository link and upload necessary files</p>
+                <h3 className="step-title">Submit Work & Track Review</h3>
+                <p className="step-description">Left: submit or update your work. Right: see live admin review status and feedback.</p>
 
-                <div className="submission-box">
-                  <div className="submission-box-title">Upload Files + Repository</div>
-                  <Form.Group className="form-group-modern mb-3">
-                    <Form.Label>Upload Files</Form.Label>
-                    <Form.Control
-                      type="file"
-                      multiple
-                      onChange={handleAddFiles}
-                      className="file-input-modern"
-                      accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.sql,.json"
-                      disabled={!isEditableStatus}
-                    />
-                    <Form.Text className="text-muted">
-                      Upload code zip/source files, screenshots, and docs (Max 10MB per file). You can select files multiple times.
-                    </Form.Text>
-                  </Form.Group>
+                <div className="submit-review-grid">
+                  <div className="submit-left-column">
+                    <div className="submission-box">
+                      <div className="submission-box-title">Upload Files + Repository</div>
+                      <Form.Group className="form-group-modern mb-3">
+                        <Form.Label>Upload Files</Form.Label>
+                        <Form.Control
+                          type="file"
+                          multiple
+                          onChange={handleAddFiles}
+                          className="file-input-modern"
+                          accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.sql,.json"
+                          disabled={!canEditSubmission}
+                        />
+                        <Form.Text className="text-muted">
+                          Upload code zip/source files, screenshots, and docs (Max 10MB per file). You can select files multiple times.
+                        </Form.Text>
+                      </Form.Group>
 
-                  {files.length > 0 && (
-                    <div className="file-list mt-2 mb-3">
-                      <h6>Files to upload ({files.length}):</h6>
-                      {files.map((file, idx) => (
-                        <div key={idx} className="file-item">
-                          <span className="file-icon">📎</span>
-                          <span className="file-name">{file.name}</span>
-                          <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
-                          <Button
-                            size="sm"
-                            variant="outline-danger"
-                            className="ms-auto py-0 px-2"
-                            onClick={() => handleRemoveSelectedFile(idx)}
-                            disabled={!isEditableStatus}
-                          >
-                            Remove
-                          </Button>
+                      {files.length > 0 && (
+                        <div className="file-list mt-2 mb-3">
+                          <h6>Files to upload ({files.length}):</h6>
+                          {files.map((file, idx) => (
+                            <div key={idx} className="file-item">
+                              <span className="file-icon">📎</span>
+                              <span className="file-name">{file.name}</span>
+                              <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
+                              <Button
+                                size="sm"
+                                variant="outline-danger"
+                                className="ms-auto py-0 px-2"
+                                onClick={() => handleRemoveSelectedFile(idx)}
+                                disabled={!canEditSubmission}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <Form.Group className="form-group-modern mb-0">
-                    <Form.Label>Code Repository / Drive Link</Form.Label>
-                    <Form.Control
-                      type="url"
-                      value={codeLink}
-                      onChange={(e) => setCodeLink(e.target.value)}
-                      placeholder={submission?.codeLink || 'https://github.com/your-repo or https://drive.google.com/...'}
-                      className="form-control-lg"
-                      disabled={!isEditableStatus}
-                    />
-                    <Form.Text className="text-muted">
-                      Share the link to your code repository (GitHub, GitLab) or Google Drive folder
-                    </Form.Text>
-                  </Form.Group>
-                </div>
-
-                <Form.Group className="form-group-modern">
-                  <Form.Label>Submission Notes</Form.Label>
-                  <div className="rich-editor">
-                    <ReactQuill
-                      theme="snow"
-                      value={codeDescription}
-                      onChange={setCodeDescription}
-                      placeholder="Explain your implementation, approach, and any challenges faced..."
-                      modules={QUILL_MODULES}
-                      readOnly={!isEditableStatus}
-                    />
-                  </div>
-                </Form.Group>
-
-                <Form.Check
-                  type="checkbox"
-                  id="replace-attachments"
-                  label="Replace existing attachments"
-                  checked={replaceAttachments}
-                  onChange={(e) => setReplaceAttachments(e.target.checked)}
-                  className="custom-checkbox"
-                  disabled={!isEditableStatus}
-                />
-
-                {submission?.attachments && submission.attachments.length > 0 && (
-                  <div className="existing-files">
-                    <h6>Previously Uploaded Files</h6>
-                    <div className="attachment-list">
-                      {submission.attachments.map((a, i) => (
-                        <a key={i} href={a.fileUrl} target="_blank" rel="noreferrer" className="attachment-link">
-                          <span className="attachment-icon">📄</span>
-                          {a.fileName || `Attachment ${i + 1}`}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="action-buttons">
-                  {isEditableStatus ? (
-                    <Button
-                      className="btn-submit"
-                      onClick={handleSubmitStep2}
-                      disabled={submitting}
-                    >
-                      {submitting ? (
-                        <>
-                          <Spinner animation="border" size="sm" className="me-2" />
-                          Submitting Work...
-                        </>
-                      ) : (
-                        'Submit Work for Review'
                       )}
-                    </Button>
-                  ) : (
-                    <Alert variant="info" className="mb-0">
-                      Editing is disabled for {submission?.adminReviewStatus || 'current'} status. You can only view details.
-                    </Alert>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Step 3: Review Status */}
-            {activeStep === 3 && (
-              <div className="step-content">
-                <h3 className="step-title">Admin Review Status</h3>
-                <p className="step-description">Check the status of your submission</p>
+                      <Form.Group className="form-group-modern mb-0">
+                        <Form.Label>Code Repository / Drive Link</Form.Label>
+                        <Form.Control
+                          type="url"
+                          value={codeLink}
+                          onChange={(e) => setCodeLink(e.target.value)}
+                          placeholder={submission?.codeLink || 'https://github.com/your-repo or https://drive.google.com/...'}
+                          className="form-control-lg"
+                          disabled={!canEditSubmission}
+                        />
+                        <Form.Text className="text-muted">
+                          Share the link to your code repository (GitHub, GitLab) or Google Drive folder
+                        </Form.Text>
+                      </Form.Group>
+                    </div>
 
-                <div className="review-status-card">
-                  <div className="status-header">
-                    <Badge bg={statusClass} className="status-badge-large">
-                      {adminLabel}
-                    </Badge>
-                    <div className="submission-status">
-                      Task Status: <strong>{submission?.status === 'completed' ? 'Submitted' : 'Pending'}</strong>
+                    <Form.Group className="form-group-modern">
+                      <Form.Label>Submission Notes</Form.Label>
+                      <div className="rich-editor">
+                        <ReactQuill
+                          theme="snow"
+                          value={codeDescription}
+                          onChange={setCodeDescription}
+                          placeholder="Explain your implementation, approach, and any challenges faced..."
+                          modules={QUILL_MODULES}
+                          readOnly={!canEditSubmission}
+                        />
+                      </div>
+                    </Form.Group>
+
+                    <Form.Check
+                      type="checkbox"
+                      id="replace-attachments"
+                      label="Replace existing attachments"
+                      checked={replaceAttachments}
+                      onChange={(e) => setReplaceAttachments(e.target.checked)}
+                      className="custom-checkbox"
+                      disabled={!canEditSubmission}
+                    />
+
+                    {submission?.attachments && submission.attachments.length > 0 && (
+                      <div className="existing-files">
+                        <h6>Previously Uploaded Files</h6>
+                        <div className="attachment-list">
+                          {submission.attachments.map((a, i) => (
+                            <a key={i} href={a.fileUrl} target="_blank" rel="noreferrer" className="attachment-link">
+                              <span className="attachment-icon">📄</span>
+                              {a.fileName || `Attachment ${i + 1}`}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="action-buttons">
+                      {canEditSubmission ? (
+                        <Button
+                          className="btn-submit"
+                          onClick={handleSubmitStep2}
+                          disabled={submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <Spinner animation="border" size="sm" className="me-2" />
+                              Submitting Work...
+                            </>
+                          ) : submission?.adminReviewStatus === 'rejected' ? (
+                            'Re-submit Work for Review'
+                          ) : (
+                            'Submit Work for Review'
+                          )}
+                        </Button>
+                      ) : (
+                        <Alert variant="info" className="mb-0">
+                          {isSubmissionLocked
+                            ? 'Your work is already submitted and waiting for admin review. Editing/resubmission is locked until review is completed.'
+                            : `Editing is disabled for ${submission?.adminReviewStatus || 'current'} status. You can only view details.`}
+                        </Alert>
+                      )}
                     </div>
                   </div>
 
-                  {submission?.adminReviewStatus === 'approved' ? (
-                    <div className="review-approved">
-                      <div className="review-icon">🎉</div>
-                      <div className="review-content">
-                        <h5>Congratulations! Your submission has been approved.</h5>
-                        {submission.adminFeedback && (
-                          <div className="review-feedback">
-                            <strong>Admin Feedback:</strong>
-                            <p>{submission.adminFeedback}</p>
-                          </div>
-                        )}
+                  <div className="submit-right-column">
+                    <div className="review-status-card">
+                      <div className="status-header">
+                        <Badge bg={statusClass} className="status-badge-large">
+                          {submission?.status === 'completed' ? adminLabel : 'Not Submitted'}
+                        </Badge>
+                        <div className="submission-status">
+                          Task Status: <strong>{submission?.status === 'completed' ? 'Submitted' : 'Pending Submission'}</strong>
+                        </div>
                       </div>
-                    </div>
-                  ) : submission?.adminReviewStatus === 'rejected' ? (
-                    <div className="review-rejected">
-                      <div className="review-icon">📝</div>
-                      <div className="review-content">
-                        <h5>Your submission needs updates.</h5>
-                        {submission.adminFeedback && (
-                          <div className="review-feedback">
-                            <strong>Admin Feedback:</strong>
-                            <p>{submission.adminFeedback}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="review-pending">
-                      <div className="review-icon">⏳</div>
-                      <div className="review-content">
-                        <h5>Your submission is pending review.</h5>
-                        <p>The admin will review your work and provide feedback soon. Please check back later.</p>
-                        {submission?.adminFeedback && (
-                          <div className="review-feedback">
-                            <strong>Admin Suggestions:</strong>
-                            <p>{submission?.adminFeedback}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
 
-                {submission?.codeLink && (
-                  <div className="submission-details">
-                    <h6>Your Submission Details</h6>
-                    <div className="detail-item">
-                      <strong>Code Link:</strong>
-                      <a href={submission.codeLink} target="_blank" rel="noreferrer">{submission.codeLink}</a>
+                      {!submission || submission.status !== 'completed' ? (
+                        <div className="review-pending">
+                          <div className="review-icon">📤</div>
+                          <div className="review-content">
+                            <h5>Submit your work to start admin review.</h5>
+                            <p>Once you submit, this panel will show Pending, Approved, or Rejected status with feedback.</p>
+                          </div>
+                        </div>
+                      ) : submission.adminReviewStatus === 'approved' ? (
+                        <div className="review-approved">
+                          <div className="review-icon">🎉</div>
+                          <div className="review-content">
+                            <h5>Congratulations! Your submission has been approved.</h5>
+                            {submission.adminFeedback && (
+                              <div className="review-feedback">
+                                <strong>Admin Feedback:</strong>
+                                <p>{submission.adminFeedback}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : submission.adminReviewStatus === 'rejected' ? (
+                        <div className="review-rejected">
+                          <div className="review-icon">📝</div>
+                          <div className="review-content">
+                            <h5>Your submission needs updates.</h5>
+                            {submission.adminFeedback && (
+                              <div className="review-feedback">
+                                <strong>Admin Feedback:</strong>
+                                <p>{submission.adminFeedback}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="review-pending">
+                          <div className="review-icon">⏳</div>
+                          <div className="review-content">
+                            <h5>Your submission is pending review.</h5>
+                            <p>The admin will review your work and provide feedback soon. Please check back later.</p>
+                            {submission.adminFeedback && (
+                              <div className="review-feedback">
+                                <strong>Admin Suggestions:</strong>
+                                <p>{submission.adminFeedback}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {submission.codeDescription && (
-                      <div className="detail-item">
-                        <strong>Submission Notes:</strong>
-                        <div dangerouslySetInnerHTML={{ __html: submission.codeDescription }} />
+
+                    {submission?.codeLink && (
+                      <div className="submission-details">
+                        <h6>Your Last Submission</h6>
+                        <div className="detail-item">
+                          <strong>Code Link:</strong>
+                          <a href={submission.codeLink} target="_blank" rel="noreferrer">{submission.codeLink}</a>
+                        </div>
+                        {submission.codeDescription && (
+                          <div className="detail-item">
+                            <strong>Submission Notes:</strong>
+                            <div dangerouslySetInnerHTML={{ __html: submission.codeDescription }} />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             )}
           </>
@@ -553,33 +572,24 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
         {activeStep > 1 && (
           <Button
             variant="outline-orange"
-            onClick={() => setActiveStep((activeStep - 1) as 1 | 2 | 3)}
+            onClick={() => setActiveStep((activeStep - 1) as 1 | 2)}
           >
             ← Back
           </Button>
         )}
-        {activeStep < 3 && (
+        {activeStep < 2 && (
           <Button
             className="btn-primary-custom"
             onClick={() => {
               if (activeStep === 1) {
-                if (!isEditableStatus && canAccessStep3) {
-                  setActiveStep(3)
-                } else {
-                  setActiveStep(2)
-                }
+                setActiveStep(2)
                 return
               }
 
-              setActiveStep((activeStep + 1) as 1 | 2 | 3)
+              setActiveStep((activeStep + 1) as 1 | 2)
             }}
-            disabled={activeStep === 2 && !canAccessStep3}
           >
-            {activeStep === 1 && !isEditableStatus && canAccessStep3
-              ? 'View Review →'
-              : activeStep === 2 && !canAccessStep3
-                ? 'Submit Step 2 to Continue'
-                : 'Next →'}
+            Continue →
           </Button>
         )}
       </Modal.Footer>
@@ -885,6 +895,18 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
         .step-description {
           color: #888888;
           margin-bottom: 1.5rem;
+        }
+
+        .submit-review-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+          gap: 1rem;
+          align-items: start;
+        }
+
+        .submit-left-column,
+        .submit-right-column {
+          min-width: 0;
         }
 
         .submission-box {
@@ -1293,6 +1315,10 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
             flex-direction: column;
             gap: 0.5rem;
             text-align: center;
+          }
+
+          .submit-review-grid {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>
