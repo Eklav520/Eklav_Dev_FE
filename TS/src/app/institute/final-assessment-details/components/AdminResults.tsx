@@ -86,7 +86,10 @@ const AdminResults: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
-        setResults(response.data.data);
+        const validResults = response.data.data.filter(
+          (r: Result) => r.student?.name !== 'N/A' && r.student?.email !== 'N/A'
+        );
+        setResults(validResults);
         setTotalPages(response.data.totalPages);
       }
     } catch (err: any) {

@@ -400,7 +400,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'manageCourses',
         label: 'Manage Courses',
-        icon: BsBook,
+        icon: BsUiChecksGrid,
         url: '/institute/manage-courses',
         parentKey: 'instituteadmin',
       },
@@ -415,7 +415,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'studentList',
         label: 'Students List',
-        icon: BsPeople,
+        icon: HiOutlineUserGroup,
         url: '/institute/student-list',
         parentKey: 'instituteadmin',
       },
@@ -430,7 +430,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'manageClasses',
         label: 'Manage Classes',
-        icon: BsCameraVideo,
+        icon: FaVideo,
         url: '/institute/online-classes',
         parentKey: 'instituteadmin',
       },
@@ -440,7 +440,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'freelencing',
     label: 'Freelencing',
-    icon: BsBriefcase,
+    icon: BsPersonWorkspace,
     children: [
       {
         key: 'createTask',
@@ -462,12 +462,12 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'jobOpenings',
     label: 'Job Openings',
-    icon: BsBriefcase,
+    icon: BsPersonBadgeFill,
     children: [
       {
         key: 'manageJobs',
         label: 'Manage Job Openings',
-        icon: BsBriefcase,
+        icon: BsFolderCheck,
         url: '/institute/job-openings',
         parentKey: 'instituteadmin',
       },
@@ -482,14 +482,14 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'uploadAssessment',
         label: 'Upload Assessment',
-        icon: BsClipboardCheck,
+        icon: BsFileEarmarkArrowUp,
         url: '/institute/final-assessment-upload',
         parentKey: 'instituteadmin',
       },
       {
         key: 'assessmentResults',
         label: 'Assessment Results',
-        icon: BsClipboardCheck,
+        icon: BsGraphUp,
         url: '/institute/final-assessment-results',
         parentKey: 'instituteadmin',
       },
@@ -499,7 +499,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'profile',
     label: 'Edit Profile',
-    icon: BsPencilSquare,
+    icon: FaUserCog,
     url: '/institute/edit-profile',
     parentKey: 'instituteadmin',
   },
