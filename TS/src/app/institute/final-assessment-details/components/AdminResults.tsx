@@ -42,6 +42,15 @@ interface Result {
   updatedAt: string;
 }
 
+interface LiveStudent {
+  studentId: string;
+  name: string;
+  email: string;
+  status: string;
+  joinedAt: string;
+  lastSeenAt?: string;
+}
+
 const AdminResults: React.FC = () => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -68,15 +77,136 @@ const AdminResults: React.FC = () => {
   const itemsPerPage = 30;
   const [exams, setExams] = useState<{ id: string; title: string }[]>([]);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const [showLiveStudentsModal, setShowLiveStudentsModal] = useState(false);
+  const [liveStudents, setLiveStudents] = useState<LiveStudent[]>([]);
+  const [selectedLiveExamId, setSelectedLiveExamId] = useState<string>('');
+  const [liveStudentsLoading, setLiveStudentsLoading] = useState(false);
+  const [liveStudentsError, setLiveStudentsError] = useState('');
 
   useEffect(() => {
     fetchStats();
     fetchResults();
   }, []);
 
+  // Poll for live students when modal is open
+  useEffect(() => {
+    if (showLiveStudentsModal && selectedLiveExamId) {
+      const pollInterval = setInterval(() => {
+        fetchLiveStudents(undefined, true);
+      }, 3000); // Poll every 3 seconds
+      return () => clearInterval(pollInterval);
+    }
+  }, [showLiveStudentsModal, selectedLiveExamId]);
+
   useEffect(() => {
     fetchResults();
   }, [currentPage, filters.search, filters.status, filters.roundType, selectedExamId]);
+
+  const fetchLiveStudents = async (examId?: string, isBackgroundPoll = false) => {
+    const targetExamId = examId || selectedLiveExamId;
+    if (!targetExamId || !token) return;
+    try {
+      if (!isBackgroundPoll) {
+        setLiveStudentsLoading(true);
+      }
+      setLiveStudentsError('');
+      const response = await axios.get(
+        `${baseURL}/api/assessment/admin/exams/${targetExamId}/live-students`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const payload = response.data?.data ?? response.data?.students ?? response.data?.liveStudents ?? [];
+
+      if (response.data?.success && Array.isArray(payload)) {
+        // Normalize multiple backend shapes into one structure the UI can render safely.
+        const normalizedStudents: LiveStudent[] = payload.map((entry: any, idx: number) => {
+          const studentId =
+            entry?.studentId ||
+            entry?.student?._id ||
+            entry?.student?.id ||
+            entry?.userId ||
+            entry?._id ||
+            `temp-${idx}`;
+
+          const name =
+            entry?.name ||
+            entry?.studentName ||
+            entry?.student?.name ||
+            'N/A';
+
+          const email =
+            entry?.email ||
+            entry?.studentEmail ||
+            entry?.student?.email ||
+            'N/A';
+
+          const status =
+            entry?.status ||
+            entry?.examStatus ||
+            'in-progress';
+
+          const joinedAt =
+            entry?.joinedAt ||
+            entry?.startedAt ||
+            entry?.startTime ||
+            entry?.createdAt ||
+            new Date().toISOString();
+
+          const lastSeenAt =
+            entry?.lastSeenAt ||
+            entry?.updatedAt ||
+            null;
+
+          return { studentId, name, email, status, joinedAt, lastSeenAt };
+        });
+
+        setLiveStudents((prevStudents) => {
+          // First load: oldest at top, newest at bottom.
+          if (!prevStudents.length) {
+            return normalizedStudents.sort(
+              (a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+            );
+          }
+
+          const incomingById = new Map(normalizedStudents.map((s) => [s.studentId, s]));
+          const merged: LiveStudent[] = [];
+
+          // Keep current rows stable and only update changed fields.
+          prevStudents.forEach((existing) => {
+            const latest = incomingById.get(existing.studentId);
+            if (latest) {
+              merged.push({ ...existing, ...latest });
+              incomingById.delete(existing.studentId);
+            }
+          });
+
+          // Append only newly joined students at the bottom.
+          const newcomers = Array.from(incomingById.values()).sort(
+            (a, b) => new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
+          );
+
+          return [...merged, ...newcomers];
+        });
+      } else {
+        setLiveStudents([]);
+        setLiveStudentsError('Live students API response format is invalid.');
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch live students:', err);
+      setLiveStudents([]);
+      setLiveStudentsError(err?.response?.data?.error || 'Failed to fetch live students.');
+    } finally {
+      if (!isBackgroundPoll) {
+        setLiveStudentsLoading(false);
+      }
+    }
+  };
+
+  const openLiveStudentsModal = (examId: string) => {
+    setSelectedLiveExamId(examId);
+    setShowLiveStudentsModal(true);
+    setLiveStudentsError('');
+    fetchLiveStudents(examId);
+  };
 
   const fetchResults = async () => {
     if (!token) return;
@@ -94,7 +224,8 @@ const AdminResults: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
-        const validResults = response.data.data.filter(
+        const rawResults: Result[] = Array.isArray(response.data.data) ? response.data.data : [];
+        const validResults = rawResults.filter(
           (r: Result) => r.student?.name !== 'N/A' && r.student?.email !== 'N/A'
         );
         setResults(validResults);
@@ -102,7 +233,7 @@ const AdminResults: React.FC = () => {
 
         // Extract unique exams from results, sorted by latest
         const uniqueExams = new Map<string, { id: string; title: string; createdAt?: string }>();
-        validResults.forEach((result: Result) => {
+        rawResults.forEach((result: Result) => {
           if (result.exam?.id && !uniqueExams.has(result.exam.id)) {
             uniqueExams.set(result.exam.id, {
               id: result.exam.id,
@@ -270,6 +401,39 @@ const AdminResults: React.FC = () => {
     });
   };
 
+  const formatRelativeDuration = (date: Date) => {
+    const diffMs = Date.now() - date.getTime();
+    const safeDiffMs = Number.isNaN(diffMs) ? 0 : Math.max(0, diffMs);
+    const totalMinutes = Math.floor(safeDiffMs / 60000);
+
+    if (totalMinutes < 1) return 'just now';
+
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutes = totalMinutes % 60;
+
+    if (days > 0) {
+      return `${days}d ${hours}h ago`;
+    }
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ago`;
+    }
+
+    return `${minutes}m ago`;
+  };
+
+  const formatJoinedDateTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
   return (
     <div className="admin-results-container">
       {/* Header */}
@@ -337,12 +501,25 @@ const AdminResults: React.FC = () => {
             }}
             style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
           >
+            <option value="">-- Select an Exam --</option>
             {exams.map((exam, idx) => (
               <option key={exam.id} value={exam.id}>
                 {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
               </option>
             ))}
           </select>
+
+          {/* <button 
+            className="live-btn"
+            onClick={() => {
+              const targetExamId = selectedExamId || exams[0]?.id;
+              if (targetExamId) openLiveStudentsModal(targetExamId);
+            }}
+            title={exams.length > 0 ? 'View students currently taking this exam' : 'No exams available'}
+            disabled={exams.length === 0}
+          >
+            <span className="live-dot"></span> Live Students
+          </button> */}
 
           <div className="search-box">
             <FaSearch className="search-icon" />
@@ -761,7 +938,76 @@ const AdminResults: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* Bulk Approve Modal */}
+      {/* Live Students Modal */}
+      <Modal show={showLiveStudentsModal} onHide={() => setShowLiveStudentsModal(false)} size="xl" centered className="professional-modal live-students-modal">
+        <Modal.Header closeButton className="modal-header-custom">
+          <Modal.Title className="modal-title-custom">
+            <FaUsers className="me-2" />
+            Live Exam Sessions
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="modal-body-custom">
+          {liveStudentsLoading ? (
+            <div className="loading-state">
+              <Spinner animation="border" variant="warning" />
+              <p>Loading live students...</p>
+            </div>
+          ) : liveStudentsError ? (
+            <Alert variant="danger">{liveStudentsError}</Alert>
+          ) : liveStudents.length === 0 ? (
+            <div className="empty-state">
+              <p>No students currently taking this exam</p>
+            </div>
+          ) : (
+            <div className="live-students-list">
+              {liveStudents.map((student, idx) => {
+                const joinTime = new Date(student.joinedAt);
+                const isValidJoinTime = !Number.isNaN(joinTime.getTime());
+                const lastSeenTime = new Date(student.lastSeenAt || student.joinedAt);
+                const isValidLastSeenTime = !Number.isNaN(lastSeenTime.getTime());
+                const relativeActivityTime = isValidLastSeenTime ? formatRelativeDuration(lastSeenTime) : null;
+                const isJustJoined = relativeActivityTime === 'just now';
+                const showStartedTime = isValidJoinTime && isValidLastSeenTime && Math.abs(lastSeenTime.getTime() - joinTime.getTime()) > 5 * 60 * 1000;
+
+                return (
+                  <div key={student.studentId || `live-student-${idx}`} className="live-student-item">
+                    <div className="student-avatar-live">
+                      {student.name?.charAt(0) || '?'}
+                    </div>
+                    <div className="student-info-live">
+                      <div className="student-name-live">
+                        {student.name || 'N/A'}
+                        {isJustJoined && <span className="just-joined-badge">Just Joined</span>}
+                      </div>
+                      <div className="student-email-live">{student.email || 'N/A'}</div>
+                      <div className="student-joined-live">
+                        {isValidLastSeenTime
+                          ? `Active ${relativeActivityTime} (${formatJoinedDateTime(lastSeenTime)})`
+                          : 'Activity time not available'}
+                      </div>
+                      {showStartedTime && (
+                        <div className="student-started-live">
+                          Started at {formatJoinedDateTime(joinTime)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="student-status-live">
+                      <Badge bg={student.status === 'completed' ? 'secondary' : 'success'}>
+                        <span className="status-dot"></span> {String(student.status || 'in-progress').toLowerCase() === 'in-progress' ? 'JOINED' : String(student.status || 'in-progress').toUpperCase()}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="modal-footer-custom">
+          <Button variant="outline-orange" onClick={() => setShowLiveStudentsModal(false)}>
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
       <Modal show={showBulkApproveModal} onHide={() => setShowBulkApproveModal(false)} centered className="professional-modal">
         <Modal.Header closeButton className="modal-header-custom">
           <Modal.Title className="modal-title-custom">
@@ -1369,6 +1615,160 @@ const AdminResults: React.FC = () => {
 
         .close-modal-btn:hover {
           background: #3a3a3a;
+        }
+
+        /* Live Students Modal Styles */
+        .live-students-modal .modal-dialog {
+          max-width: 980px;
+        }
+
+        .live-btn {
+          background: linear-gradient(135deg, #ff2e63 0%, #ff6b9d 100%);
+          border: none;
+          border-radius: 8px;
+          padding: 8px 16px;
+          color: #ffffff;
+          cursor: pointer;
+          font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: all 0.3s ease;
+        }
+
+        .live-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(255, 46, 99, 0.4);
+        }
+
+        .live-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+          transform: none;
+          box-shadow: none;
+        }
+
+        .live-dot {
+          width: 8px;
+          height: 8px;
+          background: #ff2e63;
+          border-radius: 50%;
+          display: inline-block;
+          animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.7;
+            transform: scale(1.2);
+          }
+        }
+
+        .live-students-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .live-student-item {
+          background: #0a0a0a;
+          border: 1px solid #2c2c2c;
+          border-radius: 12px;
+          padding: 18px;
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          transition: all 0.3s ease;
+          animation: slideInStudent 0.5s ease-out forwards;
+        }
+
+        @keyframes slideInStudent {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .live-student-item:hover {
+          border-color: #ff2e63;
+          box-shadow: 0 4px 12px rgba(255, 46, 99, 0.2);
+        }
+
+        .student-avatar-live {
+          width: 52px;
+          height: 52px;
+          background: linear-gradient(135deg, #ff2e63, #ff6b9d);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .student-info-live {
+          flex: 1;
+        }
+
+        .student-name-live {
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 4px;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .just-joined-badge {
+          background: linear-gradient(135deg, #ff2e63, #ff6b9d);
+          color: white;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: 20px;
+          animation: pulse 1.5s infinite;
+        }
+
+        .student-email-live {
+          font-size: 13px;
+          color: #8a8a8a;
+          margin-bottom: 4px;
+        }
+
+        .student-joined-live {
+          font-size: 12px;
+          color: #666666;
+        }
+
+        .student-started-live {
+          font-size: 11px;
+          color: #8a8a8a;
+          margin-top: 2px;
+        }
+
+        .student-status-live {
+          flex-shrink: 0;
+        }
+
+        .status-dot {
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          background: #28a745;
+          border-radius: 50%;
+          margin-right: 6px;
+          animation: pulse 2s infinite;
         }
 
         @media (max-width: 768px) {
