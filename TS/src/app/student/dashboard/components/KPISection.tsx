@@ -6,12 +6,12 @@ type Props = {
 }
 
 const KPISection = ({ kpis }: Props) => (
-  <Row className="g-3 mb-4">
+  <Row className="g-3 mb-4 row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5">
     {kpis.map((k, i) => {
       const Icon = k.icon
 
       return (
-        <Col xs={12} sm={6} md={3} key={i}>
+        <Col key={i}>
           <Card
             className="border-0 h-100"
             style={{

@@ -118,6 +118,7 @@ const InstituteEditProfile = lazy(() => import('@/app/institute/edit-profile/pag
 const AddStudent = lazy(() => import('@/app/institute/studentDetails/pages'))
 const FreelancingPage = lazy(() => import('@/app/institute/freelencing/pages'))
 const FreelancingTaskListPage = lazy(() => import('@/app/institute/freelencing/task-list/page'))
+const InstituteCollegeLabsUpload = lazy(() => import('@/app/institute/college-labs-upload/page'))
 
 //Student
 const StudentFreelancing = lazy(() => import('@/app/student/freelencing/pages'))
@@ -154,6 +155,7 @@ const SpeakingPractice = lazy(() => import('@/app/student/speaking-practice/page
 const JustAMinute = lazy(() => import('@/app/student/just-a-minute/page'))
 const LearningPractice = lazy(() => import('@/app/student/learning-practice/page'))
 const WritingPractice = lazy(() => import('@/app/student/writing-practice/pages'))
+const StudentCollegeLabs = lazy(() => import('@/app/student/college-labs/page'))
 //const BlogDetail = lazy(() => import('@/app/student/blog-details/[blogId]/page'))
 
 //Admin
@@ -726,6 +728,12 @@ export const InstituteAdminRoutes: RoutesProps[] = [
   },
 
   {
+    path: '/institute/college-labs-upload',
+    name: 'College Labs Upload',
+    element: <InstituteCollegeLabsUpload />,
+  },
+
+  {
     path: '/institute/edit-profile',
     name: 'Edit Profile',
     element: <InstituteEditProfile />,
@@ -913,6 +921,11 @@ export const studentRoutes: RoutesProps[] = [
     path:'/student/WritingPractice',
     name: 'WritingPractice',
     element: <WritingPractice/>
+  },
+  {
+    path: '/student/college-labs',
+    name: 'College Labs',
+    element: <StudentCollegeLabs />,
   }
 ]
 

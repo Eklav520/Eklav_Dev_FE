@@ -66,10 +66,10 @@ import {
   FaBook,
   FaBookOpen,
   FaBriefcase,
-  
+
   FaChartBar,
   FaCog,
- 
+
   FaEdit,
   FaFacebook,
   FaLinkedinIn,
@@ -473,7 +473,41 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
-
+  {
+    key: 'collegeAssessment',
+    label: 'College Assess',
+    icon: MdOutlineAssessment,
+    children: [
+      {
+        key: 'collegeLabsUpload',
+        label: 'Upload Labs',
+        icon: BsCpuFill,
+        url: '/institute/college-labs-upload',
+        parentKey: 'instituteadmin',
+      },
+      {
+        key: 'collegeProjectsUpload',
+        label: 'Upload Projects',
+        icon: BsFolderCheck,
+        url: '/institute/college-projects-upload',
+        parentKey: 'instituteadmin',
+      },
+      {
+        key: 'collegeCoursesUpload',
+        label: 'Upload Courses',
+        icon: BsBook,
+        url: '/institute/college-courses-upload',
+        parentKey: 'instituteadmin',
+      },
+      {
+        key: 'collegeAssessmentResults',
+        label: 'Assessment Results',
+        icon: BsGraphUp,
+        url: '/institute/college-assessment-results',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
   {
     key: 'finalAssessment',
     label: 'Final Assessment',
@@ -639,8 +673,24 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     ],
   },
 
-  // --- English Practice (separate) ---
+  {
+    key: 'myColleges',
+    label: 'My Colleges',
+    icon: MdOutlineSchool, // 🏫 college/institution
+    children: [
+      {
+        key: 'collegeLabs',
+        label: 'College Labs',
+        icon: BsCpuFill,
+        url: '/student/college-labs',
+        parentKey: 'preparation',
+      },
 
+    ],
+  },
+
+
+  // --- English Practice (separate) ---
 
   // Preparation parent (collapsible)
   {
@@ -761,7 +811,7 @@ export const TUTOR_MENU_ITEMS: MenuItemType[] = [
     url: '/tutor/payout',
     parentKey: 'eklavadmin',
   }, */
-  
+
 
   {
     key: 'profile',
@@ -770,7 +820,7 @@ export const TUTOR_MENU_ITEMS: MenuItemType[] = [
     url: '/tutor/edit-profile',
     parentKey: 'eklavadmin',
   },
-  
+
 ]
 
 export const APP_MENU_ITEMS: MenuItemType[] = [

@@ -27,7 +27,7 @@ import UpdatesAndStats from './UpdatesAndStats'
 import MonthlyReport from './MonthlyReport'
 import AttendanceCalendar from './AttendanceCalendar'
 
-import { FaBookOpen, FaBullseye, FaTrophy, FaClock } from 'react-icons/fa'
+import { FaBookOpen, FaBullseye, FaTrophy, FaClock, FaTasks, FaCheckDouble } from 'react-icons/fa'
 import JobNotificationsSection from './JobNotificationsSection'
 
 const StudentDashboardUpdated: React.FC = () => {
@@ -174,6 +174,22 @@ const StudentDashboardUpdated: React.FC = () => {
       trend: dashboardSummary?.coursesAvailable?.trend || 0,
     },
     {
+      label: 'Freelance Tasks Available',
+      value: dashboardSummary?.freelancingTasksAvailable?.value || 0,
+      icon: FaTasks,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.freelancingTasksAvailable?.trend || 'NA',
+    },
+    {
+      label: 'Freelance Tasks Completed',
+      value: dashboardSummary?.freelancingCompleted?.value || 0,
+      icon: FaCheckDouble,
+      color: '#ff7a00',
+      bgColor: 'rgba(255,122,0,0.1)',
+      trend: dashboardSummary?.freelancingCompleted?.trend || 'NA',
+    },
+    {
       label: 'Enrolled Courses',
       value: dashboardSummary?.enrolledCourses?.value || 0,
       icon: FaBookOpen,
@@ -181,21 +197,21 @@ const StudentDashboardUpdated: React.FC = () => {
       bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary?.enrolledCourses?.trend || 0,
     },
-    {
-      label: 'Accuracy',
-      value: dashboardSummary?.accuracy?.value || 0,
-      icon: FaBullseye,
-      color: '#ff7a00',
-      bgColor: 'rgba(255,122,0,0.1)',
-      trend: dashboardSummary?.accuracy?.trend || 0,
-    },
+    // {
+    //   label: 'Accuracy',
+    //   value: dashboardSummary?.accuracy?.value || 0,
+    //   icon: FaBullseye,
+    //   color: '#ff7a00',
+    //   bgColor: 'rgba(255,122,0,0.1)',
+    //   trend: dashboardSummary?.accuracy?.trend || 0,
+    // },
     {
       label: 'Rank',
       value: dashboardSummary?.rank?.value || 0,
       icon: FaTrophy,
       color: '#ff7a00',
       bgColor: 'rgba(255,122,0,0.1)',
-      trend: dashboardSummary?.rank?.trend || 0,
+      trend: '',
     },
   ]
 
