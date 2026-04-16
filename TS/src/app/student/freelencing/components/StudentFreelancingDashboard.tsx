@@ -118,7 +118,7 @@ const isDeadlinePast = (d?: string | null) => {
   return new Date(d) < new Date()
 }
 
-const getFreelancingTabFromPath = (pathname: string): 'available' | 'enrolled' => {
+const getFreelancingTabFromPath = (pathname: string): 'available' | 'deadline-crossed' | 'enrolled' => {
   if (pathname.includes('/student/freelancing/my-tasks')) return 'enrolled'
   return 'available'
 }
@@ -135,7 +135,7 @@ const StudentFreelancingDashboard: React.FC = () => {
   const [myTasks, setMyTasks] = useState<FreelancingTask[]>([])
   const [loading, setLoading] = useState(false)
   const [enrolling, setEnrolling] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'available' | 'enrolled'>(() =>
+  const [activeTab, setActiveTab] = useState<'available' | 'deadline-crossed' | 'enrolled'>(() =>
     getFreelancingTabFromPath(location.pathname)
   )
   const [searchTerm, setSearchTerm] = useState('')
@@ -240,6 +240,16 @@ const StudentFreelancingDashboard: React.FC = () => {
       return matchSearch && matchCategory
     })
   }, [tasks, searchTerm, categoryFilter])
+
+  const availableTasks = useMemo(
+    () => filteredTasks.filter((t) => !isDeadlinePast(t.deadline)),
+    [filteredTasks]
+  )
+
+  const deadlineCrossedTasks = useMemo(
+    () => filteredTasks.filter((t) => isDeadlinePast(t.deadline)),
+    [filteredTasks]
+  )
 
   const uniqueCategories = useMemo(
     () => Array.from(new Set(tasks.map((t) => t.category).filter(Boolean))) as string[],
@@ -440,7 +450,9 @@ const StudentFreelancingDashboard: React.FC = () => {
           <div className="sf-header-right">
             <Tabs
               activeKey={activeTab}
-              onSelect={(k) => setActiveTab((k as 'available' | 'enrolled') || 'available')}
+              onSelect={(k) =>
+                setActiveTab((k as 'available' | 'deadline-crossed' | 'enrolled') || 'available')
+              }
               className="sf-tabs"
             >
               <Tab
@@ -448,7 +460,16 @@ const StudentFreelancingDashboard: React.FC = () => {
                 title={
                   <span>
                     Available{' '}
-                    <Badge className="tab-count">{tasks.length}</Badge>
+                    <Badge className="tab-count">{availableTasks.length}</Badge>
+                  </span>
+                }
+              />
+              <Tab
+                eventKey="deadline-crossed"
+                title={
+                  <span>
+                    Deadline Crossed{' '}
+                    <Badge className="tab-count">{deadlineCrossedTasks.length}</Badge>
                   </span>
                 }
               />
@@ -466,7 +487,7 @@ const StudentFreelancingDashboard: React.FC = () => {
         </div>
 
         {/* Search + Category filter (available tab only) */}
-        {activeTab === 'available' && (
+        {(activeTab === 'available' || activeTab === 'deadline-crossed') && (
           <div className="sf-filters">
             <div className="search-box">
               <FaSearch className="search-icon" />
@@ -507,7 +528,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <Spinner animation="border" />
                   <p>Loading tasks…</p>
                 </div>
-              ) : filteredTasks.length === 0 ? (
+              ) : availableTasks.length === 0 ? (
                 <div className="sf-empty">
                   <FaBriefcase size={56} className="empty-icon" />
                   <h3>No tasks available</h3>
@@ -515,7 +536,28 @@ const StudentFreelancingDashboard: React.FC = () => {
                 </div>
               ) : (
                 <Row className="g-3 g-md-4">
-                  {filteredTasks.map((t) => renderTaskCard(t, false))}
+                  {availableTasks.map((t) => renderTaskCard(t, false))}
+                </Row>
+              )}
+            </>
+          )}
+
+          {activeTab === 'deadline-crossed' && (
+            <>
+              {loading ? (
+                <div className="sf-loading">
+                  <Spinner animation="border" />
+                  <p>Loading tasks…</p>
+                </div>
+              ) : deadlineCrossedTasks.length === 0 ? (
+                <div className="sf-empty">
+                  <FaCalendarAlt size={56} className="empty-icon" />
+                  <h3>No deadline crossed tasks</h3>
+                  <p>Tasks whose deadline has passed will appear here</p>
+                </div>
+              ) : (
+                <Row className="g-3 g-md-4">
+                  {deadlineCrossedTasks.map((t) => renderTaskCard(t, false))}
                 </Row>
               )}
             </>
