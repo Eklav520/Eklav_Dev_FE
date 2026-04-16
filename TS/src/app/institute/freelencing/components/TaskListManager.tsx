@@ -668,7 +668,7 @@ const TaskListManager = () => {
                               onClick={() => openEditModal(task)}
                               className="action-btn"
                             >
-                              ✏️ Edit
+                              Edit
                             </Button>
                             <Button
                               variant="orange"
@@ -676,7 +676,7 @@ const TaskListManager = () => {
                               onClick={() => openSubmissionsModal(task)}
                               className="action-btn"
                             >
-                              📋 View
+                              View
                             </Button>
                             <Button
                               variant="outline-danger"
@@ -684,7 +684,7 @@ const TaskListManager = () => {
                               onClick={() => openDeleteModal(task)}
                               className="action-btn"
                             >
-                              🗑️ Delete
+                              Delete
                             </Button>
                           </div>
                         </div>
@@ -723,7 +723,7 @@ const TaskListManager = () => {
 
                       <div className="enrollment-box">
                         <div className="enrollment-head">
-                          <span className="enrollment-title">Enrolled Students</span>
+                          <span className="enrollment-title">Enrolled Freelencer/Intern</span>
                           <Badge className="enrollment-left-badge">{spotsLeft} left</Badge>
                         </div>
                         {enrolledStudentsDetails.length > 0 ? (
@@ -743,14 +743,14 @@ const TaskListManager = () => {
                         {task.skills && task.skills.length > 0 && (
                           <div className="skills-section">
                             <div className="skills-wrapper">
-                              {task.skills.slice(0, 4).map((skill) => (
-                                <Badge key={`${task._id}-${skill}`} className="skill-badge">
-                                  {skill}
+                              {task.skills.slice(0, 3).map((skill) => (
+                                <Badge key={`${task._id}-${skill}`} className="skill-badge" title={skill}>
+                                  {skill.length > 18 ? skill.slice(0, 18) + "…" : skill}
                                 </Badge>
                               ))}
-                              {task.skills.length > 4 && (
-                                <Badge className="skill-badge-more">
-                                  +{task.skills.length - 4} more
+                              {task.skills.length > 3 && (
+                                <Badge className="skill-badge-more" title={task.skills.slice(3).join(", ")}>
+                                  +{task.skills.length - 3} more
                                 </Badge>
                               )}
                             </div>
@@ -1523,9 +1523,10 @@ const TaskListManager = () => {
         }
 
         .action-btn {
-          padding: 0.2rem 0.5rem;
-          font-size: 0.7rem;
+          padding: 0.15rem 0.4rem;
+          font-size: 0.65rem;
           white-space: nowrap;
+          line-height: 1.3;
         }
 
         /* Task Stats */
@@ -1560,7 +1561,7 @@ const TaskListManager = () => {
           font-weight: 700;
           letter-spacing: 0.4px;
           text-transform: uppercase;
-          color: #a0a0a0;
+          color: #ff6b35;
         }
 
         .enrollment-left-badge {
@@ -1633,6 +1634,8 @@ const TaskListManager = () => {
           display: flex;
           flex-wrap: wrap;
           gap: 0.35rem;
+          overflow: hidden;
+          max-height: 3rem;
         }
 
         .skill-badge {
@@ -1644,6 +1647,10 @@ const TaskListManager = () => {
           font-size: 0.68rem;
           border: 1px solid #2a2a2a;
           white-space: nowrap;
+          max-width: 140px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: inline-block;
         }
 
         .skill-badge-more {
