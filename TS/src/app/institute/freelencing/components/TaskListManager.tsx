@@ -125,6 +125,16 @@ const toDateTimeLocalValue = (value?: string) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
+const localDateTimeToUTC = (localDateTimeString: string): string => {
+  if (!localDateTimeString) return "";
+  const [datePart, timePart] = localDateTimeString.split('T');
+  if (!datePart || !timePart) return "";
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour, minute] = timePart.split(':').map(Number);
+  const localDate = new Date(year, month - 1, day, hour, minute, 0, 0);
+  return localDate.toISOString();
+};
+
 const TaskListManager = () => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -278,8 +288,8 @@ const TaskListManager = () => {
       payload.append("experience", editForm.experience);
       payload.append("amount", String(editForm.amount));
       payload.append("maxStudents", String(editForm.maxStudents));
-      payload.append("deadline", editForm.deadline);
-      payload.append("startDate", editForm.startDate);
+      payload.append("deadline", localDateTimeToUTC(editForm.deadline));
+      payload.append("startDate", localDateTimeToUTC(editForm.startDate));
       payload.append("githubLink", editForm.githubLink);
       payload.append("description", editForm.description);
       payload.append("highlights", editForm.highlights);
