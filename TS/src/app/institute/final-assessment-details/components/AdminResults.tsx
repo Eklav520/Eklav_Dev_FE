@@ -65,14 +65,21 @@ const AdminResults: React.FC = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 30;
+  const [exams, setExams] = useState<{ id: string; title: string }[]>([]);
+  const [selectedExamId, setSelectedExamId] = useState<string>('');
+
+  useEffect(() => {
+    fetchStats();
+    fetchResults();
+  }, []);
 
   useEffect(() => {
     fetchResults();
-    fetchStats();
-  }, [currentPage, filters.search, filters.status, filters.roundType]);
+  }, [currentPage, filters.search, filters.status, filters.roundType, selectedExamId]);
 
   const fetchResults = async () => {
+    if (!token) return;
     try {
       setLoading(true);
       const response = await axios.get(`${baseURL}/api/assessment/admin/results`, {
@@ -81,7 +88,8 @@ const AdminResults: React.FC = () => {
           limit: itemsPerPage,
           search: filters.search,
           status: filters.status,
-          roundType: filters.roundType
+          roundType: filters.roundType,
+          examId: selectedExamId || undefined
         },
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -91,6 +99,27 @@ const AdminResults: React.FC = () => {
         );
         setResults(validResults);
         setTotalPages(response.data.totalPages);
+
+        // Extract unique exams from results, sorted by latest
+        const uniqueExams = new Map<string, { id: string; title: string; createdAt?: string }>();
+        validResults.forEach((result: Result) => {
+          if (result.exam?.id && !uniqueExams.has(result.exam.id)) {
+            uniqueExams.set(result.exam.id, {
+              id: result.exam.id,
+              title: result.exam.title,
+              createdAt: result.createdAt
+            });
+          }
+        });
+        
+        const examList = Array.from(uniqueExams.values());
+        examList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setExams(examList);
+
+        // Set selectedExamId to latest exam if not already set
+        if (!selectedExamId && examList.length > 0) {
+          setSelectedExamId(examList[0].id);
+        }
       }
     } catch (err: any) {
       console.error('Fetch error:', err);
@@ -300,11 +329,26 @@ const AdminResults: React.FC = () => {
       {/* Filters and Actions */}
       <div className="filters-bar">
         <div className="filters-group">
+          <select
+            value={selectedExamId}
+            onChange={(e) => {
+              setSelectedExamId(e.target.value);
+              setCurrentPage(1);
+            }}
+            style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
+          >
+            {exams.map((exam, idx) => (
+              <option key={exam.id} value={exam.id}>
+                {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
+              </option>
+            ))}
+          </select>
+
           <div className="search-box">
             <FaSearch className="search-icon" />
             <input
               type="text"
-              placeholder="Search by student name or email..."
+              placeholder="Search by name or email..."
               value={filters.search}
               onChange={(e) => {
                 setFilters({...filters, search: e.target.value});
@@ -342,6 +386,7 @@ const AdminResults: React.FC = () => {
           <button className="clear-btn" onClick={() => {
             setFilters({search: '', status: '', roundType: ''});
             setCurrentPage(1);
+            if (exams.length > 0) setSelectedExamId(exams[0].id);
           }}>
             <FaFilter /> Clear
           </button>
@@ -387,13 +432,11 @@ const AdminResults: React.FC = () => {
                   </th>
                   <th>Student</th>
                   <th>Email</th>
-                  <th>Exam</th>
                   <th>Rounds</th>
                   <th>Score</th>
                   <th>Percentage</th>
                   <th>Result</th>
                   <th>Approval</th>
-                  <th>Date</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -416,7 +459,6 @@ const AdminResults: React.FC = () => {
                       </div>
                     </td>
                     <td className="email-cell">{result.student.email || 'N/A'}</td>
-                    <td className="exam-cell">{result.exam.title}</td>
                     <td>
                       <div className="rounds-badges">
                         {result.completedRounds?.map(round => (
@@ -430,10 +472,6 @@ const AdminResults: React.FC = () => {
                     </td>
                     <td>{getStatusBadge(result.resultStatus)}</td>
                     <td>{getApprovalBadge(result.approvalStatus)}</td>
-                    <td className="date-cell">
-                      <FaCalendarAlt className="me-1" />
-                      {formatDate(result.createdAt)}
-                    </td>
                     <td>
                       <div className="action-buttons">
                         <button
@@ -931,7 +969,7 @@ const AdminResults: React.FC = () => {
           background: #1a1a1a;
           border: 1px solid #2c2c2c;
           border-radius: 12px;
-          overflow-x: auto;
+          overflow-x: hidden;
         }
 
         .results-table {
@@ -941,9 +979,10 @@ const AdminResults: React.FC = () => {
 
         .results-table th,
         .results-table td {
-          padding: 12px 16px;
+          padding: 10px 12px;
           text-align: left;
           border-bottom: 1px solid #2c2c2c;
+          word-break: break-word;
         }
 
         .results-table th {
@@ -996,11 +1035,8 @@ const AdminResults: React.FC = () => {
         .email-cell {
           color: #8a8a8a;
           font-size: 13px;
-        }
-
-        .exam-cell {
-          font-weight: 500;
-          color: #ff7a00;
+          word-break: break-all;
+          max-width: 180px;
         }
 
         .rounds-badges {
@@ -1025,12 +1061,6 @@ const AdminResults: React.FC = () => {
 
         .percentage-cell {
           font-weight: 700;
-        }
-
-        .date-cell {
-          font-size: 12px;
-          color: #8a8a8a;
-          white-space: nowrap;
         }
 
         .action-buttons {
