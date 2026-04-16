@@ -116,6 +116,15 @@ const EXPERIENCE_LEVELS = [
   { value: "expert", label: "Expert (8+ years)", icon: "🏆" },
 ];
 
+const toDateTimeLocalValue = (value?: string) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
 const TaskListManager = () => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -206,8 +215,8 @@ const TaskListManager = () => {
       experience: task.experience || "",
       amount: task.amount || 0,
       maxStudents: task.maxStudents || 1,
-      deadline: task.deadline ? task.deadline.slice(0, 10) : "",
-      startDate: task.startDate ? task.startDate.slice(0, 10) : "",
+      deadline: toDateTimeLocalValue(task.deadline),
+      startDate: toDateTimeLocalValue(task.startDate),
       githubLink: task.githubLink || "",
       skills: (task.skills || []).join(", "),
       description: task.description || "",
@@ -612,7 +621,7 @@ const TaskListManager = () => {
               {successMessage}
             </Alert>
           )}
-          
+
           {errorMessage && (
             <Alert variant="danger" className="error-alert">
               <span className="alert-icon">⚠</span>
@@ -632,43 +641,43 @@ const TaskListManager = () => {
                   const { enrolledStudentsDetails, enrolledCount, spotsLeft } = getTaskMetrics(task);
 
                   return (
-                  <Card key={task._id} className="task-card">
-                    <Card.Body>
-                      {/* Task Header */}
-                      <div className="task-header">
-                        <div className="task-title-section">
-                          <h4 className="task-title">{task.title || "Untitled Task"}</h4>
-                          <Badge className="category-badge">
-                            {getCategoryIcon(task.category || "")} {getCategoryLabel(task.category || "")}
-                          </Badge>
+                    <Card key={task._id} className="task-card">
+                      <Card.Body>
+                        {/* Task Header */}
+                        <div className="task-header">
+                          <div className="task-title-section">
+                            <h4 className="task-title">{task.title || "Untitled Task"}</h4>
+                            <Badge className="category-badge">
+                              {getCategoryIcon(task.category || "")} {getCategoryLabel(task.category || "")}
+                            </Badge>
+                          </div>
+                          <div className="task-actions">
+                            <Button
+                              variant="outline-orange"
+                              size="sm"
+                              onClick={() => openEditModal(task)}
+                              className="action-btn"
+                            >
+                              ✏️ Edit
+                            </Button>
+                            <Button
+                              variant="orange"
+                              size="sm"
+                              onClick={() => openSubmissionsModal(task)}
+                              className="action-btn"
+                            >
+                              📋 View
+                            </Button>
+                            <Button
+                              variant="outline-danger"
+                              size="sm"
+                              onClick={() => openDeleteModal(task)}
+                              className="action-btn"
+                            >
+                              🗑️ Delete
+                            </Button>
+                          </div>
                         </div>
-                        <div className="task-actions">
-                          <Button 
-                            variant="outline-orange" 
-                            size="sm" 
-                            onClick={() => openEditModal(task)}
-                            className="action-btn"
-                          >
-                            ✏️ Edit
-                          </Button>
-                          <Button
-                            variant="orange"
-                            size="sm"
-                            onClick={() => openSubmissionsModal(task)}
-                            className="action-btn"
-                          >
-                            📋 View
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => openDeleteModal(task)}
-                            className="action-btn"
-                          >
-                            🗑️ Delete
-                          </Button>
-                        </div>
-                      </div>
 
                       {/* Task Stats */}
                       <div className="task-stats">
@@ -720,37 +729,37 @@ const TaskListManager = () => {
                         )}
                       </div>
 
-                      {/* Skills */}
-                      {task.skills && task.skills.length > 0 && (
-                        <div className="skills-section">
-                          <div className="skills-wrapper">
-                            {task.skills.slice(0, 4).map((skill) => (
-                              <Badge key={`${task._id}-${skill}`} className="skill-badge">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {task.skills.length > 4 && (
-                              <Badge className="skill-badge-more">
-                                +{task.skills.length - 4} more
-                              </Badge>
-                            )}
+                        {/* Skills */}
+                        {task.skills && task.skills.length > 0 && (
+                          <div className="skills-section">
+                            <div className="skills-wrapper">
+                              {task.skills.slice(0, 4).map((skill) => (
+                                <Badge key={`${task._id}-${skill}`} className="skill-badge">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {task.skills.length > 4 && (
+                                <Badge className="skill-badge-more">
+                                  +{task.skills.length - 4} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Task Footer */}
+                        <div className="task-footer">
+                          <div className="experience-info">
+                            <span>{getExperienceIcon(task.experience || "")}</span>
+                            <span>{getExperienceLabel(task.experience || "")}</span>
+                          </div>
+                          <div className="task-date">
+                            Created: {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : "—"}
                           </div>
                         </div>
-                      )}
-
-                      {/* Task Footer */}
-                      <div className="task-footer">
-                        <div className="experience-info">
-                          <span>{getExperienceIcon(task.experience || "")}</span>
-                          <span>{getExperienceLabel(task.experience || "")}</span>
-                        </div>
-                        <div className="task-date">
-                          Created: {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : "—"}
-                        </div>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                );
+                      </Card.Body>
+                    </Card>
+                  );
                 })
               ) : (
                 <div className="empty-state">
@@ -816,10 +825,10 @@ const TaskListManager = () => {
                       <Col md={6}>
                         <Form.Group>
                           <Form.Label>Task Title</Form.Label>
-                          <Form.Control 
-                            name="title" 
-                            value={editForm.title} 
-                            onChange={handleEditChange} 
+                          <Form.Control
+                            name="title"
+                            value={editForm.title}
+                            onChange={handleEditChange}
                             placeholder="Enter task title"
                             className="form-control-modern"
                           />
@@ -828,9 +837,9 @@ const TaskListManager = () => {
                       <Col md={6}>
                         <Form.Group>
                           <Form.Label>Category</Form.Label>
-                          <Form.Select 
-                            name="category" 
-                            value={editForm.category} 
+                          <Form.Select
+                            name="category"
+                            value={editForm.category}
                             onChange={handleEditChange}
                             className="form-control-modern"
                           >
@@ -846,9 +855,9 @@ const TaskListManager = () => {
                       <Col md={6}>
                         <Form.Group>
                           <Form.Label>Experience Level</Form.Label>
-                          <Form.Select 
-                            name="experience" 
-                            value={editForm.experience} 
+                          <Form.Select
+                            name="experience"
+                            value={editForm.experience}
                             onChange={handleEditChange}
                             className="form-control-modern"
                           >
@@ -864,9 +873,9 @@ const TaskListManager = () => {
                       <Col md={6}>
                         <Form.Group>
                           <Form.Label>Skills (comma separated)</Form.Label>
-                          <Form.Control 
-                            name="skills" 
-                            value={editForm.skills} 
+                          <Form.Control
+                            name="skills"
+                            value={editForm.skills}
                             onChange={handleEditChange}
                             placeholder="React, Node.js, MongoDB"
                             className="form-control-modern"
@@ -888,10 +897,10 @@ const TaskListManager = () => {
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label>Budget Amount (₹)</Form.Label>
-                          <Form.Control 
-                            type="number" 
-                            name="amount" 
-                            value={editForm.amount} 
+                          <Form.Control
+                            type="number"
+                            name="amount"
+                            value={editForm.amount}
                             onChange={handleEditChange}
                             placeholder="e.g., 5000"
                             className="form-control-modern"
@@ -901,10 +910,10 @@ const TaskListManager = () => {
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label>Max Students</Form.Label>
-                          <Form.Control 
-                            type="number" 
-                            name="maxStudents" 
-                            value={editForm.maxStudents} 
+                          <Form.Control
+                            type="number"
+                            name="maxStudents"
+                            value={editForm.maxStudents}
                             onChange={handleEditChange}
                             className="form-control-modern"
                           />
@@ -913,9 +922,9 @@ const TaskListManager = () => {
                       <Col md={4}>
                         <Form.Group>
                           <Form.Label>GitHub Link</Form.Label>
-                          <Form.Control 
-                            name="githubLink" 
-                            value={editForm.githubLink} 
+                          <Form.Control
+                            name="githubLink"
+                            value={editForm.githubLink}
                             onChange={handleEditChange}
                             placeholder="https://github.com/..."
                             className="form-control-modern"
@@ -924,23 +933,24 @@ const TaskListManager = () => {
                       </Col>
                       <Col md={6}>
                         <Form.Group>
-                          <Form.Label>Start Date</Form.Label>
-                          <Form.Control 
-                            type="date" 
-                            name="startDate" 
-                            value={editForm.startDate} 
+                          <Form.Label>Start Date & Time</Form.Label>
+                          <Form.Control
+                            type="datetime-local"
+                            name="startDate"
+                            value={editForm.startDate}
                             onChange={handleEditChange}
                             className="form-control-modern"
                           />
                         </Form.Group>
                       </Col>
+
                       <Col md={6}>
                         <Form.Group>
-                          <Form.Label>Deadline</Form.Label>
-                          <Form.Control 
-                            type="date" 
-                            name="deadline" 
-                            value={editForm.deadline} 
+                          <Form.Label>Deadline & Time</Form.Label>
+                          <Form.Control
+                            type="datetime-local"
+                            name="deadline"
+                            value={editForm.deadline}
                             onChange={handleEditChange}
                             className="form-control-modern"
                           />
@@ -1049,14 +1059,14 @@ const TaskListManager = () => {
                       <Col xs={12}>
                         <Form.Group>
                           <Form.Label>Add Attachments</Form.Label>
-                          <Form.Control 
-                            type="file" 
-                            multiple 
+                          <Form.Control
+                            type="file"
+                            multiple
                             onChange={handleAttachmentInput}
                             className="file-input"
                           />
                           <Form.Text className="text-muted">
-                            {selectedTask?.attachments?.length || 0} existing attachment(s). 
+                            {selectedTask?.attachments?.length || 0} existing attachment(s).
                             Max file size: 10MB per file
                           </Form.Text>
                         </Form.Group>
@@ -1213,7 +1223,7 @@ const TaskListManager = () => {
                       {/* Review Section */}
                       <div className="review-section">
                         <div className="review-section-title">Admin Review</div>
-                        
+
                         {isApprovedAndLocked && submission.adminFeedback && (
                           <div className="existing-feedback">
                             <div className="feedback-label">Previous Feedback:</div>
