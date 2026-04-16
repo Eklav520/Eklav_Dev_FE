@@ -1471,49 +1471,62 @@ const TaskListManager = () => {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin-bottom: 1rem;
+          margin-bottom: 0.75rem;
+          gap: 0.75rem;
+          flex-wrap: wrap;
         }
 
         .task-title-section {
           flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
         }
 
         .task-title {
-          font-size: 1.1rem;
+          font-size: 0.95rem;
           font-weight: 600;
           color: #ffffff;
-          margin-bottom: 0.5rem;
-          line-height: 1.4;
+          margin: 0;
+          line-height: 1.3;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          max-width: 100%;
         }
 
         .category-badge {
           background: rgba(255, 107, 53, 0.15);
           color: #ff6b35;
-          padding: 0.25rem 0.75rem;
-          border-radius: 8px;
+          padding: 0.2rem 0.6rem;
+          border-radius: 6px;
           font-weight: 500;
-          font-size: 0.75rem;
+          font-size: 0.7rem;
+          width: fit-content;
+          white-space: nowrap;
         }
 
         .task-actions {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.25rem;
+          flex-shrink: 0;
         }
 
         .action-btn {
-          padding: 0.25rem 0.75rem;
-          font-size: 0.75rem;
+          padding: 0.2rem 0.5rem;
+          font-size: 0.7rem;
+          white-space: nowrap;
         }
 
         /* Task Stats */
         .task-stats {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 1rem;
-          margin: 1rem 0;
-          padding: 0.75rem;
+          gap: 0.75rem;
+          margin: 0.75rem 0;
+          padding: 0.5rem;
           background: #0d0d0d;
-          border-radius: 12px;
+          border-radius: 10px;
         }
 
         .enrollment-box {
@@ -1588,44 +1601,48 @@ const TaskListManager = () => {
         }
 
         .stat-info label {
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           color: #888888;
           margin: 0;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
         }
 
         .stat-info strong {
-          font-size: 0.85rem;
+          font-size: 0.78rem;
           color: #ffffff;
           font-weight: 600;
         }
 
         /* Skills Section */
         .skills-section {
-          margin: 1rem 0;
+          margin: 0.75rem 0;
         }
 
         .skills-wrapper {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.5rem;
+          gap: 0.35rem;
         }
 
         .skill-badge {
           background: #1a1a1a;
           color: #ffffff;
-          padding: 0.25rem 0.75rem;
-          border-radius: 8px;
+          padding: 0.18rem 0.55rem;
+          border-radius: 6px;
           font-weight: 500;
-          font-size: 0.75rem;
-          border: 1px solid #333333;
+          font-size: 0.68rem;
+          border: 1px solid #2a2a2a;
+          white-space: nowrap;
         }
 
         .skill-badge-more {
-          background: #333333;
-          color: #ffffff;
-          padding: 0.25rem 0.75rem;
-          border-radius: 8px;
-          font-size: 0.75rem;
+          background: #2a2a2a;
+          color: #aaa;
+          padding: 0.18rem 0.55rem;
+          border-radius: 6px;
+          font-size: 0.68rem;
+          border: 1px solid #333333;
         }
 
         /* Task Footer */
