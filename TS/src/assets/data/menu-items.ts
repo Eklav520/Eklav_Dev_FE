@@ -485,7 +485,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/institute/college-labs-upload',
         parentKey: 'instituteadmin',
       },
-      {
+     /*  {
         key: 'collegeProjectsUpload',
         label: 'Upload Projects',
         icon: BsFolderCheck,
@@ -505,7 +505,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
         icon: BsGraphUp,
         url: '/institute/college-assessment-results',
         parentKey: 'instituteadmin',
-      },
+      }, */
     ],
   },
   {
