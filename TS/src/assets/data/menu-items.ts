@@ -287,6 +287,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/eklavadmin/self-interview',
         parentKey: 'eklavadmin',
       },
+      {
+        key: 'companyInterview',
+        label: 'Company Interview',
+        icon: BsMic,
+        url: '/eklavadmin/company-interview',
+        parentKey: 'eklavadmin',
+      },
     ],
   },
   {
@@ -547,12 +554,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/dashboard',
   },
 
-  {
+  /* {
     key: 'LeadershipBoard',
     label: 'Leadership Board',
     icon: BsTrophy, // 🏆 leaderboard/achievement
     url: '/student/leadership-board',
-  },
+  }, */
   /* {
     key: 'codeChallenge',
     label: 'Code Challenge',
@@ -720,10 +727,11 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         parentKey: 'preparation',
       },
       {
-        key: 'terminal',
-        label: 'Compiler',
-        icon: BsCpu, // 💻 CPU/terminal
-        url: '/student/terminal',
+        key: 'companyInterview',
+        label: 'By Company', 
+        icon: FaUserTie, 
+        url: '/student/company-rounds',
+        parentKey: 'preparation',
       },
       /* {
         key: 'attendInterview',
@@ -758,6 +766,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         label: 'ATS Checker',
         icon: FaChartLine, // 📈 ATS analysis score
         url: '/student/ats-checker',
+      },
+       {
+        key: 'terminal',
+        label: 'Compiler',
+        icon: BsCpu, // 💻 CPU/terminal
+        url: '/student/terminal',
       },
       /* {
         key: 'blog',

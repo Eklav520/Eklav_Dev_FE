@@ -1,0 +1,1712 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import { Button, Spinner, Alert, Badge, Card, Row, Col, Modal } from 'react-bootstrap'
+import {
+  Building2, FileText, Code2, DollarSign, MapPin, ClipboardList,
+  BookOpen, Target, Clock, Pencil, Play, Trophy, LayoutList, UserCheck
+} from 'lucide-react'
+import DOMPurify from 'dompurify'
+import { useAuthContext } from '@/context/useAuthContext'
+import CodingChallenge from './CodingChallenge'
+import MCQQuiz from './MCQQuiz'
+import HRInterviewPractice from './HRInterviewPractice'
+import TRInterviewPractice from './TRInterviewPractice'
+
+// ================= TYPES =================
+type Question = {
+  _id: string
+  question?: string
+  expectedAnswer?: string
+  options?: (string | number)[]
+  correctAnswer?: string | number
+  explanation?: string
+  title?: string
+  description?: string
+  input?: string
+  output?: string | number
+  order: number
+}
+
+type Round = {
+  _id: string
+  roundName: string
+  roundType: 'MCQ' | 'CODING' | 'HR' | 'TR'
+  duration: number
+  questionCount: number
+  order: number
+  questions: Question[]
+}
+
+type Company = {
+  _id: string
+  companyName: string
+  role: string
+  package: string
+  location: string
+  description: string
+  roundsCount: number
+  rounds: Round[]
+  createdAt: string
+  updatedAt: string
+}
+
+type CompaniesResponse = {
+  success: boolean
+  data: Company[]
+  pagination?: {
+    total: number
+    page: number
+    limit: number
+    pages: number
+  }
+}
+
+type CompanyDetailResponse = {
+  success: boolean
+  data: Company
+}
+
+// ================= CONSTANTS =================
+// All rounds now use orange color
+const ROUND_TYPE_COLORS = {
+  MCQ: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
+  CODING: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
+  HR: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
+  TR: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' }
+}
+
+const QUIZ_QUESTION_LIMIT = 30
+const COMPANY_PAGE_LIMIT = 10
+
+const getVisiblePages = (currentPage: number, totalPages: number, maxVisible = 5) => {
+  if (totalPages <= maxVisible) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+
+  const half = Math.floor(maxVisible / 2)
+  let start = Math.max(1, currentPage - half)
+  let end = Math.min(totalPages, start + maxVisible - 1)
+
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1)
+  }
+
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
+const getRoundVisuals = (roundType?: string) => {
+  // All round types use orange color consistently
+  const icon = <FileText size={13} />
+
+  return {
+    icon,
+    colors: ROUND_TYPE_COLORS.MCQ,
+  }
+}
+
+const getRandomQuestions = (questions: Question[], limit: number) => {
+  const shuffled = [...questions]
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    const current = shuffled[index]
+    shuffled[index] = shuffled[randomIndex]
+    shuffled[randomIndex] = current
+  }
+
+  return shuffled.slice(0, Math.min(limit, shuffled.length))
+}
+
+const getSanitizedHtml = (html?: string) => DOMPurify.sanitize(html || '')
+
+const getPlainTextFromHtml = (html?: string) => {
+  const sanitized = getSanitizedHtml(html)
+
+  if (!sanitized) {
+    return ''
+  }
+
+  if (typeof window === 'undefined') {
+    return sanitized.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  }
+
+  const parsed = new DOMParser().parseFromString(sanitized, 'text/html')
+  return (parsed.body.textContent || '').replace(/\s+/g, ' ').trim()
+}
+
+// ================= COMPONENTS =================
+const CompanyCard: React.FC<{ company: Company; onClick: () => void }> = ({ company, onClick }) => (
+  <Card className="company-card" onClick={onClick}>
+    <Card.Body>
+      <div className="company-header">
+        <div className="company-icon">
+          <span className="icon">{(company.companyName || '?').charAt(0)}</span>
+        </div>
+        <div className="company-info">
+          <h4 className="company-name">{company.companyName || 'Unknown Company'}</h4>
+          <div className="company-meta">
+            <span className="meta-badge role">{company.role || 'N/A'}</span>
+            <span className="meta-badge package"><DollarSign size={11} /> {company.package || 'N/A'}</span>
+            <span className="meta-badge location"><MapPin size={11} /> {company.location || 'N/A'}</span>
+          </div>
+        </div>
+      </div>
+      <p className="company-description">
+        {(() => {
+          const plainDescription = getPlainTextFromHtml(company.description)
+
+          if (!plainDescription) {
+            return 'No description available'
+          }
+
+          return plainDescription.length > 120
+            ? `${plainDescription.substring(0, 120)}...`
+            : plainDescription
+        })()}
+      </p>
+      <div className="company-footer">
+        <div className="rounds-info">
+          <span className="rounds-count"><ClipboardList size={12} /> {company.roundsCount ?? company.rounds?.length ?? 0} Rounds</span>
+          <div className="round-types">
+            {(company.rounds || []).map((round, idx) => {
+              const visuals = getRoundVisuals(round?.roundType)
+              return (
+              <Badge key={idx} className="round-type-badge" style={{ background: visuals.colors.bg, color: visuals.colors.color }}>
+                {visuals.icon} {round?.roundName || 'Round'}
+              </Badge>
+              )
+            })}
+          </div>
+        </div>
+        <Button className="view-details-btn">View Details →</Button>
+      </div>
+    </Card.Body>
+  </Card>
+)
+
+// ================= MAIN COMPONENT =================
+const StudentCompanyInterviewPage = () => {
+  const { user } = useAuthContext()
+  const token = user?.token
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  // State
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isFetching, setIsFetching] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCompanies, setTotalCompanies] = useState(0)
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [companyFilter, setCompanyFilter] = useState('')
+  
+  // Modal states
+  const [showCompanyModal, setShowCompanyModal] = useState(false)
+  const [showRoundModal, setShowRoundModal] = useState(false)
+  const [selectedRound, setSelectedRound] = useState<Round | null>(null)
+  const [activeMode, setActiveMode] = useState<'preview' | 'quiz' | 'coding' | 'interview'>('preview')
+  const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({})
+  
+  // MCQ state
+  const [mcqAnswers, setMcqAnswers] = useState<Record<string, any>>({})
+  const [mcqSubmitted, setMcqSubmitted] = useState(false)
+  const [mcqScore, setMcqScore] = useState(0)
+  const [quizQuestions, setQuizQuestions] = useState<Question[]>([])
+  
+  // Coding state
+  const [codingCodes, setCodingCodes] = useState<Record<string, string>>({})
+  const [codingResults, setCodingResults] = useState<Record<string, any>>({})
+  const [isRunning, setIsRunning] = useState(false)
+  
+  // Timer state
+  const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  const [roundActive, setRoundActive] = useState(false)
+
+  const companyFilterOptions = useMemo(() => {
+    const names = companies
+      .map((company) => (company.companyName || '').trim())
+      .filter(Boolean)
+
+    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b))
+  }, [companies])
+
+  const filteredCompanies = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+    const selectedCompanyName = companyFilter.trim().toLowerCase()
+
+    return companies.filter((company) => {
+      const matchesCompany = !selectedCompanyName || (company.companyName || '').toLowerCase() === selectedCompanyName
+
+      if (!matchesCompany) {
+        return false
+      }
+
+      if (!query) {
+        return true
+      }
+
+      const haystack = [
+        company.companyName,
+        company.role,
+        company.location,
+        getPlainTextFromHtml(company.description),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(query)
+    })
+  }, [companies, searchQuery, companyFilter])
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setSearchQuery(searchInput)
+    }, 350)
+
+    return () => clearTimeout(debounceTimer)
+  }, [searchInput])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, companyFilter])
+
+  // Fetch companies
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      if (!token) return
+      try {
+        if (hasLoadedOnce) {
+          setIsFetching(true)
+        } else {
+          setLoading(true)
+        }
+        setError(null)
+
+        const query = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(COMPANY_PAGE_LIMIT),
+        })
+
+        if (searchQuery.trim()) {
+          query.append('search', searchQuery.trim())
+        }
+
+        if (companyFilter.trim()) {
+          query.append('companyName', companyFilter.trim())
+        }
+
+        const res = await fetch(`${baseURL}/api/company-interview?${query.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        const data: CompaniesResponse = await res.json()
+        if (!res.ok || !data.success) {
+          throw new Error('Failed to fetch companies')
+        }
+
+        setCompanies(data.data || [])
+        setTotalPages(Math.max(1, data.pagination?.pages || 1))
+        setTotalCompanies(data.pagination?.total ?? (data.data || []).length)
+
+        if (data.pagination?.page && data.pagination.page !== currentPage) {
+          setCurrentPage(data.pagination.page)
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load companies')
+      } finally {
+        setLoading(false)
+        setIsFetching(false)
+        setHasLoadedOnce(true)
+      }
+    }
+    
+    fetchCompanies()
+  }, [token, baseURL, currentPage, searchQuery, companyFilter])
+
+  // Fetch company details
+  const fetchCompanyDetails = async (companyId: string) => {
+    try {
+      const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      
+      const data: CompanyDetailResponse = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error('Failed to fetch company details')
+      }
+      
+      setSelectedCompany(data.data)
+      setShowCompanyModal(true)
+    } catch (err: any) {
+      setError(err.message || 'Failed to load company details')
+    }
+  }
+
+  const handleCloseRoundModal = () => {
+    setShowRoundModal(false)
+    setActiveMode('preview')
+    setTimeLeft(null)
+    setRoundActive(false)
+    setQuizQuestions([])
+    try {
+      window.speechSynthesis?.cancel()
+    } catch {
+      // ignore speech synthesis cleanup failures
+    }
+  }
+
+  const handleStartRound = (round: Round) => {
+    setSelectedRound(round)
+    setActiveMode('preview')
+    setRoundActive(false)
+    setTimeLeft(null)
+    setExpandedAnswers({})
+    setQuizQuestions([])
+    setShowRoundModal(true)
+  }
+
+  const handleTakeQuiz = () => {
+    if (!selectedRound) return
+    if (selectedRound.roundType === 'MCQ') {
+      setQuizQuestions(getRandomQuestions(selectedRound.questions || [], QUIZ_QUESTION_LIMIT))
+      setActiveMode('quiz')
+    } else if (selectedRound.roundType === 'CODING') {
+      setActiveMode('coding')
+    } else if (selectedRound.roundType === 'HR' || selectedRound.roundType === 'TR') {
+      setActiveMode('interview')
+    } else {
+      setActiveMode('preview')
+    }
+  }
+
+  const toggleAnswer = (questionId: string) => {
+    setExpandedAnswers(prev => ({ ...prev, [questionId]: !prev[questionId] }))
+  }
+
+  if (loading) {
+    return (
+      <div
+        className="loading-container"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '0.65rem',
+          minHeight: '100vh',
+          width: '100%',
+          background: '#000000',
+          textAlign: 'center',
+        }}
+      >
+        <Spinner animation="border" variant="warning" />
+        <p>Loading companies...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div
+        className="error-container"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '0.65rem',
+          minHeight: '100vh',
+          width: '100%',
+          background: '#000000',
+          textAlign: 'center',
+        }}
+      >
+        <Alert variant="danger">{error}</Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="company-interview-container">
+      <div className="container-fluid px-4 py-4">
+        {/* Header */}
+        <div className="header-section mb-4">
+          <h1 className="page-title">
+            <span className="title-icon"><Building2 size={28} /></span>
+            Company Interviews
+          </h1>
+          <p className="page-subtitle">
+            Explore top companies, practice interview rounds, and crack your dream job
+          </p>
+        </div>
+
+        <div className="list-filters mb-4">
+          <div className="filter-control-group">
+            <label className="filter-label" htmlFor="company-filter">Company</label>
+            <select
+              id="company-filter"
+              className="filter-select"
+              value={companyFilter}
+              onChange={(event) => setCompanyFilter(event.target.value)}
+            >
+              <option value="">All Companies</option>
+              {companyFilterOptions.map((name) => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-control-group search-group">
+            <label className="filter-label" htmlFor="company-search">Search</label>
+            <input
+              id="company-search"
+              className="filter-input"
+              type="text"
+              placeholder="Search company, role, location..."
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+            />
+          </div>
+
+          {(searchQuery || companyFilter) && (
+            <Button className="clear-filter-btn" onClick={() => {
+              setSearchInput('')
+              setSearchQuery('')
+              setCompanyFilter('')
+            }}>
+              Clear
+            </Button>
+          )}
+
+          {isFetching && (
+            <div className="filter-loading-indicator">
+              <Spinner animation="border" size="sm" variant="warning" />
+              <span>Updating...</span>
+            </div>
+          )}
+        </div>
+
+        {/* Companies Grid */}
+        {filteredCompanies.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-icon"><Building2 size={48} /></div>
+            <p>{companies.length === 0 ? 'No companies available' : 'No matching companies found'}</p>
+            <small>{companies.length === 0 ? 'Check back later for new opportunities' : 'Try changing your search or filter'}</small>
+          </div>
+        ) : (
+          <div className="companies-grid">
+            {filteredCompanies.map((company) => (
+              <CompanyCard 
+                key={company._id} 
+                company={company} 
+                onClick={() => fetchCompanyDetails(company._id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="pagination-wrapper">
+            <div className="pagination-info">
+              Page {currentPage} of {totalPages} • Total {totalCompanies} companies
+            </div>
+            <div className="pagination-controls">
+              <Button
+                className="pagination-btn"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1 || isFetching}
+              >
+                Previous
+              </Button>
+
+              {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
+                <Button
+                  key={pageNumber}
+                  className={`pagination-btn page-number-btn ${pageNumber === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNumber)}
+                  disabled={isFetching}
+                >
+                  {pageNumber}
+                </Button>
+              ))}
+
+              <Button
+                className="pagination-btn"
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages || isFetching}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Company Details Modal */}
+      <Modal show={showCompanyModal} onHide={() => setShowCompanyModal(false)} fullscreen className="company-modal">
+        <Modal.Header closeButton className="modal-header-custom">
+          <div className="modal-title-wrapper">
+            <div className="company-icon-large">
+              <span>{selectedCompany?.companyName.charAt(0)}</span>
+            </div>
+            <div>
+              <Modal.Title>{selectedCompany?.companyName}</Modal.Title>
+              <div className="company-subtitle">
+                <span>{selectedCompany?.role}</span>
+                <span>•</span>
+                <span><DollarSign size={12} /> {selectedCompany?.package}</span>
+                <span>•</span>
+                <span><MapPin size={12} /> {selectedCompany?.location}</span>
+              </div>
+            </div>
+          </div>
+        </Modal.Header>
+        <Modal.Body className="modal-body-custom">
+          <div className="split-layout">
+            {/* Left Side - Company Details */}
+            <div className="split-left">
+              <div className="content-section">
+                <h6 className="section-title">
+                  <span className="title-icon"><BookOpen size={15} /></span>
+                  About Company
+                </h6>
+                <div
+                  className="section-content rich-text-content"
+                  dangerouslySetInnerHTML={{
+                    __html: getSanitizedHtml(selectedCompany?.description || '<p>No description available</p>'),
+                  }}
+                />
+              </div>
+
+              <div className="content-section">
+                <h6 className="section-title">
+                  <span className="title-icon"><LayoutList size={15} /></span>
+                  Interview Rounds ({selectedCompany?.roundsCount})
+                </h6>
+                <div className="rounds-table-wrapper">
+                  <table className="rounds-table">
+                    <thead>
+                      <tr>
+                        <th>Round</th>
+                        <th>Type</th>
+                        <th>Name</th>
+                        <th>Duration</th>
+                        <th>Questions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCompany?.rounds.map((round, idx) => {
+                        const visuals = getRoundVisuals(round?.roundType)
+                        return (
+                          <tr key={round._id}>
+                            <td>{`Round ${idx + 1}`}</td>
+                            <td>
+                              <span className="round-type-pill" style={{ background: visuals.colors.bg, color: visuals.colors.color, border: `1px solid ${visuals.colors.border}` }}>
+                                <span className="pill-icon">{visuals.icon}</span>
+                                <span className="pill-text">{round.roundType}</span>
+                              </span>
+                            </td>
+                            <td>{round.roundName}</td>
+                            <td>{round.duration} mins</td>
+                            <td>{round.questionCount}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Available Rounds */}
+            <div className="split-right">
+              <h6 className="section-title">
+                <span className="title-icon"><Target size={15} /></span>
+                Available Rounds
+              </h6>
+              <div className="rounds-list">
+                {selectedCompany?.rounds.map((round) => {
+                  const visuals = getRoundVisuals(round?.roundType)
+                  return (
+                  <Card key={round._id} className="round-card">
+                    <Card.Body>
+                      <div className="round-card-header">
+                        <div className="round-icon" style={{ background: visuals.colors.bg }}>
+                          <span>{visuals.icon}</span>
+                        </div>
+                        <div className="round-info">
+                          <h5 className="round-name">{round.roundName}</h5>
+                          <div className="round-stats">
+                            <span><Clock size={11} /> {round.duration} mins</span>
+                            <span><FileText size={11} /> {round.questionCount} questions</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button 
+                        className="start-round-btn"
+                        style={{ background: visuals.colors.color }}
+                        onClick={() => handleStartRound(round)}
+                      >
+                        View Round →
+                      </Button>
+                    </Card.Body>
+                  </Card>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* Round Modal */}
+      <Modal show={showRoundModal} onHide={handleCloseRoundModal} fullscreen className="round-modal" backdrop="static" keyboard={false}>
+        {activeMode === 'preview' && (
+          <>
+            <Modal.Header className="round-modal-header" closeButton>
+              <div className="round-modal-title">
+                <span className="round-icon">{selectedRound && getRoundVisuals(selectedRound.roundType).icon}</span>
+                <div>
+                  <h4>{selectedRound?.roundName} Round</h4>
+                  <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
+                </div>
+              </div>
+              <div className="round-modal-actions">
+                <Button className="header-quiz-btn" onClick={handleTakeQuiz}>
+                  {selectedRound?.roundType === 'CODING'
+                    ? 'Start Challenge'
+                    : selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR'
+                      ? 'Start Practice'
+                      : 'Take Quiz'}
+                </Button>
+              </div>
+            </Modal.Header>
+            <Modal.Body className="round-modal-body">
+              <div className="preview-container">
+                <div className="questions-container">
+                  {selectedRound?.roundType === 'MCQ' && selectedRound.questions.map((q, idx) => (
+                    <div key={q._id} className="mcq-question">
+                      <div className="question-header">
+                        <span className="question-number">Q{idx + 1}</span>
+                        <Badge className="question-type">MCQ</Badge>
+                      </div>
+                      <h5 className="question-text">{q.question}</h5>
+                      <div className="options-list">
+                        {(q.options || []).map((option, optIdx) => (
+                          <div key={optIdx} className="option-item static">
+                            <span className="option-label">{String.fromCharCode(65 + optIdx)}.</span>
+                            <span className="option-text">{String(option)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                        {expandedAnswers[q._id] ? 'Hide Answer & Explanation' : 'Show Answer & Explanation'}
+                      </Button>
+                      {expandedAnswers[q._id] && (
+                        <div className="answer-panel">
+                          <p><strong>Answer:</strong> {q.correctAnswer ?? 'Not provided'}</p>
+                          <p><strong>Explanation:</strong> {q.explanation || 'Explanation not available.'}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {selectedRound?.roundType === 'CODING' && selectedRound.questions.map((q, idx) => (
+                    <div key={q._id} className="coding-question">
+                      <div className="question-header">
+                        <span className="question-number">Q{idx + 1}</span>
+                        <Badge className="question-type coding">CODING</Badge>
+                      </div>
+                      <h5 className="question-title">{q.title}</h5>
+                      <p className="question-description">{q.description}</p>
+                      <div className="sample-io">
+                        <div className="sample-input">
+                          <span className="label">Sample Input:</span>
+                          <code>{q.input || 'N/A'}</code>
+                        </div>
+                        <div className="sample-output">
+                          <span className="label">Expected Output:</span>
+                          <code>{q.output ?? 'N/A'}</code>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {selectedRound?.roundType === 'HR' && selectedRound.questions.map((q, idx) => (
+                    <div key={q._id} className="mcq-question">
+                      <div className="question-header">
+                        <span className="question-number">Q{idx + 1}</span>
+                        <Badge className="question-type hr">HR</Badge>
+                      </div>
+                      <h5 className="question-text">{q.question}</h5>
+                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                        {expandedAnswers[q._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
+                      </Button>
+                      {expandedAnswers[q._id] && (
+                        <div className="answer-panel">
+                          <p><strong>Suggested Answer:</strong> {q.expectedAnswer || 'Not provided'}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  {selectedRound?.roundType === 'TR' && selectedRound.questions.map((q, idx) => (
+                    <div key={q._id} className="mcq-question">
+                      <div className="question-header">
+                        <span className="question-number">Q{idx + 1}</span>
+                        <Badge className="question-type tr">TR</Badge>
+                      </div>
+                      <h5 className="question-text">{q.question || q.title || 'Technical Interview Question'}</h5>
+                      {(q.description || q.input || q.output) && (
+                        <div className="answer-panel" style={{ marginTop: '0.5rem' }}>
+                          {q.description && <p><strong>Context:</strong> {q.description}</p>}
+                          {q.input && <p><strong>Input:</strong> {q.input}</p>}
+                          {q.output != null && <p><strong>Expected:</strong> {String(q.output)}</p>}
+                        </div>
+                      )}
+                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                        {expandedAnswers[q._id] ? 'Hide Suggested Direction' : 'Show Suggested Direction'}
+                      </Button>
+                      {expandedAnswers[q._id] && (
+                        <div className="answer-panel">
+                          <p><strong>Suggested Direction:</strong> {q.expectedAnswer || q.explanation || 'Not provided'}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Modal.Body>
+          </>
+        )}
+
+        {activeMode === 'quiz' && selectedRound && (
+          <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            <MCQQuiz
+              round={selectedRound}
+              companyName={selectedCompany?.companyName || ''}
+              role={selectedCompany?.role || ''}
+              quizQuestions={quizQuestions}
+              onClose={handleCloseRoundModal}
+            />
+          </Modal.Body>
+        )}
+
+        {activeMode === 'coding' && selectedRound && (
+          <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            <CodingChallenge
+              round={selectedRound}
+              companyName={selectedCompany?.companyName || ''}
+              role={selectedCompany?.role || ''}
+              onClose={handleCloseRoundModal}
+            />
+          </Modal.Body>
+        )}
+
+        {activeMode === 'interview' && selectedRound && (
+          <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            {selectedRound.roundType === 'HR' ? (
+              <HRInterviewPractice
+                round={selectedRound}
+                companyName={selectedCompany?.companyName || ''}
+                role={selectedCompany?.role || ''}
+                onClose={handleCloseRoundModal}
+              />
+            ) : (
+              <TRInterviewPractice
+                round={selectedRound}
+                companyName={selectedCompany?.companyName || ''}
+                role={selectedCompany?.role || ''}
+                onClose={handleCloseRoundModal}
+              />
+            )}
+          </Modal.Body>
+        )}
+      </Modal>
+
+      <style>{`
+        .company-interview-container {
+          background: #000000;
+          min-height: 100vh;
+          color: #ffffff;
+        }
+
+        /* Header */
+        .header-section {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+
+        .page-title {
+          font-size: 1.6rem;
+          font-weight: 700;
+          color: #ff6b35;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.75rem;
+        }
+
+        .page-subtitle {
+          color: #888888;
+          font-size: 0.9rem;
+        }
+
+        /* Loading & Empty States */
+        .loading-container, .error-container {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 0.65rem;
+          min-height: 100vh;
+          width: 100%;
+          background: #000000;
+          text-align: center;
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 3rem;
+        }
+
+        .empty-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+          opacity: 0.5;
+        }
+
+        /* Companies Grid */
+        .companies-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+          gap: 1.5rem;
+        }
+
+        .list-filters {
+          display: flex;
+          align-items: flex-end;
+          gap: 0.85rem;
+          flex-wrap: wrap;
+          padding: 0.85rem;
+          border: 1px solid #2a2a2a;
+          border-radius: 12px;
+          background: #0b0b0b;
+        }
+
+        .filter-control-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.35rem;
+          min-width: 180px;
+        }
+
+        .filter-control-group.search-group {
+          flex: 1;
+          min-width: 240px;
+        }
+
+        .filter-label {
+          font-size: 0.7rem;
+          color: #a0a0a0;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          font-weight: 700;
+        }
+
+        .filter-select,
+        .filter-input {
+          width: 100%;
+          border-radius: 8px;
+          border: 1px solid #333333;
+          background: #101010;
+          color: #efefef;
+          padding: 0.46rem 0.7rem;
+          font-size: 0.82rem;
+        }
+
+        .filter-select:focus,
+        .filter-input:focus {
+          outline: none;
+          border-color: #ff6b35;
+          box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.28);
+        }
+
+        .clear-filter-btn {
+          border: 1px solid #444;
+          background: #141414;
+          color: #d8d8d8;
+          border-radius: 8px;
+          font-size: 0.8rem;
+          padding: 0.42rem 0.8rem;
+        }
+
+        .clear-filter-btn:hover {
+          border-color: #ff6b35;
+          color: #ff6b35;
+          background: #1a1a1a;
+        }
+
+        .filter-loading-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          color: #ffbe9f;
+          font-size: 0.75rem;
+          margin-left: auto;
+          padding: 0.35rem 0.5rem;
+        }
+
+        .pagination-wrapper {
+          margin-top: 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+        }
+
+        .pagination-info {
+          color: #9a9a9a;
+          font-size: 0.82rem;
+        }
+
+        .pagination-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+          background: #111111;
+          border: 1px solid #2d2d2d;
+          color: #e2e2e2;
+          border-radius: 8px;
+          padding: 0.38rem 0.75rem;
+          font-size: 0.78rem;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+          border-color: #ff6b35;
+          color: #ff6b35;
+          background: #151515;
+        }
+
+        .pagination-btn.page-number-btn.active {
+          background: #ff6b35;
+          border-color: #ff6b35;
+          color: #ffffff;
+        }
+
+        .pagination-btn:disabled {
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+
+        .company-card {
+          background: #0a0a0a;
+          border: 1px solid #333333;
+          border-radius: 20px;
+          transition: all 0.3s ease;
+          cursor: pointer;
+        }
+
+        .company-card:hover {
+          transform: translateY(-4px);
+          border-color: #ff6b35;
+          box-shadow: 0 8px 24px rgba(255, 107, 53, 0.15);
+        }
+
+        .company-header {
+          display: flex;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .company-icon {
+          width: 60px;
+          height: 60px;
+          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
+          border-radius: 16px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .company-icon .icon {
+          font-size: 28px;
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .company-info {
+          flex: 1;
+        }
+
+        .company-name {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #ffffff;
+          margin-bottom: 0.5rem;
+        }
+
+        .company-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+          align-items: center;
+        }
+
+        .meta-badge {
+          font-size: 0.7rem;
+          padding: 0.25rem 0.6rem;
+          border-radius: 20px;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.3rem;
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        .meta-badge svg {
+          width: 11px;
+          height: 11px;
+          flex-shrink: 0;
+        }
+
+        .meta-badge.role {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .meta-badge.package {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .meta-badge.location {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .company-description {
+          color: #b0b0b0;
+          font-size: 0.85rem;
+          line-height: 1.5;
+          margin-bottom: 1rem;
+        }
+
+        .company-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding-top: 1rem;
+          border-top: 1px solid #222222;
+        }
+
+        .rounds-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .rounds-count {
+          font-size: 0.75rem;
+          color: #888888;
+        }
+
+        .round-types {
+          display: flex;
+          gap: 0.5rem;
+        }
+
+        .round-type-badge {
+          font-size: 0.7rem;
+          padding: 0.25rem 0.6rem;
+        }
+
+        .view-details-btn {
+          background: transparent;
+          border: 1px solid #ff6b35;
+          color: #ff6b35;
+          padding: 0.5rem 1rem;
+          border-radius: 10px;
+          transition: all 0.3s ease;
+        }
+
+        .view-details-btn:hover {
+          background: #ff6b35;
+          color: #ffffff;
+        }
+
+        /* Modal Styles */
+        .company-modal .modal-content {
+          background: #0a0a0a;
+          border: 1px solid #333333;
+          border-radius: 20px;
+        }
+
+        .modal-header-custom {
+          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+          border-bottom: 2px solid #ff6b35;
+          padding: 1rem 1.25rem;
+        }
+
+        .modal-title-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .company-icon-large {
+          width: 56px;
+          height: 56px;
+          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .company-icon-large span {
+          font-size: 24px;
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .company-subtitle {
+          display: flex;
+          gap: 0.5rem;
+          color: #888888;
+          font-size: 0.85rem;
+          margin-top: 0.25rem;
+        }
+
+        .modal-body-custom {
+          padding: 0;
+          overflow-y: auto;
+          overflow-x: hidden;
+        }
+
+        /* Split Layout in Modal */
+        .split-layout {
+          display: flex;
+          min-height: 500px;
+          align-items: flex-start;
+        }
+
+        .split-left {
+          flex: 1.2;
+          padding: 1.5rem;
+          border-right: 1px solid #333333;
+          overflow: visible;
+        }
+
+        .split-right {
+          flex: 0.8;
+          padding: 1.5rem;
+          background: #050505;
+          position: sticky;
+          top: 0;
+          align-self: flex-start;
+          max-height: calc(100vh - 140px);
+          overflow: visible;
+        }
+
+        .content-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+          color: #ff6b35;
+          font-size: 0.9rem;
+          font-weight: 600;
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .section-content {
+          color: #d0d0d0;
+          font-size: 0.85rem;
+          line-height: 1.6;
+        }
+
+        .rich-text-content p,
+        .rich-text-content ul,
+        .rich-text-content ol,
+        .rich-text-content h1,
+        .rich-text-content h2,
+        .rich-text-content h3,
+        .rich-text-content h4,
+        .rich-text-content h5,
+        .rich-text-content h6 {
+          margin: 0 0 0.75rem;
+        }
+
+        .rich-text-content ul,
+        .rich-text-content ol {
+          padding-left: 1.25rem;
+        }
+
+        .rich-text-content li {
+          margin-bottom: 0.35rem;
+        }
+
+        .rich-text-content a {
+          color: #ff9a5c;
+          text-decoration: underline;
+        }
+
+        .rich-text-content strong {
+          color: #ffffff;
+        }
+
+        /* Rounds Table */
+        .rounds-table-wrapper {
+          border: 1px solid #222222;
+          border-radius: 14px;
+          overflow: hidden;
+          background: #090909;
+        }
+
+        .rounds-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+
+        .rounds-table th {
+          background: #111111;
+          color: #ff6b35;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+          text-align: left;
+          padding: 0.85rem 1rem;
+          border-bottom: 1px solid #222222;
+        }
+
+        .rounds-table td {
+          color: #d6d6d6;
+          font-size: 0.84rem;
+          padding: 0.85rem 1rem;
+          border-bottom: 1px solid #1d1d1d;
+          vertical-align: middle;
+        }
+
+        .rounds-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+
+        .rounds-table tbody tr:hover {
+          background: rgba(255, 107, 53, 0.04);
+        }
+
+        .round-type-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.3rem 0.75rem;
+          border-radius: 20px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .pill-icon {
+          font-size: 0.85rem;
+          line-height: 1;
+        }
+
+        .pill-text {
+          line-height: 1;
+        }
+
+        /* Rounds List */
+        .rounds-list {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .round-card {
+          background: #0a0a0a;
+          border: 1px solid #333333;
+          border-radius: 16px;
+          transition: all 0.3s ease;
+        }
+
+        .round-card:hover {
+          border-color: #ff6b35;
+        }
+
+        .round-card-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1rem;
+        }
+
+        .round-icon {
+          width: 50px;
+          height: 50px;
+          border-radius: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+        }
+
+        .round-info {
+          flex: 1;
+        }
+
+        .round-name {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #ffffff;
+          margin-bottom: 0.25rem;
+        }
+
+        .round-stats {
+          display: flex;
+          gap: 1rem;
+          font-size: 0.7rem;
+          color: #888888;
+        }
+
+        .start-round-btn {
+          width: 100%;
+          border: none;
+          padding: 0.6rem;
+          border-radius: 10px;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+
+        .start-round-btn:hover {
+          transform: translateY(-2px);
+          filter: brightness(1.1);
+        }
+
+        /* Round Modal */
+        .round-modal .modal-content {
+          background: #0a0a0a;
+          border: 1px solid #333333;
+          border-radius: 20px;
+          height: 100vh;
+        }
+
+        .round-modal-header {
+          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
+          border-bottom: 2px solid #ff6b35;
+          padding: 0.75rem 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex: 0 0 auto;
+          padding-right: 4.5rem;
+        }
+
+        .round-modal-title {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex: 1;
+          min-width: 0;
+        }
+
+        .round-modal-title .round-icon {
+          font-size: 2rem;
+        }
+
+        .round-modal-title h4 {
+          margin: 0;
+          color: #ff6b35;
+          font-size: 1.1rem;
+        }
+
+        .round-modal-title p {
+          margin: 0;
+          font-size: 0.75rem;
+          color: #888888;
+        }
+
+        .round-modal-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          margin-left: auto;
+          flex: 0 0 auto;
+        }
+
+        .header-quiz-btn {
+          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
+          border: none;
+          padding: 0.45rem 0.95rem;
+          font-size: 0.82rem;
+          font-weight: 600;
+          line-height: 1.2;
+          white-space: nowrap;
+          color: #ffffff;
+        }
+
+        .header-quiz-btn:hover {
+          opacity: 0.9;
+        }
+
+        .round-modal-body {
+          padding: 1.5rem;
+          flex: 1 1 auto;
+          min-height: 0;
+          max-height: none;
+          overflow-y: auto;
+        }
+
+        /* MCQ Styles */
+        .questions-container {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+        }
+
+        .mcq-question, .coding-question {
+          background: #0d0d0d;
+          border: 1px solid #222222;
+          border-radius: 16px;
+          padding: 1.25rem;
+        }
+
+        .question-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+        }
+
+        .question-number {
+          font-size: 0.8rem;
+          color: #ff6b35;
+          font-weight: 600;
+        }
+
+        .question-type {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+          padding: 0.25rem 0.75rem;
+        }
+
+        .question-type.coding {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .question-type.hr {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .question-type.tr {
+          background: rgba(255, 107, 53, 0.15);
+          color: #ff6b35;
+        }
+
+        .question-text {
+          font-size: 1rem;
+          color: #ffffff;
+          margin-bottom: 1rem;
+        }
+
+        .question-title {
+          font-size: 1rem;
+          color: #ff6b35;
+          margin-bottom: 0.5rem;
+        }
+
+        .question-description {
+          font-size: 0.85rem;
+          color: #b0b0b0;
+          margin-bottom: 1rem;
+        }
+
+        .options-list {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .option-item {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.6rem 1rem;
+          background: #0a0a0a;
+          border: 1px solid #333333;
+          border-radius: 10px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .option-item:hover {
+          border-color: #ff6b35;
+        }
+
+        .option-item.selected {
+          border-color: #ff6b35;
+          background: rgba(255, 107, 53, 0.05);
+        }
+
+        .option-item.static {
+          cursor: default;
+        }
+
+        .option-item.static:hover {
+          border-color: #333333;
+        }
+
+        .option-label {
+          min-width: 20px;
+          color: #ff6b35;
+          font-weight: 700;
+        }
+
+        .option-text {
+          color: #e0e0e0;
+          font-size: 0.9rem;
+        }
+
+        /* Sample IO */
+        .sample-io {
+          display: flex;
+          gap: 1rem;
+          margin: 1rem 0;
+          padding: 0.75rem;
+          background: #0a0a0a;
+          border-radius: 10px;
+        }
+
+        .sample-input, .sample-output {
+          flex: 1;
+        }
+
+        .sample-io .label {
+          display: block;
+          font-size: 0.7rem;
+          color: #888888;
+          margin-bottom: 0.25rem;
+        }
+
+        .sample-io code {
+          display: block;
+          background: #050505;
+          padding: 0.5rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          color: #fbbf24;
+        }
+
+        .show-answer-btn {
+          margin-top: 0.75rem;
+          width: 100%;
+          text-align: left;
+          background: transparent;
+          border: 1px solid #2e2e2e;
+          color: #e0e0e0;
+          padding: 0.65rem 0.8rem;
+          border-radius: 8px;
+        }
+
+        .show-answer-btn:hover {
+          border-color: #ff6b35;
+          color: #ffffff;
+        }
+
+        .answer-panel {
+          margin-top: 0.75rem;
+          padding: 0.85rem;
+          border: 1px solid #2e2e2e;
+          border-radius: 10px;
+          background: #090909;
+        }
+
+        .answer-panel p {
+          margin: 0.25rem 0;
+          color: #cccccc;
+          font-size: 0.85rem;
+        }
+
+        /* Scrollbar */
+        .round-modal-body::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .round-modal-body::-webkit-scrollbar-track {
+          background: #1a1a25;
+        }
+
+        .round-modal-body::-webkit-scrollbar-thumb {
+          background: #ff6b35;
+          border-radius: 3px;
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+          .split-layout {
+            flex-direction: column;
+          }
+          
+          .split-left {
+            border-right: none;
+            border-bottom: 1px solid #333333;
+          }
+
+          .split-right {
+            position: static;
+            max-height: none;
+          }
+          
+          .companies-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .filter-control-group,
+          .filter-control-group.search-group {
+            min-width: 100%;
+            flex: 1 1 100%;
+          }
+
+          .filter-loading-indicator {
+            margin-left: 0;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .round-modal-header {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .round-modal-actions {
+            margin-right: 0;
+            width: 100%;
+            justify-content: space-between;
+          }
+          
+          .sample-io {
+            flex-direction: column;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+export default StudentCompanyInterviewPage
