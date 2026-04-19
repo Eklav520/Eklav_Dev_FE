@@ -268,10 +268,16 @@ const StudentFreelancingDashboard: React.FC = () => {
     setShowWorkflowModal(true)
   }
 
+  const isBeforeStartDate = (d?: string | null) => {
+    if (!d) return false
+    return new Date() < new Date(d)
+  }
+
   // ── Render: Task Card ────────────────────────────────────────────────────
   const renderTaskCard = (task: FreelancingTask, enrolled = false) => {
     const deadlinePast = isDeadlinePast(task.deadline)
     const full = (task.spotsLeft ?? 0) <= 0
+    const notStarted = isBeforeStartDate(task.startDate)
     const submissionStatus = task.mySubmission?.status || 'pending'
     const reviewStatus = task.mySubmission?.adminReviewStatus || 'pending'
 
@@ -374,13 +380,12 @@ const StudentFreelancingDashboard: React.FC = () => {
                   Submission: {submissionStatus === 'completed' ? 'Completed' : 'Pending'}
                 </span>
                 <span
-                  className={`submission-chip review ${
-                    reviewStatus === 'approved'
-                      ? 'approved'
-                      : reviewStatus === 'rejected'
-                        ? 'rejected'
-                        : 'pending-review'
-                  }`}
+                  className={`submission-chip review ${reviewStatus === 'approved'
+                    ? 'approved'
+                    : reviewStatus === 'rejected'
+                      ? 'rejected'
+                      : 'pending-review'
+                    }`}
                 >
                   Review: {reviewLabel}
                 </span>
@@ -409,6 +414,10 @@ const StudentFreelancingDashboard: React.FC = () => {
                     Enrolled
                   </Button>
                 )
+              ) : notStarted ? (
+                <Button className="btn-closed" size="sm" disabled>
+                  Starts Soon
+                </Button>
               ) : deadlinePast ? (
                 <Button className="btn-closed" size="sm" disabled>
                   Closed
@@ -806,10 +815,18 @@ const StudentFreelancingDashboard: React.FC = () => {
                 <FaCheckCircle size={14} className="me-1" />
                 Already Enrolled
               </Button>
+            ) : isBeforeStartDate(selectedTask.startDate) ? (
+              <Button className="btn-closed modal-footer-btn small-btn" disabled>
+                Not Started Yet
+              </Button>
             ) : isDeadlinePast(selectedTask.deadline) ? (
-              <Button className="btn-closed" disabled>Deadline Passed</Button>
+              <Button className="btn-closed" disabled>
+                Deadline Passed
+              </Button>
             ) : (selectedTask.spotsLeft ?? 0) <= 0 ? (
-              <Button className="btn-closed" disabled>No Spots Available</Button>
+              <Button className="btn-closed" disabled>
+                No Spots Available
+              </Button>
             ) : (
               <Button
                 className="btn-enroll modal-footer-btn"
@@ -817,7 +834,10 @@ const StudentFreelancingDashboard: React.FC = () => {
                 onClick={() => handleEnroll(selectedTask._id)}
               >
                 {enrolling === selectedTask._id ? (
-                  <><Spinner animation="border" size="sm" className="me-1" /> Enrolling…</>
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    Enrolling…
+                  </>
                 ) : (
                   'Apply Now'
                 )}
@@ -840,6 +860,27 @@ const StudentFreelancingDashboard: React.FC = () => {
 
       {/* ── Styles ─────────────────────────────────────────────────────────── */}
       <style>{`
+        .task-card .card-body {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .task-actions {
+          margin-top: auto; /* 👈 pushes buttons to bottom */
+        }
+        .task-title {
+          min-height: 48px;
+        }
+
+        .task-info-row {
+          min-height: 40px;
+        }
+        .small-btn {
+          flex: 0 0 auto !important;
+          width: auto !important;
+          padding: 0.4rem 0.9rem !important;
+        }
         /* Layout */
         .student-freelancing {
           background: #000;
