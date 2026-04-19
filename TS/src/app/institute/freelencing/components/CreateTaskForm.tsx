@@ -42,6 +42,7 @@ const CATEGORIES = [
   { value: "", label: "Select a category", icon: "📁" },
   { value: "web-development", label: "Web Development", icon: "🌐" },
   { value: "ai-ml", label: "AI/ML", icon: "🤖" },
+  { value: "deep-learning", label: "Deep Learning", icon: "🧠" },
   { value: "data-science", label: "Data Science", icon: "📊" },
   { value: "ui-ux", label: "UI/UX Design", icon: "🎨" },
   { value: "mobile-development", label: "Mobile Development", icon: "📱" },
@@ -1126,6 +1127,15 @@ const CreateTask = () => {
           .summary-label {
             min-width: auto;
           }
+        }
+        .form-select {
+          max-height: 22px; /* keep closed height normal */
+          overflow-y: auto;
+        }
+
+        /* 👇 This targets dropdown list (works in most browsers like Chrome) */
+        .form-select option {
+          white-space: nowrap;
         }
       `}</style>
     </div>
