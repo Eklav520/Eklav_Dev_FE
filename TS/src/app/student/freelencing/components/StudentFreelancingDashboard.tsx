@@ -293,19 +293,27 @@ const StudentFreelancingDashboard: React.FC = () => {
         <Card className="task-card">
           <Card.Body>
             {/* Category badge + NDA */}
-            <div className="task-badges">
-              {task.category && (
-                <span className="badge cat-badge">
-                  {CATEGORY_LABELS[task.category] || task.category}
-                </span>
-              )}
-              {task.ndaRequired && (
-                <span className="badge nda-badge">
-                  <FaLock size={10} className="me-1" />
-                  NDA
-                </span>
-              )}
-            </div>
+           <div className="task-header">
+  <div className="task-badges">
+    {task.category && (
+      <span className="badge cat-badge">
+        {CATEGORY_LABELS[task.category] || task.category}
+      </span>
+    )}
+    {task.ndaRequired && (
+      <span className="badge nda-badge">
+        <FaLock size={10} className="me-1" />
+        NDA
+      </span>
+    )}
+  </div>
+
+  {notStarted && (
+    <span className="start-badge">
+      {getStartCountdown(task.startDate)}
+    </span>
+  )}
+</div>
 
             <h4 className="task-title">{task.title}</h4>
 
@@ -328,8 +336,12 @@ const StudentFreelancingDashboard: React.FC = () => {
             <div className="task-info-row">
               <div className="info-item">
                 <FaCalendarAlt className="info-icon" />
-                <span className={deadlinePast ? 'text-danger' : ''}>
-                  {task.deadline ? formatDate(task.deadline) : '—'}
+                <span>
+                  {task.startDate ? formatDate(task.startDate) : '—'}
+                  {' → '}
+                  <span className={deadlinePast ? 'text-danger' : ''}>
+                    {task.deadline ? formatDate(task.deadline) : '—'}
+                  </span>
                   {deadlinePast && ' (Closed)'}
                 </span>
               </div>
@@ -445,6 +457,19 @@ const StudentFreelancingDashboard: React.FC = () => {
       </Col>
     )
   }
+
+  const getStartCountdown = (d?: string | null) => {
+  if (!d) return ''
+  const diff = new Date(d).getTime() - Date.now()
+
+  if (diff <= 0) return 'Live'
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (hours > 0) return `Starts in ${hours}h ${mins}m`
+  return `Starts in ${mins}m`
+}
 
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
@@ -880,6 +905,22 @@ const StudentFreelancingDashboard: React.FC = () => {
           flex: 0 0 auto !important;
           width: auto !important;
           padding: 0.4rem 0.9rem !important;
+        }
+          .task-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .start-badge {
+          font-size: 0.7rem;
+          background: rgba(255, 193, 7, 0.15);
+          color: #ff6b35;
+          border: 1px solid rgba(255, 193, 7, 0.4);
+          padding: 0.2rem 0.6rem;
+          border-radius: 6px;
+          white-space: nowrap;
         }
         /* Layout */
         .student-freelancing {
