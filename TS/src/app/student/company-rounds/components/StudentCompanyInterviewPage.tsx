@@ -1201,26 +1201,63 @@ const StudentCompanyInterviewPage = () => {
           align-items: flex-start;
         }
 
+      .split-layout {
+          display: flex;
+          gap: 16px;
+          height: calc(100vh - 120px); /* 🔥 important */
+        }
+
+        /* LEFT SIDE */
         .split-left {
-          flex: 1.2;
+          width: 60%;
+          overflow-y: auto;
           padding: 1.5rem;
           border-right: 1px solid #333333;
-          overflow: visible;
+        }
+
+        /* RIGHT SIDE */
+        .split-right {
+          width: 40%;
+          min-width: 380px; /* 🔥 CRITICAL FIX */
+          overflow-y: auto;
+          padding: 1.5rem;
+          background: #050505;
+
+          position: sticky;
+          top: 0;
+        }
+        .content-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .round-card {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .round-card .card-body {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .start-round-btn {
+          margin-top: auto; /* 🔥 keeps button always visible */
         }
 
         .split-right {
-          flex: 0.8;
-          padding: 1.5rem;
-          background: #050505;
-          position: sticky;
-          top: 0;
-          align-self: flex-start;
-          max-height: calc(100vh - 140px);
-          overflow: visible;
+          flex-shrink: 0;  /* 🔥 THIS FIXES YOUR ISSUE */
         }
+        
+        .split-left {
+          width: 60%;
+          overflow-y: auto;
+          overflow-x: hidden;   /* 🔥 FIX horizontal scroll */
+          padding: 1.5rem;
+          border-right: 1px solid #333333;
 
-        .content-section {
-          margin-bottom: 1.5rem;
+          word-wrap: break-word;     /* 🔥 force text wrap */
+          overflow-wrap: break-word; /* 🔥 modern support */
         }
 
         .section-title {
@@ -1273,12 +1310,14 @@ const StudentCompanyInterviewPage = () => {
         .rounds-table-wrapper {
           border: 1px solid #222222;
           border-radius: 14px;
-          overflow: hidden;
+           width: 100%;
+          overflow-x: auto;
           background: #090909;
         }
 
         .rounds-table {
           width: 100%;
+          table-layout: fixed; 
           border-collapse: collapse;
         }
 
