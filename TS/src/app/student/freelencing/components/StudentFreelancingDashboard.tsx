@@ -1422,11 +1422,35 @@ const StudentFreelancingDashboard: React.FC = () => {
         .date-val { font-size: 0.95rem; color: #ccc; font-weight: 500; }
         .date-arrow { color: #555; }
 
-        /* Rich HTML content */
         .rich-content {
           font-size: 0.9rem;
           color: #bbb;
           line-height: 1.65;
+
+          /* ✅ FIXES */
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          white-space: normal;
+          max-width: 100%;
+        }
+
+        .rich-content * {
+          max-width: 100%;
+          word-break: break-word;
+        }
+
+        .rich-content img,
+        .rich-content video {
+          max-width: 100%;
+          height: auto;
+        }
+
+        /* VERY IMPORTANT (handles code blocks) */
+        .rich-content pre,
+        .rich-content code {
+          white-space: pre-wrap !important;
+          word-break: break-word;
+          overflow-x: auto;
         }
 
         .rich-content p { margin-bottom: 0.5rem; }
