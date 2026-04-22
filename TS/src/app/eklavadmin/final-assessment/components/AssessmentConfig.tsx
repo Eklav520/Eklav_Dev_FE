@@ -84,7 +84,7 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     /* ================= HANDLE EXAM SELECTION CHANGE ================= */
     const handleExamChange = (selectedExamId: string) => {
         setExamId?.(selectedExamId);
-        
+
         // Clear title and description when "Create New Exam" is selected
         if (!selectedExamId) {
             setTitle("");
@@ -169,6 +169,52 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
         const updated = [...rounds];
         updated[index] = { ...updated[index], [field]: value };
         setRounds(updated);
+    };
+
+    const handleDeleteExam = async (id?: string) => {
+        const deleteId = id || examId;
+        if (!deleteId) return;
+
+        const confirmDelete = window.confirm("Are you sure you want to delete this exam?");
+        if (!confirmDelete) return;
+
+        try {
+            setLoading(true);
+            const res = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam/${deleteId}`,
+                { method: "DELETE", headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+            const data = await res.json();
+
+            if (data.success) {
+                setMessage({ type: "success", text: "Exam deleted successfully" });
+                if (deleteId === examId) {
+                    setExamId?.("");
+                    setTitle("");
+                    setDescription("");
+                    setRounds([
+                        { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "coding", enabled: false, pickCount: 1, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "tr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "hr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                    ]);
+                }
+                // Refresh list
+                const refreshRes = await fetch(
+                    `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exams`,
+                    { headers: { Authorization: `Bearer ${user?.token}` } }
+                );
+                const refreshData = await refreshRes.json();
+                setExamList(refreshData.exams || []);
+            } else {
+                setMessage({ type: "error", text: data.message || "Delete failed" });
+            }
+        } catch (err) {
+            setMessage({ type: "error", text: "Something went wrong" });
+        } finally {
+            setLoading(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
     };
 
     /* ================= SUBMIT ================= */
@@ -297,7 +343,7 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                             <FaTimesCircle className="toast-icon error" />
                         )}
                         <span className="toast-message">{message.text}</span>
-                        <button 
+                        <button
                             className="toast-close"
                             onClick={() => setMessage(null)}
                         >
@@ -349,8 +395,8 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                                 className={`form-input-custom ${!!examId ? 'disabled-input' : ''}`}
                             />
                             <small className="form-hint">
-                                {examId 
-                                    ? 'Title is locked when editing existing exam' 
+                                {examId
+                                    ? 'Title is locked when editing existing exam'
                                     : 'Enter a descriptive title for your new exam'}
                             </small>
                         </div>
@@ -485,7 +531,6 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                             })}
                         </div>
                     </div>
-
                     {/* Submit Button */}
                     <div className="form-actions">
                         <button
@@ -506,6 +551,87 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                             )}
                         </button>
                     </div>
+                     {/* ================= EXAM LIST TABLE ================= */}
+                    <div className="exam-list-container">
+                        <div className="exam-list-header">
+                            <h6 className="exam-list-title">Existing Exams</h6>
+                            <p className="exam-list-subtitle">Manage and delete existing exam configurations</p>
+                        </div>
+
+                        {examList.length === 0 ? (
+                            <div className="no-exams">
+                                <FaInfoCircle className="no-exams-icon" />
+                                <span>No exams created yet</span>
+                            </div>
+                        ) : (
+                            <div className="table-wrapper">
+                                <table className="exam-table">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Exam Title</th>
+                                            <th>Rounds</th>
+                                            <th>Description</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {examList.map((exam, index) => (
+                                            <tr key={exam._id} className={examId === exam._id ? "active-row" : ""}>
+                                                <td>{index + 1}</td>
+                                                <td>
+                                                    <span className="exam-title-cell">{exam.title}</span>
+                                                    {examId === exam._id && (
+                                                        <span className="editing-badge">Editing</span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <div className="rounds-badges">
+                                                        {exam.rounds?.map((r: any) => (
+                                                            <span key={r.roundType} className={`round-badge ${r.roundType}`}>
+                                                                {roundIcons[r.roundType as RoundType]?.label || r.roundType}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span className="desc-cell">
+                                                        {exam.description
+                                                            ? exam.description.length > 50
+                                                                ? exam.description.slice(0, 50) + "..."
+                                                                : exam.description
+                                                            : <span style={{ color: "#555" }}>—</span>
+                                                        }
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="action-btns">
+                                                        <button
+                                                            className="edit-btn"
+                                                            onClick={() => handleExamChange(exam._id)}
+                                                            title="Edit this exam"
+                                                        >
+                                                            <FaEdit /> Edit
+                                                        </button>
+                                                        <button
+                                                            className="delete-btn"
+                                                            onClick={() => handleDeleteExam(exam._id)}
+                                                            disabled={loading}
+                                                            title="Delete this exam"
+                                                        >
+                                                            {loading ? <FaSpinner className="spinner-icon" /> : <FaTrash />}
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </div>
 
@@ -960,6 +1086,191 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                         flex-wrap: wrap;
                     }
                 }
+            .exam-list-section  {
+                max-width: 1200px;
+                margin: 2rem auto 0 auto;
+                background: #0a0a0a;
+                border: 1px solid #1f1f1f;
+                border-radius: 16px;
+                overflow: hidden;
+            }
+
+            .exam-list-header {
+                background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+                border-bottom: 1px solid #ff6b35;
+                padding: 1.25rem 1.5rem;
+            }
+
+            .exam-list-title {
+                color: #ff6b35;
+                font-size: 1rem;
+                font-weight: 600;
+                margin: 0;
+            }
+
+            .exam-list-subtitle {
+                color: #8a8a8a;
+                font-size: 0.8rem;
+                margin: 0.2rem 0 0 0;
+            }
+
+            .no-exams {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 2rem;
+                color: #555;
+                font-size: 0.9rem;
+            }
+
+            .no-exams-icon {
+                font-size: 1.2rem;
+                color: #333;
+            }
+
+            .table-wrapper {
+                overflow-x: auto;
+            }
+
+            .exam-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.85rem;
+            }
+
+            .exam-table thead tr {
+                background: #111;
+                border-bottom: 1px solid #2c2c2c;
+            }
+
+            .exam-table th {
+                padding: 0.85rem 1rem;
+                color: #ff6b35;
+                font-weight: 600;
+                text-align: left;
+                white-space: nowrap;
+            }
+
+            .exam-table tbody tr {
+                border-bottom: 1px solid #1a1a1a;
+                transition: background 0.15s ease;
+            }
+
+            .exam-table tbody tr:hover {
+                background: #111;
+            }
+
+            .exam-table tbody tr.active-row {
+                background: rgba(255, 107, 53, 0.05);
+                border-left: 3px solid #ff6b35;
+            }
+
+            .exam-table td {
+                padding: 0.85rem 1rem;
+                color: #ccc;
+                vertical-align: middle;
+            }
+
+            .exam-title-cell {
+                color: #fff;
+                font-weight: 500;
+                display: inline-block;
+                margin-right: 0.5rem;
+            }
+
+            .editing-badge {
+                background: rgba(255, 107, 53, 0.2);
+                color: #ff6b35;
+                border: 1px solid rgba(255, 107, 53, 0.4);
+                font-size: 0.65rem;
+                padding: 2px 8px;
+                border-radius: 20px;
+                font-weight: 600;
+                vertical-align: middle;
+            }
+
+            .rounds-badges {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.35rem;
+            }
+
+            .round-badge {
+                font-size: 0.65rem;
+                padding: 2px 8px;
+                border-radius: 20px;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+
+            .round-badge.mcq   { background: rgba(255,122,0,0.15); color: #ff7a00; border: 1px solid rgba(255,122,0,0.3); }
+            .round-badge.coding { background: rgba(40,167,69,0.15); color: #28a745; border: 1px solid rgba(40,167,69,0.3); }
+            .round-badge.tr    { background: rgba(23,162,184,0.15); color: #17a2b8; border: 1px solid rgba(23,162,184,0.3); }
+            .round-badge.hr    { background: rgba(253,126,20,0.15); color: #fd7e14; border: 1px solid rgba(253,126,20,0.3); }
+
+            .desc-cell {
+                color: #777;
+                font-size: 0.8rem;
+            }
+
+            .action-btns {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+            }
+
+            .edit-btn {
+                background: rgba(255, 107, 53, 0.15);
+                border: 1px solid rgba(255, 107, 53, 0.4);
+                color: #ff6b35;
+                padding: 0.4rem 0.85rem;
+                border-radius: 6px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: all 0.2s ease;
+            }
+
+            .edit-btn:hover {
+                background: rgba(255, 107, 53, 0.25);
+            }
+
+            .delete-btn {
+                background: rgba(220, 53, 69, 0.15);
+                border: 1px solid rgba(220, 53, 69, 0.4);
+                color: #dc3545;
+                padding: 0.4rem 0.85rem;
+                border-radius: 6px;
+                font-size: 0.75rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: all 0.2s ease;
+            }
+
+            .delete-btn:hover:not(:disabled) {
+                background: rgba(220, 53, 69, 0.25);
+            }
+
+            .delete-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
+            @media (max-width: 768px) {
+                .exam-list-container {
+                    margin: 1rem auto 0 auto;
+                    border-radius: 12px;
+                }
+                .action-btns {
+                    flex-direction: column;
+                }
+            }
             `}</style>
         </>
     );
