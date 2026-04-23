@@ -14,6 +14,8 @@ import uiuxBook from "../images/UI-UX-book.png";
 import csharpBook from "../images/csharp-book.png";
 import cBook from "../images/c-book.png";
 import genAI from "../images/Gen-AI.png";
+import prompt from "../images/Promt_Eng.png";
+import mysql  from "../images/mysql.png";
 
 export const booksList = [
   { id: "c", title: "C Programming", image: cBook },
@@ -26,6 +28,8 @@ export const booksList = [
   { id: "csharp", title: "C# Programming", image: csharpBook },
   { id: "dsa", title: "Data Structures & Algorithms", image: dsaBook },
   { id: "genAI", title: "Generative AI", image: genAI },
+  { id: "prompt", title: "Prompt Engineering", image: prompt },
+  { id: "mysql", title: "MySQL Databases", image: mysql },
   /* { id: "mysql", title: "MySQL Databases", image: mysqlBook },
   { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
   { id: "genai", title: "Generative AI", image: genAiBook },

@@ -1,0 +1,1212 @@
+{
+    "id": " MySQL-mastery",
+    "title": "MySQL Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "mysql-ch1",
+            "title": "Introduction to Databases",
+            "description": "Learn the fundamentals of databases, types of database systems, and an introduction to MySQL. Understand how data is organized, stored, and managed in real-world applications.",
+            "pages": [
+                {
+                    "id": "mysql-ch1-page1",
+                    "title": "What is a Database?",
+                    "content": "A database is an organized collection of data that can be easily accessed, managed, and updated. It is used to store information in a structured format such as tables with rows and columns.",
+                    "exampleCode": "-- Example: Creating a simple table\nCREATE TABLE students (\n  id INT,\n  name VARCHAR(50),\n  age INT\n);",
+                    "keyPoints": [
+                        "A database stores structured data",
+                        "Data is organized in tables (rows and columns)",
+                        "Supports easy access and modification",
+                        "Used in almost every application"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a database?",
+                            "options": [
+                                "A programming language",
+                                "A collection of structured data",
+                                "A hardware device",
+                                "A network protocol"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A database is a structured collection of data."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch1-page2",
+                    "title": "Types of Databases",
+                    "content": "Databases are mainly classified into relational (SQL) and non-relational (NoSQL). Relational databases use tables and structured schemas, while NoSQL databases use flexible formats like documents and key-value pairs.",
+                    "exampleCode": "-- Relational example\nSELECT * FROM students;\n\n-- NoSQL example (conceptual)\n{\n  \"name\": \"John\",\n  \"age\": 20\n}",
+                    "keyPoints": [
+                        "Relational databases use tables",
+                        "NoSQL databases use flexible data formats",
+                        "SQL is used for relational databases",
+                        "Choice depends on application needs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which type of database uses tables?",
+                            "options": [
+                                "NoSQL",
+                                "Relational Database",
+                                "Graph Database",
+                                "Document Store"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Relational databases organize data in tables."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch1-page3",
+                    "title": "Introduction to MySQL",
+                    "content": "MySQL is an open-source relational database management system (RDBMS) that uses SQL for managing data. It is widely used in web applications and enterprise systems.",
+                    "exampleCode": "-- Create database\nCREATE DATABASE school;\n\n-- Use database\nUSE school;",
+                    "keyPoints": [
+                        "MySQL is an RDBMS",
+                        "Uses SQL for data operations",
+                        "Open-source and widely used",
+                        "Supports large-scale applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is MySQL?",
+                            "options": [
+                                "A programming language",
+                                "A relational database system",
+                                "An operating system",
+                                "A web browser"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MySQL is a relational database management system."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch1-page4",
+                    "title": "DBMS vs RDBMS",
+                    "content": "DBMS (Database Management System) manages data without strict relationships, while RDBMS (Relational DBMS) organizes data into related tables with constraints and relationships.",
+                    "exampleCode": "-- RDBMS Example with relationship\nCREATE TABLE courses (\n  course_id INT PRIMARY KEY,\n  course_name VARCHAR(50)\n);\n\nCREATE TABLE students (\n  id INT,\n  name VARCHAR(50),\n  course_id INT,\n  FOREIGN KEY (course_id) REFERENCES courses(course_id)\n);",
+                    "keyPoints": [
+                        "DBMS stores data without relationships",
+                        "RDBMS uses tables with relationships",
+                        "RDBMS supports constraints",
+                        "MySQL is an RDBMS"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the main feature of RDBMS?",
+                            "options": [
+                                "No data storage",
+                                "Unstructured data",
+                                "Relationships between tables",
+                                "No constraints"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "RDBMS organizes data into related tables."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch1-page5",
+                    "title": "Real-world Use Cases",
+                    "content": "Databases are used in real-world applications such as banking systems, e-commerce platforms, social media, and student management systems to store and manage large amounts of data efficiently.",
+                    "exampleCode": "-- Example: Fetch user data\nSELECT name, email FROM users WHERE id = 1;",
+                    "keyPoints": [
+                        "Used in banking and finance systems",
+                        "Essential for e-commerce platforms",
+                        "Used in social media applications",
+                        "Handles large-scale data efficiently"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are databases commonly used?",
+                            "options": [
+                                "Only in gaming",
+                                "Only in hardware",
+                                "In real-world applications like banking and e-commerce",
+                                "Only in networking"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Databases are widely used in real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch2",
+            "title": "MySQL Installation & Setup",
+            "description": "Learn how to install MySQL, explore MySQL Workbench, connect to the database server, and execute basic commands to get started with database management.",
+            "pages": [
+                {
+                    "id": "mysql-ch2-page1",
+                    "title": "Installing MySQL",
+                    "content": "MySQL can be installed on different operating systems like Windows, macOS, and Linux. The installation process includes setting up the MySQL server, configuring root password, and selecting default settings.",
+                    "exampleCode": "# Linux (Ubuntu)\nsudo apt update\nsudo apt install mysql-server\n\n# Start MySQL service\nsudo service mysql start",
+                    "keyPoints": [
+                        "MySQL supports multiple operating systems",
+                        "Installation includes server and client tools",
+                        "Root user is created during setup",
+                        "Service must be started after installation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is required during MySQL installation?",
+                            "options": [
+                                "Creating root password",
+                                "Installing browser",
+                                "Writing code",
+                                "Configuring network cables"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Root password setup is part of MySQL installation."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch2-page2",
+                    "title": "MySQL Workbench Overview",
+                    "content": "MySQL Workbench is a graphical tool used to manage databases, run queries, and design schemas. It provides an easy interface for developers and beginners.",
+                    "exampleCode": "-- Example query in Workbench\nSELECT * FROM students;",
+                    "keyPoints": [
+                        "GUI tool for database management",
+                        "Supports query execution",
+                        "Helps design database schemas",
+                        "User-friendly interface"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is MySQL Workbench?",
+                            "options": [
+                                "A programming language",
+                                "A GUI tool for MySQL",
+                                "An operating system",
+                                "A browser"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MySQL Workbench is a graphical interface for managing MySQL."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch2-page3",
+                    "title": "Connecting to MySQL Server",
+                    "content": "To work with MySQL, you need to connect to the MySQL server using credentials such as username, password, and host. Connections can be made via command line or GUI tools.",
+                    "exampleCode": "-- Connect using CLI\nmysql -u root -p\n\n-- Enter password when prompted",
+                    "keyPoints": [
+                        "Requires username and password",
+                        "Can connect via CLI or GUI",
+                        "Default user is root",
+                        "Host is usually localhost"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command is used to connect MySQL via CLI?",
+                            "options": [
+                                "connect mysql",
+                                "mysql -u root -p",
+                                "start db",
+                                "open mysql"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The mysql -u root -p command is used to connect via CLI."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch2-page4",
+                    "title": "Creating First Database",
+                    "content": "After connecting to MySQL, you can create your first database using SQL commands. Databases act as containers for tables and data.",
+                    "exampleCode": "-- Create database\nCREATE DATABASE mydb;\n\n-- Use database\nUSE mydb;",
+                    "keyPoints": [
+                        "Database stores tables and data",
+                        "CREATE DATABASE creates a new database",
+                        "USE selects the database",
+                        "Multiple databases can exist"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command is used to create a database?",
+                            "options": [
+                                "MAKE DATABASE",
+                                "CREATE DATABASE",
+                                "NEW DATABASE",
+                                "ADD DATABASE"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "CREATE DATABASE is used to create a new database."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch2-page5",
+                    "title": "Basic MySQL Commands",
+                    "content": "Basic MySQL commands help users interact with databases. These include showing databases, tables, and describing table structure.",
+                    "exampleCode": "-- Show databases\nSHOW DATABASES;\n\n-- Show tables\nSHOW TABLES;\n\n-- Describe table\nDESCRIBE students;",
+                    "keyPoints": [
+                        "SHOW DATABASES lists all databases",
+                        "SHOW TABLES lists tables in a database",
+                        "DESCRIBE shows table structure",
+                        "Useful for database exploration"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command lists all databases?",
+                            "options": [
+                                "LIST DATABASES",
+                                "SHOW DATABASES",
+                                "GET DATABASES",
+                                "DISPLAY DATABASES"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "SHOW DATABASES displays all databases."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch3",
+            "title": "SQL Basics",
+            "description": "Learn the fundamentals of SQL (Structured Query Language) used to interact with databases. This module covers SELECT, INSERT, UPDATE, DELETE, filtering data, and sorting results.",
+            "pages": [
+                {
+                    "id": "mysql-ch3-page1",
+                    "title": "Introduction to SQL",
+                    "content": "SQL (Structured Query Language) is used to communicate with relational databases. It allows users to create, read, update, and delete data efficiently.",
+                    "exampleCode": "-- Basic SQL query\nSELECT 'Hello MySQL';",
+                    "keyPoints": [
+                        "SQL is used to interact with databases",
+                        "Supports CRUD operations (Create, Read, Update, Delete)",
+                        "Works with relational databases",
+                        "Easy to learn and widely used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does SQL stand for?",
+                            "options": [
+                                "Structured Query Language",
+                                "Simple Query Language",
+                                "System Query Logic",
+                                "Standard Question Language"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "SQL stands for Structured Query Language."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch3-page2",
+                    "title": "SELECT Statement",
+                    "content": "The SELECT statement is used to retrieve data from a database. You can select specific columns or all columns from a table.",
+                    "exampleCode": "-- Select all columns\nSELECT * FROM students;\n\n-- Select specific columns\nSELECT name, age FROM students;",
+                    "keyPoints": [
+                        "Used to fetch data from tables",
+                        "SELECT * retrieves all columns",
+                        "Can select specific columns",
+                        "Supports filtering and sorting"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which SQL command is used to retrieve data?",
+                            "options": [
+                                "GET",
+                                "FETCH",
+                                "SELECT",
+                                "READ"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "SELECT is used to retrieve data from a table."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch3-page3",
+                    "title": "INSERT Statement",
+                    "content": "The INSERT statement is used to add new records into a table. You can insert values into specific columns or all columns.",
+                    "exampleCode": "-- Insert data into table\nINSERT INTO students (id, name, age)\nVALUES (1, 'John', 20);",
+                    "keyPoints": [
+                        "Adds new records to a table",
+                        "Can specify columns",
+                        "VALUES keyword is used to insert data",
+                        "Supports multiple row insertion"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which SQL command is used to add data?",
+                            "options": [
+                                "ADD",
+                                "INSERT",
+                                "PUT",
+                                "CREATE"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "INSERT is used to add new records to a table."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch3-page4",
+                    "title": "UPDATE and DELETE Statements",
+                    "content": "The UPDATE statement modifies existing data, while the DELETE statement removes records from a table. Both should be used carefully with conditions.",
+                    "exampleCode": "-- Update data\nUPDATE students SET age = 21 WHERE id = 1;\n\n-- Delete data\nDELETE FROM students WHERE id = 1;",
+                    "keyPoints": [
+                        "UPDATE modifies existing data",
+                        "DELETE removes records",
+                        "Use WHERE clause to target specific rows",
+                        "Avoid using without conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command modifies existing data?",
+                            "options": [
+                                "CHANGE",
+                                "MODIFY",
+                                "UPDATE",
+                                "ALTER"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "UPDATE is used to modify existing records."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch3-page5",
+                    "title": "WHERE and ORDER BY Clauses",
+                    "content": "The WHERE clause is used to filter records based on conditions, while ORDER BY is used to sort the result set in ascending or descending order.",
+                    "exampleCode": "-- Filter data\nSELECT * FROM students WHERE age > 18;\n\n-- Sort data\nSELECT * FROM students ORDER BY age DESC;",
+                    "keyPoints": [
+                        "WHERE filters records",
+                        "Supports conditions like =, >, <, LIKE",
+                        "ORDER BY sorts results",
+                        "ASC (default) and DESC for sorting"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which clause is used to filter data?",
+                            "options": [
+                                "FILTER",
+                                "WHERE",
+                                "SORT",
+                                "ORDER"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "WHERE is used to filter records."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch4",
+            "title": "Database Design",
+            "description": "Learn how to design efficient and scalable databases. This module covers tables, relationships, keys, normalization, ER diagrams, and schema design principles.",
+            "pages": [
+                {
+                    "id": "mysql-ch4-page1",
+                    "title": "Tables & Relationships",
+                    "content": "Tables are the fundamental building blocks of a database. Relationships define how data in different tables is connected, such as one-to-one, one-to-many, and many-to-many relationships.",
+                    "exampleCode": "-- Example: One-to-Many relationship\nCREATE TABLE customers (\n  id INT PRIMARY KEY,\n  name VARCHAR(50)\n);\n\nCREATE TABLE orders (\n  order_id INT,\n  customer_id INT,\n  FOREIGN KEY (customer_id) REFERENCES customers(id)\n);",
+                    "keyPoints": [
+                        "Tables store structured data",
+                        "Relationships connect multiple tables",
+                        "Common types: one-to-one, one-to-many, many-to-many",
+                        "Foreign keys define relationships"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What defines relationships between tables?",
+                            "options": [
+                                "Indexes",
+                                "Primary keys",
+                                "Foreign keys",
+                                "Views"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Foreign keys are used to define relationships between tables."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch4-page2",
+                    "title": "Primary Key & Foreign Key",
+                    "content": "A primary key uniquely identifies each record in a table, while a foreign key is used to link one table to another by referencing a primary key.",
+                    "exampleCode": "-- Primary Key\nCREATE TABLE students (\n  id INT PRIMARY KEY,\n  name VARCHAR(50)\n);\n\n-- Foreign Key\nCREATE TABLE enrollments (\n  student_id INT,\n  FOREIGN KEY (student_id) REFERENCES students(id)\n);",
+                    "keyPoints": [
+                        "Primary key uniquely identifies rows",
+                        "Cannot contain NULL values",
+                        "Foreign key links tables",
+                        "Ensures referential integrity"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a primary key?",
+                            "options": [
+                                "A duplicate value",
+                                "A unique identifier",
+                                "A foreign reference",
+                                "A random column"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A primary key uniquely identifies each record in a table."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch4-page3",
+                    "title": "Normalization (1NF, 2NF, 3NF)",
+                    "content": "Normalization is the process of organizing data to reduce redundancy and improve data integrity. It involves dividing tables and defining relationships.",
+                    "exampleCode": "-- Example (simplified normalization)\n-- Before: One table with repeated data\n-- After: Separate tables with relationships",
+                    "keyPoints": [
+                        "Reduces data redundancy",
+                        "Improves data consistency",
+                        "1NF: Eliminate repeating groups",
+                        "2NF: Remove partial dependencies",
+                        "3NF: Remove transitive dependencies"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of normalization?",
+                            "options": [
+                                "Increase redundancy",
+                                "Reduce data duplication",
+                                "Delete data",
+                                "Increase storage"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Normalization reduces redundancy and improves consistency."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch4-page4",
+                    "title": "ER Diagrams",
+                    "content": "Entity-Relationship (ER) diagrams visually represent database structure, including entities (tables), attributes (columns), and relationships between them.",
+                    "exampleCode": "-- ER Diagram concept\nEntity: Student\nAttributes: id, name\nRelationship: Enrolls in Course",
+                    "keyPoints": [
+                        "Visual representation of database",
+                        "Shows entities and relationships",
+                        "Helps in planning database design",
+                        "Used before implementation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does an ER diagram represent?",
+                            "options": [
+                                "Code execution",
+                                "Database structure",
+                                "Network topology",
+                                "Operating system"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "ER diagrams represent the structure of a database."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch4-page5",
+                    "title": "Schema Design",
+                    "content": "Schema design defines how tables, relationships, and constraints are structured in a database. A good schema ensures efficiency, scalability, and maintainability.",
+                    "exampleCode": "-- Example schema\nCREATE TABLE users (\n  id INT PRIMARY KEY,\n  name VARCHAR(50),\n  email VARCHAR(100)\n);",
+                    "keyPoints": [
+                        "Defines database structure",
+                        "Includes tables, columns, and relationships",
+                        "Improves performance and scalability",
+                        "Should follow best practices"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a database schema?",
+                            "options": [
+                                "A query",
+                                "Database structure definition",
+                                "A programming language",
+                                "A server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A schema defines the structure of a database."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch5",
+            "title": "Advanced SQL Queries",
+            "description": "Learn advanced SQL concepts to retrieve and analyze data efficiently. This module covers joins, grouping, aggregate functions, subqueries, and aliases.",
+            "pages": [
+                {
+                    "id": "mysql-ch5-page1",
+                    "title": "Joins (INNER, LEFT, RIGHT)",
+                    "content": "Joins are used to combine data from multiple tables based on related columns. Different types of joins return different results.",
+                    "exampleCode": "-- INNER JOIN\nSELECT students.name, courses.course_name\nFROM students\nINNER JOIN courses ON students.course_id = courses.id;\n\n-- LEFT JOIN\nSELECT students.name, courses.course_name\nFROM students\nLEFT JOIN courses ON students.course_id = courses.id;",
+                    "keyPoints": [
+                        "Joins combine data from multiple tables",
+                        "INNER JOIN returns matching records",
+                        "LEFT JOIN returns all records from left table",
+                        "RIGHT JOIN returns all records from right table"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which join returns only matching records?",
+                            "options": [
+                                "LEFT JOIN",
+                                "RIGHT JOIN",
+                                "INNER JOIN",
+                                "FULL JOIN"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "INNER JOIN returns only matching records from both tables."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch5-page2",
+                    "title": "GROUP BY & HAVING",
+                    "content": "GROUP BY is used to group rows with similar values, while HAVING is used to filter grouped results.",
+                    "exampleCode": "-- Group data\nSELECT course_id, COUNT(*)\nFROM students\nGROUP BY course_id;\n\n-- Filter grouped data\nSELECT course_id, COUNT(*)\nFROM students\nGROUP BY course_id\nHAVING COUNT(*) > 2;",
+                    "keyPoints": [
+                        "GROUP BY groups similar rows",
+                        "Used with aggregate functions",
+                        "HAVING filters grouped results",
+                        "Different from WHERE clause"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which clause filters grouped data?",
+                            "options": [
+                                "WHERE",
+                                "GROUP",
+                                "HAVING",
+                                "ORDER"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "HAVING is used to filter grouped results."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch5-page3",
+                    "title": "Aggregate Functions",
+                    "content": "Aggregate functions perform calculations on a set of values and return a single result, such as COUNT, SUM, AVG, MIN, and MAX.",
+                    "exampleCode": "-- Aggregate functions\nSELECT COUNT(*) FROM students;\nSELECT AVG(age) FROM students;\nSELECT MAX(age) FROM students;",
+                    "keyPoints": [
+                        "Used to perform calculations",
+                        "Common functions: COUNT, SUM, AVG, MIN, MAX",
+                        "Works with GROUP BY",
+                        "Returns single value"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which function returns the average value?",
+                            "options": [
+                                "SUM",
+                                "AVG",
+                                "COUNT",
+                                "MAX"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "AVG returns the average value."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch5-page4",
+                    "title": "Subqueries",
+                    "content": "A subquery is a query inside another query. It is used to perform operations that depend on the result of another query.",
+                    "exampleCode": "-- Subquery example\nSELECT name FROM students\nWHERE age > (SELECT AVG(age) FROM students);",
+                    "keyPoints": [
+                        "Query inside another query",
+                        "Used for complex conditions",
+                        "Can be used in SELECT, WHERE, FROM",
+                        "Improves flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a subquery?",
+                            "options": [
+                                "A query outside database",
+                                "A query inside another query",
+                                "A join operation",
+                                "A table"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A subquery is a query nested inside another query."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch5-page5",
+                    "title": "Aliases",
+                    "content": "Aliases are used to rename columns or tables temporarily for better readability in query results.",
+                    "exampleCode": "-- Column alias\nSELECT name AS student_name FROM students;\n\n-- Table alias\nSELECT s.name FROM students s;",
+                    "keyPoints": [
+                        "Improves readability",
+                        "Temporary naming",
+                        "Used for columns and tables",
+                        "Helpful in complex queries"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of aliases?",
+                            "options": [
+                                "Delete data",
+                                "Rename temporarily",
+                                "Store data",
+                                "Join tables"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Aliases are used to rename columns or tables temporarily."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch6",
+            "title": "Indexing & Performance",
+            "description": "Learn how to improve database performance using indexing, query optimization techniques, and performance tuning tools. Understand how MySQL executes queries and how to make them faster.",
+            "pages": [
+                {
+                    "id": "mysql-ch6-page1",
+                    "title": "What is Indexing?",
+                    "content": "Indexing is a technique used to speed up data retrieval in a database by creating a data structure that allows faster lookups.",
+                    "exampleCode": "-- Create index\nCREATE INDEX idx_name ON students(name);",
+                    "keyPoints": [
+                        "Improves query performance",
+                        "Used for faster data retrieval",
+                        "Works like a book index",
+                        "May slow down insert/update operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of indexing?",
+                            "options": [
+                                "Delete data",
+                                "Speed up data retrieval",
+                                "Store data",
+                                "Backup database"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Indexing improves the speed of data retrieval."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch6-page2",
+                    "title": "Types of Indexes",
+                    "content": "MySQL supports different types of indexes such as primary index, unique index, and composite index. Each type serves a specific purpose.",
+                    "exampleCode": "-- Unique index\nCREATE UNIQUE INDEX idx_email ON users(email);\n\n-- Composite index\nCREATE INDEX idx_multi ON students(name, age);",
+                    "keyPoints": [
+                        "Primary index is automatically created",
+                        "Unique index prevents duplicate values",
+                        "Composite index uses multiple columns",
+                        "Indexes improve query performance"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which index prevents duplicate values?",
+                            "options": [
+                                "Primary index",
+                                "Unique index",
+                                "Composite index",
+                                "Normal index"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Unique index ensures no duplicate values."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch6-page3",
+                    "title": "Query Optimization",
+                    "content": "Query optimization involves improving SQL queries to execute faster. This includes using indexes, avoiding unnecessary data, and writing efficient queries.",
+                    "exampleCode": "-- Inefficient\nSELECT * FROM students;\n\n-- Optimized\nSELECT name FROM students WHERE age > 18;",
+                    "keyPoints": [
+                        "Use indexes for faster queries",
+                        "Avoid SELECT * when not needed",
+                        "Filter data using WHERE clause",
+                        "Reduce unnecessary computations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which query is more efficient?",
+                            "options": [
+                                "SELECT * FROM table",
+                                "SELECT required columns with conditions",
+                                "SELECT all rows",
+                                "No query"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Selecting required columns with conditions improves performance."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch6-page4",
+                    "title": "Performance Tuning",
+                    "content": "Performance tuning involves analyzing and improving database performance using techniques like indexing, query optimization, and configuration tuning.",
+                    "exampleCode": "-- Example: Add index for faster search\nCREATE INDEX idx_age ON students(age);",
+                    "keyPoints": [
+                        "Improves database efficiency",
+                        "Uses indexing and query optimization",
+                        "Reduces execution time",
+                        "Enhances scalability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is performance tuning?",
+                            "options": [
+                                "Deleting data",
+                                "Improving database performance",
+                                "Creating tables",
+                                "Writing queries"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Performance tuning improves database efficiency."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch6-page5",
+                    "title": "EXPLAIN Statement",
+                    "content": "The EXPLAIN statement is used to analyze how MySQL executes a query. It helps identify performance issues and optimize queries.",
+                    "exampleCode": "-- Analyze query\nEXPLAIN SELECT * FROM students WHERE age > 18;",
+                    "keyPoints": [
+                        "Shows query execution plan",
+                        "Helps identify bottlenecks",
+                        "Useful for optimization",
+                        "Displays index usage"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does EXPLAIN do?",
+                            "options": [
+                                "Executes query",
+                                "Deletes data",
+                                "Shows query execution plan",
+                                "Creates table"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "EXPLAIN shows how MySQL executes a query."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch7",
+            "title": "Transactions & Security",
+            "description": "Learn how to manage transactions and ensure data integrity using ACID properties. Understand user management, permissions, and techniques to secure and protect your database.",
+            "pages": [
+                {
+                    "id": "mysql-ch7-page1",
+                    "title": "Transactions (COMMIT, ROLLBACK)",
+                    "content": "A transaction is a sequence of SQL operations performed as a single unit. COMMIT saves changes permanently, while ROLLBACK undoes changes if something goes wrong.",
+                    "exampleCode": "-- Start transaction\nSTART TRANSACTION;\n\n-- Perform operations\nUPDATE accounts SET balance = balance - 100 WHERE id = 1;\n\n-- Save changes\nCOMMIT;\n\n-- Undo changes\nROLLBACK;",
+                    "keyPoints": [
+                        "Transaction is a group of operations",
+                        "COMMIT saves changes",
+                        "ROLLBACK undoes changes",
+                        "Ensures data consistency"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command saves changes permanently?",
+                            "options": [
+                                "ROLLBACK",
+                                "COMMIT",
+                                "UNDO",
+                                "SAVE"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "COMMIT saves all changes permanently."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch7-page2",
+                    "title": "ACID Properties",
+                    "content": "ACID properties ensure reliable transaction processing. They include Atomicity, Consistency, Isolation, and Durability.",
+                    "exampleCode": "-- Example concept\n-- Atomicity ensures all or nothing execution\n-- Consistency ensures valid data\n-- Isolation prevents conflicts\n-- Durability ensures data persistence",
+                    "keyPoints": [
+                        "Atomicity: All operations succeed or fail together",
+                        "Consistency: Data remains valid",
+                        "Isolation: Transactions do not interfere",
+                        "Durability: Changes are permanent"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which ACID property ensures data remains valid?",
+                            "options": [
+                                "Atomicity",
+                                "Consistency",
+                                "Isolation",
+                                "Durability"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Consistency ensures that data remains valid after a transaction."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch7-page3",
+                    "title": "User Management",
+                    "content": "MySQL allows creating and managing users with specific privileges. This helps control access to the database.",
+                    "exampleCode": "-- Create user\nCREATE USER 'user1'@'localhost' IDENTIFIED BY 'password';\n\n-- Grant privileges\nGRANT ALL PRIVILEGES ON mydb.* TO 'user1'@'localhost';",
+                    "keyPoints": [
+                        "Users can be created and managed",
+                        "Each user has specific privileges",
+                        "Improves database security",
+                        "Supports role-based access"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command creates a user?",
+                            "options": [
+                                "ADD USER",
+                                "CREATE USER",
+                                "NEW USER",
+                                "INSERT USER"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "CREATE USER is used to create a new user."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch7-page4",
+                    "title": "Permissions & Security",
+                    "content": "Permissions control what actions users can perform, such as SELECT, INSERT, UPDATE, and DELETE. Proper permission management ensures database security.",
+                    "exampleCode": "-- Grant specific permission\nGRANT SELECT, INSERT ON mydb.* TO 'user1'@'localhost';\n\n-- Revoke permission\nREVOKE INSERT ON mydb.* FROM 'user1'@'localhost';",
+                    "keyPoints": [
+                        "Controls user access",
+                        "Supports granular permissions",
+                        "GRANT assigns permissions",
+                        "REVOKE removes permissions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command removes permissions?",
+                            "options": [
+                                "DELETE",
+                                "REMOVE",
+                                "REVOKE",
+                                "DROP"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "REVOKE is used to remove permissions."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch7-page5",
+                    "title": "Backup & Recovery",
+                    "content": "Backup and recovery are essential for protecting data. Backups allow restoring data in case of failures, corruption, or accidental deletion.",
+                    "exampleCode": "# Backup database\nmysqldump -u root -p mydb > backup.sql\n\n# Restore database\nmysql -u root -p mydb < backup.sql",
+                    "keyPoints": [
+                        "Protects against data loss",
+                        "Supports backup and restore",
+                        "Essential for production systems",
+                        "Helps in disaster recovery"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of backup?",
+                            "options": [
+                                "Delete data",
+                                "Improve speed",
+                                "Recover data in case of failure",
+                                "Create tables"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Backup helps restore data in case of loss or failure."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mysql-ch8",
+            "title": "Projects",
+            "description": "Apply your MySQL knowledge through real-world projects. This module focuses on designing databases, writing queries, and building complete systems like student management, e-commerce, and reporting dashboards.",
+            "pages": [
+                {
+                    "id": "mysql-ch8-page1",
+                    "title": "Student Management System",
+                    "content": "Design a database to manage student records, courses, and enrollments. This project demonstrates table relationships and CRUD operations.",
+                    "exampleCode": "-- Students table\nCREATE TABLE students (\n  id INT PRIMARY KEY,\n  name VARCHAR(50),\n  age INT\n);\n\n-- Courses table\nCREATE TABLE courses (\n  id INT PRIMARY KEY,\n  course_name VARCHAR(50)\n);\n\n-- Enrollment table\nCREATE TABLE enrollments (\n  student_id INT,\n  course_id INT,\n  FOREIGN KEY (student_id) REFERENCES students(id),\n  FOREIGN KEY (course_id) REFERENCES courses(id)\n);",
+                    "keyPoints": [
+                        "Implements table relationships",
+                        "Uses primary and foreign keys",
+                        "Supports CRUD operations",
+                        "Common real-world system"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does this project demonstrate?",
+                            "options": [
+                                "Networking",
+                                "Database relationships and CRUD",
+                                "Hardware design",
+                                "Operating systems"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "This project demonstrates database relationships and CRUD operations."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch8-page2",
+                    "title": "E-commerce Database",
+                    "content": "Build a database for an e-commerce platform including users, products, orders, and payments. This project covers complex relationships and real-world scenarios.",
+                    "exampleCode": "-- Users table\nCREATE TABLE users (\n  id INT PRIMARY KEY,\n  name VARCHAR(50),\n  email VARCHAR(100)\n);\n\n-- Products table\nCREATE TABLE products (\n  id INT PRIMARY KEY,\n  name VARCHAR(50),\n  price DECIMAL(10,2)\n);\n\n-- Orders table\nCREATE TABLE orders (\n  id INT PRIMARY KEY,\n  user_id INT,\n  FOREIGN KEY (user_id) REFERENCES users(id)\n);",
+                    "keyPoints": [
+                        "Real-world application design",
+                        "Multiple table relationships",
+                        "Handles transactions and orders",
+                        "Scalable database structure"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which tables are used in e-commerce systems?",
+                            "options": [
+                                "Users, Products, Orders",
+                                "Only Users",
+                                "Only Products",
+                                "Only Orders"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "E-commerce systems use multiple tables like users, products, and orders."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch8-page3",
+                    "title": "Inventory Management System",
+                    "content": "Create a system to manage product inventory, stock levels, and suppliers. This project focuses on tracking and updating data efficiently.",
+                    "exampleCode": "-- Inventory table\nCREATE TABLE inventory (\n  product_id INT,\n  quantity INT\n);\n\n-- Suppliers table\nCREATE TABLE suppliers (\n  id INT PRIMARY KEY,\n  name VARCHAR(50)\n);",
+                    "keyPoints": [
+                        "Tracks stock levels",
+                        "Manages suppliers",
+                        "Useful for businesses",
+                        "Ensures data consistency"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of an inventory system?",
+                            "options": [
+                                "Manage users",
+                                "Track stock and products",
+                                "Design UI",
+                                "Run networks"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Inventory systems track stock and product data."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch8-page4",
+                    "title": "Reporting Dashboard",
+                    "content": "Develop a reporting system using SQL queries to generate insights such as sales reports, user statistics, and performance metrics.",
+                    "exampleCode": "-- Sales report\nSELECT product_id, SUM(quantity) AS total_sold\nFROM orders\nGROUP BY product_id;",
+                    "keyPoints": [
+                        "Uses aggregate functions",
+                        "Generates business insights",
+                        "Supports decision making",
+                        "Uses GROUP BY and analytics queries"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which SQL feature is used in reporting?",
+                            "options": [
+                                "INSERT",
+                                "UPDATE",
+                                "GROUP BY",
+                                "DELETE"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "GROUP BY is used to generate reports and summaries."
+                        }
+                    ]
+                },
+                {
+                    "id": "mysql-ch8-page5",
+                    "title": "Final Capstone Project",
+                    "content": "In this project, combine all learned concepts to build a complete database system. This could include designing schema, writing queries, optimizing performance, and implementing security.",
+                    "exampleCode": "-- Example: Combined query\nSELECT u.name, COUNT(o.id) AS total_orders\nFROM users u\nJOIN orders o ON u.id = o.user_id\nGROUP BY u.name;",
+                    "keyPoints": [
+                        "Combines all concepts",
+                        "End-to-end database design",
+                        "Includes optimization and security",
+                        "Prepares for real-world applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the goal of the capstone project?",
+                            "options": [
+                                "Repeat lessons",
+                                "Apply all concepts in one system",
+                                "Avoid queries",
+                                "Delete data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The capstone project applies all learned concepts in a real-world scenario."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is MySQL?",
+            "answer": "MySQL is an open-source relational database management system (RDBMS) that uses SQL to manage and manipulate data.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a database?",
+            "answer": "A database is an organized collection of structured data that can be stored, accessed, and managed efficiently.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is SQL?",
+            "answer": "SQL (Structured Query Language) is used to interact with relational databases for creating, reading, updating, and deleting data.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between DBMS and RDBMS?",
+            "answer": "DBMS manages data without relationships, while RDBMS stores data in tables with relationships between them.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a primary key?",
+            "answer": "A primary key is a column that uniquely identifies each record in a table and cannot contain NULL values.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a foreign key?",
+            "answer": "A foreign key is a column that links one table to another by referencing a primary key.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is normalization?",
+            "answer": "Normalization is the process of organizing data to reduce redundancy and improve data integrity.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a JOIN in SQL?",
+            "answer": "A JOIN is used to combine data from multiple tables based on related columns.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between INNER JOIN and LEFT JOIN?",
+            "answer": "INNER JOIN returns matching records from both tables, while LEFT JOIN returns all records from the left table and matching records from the right table.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is an index?",
+            "answer": "An index is a database structure that improves the speed of data retrieval operations.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a unique index?",
+            "answer": "A unique index ensures that all values in a column are distinct and prevents duplicate entries.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a subquery?",
+            "answer": "A subquery is a query nested inside another SQL query.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is GROUP BY?",
+            "answer": "GROUP BY is used to group rows that have the same values and perform aggregate functions on them.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the HAVING clause?",
+            "answer": "HAVING is used to filter grouped data after applying GROUP BY.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are aggregate functions?",
+            "answer": "Aggregate functions perform calculations on a set of values, such as COUNT, SUM, AVG, MIN, and MAX.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a transaction?",
+            "answer": "A transaction is a sequence of operations performed as a single unit of work in a database.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are ACID properties?",
+            "answer": "ACID stands for Atomicity, Consistency, Isolation, and Durability, which ensure reliable database transactions.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between DELETE and TRUNCATE?",
+            "answer": "DELETE removes specific rows and can be rolled back, while TRUNCATE removes all rows quickly and cannot be rolled back.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between WHERE and HAVING?",
+            "answer": "WHERE filters rows before grouping, while HAVING filters grouped data after aggregation.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is EXPLAIN in MySQL?",
+            "answer": "EXPLAIN is used to analyze how a query is executed and helps optimize performance.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a composite index?",
+            "answer": "A composite index is an index on multiple columns used to improve query performance.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is query optimization?",
+            "answer": "Query optimization is the process of improving SQL queries to execute faster and use fewer resources.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is denormalization?",
+            "answer": "Denormalization is the process of combining tables to improve read performance at the cost of redundancy.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a stored procedure?",
+            "answer": "A stored procedure is a precompiled collection of SQL statements stored in the database and executed as a single unit.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a trigger?",
+            "answer": "A trigger is a database object that automatically executes in response to certain events like INSERT, UPDATE, or DELETE.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a view?",
+            "answer": "A view is a virtual table based on the result of a SQL query.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is indexing impact on performance?",
+            "answer": "Indexes improve read performance but can slow down write operations like INSERT, UPDATE, and DELETE.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you handle database security?",
+            "answer": "By using user roles, permissions, encryption, and avoiding exposing sensitive data.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is replication in MySQL?",
+            "answer": "Replication is the process of copying data from one database server to another for backup and scalability.",
+            "difficulty": "advanced"
+        }
+    ]
+}

@@ -8,6 +8,8 @@ import { htmlBook } from "./htmlBook"
 import { csharpBook } from "./csharpBook"
 import dsaBook from "./dsaBook.json"
 import genAI from "./genAI.json"
+import prompt from "./prompt.json"
+import mysqlBook from "./mySQL.json"
 
 
 export const booksMap: Record<string, any> = {
@@ -21,4 +23,7 @@ export const booksMap: Record<string, any> = {
   csharp: csharpBook,
   dsa: dsaBook,
   genAI: genAI,
+  prompt: prompt,
+  mysql: mysqlBook
+
 }
