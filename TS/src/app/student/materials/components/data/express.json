@@ -1,0 +1,1206 @@
+{
+    "id": " Express-mastery",
+    "title": "Express.js Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "express-ch1",
+            "title": "Introduction to Express.js",
+            "description": "Learn the basics of Express.js, a minimal and flexible Node.js web framework. Understand its features, how it simplifies server creation, and build your first Express application.",
+            "pages": [
+                {
+                    "id": "express-ch1-page1",
+                    "title": "What is Express.js?",
+                    "content": "Express.js is a lightweight web framework built on Node.js that simplifies the process of building web servers and APIs.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.listen(3000, () => {\n  console.log('Server running');\n});",
+                    "keyPoints": [
+                        "Framework for Node.js",
+                        "Simplifies backend development",
+                        "Used to build APIs",
+                        "Minimal and flexible"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is Express.js?",
+                            "options": [
+                                "A database",
+                                "A Node.js framework",
+                                "A programming language",
+                                "A browser"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Express.js is a web framework for Node.js."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch1-page2",
+                    "title": "Features of Express.js",
+                    "content": "Express.js provides features like routing, middleware support, and easy API creation, making backend development faster.",
+                    "exampleCode": "// Simple route example\napp.get('/', (req, res) => {\n  res.send('Hello Express');\n});",
+                    "keyPoints": [
+                        "Supports routing",
+                        "Middleware support",
+                        "Easy API development",
+                        "Lightweight framework"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which feature is provided by Express?",
+                            "options": [
+                                "Database storage",
+                                "Routing",
+                                "UI design",
+                                "Compilation"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Express provides routing capabilities."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch1-page3",
+                    "title": "Express vs Node.js HTTP",
+                    "content": "Node.js HTTP module requires more code to create servers, while Express simplifies it with built-in methods and features.",
+                    "exampleCode": "// Node.js HTTP\nconst http = require('http');\nhttp.createServer((req, res) => {\n  res.end('Hello');\n}).listen(3000);\n\n// Express\napp.get('/', (req, res) => res.send('Hello'));",
+                    "keyPoints": [
+                        "Express reduces code complexity",
+                        "Built on Node.js HTTP module",
+                        "Provides additional features",
+                        "Faster development"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use Express over HTTP module?",
+                            "options": [
+                                "More complex",
+                                "Simplifies development",
+                                "Slower",
+                                "Less features"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Express simplifies server development."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch1-page4",
+                    "title": "Installing Express",
+                    "content": "Express can be installed using npm. It is added as a dependency in your project.",
+                    "exampleCode": "# Initialize project\nnpm init -y\n\n# Install express\nnpm install express",
+                    "keyPoints": [
+                        "Installed via npm",
+                        "Added to dependencies",
+                        "Easy setup",
+                        "Widely used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you install Express?",
+                            "options": [
+                                "install express",
+                                "npm install express",
+                                "node install express",
+                                "express add"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "npm install express installs Express."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch1-page5",
+                    "title": "First Express App",
+                    "content": "A basic Express application includes creating a server, defining routes, and starting the server.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.get('/', (req, res) => {\n  res.send('Welcome to Express App');\n});\n\napp.listen(3000, () => {\n  console.log('Server running on port 3000');\n});",
+                    "keyPoints": [
+                        "Create app instance",
+                        "Define routes",
+                        "Start server with listen()",
+                        "Basic structure of app"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method starts the server?",
+                            "options": [
+                                "start()",
+                                "run()",
+                                "listen()",
+                                "execute()"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "listen() starts the Express server."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch2",
+            "title": "Routing",
+            "description": "Learn how to handle different routes in Express.js using HTTP methods, route parameters, query parameters, and modular routing.",
+            "pages": [
+                {
+                    "id": "express-ch2-page1",
+                    "title": "Basic Routing (GET, POST, PUT, DELETE)",
+                    "content": "Routing in Express defines how the server responds to client requests based on HTTP methods and endpoints.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.get('/', (req, res) => res.send('GET request'));\napp.post('/data', (req, res) => res.send('POST request'));\napp.put('/data', (req, res) => res.send('PUT request'));\napp.delete('/data', (req, res) => res.send('DELETE request'));",
+                    "keyPoints": [
+                        "Supports HTTP methods",
+                        "Defines endpoints",
+                        "Handles client requests",
+                        "Core concept of APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method is used to fetch data?",
+                            "options": [
+                                "POST",
+                                "PUT",
+                                "GET",
+                                "DELETE"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "GET is used to retrieve data."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch2-page2",
+                    "title": "Route Parameters",
+                    "content": "Route parameters are used to capture dynamic values from the URL.",
+                    "exampleCode": "app.get('/user/:id', (req, res) => {\n  res.send(`User ID: ${req.params.id}`);\n});",
+                    "keyPoints": [
+                        "Dynamic URL values",
+                        "Accessed via req.params",
+                        "Useful for IDs",
+                        "Enhances flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you access route parameters?",
+                            "options": [
+                                "req.query",
+                                "req.body",
+                                "req.params",
+                                "req.data"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "req.params is used for route parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch2-page3",
+                    "title": "Query Parameters",
+                    "content": "Query parameters are used to pass optional data in the URL after a question mark.",
+                    "exampleCode": "app.get('/search', (req, res) => {\n  res.send(`Query: ${req.query.q}`);\n});",
+                    "keyPoints": [
+                        "Optional parameters",
+                        "Accessed via req.query",
+                        "Used for filtering/search",
+                        "Passed in URL"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are query parameters stored?",
+                            "options": [
+                                "req.params",
+                                "req.body",
+                                "req.query",
+                                "req.headers"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "req.query stores query parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch2-page4",
+                    "title": "Route Handlers",
+                    "content": "Route handlers are callback functions that execute when a route is matched.",
+                    "exampleCode": "app.get('/', (req, res) => {\n  res.send('Handled by route handler');\n});",
+                    "keyPoints": [
+                        "Callback functions",
+                        "Handle requests",
+                        "Send responses",
+                        "Core of routing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a route handler?",
+                            "options": [
+                                "A database",
+                                "A callback function",
+                                "A UI component",
+                                "A server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Route handlers are functions that handle requests."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch2-page5",
+                    "title": "Modular Routing",
+                    "content": "Modular routing allows splitting routes into separate files using Express Router for better organization.",
+                    "exampleCode": "// routes/user.js\nconst express = require('express');\nconst router = express.Router();\n\nrouter.get('/', (req, res) => res.send('User route'));\n\nmodule.exports = router;\n\n// main app\nconst userRoutes = require('./routes/user');\napp.use('/users', userRoutes);",
+                    "keyPoints": [
+                        "Organizes code",
+                        "Uses express.Router()",
+                        "Improves scalability",
+                        "Separates concerns"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is used for modular routing?",
+                            "options": [
+                                "express.Router()",
+                                "http.Router()",
+                                "node.Router()",
+                                "app.Router()"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "express.Router() is used for modular routing."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch3",
+            "title": "Middleware",
+            "description": "Learn how middleware works in Express.js. Understand built-in, custom, and third-party middleware, and how request flows using next().",
+            "pages": [
+                {
+                    "id": "express-ch3-page1",
+                    "title": "What is Middleware?",
+                    "content": "Middleware functions are functions that execute during the request-response cycle. They can modify requests, responses, or end the request.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.use((req, res, next) => {\n  console.log('Middleware executed');\n  next();\n});",
+                    "keyPoints": [
+                        "Runs between request and response",
+                        "Can modify req and res",
+                        "Can end request or pass control",
+                        "Core part of Express"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is middleware?",
+                            "options": [
+                                "A database",
+                                "A function in request cycle",
+                                "A UI component",
+                                "A server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Middleware functions execute during the request-response cycle."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch3-page2",
+                    "title": "Built-in Middleware",
+                    "content": "Express provides built-in middleware like express.json() and express.static() to handle common tasks.",
+                    "exampleCode": "app.use(express.json());\napp.use(express.static('public'));",
+                    "keyPoints": [
+                        "Provided by Express",
+                        "Handles JSON parsing",
+                        "Serves static files",
+                        "Easy to use"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which middleware parses JSON?",
+                            "options": [
+                                "express.static()",
+                                "express.json()",
+                                "express.route()",
+                                "express.parse()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "express.json() parses JSON request bodies."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch3-page3",
+                    "title": "Custom Middleware",
+                    "content": "Custom middleware is created by developers to perform specific tasks like logging, authentication, or validation.",
+                    "exampleCode": "function logger(req, res, next) {\n  console.log(`${req.method} ${req.url}`);\n  next();\n}\n\napp.use(logger);",
+                    "keyPoints": [
+                        "User-defined functions",
+                        "Reusable logic",
+                        "Used for logging/auth",
+                        "Enhances flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is custom middleware?",
+                            "options": [
+                                "Built-in function",
+                                "User-defined middleware",
+                                "Database function",
+                                "Route handler"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Custom middleware is created by developers."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch3-page4",
+                    "title": "Third-party Middleware",
+                    "content": "Third-party middleware are external packages like cors, morgan, and multer used to extend Express functionality.",
+                    "exampleCode": "const cors = require('cors');\napp.use(cors());",
+                    "keyPoints": [
+                        "Installed via npm",
+                        "Extends functionality",
+                        "Examples: cors, morgan",
+                        "Widely used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which is a third-party middleware?",
+                            "options": [
+                                "express.json()",
+                                "cors",
+                                "req",
+                                "res"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "cors is a third-party middleware."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch3-page5",
+                    "title": "Middleware Flow (next())",
+                    "content": "The next() function passes control to the next middleware in the stack. Without calling next(), the request will be stuck.",
+                    "exampleCode": "app.use((req, res, next) => {\n  console.log('First');\n  next();\n});\n\napp.use((req, res) => {\n  console.log('Second');\n  res.send('Done');\n});",
+                    "keyPoints": [
+                        "Controls middleware flow",
+                        "next() passes control",
+                        "Required for chaining",
+                        "Prevents request blocking"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does next() do?",
+                            "options": [
+                                "Stops execution",
+                                "Moves to next middleware",
+                                "Deletes request",
+                                "Ends server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "next() passes control to the next middleware."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch4",
+            "title": "Request & Response Handling",
+            "description": "Learn how to work with request and response objects in Express.js, send data, handle forms, and use HTTP status codes effectively.",
+            "pages": [
+                {
+                    "id": "express-ch4-page1",
+                    "title": "Request Object (req)",
+                    "content": "The request object (req) contains information about the incoming HTTP request such as parameters, query data, headers, and body.",
+                    "exampleCode": "app.get('/user/:id', (req, res) => {\n  console.log(req.params.id);\n  console.log(req.query);\n  res.send('Check console');\n});",
+                    "keyPoints": [
+                        "Contains client request data",
+                        "Includes params, query, body",
+                        "Used in all routes",
+                        "Essential for handling requests"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does req contain?",
+                            "options": [
+                                "Server response",
+                                "Client request data",
+                                "Database data",
+                                "UI data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "req contains client request information."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch4-page2",
+                    "title": "Response Object (res)",
+                    "content": "The response object (res) is used to send data back to the client. It can send text, JSON, or files.",
+                    "exampleCode": "app.get('/', (req, res) => {\n  res.send('Hello World');\n});",
+                    "keyPoints": [
+                        "Sends data to client",
+                        "Supports text, JSON, files",
+                        "Used in every route",
+                        "Core part of response cycle"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does res.send() do?",
+                            "options": [
+                                "Receives data",
+                                "Sends response",
+                                "Stores data",
+                                "Deletes request"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "res.send() sends data to the client."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch4-page3",
+                    "title": "Sending JSON/Data",
+                    "content": "Express allows sending JSON responses using res.json() which is commonly used in APIs.",
+                    "exampleCode": "app.get('/api', (req, res) => {\n  res.json({ message: 'Success' });\n});",
+                    "keyPoints": [
+                        "Used for APIs",
+                        "Sends JSON format",
+                        "Automatically sets headers",
+                        "Common in REST APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method sends JSON?",
+                            "options": [
+                                "res.send()",
+                                "res.json()",
+                                "res.write()",
+                                "res.data()"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "res.json() sends JSON responses."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch4-page4",
+                    "title": "Handling Forms",
+                    "content": "Form data can be handled using middleware like express.json() and express.urlencoded().",
+                    "exampleCode": "app.use(express.urlencoded({ extended: true }));\n\napp.post('/form', (req, res) => {\n  console.log(req.body);\n  res.send('Form received');\n});",
+                    "keyPoints": [
+                        "Handles form submissions",
+                        "Uses middleware",
+                        "Access data via req.body",
+                        "Supports URL encoded data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is form data stored?",
+                            "options": [
+                                "req.params",
+                                "req.query",
+                                "req.body",
+                                "req.headers"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Form data is available in req.body."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch4-page5",
+                    "title": "Status Codes",
+                    "content": "HTTP status codes indicate the result of a request. Express allows setting status codes using res.status().",
+                    "exampleCode": "app.get('/error', (req, res) => {\n  res.status(404).send('Not Found');\n});",
+                    "keyPoints": [
+                        "Indicates request result",
+                        "Common codes: 200, 404, 500",
+                        "Set using res.status()",
+                        "Important for APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which code means 'Not Found'?",
+                            "options": [
+                                "200",
+                                "201",
+                                "404",
+                                "500"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "404 indicates resource not found."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch5",
+            "title": "REST API Development",
+            "description": "Learn how to design and build RESTful APIs using Express.js. Understand REST principles, CRUD operations, API structure, validation, and best practices.",
+            "pages": [
+                {
+                    "id": "express-ch5-page1",
+                    "title": "REST Principles",
+                    "content": "REST (Representational State Transfer) is an architectural style for designing APIs. It uses HTTP methods and stateless communication.",
+                    "exampleCode": "// REST example endpoints\nGET /users\nPOST /users\nPUT /users/:id\nDELETE /users/:id",
+                    "keyPoints": [
+                        "Uses HTTP methods",
+                        "Stateless communication",
+                        "Resource-based URLs",
+                        "Widely used in web APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does REST stand for?",
+                            "options": [
+                                "Remote Execution System Transfer",
+                                "Representational State Transfer",
+                                "Resource State Table",
+                                "Response Execution Service Tool"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "REST stands for Representational State Transfer."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch5-page2",
+                    "title": "CRUD APIs",
+                    "content": "CRUD APIs allow Create, Read, Update, and Delete operations using HTTP methods like POST, GET, PUT, and DELETE.",
+                    "exampleCode": "app.post('/users', (req, res) => {\n  res.send('User created');\n});\n\napp.get('/users', (req, res) => {\n  res.send('Users list');\n});",
+                    "keyPoints": [
+                        "Create → POST",
+                        "Read → GET",
+                        "Update → PUT",
+                        "Delete → DELETE"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method is used to create data?",
+                            "options": [
+                                "GET",
+                                "POST",
+                                "PUT",
+                                "DELETE"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "POST is used to create data."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch5-page3",
+                    "title": "API Structure",
+                    "content": "A well-structured API follows consistent naming, versioning, and organized routes for scalability.",
+                    "exampleCode": "// Example structure\n/api/v1/users\n/api/v1/courses",
+                    "keyPoints": [
+                        "Use versioning (v1, v2)",
+                        "Consistent naming",
+                        "Organized endpoints",
+                        "Scalable design"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use API versioning?",
+                            "options": [
+                                "To slow down API",
+                                "To manage changes",
+                                "To delete endpoints",
+                                "To create UI"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Versioning helps manage API updates."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch5-page4",
+                    "title": "Validation",
+                    "content": "Validation ensures that incoming data is correct before processing. It prevents invalid data from entering the system.",
+                    "exampleCode": "app.post('/users', (req, res) => {\n  if (!req.body.name) {\n    return res.status(400).send('Name required');\n  }\n  res.send('Valid data');\n});",
+                    "keyPoints": [
+                        "Ensures data correctness",
+                        "Prevents invalid inputs",
+                        "Improves security",
+                        "Important for APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is validation important?",
+                            "options": [
+                                "To slow server",
+                                "To ensure correct data",
+                                "To delete data",
+                                "To create routes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Validation ensures only valid data is processed."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch5-page5",
+                    "title": "API Best Practices",
+                    "content": "Following best practices ensures APIs are maintainable, secure, and scalable.",
+                    "exampleCode": "// Example response\nres.status(200).json({ success: true, data: [] });",
+                    "keyPoints": [
+                        "Use proper status codes",
+                        "Return consistent responses",
+                        "Handle errors properly",
+                        "Keep APIs simple and clear"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a good API practice?",
+                            "options": [
+                                "Random responses",
+                                "Consistent structure",
+                                "No validation",
+                                "No error handling"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Consistent structure improves API quality."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch6",
+            "title": "Database Integration",
+            "description": "Learn how to integrate Express.js with databases like MongoDB and MySQL. Understand CRUD APIs with databases, data modeling, and the complete API-to-database flow.",
+            "pages": [
+                {
+                    "id": "express-ch6-page1",
+                    "title": "Connect with MongoDB (Mongoose)",
+                    "content": "Express.js applications commonly use Mongoose to connect and interact with MongoDB databases.",
+                    "exampleCode": "const mongoose = require('mongoose');\n\nmongoose.connect('mongodb://localhost:27017/testdb')\n  .then(() => console.log('Connected'))\n  .catch(err => console.log(err));",
+                    "keyPoints": [
+                        "Uses Mongoose library",
+                        "Connects via URI",
+                        "Supports async connection",
+                        "Widely used with Express"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library connects MongoDB with Express?",
+                            "options": [
+                                "mysql2",
+                                "mongoose",
+                                "fs",
+                                "http"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Mongoose is used to connect MongoDB."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch6-page2",
+                    "title": "Connect with MySQL",
+                    "content": "Express can connect to MySQL using libraries like mysql2 to execute SQL queries.",
+                    "exampleCode": "const mysql = require('mysql2');\n\nconst db = mysql.createConnection({\n  host: 'localhost',\n  user: 'root',\n  password: 'password',\n  database: 'testdb'\n});\n\ndb.connect();",
+                    "keyPoints": [
+                        "Uses mysql2 library",
+                        "Connects to relational DB",
+                        "Executes SQL queries",
+                        "Supports CRUD operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library connects MySQL?",
+                            "options": [
+                                "mongoose",
+                                "mysql2",
+                                "express",
+                                "cors"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "mysql2 is used for MySQL connection."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch6-page3",
+                    "title": "CRUD with APIs",
+                    "content": "Express APIs can perform CRUD operations by interacting with the database.",
+                    "exampleCode": "// Example with MongoDB\napp.post('/users', async (req, res) => {\n  const user = await User.create(req.body);\n  res.json(user);\n});",
+                    "keyPoints": [
+                        "Connect API with DB",
+                        "Perform Create, Read, Update, Delete",
+                        "Uses async/await",
+                        "Core backend functionality"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does CRUD stand for?",
+                            "options": [
+                                "Create, Read, Update, Delete",
+                                "Copy, Run, Update, Delete",
+                                "Create, Remove, Update, Display",
+                                "Code, Read, Use, Delete"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "CRUD stands for Create, Read, Update, Delete."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch6-page4",
+                    "title": "Data Modeling",
+                    "content": "Data modeling defines how data is structured in the database using schemas or tables.",
+                    "exampleCode": "// Mongoose schema\nconst userSchema = new mongoose.Schema({\n  name: String,\n  email: String\n});",
+                    "keyPoints": [
+                        "Defines structure of data",
+                        "Uses schemas (MongoDB)",
+                        "Uses tables (MySQL)",
+                        "Ensures consistency"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is data modeling?",
+                            "options": [
+                                "Creating UI",
+                                "Structuring data",
+                                "Running server",
+                                "Deleting data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Data modeling structures database data."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch6-page5",
+                    "title": "API + DB Flow",
+                    "content": "In Express, the flow is: client request → API route → database operation → response sent back to client.",
+                    "exampleCode": "app.get('/users', async (req, res) => {\n  const users = await User.find();\n  res.json(users);\n});",
+                    "keyPoints": [
+                        "Client sends request",
+                        "API processes request",
+                        "Database performs operation",
+                        "Response returned to client"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the correct flow?",
+                            "options": [
+                                "DB → API → Client",
+                                "Client → API → DB → Client",
+                                "API → Client → DB",
+                                "Client → DB → API"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The correct flow is Client → API → DB → Client."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch7",
+            "title": "Authentication & Security",
+            "description": "Learn how to secure Express.js applications using JWT authentication, password hashing, authorization, secure routes, and CORS.",
+            "pages": [
+                {
+                    "id": "express-ch7-page1",
+                    "title": "JWT Authentication",
+                    "content": "JWT (JSON Web Token) is used to authenticate users by issuing a token after login, which is sent with each request.",
+                    "exampleCode": "const jwt = require('jsonwebtoken');\n\nconst token = jwt.sign({ userId: 1 }, 'secretKey');\n\nconst decoded = jwt.verify(token, 'secretKey');\nconsole.log(decoded);",
+                    "keyPoints": [
+                        "Token-based authentication",
+                        "Stateless authentication",
+                        "Used in APIs",
+                        "Secure data transmission"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is JWT used for?",
+                            "options": [
+                                "Database storage",
+                                "Authentication",
+                                "File upload",
+                                "UI design"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "JWT is used for authentication."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch7-page2",
+                    "title": "Password Hashing (bcrypt)",
+                    "content": "bcrypt is used to hash passwords before storing them, ensuring that plain-text passwords are not saved.",
+                    "exampleCode": "const bcrypt = require('bcrypt');\n\nconst password = '123456';\nconst hash = bcrypt.hashSync(password, 10);\n\nconsole.log(hash);",
+                    "keyPoints": [
+                        "Secures passwords",
+                        "Prevents plain-text storage",
+                        "Uses hashing algorithms",
+                        "Widely used in authentication"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use bcrypt?",
+                            "options": [
+                                "To create UI",
+                                "To hash passwords",
+                                "To connect DB",
+                                "To send data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "bcrypt hashes passwords securely."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch7-page3",
+                    "title": "Authorization",
+                    "content": "Authorization controls access to resources after authentication. It ensures users can only access permitted data.",
+                    "exampleCode": "function authorize(req, res, next) {\n  if (req.user.role === 'admin') {\n    next();\n  } else {\n    res.status(403).send('Forbidden');\n  }\n}",
+                    "keyPoints": [
+                        "Controls permissions",
+                        "Works after authentication",
+                        "Role-based access",
+                        "Protects resources"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is authorization?",
+                            "options": [
+                                "Login process",
+                                "Permission control",
+                                "Data storage",
+                                "File upload"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Authorization controls access permissions."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch7-page4",
+                    "title": "Secure Routes",
+                    "content": "Secure routes are protected using middleware that verifies tokens or user roles before granting access.",
+                    "exampleCode": "function authMiddleware(req, res, next) {\n  const token = req.headers.authorization;\n  if (!token) return res.status(401).send('Unauthorized');\n  next();\n}\n\napp.get('/protected', authMiddleware, (req, res) => {\n  res.send('Secure data');\n});",
+                    "keyPoints": [
+                        "Protect sensitive endpoints",
+                        "Uses middleware",
+                        "Verifies tokens",
+                        "Prevents unauthorized access"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What protects routes?",
+                            "options": [
+                                "Database",
+                                "Middleware",
+                                "UI",
+                                "CSS"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Middleware protects routes."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch7-page5",
+                    "title": "CORS (Cross-Origin Resource Sharing)",
+                    "content": "CORS is a security feature that allows or restricts requests from different origins (domains).",
+                    "exampleCode": "const cors = require('cors');\napp.use(cors());",
+                    "keyPoints": [
+                        "Controls cross-origin requests",
+                        "Improves security",
+                        "Allows frontend-backend communication",
+                        "Configured via middleware"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does CORS do?",
+                            "options": [
+                                "Stores data",
+                                "Controls cross-origin access",
+                                "Creates routes",
+                                "Deletes data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "CORS manages cross-origin requests."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "express-ch8",
+            "title": "File Upload & Error Handling",
+            "description": "Learn how to handle file uploads using Multer, implement error handling middleware, manage validation errors, and debug Express.js applications.",
+            "pages": [
+                {
+                    "id": "express-ch8-page1",
+                    "title": "File Upload (Multer)",
+                    "content": "Multer is a middleware used to handle file uploads in Express applications. It processes multipart/form-data.",
+                    "exampleCode": "const express = require('express');\nconst multer = require('multer');\nconst app = express();\n\nconst upload = multer({ dest: 'uploads/' });\n\napp.post('/upload', upload.single('file'), (req, res) => {\n  res.send('File uploaded');\n});",
+                    "keyPoints": [
+                        "Handles file uploads",
+                        "Uses middleware",
+                        "Supports single and multiple files",
+                        "Stores files on server"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is used for file uploads?",
+                            "options": [
+                                "express",
+                                "multer",
+                                "cors",
+                                "fs"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Multer handles file uploads."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch8-page2",
+                    "title": "Error Handling Middleware",
+                    "content": "Error handling middleware is used to catch and handle errors in Express applications.",
+                    "exampleCode": "app.use((err, req, res, next) => {\n  res.status(500).json({ error: err.message });\n});",
+                    "keyPoints": [
+                        "Handles application errors",
+                        "Prevents crashes",
+                        "Uses four parameters (err, req, res, next)",
+                        "Improves reliability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How many parameters does error middleware have?",
+                            "options": [
+                                "2",
+                                "3",
+                                "4",
+                                "5"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Error middleware has 4 parameters."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch8-page3",
+                    "title": "Validation Errors",
+                    "content": "Validation errors occur when input data is incorrect. They should be handled properly to ensure data integrity.",
+                    "exampleCode": "app.post('/user', (req, res) => {\n  if (!req.body.email) {\n    return res.status(400).json({ error: 'Email required' });\n  }\n  res.send('Valid');\n});",
+                    "keyPoints": [
+                        "Ensures correct input",
+                        "Prevents invalid data",
+                        "Returns proper status codes",
+                        "Improves API quality"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which status code is used for validation errors?",
+                            "options": [
+                                "200",
+                                "201",
+                                "400",
+                                "500"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "400 indicates a bad request."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch8-page4",
+                    "title": "Logging",
+                    "content": "Logging helps track requests, errors, and application behavior. Tools like morgan are commonly used.",
+                    "exampleCode": "const morgan = require('morgan');\napp.use(morgan('dev'));",
+                    "keyPoints": [
+                        "Tracks application activity",
+                        "Useful for debugging",
+                        "Logs requests",
+                        "Improves monitoring"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which tool is used for logging?",
+                            "options": [
+                                "cors",
+                                "morgan",
+                                "multer",
+                                "bcrypt"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Morgan is used for logging."
+                        }
+                    ]
+                },
+                {
+                    "id": "express-ch8-page5",
+                    "title": "Debugging",
+                    "content": "Debugging involves identifying and fixing issues in your application using logs, tools, and proper error handling.",
+                    "exampleCode": "console.log('Debug info');",
+                    "keyPoints": [
+                        "Helps find issues",
+                        "Uses logs and tools",
+                        "Improves application stability",
+                        "Essential for development"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is debugging?",
+                            "options": [
+                                "Creating UI",
+                                "Fixing issues",
+                                "Deleting data",
+                                "Writing queries"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Debugging is the process of fixing issues."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is Express.js?",
+            "answer": "Express.js is a lightweight web framework for Node.js used to build web applications and APIs.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "Why use Express.js?",
+            "answer": "Express simplifies server creation, routing, middleware handling, and API development compared to the native HTTP module.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is routing in Express?",
+            "answer": "Routing defines how an application responds to client requests for specific endpoints and HTTP methods.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are HTTP methods?",
+            "answer": "HTTP methods include GET, POST, PUT, DELETE, etc., used to perform CRUD operations.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is middleware?",
+            "answer": "Middleware functions execute during the request-response cycle and can modify request/response or pass control to the next function.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What does next() do?",
+            "answer": "next() passes control to the next middleware function in the stack.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is req object?",
+            "answer": "The req object contains information about the incoming HTTP request such as params, query, headers, and body.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is res object?",
+            "answer": "The res object is used to send a response back to the client.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is res.json()?",
+            "answer": "res.json() sends a JSON response to the client.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is Express Router?",
+            "answer": "Express Router is used to create modular and reusable route handlers.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is REST API?",
+            "answer": "A REST API is an interface that uses HTTP methods to communicate between client and server.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is CORS?",
+            "answer": "CORS (Cross-Origin Resource Sharing) is a security feature that controls access to resources from different domains.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is body-parser?",
+            "answer": "body-parser is middleware used to parse incoming request bodies, now replaced by express.json() and express.urlencoded().",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is error handling middleware?",
+            "answer": "It is middleware with four parameters (err, req, res, next) used to handle errors in Express apps.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is JWT authentication?",
+            "answer": "JWT authentication uses tokens to verify user identity in a stateless manner.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is Multer?",
+            "answer": "Multer is middleware used for handling file uploads in Express applications.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is route parameter?",
+            "answer": "Route parameters are dynamic values in the URL accessed via req.params.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is query parameter?",
+            "answer": "Query parameters are optional key-value pairs in the URL accessed via req.query.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between req.params and req.query?",
+            "answer": "req.params is used for route parameters, while req.query is used for query string parameters.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is app.use()?",
+            "answer": "app.use() is used to register middleware in Express.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between app.get() and app.use()?",
+            "answer": "app.get() handles specific GET requests, while app.use() is used for middleware or all HTTP methods.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is rate limiting?",
+            "answer": "Rate limiting restricts the number of requests a client can make to prevent abuse.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is helmet in Express?",
+            "answer": "Helmet is middleware used to secure Express apps by setting HTTP headers.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is clustering in Express apps?",
+            "answer": "Clustering allows running multiple instances of an Express app to utilize multiple CPU cores.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you handle async errors in Express?",
+            "answer": "Async errors are handled using try/catch blocks or error-handling middleware.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between synchronous and asynchronous middleware?",
+            "answer": "Synchronous middleware executes immediately, while asynchronous middleware handles async operations before calling next().",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is load balancing?",
+            "answer": "Load balancing distributes incoming traffic across multiple servers to improve performance and reliability.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you secure an Express app?",
+            "answer": "By using authentication, validation, CORS, Helmet, rate limiting, and secure environment variables.",
+            "difficulty": "advanced"
+        }
+    ]
+}
