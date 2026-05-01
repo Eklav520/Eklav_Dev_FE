@@ -1,5 +1,5 @@
 // src/components/ViolationAlert.tsx
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Modal, Button } from 'react-bootstrap'
 import { FaExclamationTriangle } from 'react-icons/fa'
 
@@ -16,14 +16,8 @@ const ViolationAlert: React.FC<ViolationAlertProps> = ({
   maxViolations,
   onClose,
 }) => {
-  useEffect(() => {
-    if (show) {
-      const timer = setTimeout(() => {
-        onClose()
-      }, 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [show, onClose])
+  // No auto-dismiss — user must click "I Understand" so the click event
+  // can be used as a user gesture to re-enter fullscreen.
   
   return (
     <Modal show={show} centered backdrop={false} keyboard={false} className="violation-alert">
@@ -36,7 +30,7 @@ const ViolationAlert: React.FC<ViolationAlertProps> = ({
         </p>
         {count >= maxViolations && (
           <p className="text-warning">
-            ⚠️ Maximum violations reached. Assessment will auto-submit on next violation.
+            ⚠️ Maximum violations reached. Your exam will auto-submit in 3 seconds.
           </p>
         )}
         <Button variant="danger" onClick={onClose} className="mt-2">

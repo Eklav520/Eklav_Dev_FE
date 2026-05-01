@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { Card, Button, Spinner, Alert, Modal, Badge } from "react-bootstrap"
 import StudentQuiz from "./components/StudentQuiz"
 import StudentCodeChallengeComponent from "./components/codeChallenge/StudentCodeChallengeComponent"
 import { useAuthContext } from "@/context/useAuthContext"
 import TechnicalRound from "./components/TRRound/TechnicalRound"
 import HRRound from "./HRRound/HRRound"
+import { useProctorGuard } from './helper/useProctorGuard'
+import ViolationAlert from './components/ViolationAlert'
 
 type RoundKey = "mcq" | "coding" | "tr" | "hr"
 
@@ -156,6 +158,22 @@ export default function StudentAssessmentController() {
   const [showAssessmentModal, setShowAssessmentModal] = useState(false)
   const [modalLoading, setModalLoading] = useState(false)
   const [startingRound, setStartingRound] = useState<string | null>(null)
+  const [showViolationAlert, setShowViolationAlert] = useState(false)
+
+  const submitRef = useRef<() => void>(() => {})
+  const onViolationCb = useCallback(() => setShowViolationAlert(true), [])
+  const onMaxReachedCb = useCallback(() => { setTimeout(() => submitRef.current(), 3000) }, [])
+
+  const proctor = useProctorGuard(
+    {
+      maxViolations: 3,
+      enabled: isRunning,
+      captureFullscreenExit: true,
+      autoReenterFullscreen: true,
+      preventEscFullscreen: true,
+    },
+    { onViolation: onViolationCb, onMaxReached: onMaxReachedCb }
+  )
 
   // Fetch assessments
   useEffect(() => {
@@ -289,6 +307,8 @@ export default function StudentAssessmentController() {
 
       setActiveRound(round.roundType)
       setIsRunning(true)
+      await proctor.enterFullscreen()
+      proctor.arm()
 
       // 🔥 Delay closing modal (IMPORTANT FIX)
       setTimeout(() => {
@@ -304,6 +324,8 @@ export default function StudentAssessmentController() {
   }
 
   const handleRoundSubmit = async () => {
+    proctor.disarm()
+    proctor.reset()
     try {
       const submitRes = await fetch(`${API_BASE}/api/assessment/complete-round`, {
         method: "POST",
@@ -321,6 +343,15 @@ export default function StudentAssessmentController() {
 
       if (!submitData.success) {
         console.error("Submit failed", submitData.message)
+      }
+
+      // Immediately mark this round as completed in local state
+      // so the UI is correct even if current-exam refresh fails
+      const submittedRound = roundConfig?.type
+      if (submittedRound) {
+        setCompletedRounds(prev =>
+          prev.includes(submittedRound) ? prev : [...prev, submittedRound]
+        )
       }
 
       const refreshRes = await fetch(`${API_BASE}/api/assessment/current-exam`, {
@@ -352,6 +383,8 @@ export default function StudentAssessmentController() {
       setShowAssessmentModal(true)
     }
   }
+
+  submitRef.current = handleRoundSubmit
 
   const isRoundCompleted = (roundType: string) => completedRounds.includes(roundType)
 
@@ -856,6 +889,19 @@ export default function StudentAssessmentController() {
         </div>
       )}
 
+      {isRunning && (
+        <ViolationAlert
+          show={showViolationAlert}
+          count={proctor.violationCount}
+          maxViolations={proctor.maxViolations}
+          onClose={() => {
+            setShowViolationAlert(false)
+            proctor.acknowledge()
+            proctor.enterFullscreen()
+          }}
+        />
+      )}
+
       <style>{`
        /* remove margin */
         .main-content-wrapper {
@@ -904,6 +950,8 @@ export default function StudentAssessmentController() {
         ::-webkit-scrollbar-thumb:hover {
           background: #ff9a5c;
         }
+
+        .violation-alert.modal { z-index: 99999999 !important; }
       `}</style>
     </div>
   )

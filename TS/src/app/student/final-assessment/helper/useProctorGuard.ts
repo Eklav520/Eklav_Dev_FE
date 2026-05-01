@@ -62,21 +62,22 @@ export function useProctorGuard(
   const recordedChunksRef = useRef<Blob[]>([])
   const recordingStreamRef = useRef<MediaStream | null>(null)
   const cameraStreamRef = useRef<MediaStream | null>(null)
+  const lastRaiseTimeRef = useRef(0)
+  const escPressedRef = useRef(false)
 
   const raise = useCallback(
     (reason: string) => {
       if (!enabled || !armedRef.current) return
 
+      const now = Date.now()
+      if (now - lastRaiseTimeRef.current < 1500) return
+      lastRaiseTimeRef.current = now
+
       setViolationCount((prev) => {
         const next = prev + 1
         setMessage(`${lockMessage}\nViolation: ${reason}\nViolations: ${next}/${maxViolations}`)
         setLocked(true)
-
-        // Show alert popup for violations
-        alert(`⚠️ PROCTORING VIOLATION: ${reason}\n\nViolation ${next} of ${maxViolations}. Further violations may result in auto-submission.`)
-
         onViolation?.(next, reason)
-
         if (next >= maxViolations) {
           onMaxReached?.(next, reason)
         }
@@ -241,41 +242,35 @@ export function useProctorGuard(
     }
   }, [getRecordingBlob])
 
-  // Prevent ESC key from exiting fullscreen
+  // Prevent ESC key from exiting fullscreen (silent — no violation counted)
   useEffect(() => {
     if (!enabled || !preventEscFullscreen) return
-    
+
     const preventEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'Esc') {
-        if (armedRef.current && isFullscreen) {
-          e.preventDefault()
-          e.stopPropagation()
-          raise('ESC key pressed - exiting fullscreen prevented')
-          
-          // Re-enter fullscreen if auto-reenter is enabled
-          if (autoReenterFullscreen) {
-            enterFullscreen()
-          }
-        }
+      if ((e.key === 'Escape' || e.key === 'Esc') && armedRef.current) {
+        e.preventDefault()
+        e.stopPropagation()
+        escPressedRef.current = true
       }
     }
-    
+
     document.addEventListener('keydown', preventEsc, true)
     return () => document.removeEventListener('keydown', preventEsc, true)
-  }, [enabled, preventEscFullscreen, autoReenterFullscreen, isFullscreen, raise, enterFullscreen])
+  }, [enabled, preventEscFullscreen])
 
   // Global event listeners for proctoring
   useEffect(() => {
     if (!enabled) return
 
     const onVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden && !escPressedRef.current) {
         raise('Tab/window switched')
         setTimeout(() => window.focus(), 50)
       }
     }
     
     const onWindowBlur = () => {
+      if (escPressedRef.current) return  // ESC fullscreen exit — not a real tab switch
       raise('Window focus lost')
       setTimeout(() => window.focus(), 50)
     }
@@ -283,10 +278,15 @@ export function useProctorGuard(
     const onFullscreenChange = () => {
       const active = !!document.fullscreenElement
       setIsFullscreen(active)
-      
+
       if (!active && captureFullscreenExit && armedRef.current) {
-        raise('Exited fullscreen mode')
-        
+        if (escPressedRef.current) {
+          // ESC pressed — silently re-enter, no violation
+          // Delayed reset so the blur event (fired after fullscreenchange) also sees the flag
+          setTimeout(() => { escPressedRef.current = false }, 300)
+        } else {
+          raise('Exited fullscreen mode')
+        }
         if (autoReenterFullscreen) {
           enterFullscreen()
         }
@@ -297,7 +297,7 @@ export function useProctorGuard(
       if (!armedRef.current) return
       
       const key = e.key.toLowerCase()
-      const blockedKeys = ['escape', 'f12', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11']
+      const blockedKeys = ['f12', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11']
       
       if (blockedKeys.includes(key)) {
         e.preventDefault()
@@ -320,7 +320,14 @@ export function useProctorGuard(
       e.preventDefault()
       raise('Right-click context menu attempted')
     }
-    
+
+    const onCopy = (e: ClipboardEvent) => {
+      if (armedRef.current) e.preventDefault()
+    }
+    const onCut = (e: ClipboardEvent) => {
+      if (armedRef.current) e.preventDefault()
+    }
+
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       if (armedRef.current) {
         e.preventDefault()
@@ -334,6 +341,8 @@ export function useProctorGuard(
     document.addEventListener('fullscreenchange', onFullscreenChange)
     document.addEventListener('keydown', onKeyDown, true)
     document.addEventListener('contextmenu', onContextMenu, true)
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('cut', onCut)
     window.addEventListener('beforeunload', onBeforeUnload)
 
     return () => {
@@ -342,6 +351,8 @@ export function useProctorGuard(
       document.removeEventListener('fullscreenchange', onFullscreenChange)
       document.removeEventListener('keydown', onKeyDown, true)
       document.removeEventListener('contextmenu', onContextMenu, true)
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('cut', onCut)
       window.removeEventListener('beforeunload', onBeforeUnload)
     }
   }, [enabled, captureFullscreenExit, autoReenterFullscreen, raise, enterFullscreen])
