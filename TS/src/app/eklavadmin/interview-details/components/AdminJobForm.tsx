@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
 import 'quill/dist/quill.snow.css'
@@ -17,14 +17,41 @@ import {
   FaChartLine,
   FaUsers,
   FaFileUpload,
-  FaTimes
+  FaTimes,
+  FaEdit,
+  FaPlus,
+  FaSearch
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+
+interface ExistingJob {
+  _id: string
+  title: string
+  company: string
+  experience: string
+  salary: string
+  location: string
+  skills: string | string[]
+  highlights: string | string[]
+  jobType: string
+  domain: string
+  expiryDate: string
+  logo: string
+  tag?: string
+  isExpired: boolean
+}
 
 const AdminJobForm: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext();
   const token = (user as any)?.token as string | undefined;
+
+  const [mode, setMode] = useState<'create' | 'edit'>('create')
+  const [existingJobs, setExistingJobs] = useState<ExistingJob[]>([])
+  const [selectedJobId, setSelectedJobId] = useState('')
+  const [loadingJobs, setLoadingJobs] = useState(false)
+  const [showEditForm, setShowEditForm] = useState(false)
+  const [jobTableSearch, setJobTableSearch] = useState('')
 
   const [formData, setFormData] = useState({
     title: '',
@@ -45,6 +72,101 @@ const AdminJobForm: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
+
+  useEffect(() => {
+    if (mode !== 'edit' || !token) return
+    setLoadingJobs(true)
+    setExistingJobs([])
+    setSelectedJobId('')
+    fetch(`${baseURL}/jobs`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then((jobs: ExistingJob[]) => setExistingJobs(jobs.filter(j => !j.isExpired)))
+      .catch(() => setExistingJobs([]))
+      .finally(() => setLoadingJobs(false))
+  }, [mode, baseURL, token])
+
+  const handleJobSelect = (job: ExistingJob) => {
+    setSelectedJobId(job._id)
+    setFormData({
+      title: job.title,
+      company: job.company,
+      experience: job.experience,
+      salary: job.salary,
+      location: job.location,
+      skills: Array.isArray(job.skills) ? job.skills.join(', ') : (job.skills || ''),
+      highlights: Array.isArray(job.highlights) ? job.highlights.join('') : (job.highlights || ''),
+      jobType: job.jobType,
+      domain: job.domain,
+      expiryDate: job.expiryDate ? job.expiryDate.split('T')[0] : '',
+      logo: job.logo || '',
+      tag: job.tag || ''
+    })
+    setAttachments([])
+    setSuccessMessage('')
+    setErrorMessage('')
+    setShowEditForm(true)
+  }
+
+  const cancelEdit = () => {
+    setShowEditForm(false)
+    setSelectedJobId('')
+    setFormData({
+      title: '',
+      company: '',
+      experience: '',
+      salary: '',
+      location: '',
+      skills: '',
+      highlights: '',
+      jobType: '',
+      domain: '',
+      expiryDate: '',
+      logo: '',
+      tag: ''
+    })
+    setAttachments([])
+    setSuccessMessage('')
+    setErrorMessage('')
+  }
+
+  const switchMode = (newMode: 'create' | 'edit') => {
+    setMode(newMode)
+    setSelectedJobId('')
+    setShowEditForm(false)
+    setJobTableSearch('')
+    setFormData({
+      title: '',
+      company: '',
+      experience: '',
+      salary: '',
+      location: '',
+      skills: '',
+      highlights: '',
+      jobType: '',
+      domain: '',
+      expiryDate: '',
+      logo: '',
+      tag: ''
+    })
+    setAttachments([])
+    setSuccessMessage('')
+    setErrorMessage('')
+  }
+
+  const filteredTableJobs = existingJobs.filter(j =>
+    j.title.toLowerCase().includes(jobTableSearch.toLowerCase()) ||
+    j.company.toLowerCase().includes(jobTableSearch.toLowerCase())
+  )
+
+  const formatExpiryDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return '—'
+    const diff = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    return diff <= 7 ? `${label} (${diff}d left)` : label
+  }
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -103,8 +225,12 @@ const AdminJobForm: React.FC = () => {
       })
       attachments.forEach(file => payload.append('attachments', file))
 
-      let response = await fetch(`${baseURL}/jobs`, {
-        method: 'POST',
+      const isEdit = mode === 'edit' && selectedJobId
+      const url = isEdit ? `${baseURL}/jobs/${selectedJobId}` : `${baseURL}/jobs`
+      const method = isEdit ? 'PUT' : 'POST'
+
+      let response = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${token}`
         },
@@ -126,8 +252,8 @@ const AdminJobForm: React.FC = () => {
         // Some production environments fail to parse multipart text fields.
         // Retry with JSON so required fields are correctly parsed server-side.
         if (missingRequiredFields) {
-          response = await fetch(`${baseURL}/jobs`, {
-            method: 'POST',
+          response = await fetch(url, {
+            method,
             headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
@@ -146,11 +272,22 @@ const AdminJobForm: React.FC = () => {
       }
 
       if (!response.ok) {
-        const message = errorData?.message || errorData?.error || 'Failed to create job'
+        const message = errorData?.message || errorData?.error || (isEdit ? 'Failed to update job' : 'Failed to create job')
         throw new Error(message)
       }
 
-      setSuccessMessage('Job posted successfully')
+      if (isEdit) {
+        // Refresh the table with the updated job, then return to it
+        const refreshed = await fetch(`${baseURL}/jobs`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()).catch(() => existingJobs)
+        setExistingJobs(Array.isArray(refreshed) ? refreshed.filter((j: any) => !j.isExpired) : existingJobs)
+        setShowEditForm(false)
+        setSelectedJobId('')
+        setSuccessMessage('Job updated successfully')
+      } else {
+        setSuccessMessage('Job posted successfully')
+      }
 
       setFormData({
         title: '',
@@ -180,35 +317,151 @@ const AdminJobForm: React.FC = () => {
         {/* Header */}
         <div className="form-header">
           <div className="header-icon-wrapper">
-            <FaBriefcase className="header-icon" />
+            {mode === 'edit' ? <FaEdit className="header-icon" /> : <FaBriefcase className="header-icon" />}
           </div>
           <div className="header-text">
-            <h4 className="form-title">Post New Job Opportunity</h4>
-            <p className="form-subtitle">Create and publish job listings for candidates</p>
+            <h4 className="form-title">{mode === 'edit' ? 'Update Existing Job' : 'Post New Job Opportunity'}</h4>
+            <p className="form-subtitle">{mode === 'edit' ? 'Edit and update an active job listing' : 'Create and publish job listings for candidates'}</p>
           </div>
         </div>
 
-        {successMessage && (
-          <Alert className="success-alert">
-            <FaCheckCircle className="alert-icon" />
-            <div>
-              <strong>Success!</strong>
-              <p>{successMessage}</p>
+        {/* Mode Toggle */}
+        <div className="mode-toggle">
+          <button
+            type="button"
+            className={`mode-btn ${mode === 'create' ? 'mode-btn-active' : ''}`}
+            onClick={() => switchMode('create')}
+          >
+            <FaPlus className="me-2" />
+            Post New Job
+          </button>
+          <button
+            type="button"
+            className={`mode-btn ${mode === 'edit' ? 'mode-btn-active' : ''}`}
+            onClick={() => switchMode('edit')}
+          >
+            <FaEdit className="me-2" />
+            Update Existing Job
+          </button>
+        </div>
+
+        {/* Jobs Table (edit mode, before a job is selected) */}
+        {mode === 'edit' && !showEditForm && (
+          <>
+            {successMessage && (
+              <Alert className="success-alert" style={{ marginBottom: '1rem' }}>
+                <FaCheckCircle className="alert-icon" />
+                <div>
+                  <strong>Success!</strong>
+                  <p>{successMessage}</p>
+                </div>
+              </Alert>
+            )}
+
+            <div className="jobs-table-wrapper">
+            {loadingJobs ? (
+              <div className="d-flex align-items-center gap-2 py-3" style={{ color: '#8a8a8a' }}>
+                <Spinner size="sm" animation="border" style={{ color: '#ff7a00' }} />
+                <span>Loading active jobs...</span>
+              </div>
+            ) : (
+              <>
+                <div className="table-toolbar">
+                  <span className="table-count">{filteredTableJobs.length} active job{filteredTableJobs.length !== 1 ? 's' : ''}</span>
+                  <div className="table-search-wrapper">
+                    <FaSearch className="table-search-icon" />
+                    <input
+                      className="table-search-input"
+                      type="text"
+                      placeholder="Search by title or company..."
+                      value={jobTableSearch}
+                      onChange={e => setJobTableSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {filteredTableJobs.length === 0 ? (
+                  <p className="table-empty">
+                    {existingJobs.length === 0 ? 'No active (non-expired) jobs found.' : 'No jobs match your search.'}
+                  </p>
+                ) : (
+                  <div className="table-scroll">
+                    <table className="jobs-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Job Title</th>
+                          <th>Company</th>
+                          <th>Type</th>
+                          <th>Domain</th>
+                          <th>Expires</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredTableJobs.map((job, idx) => (
+                          <tr key={job._id} className={selectedJobId === job._id ? 'row-selected' : ''}>
+                            <td className="td-num">{idx + 1}</td>
+                            <td className="td-title">{job.title}</td>
+                            <td>{job.company}</td>
+                            <td><span className="job-badge">{job.jobType}</span></td>
+                            <td><span className="job-badge job-badge-dim">{job.domain}</span></td>
+                            <td className="td-expiry">{formatExpiryDate(job.expiryDate)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="edit-action-btn"
+                                onClick={() => handleJobSelect(job)}
+                              >
+                                <FaEdit className="me-1" /> Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )}
             </div>
-          </Alert>
+          </>
         )}
 
-        {errorMessage && (
-          <Alert className="error-alert">
-            <FaTimesCircle className="alert-icon" />
-            <div>
-              <strong>Error!</strong>
-              <p>{errorMessage}</p>
-            </div>
-          </Alert>
+        {/* Alerts + Form — always in create mode, or after selecting a job in edit mode */}
+        {(mode === 'create' || showEditForm) && (
+          <>
+            {showEditForm && (
+              <div className="edit-form-banner">
+                <FaEdit className="me-2" />
+                Editing: <strong className="ms-1">{formData.title}</strong>
+                <span className="ms-1 text-muted">— {formData.company}</span>
+              </div>
+            )}
+
+            {successMessage && (
+              <Alert className="success-alert">
+                <FaCheckCircle className="alert-icon" />
+                <div>
+                  <strong>Success!</strong>
+                  <p>{successMessage}</p>
+                </div>
+              </Alert>
+            )}
+
+            {errorMessage && (
+              <Alert className="error-alert">
+                <FaTimesCircle className="alert-icon" />
+                <div>
+                  <strong>Error!</strong>
+                  <p>{errorMessage}</p>
+                </div>
+              </Alert>
+            )}
+          </>
         )}
 
-        <Form onSubmit={handleSubmit}>
+        {(mode === 'create' || showEditForm) && <Form onSubmit={handleSubmit}>
           <Row>
             <Col md={6}>
               <Form.Group className="form-group-custom">
@@ -430,6 +683,17 @@ const AdminJobForm: React.FC = () => {
           </Form.Group>
 
           <div className="form-actions">
+            {showEditForm && (
+              <button
+                type="button"
+                className="cancel-btn"
+                onClick={cancelEdit}
+                disabled={loading}
+              >
+                <FaTimes className="me-2" />
+                Cancel
+              </button>
+            )}
             <Button
               type="submit"
               className="submit-btn"
@@ -438,17 +702,17 @@ const AdminJobForm: React.FC = () => {
               {loading ? (
                 <>
                   <Spinner size="sm" animation="border" className="me-2" />
-                  Posting Job...
+                  {showEditForm ? 'Updating Job...' : 'Posting Job...'}
                 </>
               ) : (
                 <>
-                  <FaSave className="me-2" />
-                  Post Job
+                  {showEditForm ? <FaEdit className="me-2" /> : <FaSave className="me-2" />}
+                  {showEditForm ? 'Update Job' : 'Post Job'}
                 </>
               )}
             </Button>
           </div>
-        </Form>
+        </Form>}
       </div>
 
       <style>{`
@@ -507,6 +771,247 @@ const AdminJobForm: React.FC = () => {
           color: #8a8a8a;
           font-size: 0.85rem;
           margin: 0.25rem 0 0 0;
+        }
+
+        /* Mode Toggle */
+        .mode-toggle {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+          background: #111111;
+          border: 1px solid #2c2c2c;
+          border-radius: 10px;
+          padding: 0.35rem;
+        }
+
+        .mode-btn {
+          flex: 1;
+          padding: 0.6rem 1rem;
+          border-radius: 8px;
+          border: none;
+          background: transparent;
+          color: #8a8a8a;
+          font-weight: 500;
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .mode-btn:hover {
+          color: #ff7a00;
+        }
+
+        .mode-btn-active {
+          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
+          color: #000000 !important;
+          font-weight: 600;
+        }
+
+        /* Jobs Table */
+        .jobs-table-wrapper {
+          background: #111111;
+          border: 1px solid #2c2c2c;
+          border-radius: 10px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .table-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-bottom: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        .table-count {
+          color: #8a8a8a;
+          font-size: 0.82rem;
+          white-space: nowrap;
+        }
+
+        .table-search-wrapper {
+          position: relative;
+          flex: 1;
+          max-width: 340px;
+        }
+
+        .table-search-icon {
+          position: absolute;
+          left: 0.65rem;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #6c757d;
+          font-size: 0.8rem;
+          pointer-events: none;
+        }
+
+        .table-search-input {
+          width: 100%;
+          background: #000000;
+          border: 1px solid #2c2c2c;
+          color: #ffffff;
+          padding: 0.45rem 0.75rem 0.45rem 2rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          outline: none;
+          transition: border-color 0.2s;
+        }
+
+        .table-search-input:focus {
+          border-color: #ff7a00;
+        }
+
+        .table-search-input::placeholder {
+          color: #6c757d;
+        }
+
+        .table-empty {
+          color: #6c757d;
+          font-size: 0.85rem;
+          text-align: center;
+          padding: 1.5rem 0;
+          margin: 0;
+        }
+
+        .table-scroll {
+          overflow-x: auto;
+        }
+
+        .jobs-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.85rem;
+        }
+
+        .jobs-table th {
+          color: #ff7a00;
+          font-weight: 600;
+          text-align: left;
+          padding: 0.6rem 0.75rem;
+          border-bottom: 1px solid #2c2c2c;
+          white-space: nowrap;
+        }
+
+        .jobs-table td {
+          color: #d9d9d9;
+          padding: 0.6rem 0.75rem;
+          border-bottom: 1px solid #1a1a1a;
+          vertical-align: middle;
+        }
+
+        .jobs-table tbody tr:hover {
+          background: #1a1a1a;
+        }
+
+        .jobs-table tbody tr.row-selected {
+          background: rgba(255, 122, 0, 0.08);
+        }
+
+        .td-num {
+          color: #6c757d;
+          width: 36px;
+        }
+
+        .td-title {
+          font-weight: 500;
+          color: #ffffff;
+          max-width: 220px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-expiry {
+          white-space: nowrap;
+          color: #aaaaaa;
+          font-size: 0.8rem;
+        }
+
+        .job-badge {
+          display: inline-block;
+          padding: 2px 10px;
+          border-radius: 50px;
+          font-size: 0.72rem;
+          font-weight: 600;
+          background: rgba(255, 122, 0, 0.15);
+          color: #ff7a00;
+          border: 1px solid rgba(255, 122, 0, 0.3);
+          white-space: nowrap;
+        }
+
+        .job-badge-dim {
+          opacity: 0.7;
+        }
+
+        .edit-action-btn {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.3rem 0.75rem;
+          border-radius: 6px;
+          border: 1px solid #ff7a00;
+          background: transparent;
+          color: #ff7a00;
+          font-size: 0.8rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+
+        .edit-action-btn:hover {
+          background: #ff7a00;
+          color: #000000;
+        }
+
+        /* Edit form banner */
+        .edit-form-banner {
+          display: flex;
+          align-items: center;
+          background: rgba(255, 122, 0, 0.08);
+          border: 1px solid rgba(255, 122, 0, 0.3);
+          border-radius: 8px;
+          padding: 0.6rem 1rem;
+          margin-bottom: 1.25rem;
+          color: #ff7a00;
+          font-size: 0.875rem;
+        }
+
+        .edit-form-banner strong {
+          color: #ffffff;
+        }
+
+        .edit-form-banner .text-muted {
+          color: #8a8a8a !important;
+        }
+
+        /* Cancel button */
+        .cancel-btn {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.75rem 1.5rem;
+          border-radius: 8px;
+          border: 1px solid #4a4a4a;
+          background: transparent;
+          color: #aaaaaa;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          margin-right: 0.75rem;
+        }
+
+        .cancel-btn:hover:not(:disabled) {
+          border-color: #ff7a00;
+          color: #ff7a00;
+        }
+
+        .cancel-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
         }
 
         /* Alerts */
