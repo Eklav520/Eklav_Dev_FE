@@ -1024,9 +1024,11 @@ const StudentCollegeLabsPage = () => {
         }
 
         .tab-badge {
-          background: #333333;
-          color: #ffffff;
+          background: rgba(255,107,53,0.15) !important;
+          color: #ff6b35 !important;
+          border: 1px solid rgba(255,107,53,0.3) !important;
           margin-left: 0.5rem;
+          font-weight: 700;
         }
 
         .badge-icon {

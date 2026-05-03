@@ -972,9 +972,11 @@ const StudentFreelancingDashboard: React.FC = () => {
         }
 
         .tab-count {
-          background: rgba(255,107,53,0.2);
-          color: #ff6b35;
+          background: rgba(255,107,53,0.15) !important;
+          color: #ff6b35 !important;
+          border: 1px solid rgba(255,107,53,0.3) !important;
           font-size: 0.75rem;
+          font-weight: 700;
           margin-left: 4px;
           padding: 0.2rem 0.5rem;
           border-radius: 20px;
