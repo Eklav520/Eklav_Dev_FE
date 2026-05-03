@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Card, Button } from 'react-bootstrap'
 import PageMetaData from '@/components/PageMetaData'
 import AdminStudents from './components/AdminStudents'
+import AdminResults from './components/AdminResults'
 
 
 export default function FinalAssessmentDetails() {
@@ -10,9 +11,7 @@ export default function FinalAssessmentDetails() {
   return (
     <>
       <PageMetaData title="Admin - Assessments" />
-
-     {/*  <AdminReview /> */}
-      <AdminStudents/>
+      <AdminResults/>
     </>
   )
 }

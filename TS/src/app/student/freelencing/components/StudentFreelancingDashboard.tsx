@@ -268,10 +268,16 @@ const StudentFreelancingDashboard: React.FC = () => {
     setShowWorkflowModal(true)
   }
 
+  const isBeforeStartDate = (d?: string | null) => {
+    if (!d) return false
+    return new Date() < new Date(d)
+  }
+
   // ── Render: Task Card ────────────────────────────────────────────────────
   const renderTaskCard = (task: FreelancingTask, enrolled = false) => {
     const deadlinePast = isDeadlinePast(task.deadline)
     const full = (task.spotsLeft ?? 0) <= 0
+    const notStarted = isBeforeStartDate(task.startDate)
     const submissionStatus = task.mySubmission?.status || 'pending'
     const reviewStatus = task.mySubmission?.adminReviewStatus || 'pending'
 
@@ -287,19 +293,27 @@ const StudentFreelancingDashboard: React.FC = () => {
         <Card className="task-card">
           <Card.Body>
             {/* Category badge + NDA */}
-            <div className="task-badges">
-              {task.category && (
-                <span className="badge cat-badge">
-                  {CATEGORY_LABELS[task.category] || task.category}
-                </span>
-              )}
-              {task.ndaRequired && (
-                <span className="badge nda-badge">
-                  <FaLock size={10} className="me-1" />
-                  NDA
-                </span>
-              )}
-            </div>
+           <div className="task-header">
+  <div className="task-badges">
+    {task.category && (
+      <span className="badge cat-badge">
+        {CATEGORY_LABELS[task.category] || task.category}
+      </span>
+    )}
+    {task.ndaRequired && (
+      <span className="badge nda-badge">
+        <FaLock size={10} className="me-1" />
+        NDA
+      </span>
+    )}
+  </div>
+
+  {notStarted && (
+    <span className="start-badge">
+      {getStartCountdown(task.startDate)}
+    </span>
+  )}
+</div>
 
             <h4 className="task-title">{task.title}</h4>
 
@@ -322,8 +336,12 @@ const StudentFreelancingDashboard: React.FC = () => {
             <div className="task-info-row">
               <div className="info-item">
                 <FaCalendarAlt className="info-icon" />
-                <span className={deadlinePast ? 'text-danger' : ''}>
-                  {task.deadline ? formatDate(task.deadline) : '—'}
+                <span>
+                  {task.startDate ? formatDate(task.startDate) : '—'}
+                  {' → '}
+                  <span className={deadlinePast ? 'text-danger' : ''}>
+                    {task.deadline ? formatDate(task.deadline) : '—'}
+                  </span>
                   {deadlinePast && ' (Closed)'}
                 </span>
               </div>
@@ -374,13 +392,12 @@ const StudentFreelancingDashboard: React.FC = () => {
                   Submission: {submissionStatus === 'completed' ? 'Completed' : 'Pending'}
                 </span>
                 <span
-                  className={`submission-chip review ${
-                    reviewStatus === 'approved'
-                      ? 'approved'
-                      : reviewStatus === 'rejected'
-                        ? 'rejected'
-                        : 'pending-review'
-                  }`}
+                  className={`submission-chip review ${reviewStatus === 'approved'
+                    ? 'approved'
+                    : reviewStatus === 'rejected'
+                      ? 'rejected'
+                      : 'pending-review'
+                    }`}
                 >
                   Review: {reviewLabel}
                 </span>
@@ -409,6 +426,10 @@ const StudentFreelancingDashboard: React.FC = () => {
                     Enrolled
                   </Button>
                 )
+              ) : notStarted ? (
+                <Button className="btn-closed" size="sm" disabled>
+                  Starts Soon
+                </Button>
               ) : deadlinePast ? (
                 <Button className="btn-closed" size="sm" disabled>
                   Closed
@@ -436,6 +457,19 @@ const StudentFreelancingDashboard: React.FC = () => {
       </Col>
     )
   }
+
+  const getStartCountdown = (d?: string | null) => {
+  if (!d) return ''
+  const diff = new Date(d).getTime() - Date.now()
+
+  if (diff <= 0) return 'Live'
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (hours > 0) return `Starts in ${hours}h ${mins}m`
+  return `Starts in ${mins}m`
+}
 
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
@@ -806,10 +840,18 @@ const StudentFreelancingDashboard: React.FC = () => {
                 <FaCheckCircle size={14} className="me-1" />
                 Already Enrolled
               </Button>
+            ) : isBeforeStartDate(selectedTask.startDate) ? (
+              <Button className="btn-closed modal-footer-btn small-btn" disabled>
+                Not Started Yet
+              </Button>
             ) : isDeadlinePast(selectedTask.deadline) ? (
-              <Button className="btn-closed" disabled>Deadline Passed</Button>
+              <Button className="btn-closed" disabled>
+                Deadline Passed
+              </Button>
             ) : (selectedTask.spotsLeft ?? 0) <= 0 ? (
-              <Button className="btn-closed" disabled>No Spots Available</Button>
+              <Button className="btn-closed" disabled>
+                No Spots Available
+              </Button>
             ) : (
               <Button
                 className="btn-enroll modal-footer-btn"
@@ -817,7 +859,10 @@ const StudentFreelancingDashboard: React.FC = () => {
                 onClick={() => handleEnroll(selectedTask._id)}
               >
                 {enrolling === selectedTask._id ? (
-                  <><Spinner animation="border" size="sm" className="me-1" /> Enrolling…</>
+                  <>
+                    <Spinner animation="border" size="sm" className="me-1" />
+                    Enrolling…
+                  </>
                 ) : (
                   'Apply Now'
                 )}
@@ -840,6 +885,43 @@ const StudentFreelancingDashboard: React.FC = () => {
 
       {/* ── Styles ─────────────────────────────────────────────────────────── */}
       <style>{`
+        .task-card .card-body {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+        }
+
+        .task-actions {
+          margin-top: auto; /* 👈 pushes buttons to bottom */
+        }
+        .task-title {
+          min-height: 48px;
+        }
+
+        .task-info-row {
+          min-height: 40px;
+        }
+        .small-btn {
+          flex: 0 0 auto !important;
+          width: auto !important;
+          padding: 0.4rem 0.9rem !important;
+        }
+          .task-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.75rem;
+        }
+
+        .start-badge {
+          font-size: 0.7rem;
+          background: rgba(255, 193, 7, 0.15);
+          color: #ff6b35;
+          border: 1px solid rgba(255, 193, 7, 0.4);
+          padding: 0.2rem 0.6rem;
+          border-radius: 6px;
+          white-space: nowrap;
+        }
         /* Layout */
         .student-freelancing {
           background: #000;
@@ -1340,11 +1422,35 @@ const StudentFreelancingDashboard: React.FC = () => {
         .date-val { font-size: 0.95rem; color: #ccc; font-weight: 500; }
         .date-arrow { color: #555; }
 
-        /* Rich HTML content */
         .rich-content {
           font-size: 0.9rem;
           color: #bbb;
           line-height: 1.65;
+
+          /* ✅ FIXES */
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          white-space: normal;
+          max-width: 100%;
+        }
+
+        .rich-content * {
+          max-width: 100%;
+          word-break: break-word;
+        }
+
+        .rich-content img,
+        .rich-content video {
+          max-width: 100%;
+          height: auto;
+        }
+
+        /* VERY IMPORTANT (handles code blocks) */
+        .rich-content pre,
+        .rich-content code {
+          white-space: pre-wrap !important;
+          word-break: break-word;
+          overflow-x: auto;
         }
 
         .rich-content p { margin-bottom: 0.5rem; }

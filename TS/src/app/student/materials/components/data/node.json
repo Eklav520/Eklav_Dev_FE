@@ -1,0 +1,1206 @@
+{
+    "id": " Node-mastery",
+    "title": "Node.js Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "node-ch1",
+            "title": "Introduction to Node.js",
+            "description": "Learn the fundamentals of Node.js, its architecture, features, and how it differs from browser-based JavaScript. Understand event-driven programming and non-blocking I/O.",
+            "pages": [
+                {
+                    "id": "node-ch1-page1",
+                    "title": "What is Node.js?",
+                    "content": "Node.js is a runtime environment that allows you to run JavaScript on the server side. It is built on Chrome's V8 engine and is widely used for building scalable backend applications.",
+                    "exampleCode": "// Simple Node.js program\nconsole.log('Hello Node.js');",
+                    "keyPoints": [
+                        "Node.js runs JavaScript outside the browser",
+                        "Built on Chrome V8 engine",
+                        "Used for backend development",
+                        "Supports scalable applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is Node.js?",
+                            "options": [
+                                "A database",
+                                "A JavaScript runtime environment",
+                                "A programming language",
+                                "A browser"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Node.js is a runtime environment for executing JavaScript."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch1-page2",
+                    "title": "Features of Node.js",
+                    "content": "Node.js offers several powerful features such as asynchronous processing, event-driven architecture, and high performance.",
+                    "exampleCode": "// Non-blocking example\nsetTimeout(() => {\n  console.log('Async task');\n}, 1000);\nconsole.log('Sync task');",
+                    "keyPoints": [
+                        "Asynchronous and non-blocking",
+                        "Event-driven architecture",
+                        "Fast execution using V8 engine",
+                        "Highly scalable"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which feature makes Node.js fast?",
+                            "options": [
+                                "Blocking I/O",
+                                "Event-driven architecture",
+                                "Manual memory management",
+                                "Compilation"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Node.js uses event-driven architecture for high performance."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch1-page3",
+                    "title": "Node.js vs Browser JavaScript",
+                    "content": "JavaScript in the browser is used for frontend development, while Node.js allows JavaScript to run on the server side for backend development.",
+                    "exampleCode": "// Browser JS\nalert('Hello');\n\n// Node.js\nconsole.log('Hello from server');",
+                    "keyPoints": [
+                        "Browser JS runs in browser",
+                        "Node.js runs on server",
+                        "Node.js has access to file system",
+                        "Browser JS interacts with DOM"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where does Node.js run?",
+                            "options": [
+                                "Browser",
+                                "Server",
+                                "Database",
+                                "Mobile device"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Node.js runs on the server side."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch1-page4",
+                    "title": "Event-driven Architecture",
+                    "content": "Node.js uses an event-driven architecture where operations are executed based on events. This allows handling multiple requests efficiently.",
+                    "exampleCode": "const EventEmitter = require('events');\nconst event = new EventEmitter();\n\nevent.on('greet', () => {\n  console.log('Hello Event!');\n});\n\nevent.emit('greet');",
+                    "keyPoints": [
+                        "Uses events to trigger actions",
+                        "Handles multiple requests efficiently",
+                        "Core concept in Node.js",
+                        "Improves scalability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What triggers actions in Node.js event-driven model?",
+                            "options": [
+                                "Loops",
+                                "Functions",
+                                "Events",
+                                "Variables"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Events trigger actions in event-driven architecture."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch1-page5",
+                    "title": "Non-blocking I/O",
+                    "content": "Non-blocking I/O allows Node.js to handle multiple operations without waiting for one task to complete before starting another.",
+                    "exampleCode": "const fs = require('fs');\n\nfs.readFile('file.txt', 'utf8', (err, data) => {\n  console.log(data);\n});\n\nconsole.log('Reading file...');",
+                    "keyPoints": [
+                        "Does not block execution",
+                        "Handles multiple requests simultaneously",
+                        "Improves performance",
+                        "Core feature of Node.js"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is non-blocking I/O?",
+                            "options": [
+                                "Waiting for tasks to finish",
+                                "Executing tasks one by one",
+                                "Handling tasks asynchronously",
+                                "Stopping execution"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Non-blocking I/O allows asynchronous execution of tasks."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch2",
+            "title": "Setup & Environment",
+            "description": "Learn how to install Node.js, explore the REPL, use npm, create your first application, and understand the package.json configuration.",
+            "pages": [
+                {
+                    "id": "node-ch2-page1",
+                    "title": "Installing Node.js",
+                    "content": "Node.js can be installed from the official website or using package managers. After installation, you can verify it using version commands.",
+                    "exampleCode": "# Check Node.js version\nnode -v\n\n# Check npm version\nnpm -v",
+                    "keyPoints": [
+                        "Install Node.js from official website",
+                        "Includes npm by default",
+                        "Verify installation using commands",
+                        "Works on Windows, macOS, Linux"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command checks Node.js version?",
+                            "options": [
+                                "node --check",
+                                "node -v",
+                                "npm -v",
+                                "version node"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "node -v displays the installed Node.js version."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch2-page2",
+                    "title": "Node REPL",
+                    "content": "REPL stands for Read-Eval-Print Loop. It allows you to execute JavaScript code directly in the terminal without creating a file.",
+                    "exampleCode": "# Start REPL\nnode\n\n> 2 + 2\n4",
+                    "keyPoints": [
+                        "Interactive JavaScript environment",
+                        "Useful for quick testing",
+                        "Executes code instantly",
+                        "Accessible via terminal"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does REPL stand for?",
+                            "options": [
+                                "Run Execute Print Loop",
+                                "Read Eval Print Loop",
+                                "Read Execute Program Loop",
+                                "Run Eval Program Logic"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "REPL stands for Read-Eval-Print Loop."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch2-page3",
+                    "title": "npm (Node Package Manager)",
+                    "content": "npm is used to install, manage, and share packages (libraries) in Node.js applications.",
+                    "exampleCode": "# Install package\nnpm install express\n\n# Install globally\nnpm install -g nodemon",
+                    "keyPoints": [
+                        "Manages dependencies",
+                        "Installs libraries and tools",
+                        "Supports global and local installs",
+                        "Largest package ecosystem"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is npm used for?",
+                            "options": [
+                                "Writing code",
+                                "Managing packages",
+                                "Running servers",
+                                "Creating databases"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "npm is used to manage Node.js packages."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch2-page4",
+                    "title": "Creating First App",
+                    "content": "You can create a simple Node.js application by writing JavaScript code in a file and running it using Node.",
+                    "exampleCode": "// app.js\nconsole.log('My First Node App');\n\n# Run app\nnode app.js",
+                    "keyPoints": [
+                        "Create .js file",
+                        "Write JavaScript code",
+                        "Run using node command",
+                        "Basic app structure"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you run a Node.js file?",
+                            "options": [
+                                "run app.js",
+                                "node app.js",
+                                "start app.js",
+                                "execute app.js"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "node app.js runs the application."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch2-page5",
+                    "title": "package.json",
+                    "content": "package.json is a configuration file that stores project metadata, dependencies, and scripts. It is essential for managing Node.js projects.",
+                    "exampleCode": "# Initialize project\nnpm init -y\n\n# Sample package.json\n{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": {}\n}",
+                    "keyPoints": [
+                        "Stores project metadata",
+                        "Tracks dependencies",
+                        "Defines scripts",
+                        "Created using npm init"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is package.json used for?",
+                            "options": [
+                                "Running code",
+                                "Storing project configuration",
+                                "Creating UI",
+                                "Managing database"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "package.json stores project configuration and dependencies."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch3",
+            "title": "Core Modules",
+            "description": "Learn about built-in Node.js core modules such as File System, HTTP, Path, OS, and Events. These modules help in building server-side applications without external libraries.",
+            "pages": [
+                {
+                    "id": "node-ch3-page1",
+                    "title": "File System (fs) Module",
+                    "content": "The fs module is used to interact with the file system. It allows reading, writing, updating, and deleting files.",
+                    "exampleCode": "const fs = require('fs');\n\n// Write file\nfs.writeFileSync('test.txt', 'Hello Node');\n\n// Read file\nconst data = fs.readFileSync('test.txt', 'utf8');\nconsole.log(data);",
+                    "keyPoints": [
+                        "Used for file operations",
+                        "Supports sync and async methods",
+                        "Can read/write/update/delete files",
+                        "Core module (no installation needed)"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module is used for file handling?",
+                            "options": [
+                                "http",
+                                "fs",
+                                "path",
+                                "os"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The fs module is used for file operations."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch3-page2",
+                    "title": "HTTP Module",
+                    "content": "The http module is used to create web servers and handle HTTP requests and responses.",
+                    "exampleCode": "const http = require('http');\n\nconst server = http.createServer((req, res) => {\n  res.write('Hello Server');\n  res.end();\n});\n\nserver.listen(3000);",
+                    "keyPoints": [
+                        "Used to create servers",
+                        "Handles requests and responses",
+                        "Core of backend applications",
+                        "Works without external libraries"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module is used to create a server?",
+                            "options": [
+                                "fs",
+                                "http",
+                                "path",
+                                "events"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The http module is used to create servers."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch3-page3",
+                    "title": "Path Module",
+                    "content": "The path module helps handle and transform file paths. It ensures compatibility across different operating systems.",
+                    "exampleCode": "const path = require('path');\n\nconst filePath = path.join(__dirname, 'test.txt');\nconsole.log(filePath);",
+                    "keyPoints": [
+                        "Handles file paths",
+                        "Cross-platform compatibility",
+                        "Provides utility functions",
+                        "Avoids manual path errors"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the path module do?",
+                            "options": [
+                                "Creates servers",
+                                "Handles file paths",
+                                "Reads files",
+                                "Manages users"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The path module is used for handling file paths."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch3-page4",
+                    "title": "OS Module",
+                    "content": "The os module provides information about the operating system such as CPU, memory, and platform details.",
+                    "exampleCode": "const os = require('os');\n\nconsole.log(os.platform());\nconsole.log(os.totalmem());",
+                    "keyPoints": [
+                        "Provides OS information",
+                        "Access CPU and memory details",
+                        "Useful for system-level apps",
+                        "Helps monitor system resources"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which module provides system information?",
+                            "options": [
+                                "fs",
+                                "http",
+                                "os",
+                                "path"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "The os module provides system-related information."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch3-page5",
+                    "title": "Events Module",
+                    "content": "The events module allows handling custom events using EventEmitter. It is a core part of Node.js event-driven architecture.",
+                    "exampleCode": "const EventEmitter = require('events');\nconst emitter = new EventEmitter();\n\nemitter.on('message', () => {\n  console.log('Event triggered');\n});\n\nemitter.emit('message');",
+                    "keyPoints": [
+                        "Handles custom events",
+                        "Uses EventEmitter class",
+                        "Core part of event-driven model",
+                        "Supports asynchronous programming"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which class is used for events?",
+                            "options": [
+                                "EventHandler",
+                                "EventEmitter",
+                                "EventLoop",
+                                "EventClass"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "EventEmitter is used to handle events."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch4",
+            "title": "Asynchronous Programming",
+            "description": "Learn how Node.js handles asynchronous operations using callbacks, promises, and async/await. Understand the event loop and error handling mechanisms.",
+            "pages": [
+                {
+                    "id": "node-ch4-page1",
+                    "title": "Callbacks",
+                    "content": "Callbacks are functions passed as arguments to other functions and executed after an operation completes. They are the basic way to handle asynchronous operations in Node.js.",
+                    "exampleCode": "function fetchData(callback) {\n  setTimeout(() => {\n    callback('Data received');\n  }, 1000);\n}\n\nfetchData((data) => {\n  console.log(data);\n});",
+                    "keyPoints": [
+                        "Functions passed as arguments",
+                        "Executed after task completion",
+                        "Basic async handling method",
+                        "Can lead to callback hell"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a callback?",
+                            "options": [
+                                "A loop",
+                                "A function passed as argument",
+                                "A variable",
+                                "A module"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A callback is a function passed as an argument to another function."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch4-page2",
+                    "title": "Promises",
+                    "content": "Promises provide a cleaner way to handle asynchronous operations. They represent a value that may be available now, later, or never.",
+                    "exampleCode": "const promise = new Promise((resolve, reject) => {\n  setTimeout(() => {\n    resolve('Success');\n  }, 1000);\n});\n\npromise.then((result) => console.log(result));",
+                    "keyPoints": [
+                        "Represents future value",
+                        "Avoids callback hell",
+                        "Uses .then() and .catch()",
+                        "Improves readability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does a promise represent?",
+                            "options": [
+                                "Immediate value",
+                                "Future value",
+                                "Loop execution",
+                                "Error only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "A promise represents a value that will be available in the future."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch4-page3",
+                    "title": "Async/Await",
+                    "content": "Async/Await is a modern way to handle asynchronous code. It makes asynchronous code look like synchronous code, improving readability.",
+                    "exampleCode": "function delay() {\n  return new Promise(resolve => setTimeout(resolve, 1000));\n}\n\nasync function run() {\n  await delay();\n  console.log('Done');\n}\n\nrun();",
+                    "keyPoints": [
+                        "Simplifies async code",
+                        "Uses async and await keywords",
+                        "Improves readability",
+                        "Built on promises"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does await do?",
+                            "options": [
+                                "Stops execution forever",
+                                "Waits for promise to resolve",
+                                "Creates a loop",
+                                "Deletes data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "await pauses execution until the promise resolves."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch4-page4",
+                    "title": "Event Loop",
+                    "content": "The event loop is the core of Node.js that handles asynchronous operations. It processes callbacks and ensures non-blocking execution.",
+                    "exampleCode": "console.log('Start');\n\nsetTimeout(() => {\n  console.log('Async Task');\n}, 0);\n\nconsole.log('End');",
+                    "keyPoints": [
+                        "Handles async operations",
+                        "Processes callback queue",
+                        "Ensures non-blocking behavior",
+                        "Core of Node.js architecture"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the role of event loop?",
+                            "options": [
+                                "Execute synchronous code",
+                                "Handle asynchronous operations",
+                                "Store data",
+                                "Create files"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Event loop manages asynchronous execution."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch4-page5",
+                    "title": "Error Handling",
+                    "content": "Error handling in Node.js ensures that applications do not crash unexpectedly. It can be handled using try/catch for async/await or .catch() for promises.",
+                    "exampleCode": "async function test() {\n  try {\n    throw new Error('Something went wrong');\n  } catch (err) {\n    console.log(err.message);\n  }\n}\n\ntest();",
+                    "keyPoints": [
+                        "Prevents application crashes",
+                        "Use try/catch with async/await",
+                        "Use .catch() with promises",
+                        "Improves reliability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which is used for error handling in async/await?",
+                            "options": [
+                                "if/else",
+                                "try/catch",
+                                "loop",
+                                "switch"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "try/catch is used for handling errors in async/await."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch5",
+            "title": "Express.js Framework",
+            "description": "Learn how to build web applications using Express.js. This module covers routing, middleware, REST APIs, and handling HTTP requests and responses.",
+            "pages": [
+                {
+                    "id": "node-ch5-page1",
+                    "title": "Introduction to Express.js",
+                    "content": "Express.js is a lightweight web framework for Node.js that simplifies building web servers and APIs.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.listen(3000, () => {\n  console.log('Server running on port 3000');\n});",
+                    "keyPoints": [
+                        "Lightweight Node.js framework",
+                        "Simplifies server creation",
+                        "Used for building APIs",
+                        "Highly flexible"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is Express.js?",
+                            "options": [
+                                "A database",
+                                "A Node.js framework",
+                                "A programming language",
+                                "An operating system"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Express.js is a web framework for Node.js."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch5-page2",
+                    "title": "Routing",
+                    "content": "Routing defines how an application responds to client requests for specific endpoints and HTTP methods.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.get('/', (req, res) => {\n  res.send('Home Page');\n});\n\napp.post('/data', (req, res) => {\n  res.send('Data received');\n});",
+                    "keyPoints": [
+                        "Defines API endpoints",
+                        "Supports HTTP methods (GET, POST, etc.)",
+                        "Handles client requests",
+                        "Core feature of Express"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is routing in Express?",
+                            "options": [
+                                "Database connection",
+                                "Handling requests to endpoints",
+                                "File management",
+                                "User authentication"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Routing handles how requests are processed in Express."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch5-page3",
+                    "title": "Middleware",
+                    "content": "Middleware functions are functions that execute during the request-response cycle. They can modify requests, responses, or end the request.",
+                    "exampleCode": "const express = require('express');\nconst app = express();\n\napp.use((req, res, next) => {\n  console.log('Middleware executed');\n  next();\n});",
+                    "keyPoints": [
+                        "Executes between request and response",
+                        "Can modify request/response",
+                        "Uses next() to continue flow",
+                        "Essential for logging, auth, etc."
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does next() do in middleware?",
+                            "options": [
+                                "Stops execution",
+                                "Moves to next middleware",
+                                "Deletes request",
+                                "Ends response"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "next() passes control to the next middleware function."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch5-page4",
+                    "title": "REST APIs",
+                    "content": "REST APIs allow communication between client and server using HTTP methods like GET, POST, PUT, and DELETE.",
+                    "exampleCode": "app.get('/users', (req, res) => {\n  res.json([{ name: 'John' }]);\n});\n\napp.post('/users', (req, res) => {\n  res.json({ message: 'User created' });\n});",
+                    "keyPoints": [
+                        "Uses HTTP methods",
+                        "Transfers data in JSON format",
+                        "Stateless communication",
+                        "Widely used in web apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method is used to fetch data?",
+                            "options": [
+                                "POST",
+                                "PUT",
+                                "GET",
+                                "DELETE"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "GET is used to retrieve data from server."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch5-page5",
+                    "title": "Request & Response",
+                    "content": "The request object contains client data, while the response object is used to send data back to the client.",
+                    "exampleCode": "app.get('/user', (req, res) => {\n  res.send('User Data');\n});",
+                    "keyPoints": [
+                        "req contains client request data",
+                        "res sends response to client",
+                        "Used in every route",
+                        "Core of Express communication"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does res.send() do?",
+                            "options": [
+                                "Receives data",
+                                "Sends response to client",
+                                "Stores data",
+                                "Deletes request"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "res.send() sends data back to the client."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch6",
+            "title": "Database Integration",
+            "description": "Learn how to connect Node.js applications with databases like MySQL and MongoDB. Understand CRUD operations, ORM/ODM tools, and data modeling techniques.",
+            "pages": [
+                {
+                    "id": "node-ch6-page1",
+                    "title": "Connecting to MySQL",
+                    "content": "Node.js can connect to MySQL databases using libraries like mysql2. This allows executing SQL queries from your application.",
+                    "exampleCode": "const mysql = require('mysql2');\n\nconst connection = mysql.createConnection({\n  host: 'localhost',\n  user: 'root',\n  password: 'password',\n  database: 'testdb'\n});\n\nconnection.connect();",
+                    "keyPoints": [
+                        "Uses mysql2 library",
+                        "Connects to relational database",
+                        "Executes SQL queries",
+                        "Widely used in backend apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is used to connect MySQL in Node.js?",
+                            "options": [
+                                "express",
+                                "mysql2",
+                                "fs",
+                                "http"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "mysql2 is used to connect MySQL in Node.js."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch6-page2",
+                    "title": "Connecting to MongoDB",
+                    "content": "MongoDB is a NoSQL database that stores data in JSON-like format. Node.js connects to MongoDB using libraries like mongoose.",
+                    "exampleCode": "const mongoose = require('mongoose');\n\nmongoose.connect('mongodb://localhost:27017/testdb')\n  .then(() => console.log('Connected'))\n  .catch(err => console.log(err));",
+                    "keyPoints": [
+                        "Uses mongoose library",
+                        "NoSQL database",
+                        "Stores JSON-like documents",
+                        "Easy to integrate with Node.js"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is used for MongoDB in Node.js?",
+                            "options": [
+                                "mysql",
+                                "mongoose",
+                                "http",
+                                "path"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "mongoose is used to connect MongoDB."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch6-page3",
+                    "title": "CRUD Operations",
+                    "content": "CRUD stands for Create, Read, Update, and Delete. These operations allow managing data in databases.",
+                    "exampleCode": "// Example CRUD (MySQL)\nconnection.query(\"INSERT INTO users(name) VALUES('John')\");\nconnection.query(\"SELECT * FROM users\");\nconnection.query(\"UPDATE users SET name='Doe' WHERE id=1\");\nconnection.query(\"DELETE FROM users WHERE id=1\");",
+                    "keyPoints": [
+                        "Create: Insert data",
+                        "Read: Fetch data",
+                        "Update: Modify data",
+                        "Delete: Remove data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does CRUD stand for?",
+                            "options": [
+                                "Create, Read, Update, Delete",
+                                "Copy, Run, Update, Delete",
+                                "Create, Remove, Update, Display",
+                                "Code, Read, Use, Delete"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "CRUD stands for Create, Read, Update, Delete."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch6-page4",
+                    "title": "ORM/ODM (Mongoose, Sequelize)",
+                    "content": "ORM (Object Relational Mapping) and ODM (Object Data Modeling) tools simplify database interactions by using objects instead of raw queries.",
+                    "exampleCode": "// Sequelize example\nconst { Sequelize } = require('sequelize');\nconst sequelize = new Sequelize('mysql://root:password@localhost:3306/testdb');\n\n// Mongoose schema\nconst userSchema = new mongoose.Schema({\n  name: String\n});",
+                    "keyPoints": [
+                        "Simplifies database operations",
+                        "Sequelize for SQL databases",
+                        "Mongoose for MongoDB",
+                        "Reduces need for raw queries"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which tool is used for MongoDB modeling?",
+                            "options": [
+                                "Sequelize",
+                                "Mongoose",
+                                "mysql2",
+                                "Express"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Mongoose is used for MongoDB data modeling."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch6-page5",
+                    "title": "Data Modeling",
+                    "content": "Data modeling defines how data is structured in a database. It includes defining schemas, relationships, and constraints.",
+                    "exampleCode": "// Mongoose model\nconst User = mongoose.model('User', {\n  name: String,\n  email: String\n});",
+                    "keyPoints": [
+                        "Defines data structure",
+                        "Uses schemas and models",
+                        "Ensures data consistency",
+                        "Important for scalable apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is data modeling?",
+                            "options": [
+                                "Writing queries",
+                                "Structuring data in database",
+                                "Creating UI",
+                                "Running server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Data modeling defines how data is structured in a database."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch7",
+            "title": "Authentication & Security",
+            "description": "Learn how to secure Node.js applications using authentication techniques like JWT, password hashing, authorization, middleware security, and environment variables.",
+            "pages": [
+                {
+                    "id": "node-ch7-page1",
+                    "title": "JWT Authentication",
+                    "content": "JWT (JSON Web Token) is used to securely transmit information between client and server. It is commonly used for authentication in web applications.",
+                    "exampleCode": "const jwt = require('jsonwebtoken');\n\nconst token = jwt.sign({ userId: 1 }, 'secretKey');\n\nconst decoded = jwt.verify(token, 'secretKey');\nconsole.log(decoded);",
+                    "keyPoints": [
+                        "Used for authentication",
+                        "Generates secure tokens",
+                        "Stateless authentication",
+                        "Widely used in APIs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is JWT used for?",
+                            "options": [
+                                "Database storage",
+                                "Authentication",
+                                "File upload",
+                                "UI design"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "JWT is used for authentication."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch7-page2",
+                    "title": "Password Hashing (bcrypt)",
+                    "content": "Password hashing is used to store passwords securely. bcrypt is a popular library for hashing passwords in Node.js.",
+                    "exampleCode": "const bcrypt = require('bcrypt');\n\nconst password = '123456';\nconst hash = bcrypt.hashSync(password, 10);\n\nconsole.log(hash);",
+                    "keyPoints": [
+                        "Secures passwords",
+                        "Prevents storing plain text",
+                        "Uses hashing algorithms",
+                        "bcrypt is widely used"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use password hashing?",
+                            "options": [
+                                "To speed up queries",
+                                "To secure passwords",
+                                "To store files",
+                                "To create UI"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Hashing protects passwords from being exposed."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch7-page3",
+                    "title": "Authorization",
+                    "content": "Authorization determines what a user is allowed to do after authentication. It ensures users access only permitted resources.",
+                    "exampleCode": "function authorize(req, res, next) {\n  if (req.user.role === 'admin') {\n    next();\n  } else {\n    res.send('Access denied');\n  }\n}",
+                    "keyPoints": [
+                        "Controls user permissions",
+                        "Works after authentication",
+                        "Restricts access to resources",
+                        "Role-based access control"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is authorization?",
+                            "options": [
+                                "User login",
+                                "Permission control",
+                                "Data storage",
+                                "Code execution"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Authorization controls access to resources."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch7-page4",
+                    "title": "Middleware Security",
+                    "content": "Middleware can be used to secure routes by checking authentication and permissions before allowing access.",
+                    "exampleCode": "function authMiddleware(req, res, next) {\n  if (!req.headers.token) {\n    return res.status(401).send('Unauthorized');\n  }\n  next();\n}",
+                    "keyPoints": [
+                        "Protects routes",
+                        "Validates user requests",
+                        "Prevents unauthorized access",
+                        "Used in API security"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of security middleware?",
+                            "options": [
+                                "Store data",
+                                "Protect routes",
+                                "Create UI",
+                                "Run server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Security middleware protects routes from unauthorized access."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch7-page5",
+                    "title": "Environment Variables",
+                    "content": "Environment variables are used to store sensitive data like API keys and database credentials securely outside the code.",
+                    "exampleCode": "// .env file\nSECRET_KEY=12345\n\n// Access in code\nrequire('dotenv').config();\nconsole.log(process.env.SECRET_KEY);",
+                    "keyPoints": [
+                        "Stores sensitive data securely",
+                        "Prevents hardcoding secrets",
+                        "Used for configuration",
+                        "Improves security"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use environment variables?",
+                            "options": [
+                                "To store UI",
+                                "To secure sensitive data",
+                                "To create tables",
+                                "To run queries"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Environment variables protect sensitive information."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "node-ch8",
+            "title": "File Upload & APIs",
+            "description": "Learn how to handle file uploads, design APIs, manage JSON data, test APIs using tools, and implement proper error handling in Node.js applications.",
+            "pages": [
+                {
+                    "id": "node-ch8-page1",
+                    "title": "File Upload (Multer)",
+                    "content": "Multer is a middleware used in Node.js for handling multipart/form-data, primarily used for uploading files.",
+                    "exampleCode": "const express = require('express');\nconst multer = require('multer');\nconst app = express();\n\nconst upload = multer({ dest: 'uploads/' });\n\napp.post('/upload', upload.single('file'), (req, res) => {\n  res.send('File uploaded');\n});",
+                    "keyPoints": [
+                        "Handles file uploads",
+                        "Uses middleware",
+                        "Stores files in server",
+                        "Supports single and multiple uploads"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is used for file uploads?",
+                            "options": [
+                                "express",
+                                "multer",
+                                "fs",
+                                "http"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Multer is used for handling file uploads."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch8-page2",
+                    "title": "API Design Best Practices",
+                    "content": "Good API design ensures clarity, scalability, and maintainability. It includes proper naming, versioning, and consistent response formats.",
+                    "exampleCode": "// Good API example\nGET /api/v1/users\nPOST /api/v1/users",
+                    "keyPoints": [
+                        "Use clear endpoint naming",
+                        "Follow REST principles",
+                        "Version APIs (v1, v2)",
+                        "Return consistent responses"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a good API practice?",
+                            "options": [
+                                "Random naming",
+                                "Clear and consistent endpoints",
+                                "No versioning",
+                                "No structure"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Clear and consistent endpoints improve API design."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch8-page3",
+                    "title": "Handling JSON Data",
+                    "content": "JSON (JavaScript Object Notation) is commonly used to send and receive data in APIs. Node.js can easily parse and handle JSON.",
+                    "exampleCode": "app.use(express.json());\n\napp.post('/data', (req, res) => {\n  console.log(req.body);\n  res.json({ message: 'Data received' });\n});",
+                    "keyPoints": [
+                        "JSON is standard data format",
+                        "Used in APIs",
+                        "Easy to parse in Node.js",
+                        "Supports structured data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What format is commonly used in APIs?",
+                            "options": [
+                                "XML",
+                                "HTML",
+                                "JSON",
+                                "CSS"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "JSON is widely used for API communication."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch8-page4",
+                    "title": "API Testing (Postman)",
+                    "content": "Postman is a tool used to test APIs by sending requests and analyzing responses. It helps developers debug and validate APIs.",
+                    "exampleCode": "// Example request\nPOST /api/users\nBody: { \"name\": \"John\" }",
+                    "keyPoints": [
+                        "Used for API testing",
+                        "Sends HTTP requests",
+                        "Helps debug APIs",
+                        "Supports all HTTP methods"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is Postman used for?",
+                            "options": [
+                                "Writing code",
+                                "Testing APIs",
+                                "Designing UI",
+                                "Managing database"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Postman is used to test APIs."
+                        }
+                    ]
+                },
+                {
+                    "id": "node-ch8-page5",
+                    "title": "Error Handling",
+                    "content": "Proper error handling ensures applications respond gracefully to failures. It includes handling server errors, validation errors, and unexpected issues.",
+                    "exampleCode": "app.use((err, req, res, next) => {\n  res.status(500).json({ error: err.message });\n});",
+                    "keyPoints": [
+                        "Prevents application crashes",
+                        "Handles server and validation errors",
+                        "Improves user experience",
+                        "Essential for production apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of error handling?",
+                            "options": [
+                                "Crash application",
+                                "Improve performance",
+                                "Handle failures gracefully",
+                                "Store data"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Error handling ensures smooth application behavior during failures."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is Node.js?",
+            "answer": "Node.js is a JavaScript runtime environment that allows execution of JavaScript code on the server side.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the V8 engine?",
+            "answer": "The V8 engine is Google's JavaScript engine used by Node.js to execute JavaScript code efficiently.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is npm?",
+            "answer": "npm (Node Package Manager) is used to install, manage, and share Node.js packages.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between Node.js and JavaScript?",
+            "answer": "JavaScript is a programming language, while Node.js is a runtime environment that executes JavaScript outside the browser.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is REPL in Node.js?",
+            "answer": "REPL stands for Read-Eval-Print Loop, which allows interactive execution of JavaScript code in the terminal.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is asynchronous programming?",
+            "answer": "Asynchronous programming allows tasks to run without blocking the execution of other operations.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a callback?",
+            "answer": "A callback is a function passed as an argument to another function and executed after completion of a task.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a promise?",
+            "answer": "A promise is an object representing the eventual completion or failure of an asynchronous operation.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is async/await?",
+            "answer": "Async/await is a modern syntax for handling asynchronous operations in a more readable and synchronous-like manner.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the event loop?",
+            "answer": "The event loop is a mechanism that handles asynchronous callbacks and ensures non-blocking execution in Node.js.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are core modules in Node.js?",
+            "answer": "Core modules are built-in modules like fs, http, path, and os that provide essential functionalities.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is Express.js?",
+            "answer": "Express.js is a lightweight web framework for Node.js used to build web applications and APIs.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is middleware in Express?",
+            "answer": "Middleware functions execute during the request-response cycle and can modify requests or responses.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is REST API?",
+            "answer": "A REST API is an interface that allows communication between client and server using HTTP methods like GET, POST, PUT, and DELETE.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is JWT?",
+            "answer": "JWT (JSON Web Token) is used for secure authentication by transmitting information as a token.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is bcrypt?",
+            "answer": "bcrypt is a library used for hashing passwords securely in Node.js applications.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is CRUD?",
+            "answer": "CRUD stands for Create, Read, Update, and Delete operations used in database management.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between synchronous and asynchronous code?",
+            "answer": "Synchronous code executes line by line, while asynchronous code allows multiple operations to run concurrently without blocking.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a stream in Node.js?",
+            "answer": "Streams are objects used to read or write data continuously instead of loading the entire data into memory.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is clustering in Node.js?",
+            "answer": "Clustering allows Node.js to create multiple processes to handle more load and improve performance.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is child process in Node.js?",
+            "answer": "Child processes allow Node.js to run other processes in parallel for heavy tasks.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is rate limiting?",
+            "answer": "Rate limiting restricts the number of requests a client can make to prevent abuse.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is CORS?",
+            "answer": "CORS (Cross-Origin Resource Sharing) is a security feature that controls access to resources from different origins.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is process.env?",
+            "answer": "process.env is used to access environment variables in Node.js.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is load balancing?",
+            "answer": "Load balancing distributes incoming requests across multiple servers to improve performance and reliability.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between require and import?",
+            "answer": "require is used in CommonJS modules, while import is used in ES modules for loading dependencies.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is event emitter?",
+            "answer": "EventEmitter is a class used to handle custom events in Node.js.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you handle errors in Node.js?",
+            "answer": "Errors can be handled using try/catch, callbacks, promises (.catch), and middleware in Express.",
+            "difficulty": "advanced"
+        }
+    ]
+}

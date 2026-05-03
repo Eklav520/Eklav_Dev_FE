@@ -18,6 +18,7 @@ interface ReelItemProps {
     commentsCount?: number;
   };
   isActive: boolean;
+  onPlayStateChange?: (playing: boolean) => void;
 }
 
 interface Profile {
@@ -25,7 +26,7 @@ interface Profile {
   profileImage?: string;
 }
 
-const ReelItem = ({ reel, isActive }: ReelItemProps) => {
+const ReelItem = ({ reel, isActive, onPlayStateChange }: ReelItemProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const { user } = useAuthContext();
@@ -76,7 +77,12 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
     if (!videoRef.current) return;
 
     if (isActive) {
-      videoRef.current.play().catch(() => setIsPlaying(false));
+      videoRef.current.play().catch(() => {
+        setIsPlaying(false);
+        onPlayStateChange?.(false);
+      });
+      setIsPlaying(true);
+      onPlayStateChange?.(true);
     } else {
       videoRef.current.pause();
     }
@@ -85,10 +91,12 @@ const ReelItem = ({ reel, isActive }: ReelItemProps) => {
   const togglePlay = () => {
     if (!videoRef.current) return;
 
+    const next = !isPlaying;
     if (isPlaying) videoRef.current.pause();
     else videoRef.current.play();
 
-    setIsPlaying(!isPlaying);
+    setIsPlaying(next);
+    onPlayStateChange?.(next);
   };
 
   const toggleMute = (e: React.MouseEvent) => {
