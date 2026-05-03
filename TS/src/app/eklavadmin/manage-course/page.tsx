@@ -26,11 +26,19 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '@/context/useAuthContext'
 
+interface CaseStudy {
+  title?: string
+  description?: string
+  inputExample?: string
+  expectedOutput?: string
+  boilerplate?: string
+}
+
 interface Video {
   _id: string
   video: string
   description: string
-  caseStudy?: string | null
+  caseStudy?: CaseStudy | null
   progress?: number
 }
 
@@ -42,7 +50,7 @@ interface FAQ {
 interface Quiz {
   question: string
   options: string[]
-  answer: string
+  correctAnswer: string
 }
 
 interface Course {
@@ -52,6 +60,9 @@ interface Course {
   category: string[] | string
   level?: string[] | string
   language?: string[] | string
+  visibility?: 'public' | 'private'
+  courseType?: 'paid' | 'free'
+  courseStatus?: 'active' | 'inactive'
   isFeatured?: boolean
   features?: string[]
   previewVideo?: string
@@ -91,8 +102,7 @@ const ManageCoursePage = () => {
   const [itemsPerPage] = useState(8)
   const [isUpdating, setIsUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
-  // Add these state variables near your other state declarations
-  const [videos, setVideos] = useState<Video[]>([])
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const { user } = useAuthContext();
@@ -100,8 +110,8 @@ const ManageCoursePage = () => {
 
   // Add these video handlers inside your ManageCoursePage component
 
-  // Handle video change (description or URL)
-  const handleVideoChange = (index: number, field: keyof Video, value: string) => {
+  // Handle video change (description, URL, or caseStudy object)
+  const handleVideoChange = (index: number, field: keyof Video, value: string | CaseStudy | null) => {
     if (!selectedCourse) return
 
     const updatedVideos = [...selectedCourse.videos]
@@ -142,7 +152,7 @@ const ManageCoursePage = () => {
   }
 
 
-  // Upload video function - UPDATED VERSION
+  // Upload video function
   const handleUploadVideo = async (file: File, description: string): Promise<void> => {
     if (!selectedCourse) {
       throw new Error('No course selected')
@@ -152,74 +162,37 @@ const ManageCoursePage = () => {
     setUploadProgress(0)
 
     try {
-      // Create FormData for file upload
       const formData = new FormData()
       formData.append('video', file)
       formData.append('description', description)
-      formData.append('courseId', selectedCourse._id)
 
-      // Generate a unique videoKey (required by backend)
-      const timestamp = Date.now()
-      const randomString = Math.random().toString(36).substring(2, 15)
-      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
-      const videoKey = `course_${selectedCourse._id}_${timestamp}_${randomString}_${safeFileName}`
-      formData.append('videoKey', videoKey)
-
-      // Optional: Add additional metadata
-      formData.append('fileName', file.name)
-      formData.append('fileType', file.type)
-      formData.append('fileSize', file.size.toString())
-
-      // Debug: Log FormData contents
-      console.log('Uploading video with data:')
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}:`, value)
-      }
-
-      // Simulate upload progress
-      const simulateProgress = () => {
+      const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval)
-            return 90
-          }
+          if (prev >= 90) { clearInterval(progressInterval); return 90 }
           return prev + 10
         })
-      }
+      }, 300)
 
-      const progressInterval = setInterval(simulateProgress, 200)
-
-      // API call
       const res = await fetch(`${baseURL}/courses/${selectedCourse._id}/video`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       })
 
       clearInterval(progressInterval)
 
       if (!res.ok) {
-        let errorMessage = 'Failed to upload video'
-        try {
-          const errorData = await res.json()
-          errorMessage = errorData.message || errorMessage
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = res.statusText || errorMessage
-        }
-        throw new Error(errorMessage)
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.message || 'Upload failed')
       }
 
       const data = await res.json()
-      console.log('Upload response:', data)
       setUploadProgress(100)
 
-      // Add the new video to the course
+      const timestamp = Date.now()
       const newVideo: Video = {
         _id: data._id || `video-${timestamp}`,
-        video: data.url || data.video || data.videoUrl || data.path || '',
+        video: data.url || data.video || '',
         description: description,
         progress: 0
       }
@@ -259,37 +232,47 @@ const ManageCoursePage = () => {
 
     setIsUpdating(true)
     try {
-      // Prepare data for API - include videos
-      const updateData = {
-        ...selectedCourse,
-        // Ensure array fields are properly formatted
-        category: Array.isArray(selectedCourse.category) ? selectedCourse.category : [selectedCourse.category],
-        level: Array.isArray(selectedCourse.level) ? selectedCourse.level : [selectedCourse.level || 'All level'],
-        language: Array.isArray(selectedCourse.language) ? selectedCourse.language : [selectedCourse.language || 'English'],
-        price: selectedCourse.price || '',
-        discountPrice: selectedCourse.discountPrice || '',
-        isFeatured: selectedCourse.isFeatured || false,
-        features: selectedCourse.features || [],
-        videoUrl: selectedCourse.videoUrl || [],
-        videos: selectedCourse.videos || [], // Include videos
-        // Ensure empty strings for optional fields
-        shortDescription: selectedCourse.shortDescription || '',
-        description: selectedCourse.description || '',
-        image: selectedCourse.image || '',
-        previewVideo: selectedCourse.previewVideo || '',
-        duration: selectedCourse.duration || '',
-        totalLectures: selectedCourse.totalLectures || '',
-        enrolledStudents: selectedCourse.enrolledStudents || 0,
-        rating: selectedCourse.rating || 0
+      const formData = new FormData()
+
+      // Simple string fields
+      const stringFields: (keyof Course)[] = [
+        'title', 'shortDescription', 'description', 'duration', 'totalLectures',
+        'previewVideo', 'visibility', 'courseType', 'courseStatus', 'status'
+      ]
+      stringFields.forEach(f => formData.append(f, String(selectedCourse[f] ?? '')))
+
+      formData.append('price', String(selectedCourse.price ?? ''))
+      formData.append('discountPrice', String(selectedCourse.discountPrice ?? ''))
+      formData.append('isFeatured', String(selectedCourse.isFeatured ?? false))
+      formData.append('enrolledStudents', String(selectedCourse.enrolledStudents ?? 0))
+      formData.append('rating', String(selectedCourse.rating ?? 0))
+
+      // Array/object fields as JSON strings (backend parses with parseIfString)
+      formData.append('category', JSON.stringify(
+        Array.isArray(selectedCourse.category) ? selectedCourse.category : [selectedCourse.category]
+      ))
+      formData.append('level', JSON.stringify(
+        Array.isArray(selectedCourse.level) ? selectedCourse.level : [selectedCourse.level || 'All level']
+      ))
+      formData.append('language', JSON.stringify(
+        Array.isArray(selectedCourse.language) ? selectedCourse.language : [selectedCourse.language || 'English']
+      ))
+      formData.append('features', JSON.stringify(selectedCourse.features || []))
+      formData.append('addFAQ', JSON.stringify(selectedCourse.addFAQ || []))
+      formData.append('quiz', JSON.stringify(selectedCourse.quiz || []))
+      formData.append('videoUrl', JSON.stringify(selectedCourse.videoUrl || []))
+      // Send existing videos with updated descriptions/caseStudy
+      formData.append('existingVideos', JSON.stringify(selectedCourse.videos || []))
+
+      // Image file upload (if a new file was selected)
+      if (imageFile) {
+        formData.append('image', imageFile)
       }
 
       const res = await fetch(`${baseURL}/courses/${selectedCourse._id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify(updateData)
+        headers: { Authorization: `Bearer ${token}` }, // no Content-Type — browser sets multipart boundary
+        body: formData,
       })
 
       const data = await res.json()
@@ -299,6 +282,7 @@ const ManageCoursePage = () => {
         ))
         setShowModal(false)
         setSelectedCourse(null)
+        setImageFile(null)
         alert('Course updated successfully!')
       } else {
         throw new Error(data.message || 'Update failed')
@@ -530,6 +514,55 @@ const ManageCoursePage = () => {
     setSelectedCourse({ ...selectedCourse, addFAQ: newFAQs })
   }
 
+  const handleQuizChange = (index: number, field: keyof Quiz, value: string | string[]) => {
+    if (!selectedCourse) return
+    const newQuiz = [...(selectedCourse.quiz || [])]
+    newQuiz[index] = { ...newQuiz[index], [field]: value }
+    setSelectedCourse({ ...selectedCourse, quiz: newQuiz })
+  }
+
+  const handleQuizOptionChange = (quizIndex: number, optionIndex: number, value: string) => {
+    if (!selectedCourse) return
+    const newQuiz = [...(selectedCourse.quiz || [])]
+    const options = [...newQuiz[quizIndex].options]
+    const wasCorrect = newQuiz[quizIndex].correctAnswer === options[optionIndex]
+    options[optionIndex] = value
+    newQuiz[quizIndex] = {
+      ...newQuiz[quizIndex],
+      options,
+      correctAnswer: wasCorrect ? value : newQuiz[quizIndex].correctAnswer,
+    }
+    setSelectedCourse({ ...selectedCourse, quiz: newQuiz })
+  }
+
+  const addQuiz = () => {
+    if (!selectedCourse) return
+    const newQuestion: Quiz = { question: '', options: ['', '', '', ''], correctAnswer: '' }
+    setSelectedCourse({ ...selectedCourse, quiz: [...(selectedCourse.quiz || []), newQuestion] })
+  }
+
+  const removeQuiz = (index: number) => {
+    if (!selectedCourse) return
+    setSelectedCourse({ ...selectedCourse, quiz: (selectedCourse.quiz || []).filter((_, i) => i !== index) })
+  }
+
+  const addQuizOption = (quizIndex: number) => {
+    if (!selectedCourse) return
+    const newQuiz = [...(selectedCourse.quiz || [])]
+    newQuiz[quizIndex] = { ...newQuiz[quizIndex], options: [...newQuiz[quizIndex].options, ''] }
+    setSelectedCourse({ ...selectedCourse, quiz: newQuiz })
+  }
+
+  const removeQuizOption = (quizIndex: number, optionIndex: number) => {
+    if (!selectedCourse) return
+    const newQuiz = [...(selectedCourse.quiz || [])]
+    const options = newQuiz[quizIndex].options.filter((_, i) => i !== optionIndex)
+    const correctAnswer = newQuiz[quizIndex].correctAnswer === newQuiz[quizIndex].options[optionIndex]
+      ? '' : newQuiz[quizIndex].correctAnswer
+    newQuiz[quizIndex] = { ...newQuiz[quizIndex], options, correctAnswer }
+    setSelectedCourse({ ...selectedCourse, quiz: newQuiz })
+  }
+
 
 
   const getStatusBadge = (course: Course) => {
@@ -586,10 +619,17 @@ const ManageCoursePage = () => {
         onUpdate={handleUpdate}
         isUpdating={isUpdating}
         // Add these video management props
+        onImageFileSelect={(file) => setImageFile(file)}
         onVideoChange={handleVideoChange}
         onAddVideo={handleAddVideo}
         onRemoveVideo={handleRemoveVideo}
         onUploadVideo={handleUploadVideo}
+        onQuizChange={handleQuizChange}
+        onQuizOptionChange={handleQuizOptionChange}
+        onAddQuiz={addQuiz}
+        onRemoveQuiz={removeQuiz}
+        onAddQuizOption={addQuizOption}
+        onRemoveQuizOption={removeQuizOption}
       />
 
       {/* Delete Confirmation Modal */}

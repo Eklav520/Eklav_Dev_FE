@@ -27,7 +27,7 @@ type AnswerItem = {
   }
   idealAnswer?: string
   improvementTips?: string[]
-  rating?: number
+  rating?: number | { accuracy: number; clarity: number; completeness: number; total: number }
   timestamp?: string
   isFollowUp?: boolean
   exampleProgram?: { title: string; language: string; code: string } | null
@@ -1042,7 +1042,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setQuestionsQueue((prev) => [...prev, nextMain])
     setQuestionIndex((p) => p + 1)
   }
-  const finishInterview = async (finalAnswers: AnswerItem[]) => {
+  const finishInterview = async (finalAnswers: AnswerItem[]): Promise<AnswerItem[]> => {
     setLoadingFinalFeedback(true)
     setLoadingEvaluation(true)
     setRobotStatus('processing')
@@ -1064,7 +1064,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
           ...ans,
           question: ans.question?.trim()
             ? ans.question
-            : serverItem.question || questions[i], // ⭐ HARD FALLBACK
+            : serverItem.question || questions[i],
           feedback:
             typeof serverItem.feedback === 'object'
               ? serverItem.feedback
@@ -1077,15 +1077,16 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       })
 
       setFinalFeedback(merged)
-
-      // ✅ NOW interview is really finished
       setInterviewFinished(true)
+      setShowFeedback(false)
+      setCurrentFeedback(null)
       setRobotStatus('idle')
-      onComplete?.()
+      return merged
     } catch (err) {
       console.error('final feedback', err)
       alert('Could not get final feedback.')
       setRobotStatus('idle')
+      return finalAnswers
     } finally {
       setLoadingEvaluation(false)
       setLoadingFinalFeedback(false)
@@ -1093,30 +1094,27 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
   }
 
-  const submitResumeScoreIfNeeded = async (finalAnswers: AnswerItem[]) => {
-    if (meta?.interviewType !== 'resume') return
-    if (meta.attemptNumber !== 1) return // 🔒 only first attempt
-    if (!meta.attemptId) return
+  const submitScoreIfNeeded = async (mergedAnswers: AnswerItem[]) => {
+    if (!meta?.interviewType || !meta.attemptId) return
 
-    const scores = finalAnswers.map((a, idx) => ({
+    const scores = mergedAnswers.map((a) => ({
       question: a.question,
-      score: a.rating ?? 0,
+      score: typeof a.rating === 'object' ? (a.rating?.total ?? 0) : (a.rating ?? 0),
     }))
 
-    try {
-      await fetch(`${baseURL}/api/resume-based-interview/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          attemptId: meta.attemptId,
-          scores,
-        }),
-      })
-    } catch (err) {
-      console.error('Resume score submit failed', err)
+    if (meta.interviewType === 'resume') {
+      try {
+        await fetch(`${baseURL}/api/resume-based-interview/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ attemptId: meta.attemptId, scores }),
+        })
+      } catch (err) {
+        console.error('Resume score submit failed', err)
+      }
     }
   }
 
@@ -1278,7 +1276,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
             </small>
           </Col>
 
-          <Col xs="auto" className="d-flex align-items-center mt-2 mt-md-0">
+          <Col xs="auto" className="d-flex align-items-center mt-2 mt-md-0 pe-md-5 me-md-3">
             <Avatar name={user?.fullName || 'User'} image={user?.profileImage} size={isMobile ? 32 : 40} className="me-2" />
 
             {/* TEXT: responsive */}
@@ -1420,21 +1418,23 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                           )}
                         </Button>
 
-                        {/* Next Button */}
-                        <Button
-                          onClick={handleNext}
-                          disabled={!showFeedback}
-                          variant={showFeedback ? "primary" : "secondary"}
-                          className="rounded-pill d-flex align-items-center gap-2 px-4 py-2"
-                          style={{
-                            minWidth: '120px',
-                            opacity: showFeedback ? 1 : 0.5,
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
-                          <i className="bi bi-arrow-right"></i>
-                          Next Question
-                        </Button>
+                        {/* Next Button — hidden on last question */}
+                        {!isLastQuestion && (
+                          <Button
+                            onClick={handleNext}
+                            disabled={!showFeedback}
+                            variant={showFeedback ? "primary" : "secondary"}
+                            className="rounded-pill d-flex align-items-center gap-2 px-4 py-2"
+                            style={{
+                              minWidth: '120px',
+                              opacity: showFeedback ? 1 : 0.5,
+                              transition: 'all 0.2s ease',
+                            }}
+                          >
+                            <i className="bi bi-arrow-right"></i>
+                            Next Question
+                          </Button>
+                        )}
 
                       </div>
                     </div>
@@ -1506,14 +1506,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                     variant="success"
                     className="fw-bold w-100 mt-2"
                     onClick={async () => {
-                      const finalAnswers = [...answers, currentFeedback]
-                      await finishInterview(finalAnswers)
-                      await submitResumeScoreIfNeeded(finalAnswers)
-                      setTimeout(() => {
-                        onComplete?.()
-                      }, 500)
+                      const mergedAnswers = await finishInterview([...answers])
+                      await submitScoreIfNeeded(mergedAnswers)
+                      // modal stays open → PDF section renders via interviewFinished state
                     }}
-
                   >
                     Finish Interview
                   </Button>
@@ -1527,21 +1523,32 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
           interviewFinished && finalFeedback ? (
             <div className="text-center py-5">
               <h4 className="fw-bold mb-4">🎉 Interview Completed!</h4>
+              <p className="text-light mb-4">Your results have been saved. Download your report below.</p>
 
-              <Button
-                variant="success"
-                className="fw-bold px-5 py-2"
-                disabled={isDownloadingPdf}
-                onClick={downloadPDF}
-              >
-                {isDownloadingPdf ? (
-                  <>
-                    <Spinner size="sm" /> Generating PDF...
-                  </>
-                ) : (
-                  '📄 Download Interview Report'
-                )}
-              </Button>
+              <div className="d-flex justify-content-center gap-3 flex-wrap">
+                <Button
+                  variant="success"
+                  className="fw-bold px-5 py-2"
+                  disabled={isDownloadingPdf}
+                  onClick={downloadPDF}
+                >
+                  {isDownloadingPdf ? (
+                    <>
+                      <Spinner size="sm" /> Generating PDF...
+                    </>
+                  ) : (
+                    '📄 Download Interview Report'
+                  )}
+                </Button>
+
+                <Button
+                  variant="outline-secondary"
+                  className="fw-bold px-5 py-2"
+                  onClick={() => onComplete?.()}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           ) : null
         )}

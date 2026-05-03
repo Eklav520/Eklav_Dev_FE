@@ -393,18 +393,25 @@ const InterviewModalLayout = () => {
           <Button
             onClick={handleClose}
             variant="light"
-            className="position-absolute shadow-sm"
+            className="position-absolute"
             style={{
-              top: isMobile ? 10 : 15,
-              right: isMobile ? 10 : 20,
+              top: isMobile ? 10 : 12,
+              right: isMobile ? 10 : 16,
               zIndex: 1056,
-              width: isMobile ? 36 : 42,
-              height: isMobile ? 36 : 42,
+              width: isMobile ? 28 : 30,
+              height: isMobile ? 28 : 30,
               borderRadius: '50%',
-              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backgroundColor: '#f97316',
+              color: '#fff',
+              border: 'none',
+              padding: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              lineHeight: 1,
             }}
           >
-            <FaTimes size={isMobile ? 14 : 16} />
+            <FaTimes size={11} />
           </Button>
         </Modal.Header>
 

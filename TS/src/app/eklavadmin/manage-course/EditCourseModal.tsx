@@ -3,7 +3,6 @@ import { Modal, Button, Form, Tab, Nav, Row, Col, Badge, Spinner, Alert, InputGr
 import { 
   FaRegEdit, 
   FaCheckCircle, 
-  FaExclamationTriangle, 
   FaLink,
   FaImage,
   FaVideo,
@@ -15,35 +14,28 @@ import {
   FaHashtag,
   FaDollarSign,
   FaTag,
-  FaBold,
-  FaItalic,
-  FaUnderline,
-  FaHeading,
-  FaParagraph,
-  FaListUl,
-  FaListOl,
-  FaCode,
-  FaUndo,
-  FaRedo,
-  FaEyeDropper,
-  FaHighlighter,
-  FaLink as FaLinkIcon,
-  FaQuoteRight,
-  FaTable,
   FaPlayCircle,
-  FaTrash,
-  FaEdit,
   FaDownload,
   FaExternalLinkAlt,
   FaUpload
 } from 'react-icons/fa'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
+import ReactQuill from 'react-quill-new'
+import 'react-quill-new/dist/quill.snow.css'
+
+interface CaseStudy {
+  title?: string
+  description?: string
+  inputExample?: string
+  expectedOutput?: string
+  boilerplate?: string
+}
 
 interface Video {
   _id: string
   video: string
   description: string
-  caseStudy?: string | null
+  caseStudy?: CaseStudy | null
   progress?: number
 }
 
@@ -55,7 +47,7 @@ interface FAQ {
 interface Quiz {
   question: string
   options: string[]
-  answer: string
+  correctAnswer: string
 }
 
 interface Course {
@@ -65,6 +57,9 @@ interface Course {
   category: string[] | string
   level?: string[] | string
   language?: string[] | string
+  visibility?: 'public' | 'private'
+  courseType?: 'paid' | 'free'
+  courseStatus?: 'active' | 'inactive'
   isFeatured?: boolean
   features?: string[]
   previewVideo?: string
@@ -97,11 +92,17 @@ interface EditCourseModalProps {
   onRemoveFAQ: (index: number) => void
   onUpdate: () => void
   isUpdating: boolean
-  // Add these new props for video management
-  onVideoChange?: (index: number, field: keyof Video, value: string) => void
+  onVideoChange?: (index: number, field: keyof Video, value: string | CaseStudy | null) => void
   onAddVideo?: () => void
   onRemoveVideo?: (index: number) => void
   onUploadVideo?: (file: File, description: string) => Promise<void>
+  onQuizChange?: (index: number, field: keyof Quiz, value: string | string[]) => void
+  onQuizOptionChange?: (quizIndex: number, optionIndex: number, value: string) => void
+  onAddQuiz?: () => void
+  onRemoveQuiz?: (index: number) => void
+  onAddQuizOption?: (quizIndex: number) => void
+  onRemoveQuizOption?: (quizIndex: number, optionIndex: number) => void
+  onImageFileSelect?: (file: File) => void
 }
 
 const EditCourseModal = ({
@@ -119,321 +120,45 @@ const EditCourseModal = ({
   onVideoChange,
   onAddVideo,
   onRemoveVideo,
-  onUploadVideo
+  onUploadVideo,
+  onQuizChange,
+  onQuizOptionChange,
+  onAddQuiz,
+  onRemoveQuiz,
+  onAddQuizOption,
+  onRemoveQuizOption,
+  onImageFileSelect,
 }: EditCourseModalProps) => {
   const [activeTab, setActiveTab] = useState('basic')
-  const [undoHistory, setUndoHistory] = useState<string[]>([])
-  const [redoHistory, setRedoHistory] = useState<string[]>([])
-  const [cursorPosition, setCursorPosition] = useState({ start: 0, end: 0 })
-  const [isHtmlValid, setIsHtmlValid] = useState(true)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [videoDescription, setVideoDescription] = useState('')
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
-  
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const [caseStudyModal, setCaseStudyModal] = useState<{
+    open: boolean
+    videoIndex: number
+    draft: CaseStudy
+  }>({ open: false, videoIndex: -1, draft: {} })
+
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageFileInputRef = useRef<HTMLInputElement>(null)
+
+  const quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['link', 'blockquote'],
+      [{ color: [] }, { background: [] }],
+      ['clean'],
+    ],
+  }
   
   const getCategoryText = (category: string[] | string) => {
     return Array.isArray(category) ? category.join(', ') : category
   }
 
-  // Handle textarea changes with undo/redo support
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (!selectedCourse) return
-    
-    const value = e.target.value
-    
-    // Save to undo history
-    setUndoHistory(prev => [...prev, selectedCourse.description || ''])
-    setRedoHistory([])
-    
-    // Validate HTML
-    validateHtml(value)
-    
-    // Update form
-    onFormChange({
-      target: {
-        name: 'description',
-        value: value,
-        type: 'text'
-      }
-    } as any)
-  }
-
-  // Validate HTML
-  const validateHtml = (html: string) => {
-    try {
-      // Simple HTML validation
-      const div = document.createElement('div')
-      div.innerHTML = html
-      setIsHtmlValid(true)
-    } catch (e) {
-      setIsHtmlValid(false)
-    }
-  }
-
-  // Undo functionality
-  const handleUndo = () => {
-    if (!selectedCourse || undoHistory.length === 0) return
-    
-    const lastValue = undoHistory[undoHistory.length - 1]
-    const newUndoHistory = undoHistory.slice(0, -1)
-    
-    setRedoHistory(prev => [selectedCourse.description || '', ...prev])
-    setUndoHistory(newUndoHistory)
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: lastValue,
-        type: 'text'
-      }
-    } as any)
-    
-    if (textareaRef.current) {
-      textareaRef.current.value = lastValue
-    }
-  }
-
-  // Redo functionality
-  const handleRedo = () => {
-    if (!selectedCourse || redoHistory.length === 0) return
-    
-    const nextValue = redoHistory[0]
-    const newRedoHistory = redoHistory.slice(1)
-    
-    setUndoHistory(prev => [...prev, selectedCourse.description || ''])
-    setRedoHistory(newRedoHistory)
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: nextValue,
-        type: 'text'
-      }
-    } as any)
-    
-    if (textareaRef.current) {
-      textareaRef.current.value = nextValue
-    }
-  }
-
-  // Formatting functions
-  const wrapSelectionWithTag = (tag: string, isSelfClosing = false, attributes = '') => {
-    if (!selectedCourse || !textareaRef.current) return
-    
-    const textarea = textareaRef.current
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-    const selectedText = text.substring(start, end)
-    
-    let formattedText = ''
-    if (isSelfClosing) {
-      formattedText = `<${tag} ${attributes}/>`
-    } else if (selectedText) {
-      formattedText = `<${tag} ${attributes}>${selectedText}</${tag}>`
-    } else {
-      formattedText = `<${tag} ${attributes}></${tag}>`
-    }
-    
-    const newValue = text.substring(0, start) + formattedText + text.substring(end)
-    
-    // Save to undo history
-    setUndoHistory(prev => [...prev, text])
-    setRedoHistory([])
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: newValue,
-        type: 'text'
-      }
-    } as any)
-    
-    // Update textarea value and cursor position
-    textarea.value = newValue
-    const newCursorPos = start + formattedText.length
-    textarea.setSelectionRange(newCursorPos, newCursorPos)
-    textarea.focus()
-    
-    validateHtml(newValue)
-  }
-
-  const insertText = (text: string) => {
-    if (!selectedCourse || !textareaRef.current) return
-    
-    const textarea = textareaRef.current
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const currentText = textarea.value
-    
-    const newValue = currentText.substring(0, start) + text + currentText.substring(end)
-    
-    // Save to undo history
-    setUndoHistory(prev => [...prev, currentText])
-    setRedoHistory([])
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: newValue,
-        type: 'text'
-      }
-    } as any)
-    
-    textarea.value = newValue
-    const newCursorPos = start + text.length
-    textarea.setSelectionRange(newCursorPos, newCursorPos)
-    textarea.focus()
-    
-    validateHtml(newValue)
-  }
-
-  const insertList = (type: 'ul' | 'ol', items = 3) => {
-    const itemsArray = Array.from({ length: items }, (_, i) => `  <li>Item ${i + 1}</li>`)
-    const list = `<${type}>\n${itemsArray.join('\n')}\n</${type}>\n`
-    insertText(list)
-  }
-
-  const insertTable = (rows = 3, cols = 3) => {
-    let table = '<table class="table table-bordered">\n'
-    
-    // Header row
-    table += '  <thead>\n    <tr>\n'
-    for (let c = 1; c <= cols; c++) {
-      table += `      <th>Header ${c}</th>\n`
-    }
-    table += '    </tr\n  </thead>\n'
-    
-    // Body rows
-    table += '  <tbody>\n'
-    for (let r = 1; r <= rows; r++) {
-      table += '    <tr>\n'
-      for (let c = 1; c <= cols; c++) {
-        table += `      <td>Cell ${r}-${c}</td>\n`
-      }
-      table += '    </tr>\n'
-    }
-    table += '  </tbody>\n</table>\n'
-    
-    insertText(table)
-  }
-
-  // Clear formatting
-  const clearFormatting = () => {
-    if (!selectedCourse || !textareaRef.current) return
-    
-    const textarea = textareaRef.current
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-    const selectedText = text.substring(start, end)
-    
-    // Remove HTML tags from selected text
-    const cleanedText = selectedText.replace(/<[^>]*>/g, '')
-    
-    const newValue = text.substring(0, start) + cleanedText + text.substring(end)
-    
-    setUndoHistory(prev => [...prev, text])
-    setRedoHistory([])
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: newValue,
-        type: 'text'
-      }
-    } as any)
-    
-    textarea.value = newValue
-    const newCursorPos = start + cleanedText.length
-    textarea.setSelectionRange(newCursorPos, newCursorPos)
-    textarea.focus()
-    
-    validateHtml(newValue)
-  }
-
-  // Auto format (indent, clean up)
-  const autoFormat = () => {
-    if (!selectedCourse || !textareaRef.current) return
-    
-    const textarea = textareaRef.current
-    const text = textarea.value
-    
-    // Basic auto-formatting
-    let formattedText = text
-      .replace(/<(\w+)([^>]*)>/g, '\n<$1$2>') // Add newline before opening tags
-      .replace(/<\/(\w+)>/g, '</$1>\n') // Add newline after closing tags
-      .replace(/\n\s*\n/g, '\n') // Remove multiple newlines
-      .trim()
-    
-    // Indent nested elements
-    let indentLevel = 0
-    const lines = formattedText.split('\n')
-    formattedText = lines.map(line => {
-      const trimmed = line.trim()
-      if (trimmed.startsWith('</')) {
-        indentLevel = Math.max(0, indentLevel - 1)
-      }
-      
-      const indent = '  '.repeat(indentLevel)
-      const result = indent + trimmed
-      
-      if (trimmed.startsWith('<') && !trimmed.startsWith('</') && !trimmed.endsWith('/>') && !trimmed.includes('</')) {
-        indentLevel++
-      }
-      
-      return result
-    }).join('\n')
-    
-    setUndoHistory(prev => [...prev, text])
-    setRedoHistory([])
-    
-    onFormChange({
-      target: {
-        name: 'description',
-        value: formattedText,
-        type: 'text'
-      }
-    } as any)
-    
-    textarea.value = formattedText
-    textarea.focus()
-    
-    validateHtml(formattedText)
-  }
-
-  // Save cursor position
-  const handleTextareaSelect = () => {
-    if (!textareaRef.current) return
-    
-    const textarea = textareaRef.current
-    setCursorPosition({
-      start: textarea.selectionStart,
-      end: textarea.selectionEnd
-    })
-  }
-
-  // Preview scroll synchronization
-  useEffect(() => {
-    if (selectedCourse && previewRef.current && textareaRef.current) {
-      const scrollRatio = textareaRef.current.scrollTop / (textareaRef.current.scrollHeight - textareaRef.current.clientHeight)
-      const previewScrollTop = scrollRatio * (previewRef.current.scrollHeight - previewRef.current.clientHeight)
-      previewRef.current.scrollTop = previewScrollTop
-    }
-  }, [selectedCourse?.description])
-
-  // Initialize undo history
-  useEffect(() => {
-    if (selectedCourse?.description) {
-      setUndoHistory([selectedCourse.description])
-      setRedoHistory([])
-      validateHtml(selectedCourse.description)
-    }
-  }, [selectedCourse?.description])
 
   // Handle video file selection
   const handleVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -546,10 +271,11 @@ const EditCourseModal = ({
   }
 
   return (
-    <Modal 
-      show={show} 
-      onHide={onHide} 
-      size="xl" 
+    <>
+    <Modal
+      show={show}
+      onHide={onHide}
+      size="xl"
       fullscreen={true}
       centered
       scrollable={true}
@@ -588,6 +314,9 @@ const EditCourseModal = ({
               </Nav.Item>
               <Nav.Item>
                 <Nav.Link eventKey="faq"><FaQuestionCircle className="me-2" />FAQs</Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="quiz"><FaList className="me-2" />Quiz</Nav.Link>
               </Nav.Item>
               <Nav.Item>
                 <Nav.Link eventKey="settings"><FaTag className="me-2" />Settings</Nav.Link>
@@ -662,411 +391,22 @@ const EditCourseModal = ({
                     </Col>
                   </Row>
 
-                  {/* Enhanced Full Description Section */}
+                  {/* Full Description - WYSIWYG Editor */}
                   <Form.Group className="mb-3">
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <Form.Label className="mb-0">
-                        <strong>Full Description</strong>
-                        {!isHtmlValid && (
-                          <Badge bg="danger" className="ms-2">
-                            Invalid HTML
-                          </Badge>
-                        )}
-                      </Form.Label>
-                      <div className="d-flex gap-2">
-                        <Button 
-                          variant="outline-secondary" 
-                          size="sm"
-                          onClick={handleUndo}
-                          disabled={undoHistory.length <= 1}
-                          title="Undo (Ctrl+Z)"
-                        >
-                          <FaUndo />
-                        </Button>
-                        <Button 
-                          variant="outline-secondary" 
-                          size="sm"
-                          onClick={handleRedo}
-                          disabled={redoHistory.length === 0}
-                          title="Redo (Ctrl+Y)"
-                        >
-                          <FaRedo />
-                        </Button>
-                        <Button 
-                          variant="outline-info" 
-                          size="sm"
-                          onClick={autoFormat}
-                          title="Auto Format"
-                        >
-                          <FaCode /> Format
-                        </Button>
-                      </div>
-                    </div>
+                    <Form.Label><strong>Full Description</strong></Form.Label>
                     
-                    {/* Enhanced Formatting Toolbar */}
-                    <div className="border rounded-top p-2 bg-light d-flex flex-wrap gap-1 align-items-center mb-0">
-                      {/* Text Actions */}
-                      <div className="d-flex gap-1 border-end pe-2 me-2">
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('strong')}
-                          title="Bold (Ctrl+B)"
-                        >
-                          <FaBold />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('em')}
-                          title="Italic (Ctrl+I)"
-                        >
-                          <FaItalic />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('u')}
-                          title="Underline (Ctrl+U)"
-                        >
-                          <FaUnderline />
-                        </Button>
-                      </div>
-                      
-                      {/* Headings */}
-                      <div className="d-flex gap-1 border-end pe-2 me-2">
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('h1')}
-                          title="Heading 1"
-                        >
-                          H1
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('h2')}
-                          title="Heading 2"
-                        >
-                          H2
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('h3')}
-                          title="Heading 3"
-                        >
-                          H3
-                        </Button>
-                      </div>
-                      
-                      {/* Lists */}
-                      <div className="d-flex gap-1 border-end pe-2 me-2">
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => insertList('ul')}
-                          title="Bullet List"
-                        >
-                          <FaListUl />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => insertList('ol')}
-                          title="Numbered List"
-                        >
-                          <FaListOl />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('li')}
-                          title="List Item"
-                        >
-                          <FaList />
-                        </Button>
-                      </div>
-                      
-                      {/* Structural Elements */}
-                      <div className="d-flex gap-1 border-end pe-2 me-2">
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('p')}
-                          title="Paragraph"
-                        >
-                          <FaParagraph />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => insertText('<br/>')}
-                          title="Line Break"
-                        >
-                          ↵
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('hr', true)}
-                          title="Horizontal Rule"
-                        >
-                          —
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('blockquote')}
-                          title="Blockquote"
-                        >
-                          <FaQuoteRight />
-                        </Button>
-                      </div>
-                      
-                      {/* Links & More */}
-                      <div className="d-flex gap-1">
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('a', false, 'href="https://example.com"')}
-                          title="Link"
-                        >
-                          <FaLinkIcon />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('span', false, 'style="color: red;"')}
-                          title="Colored Text"
-                        >
-                          <FaEyeDropper />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => wrapSelectionWithTag('mark')}
-                          title="Highlight"
-                        >
-                          <FaHighlighter />
-                        </Button>
-                        <Button 
-                          variant="light" 
-                          size="sm"
-                          onClick={() => insertTable()}
-                          title="Insert Table"
-                        >
-                          <FaTable />
-                        </Button>
-                        <Button 
-                          variant="outline-danger" 
-                          size="sm"
-                          onClick={clearFormatting}
-                          title="Clear Formatting"
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    {/* Split View: Editor (left) and Preview (right) */}
-                    <Row>
-                      <Col md={6}>
-                        <div className="border-start border-end border-bottom rounded-bottom position-relative">
-                          <Form.Control 
-                            ref={textareaRef}
-                            as="textarea" 
-                            rows={15}
-                            name="description" 
-                            value={selectedCourse.description || ''} 
-                            onChange={handleDescriptionChange}
-                            onSelect={handleTextareaSelect}
-                            placeholder="Enter HTML content here or use toolbar above..."
-                            className="border-0 rounded-0 font-monospace"
-                            style={{ 
-                              resize: 'none',
-                              fontSize: '14px',
-                              lineHeight: '1.4'
-                            }}
-                          />
-                          <div className="position-absolute bottom-0 end-0 p-2 bg-white border-start border-top rounded-top-left">
-                            <small className="text-muted">
-                              Lines: {selectedCourse.description?.split('\n').length || 0} | 
-                              Chars: {selectedCourse.description?.length || 0}
-                            </small>
-                          </div>
-                        </div>
-                        <small className="text-muted mt-1 d-block">
-                          <strong>HTML Editor</strong> - Edit HTML with toolbar assistance
-                        </small>
-                      </Col>
-                      
-                      <Col md={6}>
-                        <div 
-                          ref={previewRef}
-                          className="border rounded-bottom p-3 bg-white html-preview"
-                          style={{ 
-                            minHeight: '360px',
-                            maxHeight: '360px',
-                            overflowY: 'auto',
-                            lineHeight: '1.6'
-                          }}
-                        >
-                          {/* Live Preview with enhanced styling */}
-                          <div 
-                            dangerouslySetInnerHTML={{ __html: selectedCourse.description || '' }}
-                            className="html-content"
-                          />
-                          
-                          {/* If no content, show placeholder */}
-                          {!selectedCourse.description && (
-                            <div className="text-muted text-center py-5">
-                              <FaQuestionCircle className="display-6 mb-3 opacity-50" />
-                              <p className="mb-0">Preview will appear here</p>
-                              <small>HTML tags will be rendered as formatted content</small>
-                            </div>
-                          )}
-                          
-                          {/* Validation errors */}
-                          {!isHtmlValid && (
-                            <Alert variant="warning" className="mt-3">
-                              <FaExclamationTriangle className="me-2" />
-                              HTML validation issues detected. Some tags may not render correctly.
-                            </Alert>
-                          )}
-                        </div>
-                        <small className="text-muted mt-1 d-block">
-                          <strong>Live Preview</strong> - See how content will appear to students
-                        </small>
-                      </Col>
-                    </Row>
-                    
-                    <div className="mt-3">
-                      <div className="alert alert-info p-2">
-                        <small className="d-flex align-items-center">
-                          <FaCode className="me-2 flex-shrink-0" />
-                          <div>
-                            <strong>HTML Tips:</strong> Select text and click toolbar buttons to wrap with HTML tags. 
-                            Common tags: &lt;h1&gt;, &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;, &lt;strong&gt;, &lt;em&gt;, &lt;u&gt;, 
-                            &lt;ul&gt;, &lt;ol&gt;, &lt;li&gt;, &lt;br&gt;, &lt;hr&gt;, &lt;a href="#"&gt;, &lt;table&gt;, &lt;blockquote&gt;
-                          </div>
-                        </small>
-                      </div>
+                    <div style={{ marginBottom: 60 }}>
+                      <ReactQuill
+                        theme="snow"
+                        value={selectedCourse.description || ''}
+                        onChange={(value) =>
+                          onFormChange({ target: { name: 'description', value, type: 'text' } } as any)
+                        }
+                        modules={quillModules}
+                        style={{ height: 320 }}
+                      />
                     </div>
                   </Form.Group>
-
-                  {/* Enhanced CSS for preview styling */}
-                  <style>{`
-                    .html-preview .html-content {
-                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                    }
-                    .html-preview .html-content h1 {
-                      font-size: 2em;
-                      font-weight: bold;
-                      margin: 1em 0 0.5em 0;
-                      color: #333;
-                      border-bottom: 2px solid #eee;
-                      padding-bottom: 0.3em;
-                    }
-                    .html-preview .html-content h2 {
-                      font-size: 1.5em;
-                      font-weight: bold;
-                      margin: 1em 0 0.5em 0;
-                      color: #444;
-                      border-left: 4px solid #0d6efd;
-                      padding-left: 10px;
-                    }
-                    .html-preview .html-content h3 {
-                      font-size: 1.3em;
-                      font-weight: bold;
-                      margin: 1em 0 0.5em 0;
-                      color: #555;
-                    }
-                    .html-preview .html-content p {
-                      margin: 0 0 1em 0;
-                      line-height: 1.6;
-                      color: #333;
-                    }
-                    .html-preview .html-content strong {
-                      font-weight: bold;
-                      color: #000;
-                    }
-                    .html-preview .html-content em {
-                      font-style: italic;
-                    }
-                    .html-preview .html-content u {
-                      text-decoration: underline;
-                    }
-                    .html-preview .html-content ul,
-                    .html-preview .html-content ol {
-                      margin: 0 0 1em 1.5em;
-                      padding: 0;
-                    }
-                    .html-preview .html-content li {
-                      margin: 0.5em 0;
-                      line-height: 1.6;
-                    }
-                    .html-preview .html-content ul li {
-                      list-style-type: disc;
-                    }
-                    .html-preview .html-content ol li {
-                      list-style-type: decimal;
-                    }
-                    .html-preview .html-content hr {
-                      border: none;
-                      border-top: 1px solid #ddd;
-                      margin: 1.5em 0;
-                    }
-                    .html-preview .html-content blockquote {
-                      border-left: 4px solid #0d6efd;
-                      margin: 1em 0;
-                      padding: 0.5em 1em;
-                      background-color: #f8f9fa;
-                      font-style: italic;
-                    }
-                    .html-preview .html-content a {
-                      color: #0d6efd;
-                      text-decoration: none;
-                    }
-                    .html-preview .html-content a:hover {
-                      text-decoration: underline;
-                    }
-                    .html-preview .html-content mark {
-                      background-color: #ffec99;
-                      padding: 0.1em 0.3em;
-                      border-radius: 3px;
-                    }
-                    .html-preview .html-content table {
-                      width: 100%;
-                      border-collapse: collapse;
-                      margin: 1em 0;
-                    }
-                    .html-preview .html-content table th {
-                      background-color: #f8f9fa;
-                      font-weight: bold;
-                      text-align: left;
-                    }
-                    .html-preview .html-content table th,
-                    .html-preview .html-content table td {
-                      border: 1px solid #dee2e6;
-                      padding: 0.5em;
-                    }
-                    .html-preview .html-content code {
-                      font-family: 'Courier New', monospace;
-                      background-color: #f8f9fa;
-                      padding: 0.2em 0.4em;
-                      border-radius: 3px;
-                      font-size: 0.9em;
-                    }
-                    .html-preview .html-content pre {
-                      background-color: #f8f9fa;
-                      padding: 1em;
-                      border-radius: 5px;
-                      overflow-x: auto;
-                      font-family: 'Courier New', monospace;
-                    }
-                  `}</style>
                   
                   <Row>
                     <Col md={4}>
@@ -1144,34 +484,49 @@ Hands-on Coding & Practice Sessions
                   <Row className="mb-4">
                     <Col md={6}>
                       <Form.Group>
-                        <Form.Label>
-                          <FaImage className="me-2" />
-                          Course Image URL
-                        </Form.Label>
-                        <Form.Control 
-                          type="text" 
-                          name="image" 
-                          value={selectedCourse.image || ''} 
-                          onChange={onFormChange}
-                          placeholder="https://example.com/image.jpg"
-                        />
-                        {selectedCourse.image && (
-                          <div className="mt-2">
-                            <div className="border rounded p-2 bg-light">
-                              <small className="text-muted">Preview:</small>
-                              <img 
-                                src={selectedCourse.image} 
-                                alt="Course preview" 
-                                className="img-fluid rounded mt-1"
-                                style={{ maxHeight: '150px' }}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                  e.currentTarget.parentElement!.innerHTML = '<small class="text-danger">Image failed to load. Check URL.</small>'
-                                }}
-                              />
-                            </div>
+                        <Form.Label><FaImage className="me-2" />Course Image</Form.Label>
+
+                        {/* Current image preview */}
+                        {(imagePreviewUrl || selectedCourse.image) && (
+                          <div className="mb-2">
+                            <img
+                              src={imagePreviewUrl || selectedCourse.image}
+                              alt="Course"
+                              className="img-fluid rounded border"
+                              style={{ maxHeight: 160, objectFit: 'cover', width: '100%' }}
+                              onError={(e) => { e.currentTarget.style.display = 'none' }}
+                            />
                           </div>
                         )}
+
+                        {/* Upload new image */}
+                        <div className="mb-2">
+                          <Form.Label className="small text-muted mb-1">Upload new image</Form.Label>
+                          <Form.Control
+                            ref={imageFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0]
+                              if (file) {
+                                setImagePreviewUrl(URL.createObjectURL(file))
+                                onImageFileSelect?.(file)
+                              }
+                            }}
+                          />
+                          <Form.Text className="text-muted">JPG, PNG, WebP etc.</Form.Text>
+                        </div>
+
+                        {/* Or paste URL */}
+                        <Form.Label className="small text-muted mb-1">Or use existing URL</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="image"
+                          value={selectedCourse.image || ''}
+                          onChange={onFormChange}
+                          placeholder="https://example.com/image.jpg"
+                          size="sm"
+                        />
                       </Form.Group>
                     </Col>
                     <Col md={6}>
@@ -1259,16 +614,53 @@ Hands-on Coding & Practice Sessions
                                 
                                 <div className="mb-2">
                                   <small className="text-muted d-block">Description:</small>
-                                  {onVideoChange ? (
-                                    <Form.Control 
-                                      type="text"
-                                      value={video.description}
-                                      onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
-                                      placeholder="Enter video description"
-                                      size="sm"
+                                  <Form.Control
+                                    type="text"
+                                    value={video.description}
+                                    onChange={(e) => handleVideoDescriptionChange(index, e.target.value)}
+                                    placeholder="Enter video description"
+                                    size="sm"
+                                  />
+                                </div>
+
+                                <div className="mb-2">
+                                  <div className="d-flex align-items-center justify-content-between">
+                                    <Form.Check
+                                      type="checkbox"
+                                      label={<small className="text-muted">Add Case Study</small>}
+                                      checked={!!video.caseStudy}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setCaseStudyModal({
+                                            open: true,
+                                            videoIndex: index,
+                                            draft: video.caseStudy || {}
+                                          })
+                                        } else {
+                                          onVideoChange?.(index, 'caseStudy', null)
+                                        }
+                                      }}
                                     />
-                                  ) : (
-                                    <div className="text-truncate">{video.description}</div>
+                                    {video.caseStudy && (
+                                      <Button
+                                        variant="outline-secondary"
+                                        size="sm"
+                                        onClick={() => setCaseStudyModal({
+                                          open: true,
+                                          videoIndex: index,
+                                          draft: { ...video.caseStudy }
+                                        })}
+                                        style={{ fontSize: 11, padding: '2px 8px' }}
+                                      >
+                                        Edit
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {video.caseStudy?.title && (
+                                    <small className="text-success d-block mt-1">
+                                      <FaCheckCircle className="me-1" />
+                                      {video.caseStudy.title}
+                                    </small>
                                   )}
                                 </div>
                                 
@@ -1620,16 +1012,106 @@ https://example.com/video3.mp4
                 )}
               </Tab.Pane>
 
+              {/* Quiz Tab */}
+              <Tab.Pane eventKey="quiz">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="mb-0">
+                    Quiz Questions
+                    <Badge bg="info" className="ms-2">{selectedCourse.quiz?.length || 0} questions</Badge>
+                  </h6>
+                  {onAddQuiz && (
+                    <Button variant="outline-primary" size="sm" onClick={onAddQuiz}>
+                      <FaPlus className="me-1" /> Add Question
+                    </Button>
+                  )}
+                </div>
+
+                {!selectedCourse.quiz || selectedCourse.quiz.length === 0 ? (
+                  <Alert variant="info">
+                    <FaQuestionCircle className="me-2" />
+                    No quiz questions yet. Click "Add Question" to create one.
+                  </Alert>
+                ) : (
+                  selectedCourse.quiz.map((q, qi) => (
+                    <Card key={qi} className="mb-3 border">
+                      <Card.Header className="bg-light d-flex justify-content-between align-items-center py-2">
+                        <strong>Question #{qi + 1}</strong>
+                        {onRemoveQuiz && (
+                          <Button variant="outline-danger" size="sm" onClick={() => onRemoveQuiz(qi)}>
+                            <FaTimes />
+                          </Button>
+                        )}
+                      </Card.Header>
+                      <Card.Body>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Question</Form.Label>
+                          <Form.Control
+                            type="text"
+                            value={q.question}
+                            onChange={(e) => onQuizChange?.(qi, 'question', e.target.value)}
+                            placeholder="Enter question"
+                          />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <Form.Label className="mb-0">Options</Form.Label>
+                            {onAddQuizOption && (
+                              <Button variant="outline-secondary" size="sm" onClick={() => onAddQuizOption(qi)}>
+                                <FaPlus className="me-1" /> Add Option
+                              </Button>
+                            )}
+                          </div>
+                          {q.options.map((opt, oi) => (
+                            <div key={oi} className="d-flex align-items-center gap-2 mb-2">
+                              <Form.Check
+                                type="radio"
+                                name={`correctAnswer-${qi}`}
+                                checked={q.correctAnswer === opt}
+                                onChange={() => onQuizChange?.(qi, 'correctAnswer', opt)}
+                                title="Mark as correct answer"
+                              />
+                              <Form.Control
+                                type="text"
+                                value={opt}
+                                onChange={(e) => onQuizOptionChange?.(qi, oi, e.target.value)}
+                                placeholder={`Option ${oi + 1}`}
+                                size="sm"
+                              />
+                              {onRemoveQuizOption && q.options.length > 2 && (
+                                <Button variant="outline-danger" size="sm" onClick={() => onRemoveQuizOption(qi, oi)}>
+                                  <FaTimes size={10} />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                          <Form.Text className="text-muted">
+                            Select the radio button next to the correct answer.
+                          </Form.Text>
+                        </Form.Group>
+
+                        {q.correctAnswer && (
+                          <Alert variant="success" className="py-2 mb-0">
+                            <FaCheckCircle className="me-2" />
+                            Correct answer: <strong>{q.correctAnswer}</strong>
+                          </Alert>
+                        )}
+                      </Card.Body>
+                    </Card>
+                  ))
+                )}
+              </Tab.Pane>
+
               {/* Settings Tab */}
               <Tab.Pane eventKey="settings">
                 <Form>
                   <Row>
-                    <Col md={6}>
+                    <Col md={4}>
                       <Form.Group className="mb-3">
                         <Form.Label>Language</Form.Label>
-                        <Form.Select 
-                          name="language" 
-                          value={Array.isArray(selectedCourse.language) ? selectedCourse.language[0] : selectedCourse.language || ''} 
+                        <Form.Select
+                          name="language"
+                          value={Array.isArray(selectedCourse.language) ? selectedCourse.language[0] : selectedCourse.language || ''}
                           onChange={onFormChange}
                         >
                           <option value="">Select Language</option>
@@ -1641,12 +1123,41 @@ https://example.com/video3.mp4
                         </Form.Select>
                       </Form.Group>
                     </Col>
-                    <Col md={6}>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Visibility</Form.Label>
+                        <Form.Select
+                          name="visibility"
+                          value={selectedCourse.visibility || 'public'}
+                          onChange={onFormChange}
+                        >
+                          <option value="public">Public</option>
+                          <option value="private">Private</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Course Type</Form.Label>
+                        <Form.Select
+                          name="courseType"
+                          value={selectedCourse.courseType || 'paid'}
+                          onChange={onFormChange}
+                        >
+                          <option value="paid">Paid</option>
+                          <option value="free">Free</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+
+                  <Row>
+                    <Col md={4}>
                       <Form.Group className="mb-3">
                         <Form.Label>Course Status</Form.Label>
-                        <Form.Select 
-                          name="status" 
-                          value={selectedCourse.status || 'Draft'} 
+                        <Form.Select
+                          name="status"
+                          value={selectedCourse.status || 'Draft'}
                           onChange={onFormChange}
                         >
                           <option value="Draft">Draft</option>
@@ -1655,12 +1166,39 @@ https://example.com/video3.mp4
                         </Form.Select>
                       </Form.Group>
                     </Col>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Active Status</Form.Label>
+                        <Form.Select
+                          name="courseStatus"
+                          value={selectedCourse.courseStatus || 'active'}
+                          onChange={onFormChange}
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Rating (0-5)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          name="rating"
+                          value={selectedCourse.rating || 0}
+                          onChange={onFormChange}
+                          min="0"
+                          max="5"
+                          step="0.1"
+                        />
+                      </Form.Group>
+                    </Col>
                   </Row>
 
-                  <Row className="mt-3">
+                  <Row>
                     <Col md={6}>
                       <Form.Group className="mb-3">
-                        <Form.Check 
+                        <Form.Check
                           type="checkbox"
                           label={
                             <>
@@ -1672,31 +1210,14 @@ https://example.com/video3.mp4
                           checked={selectedCourse.isFeatured || false}
                           onChange={(e) => {
                             onFormChange({
-                              target: { 
-                                name: 'isFeatured', 
+                              target: {
+                                name: 'isFeatured',
                                 value: e.target.checked,
                                 type: 'checkbox'
                               }
                             } as any)
                           }}
                         />
-                      </Form.Group>
-                    </Col>
-                    <Col md={6}>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Rating (0-5)</Form.Label>
-                        <Form.Control 
-                          type="number" 
-                          name="rating" 
-                          value={selectedCourse.rating || 0} 
-                          onChange={onFormChange}
-                          min="0"
-                          max="5"
-                          step="0.1"
-                        />
-                        <Form.Text className="text-muted">
-                          Average course rating
-                        </Form.Text>
                       </Form.Group>
                     </Col>
                   </Row>
@@ -1801,6 +1322,116 @@ https://example.com/video3.mp4
         </div>
       </Modal.Footer>
     </Modal>
+
+    {/* ===== Case Study Popup Modal ===== */}
+    <Modal
+      show={caseStudyModal.open}
+      onHide={() => setCaseStudyModal(prev => ({ ...prev, open: false }))}
+      size="lg"
+      centered
+      backdrop="static"
+    >
+      <Modal.Header closeButton className="bg-dark text-white">
+        <Modal.Title style={{ fontSize: 16 }}>
+          Case Study Editor
+        </Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <Form>
+          <Form.Group className="mb-3">
+            <Form.Label>Title <span className="text-danger">*</span></Form.Label>
+            <Form.Control
+              type="text"
+              value={caseStudyModal.draft.title || ''}
+              onChange={(e) => setCaseStudyModal(prev => ({
+                ...prev, draft: { ...prev.draft, title: e.target.value }
+              }))}
+              placeholder="e.g., Fibonacci Sequence"
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Description</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              value={caseStudyModal.draft.description || ''}
+              onChange={(e) => setCaseStudyModal(prev => ({
+                ...prev, draft: { ...prev.draft, description: e.target.value }
+              }))}
+              placeholder="Describe the case study problem..."
+            />
+          </Form.Group>
+
+          <Row>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Input Example</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={caseStudyModal.draft.inputExample || ''}
+                  onChange={(e) => setCaseStudyModal(prev => ({
+                    ...prev, draft: { ...prev.draft, inputExample: e.target.value }
+                  }))}
+                  placeholder="n = 10"
+                  style={{ fontFamily: 'monospace', fontSize: 13 }}
+                />
+              </Form.Group>
+            </Col>
+            <Col md={6}>
+              <Form.Group className="mb-3">
+                <Form.Label>Expected Output</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={3}
+                  value={caseStudyModal.draft.expectedOutput || ''}
+                  onChange={(e) => setCaseStudyModal(prev => ({
+                    ...prev, draft: { ...prev.draft, expectedOutput: e.target.value }
+                  }))}
+                  placeholder="0 1 1 2 3 5 8 13 21 34"
+                  style={{ fontFamily: 'monospace', fontSize: 13 }}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Boilerplate Code</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={6}
+              value={caseStudyModal.draft.boilerplate || ''}
+              onChange={(e) => setCaseStudyModal(prev => ({
+                ...prev, draft: { ...prev.draft, boilerplate: e.target.value }
+              }))}
+              placeholder="def fibonacci(n):&#10;    # write your code here&#10;    pass"
+              style={{ fontFamily: 'monospace', fontSize: 13 }}
+            />
+          </Form.Group>
+        </Form>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button
+          variant="outline-secondary"
+          onClick={() => setCaseStudyModal(prev => ({ ...prev, open: false }))}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          onClick={() => {
+            onVideoChange?.(caseStudyModal.videoIndex, 'caseStudy', caseStudyModal.draft)
+            setCaseStudyModal(prev => ({ ...prev, open: false }))
+          }}
+          disabled={!caseStudyModal.draft.title?.trim()}
+        >
+          <FaCheckCircle className="me-2" />
+          Save Case Study
+        </Button>
+      </Modal.Footer>
+    </Modal>
+    </>
   )
 }
 
