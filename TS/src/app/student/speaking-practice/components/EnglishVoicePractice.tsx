@@ -60,6 +60,7 @@ const EnglishVoicePractice: React.FC = () => {
   const SILENCE_TIMEOUT = 6000
   const ttsCountRef = useRef(0)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
 
   const fetchSpeakingHistory = async () => {
     if (!token) return
@@ -261,16 +262,31 @@ const EnglishVoicePractice: React.FC = () => {
     }
   }
 
+  const getBestVoice = (gender: 'male' | 'female'): SpeechSynthesisVoice | undefined => {
+    const femalePriority = [
+      'google uk english female', 'microsoft zira desktop', 'microsoft hazel desktop',
+      'samantha', 'karen', 'moira', 'victoria', 'tessa', 'female', 'zira',
+    ]
+    const malePriority = [
+      'google uk english male', 'microsoft david desktop', 'microsoft george desktop',
+      'alex', 'daniel', 'oliver', 'aaron', 'fred', 'male', 'david',
+    ]
+    const priority = gender === 'female' ? femalePriority : malePriority
+    for (const term of priority) {
+      const found = voices.find(v => v.name.toLowerCase().includes(term))
+      if (found) return found
+    }
+    return voices[0]
+  }
+
   const speak = (text: string) => new Promise<void>(async (resolve) => {
     if (!sessionActiveRef.current) return resolve()
     onTTSStart()
 
     const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
-    const femaleVoice = voices.find(v => v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha'))
-    const maleVoice = voices.find(v => v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('alex'))
-    utter.voice = ttsCountRef.current % 2 === 0 ? femaleVoice || voices[0] : maleVoice || voices[0]
-    utter.pitch = 1
-    utter.rate = 1
+    utter.voice = getBestVoice(voiceGender) || voices[0]
+    utter.pitch = voiceGender === 'female' ? 1.05 : 0.95
+    utter.rate = 0.95
 
     utter.onend = async () => {
       await waitForTTS()
@@ -408,6 +424,24 @@ const EnglishVoicePractice: React.FC = () => {
                     </div>
                   </div>
                   <div className="header-right">
+                    <div className="voice-selector">
+                      <div className="voice-toggle">
+                        <button
+                          className={`voice-btn voice-btn-female${voiceGender === 'female' ? ' active' : ''}`}
+                          onClick={() => setVoiceGender('female')}
+                          title="Female voice"
+                        >
+                          👩‍🦳
+                        </button>
+                        <button
+                          className={`voice-btn voice-btn-male${voiceGender === 'male' ? ' active' : ''}`}
+                          onClick={() => setVoiceGender('male')}
+                          title="Male voice"
+                        >
+                          👨‍🦱
+                        </button>
+                      </div>
+                    </div>
                     <div className="stats-group">
                       {history && history.highestScore !== null && (
                         <div className="stat-item">
@@ -729,75 +763,87 @@ const EnglishVoicePractice: React.FC = () => {
         .header-right {
           display: flex;
           align-items: center;
-          gap: 1.5rem;
-          flex-wrap: wrap;
+          gap: 0;
         }
 
         .stats-group {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0;
         }
 
         .stat-item {
           text-align: center;
-          min-width: 70px;
+          padding: 0 1.1rem;
+          border-left: 1px solid rgba(0, 0, 0, 0.2);
         }
 
         .stat-label {
           display: block;
-          color: rgba(0, 0, 0, 0.6) !important;
-          font-size: 0.7rem;
+          color: rgba(0, 0, 0, 0.55) !important;
+          font-size: 0.65rem;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 2px;
         }
 
         .stat-value {
           display: block;
           color: #000000 !important;
-          font-size: 1.1rem;
-          font-weight: 600;
+          font-size: 1.05rem;
+          font-weight: 700;
+          line-height: 1;
         }
 
         .best-score-value {
+          display: block;
           color: #000000 !important;
-          font-size: 1.1rem;
+          font-size: 1.05rem;
           font-weight: 700;
+          line-height: 1;
         }
 
         .mic-status {
           display: flex;
           align-items: center;
+          padding: 0 0.9rem;
+          border-left: 1px solid rgba(0, 0, 0, 0.2);
         }
 
         .mic-icon {
-          font-size: 1.3rem;
-          opacity: 0.8;
+          font-size: 1.2rem;
+          opacity: 0.75;
         }
 
         .mic-icon.listening {
           color: #000000 !important;
+          opacity: 1;
           animation: pulse 1.5s infinite;
         }
 
         .action-buttons-group {
           display: flex;
           align-items: center;
-          gap: 1rem;
+          gap: 0.75rem;
+          padding-left: 1.1rem;
+          border-left: 1px solid rgba(0, 0, 0, 0.2);
         }
 
         .session-buttons {
           display: flex;
-          gap: 0.5rem;
+          gap: 0.4rem;
         }
 
         .action-btn {
-          min-width: 70px;
-          height: 34px;
+          min-width: 72px;
+          height: 32px;
           border-radius: 6px;
           font-weight: 600;
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           transition: all 0.2s ease;
           background: transparent !important;
           border-width: 1.5px !important;
+          padding: 0 0.75rem;
         }
 
         .action-btn.start-btn {
@@ -1236,6 +1282,57 @@ const EnglishVoicePractice: React.FC = () => {
         @keyframes typing {
           0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
           40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Voice selector */
+        .voice-selector {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding-right: 1.1rem;
+          border-right: 1px solid rgba(0, 0, 0, 0.2);
+        }
+
+        .voice-label {
+          color: rgba(0, 0, 0, 0.75);
+          font-size: 0.72rem;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .voice-toggle {
+          display: flex;
+          gap: 5px;
+        }
+
+        .voice-btn {
+          background: rgba(0, 0, 0, 0.35);
+          border: 1.5px solid rgba(0, 0, 0, 0.5);
+          padding: 0;
+          width: 38px;
+          height: 38px;
+          font-size: 1.3rem;
+          cursor: pointer;
+          transition: all 0.18s ease;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          filter: grayscale(0.2) opacity(0.7);
+        }
+
+        .voice-btn.active {
+          background: #000000;
+          border-color: #000000;
+          filter: none;
+          transform: scale(1.12);
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .voice-btn:not(.active):hover {
+          background: rgba(0, 0, 0, 0.55);
+          filter: grayscale(0) opacity(0.9);
         }
 
         /* Responsive */
