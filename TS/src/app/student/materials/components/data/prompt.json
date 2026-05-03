@@ -1,0 +1,1201 @@
+{
+    "id": "Prompt Engineering-mastery",
+    "title": "Prompt Engineering Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "pe-ch1",
+            "title": "Introduction to Prompt Engineering",
+            "description": "Learn the fundamentals of prompt engineering, how AI models like LLMs work, and why writing effective prompts is essential for getting accurate and useful outputs.",
+            "pages": [
+                {
+                    "id": "pe-ch1-page1",
+                    "title": "What is Prompt Engineering?",
+                    "content": "Prompt engineering is the process of designing and structuring inputs (prompts) to get the best possible output from AI models. A well-crafted prompt helps AI understand the task clearly and produce accurate, relevant, and high-quality responses.",
+                    "exampleCode": "Prompt: \"Explain JavaScript closures in simple terms\"\n\nOutput: JavaScript closures allow a function to access variables from its outer scope even after the outer function has finished execution.",
+                    "keyPoints": [
+                        "Prompt engineering is about giving clear instructions to AI",
+                        "Better prompts = better outputs",
+                        "Used in tools like ChatGPT, AI coding assistants, and content generators",
+                        "Helps control accuracy and relevance of responses"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is prompt engineering?",
+                            "options": [
+                                "Writing code for AI models",
+                                "Designing inputs to get better AI outputs",
+                                "Building machine learning models",
+                                "Creating databases"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt engineering focuses on designing effective inputs to guide AI outputs."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch1-page2",
+                    "title": "How AI Models Work (LLMs Basics)",
+                    "content": "Large Language Models (LLMs) like GPT are trained on massive datasets and predict the next word based on context. They do not 'think' but generate responses based on patterns learned during training.",
+                    "exampleCode": "Prompt: \"Complete the sentence: The sky is\"\n\nOutput: \"blue\"",
+                    "keyPoints": [
+                        "LLMs predict text based on probability",
+                        "They are trained on large datasets",
+                        "They do not have real understanding or consciousness",
+                        "Context in prompts influences output"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do AI models generate responses?",
+                            "options": [
+                                "By thinking like humans",
+                                "By predicting next words based on data",
+                                "By searching Google",
+                                "By running code"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "AI models generate responses by predicting the next word based on patterns in data."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch1-page3",
+                    "title": "Importance of Prompt Engineering",
+                    "content": "Prompt engineering is important because it directly affects the quality of AI output. A poorly written prompt may lead to incorrect or vague answers, while a well-structured prompt produces accurate and useful results.",
+                    "exampleCode": "Bad Prompt: \"Tell about Python\"\n\nGood Prompt: \"Explain Python programming language with examples for beginners\"",
+                    "keyPoints": [
+                        "Improves accuracy of AI responses",
+                        "Reduces ambiguity",
+                        "Saves time by avoiding repeated queries",
+                        "Essential for developers and content creators"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is prompt engineering important?",
+                            "options": [
+                                "It improves AI output quality",
+                                "It increases hardware performance",
+                                "It builds AI models",
+                                "It reduces internet usage"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Better prompts lead to more accurate and useful AI responses."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch1-page4",
+                    "title": "Types of Prompts",
+                    "content": "Prompts can be categorized based on their purpose such as instruction prompts, question prompts, role-based prompts, and multi-modal prompts (text, image, code).",
+                    "exampleCode": "Instruction Prompt: \"Write a blog on AI\"\nRole-based Prompt: \"Act as a software engineer and explain APIs\"",
+                    "keyPoints": [
+                        "Instruction prompts give direct commands",
+                        "Question prompts ask specific queries",
+                        "Role-based prompts assign AI a role",
+                        "Multi-modal prompts combine text, images, or code"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which prompt assigns a role to AI?",
+                            "options": [
+                                "Instruction prompt",
+                                "Role-based prompt",
+                                "Question prompt",
+                                "Random prompt"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Role-based prompts guide AI by assigning it a specific role."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch1-page5",
+                    "title": "Real-world Use Cases",
+                    "content": "Prompt engineering is widely used in real-world applications like content generation, coding assistance, chatbots, marketing automation, and data analysis.",
+                    "exampleCode": "Prompt: \"Generate a product description for a smartwatch\"\n\nOutput: \"A sleek smartwatch with fitness tracking, notifications, and long battery life.\"",
+                    "keyPoints": [
+                        "Used in content writing and blogging",
+                        "Helps in coding and debugging",
+                        "Powers chatbots and virtual assistants",
+                        "Used in business automation and marketing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is prompt engineering used?",
+                            "options": [
+                                "Only in gaming",
+                                "Only in networking",
+                                "In multiple real-world applications",
+                                "Only in hardware design"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Prompt engineering is used across many industries and applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch2",
+            "title": "Basics of Writing Prompts",
+            "description": "Learn how to write clear, structured, and effective prompts to get accurate and high-quality responses from AI models. This module covers prompt structure, clarity, role-based prompting, formatting techniques, and common mistakes.",
+            "pages": [
+                {
+                    "id": "pe-ch2-page1",
+                    "title": "Structure of a Good Prompt",
+                    "content": "A good prompt clearly defines the task, context, and expected output. It should remove ambiguity and guide the AI step-by-step to generate accurate results.",
+                    "exampleCode": "Bad Prompt: \"Explain AI\"\n\nGood Prompt: \"Explain Artificial Intelligence in simple terms with real-world examples for beginners\"",
+                    "keyPoints": [
+                        "A prompt should be clear and specific",
+                        "Include context for better results",
+                        "Define expected output format",
+                        "Avoid vague or generic instructions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What makes a prompt effective?",
+                            "options": [
+                                "Being short and vague",
+                                "Being clear and specific",
+                                "Using complex words",
+                                "Avoiding context"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Clear and specific prompts produce better AI responses."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch2-page2",
+                    "title": "Clear Instructions vs Ambiguous Prompts",
+                    "content": "Clear prompts provide direct instructions, while ambiguous prompts lead to unpredictable or incorrect outputs. The more precise the instruction, the better the AI response.",
+                    "exampleCode": "Ambiguous Prompt: \"Write something about technology\"\n\nClear Prompt: \"Write a 100-word paragraph about the impact of AI in healthcare\"",
+                    "keyPoints": [
+                        "Ambiguous prompts lead to inconsistent outputs",
+                        "Clear instructions improve accuracy",
+                        "Specify length, format, and topic",
+                        "Avoid open-ended or unclear queries"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the issue with ambiguous prompts?",
+                            "options": [
+                                "They improve accuracy",
+                                "They confuse the AI",
+                                "They are always correct",
+                                "They are faster"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Ambiguous prompts confuse AI and produce inconsistent results."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch2-page3",
+                    "title": "Role-based Prompting",
+                    "content": "Role-based prompting involves assigning a role to the AI, such as teacher, developer, or interviewer. This helps guide tone, style, and depth of the response.",
+                    "exampleCode": "Prompt: \"Act as a Java developer and explain OOP concepts with examples\"",
+                    "keyPoints": [
+                        "Helps control tone and style",
+                        "Improves relevance of responses",
+                        "Useful for teaching and simulations",
+                        "Widely used in real-world AI applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is role-based prompting?",
+                            "options": [
+                                "Assigning tasks to humans",
+                                "Giving AI a specific role",
+                                "Writing code only",
+                                "Avoiding instructions"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Role-based prompting assigns a role to AI for better responses."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch2-page4",
+                    "title": "Input Formatting Techniques",
+                    "content": "Formatting inputs properly helps AI understand the structure of the request. Using bullet points, numbered lists, or structured formats improves clarity and output quality.",
+                    "exampleCode": "Prompt:\n\"Explain the following:\n1. HTML\n2. CSS\n3. JavaScript\n\nProvide examples for each.\"",
+                    "keyPoints": [
+                        "Structured prompts improve readability",
+                        "Use lists and bullet points",
+                        "Specify output format (table, JSON, etc.)",
+                        "Helps AI generate organized responses"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is formatting important in prompts?",
+                            "options": [
+                                "It confuses AI",
+                                "It improves clarity and structure",
+                                "It reduces output quality",
+                                "It has no impact"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Proper formatting helps AI understand and organize responses better."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch2-page5",
+                    "title": "Common Mistakes to Avoid",
+                    "content": "Many beginners make mistakes like using vague prompts, giving too little context, or not specifying output format. Avoiding these mistakes improves AI results significantly.",
+                    "exampleCode": "Mistake Prompt: \"Tell me about coding\"\n\nImproved Prompt: \"Explain coding basics for beginners with examples in JavaScript\"",
+                    "keyPoints": [
+                        "Avoid vague or generic prompts",
+                        "Do not skip context",
+                        "Specify output expectations",
+                        "Avoid overly complex or confusing instructions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which is a common mistake in prompt writing?",
+                            "options": [
+                                "Being specific",
+                                "Providing context",
+                                "Using vague instructions",
+                                "Formatting prompts"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Vague instructions lead to poor AI responses."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch3",
+            "title": "Prompt Design Techniques",
+            "description": "Learn advanced techniques to design effective prompts that improve reasoning, accuracy, and output quality. This module covers zero-shot, few-shot, chain-of-thought prompting, structured outputs, and reasoning strategies.",
+            "pages": [
+                {
+                    "id": "pe-ch3-page1",
+                    "title": "Zero-shot Prompting",
+                    "content": "Zero-shot prompting means asking the AI to perform a task without providing any examples. The AI relies on its pre-trained knowledge to generate a response.",
+                    "exampleCode": "Prompt: \"Translate the following sentence to French: Hello, how are you?\"\n\nOutput: \"Bonjour, comment ça va?\"",
+                    "keyPoints": [
+                        "No examples are provided",
+                        "Relies on AI’s existing knowledge",
+                        "Simple and quick to use",
+                        "May be less accurate for complex tasks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is zero-shot prompting?",
+                            "options": [
+                                "Providing many examples",
+                                "Providing one example",
+                                "Providing no examples",
+                                "Using images as input"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Zero-shot prompting means giving no examples and relying on AI knowledge."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch3-page2",
+                    "title": "Few-shot Prompting",
+                    "content": "Few-shot prompting involves giving a few examples in the prompt to guide the AI. This improves accuracy, especially for structured or complex tasks.",
+                    "exampleCode": "Prompt:\n\"Convert to uppercase:\ncat → CAT\ndog → DOG\ncar → ?\"\n\nOutput: \"CAR\"",
+                    "keyPoints": [
+                        "Includes 1–5 examples in the prompt",
+                        "Improves accuracy and consistency",
+                        "Useful for pattern-based tasks",
+                        "Helps AI understand expected format"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the benefit of few-shot prompting?",
+                            "options": [
+                                "It reduces accuracy",
+                                "It improves output quality",
+                                "It removes context",
+                                "It avoids instructions"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Few-shot prompting improves accuracy by providing examples."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch3-page3",
+                    "title": "Chain-of-Thought Prompting",
+                    "content": "Chain-of-thought prompting encourages the AI to think step-by-step before giving the final answer. It is especially useful for logical reasoning and problem-solving tasks.",
+                    "exampleCode": "Prompt: \"If a train travels 60 km in 1 hour, how far will it travel in 3 hours? Explain step by step.\"\n\nOutput:\nStep 1: Speed = 60 km/h\nStep 2: Time = 3 hours\nStep 3: Distance = 60 × 3 = 180 km\nFinal Answer: 180 km",
+                    "keyPoints": [
+                        "Encourages step-by-step reasoning",
+                        "Improves accuracy in complex problems",
+                        "Useful for math and logic tasks",
+                        "Reduces incorrect answers"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When should chain-of-thought prompting be used?",
+                            "options": [
+                                "For simple greetings",
+                                "For logical and reasoning tasks",
+                                "For random outputs",
+                                "For ignoring context"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Chain-of-thought is best for reasoning and problem-solving tasks."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch3-page4",
+                    "title": "Step-by-step Reasoning Prompts",
+                    "content": "Step-by-step prompts explicitly instruct the AI to break down the solution into smaller steps. This improves clarity and ensures logical flow in responses.",
+                    "exampleCode": "Prompt: \"Solve 25 × 4 step by step\"\n\nOutput:\nStep 1: Multiply 25 by 4\nStep 2: 25 × 4 = 100\nFinal Answer: 100",
+                    "keyPoints": [
+                        "Breaks complex tasks into smaller steps",
+                        "Improves clarity of output",
+                        "Useful for teaching and learning",
+                        "Reduces confusion in responses"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of step-by-step prompting?",
+                            "options": [
+                                "To confuse AI",
+                                "To improve clarity and reasoning",
+                                "To shorten responses",
+                                "To remove logic"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Step-by-step prompts improve clarity and reasoning in outputs."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch3-page5",
+                    "title": "Output Formatting Techniques",
+                    "content": "Output formatting ensures that AI responses follow a structured format such as tables, bullet points, or JSON. This is useful for developers and automation tasks.",
+                    "exampleCode": "Prompt: \"Provide user details in JSON format: Name: John, Age: 25\"\n\nOutput:\n{\n  \"name\": \"John\",\n  \"age\": 25\n}",
+                    "keyPoints": [
+                        "Ensures structured outputs",
+                        "Useful for APIs and automation",
+                        "Supports formats like JSON, tables, lists",
+                        "Improves readability and usability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is output formatting important?",
+                            "options": [
+                                "It reduces readability",
+                                "It structures the response",
+                                "It confuses users",
+                                "It removes data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Structured outputs improve usability and clarity."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch4",
+            "title": "Advanced Prompting Strategies",
+            "description": "Explore advanced techniques to refine prompts for better control, creativity, and precision. Learn how to optimize prompts, control tone and style, adjust model parameters, and manage context effectively.",
+            "pages": [
+                {
+                    "id": "pe-ch4-page1",
+                    "title": "Prompt Optimization Techniques",
+                    "content": "Prompt optimization involves refining and improving prompts to achieve better results. This includes rephrasing, adding context, and testing multiple variations to identify the most effective prompt.",
+                    "exampleCode": "Initial Prompt: \"Explain React\"\n\nOptimized Prompt: \"Explain React.js for beginners with examples, use cases, and key features\"",
+                    "keyPoints": [
+                        "Refine prompts iteratively",
+                        "Add context and clarity",
+                        "Test multiple variations",
+                        "Focus on desired output"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is prompt optimization?",
+                            "options": [
+                                "Writing code for AI",
+                                "Improving prompts for better output",
+                                "Training AI models",
+                                "Reducing input size"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt optimization improves prompts to get better AI results."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch4-page2",
+                    "title": "Controlling Tone, Style, and Length",
+                    "content": "You can control how the AI responds by specifying tone (formal, casual), style (technical, storytelling), and length (short, detailed). This ensures the output matches your requirements.",
+                    "exampleCode": "Prompt: \"Explain blockchain in a simple and friendly tone in 3 sentences\"",
+                    "keyPoints": [
+                        "Control tone (formal, casual, friendly)",
+                        "Define response length",
+                        "Specify writing style",
+                        "Useful for content creation and branding"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How can you control AI response style?",
+                            "options": [
+                                "By ignoring instructions",
+                                "By specifying tone and style",
+                                "By removing context",
+                                "By shortening prompts"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Specifying tone and style helps control AI responses."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch4-page3",
+                    "title": "Model Parameters (Temperature, Top-p)",
+                    "content": "Model parameters like temperature and top-p control randomness and creativity in AI outputs. Lower values produce more predictable results, while higher values increase creativity.",
+                    "exampleCode": "Low Temperature (0.2): More precise and factual output\nHigh Temperature (0.9): More creative and diverse output",
+                    "keyPoints": [
+                        "Temperature controls randomness",
+                        "Top-p controls probability distribution",
+                        "Low values = predictable outputs",
+                        "High values = creative outputs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does temperature control in AI models?",
+                            "options": [
+                                "Speed of execution",
+                                "Randomness of output",
+                                "Memory usage",
+                                "Code compilation"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Temperature controls how random or creative the output is."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch4-page4",
+                    "title": "Prompt Iteration and Refinement",
+                    "content": "Prompt iteration involves continuously improving prompts based on outputs. By analyzing results and refining instructions, you can achieve higher accuracy and better responses.",
+                    "exampleCode": "Step 1: \"Explain APIs\"\nStep 2: \"Explain REST APIs with examples\"\nStep 3: \"Explain REST APIs with real-world examples and JSON responses\"",
+                    "keyPoints": [
+                        "Iterative improvement process",
+                        "Analyze output before refining",
+                        "Add details step-by-step",
+                        "Helps achieve high-quality responses"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is prompt iteration?",
+                            "options": [
+                                "Repeating the same prompt",
+                                "Improving prompts step-by-step",
+                                "Removing context",
+                                "Avoiding changes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt iteration means refining prompts to improve results."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch4-page5",
+                    "title": "Context Management",
+                    "content": "Context management ensures that the AI understands previous inputs and maintains continuity. Providing relevant context improves coherence and accuracy in multi-step tasks.",
+                    "exampleCode": "Prompt:\n\"You are a career advisor.\nUser: I am a beginner in programming.\nSuggest a learning path.\"",
+                    "keyPoints": [
+                        "Maintains conversation continuity",
+                        "Provides background information",
+                        "Improves relevance of responses",
+                        "Essential for multi-step tasks"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is context important in prompting?",
+                            "options": [
+                                "It reduces accuracy",
+                                "It improves relevance",
+                                "It confuses AI",
+                                "It has no impact"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Providing context helps AI generate more relevant and accurate responses."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch5",
+            "title": "Prompt Engineering for Developers",
+            "description": "Learn how developers use prompt engineering to build AI-powered applications. This module covers API usage, prompt chaining, system vs user prompts, application integration, and debugging techniques.",
+            "pages": [
+                {
+                    "id": "pe-ch5-page1",
+                    "title": "Using AI APIs",
+                    "content": "Developers use APIs to interact with AI models programmatically. By sending prompts through an API, applications can generate dynamic responses, automate workflows, and integrate AI features.",
+                    "exampleCode": "POST /api/generate\n{\n  \"prompt\": \"Explain JavaScript promises\"\n}",
+                    "keyPoints": [
+                        "APIs allow integration of AI into applications",
+                        "Send prompts and receive responses programmatically",
+                        "Used in web, mobile, and backend systems",
+                        "Supports automation and scalability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of using AI APIs?",
+                            "options": [
+                                "To design UI",
+                                "To integrate AI into applications",
+                                "To store data",
+                                "To compile code"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "APIs help developers integrate AI capabilities into applications."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch5-page2",
+                    "title": "Prompt Chaining",
+                    "content": "Prompt chaining involves using multiple prompts in sequence, where the output of one prompt becomes the input for another. This is useful for complex workflows and multi-step tasks.",
+                    "exampleCode": "Step 1 Prompt: \"Summarize this article\"\nStep 2 Prompt: \"Convert the summary into bullet points\"",
+                    "keyPoints": [
+                        "Breaks tasks into multiple steps",
+                        "Improves accuracy for complex workflows",
+                        "Output of one prompt feeds the next",
+                        "Used in automation and pipelines"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is prompt chaining?",
+                            "options": [
+                                "Using a single prompt",
+                                "Linking multiple prompts together",
+                                "Avoiding prompts",
+                                "Writing code only"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt chaining connects multiple prompts for step-by-step processing."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch5-page3",
+                    "title": "System vs User Prompts",
+                    "content": "System prompts define the behavior and rules of the AI, while user prompts are the actual queries or instructions given by users. Together, they control how the AI responds.",
+                    "exampleCode": "System Prompt: \"You are a helpful coding assistant\"\nUser Prompt: \"Explain Python loops\"",
+                    "keyPoints": [
+                        "System prompts define AI behavior",
+                        "User prompts contain actual requests",
+                        "Combining both improves response quality",
+                        "Used in chat-based applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the role of a system prompt?",
+                            "options": [
+                                "To store data",
+                                "To define AI behavior",
+                                "To execute code",
+                                "To display UI"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "System prompts guide the behavior and tone of the AI."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch5-page4",
+                    "title": "Building AI-powered Applications",
+                    "content": "Prompt engineering is used to build applications like chatbots, content generators, coding assistants, and recommendation systems. Developers design prompts to handle different user scenarios effectively.",
+                    "exampleCode": "Prompt: \"Generate a product description for an e-commerce website\"\n\nUsed in: E-commerce product page automation",
+                    "keyPoints": [
+                        "Used in chatbots and virtual assistants",
+                        "Helps automate content generation",
+                        "Supports business workflows",
+                        "Enhances user experience"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is prompt engineering used in development?",
+                            "options": [
+                                "Only in hardware",
+                                "In AI-powered applications",
+                                "Only in networking",
+                                "Only in databases"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt engineering is widely used in AI-powered applications."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch5-page5",
+                    "title": "Debugging Prompt Outputs",
+                    "content": "Debugging prompts involves analyzing incorrect or unexpected outputs and refining prompts to improve results. This includes adding context, clarifying instructions, and testing variations.",
+                    "exampleCode": "Incorrect Output → Refine Prompt → Test Again\n\nPrompt Fix: Add more context and specify format",
+                    "keyPoints": [
+                        "Analyze incorrect responses",
+                        "Refine prompts iteratively",
+                        "Add clarity and context",
+                        "Test multiple variations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is prompt debugging?",
+                            "options": [
+                                "Writing new code",
+                                "Fixing errors in prompts",
+                                "Deleting prompts",
+                                "Ignoring outputs"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt debugging involves improving prompts to fix incorrect outputs."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch6",
+            "title": "Use Cases & Applications",
+            "description": "Explore real-world applications of prompt engineering across industries. Learn how AI is used for content creation, coding assistance, chatbots, multimedia generation, and business automation.",
+            "pages": [
+                {
+                    "id": "pe-ch6-page1",
+                    "title": "Content Generation",
+                    "content": "Prompt engineering is widely used to generate content such as blogs, emails, social media posts, and advertisements. Well-structured prompts help create high-quality and engaging content quickly.",
+                    "exampleCode": "Prompt: \"Write a blog post about the benefits of learning JavaScript for beginners\"\n\nOutput: A detailed blog explaining why JavaScript is important for web development.",
+                    "keyPoints": [
+                        "Used for blogs, emails, and ads",
+                        "Saves time in content creation",
+                        "Improves creativity and consistency",
+                        "Widely used in marketing"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is prompt engineering used in content generation?",
+                            "options": [
+                                "Only in gaming",
+                                "Blogs and marketing content",
+                                "Hardware design",
+                                "Networking"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt engineering is widely used for blogs, emails, and marketing content."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch6-page2",
+                    "title": "Code Generation & Debugging",
+                    "content": "Developers use prompt engineering to generate code, fix bugs, and understand complex programming concepts. AI can assist in writing efficient and optimized code.",
+                    "exampleCode": "Prompt: \"Write a JavaScript function to reverse a string\"\n\nOutput: function reverse(str) { return str.split('').reverse().join(''); }",
+                    "keyPoints": [
+                        "Helps developers write code faster",
+                        "Useful for debugging and optimization",
+                        "Supports multiple programming languages",
+                        "Improves productivity"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How is prompt engineering used in coding?",
+                            "options": [
+                                "To design hardware",
+                                "To generate and debug code",
+                                "To manage networks",
+                                "To store data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt engineering helps in generating and debugging code."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch6-page3",
+                    "title": "Chatbots & Virtual Assistants",
+                    "content": "Prompt engineering powers chatbots and virtual assistants by enabling them to understand user queries and provide relevant responses. It is widely used in customer support and automation.",
+                    "exampleCode": "Prompt: \"You are a customer support agent. Help the user resolve login issues.\"\n\nOutput: Step-by-step guidance for login troubleshooting.",
+                    "keyPoints": [
+                        "Used in customer support systems",
+                        "Improves user interaction",
+                        "Automates responses",
+                        "Enhances user experience"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where are chatbots commonly used?",
+                            "options": [
+                                "Customer support",
+                                "Hardware manufacturing",
+                                "Operating systems",
+                                "Networking"
+                            ],
+                            "correctAnswer": 0,
+                            "explanation": "Chatbots are widely used in customer support systems."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch6-page4",
+                    "title": "Image & Video Prompting",
+                    "content": "Prompt engineering is also used in AI tools that generate images and videos. By providing descriptive prompts, users can create visual content such as designs, illustrations, and animations.",
+                    "exampleCode": "Prompt: \"Generate an image of a futuristic city at sunset with flying cars\"\n\nOutput: AI-generated image based on description.",
+                    "keyPoints": [
+                        "Used in AI image and video tools",
+                        "Creates visual content from text prompts",
+                        "Supports design and creative industries",
+                        "Enhances multimedia production"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is image prompting?",
+                            "options": [
+                                "Editing photos manually",
+                                "Generating visuals using text prompts",
+                                "Writing code",
+                                "Designing hardware"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Image prompting generates visuals based on text descriptions."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch6-page5",
+                    "title": "Business Automation",
+                    "content": "Businesses use prompt engineering to automate tasks such as report generation, customer communication, and data analysis. This improves efficiency and reduces manual effort.",
+                    "exampleCode": "Prompt: \"Generate a weekly sales report summary based on this data\"\n\nOutput: Structured report with key insights.",
+                    "keyPoints": [
+                        "Automates repetitive tasks",
+                        "Improves business efficiency",
+                        "Used in analytics and reporting",
+                        "Reduces manual workload"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How is prompt engineering used in business?",
+                            "options": [
+                                "Only for coding",
+                                "For automation and reporting",
+                                "For hardware design",
+                                "For gaming"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Prompt engineering helps automate business processes and reporting."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch7",
+            "title": "Ethics, Limitations & Best Practices",
+            "description": "Understand the ethical considerations, limitations, and best practices of using AI and prompt engineering. Learn how to avoid bias, handle hallucinations, protect data privacy, and use AI responsibly.",
+            "pages": [
+                {
+                    "id": "pe-ch7-page1",
+                    "title": "AI Bias and Limitations",
+                    "content": "AI models are trained on large datasets that may contain biases. As a result, AI can sometimes produce biased or unfair outputs. Understanding these limitations helps users create better and more responsible prompts.",
+                    "exampleCode": "Prompt: \"Describe a successful leader\"\n\nOutput may unintentionally reflect bias depending on training data.",
+                    "keyPoints": [
+                        "AI can reflect biases from training data",
+                        "Not always accurate or fair",
+                        "Requires human validation",
+                        "Important to design neutral prompts"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why can AI produce biased results?",
+                            "options": [
+                                "Because it has emotions",
+                                "Because of biased training data",
+                                "Because it runs slowly",
+                                "Because of hardware issues"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "AI models learn from data, which may contain biases."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch7-page2",
+                    "title": "Hallucinations in AI",
+                    "content": "AI hallucinations occur when the model generates incorrect or misleading information that appears to be correct. This happens because AI predicts text rather than verifying facts.",
+                    "exampleCode": "Prompt: \"Who won the Nobel Prize in 2050?\"\n\nOutput: AI may generate a fictional answer.",
+                    "keyPoints": [
+                        "AI may generate incorrect information",
+                        "Outputs may sound convincing but be false",
+                        "Always verify critical information",
+                        "Use reliable sources for validation"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an AI hallucination?",
+                            "options": [
+                                "Correct answer generation",
+                                "Random hardware failure",
+                                "Incorrect but confident response",
+                                "Slow processing"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Hallucinations are incorrect responses presented as accurate."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch7-page3",
+                    "title": "Ethical Prompting Practices",
+                    "content": "Ethical prompting involves using AI responsibly without generating harmful, misleading, or inappropriate content. Users should avoid prompts that promote misinformation or unethical behavior.",
+                    "exampleCode": "Avoid: \"Generate fake news article\"\n\nUse: \"Provide factual and verified information about climate change\"",
+                    "keyPoints": [
+                        "Avoid harmful or misleading prompts",
+                        "Promote truthful and accurate content",
+                        "Respect ethical guidelines",
+                        "Use AI responsibly"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is ethical prompting?",
+                            "options": [
+                                "Using AI irresponsibly",
+                                "Generating fake content",
+                                "Using AI responsibly and truthfully",
+                                "Avoiding prompts"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Ethical prompting focuses on responsible and truthful use of AI."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch7-page4",
+                    "title": "Data Privacy Considerations",
+                    "content": "When using AI, it is important to avoid sharing sensitive or personal data in prompts. Protecting user data ensures privacy and security in AI applications.",
+                    "exampleCode": "Avoid: \"My password is 12345, store it\"\n\nUse: \"Explain best practices for password security\"",
+                    "keyPoints": [
+                        "Do not share sensitive information",
+                        "Protect user data and privacy",
+                        "Follow security best practices",
+                        "Be cautious with confidential data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why is data privacy important in AI?",
+                            "options": [
+                                "To improve speed",
+                                "To protect sensitive information",
+                                "To reduce cost",
+                                "To increase randomness"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Data privacy protects sensitive and personal information."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch7-page5",
+                    "title": "Responsible AI Usage",
+                    "content": "Responsible AI usage means using AI tools in a way that is safe, ethical, and beneficial. Users should validate outputs, avoid misuse, and ensure AI is used for positive purposes.",
+                    "exampleCode": "Prompt: \"Provide verified sources for the given information\"\n\nOutput: AI includes references and verified data.",
+                    "keyPoints": [
+                        "Validate AI-generated content",
+                        "Avoid misuse of AI tools",
+                        "Ensure positive and safe usage",
+                        "Follow ethical guidelines"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is responsible AI usage?",
+                            "options": [
+                                "Using AI without checks",
+                                "Using AI ethically and safely",
+                                "Avoiding AI completely",
+                                "Sharing sensitive data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Responsible AI usage involves ethical and safe practices."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "pe-ch8",
+            "title": "Hands-on Projects",
+            "description": "Apply your prompt engineering skills through real-world projects. This module focuses on building practical applications like chatbots, content generators, resume tools, and automation systems using effective prompts.",
+            "pages": [
+                {
+                    "id": "pe-ch8-page1",
+                    "title": "Build a Chatbot using Prompts",
+                    "content": "In this project, you will design a chatbot using structured prompts. The chatbot will handle user queries, provide responses, and simulate real-world conversations.",
+                    "exampleCode": "System Prompt: \"You are a helpful assistant\"\nUser Prompt: \"Help me choose a programming language\"\n\nOutput: Suggests suitable programming languages based on user needs.",
+                    "keyPoints": [
+                        "Design conversational prompts",
+                        "Handle user queries effectively",
+                        "Simulate real-world interactions",
+                        "Build chatbot workflows"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of this project?",
+                            "options": [
+                                "To design hardware",
+                                "To build a chatbot using prompts",
+                                "To create databases",
+                                "To compile code"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "This project focuses on building a chatbot using prompt engineering."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch8-page2",
+                    "title": "AI Content Generator",
+                    "content": "Create a tool that generates blogs, social media posts, or marketing content using well-structured prompts. This project demonstrates how AI can automate content creation.",
+                    "exampleCode": "Prompt: \"Write a social media post promoting an online Java course\"\n\nOutput: Engaging promotional content for social media.",
+                    "keyPoints": [
+                        "Generate blogs and marketing content",
+                        "Automate content creation",
+                        "Improve creativity and efficiency",
+                        "Useful for businesses and creators"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does the content generator project do?",
+                            "options": [
+                                "Stores data",
+                                "Generates content using prompts",
+                                "Builds hardware",
+                                "Runs networks"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "It uses prompts to generate content automatically."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch8-page3",
+                    "title": "Resume & Cover Letter Generator",
+                    "content": "Develop a tool that generates professional resumes and cover letters based on user input. This project highlights how prompt engineering can personalize outputs.",
+                    "exampleCode": "Prompt: \"Create a resume for a frontend developer with 2 years of experience in React\"\n\nOutput: Structured resume with skills, experience, and summary.",
+                    "keyPoints": [
+                        "Generate personalized documents",
+                        "Use structured prompts for formatting",
+                        "Automate resume creation",
+                        "Improve job application process"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the goal of this project?",
+                            "options": [
+                                "To create games",
+                                "To generate resumes using AI",
+                                "To design networks",
+                                "To build hardware"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "This project focuses on generating resumes and cover letters."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch8-page4",
+                    "title": "Prompt-based Automation Tool",
+                    "content": "Build a system that automates repetitive tasks such as report generation, email responses, or data summaries using prompts.",
+                    "exampleCode": "Prompt: \"Summarize this weekly sales data into key insights\"\n\nOutput: Automated summary report.",
+                    "keyPoints": [
+                        "Automates repetitive tasks",
+                        "Improves efficiency",
+                        "Used in business workflows",
+                        "Reduces manual effort"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the benefit of automation tools?",
+                            "options": [
+                                "Increase manual work",
+                                "Reduce efficiency",
+                                "Automate repetitive tasks",
+                                "Slow down processes"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Automation tools reduce manual effort and improve efficiency."
+                        }
+                    ]
+                },
+                {
+                    "id": "pe-ch8-page5",
+                    "title": "Final Capstone Project",
+                    "content": "In the final project, you will combine all learned concepts to build a complete AI-powered application. This could be a chatbot, content generator, or automation system.",
+                    "exampleCode": "Project Idea: Build an AI assistant that answers technical questions and generates code snippets.",
+                    "keyPoints": [
+                        "Combine all learned concepts",
+                        "Build a complete application",
+                        "Demonstrate practical skills",
+                        "Prepare for real-world use cases"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of the capstone project?",
+                            "options": [
+                                "To repeat lessons",
+                                "To apply all concepts in a real project",
+                                "To avoid coding",
+                                "To test hardware"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "The capstone project applies all learned concepts in a real-world scenario."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is Prompt Engineering?",
+            "answer": "Prompt engineering is the process of designing and structuring inputs to AI models to get accurate, relevant, and high-quality outputs.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "Why is prompt engineering important?",
+            "answer": "It improves the quality, accuracy, and relevance of AI outputs by providing clear and structured instructions.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a prompt?",
+            "answer": "A prompt is the input or instruction given to an AI model to generate a response.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What are Large Language Models (LLMs)?",
+            "answer": "LLMs are AI models trained on large datasets to understand and generate human-like text based on context.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is zero-shot prompting?",
+            "answer": "Zero-shot prompting is asking the AI to perform a task without providing any examples.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is few-shot prompting?",
+            "answer": "Few-shot prompting involves providing a few examples in the prompt to guide the AI’s response.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is role-based prompting?",
+            "answer": "Role-based prompting assigns a specific role to the AI, such as teacher or developer, to guide its response style.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is chain-of-thought prompting?",
+            "answer": "Chain-of-thought prompting encourages the AI to reason step-by-step before giving the final answer.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is prompt optimization?",
+            "answer": "Prompt optimization is the process of refining prompts to improve the quality and accuracy of AI outputs.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is prompt chaining?",
+            "answer": "Prompt chaining is linking multiple prompts where the output of one becomes the input for another.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the difference between system and user prompts?",
+            "answer": "System prompts define AI behavior and rules, while user prompts contain the actual query or instruction.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are hallucinations in AI?",
+            "answer": "Hallucinations occur when AI generates incorrect or misleading information that appears to be correct.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is temperature in AI models?",
+            "answer": "Temperature controls the randomness of AI output, where lower values produce predictable results and higher values increase creativity.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is top-p sampling?",
+            "answer": "Top-p sampling controls output diversity by selecting from the most probable tokens whose cumulative probability is within a threshold.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What are common mistakes in prompt engineering?",
+            "answer": "Common mistakes include vague instructions, lack of context, unclear output format, and overly complex prompts.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "How does prompt formatting improve results?",
+            "answer": "Proper formatting like lists, tables, or JSON helps AI understand structure and produce organized outputs.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is context in prompt engineering?",
+            "answer": "Context refers to background information provided in a prompt to help AI generate more accurate and relevant responses.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is prompt iteration?",
+            "answer": "Prompt iteration is the process of refining prompts based on previous outputs to improve results.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "How is prompt engineering used in real-world applications?",
+            "answer": "It is used in chatbots, content generation, coding assistance, automation tools, and AI-powered applications.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is ethical prompting?",
+            "answer": "Ethical prompting involves using AI responsibly without generating harmful, misleading, or biased content.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "How can you reduce hallucinations in AI?",
+            "answer": "By providing clear prompts, adding context, asking for sources, and validating outputs.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you design prompts for structured outputs?",
+            "answer": "By explicitly specifying the format such as JSON, tables, or bullet points in the prompt.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What are best practices for prompt engineering?",
+            "answer": "Use clear instructions, provide context, define output format, iterate prompts, and validate responses.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How does prompt engineering help developers?",
+            "answer": "It helps developers build AI-powered applications, automate workflows, and improve user interactions.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is multi-modal prompting?",
+            "answer": "Multi-modal prompting involves using different input types like text, images, or code together.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you evaluate prompt effectiveness?",
+            "answer": "By checking accuracy, relevance, consistency, and quality of the AI output.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is prompt engineering in production systems?",
+            "answer": "It involves designing, testing, and optimizing prompts for real-world applications with scalability and reliability.",
+            "difficulty": "advanced"
+        }
+    ]
+}

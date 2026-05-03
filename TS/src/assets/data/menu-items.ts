@@ -287,6 +287,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/eklavadmin/self-interview',
         parentKey: 'eklavadmin',
       },
+      {
+        key: 'companyInterview',
+        label: 'Company Interview',
+        icon: BsMic,
+        url: '/eklavadmin/company-interview',
+        parentKey: 'eklavadmin',
+      },
     ],
   },
   {
@@ -547,12 +554,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     url: '/student/dashboard',
   },
 
-  {
+  /* {
     key: 'LeadershipBoard',
     label: 'Leadership Board',
     icon: BsTrophy, // 🏆 leaderboard/achievement
     url: '/student/leadership-board',
-  },
+  }, */
   /* {
     key: 'codeChallenge',
     label: 'Code Challenge',
@@ -651,6 +658,49 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     ],
   },
 
+   {
+    key: 'preparation',
+    label: 'Self Preparation',
+    icon: BsLightbulb, // 💡 learning/preparation
+    children: [
+      {
+        key: 'aptitude',
+        label: 'Aptitude Preparation',
+        icon: HiOutlinePuzzlePiece, // ❓ question
+        url: '/student/aptitude',
+        parentKey: 'preparation',
+      },
+      /* {
+        key: 'quiz',
+        label: 'Quiz Practice',
+        icon: BsQuestionDiamond, // 🔹 quiz
+        url: '/student/quiz',
+        parentKey: 'preparation',
+      }, */
+      {
+        key: 'weeklyChallenge',
+        label: 'Code Challenge',
+        icon: HiOutlineCodeBracketSquare, // 📈 challenge/progress
+        url: '/student/problem-statement',
+        parentKey: 'preparation',
+      },
+      {
+        key: 'companyInterview',
+        label: 'By Company', 
+        icon: FaUserTie, 
+        url: '/student/company-rounds',
+        parentKey: 'preparation',
+      },
+      /* {
+        key: 'attendInterview',
+        label: 'Recruitment Assessment with AI',
+        icon: FaUserTie, // 👔 interview
+        url: '/student/attend-interview',
+        parentKey: 'preparation',
+      }, */
+    ],
+  },
+
   {
     key: 'freelancing',
     label: 'Freelancing Tasks',
@@ -693,47 +743,6 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
   // --- English Practice (separate) ---
 
   // Preparation parent (collapsible)
-  {
-    key: 'preparation',
-    label: 'Self Preparation',
-    icon: BsLightbulb, // 💡 learning/preparation
-    children: [
-      {
-        key: 'aptitude',
-        label: 'Aptitude Preparation',
-        icon: HiOutlinePuzzlePiece, // ❓ question
-        url: '/student/aptitude',
-        parentKey: 'preparation',
-      },
-      /* {
-        key: 'quiz',
-        label: 'Quiz Practice',
-        icon: BsQuestionDiamond, // 🔹 quiz
-        url: '/student/quiz',
-        parentKey: 'preparation',
-      }, */
-      {
-        key: 'weeklyChallenge',
-        label: 'Code Challenge',
-        icon: HiOutlineCodeBracketSquare, // 📈 challenge/progress
-        url: '/student/problem-statement',
-        parentKey: 'preparation',
-      },
-      {
-        key: 'terminal',
-        label: 'Compiler',
-        icon: BsCpu, // 💻 CPU/terminal
-        url: '/student/terminal',
-      },
-      /* {
-        key: 'attendInterview',
-        label: 'Recruitment Assessment with AI',
-        icon: FaUserTie, // 👔 interview
-        url: '/student/attend-interview',
-        parentKey: 'preparation',
-      }, */
-    ],
-  },
 
   // Extra Activities parent (collapsible)
   {
@@ -758,6 +767,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         label: 'ATS Checker',
         icon: FaChartLine, // 📈 ATS analysis score
         url: '/student/ats-checker',
+      },
+       {
+        key: 'terminal',
+        label: 'Compiler',
+        icon: BsCpu, // 💻 CPU/terminal
+        url: '/student/terminal',
       },
       /* {
         key: 'blog',

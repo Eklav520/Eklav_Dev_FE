@@ -39,6 +39,7 @@ export default function ReelsModal({
   const swiperRef = useRef<SwiperType>();
 
   const [isMobile, setIsMobile] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
 
   /* ================= FETCH REELS ================= */
   useEffect(() => {
@@ -102,6 +103,7 @@ export default function ReelsModal({
 
   const handleSlideChange = (swiper: SwiperType) => {
     setActiveIndex(swiper.activeIndex);
+    setIsVideoPlaying(true); // new slide always auto-plays
   };
 
   const handleSelectReel = (index: number) => {
@@ -135,7 +137,7 @@ export default function ReelsModal({
         backgroundColor: "rgba(0, 0, 0, 0.95)",
         zIndex: 9999,
         display: "flex",
-        alignItems: "center",
+        alignItems: isMobile ? "stretch" : "center",
         justifyContent: "center",
       }}
     >
@@ -143,34 +145,35 @@ export default function ReelsModal({
         style={{
           width: "100%",
           maxWidth: "430px",
-          height: "100%",
-          maxHeight: "90vh",
+          height: isMobile ? "100%" : "95vh",
           position: "relative",
           borderRadius: isMobile ? "0" : "12px",
           overflow: "hidden",
         }}
       >
-        {/* CLOSE */}
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: "20px",
-            left: "20px",
-            zIndex: 30,
-            width: "40px",
-            height: "40px",
-            borderRadius: "50%",
-            background: "rgba(0,0,0,0.6)",
-            border: "2px solid rgba(255,255,255,0.3)",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <FaTimes size={20} />
-        </button>
+        {/* CLOSE — only shown in player view; list view has its own inline X */}
+        {selectedIndex !== null && (
+          <button
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: "10px",
+              left: "10px",
+              zIndex: 30,
+              width: "30px",
+              height: "30px",
+              borderRadius: "50%",
+              background: "rgba(0,0,0,0.55)",
+              border: "1.5px solid rgba(255,255,255,0.25)",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <FaTimes size={12} />
+          </button>
+        )}
 
         {selectedIndex === null ? (
           <div
@@ -181,18 +184,43 @@ export default function ReelsModal({
               background: "#000",
             }}
           >
-            {/* Header */}
+            {/* Header — X on left, title+count on right in same row */}
             <div
               style={{
-                padding: "62px 16px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                padding: "10px 16px 10px 10px",
                 borderBottom: "1px solid #1a1a1a",
               }}
             >
-              <div style={{ fontSize: "16px", fontWeight: 700, color: "#fff" }}>
-                Reels
-              </div>
-              <div style={{ fontSize: "12px", color: "#666", marginTop: "2px" }}>
-                {reels.length} video{reels.length !== 1 ? "s" : ""}
+              {/* X button inline (replaces the absolute one for list view) */}
+              <button
+                onClick={onClose}
+                style={{
+                  flexShrink: 0,
+                  width: "34px",
+                  height: "34px",
+                  borderRadius: "50%",
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1.5px solid rgba(255,255,255,0.15)",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                <FaTimes size={13} />
+              </button>
+
+              <div>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>
+                  Reels
+                </div>
+                <div style={{ fontSize: "11px", color: "#666" }}>
+                  {reels.length} video{reels.length !== 1 ? "s" : ""}
+                </div>
               </div>
             </div>
 
@@ -326,114 +354,136 @@ export default function ReelsModal({
           </div>
         ) : (
           <>
-            <button
-              onClick={backToList}
-              style={{
-                position: "absolute",
-                top: "20px",
-                left: "70px",
-                zIndex: 30,
-                height: "40px",
-                borderRadius: "20px",
-                background: "rgba(0,0,0,0.6)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                color: "#fff",
-                padding: "0 14px",
-                fontSize: "12px",
-                cursor: "pointer",
-              }}
-            >
-              Back to list
-            </button>
-
-            <Swiper
-              direction="vertical"
-              slidesPerView={1}
-              initialSlide={activeIndex}
-              mousewheel={{ forceToAxis: true }}
-              modules={[Mousewheel]}
-              style={{ height: "100%" }}
-              onSlideChange={handleSlideChange}
-              onSwiper={(swiper) => {
-                swiperRef.current = swiper;
-              }}
-            >
-              {reels.map((reel, index) => (
-                <SwiperSlide key={reel._id}>
-                  <ReelItem reel={reel} isActive={index === activeIndex} />
-                </SwiperSlide>
-              ))}
-            </Swiper>
-
-            {/* PROGRESS */}
+            {/* TOP BAR — X button (absolute) + ← List + progress in one 46px row */}
             <div
               style={{
                 position: "absolute",
-                top: "20px",
-                right: "20px",
+                top: 0, left: 0, right: 0,
+                height: 46,
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: 46,   // leave room for the X button
+                paddingRight: 10,
+                gap: 8,
                 zIndex: 30,
-                background: "rgba(0,0,0,0.6)",
-                color: "#fff",
-                padding: "4px 10px",
-                borderRadius: "20px",
-                fontSize: "12px",
+                background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, transparent 100%)",
               }}
             >
-              {reels.length > 0 ? `${activeIndex + 1}/${reels.length}` : "0/0"}
+              <button
+                onClick={backToList}
+                style={{
+                  height: "28px",
+                  borderRadius: "14px",
+                  background: "rgba(0,0,0,0.5)",
+                  border: "1.5px solid rgba(255,255,255,0.25)",
+                  color: "#fff",
+                  padding: "0 10px",
+                  fontSize: "11px",
+                  cursor: "pointer",
+                }}
+              >
+                ← List
+              </button>
+
+              <div style={{ flex: 1 }} />
+
+              {/* PROGRESS */}
+              <div
+                style={{
+                  background: "rgba(0,0,0,0.5)",
+                  color: "#fff",
+                  padding: "3px 8px",
+                  borderRadius: "12px",
+                  fontSize: "11px",
+                  border: "1.5px solid rgba(255,255,255,0.25)",
+                }}
+              >
+                {reels.length > 0 ? `${activeIndex + 1}/${reels.length}` : "0/0"}
+              </div>
             </div>
 
-            {/* NAVIGATION */}
+            {/* VIDEO AREA — starts exactly below the top bar */}
             <div
               style={{
                 position: "absolute",
-                left: "20px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "12px",
-                zIndex: 30,
+                top: 46, bottom: 0, left: 0, right: 0,
               }}
             >
-              <button
-                onClick={goToPrev}
-                disabled={activeIndex === 0}
-                style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  background:
-                    activeIndex === 0 ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.7)",
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+              <Swiper
+                direction="vertical"
+                slidesPerView={1}
+                initialSlide={activeIndex}
+                mousewheel={{ forceToAxis: true }}
+                modules={[Mousewheel]}
+                style={{ height: "100%" }}
+                onSlideChange={handleSlideChange}
+                onSwiper={(swiper) => {
+                  swiperRef.current = swiper;
                 }}
               >
-                <FaArrowUp />
-              </button>
+                {reels.map((reel, index) => (
+                  <SwiperSlide key={reel._id}>
+                    <ReelItem
+                      reel={reel}
+                      isActive={index === activeIndex}
+                      onPlayStateChange={index === activeIndex ? setIsVideoPlaying : undefined}
+                    />
+                  </SwiperSlide>
+                ))}
+              </Swiper>
 
-              <button
-                onClick={goToNext}
-                disabled={activeIndex === reels.length - 1}
+              {/* NAVIGATION — inside video area, hidden while playing */}
+              <div
                 style={{
-                  width: "44px",
-                  height: "44px",
-                  borderRadius: "50%",
-                  background:
-                    activeIndex === reels.length - 1
-                      ? "rgba(0,0,0,0.3)"
-                      : "rgba(0,0,0,0.7)",
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  color: "#fff",
+                  position: "absolute",
+                  left: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  flexDirection: "column",
+                  gap: "10px",
+                  zIndex: 30,
+                  opacity: isVideoPlaying ? 0 : 1,
+                  pointerEvents: isVideoPlaying ? "none" : "auto",
+                  transition: "opacity 0.25s ease",
                 }}
               >
-                <FaArrowDown />
-              </button>
+                <button
+                  onClick={goToPrev}
+                  disabled={activeIndex === 0}
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "50%",
+                    background: activeIndex === 0 ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.65)",
+                    border: "1.5px solid rgba(255,255,255,0.3)",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FaArrowUp size={14} />
+                </button>
+
+                <button
+                  onClick={goToNext}
+                  disabled={activeIndex === reels.length - 1}
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "50%",
+                    background: activeIndex === reels.length - 1 ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.65)",
+                    border: "1.5px solid rgba(255,255,255,0.3)",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <FaArrowDown size={14} />
+                </button>
+              </div>
             </div>
           </>
         )}

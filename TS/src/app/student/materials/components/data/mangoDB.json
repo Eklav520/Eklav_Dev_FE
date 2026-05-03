@@ -1,0 +1,1206 @@
+{
+    "id": " MangoDB-mastery",
+    "title": "MongoDB Mastery",
+    "subtitle": "Complete Guide from Beginner to Advanced",
+    "author": "Systems Programming Experts",
+    "chapters": [
+        {
+            "id": "mongodb-ch1",
+            "title": "Introduction to MongoDB",
+            "description": "Learn the basics of MongoDB, a popular NoSQL database. Understand how it differs from SQL databases, its key features, and how data is stored using documents and collections.",
+            "pages": [
+                {
+                    "id": "mongodb-ch1-page1",
+                    "title": "What is MongoDB?",
+                    "content": "MongoDB is a NoSQL database that stores data in flexible, JSON-like documents. It is designed for scalability and performance.",
+                    "exampleCode": "// Example document\n{\n  name: 'John',\n  age: 25,\n  city: 'New York'\n}",
+                    "keyPoints": [
+                        "NoSQL database",
+                        "Stores data as JSON-like documents",
+                        "Highly scalable",
+                        "Flexible schema"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What type of database is MongoDB?",
+                            "options": [
+                                "Relational",
+                                "NoSQL",
+                                "Graph",
+                                "Hierarchical"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MongoDB is a NoSQL database."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch1-page2",
+                    "title": "NoSQL vs SQL",
+                    "content": "SQL databases use structured tables, while NoSQL databases like MongoDB use flexible document-based storage.",
+                    "exampleCode": "-- SQL Table\nid | name | age\n\n// MongoDB Document\n{ id: 1, name: 'John', age: 25 }",
+                    "keyPoints": [
+                        "SQL uses tables",
+                        "NoSQL uses documents",
+                        "NoSQL is flexible",
+                        "SQL has fixed schema"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does NoSQL use instead of tables?",
+                            "options": [
+                                "Rows",
+                                "Columns",
+                                "Documents",
+                                "Indexes"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "NoSQL databases use documents instead of tables."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch1-page3",
+                    "title": "Features of MongoDB",
+                    "content": "MongoDB provides high performance, scalability, and flexibility. It supports indexing, aggregation, and replication.",
+                    "exampleCode": "// Example: Insert document\ndb.users.insertOne({ name: 'Alice', age: 30 });",
+                    "keyPoints": [
+                        "High performance",
+                        "Flexible schema",
+                        "Supports indexing",
+                        "Supports replication and scaling"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which feature makes MongoDB scalable?",
+                            "options": [
+                                "Tables",
+                                "Replication",
+                                "CSS",
+                                "HTML"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Replication helps MongoDB scale efficiently."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch1-page4",
+                    "title": "Documents & Collections",
+                    "content": "In MongoDB, data is stored in documents, which are grouped into collections. A collection is similar to a table in SQL.",
+                    "exampleCode": "// Insert into collection\ndb.students.insertOne({ name: 'Tom', age: 20 });",
+                    "keyPoints": [
+                        "Documents store data",
+                        "Collections group documents",
+                        "Flexible structure",
+                        "No fixed schema required"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a collection?",
+                            "options": [
+                                "A row",
+                                "A column",
+                                "A group of documents",
+                                "A query"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "A collection is a group of documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch1-page5",
+                    "title": "Real-world Use Cases",
+                    "content": "MongoDB is used in applications like social media, e-commerce, and real-time analytics due to its flexibility and scalability.",
+                    "exampleCode": "// Example query\ndb.users.find({ age: { $gt: 18 } });",
+                    "keyPoints": [
+                        "Used in social media apps",
+                        "Supports e-commerce platforms",
+                        "Handles large-scale data",
+                        "Ideal for real-time applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Where is MongoDB commonly used?",
+                            "options": [
+                                "Only hardware",
+                                "Only networking",
+                                "Real-world applications",
+                                "Only UI design"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "MongoDB is widely used in real-world applications."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch2",
+            "title": "Installation & Setup",
+            "description": "Learn how to install MongoDB, use MongoDB Compass and mongosh, connect to a database, and create your first database and collection.",
+            "pages": [
+                {
+                    "id": "mongodb-ch2-page1",
+                    "title": "Installing MongoDB",
+                    "content": "MongoDB can be installed on Windows, macOS, and Linux. After installation, the MongoDB server (mongod) runs in the background.",
+                    "exampleCode": "# Check MongoDB version\nmongod --version\n\n# Start MongoDB server\nmongod",
+                    "keyPoints": [
+                        "Supports multiple operating systems",
+                        "Includes MongoDB server (mongod)",
+                        "Requires proper setup and configuration",
+                        "Runs as a background service"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which command starts MongoDB server?",
+                            "options": [
+                                "mongo start",
+                                "mongod",
+                                "mongodb run",
+                                "start db"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "mongod starts the MongoDB server."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch2-page2",
+                    "title": "MongoDB Compass",
+                    "content": "MongoDB Compass is a GUI tool used to interact with MongoDB databases. It allows you to visualize data and run queries easily.",
+                    "exampleCode": "// Example: View documents in Compass\n// Open collection and click 'Find'",
+                    "keyPoints": [
+                        "Graphical interface",
+                        "Easy data visualization",
+                        "Supports query execution",
+                        "Beginner-friendly tool"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is MongoDB Compass?",
+                            "options": [
+                                "Programming language",
+                                "GUI tool",
+                                "Database engine",
+                                "Server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MongoDB Compass is a GUI tool for MongoDB."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch2-page3",
+                    "title": "Mongo Shell (mongosh)",
+                    "content": "mongosh is a command-line interface used to interact with MongoDB. It allows running queries and managing databases.",
+                    "exampleCode": "# Start mongosh\nmongosh\n\n> db\n> show dbs",
+                    "keyPoints": [
+                        "Command-line interface",
+                        "Used for database operations",
+                        "Supports JavaScript syntax",
+                        "Essential for developers"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is mongosh?",
+                            "options": [
+                                "GUI tool",
+                                "Command-line shell",
+                                "Database",
+                                "Framework"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "mongosh is the MongoDB shell interface."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch2-page4",
+                    "title": "Connecting to Database",
+                    "content": "You can connect to MongoDB using connection strings. This can be done locally or via cloud services like MongoDB Atlas.",
+                    "exampleCode": "// Connect using mongosh\nmongosh \"mongodb://localhost:27017\"\n\n// Node.js connection\nmongoose.connect('mongodb://localhost:27017/testdb');",
+                    "keyPoints": [
+                        "Uses connection strings",
+                        "Supports local and cloud connections",
+                        "Default port is 27017",
+                        "Can connect via CLI or code"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the default MongoDB port?",
+                            "options": [
+                                "3000",
+                                "8080",
+                                "27017",
+                                "5000"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "MongoDB runs on port 27017 by default."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch2-page5",
+                    "title": "Creating Database",
+                    "content": "In MongoDB, a database is created automatically when you insert data into it. You can switch databases using the use command.",
+                    "exampleCode": "// Switch or create database\nuse mydb\n\n// Insert data to create database\ndb.users.insertOne({ name: 'John' });",
+                    "keyPoints": [
+                        "Database created on first insert",
+                        "use command selects database",
+                        "Collections are created automatically",
+                        "Flexible database structure"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "When is a MongoDB database created?",
+                            "options": [
+                                "When installed",
+                                "When server starts",
+                                "When data is inserted",
+                                "When deleted"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "MongoDB creates a database when data is first inserted."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch3",
+            "title": "CRUD Operations",
+            "description": "Learn how to perform basic database operations in MongoDB including inserting, reading, updating, and deleting documents, along with using query operators.",
+            "pages": [
+                {
+                    "id": "mongodb-ch3-page1",
+                    "title": "Insert Documents",
+                    "content": "MongoDB allows inserting documents into collections using methods like insertOne and insertMany.",
+                    "exampleCode": "// Insert one document\ndb.users.insertOne({ name: 'John', age: 25 });\n\n// Insert multiple documents\ndb.users.insertMany([\n  { name: 'Alice', age: 30 },\n  { name: 'Bob', age: 28 }\n]);",
+                    "keyPoints": [
+                        "Use insertOne for single document",
+                        "Use insertMany for multiple documents",
+                        "Creates collection automatically",
+                        "Documents are JSON-like"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method inserts multiple documents?",
+                            "options": [
+                                "insertOne",
+                                "insertAll",
+                                "insertMany",
+                                "addDocuments"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "insertMany is used to insert multiple documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch3-page2",
+                    "title": "Find (Read) Data",
+                    "content": "MongoDB uses find() and findOne() methods to retrieve data from collections.",
+                    "exampleCode": "// Find all documents\ndb.users.find();\n\n// Find one document\ndb.users.findOne({ name: 'John' });",
+                    "keyPoints": [
+                        "find() returns multiple documents",
+                        "findOne() returns single document",
+                        "Supports query filters",
+                        "Used for reading data"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method returns one document?",
+                            "options": [
+                                "find",
+                                "findOne",
+                                "get",
+                                "select"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "findOne returns a single document."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch3-page3",
+                    "title": "Update Documents",
+                    "content": "MongoDB allows updating documents using updateOne, updateMany, and replaceOne methods.",
+                    "exampleCode": "// Update one document\ndb.users.updateOne(\n  { name: 'John' },\n  { $set: { age: 26 } }\n);\n\n// Update multiple documents\ndb.users.updateMany(\n  { age: { $gt: 25 } },\n  { $set: { status: 'active' } }\n);",
+                    "keyPoints": [
+                        "updateOne modifies single document",
+                        "updateMany modifies multiple documents",
+                        "Uses $set operator",
+                        "Supports conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which operator updates fields?",
+                            "options": [
+                                "$update",
+                                "$set",
+                                "$modify",
+                                "$change"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "$set is used to update fields."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch3-page4",
+                    "title": "Delete Documents",
+                    "content": "MongoDB allows deleting documents using deleteOne and deleteMany methods.",
+                    "exampleCode": "// Delete one document\ndb.users.deleteOne({ name: 'John' });\n\n// Delete multiple documents\ndb.users.deleteMany({ age: { $lt: 25 } });",
+                    "keyPoints": [
+                        "deleteOne removes single document",
+                        "deleteMany removes multiple documents",
+                        "Uses conditions",
+                        "Permanent deletion"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method deletes multiple documents?",
+                            "options": [
+                                "deleteOne",
+                                "deleteMany",
+                                "removeAll",
+                                "drop"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "deleteMany removes multiple documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch3-page5",
+                    "title": "Query Operators",
+                    "content": "MongoDB provides query operators like $gt, $lt, $in, and $or to filter data effectively.",
+                    "exampleCode": "// Find users older than 25\ndb.users.find({ age: { $gt: 25 } });\n\n// Find users with multiple conditions\ndb.users.find({ $or: [{ age: 25 }, { name: 'Alice' }] });",
+                    "keyPoints": [
+                        "Used for filtering data",
+                        "Common operators: $gt, $lt, $in, $or",
+                        "Supports complex queries",
+                        "Improves flexibility"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does $gt mean?",
+                            "options": [
+                                "Less than",
+                                "Greater than",
+                                "Equal",
+                                "Not equal"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "$gt means greater than."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch4",
+            "title": "Data Modeling",
+            "description": "Learn how to design efficient data models in MongoDB. This module covers schema design, embedding vs referencing, relationships, validation, and best practices.",
+            "pages": [
+                {
+                    "id": "mongodb-ch4-page1",
+                    "title": "Schema Design",
+                    "content": "Schema design in MongoDB defines how data is structured within documents. Unlike SQL, MongoDB allows flexible schemas.",
+                    "exampleCode": "// Example schema-like document\n{\n  name: 'John',\n  age: 25,\n  email: 'john@example.com'\n}",
+                    "keyPoints": [
+                        "Flexible schema",
+                        "No strict structure required",
+                        "Can evolve over time",
+                        "Designed based on application needs"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is MongoDB schema design?",
+                            "options": [
+                                "Fixed table structure",
+                                "Flexible data structure",
+                                "Only relational mapping",
+                                "SQL query design"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MongoDB uses flexible schema design."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch4-page2",
+                    "title": "Embedding vs Referencing",
+                    "content": "MongoDB supports embedding (nested documents) and referencing (linking documents). Embedding stores related data together, while referencing uses IDs.",
+                    "exampleCode": "// Embedding\n{\n  name: 'John',\n  orders: [\n    { item: 'Laptop', price: 1000 }\n  ]\n}\n\n// Referencing\n{\n  name: 'John',\n  orderId: '123'\n}",
+                    "keyPoints": [
+                        "Embedding stores nested data",
+                        "Referencing links documents",
+                        "Embedding improves read performance",
+                        "Referencing avoids duplication"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which approach stores nested data?",
+                            "options": [
+                                "Referencing",
+                                "Embedding",
+                                "Indexing",
+                                "Sharding"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Embedding stores related data inside a document."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch4-page3",
+                    "title": "Relationships in MongoDB",
+                    "content": "MongoDB supports relationships like one-to-one, one-to-many, and many-to-many using embedding or referencing.",
+                    "exampleCode": "// One-to-many example\n{\n  name: 'John',\n  courses: ['Math', 'Science']\n}",
+                    "keyPoints": [
+                        "Supports different relationships",
+                        "Implemented using embedding or referencing",
+                        "Flexible relationship handling",
+                        "No joins like SQL"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How are relationships handled in MongoDB?",
+                            "options": [
+                                "Using joins",
+                                "Using embedding or referencing",
+                                "Using tables",
+                                "Using triggers"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "MongoDB uses embedding or referencing for relationships."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch4-page4",
+                    "title": "Data Validation",
+                    "content": "MongoDB allows validation rules to ensure data consistency. This can be done using schema validation.",
+                    "exampleCode": "// Example validation rule\ndb.createCollection('users', {\n  validator: {\n    $jsonSchema: {\n      bsonType: 'object',\n      required: ['name'],\n      properties: {\n        name: { bsonType: 'string' }\n      }\n    }\n  }\n});",
+                    "keyPoints": [
+                        "Ensures data consistency",
+                        "Uses JSON schema validation",
+                        "Prevents invalid data",
+                        "Optional but recommended"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of validation?",
+                            "options": [
+                                "Delete data",
+                                "Ensure correct data format",
+                                "Speed up queries",
+                                "Create indexes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Validation ensures correct data structure."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch4-page5",
+                    "title": "Best Practices",
+                    "content": "Good data modeling practices improve performance and scalability. Choose embedding or referencing wisely and design based on application needs.",
+                    "exampleCode": "// Best practice: Keep documents small and optimized\n{ name: 'User', email: 'user@example.com' }",
+                    "keyPoints": [
+                        "Design based on use case",
+                        "Avoid unnecessary nesting",
+                        "Optimize for queries",
+                        "Keep documents efficient"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a best practice in MongoDB?",
+                            "options": [
+                                "Use deep nesting always",
+                                "Ignore structure",
+                                "Optimize data model",
+                                "Avoid queries"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Optimizing data models improves performance."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch5",
+            "title": "Indexing & Performance",
+            "description": "Learn how to improve MongoDB performance using indexes, optimize queries, and analyze execution plans. Understand how indexing impacts read and write operations.",
+            "pages": [
+                {
+                    "id": "mongodb-ch5-page1",
+                    "title": "Indexing Basics",
+                    "content": "Indexing in MongoDB improves query performance by allowing faster data retrieval. It works similar to an index in a book.",
+                    "exampleCode": "// Create index\ndb.users.createIndex({ name: 1 });",
+                    "keyPoints": [
+                        "Improves query speed",
+                        "Used for faster lookups",
+                        "Works on specific fields",
+                        "Consumes additional storage"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is the purpose of indexing?",
+                            "options": [
+                                "Delete data",
+                                "Speed up queries",
+                                "Store data",
+                                "Create collections"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Indexing improves query performance."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch5-page2",
+                    "title": "Types of Indexes",
+                    "content": "MongoDB supports various types of indexes such as single-field, compound, text, and unique indexes.",
+                    "exampleCode": "// Compound index\ndb.users.createIndex({ name: 1, age: -1 });\n\n// Unique index\ndb.users.createIndex({ email: 1 }, { unique: true });",
+                    "keyPoints": [
+                        "Single-field index",
+                        "Compound index",
+                        "Text index for search",
+                        "Unique index prevents duplicates"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which index prevents duplicate values?",
+                            "options": [
+                                "Text index",
+                                "Compound index",
+                                "Unique index",
+                                "Normal index"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Unique index ensures no duplicate values."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch5-page3",
+                    "title": "Query Optimization",
+                    "content": "Query optimization involves writing efficient queries and using indexes to reduce execution time and resource usage.",
+                    "exampleCode": "// Inefficient\ndb.users.find();\n\n// Optimized\ndb.users.find({ age: { $gt: 25 } });",
+                    "keyPoints": [
+                        "Use indexes for filtering",
+                        "Avoid unnecessary data retrieval",
+                        "Use projections to limit fields",
+                        "Optimize query conditions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which query is optimized?",
+                            "options": [
+                                "Fetching all data",
+                                "Filtering required data",
+                                "No query",
+                                "Deleting data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Filtering reduces unnecessary data processing."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch5-page4",
+                    "title": "Performance Tuning",
+                    "content": "Performance tuning includes improving query speed, reducing resource usage, and optimizing database operations.",
+                    "exampleCode": "// Add index for performance\ndb.users.createIndex({ age: 1 });",
+                    "keyPoints": [
+                        "Improves database efficiency",
+                        "Reduces query execution time",
+                        "Uses indexing strategies",
+                        "Enhances scalability"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is performance tuning?",
+                            "options": [
+                                "Deleting data",
+                                "Improving performance",
+                                "Creating UI",
+                                "Running queries"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Performance tuning improves database efficiency."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch5-page5",
+                    "title": "Explain Query",
+                    "content": "The explain() method is used to analyze how MongoDB executes a query. It helps identify performance issues.",
+                    "exampleCode": "// Analyze query\ndb.users.find({ age: { $gt: 25 } }).explain('executionStats');",
+                    "keyPoints": [
+                        "Shows query execution plan",
+                        "Identifies bottlenecks",
+                        "Displays index usage",
+                        "Useful for optimization"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does explain() do?",
+                            "options": [
+                                "Executes query",
+                                "Deletes data",
+                                "Analyzes query execution",
+                                "Creates index"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "explain() analyzes query performance."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch6",
+            "title": "Aggregation Framework",
+            "description": "Learn how to process and transform data using MongoDB’s aggregation framework. This module covers pipelines, stages like $match, $group, $project, sorting, and real-world analytics queries.",
+            "pages": [
+                {
+                    "id": "mongodb-ch6-page1",
+                    "title": "Aggregation Pipeline",
+                    "content": "Aggregation pipeline processes documents through multiple stages where each stage transforms the data and passes it to the next stage.",
+                    "exampleCode": "// Basic aggregation pipeline\ndb.orders.aggregate([\n  { $match: { status: 'completed' } }\n]);",
+                    "keyPoints": [
+                        "Processes data in stages",
+                        "Each stage transforms data",
+                        "Similar to data pipelines",
+                        "Used for analytics"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is an aggregation pipeline?",
+                            "options": [
+                                "A table",
+                                "A series of data processing stages",
+                                "A query language",
+                                "A collection"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Aggregation pipeline processes data through stages."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch6-page2",
+                    "title": "$match Stage",
+                    "content": "The $match stage filters documents based on specified conditions, similar to the WHERE clause in SQL.",
+                    "exampleCode": "// Filter documents\ndb.orders.aggregate([\n  { $match: { amount: { $gt: 100 } } }\n]);",
+                    "keyPoints": [
+                        "Filters documents",
+                        "Similar to WHERE clause",
+                        "Improves performance",
+                        "Used at pipeline start"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does $match do?",
+                            "options": [
+                                "Sort data",
+                                "Filter data",
+                                "Group data",
+                                "Delete data"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "$match filters documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch6-page3",
+                    "title": "$group Stage",
+                    "content": "The $group stage groups documents by a specified field and performs aggregate operations like sum, count, and average.",
+                    "exampleCode": "// Group and count\ndb.orders.aggregate([\n  { $group: { _id: '$status', total: { $sum: 1 } } }\n]);",
+                    "keyPoints": [
+                        "Groups documents",
+                        "Performs aggregation",
+                        "Supports sum, avg, count",
+                        "Similar to GROUP BY"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which stage groups data?",
+                            "options": [
+                                "$match",
+                                "$group",
+                                "$project",
+                                "$sort"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "$group is used to group documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch6-page4",
+                    "title": "$project Stage",
+                    "content": "The $project stage is used to reshape documents by including, excluding, or modifying fields.",
+                    "exampleCode": "// Project fields\ndb.users.aggregate([\n  { $project: { name: 1, age: 1, _id: 0 } }\n]);",
+                    "keyPoints": [
+                        "Controls output fields",
+                        "Can rename fields",
+                        "Supports transformations",
+                        "Improves result clarity"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What does $project do?",
+                            "options": [
+                                "Deletes data",
+                                "Filters data",
+                                "Reshapes documents",
+                                "Groups data"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "$project reshapes output documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch6-page5",
+                    "title": "Sorting & Real-world Queries",
+                    "content": "Aggregation supports sorting and complex queries to generate reports and insights from data.",
+                    "exampleCode": "// Sort data\ndb.orders.aggregate([\n  { $sort: { amount: -1 } }\n]);\n\n// Combined example\ndb.orders.aggregate([\n  { $match: { status: 'completed' } },\n  { $group: { _id: '$userId', total: { $sum: '$amount' } } },\n  { $sort: { total: -1 } }\n]);",
+                    "keyPoints": [
+                        "Supports sorting with $sort",
+                        "Combines multiple stages",
+                        "Used for reporting",
+                        "Powerful analytics tool"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which stage sorts data?",
+                            "options": [
+                                "$group",
+                                "$match",
+                                "$sort",
+                                "$project"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "$sort is used to order data."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch7",
+            "title": "Authentication & Security",
+            "description": "Learn how to secure MongoDB databases using authentication, roles and permissions, encryption, environment variables, and best practices.",
+            "pages": [
+                {
+                    "id": "mongodb-ch7-page1",
+                    "title": "User Authentication",
+                    "content": "MongoDB supports authentication to ensure only authorized users can access the database. Users must provide valid credentials.",
+                    "exampleCode": "// Create user\ndb.createUser({\n  user: 'admin',\n  pwd: 'password',\n  roles: ['readWrite']\n});",
+                    "keyPoints": [
+                        "Prevents unauthorized access",
+                        "Uses username and password",
+                        "Supports multiple users",
+                        "Essential for production"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is authentication?",
+                            "options": [
+                                "Storing data",
+                                "Verifying user identity",
+                                "Deleting data",
+                                "Creating collections"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Authentication verifies user identity."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch7-page2",
+                    "title": "Roles & Permissions",
+                    "content": "MongoDB uses role-based access control (RBAC) to define what actions users can perform on databases.",
+                    "exampleCode": "// Grant role\ndb.grantRolesToUser('admin', [\n  { role: 'dbAdmin', db: 'testdb' }\n]);",
+                    "keyPoints": [
+                        "Controls access levels",
+                        "Supports role-based access",
+                        "Prevents misuse",
+                        "Granular permissions"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What controls user access?",
+                            "options": [
+                                "Indexes",
+                                "Roles and permissions",
+                                "Queries",
+                                "Collections"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Roles and permissions control access."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch7-page3",
+                    "title": "Data Security",
+                    "content": "Data security in MongoDB includes encryption, secure connections, and protecting sensitive information.",
+                    "exampleCode": "// Example: Use TLS connection\nmongosh \"mongodb+srv://cluster.mongodb.net\" --tls",
+                    "keyPoints": [
+                        "Encrypts data",
+                        "Uses secure connections (TLS/SSL)",
+                        "Protects sensitive information",
+                        "Prevents data breaches"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method secures data transmission?",
+                            "options": [
+                                "HTTP",
+                                "TLS/SSL",
+                                "FTP",
+                                "JSON"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "TLS/SSL encrypts data during transmission."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch7-page4",
+                    "title": "Environment Variables",
+                    "content": "Environment variables are used to store sensitive information like database credentials securely outside the code.",
+                    "exampleCode": "// .env file\nMONGO_URI=mongodb://localhost:27017/testdb\n\n// Access in Node.js\nrequire('dotenv').config();\nconsole.log(process.env.MONGO_URI);",
+                    "keyPoints": [
+                        "Stores sensitive data securely",
+                        "Avoids hardcoding credentials",
+                        "Used in production apps",
+                        "Improves security"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Why use environment variables?",
+                            "options": [
+                                "To design UI",
+                                "To secure credentials",
+                                "To run queries",
+                                "To create indexes"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Environment variables protect sensitive data."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch7-page5",
+                    "title": "Best Practices",
+                    "content": "Following best practices ensures MongoDB security and performance. This includes using strong passwords, limiting access, and regular backups.",
+                    "exampleCode": "// Best practice: Limit access\n// Grant minimal permissions only",
+                    "keyPoints": [
+                        "Use strong passwords",
+                        "Limit user access",
+                        "Enable authentication",
+                        "Perform regular backups"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a security best practice?",
+                            "options": [
+                                "Use weak passwords",
+                                "Give full access to all users",
+                                "Limit permissions",
+                                "Disable authentication"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Limiting permissions improves security."
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "id": "mongodb-ch8",
+            "title": "Node.js Integration",
+            "description": "Learn how to integrate MongoDB with Node.js applications using Mongoose. Understand schemas, models, CRUD operations, API integration, and error handling.",
+            "pages": [
+                {
+                    "id": "mongodb-ch8-page1",
+                    "title": "Connecting MongoDB with Node.js",
+                    "content": "MongoDB can be connected to Node.js applications using Mongoose or the native MongoDB driver.",
+                    "exampleCode": "const mongoose = require('mongoose');\n\nmongoose.connect('mongodb://localhost:27017/testdb')\n  .then(() => console.log('Connected'))\n  .catch(err => console.log(err));",
+                    "keyPoints": [
+                        "Uses mongoose or native driver",
+                        "Connection via URI",
+                        "Supports local and cloud DB",
+                        "Foundation for backend apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which library is commonly used to connect MongoDB with Node.js?",
+                            "options": [
+                                "fs",
+                                "mongoose",
+                                "http",
+                                "path"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Mongoose is commonly used for MongoDB integration."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch8-page2",
+                    "title": "Mongoose Schemas",
+                    "content": "Schemas define the structure of documents in a collection, including fields and data types.",
+                    "exampleCode": "const userSchema = new mongoose.Schema({\n  name: String,\n  email: String,\n  age: Number\n});",
+                    "keyPoints": [
+                        "Defines document structure",
+                        "Specifies data types",
+                        "Supports validation",
+                        "Improves data consistency"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a schema?",
+                            "options": [
+                                "A query",
+                                "A document structure",
+                                "A database",
+                                "A server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "Schema defines the structure of documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch8-page3",
+                    "title": "Mongoose Models",
+                    "content": "Models are constructors created from schemas and are used to interact with collections.",
+                    "exampleCode": "const User = mongoose.model('User', userSchema);\n\nconst user = new User({ name: 'John', age: 25 });\nuser.save();",
+                    "keyPoints": [
+                        "Created from schemas",
+                        "Used for database operations",
+                        "Represents collections",
+                        "Simplifies CRUD operations"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "What is a model in Mongoose?",
+                            "options": [
+                                "A database",
+                                "A schema",
+                                "A constructor for documents",
+                                "A query"
+                            ],
+                            "correctAnswer": 2,
+                            "explanation": "Models are constructors used to create and manage documents."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch8-page4",
+                    "title": "CRUD with Mongoose",
+                    "content": "Mongoose provides easy methods for performing CRUD operations on MongoDB collections.",
+                    "exampleCode": "// Create\nUser.create({ name: 'Alice' });\n\n// Read\nUser.find();\n\n// Update\nUser.updateOne({ name: 'Alice' }, { age: 30 });\n\n// Delete\nUser.deleteOne({ name: 'Alice' });",
+                    "keyPoints": [
+                        "Simplifies CRUD operations",
+                        "Uses model methods",
+                        "Readable syntax",
+                        "Widely used in backend apps"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "Which method reads data?",
+                            "options": [
+                                "create",
+                                "find",
+                                "updateOne",
+                                "deleteOne"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "find() is used to read data."
+                        }
+                    ]
+                },
+                {
+                    "id": "mongodb-ch8-page5",
+                    "title": "API Integration & Error Handling",
+                    "content": "MongoDB is commonly used with Express APIs. Proper error handling ensures stability and reliability of applications.",
+                    "exampleCode": "app.get('/users', async (req, res) => {\n  try {\n    const users = await User.find();\n    res.json(users);\n  } catch (err) {\n    res.status(500).json({ error: err.message });\n  }\n});",
+                    "keyPoints": [
+                        "Used with Express APIs",
+                        "Handles async operations",
+                        "Use try/catch for errors",
+                        "Ensures stable applications"
+                    ],
+                    "quiz": [
+                        {
+                            "question": "How do you handle errors in async APIs?",
+                            "options": [
+                                "Ignore errors",
+                                "Use try/catch",
+                                "Delete data",
+                                "Stop server"
+                            ],
+                            "correctAnswer": 1,
+                            "explanation": "try/catch is used to handle async errors."
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "interviewQuestions": [
+        {
+            "question": "What is MongoDB?",
+            "answer": "MongoDB is a NoSQL database that stores data in flexible, JSON-like documents instead of tables.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is NoSQL?",
+            "answer": "NoSQL databases store data in non-tabular formats like documents, key-value pairs, or graphs.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a document in MongoDB?",
+            "answer": "A document is a JSON-like structure used to store data in MongoDB collections.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is a collection?",
+            "answer": "A collection is a group of documents, similar to a table in relational databases.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the default port of MongoDB?",
+            "answer": "The default port of MongoDB is 27017.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is the difference between MongoDB and MySQL?",
+            "answer": "MongoDB is a NoSQL database using documents, while MySQL is a relational database using tables and structured schemas.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is insertOne?",
+            "answer": "insertOne is a method used to insert a single document into a collection.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is find()?",
+            "answer": "find() is used to retrieve multiple documents from a collection.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is updateOne?",
+            "answer": "updateOne is used to update a single document in a collection.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is deleteOne?",
+            "answer": "deleteOne is used to remove a single document from a collection.",
+            "difficulty": "beginner"
+        },
+        {
+            "question": "What is indexing in MongoDB?",
+            "answer": "Indexing improves query performance by allowing faster data retrieval.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is a compound index?",
+            "answer": "A compound index is an index on multiple fields used to optimize queries.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is the aggregation framework?",
+            "answer": "It is a framework used to process and transform data through multiple pipeline stages.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What does $match do?",
+            "answer": "$match filters documents in an aggregation pipeline.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What does $group do?",
+            "answer": "$group groups documents and performs aggregate operations like sum and count.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is embedding in MongoDB?",
+            "answer": "Embedding stores related data within a single document.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is referencing?",
+            "answer": "Referencing links documents using IDs instead of embedding data.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is Mongoose?",
+            "answer": "Mongoose is an ODM library used to interact with MongoDB in Node.js.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is schema validation?",
+            "answer": "Schema validation ensures documents follow a defined structure.",
+            "difficulty": "intermediate"
+        },
+        {
+            "question": "What is replication in MongoDB?",
+            "answer": "Replication is the process of copying data across multiple servers for high availability.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is sharding?",
+            "answer": "Sharding distributes data across multiple machines to handle large datasets.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is MongoDB Atlas?",
+            "answer": "MongoDB Atlas is a cloud-based database service for deploying and managing MongoDB.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between embedding and referencing?",
+            "answer": "Embedding stores related data together, while referencing links data using IDs.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a capped collection?",
+            "answer": "A capped collection is a fixed-size collection that overwrites old documents when full.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is a cursor in MongoDB?",
+            "answer": "A cursor is a pointer to the result set of a query, allowing iteration over documents.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is explain()?",
+            "answer": "explain() shows how MongoDB executes a query and helps optimize performance.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "How do you secure MongoDB?",
+            "answer": "By using authentication, roles, encryption, and restricting access.",
+            "difficulty": "advanced"
+        },
+        {
+            "question": "What is the difference between $push and $addToSet?",
+            "answer": "$push adds values to an array, while $addToSet prevents duplicate entries.",
+            "difficulty": "advanced"
+        }
+    ]
+}
