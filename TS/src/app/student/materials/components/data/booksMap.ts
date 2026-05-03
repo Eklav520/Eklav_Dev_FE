@@ -8,6 +8,7 @@ import { htmlBook } from "./htmlBook"
 import { csharpBook } from "./csharpBook"
 import dsaBook from "./dsaBook.json"
 import genAI from "./genAI.json"
+import dataScience from "./dataScience.json"
 
 
 export const booksMap: Record<string, any> = {
@@ -21,4 +22,5 @@ export const booksMap: Record<string, any> = {
   csharp: csharpBook,
   dsa: dsaBook,
   genAI: genAI,
+  datascience: dataScience
 }

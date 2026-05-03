@@ -26,10 +26,10 @@ export const booksList = [
   { id: "csharp", title: "C# Programming", image: csharpBook },
   { id: "dsa", title: "Data Structures & Algorithms", image: dsaBook },
   { id: "genAI", title: "Generative AI", image: genAI },
+  { id: "datascience", title: "Data Science Foundations", image: dataScienceBook },
   /* { id: "mysql", title: "MySQL Databases", image: mysqlBook },
   { id: "aiml", title: "AI & Machine Learning", image: aiMlBook },
   { id: "genai", title: "Generative AI", image: genAiBook },
-  { id: "datascience", title: "Data Science Foundations", image: dataScienceBook },
   { id: "wordpress", title: "WordPress Development", image: wordpressBook },
   { id: "uiux", title: "UI/UX Design", image: uiuxBook },
   { id: "csharp", title: "C# Programming", image: csharpBook }, */
