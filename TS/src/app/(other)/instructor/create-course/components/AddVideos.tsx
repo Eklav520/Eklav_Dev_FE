@@ -164,7 +164,7 @@ const AddVideos = ({
                 <input
                   type="file"
                   className="form-control mb-3"
-                  accept="video/mp4,video/webm,video/ogg"
+                  accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-msvideo,video/x-matroska,video/x-ms-wmv,video/mpeg,.mp4,.mov,.avi,.mkv,.wmv,.webm,.mpeg,.mpg"
                   multiple
                   onChange={handleFileSelect}
                 />
