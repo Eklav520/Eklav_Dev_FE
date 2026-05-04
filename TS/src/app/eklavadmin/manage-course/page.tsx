@@ -152,38 +152,58 @@ const ManageCoursePage = () => {
   }
 
 
-  // Upload video function
+  // Upload video via presigned S3 POST — bypasses Nginx, no server memory used
   const handleUploadVideo = async (file: File, description: string): Promise<void> => {
-    if (!selectedCourse) {
-      throw new Error('No course selected')
-    }
+    if (!selectedCourse) throw new Error('No course selected')
 
     setUploadingVideo(true)
     setUploadProgress(0)
 
     try {
-      const formData = new FormData()
-      formData.append('video', file)
-      formData.append('description', description)
-
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) { clearInterval(progressInterval); return 90 }
-          return prev + 10
-        })
-      }, 300)
-
-      const res = await fetch(`${baseURL}/courses/${selectedCourse._id}/video`, {
+      // Step 1: Get presigned POST URL from backend
+      const presignRes = await fetch(`${baseURL}/s3/presign/course`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type || 'video/mp4',
+          courseTitle: selectedCourse.title,
+          assetType: 'video',
+        }),
+      })
+      if (!presignRes.ok) throw new Error('Failed to get upload URL')
+      const presignData = await presignRes.json()
+
+      // Step 2: Upload directly to S3 with real progress (XHR)
+      const s3Key: string = await new Promise((resolve, reject) => {
+        const formData = new FormData()
+        Object.entries(presignData.fields as Record<string, string>).forEach(([k, v]) =>
+          formData.append(k, v)
+        )
+        formData.append('file', file)
+
+        const xhr = new XMLHttpRequest()
+        xhr.open('POST', presignData.uploadUrl)
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
+        }
+        xhr.onload = () =>
+          xhr.status === 204 || xhr.status === 201
+            ? resolve(presignData.key)
+            : reject(new Error(`S3 upload failed: ${xhr.status}`))
+        xhr.onerror = () => reject(new Error('S3 upload failed'))
+        xhr.send(formData)
       })
 
-      clearInterval(progressInterval)
-
+      // Step 3: Register the S3 key with the course
+      const res = await fetch(`${baseURL}/courses/${selectedCourse._id}/video`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ key: s3Key, description }),
+      })
       if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.message || 'Upload failed')
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.message || 'Failed to register video')
       }
 
       const data = await res.json()
@@ -193,7 +213,7 @@ const ManageCoursePage = () => {
       const newVideo: Video = {
         _id: data._id || `video-${timestamp}`,
         video: data.url || data.video || '',
-        description: description,
+        description,
         progress: 0
       }
 
