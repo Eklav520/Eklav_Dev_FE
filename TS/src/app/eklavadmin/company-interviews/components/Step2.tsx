@@ -6,8 +6,20 @@ const Step2 = ({ formData, setFormData }: any) => {
     const [previewData, setPreviewData] = useState<any>({});
     const [errors, setErrors] = useState<any>({});
 
-    // ✅ Expected columns per round
+    // ✅ Expected columns per round (explanation is optional for MCQ/CUSTOM)
     const getExpectedColumns = (type: string) => {
+        switch (type) {
+            case "MCQ":
+                return ["question", "option1", "option2", "option3", "option4", "correctAnswer", "explanation (optional)"];
+            case "CODING":
+                return ["title", "description", "input", "output"];
+            default:
+                return ["question", "expectedAnswer", "explanation (optional)"];
+        }
+    };
+
+    // Required columns used for validation (excludes optional ones)
+    const getRequiredColumns = (type: string) => {
         switch (type) {
             case "MCQ":
                 return ["question", "option1", "option2", "option3", "option4", "correctAnswer"];
@@ -41,13 +53,12 @@ const Step2 = ({ formData, setFormData }: any) => {
     // ✅ Validate + Process
     const validateAndProcess = (data: any[], roundIndex: number) => {
         const round = formData.rounds[roundIndex];
-        const expectedCols = getExpectedColumns(round.roundType);
 
         if (!data.length) return;
 
         const fileCols = Object.keys(data[0]);
 
-        const missingCols = expectedCols.filter(
+        const missingCols = getRequiredColumns(round.roundType).filter(
             (col) => !fileCols.includes(col)
         );
 
@@ -68,6 +79,7 @@ const Step2 = ({ formData, setFormData }: any) => {
                 question: row.question,
                 options: [row.option1, row.option2, row.option3, row.option4],
                 correctAnswer: row.correctAnswer,
+                ...(row.explanation ? { explanation: row.explanation } : {}),
             }));
         } else if (round.roundType === "CODING") {
             formatted = data.map((row) => ({
@@ -80,6 +92,7 @@ const Step2 = ({ formData, setFormData }: any) => {
             formatted = data.map((row) => ({
                 question: row.question,
                 expectedAnswer: row.expectedAnswer,
+                ...(row.explanation ? { explanation: row.explanation } : {}),
             }));
         }
 
@@ -117,7 +130,8 @@ const Step2 = ({ formData, setFormData }: any) => {
                         />
                         {round.questions?.length > 0 && (
                             <p style={{ color: "green", marginTop: "8px" }}>
-                                ✅ {round.questions.length} questions uploaded
+                                ✅ {round.questions.length} questions loaded
+                                {' '}<small className="text-muted">(upload a new file to replace)</small>
                             </p>
                         )}
 
