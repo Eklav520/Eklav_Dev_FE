@@ -170,9 +170,9 @@ const EditCourseModal = ({
         return
       }
       
-      // Check file size (limit to 500MB)
-      if (file.size > 500 * 1024 * 1024) {
-        alert('File size too large. Please select a video under 500MB')
+      // Check file size (limit to 1.5GB)
+      if (file.size > 1.5 * 1024 * 1024 * 1024) {
+        alert('File size too large. Please select a video under 1.5GB')
         return
       }
       
@@ -770,7 +770,7 @@ Hands-on Coding & Practice Sessions
                                 disabled={uploadingVideo}
                               />
                               <Form.Text className="text-muted">
-                                Supported formats: MP4, MOV, AVI, WMV, etc. (Max 500MB)
+                                Supported formats: MP4, MOV, AVI, WMV, etc. (Max 1.5GB)
                               </Form.Text>
                             </Form.Group>
                           </Col>
