@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Eklav_Project/Eklav_Dev_BE/**)"
+    ]
+  }
+}
