@@ -1,53 +1,41 @@
+import React from 'react';
 import ResumeClassic from './ResumeClassic';
 import ResumeModern from './ResumeModern';
+import ResumeProfessional from './ResumeProfessional';
+import ResumeElegant from './ResumeElegant';
 import ResumeMinimalist from './ResumeMinimalist';
 import { ResumeData } from './ResumeData';
-import ResumeElegant from './ResumeElegant';
-import ResumeProfessional from './ResumeProfessional';
-import { Component } from 'react';
-import ResumeCompact from './ResumeCompact';
-import ResumeCentered from './ResumeCentered';
-import ResumeSplit from './ResumeSplit';
-import ResumeDark from './ResumeDark';
-import ResumeColorBar from './ResumeColorBar';
-import ResumeSplitLayout from './ResumeSplitLayout';
 
-export type TemplateKey = 'classic' | 'modern' | 'minimalist' | 'ResumeProfessional' | 'ResumeCompact' | 'elegant' | 'ResumeCentered' | 'ResumeSplit' | 'ResumeDark' | 'ResumeColorBar' | 'ResumeSplitLayout';
+export type TemplateKey = 'classic' | 'modern' | 'executive' | 'elegant' | 'creative';
 
 export const templateList: Record<TemplateKey, {
   label: string;
+  description: string;
   component: React.FC<{ data: ResumeData }>;
 }> = {
   classic: {
     label: 'Classic',
+    description: 'Traditional serif design — ATS-friendly & timeless',
     component: ResumeClassic,
   },
   modern: {
     label: 'Modern',
+    description: 'Clean blue header with pill-style skill badges',
     component: ResumeModern,
   },
-  minimalist: {
-    label: 'Minimalist',
-    component: ResumeMinimalist,
-    
-  },
-  ResumeProfessional:{
-     label: 'ResumeProfessional',
+  executive: {
+    label: 'Executive',
+    description: 'Two-column with dark sidebar — premium corporate look',
     component: ResumeProfessional,
   },
-
-  ResumeCompact:{
-    label: 'ResumeCompact',
-    component: ResumeCompact,
+  elegant: {
+    label: 'Elegant',
+    description: 'Ultra-clean minimal layout with generous whitespace',
+    component: ResumeElegant,
   },
-
-  ResumeCentered:{
-    label:'ResumeCentered',
-    component: ResumeCentered,
+  creative: {
+    label: 'Creative',
+    description: 'Teal gradient header with bold left-accent sections',
+    component: ResumeMinimalist,
   },
-  elegant: { label: 'Elegant', component: ResumeElegant },
-  ResumeDark: { label: 'ResumeDark', component: ResumeDark },
-  ResumeSplit: { label: 'ResumeSplit', component: ResumeSplit },
-  ResumeColorBar: { label: 'ResumeColorBar', component: ResumeColorBar },
-  ResumeSplitLayout: { label: 'ResumeSplitLayout', component: ResumeSplitLayout },
 };

@@ -10,7 +10,7 @@ import { ResumeData } from './ResumeData'
 import TemplateGallery from './TemplateGallery'
 import { TemplateKey, templateList } from './templateList'
 import './resume-builder.css'
-import { Container, Dropdown } from 'react-bootstrap' // if you're using react-bootstrap
+import { Container } from 'react-bootstrap'
 
 export interface StepProps {
   data: ResumeData
@@ -81,19 +81,19 @@ const ResumeBuilder: React.FC = () => {
   return (
     <Container fluid className="resume-builder-page">
       <div className="container-fluid py-4 resume-builder-content">
-        <h5>Please Select the Template</h5>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <select
-            className="form-select w-auto"
-            aria-label="Please Select the Template"
-            value={selectedTemplate ?? ''}
-            onChange={(e) => setSelectedTemplate(e.target.value as TemplateKey)}>
-            {Object.entries(templateList).map(([key, { label }]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, color: '#aaa' }}>Template:</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#f0f0f0', background: '#1e1e28', border: '1px solid #2a2a32', borderRadius: 8, padding: '4px 14px' }}>
+              {templateList[selectedTemplate].label}
+            </span>
+          </div>
+          <button
+            style={{ fontSize: 12, fontWeight: 600, color: '#ff6b35', background: 'transparent', border: '1px solid #ff6b3540', borderRadius: 8, padding: '5px 14px', cursor: 'pointer' }}
+            onClick={() => setSelectedTemplate(null)}
+          >
+            ← Change Template
+          </button>
         </div>
         {/* Stepper */}
         <div className="d-flex justify-content-between align-items-center mb-4 position-relative" style={{ maxWidth: 1000, margin: '0 auto' }}>

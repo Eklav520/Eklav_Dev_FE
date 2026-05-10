@@ -1,134 +1,102 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
 
-const textColor = '#212529'
+// Template 2 — Modern Blue (clean sans-serif, colored header, pill skills)
+const accent = '#1d4ed8'
 
 const ResumeModern: React.FC<{ data: ResumeData }> = ({ data }) => {
-  const displayName = [data.fullName, data.surname].filter(Boolean).join(' ')
+  const name = [data.fullName, data.surname].filter(Boolean).join(' ')
+  const location = [data.city, data.country].filter(Boolean).join(', ')
+
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 4, height: 18, background: accent, borderRadius: 2, flexShrink: 0 }} />
+        <span style={{ fontSize: 12, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: '#dbeafe' }} />
+      </div>
+      {children}
+    </div>
+  )
+
+  const Bullet = ({ text }: { text: string }) => (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'flex-start' }}>
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0, marginTop: 5 }} />
+      <span style={{ fontSize: 11, color: '#374151', lineHeight: 1.7 }}>{text}</span>
+    </div>
+  )
 
   return (
-    <div
-      className="resume-paper"
-      style={{
-        fontFamily: 'Arial, sans-serif',
-        color: textColor,
-        padding: '40px',
-        backgroundColor: '#ffffff',
-        lineHeight: '1.6',
-        maxWidth: '900px',
-        margin: '0 auto',
-        border: '1px solid #dddddd',
-        borderRadius: '8px',
-        boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
-      }}
-    >
-      {/* ================= Header ================= */}
-      <div
-        style={{
-          backgroundColor: '#007bff',
-          color: '#ffffff',
-          padding: '20px',
-          borderRadius: '8px 8px 0 0',
-        }}
-      >
-        {displayName && (
-          <h1 style={{ marginBottom: '4px', fontWeight: 'bold' }}>
-            {displayName}
-          </h1>
-        )}
+    <div style={{ fontFamily: '"Segoe UI","Helvetica Neue",Arial,sans-serif', background: '#fff', color: '#1f2937', maxWidth: 794, margin: '0 auto', minHeight: 1122, boxSizing: 'border-box' }}>
 
-        <p style={{ marginTop: '4px', fontSize: '14px' }}>
-          {data.email && <>{data.email}</>}
-          {data.email && data.phone && ' | '}
-          {data.phone && <>{data.phone}</>}
-          {(data.email || data.phone) && data.linkedin && ' | '}
-          {data.linkedin && <>{data.linkedin}</>}
-        </p>
+      {/* ── Header Band ── */}
+      <div style={{ background: accent, padding: '30px 40px 24px', position: 'relative' }}>
+        {name && <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: 0.5, marginBottom: 2 }}>{name}</div>}
+        {data.role && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginBottom: 10 }}>{data.role}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: 10.5, color: 'rgba(255,255,255,0.8)' }}>
+          {data.email    && <span>✉ {data.email}</span>}
+          {data.phone    && <span>☏ {data.phone}</span>}
+          {data.linkedin && <span>🔗 {data.linkedin}</span>}
+          {location      && <span>📍 {location}</span>}
+        </div>
       </div>
 
-      {/* ================= Objective ================= */}
-      {data.objective && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            Objective
-          </h3>
-          <p style={{ color: textColor }}>{data.objective}</p>
-        </>
-      )}
+      <div style={{ padding: '28px 40px' }}>
 
-      {/* ================= Summary ================= */}
-      {data.summary && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            AI Summary
-          </h3>
-          <p style={{ color: textColor }}>{data.summary}</p>
-        </>
-      )}
+        {/* ── Summary ── */}
+        {data.summary && (
+          <Section title="About Me">
+            <p style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.8, margin: 0, textAlign: 'justify' }}>{data.summary}</p>
+          </Section>
+        )}
 
-      {/* ================= Skills ================= */}
-      {!!data.skills?.length && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            Skills
-          </h3>
-          <ul>
-            {data.skills.map((skill, i) => (
-              <li key={i} style={{ color: textColor }}>
-                {skill}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {/* ── Skills ── */}
+        {!!data.skills?.length && (
+          <Section title="Skills">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px' }}>
+              {data.skills.map((s, i) => (
+                <span key={i} style={{ fontSize: 10.5, background: '#eff6ff', color: accent, border: `1px solid #bfdbfe`, borderRadius: 20, padding: '3px 12px', fontWeight: 600 }}>{s}</span>
+              ))}
+            </div>
+          </Section>
+        )}
 
-      {/* ================= Education ================= */}
-      {!!data.education?.length && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            Education
-          </h3>
-          <ul>
-            {data.education.map((edu, i) => (
-              <li key={i} style={{ color: textColor }}>
-                {edu}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {/* ── Experience ── */}
+        {!!data.experience?.length && (
+          <Section title="Experience">
+            {data.experience.map((e, i) => <Bullet key={i} text={e} />)}
+          </Section>
+        )}
 
-      {/* ================= Experience ================= */}
-      {!!data.experience?.length && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            Experience
-          </h3>
-          <ul>
-            {data.experience.map((exp, i) => (
-              <li key={i} style={{ color: textColor }}>
-                {exp}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {/* ── Education ── */}
+        {!!data.education?.length && (
+          <Section title="Education">
+            {data.education.map((e, i) => <Bullet key={i} text={e} />)}
+          </Section>
+        )}
 
-      {/* ================= Projects ================= */}
-      {!!data.projects?.length && (
-        <>
-          <h3 style={{ fontWeight: 'bold', fontSize: '18px', marginTop: '20px', color: textColor }}>
-            Projects
-          </h3>
-          <ul>
-            {data.projects.map((proj, i) => (
-              <li key={i} style={{ color: textColor }}>
-                {proj}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+        {/* ── Projects ── */}
+        {!!data.projects?.length && (
+          <Section title="Projects">
+            {data.projects.map((p, i) => <Bullet key={i} text={p} />)}
+          </Section>
+        )}
+
+        {/* ── Certifications ── */}
+        {!!data.certifications?.length && (
+          <Section title="Certifications">
+            {data.certifications.map((c, i) => <Bullet key={i} text={c} />)}
+          </Section>
+        )}
+
+        {/* ── Extra ── */}
+        {(!!data.languages?.length || !!data.hobbies?.length) && (
+          <Section title="Additional">
+            {!!data.languages?.length && <div style={{ fontSize: 11, marginBottom: 4 }}><strong>Languages:</strong> {data.languages.join(', ')}</div>}
+            {!!data.hobbies?.length   && <div style={{ fontSize: 11 }}><strong>Interests:</strong> {data.hobbies.join(', ')}</div>}
+          </Section>
+        )}
+      </div>
     </div>
   )
 }

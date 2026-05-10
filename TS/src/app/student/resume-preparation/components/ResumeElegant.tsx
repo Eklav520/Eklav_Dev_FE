@@ -1,221 +1,101 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
 
-const textColor = '#212529'
+// Template 4 — Elegant Minimal (ultra-clean, slate accent, generous whitespace)
+const accent = '#0f172a'
+const muted  = '#64748b'
+const line   = '#e2e8f0'
 
 const ResumeElegant: React.FC<{ data: ResumeData }> = ({ data }) => {
-  const displayName = [data.fullName, data.surname].filter(Boolean).join(' ')
+  const name = [data.fullName, data.surname].filter(Boolean).join(' ')
+  const location = [data.city, data.country].filter(Boolean).join(', ')
 
-  const initials = displayName
-    ? displayName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-    : 'A'
+  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+        <span style={{ fontSize: 9.5, fontWeight: 700, color: muted, textTransform: 'uppercase', letterSpacing: '0.18em', whiteSpace: 'nowrap' }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: line }} />
+      </div>
+      {children}
+    </div>
+  )
+
+  const Bullet = ({ text }: { text: string }) => (
+    <div style={{ display: 'flex', gap: 10, marginBottom: 6, alignItems: 'flex-start' }}>
+      <div style={{ width: 1.5, height: 12, background: '#94a3b8', flexShrink: 0, marginTop: 4 }} />
+      <span style={{ fontSize: 11, color: '#334155', lineHeight: 1.7 }}>{text}</span>
+    </div>
+  )
 
   return (
-    <div
-      className="resume-paper"
-      style={{
-        display: 'flex',
-        fontFamily: 'Segoe UI, sans-serif',
-        maxWidth: '900px',
-        margin: '0 auto',
-        backgroundColor: '#ffffff',
-        color: textColor,
-        border: '1px solid #dddddd',
-        boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-      }}
-    >
-      {/* ================= Sidebar ================= */}
-      <div
-        style={{
-          backgroundColor: '#ffffff',
-          padding: '30px',
-          width: '260px',
-          textAlign: 'center',
-          borderRight: '1px solid #e5e5e5',
-          color: textColor,
-        }}
-      >
-        {/* Avatar */}
-        <div
-          style={{
-            backgroundColor: '#007bff',
-            color: '#ffffff',
-            borderRadius: '50%',
-            width: '100px',
-            height: '100px',
-            lineHeight: '100px',
-            fontSize: '36px',
-            margin: '0 auto 20px',
-            fontWeight: 'bold',
-          }}
-        >
-          {initials}
+    <div style={{ fontFamily: '"Helvetica Neue",Helvetica,Arial,sans-serif', background: '#fff', color: accent, padding: '44px 48px', maxWidth: 794, margin: '0 auto', minHeight: 1122, boxSizing: 'border-box' }}>
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 30 }}>
+        {name && <div style={{ fontSize: 30, fontWeight: 300, color: accent, letterSpacing: '-0.5px', marginBottom: 3 }}>{name}</div>}
+        {data.role && <div style={{ fontSize: 12.5, color: '#3b82f6', fontWeight: 600, marginBottom: 10, letterSpacing: '0.04em' }}>{data.role}</div>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 20px', fontSize: 10.5, color: muted }}>
+          {data.email    && <span>{data.email}</span>}
+          {data.phone    && <span>{data.phone}</span>}
+          {data.linkedin && <span>{data.linkedin}</span>}
+          {location      && <span>{location}</span>}
         </div>
-
-        {displayName && (
-          <h4 style={{ marginBottom: '6px', fontWeight: 600, color: textColor }}>
-            {displayName}
-          </h4>
-        )}
-
-        {data.role && (
-          <small style={{ color: '#6c757d' }}>{data.role}</small>
-        )}
-
-        <hr style={{ margin: '20px 0' }} />
-
-        <p style={{ fontSize: '14px', lineHeight: '1.6', color: textColor }}>
-          {data.email && <>{data.email}<br /></>}
-          {data.phone && <>{data.phone}<br /></>}
-          {(data.city || data.country) && (
-            <>
-              {data.city}
-              {data.city && data.country ? ', ' : ''}
-              {data.country}
-              {data.pinCode ? ` - ${data.pinCode}` : ''}
-              <br />
-            </>
-          )}
-          {data.linkedin && <>{data.linkedin}</>}
-        </p>
+        <div style={{ height: 1, background: accent, marginTop: 14 }} />
       </div>
 
-      {/* ================= Main Content ================= */}
-      <div
-        style={{
-          padding: '30px',
-          flexGrow: 1,
-          backgroundColor: '#ffffff',
-          color: textColor,
-        }}
-      >
-        {data.objective && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Objective
-            </h2>
-            <p style={{ color: textColor }}>{data.objective}</p>
-          </>
-        )}
+      {/* ── Summary ── */}
+      {data.summary && (
+        <Section title="Summary">
+          <p style={{ fontSize: 11, color: '#475569', lineHeight: 1.8, margin: 0, textAlign: 'justify' }}>{data.summary}</p>
+        </Section>
+      )}
 
-        {data.summary && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Summary
-            </h2>
-            <p style={{ color: textColor }}>{data.summary}</p>
-          </>
-        )}
+      {/* ── Experience ── */}
+      {!!data.experience?.length && (
+        <Section title="Experience">
+          {data.experience.map((e, i) => <Bullet key={i} text={e} />)}
+        </Section>
+      )}
 
-        {!!data.skills?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Skills
-            </h2>
-            <ul style={{ columns: 2, paddingLeft: '20px', color: textColor }}>
-              {data.skills.map((skill, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {skill}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+      {/* ── Education ── */}
+      {!!data.education?.length && (
+        <Section title="Education">
+          {data.education.map((e, i) => <Bullet key={i} text={e} />)}
+        </Section>
+      )}
 
-        {!!data.education?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Education
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.education.map((edu, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {edu}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+      {/* ── Skills ── */}
+      {!!data.skills?.length && (
+        <Section title="Skills">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px' }}>
+            {data.skills.map((s, i) => (
+              <span key={i} style={{ fontSize: 10.5, color: '#334155', background: '#f8fafc', border: `1px solid ${line}`, borderRadius: 4, padding: '3px 11px' }}>{s}</span>
+            ))}
+          </div>
+        </Section>
+      )}
 
-        {!!data.experience?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Experience
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.experience.map((exp, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {exp}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+      {/* ── Projects ── */}
+      {!!data.projects?.length && (
+        <Section title="Projects">
+          {data.projects.map((p, i) => <Bullet key={i} text={p} />)}
+        </Section>
+      )}
 
-        {!!data.projects?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Projects
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.projects.map((proj, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {proj}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
+      {/* ── Certifications ── */}
+      {!!data.certifications?.length && (
+        <Section title="Certifications">
+          {data.certifications.map((c, i) => <Bullet key={i} text={c} />)}
+        </Section>
+      )}
 
-        {!!data.certifications?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Certifications
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.certifications.map((cert, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {cert}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {!!data.languages?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Languages
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.languages.map((lang, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {lang}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {!!data.hobbies?.length && (
-          <>
-            <h2 style={{ borderBottom: '2px solid #007bff', color: textColor }}>
-              Hobbies
-            </h2>
-            <ul style={{ paddingLeft: '20px' }}>
-              {data.hobbies.map((hobby, i) => (
-                <li key={i} style={{ color: textColor }}>
-                  {hobby}
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
+      {/* ── Extra ── */}
+      {(!!data.languages?.length || !!data.hobbies?.length) && (
+        <Section title="Additional">
+          {!!data.languages?.length && <div style={{ fontSize: 11, marginBottom: 4, color: '#475569' }}><strong style={{ color: accent }}>Languages:</strong> {data.languages.join(' · ')}</div>}
+          {!!data.hobbies?.length   && <div style={{ fontSize: 11, color: '#475569' }}><strong style={{ color: accent }}>Interests:</strong> {data.hobbies.join(' · ')}</div>}
+        </Section>
+      )}
     </div>
   )
 }
