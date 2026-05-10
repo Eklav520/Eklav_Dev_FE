@@ -103,8 +103,6 @@ const ManageCoursePage = () => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [uploadingVideo, setUploadingVideo] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   const { user } = useAuthContext();
   const token = user?.token;
 
@@ -153,11 +151,12 @@ const ManageCoursePage = () => {
 
 
   // Upload video via presigned S3 POST — bypasses Nginx, no server memory used
-  const handleUploadVideo = async (file: File, description: string): Promise<void> => {
+  const handleUploadVideo = async (
+    file: File,
+    description: string,
+    onProgress: (loaded: number, total: number) => void
+  ): Promise<void> => {
     if (!selectedCourse) throw new Error('No course selected')
-
-    setUploadingVideo(true)
-    setUploadProgress(0)
 
     try {
       // Step 1: Get presigned POST URL from backend
@@ -185,7 +184,7 @@ const ManageCoursePage = () => {
         const xhr = new XMLHttpRequest()
         xhr.open('POST', presignData.uploadUrl)
         xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100))
+          if (e.lengthComputable) onProgress(e.loaded, e.total)
         }
         xhr.onload = () =>
           xhr.status === 204 || xhr.status === 201
@@ -207,7 +206,7 @@ const ManageCoursePage = () => {
       }
 
       const data = await res.json()
-      setUploadProgress(100)
+      onProgress(file.size, file.size) // 100%
 
       const timestamp = Date.now()
       const newVideo: Video = {
@@ -217,29 +216,22 @@ const ManageCoursePage = () => {
         progress: 0
       }
 
-      // Update the selected course
       setSelectedCourse({
         ...selectedCourse,
         videos: [...selectedCourse.videos, newVideo]
       })
 
-      // Update the main courses list as well
       setCourses(prev => prev.map(course =>
         course._id === selectedCourse._id
           ? { ...course, videos: [...course.videos, newVideo] }
           : course
       ))
 
-      // Reset states after a delay - ONLY the ones that exist in this component
       setTimeout(() => {
-        setUploadingVideo(false)
-        setUploadProgress(0)
         alert('Video uploaded successfully!')
       }, 500)
 
     } catch (error) {
-      setUploadingVideo(false)
-      setUploadProgress(0)
       console.error('Upload error:', error)
       alert(`Failed to upload video: ${(error as Error).message}`)
       throw error
