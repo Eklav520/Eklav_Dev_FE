@@ -12,17 +12,20 @@ import {
 } from 'react-bootstrap'
 import JobCard from './JobCard'
 import JobDetailsModal from './JobDetailsModal'
-import { 
-  FaAngleLeft, 
-  FaAngleRight, 
-  FaFilter, 
-  FaTimes, 
-  FaBriefcase, 
-  FaMapMarkerAlt, 
-  FaCode, 
+import ExternalJobBoard from './ExternalJobBoard'
+import {
+  FaAngleLeft,
+  FaAngleRight,
+  FaFilter,
+  FaTimes,
+  FaBriefcase,
+  FaMapMarkerAlt,
+  FaCode,
   FaChartLine,
   FaUsers,
-  FaSearch
+  FaSearch,
+  FaGlobeAsia,
+  FaBuilding
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -59,6 +62,8 @@ const InterviewDetailsPageView = () => {
   const token = user?.token
   const normalizedUserStatus = (user?.status || '').trim().toLowerCase()
   const isSubscriptionApproved = normalizedUserStatus === 'approved'
+
+  const [activeTab, setActiveTab] = useState<'campus' | 'external'>('campus')
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
@@ -154,31 +159,61 @@ const InterviewDetailsPageView = () => {
   return (
     <div className="jobs-page-container">
       <Container fluid className="py-4">
-        {/* Header */}
-        <div className="page-header">
+        {/* Page header */}
+        <div className="page-header mb-0">
           <div className="header-content">
             <div className="header-left">
               <FaBriefcase className="header-icon" />
               <div>
-                <h4 className="header-title">Available Jobs</h4>
+                <h4 className="header-title">Jobs</h4>
                 <p className="header-subtitle">
-                  {filteredJobs.length} job{filteredJobs.length !== 1 ? 's' : ''} found
+                  {activeTab === 'campus'
+                    ? `${filteredJobs.length} campus job${filteredJobs.length !== 1 ? 's' : ''}`
+                    : 'Live jobs from LinkedIn, Indeed & more'}
                 </p>
               </div>
             </div>
-            <Button 
-              className="filter-toggle-btn"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <FaFilter className="me-2" />
-              {showFilters ? 'Hide Filters' : 'Show Filters'}
-              {activeFiltersCount > 0 && (
-                <Badge className="filter-badge">{activeFiltersCount}</Badge>
-              )}
-            </Button>
+            {activeTab === 'campus' && (
+              <Button
+                className="filter-toggle-btn"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                <FaFilter className="me-2" />
+                {showFilters ? 'Hide Filters' : 'Show Filters'}
+                {activeFiltersCount > 0 && (
+                  <Badge className="filter-badge">{activeFiltersCount}</Badge>
+                )}
+              </Button>
+            )}
           </div>
         </div>
 
+        {/* Tab switcher */}
+        <div className="job-tab-bar">
+          <button
+            className={`job-tab-btn ${activeTab === 'campus' ? 'active' : ''}`}
+            onClick={() => setActiveTab('campus')}
+          >
+            <FaBuilding className="me-2" />Campus Jobs
+            {jobs.length > 0 && (
+              <span className="job-tab-count">{jobs.length}</span>
+            )}
+          </button>
+          <button
+            className={`job-tab-btn ${activeTab === 'external' ? 'active' : ''}`}
+            onClick={() => setActiveTab('external')}
+          >
+            <FaGlobeAsia className="me-2" />Browse All Jobs
+            <span className="job-tab-new">LIVE</span>
+          </button>
+        </div>
+
+        {activeTab === 'external' && (
+          <ExternalJobBoard />
+        )}
+
+        {activeTab === 'campus' && (
+          <>
         {!!token && !isSubscriptionApproved && (
           <Alert className="premium-access-alert">
             <strong>Premium Access:</strong> Job details are visible only for approved subscribed students.
@@ -390,6 +425,8 @@ const InterviewDetailsPageView = () => {
             </nav>
           </div>
         )}
+          </>
+        )}
       </Container>
 
       <JobDetailsModal
@@ -405,12 +442,62 @@ const InterviewDetailsPageView = () => {
           min-height: 100vh;
         }
 
+        /* Tab bar */
+        .job-tab-bar {
+          display: flex;
+          gap: 0.5rem;
+          margin: 1rem 0 1.5rem;
+          border-bottom: 1px solid #1e1e24;
+          padding-bottom: 0;
+        }
+        .job-tab-btn {
+          display: flex;
+          align-items: center;
+          background: transparent;
+          border: none;
+          border-bottom: 2.5px solid transparent;
+          color: #666;
+          font-size: 0.88rem;
+          font-weight: 600;
+          padding: 0.65rem 1.25rem;
+          cursor: pointer;
+          transition: all 0.2s;
+          white-space: nowrap;
+          margin-bottom: -1px;
+        }
+        .job-tab-btn:hover { color: #ccc; }
+        .job-tab-btn.active { color: #ff7a00; border-bottom-color: #ff7a00; }
+        .job-tab-count {
+          background: rgba(255,122,0,0.15);
+          color: #ff7a00;
+          border-radius: 20px;
+          padding: 0.05rem 0.5rem;
+          font-size: 0.72rem;
+          font-weight: 700;
+          margin-left: 0.5rem;
+        }
+        .job-tab-new {
+          background: #28a745;
+          color: #fff;
+          border-radius: 4px;
+          padding: 0.05rem 0.4rem;
+          font-size: 0.62rem;
+          font-weight: 800;
+          margin-left: 0.5rem;
+          letter-spacing: 0.04em;
+          animation: tab-pulse 2s ease-in-out infinite;
+        }
+        @keyframes tab-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.65; }
+        }
+
         /* Header */
         .page-header {
           background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
           border-bottom: 1px solid #ff7a00;
           padding: 1.5rem;
-          margin-bottom: 2rem;
+          margin-bottom: 0;
           border-radius: 12px;
         }
 
