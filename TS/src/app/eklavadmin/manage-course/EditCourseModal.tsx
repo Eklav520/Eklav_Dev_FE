@@ -95,7 +95,7 @@ interface EditCourseModalProps {
   onVideoChange?: (index: number, field: keyof Video, value: string | CaseStudy | null) => void
   onAddVideo?: () => void
   onRemoveVideo?: (index: number) => void
-  onUploadVideo?: (file: File, description: string) => Promise<void>
+  onUploadVideo?: (file: File, description: string, onProgress: (loaded: number, total: number) => void) => Promise<void>
   onQuizChange?: (index: number, field: keyof Quiz, value: string | string[]) => void
   onQuizOptionChange?: (quizIndex: number, optionIndex: number, value: string) => void
   onAddQuiz?: () => void
@@ -132,6 +132,8 @@ const EditCourseModal = ({
   const [activeTab, setActiveTab] = useState('basic')
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadedBytes, setUploadedBytes] = useState(0)
+  const [totalBytes, setTotalBytes] = useState(0)
   const [videoDescription, setVideoDescription] = useState('')
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
@@ -170,9 +172,9 @@ const EditCourseModal = ({
         return
       }
       
-      // Check file size (limit to 1.5GB)
-      if (file.size > 1.5 * 1024 * 1024 * 1024) {
-        alert('File size too large. Please select a video under 1.5GB')
+      // Check file size (limit to 2GB)
+      if (file.size > 2 * 1024 * 1024 * 1024) {
+        alert('File size too large. Please select a video under 2GB')
         return
       }
       
@@ -197,34 +199,34 @@ const EditCourseModal = ({
     try {
       setUploadingVideo(true)
       setUploadProgress(0)
-      
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(interval)
-            return 90
-          }
-          return prev + 10
-        })
-      }, 200)
-      
-      await onUploadVideo(selectedVideoFile, videoDescription)
-      
+      setUploadedBytes(0)
+      setTotalBytes(selectedVideoFile.size)
+
+      const fileSize = selectedVideoFile.size
+      await onUploadVideo(selectedVideoFile, videoDescription, (loaded) => {
+        const clamped = Math.min(loaded, fileSize)
+        setUploadedBytes(clamped)
+        setUploadProgress(Math.round((clamped / fileSize) * 100))
+      })
+
       setUploadProgress(100)
+      setUploadedBytes(selectedVideoFile.size)
       setTimeout(() => {
         setUploadingVideo(false)
         setUploadProgress(0)
+        setUploadedBytes(0)
+        setTotalBytes(0)
         setSelectedVideoFile(null)
         setVideoDescription('')
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
       }, 500)
-      
-      clearInterval(interval)
     } catch (error) {
       setUploadingVideo(false)
+      setUploadProgress(0)
+      setUploadedBytes(0)
+      setTotalBytes(0)
       alert('Failed to upload video: ' + (error as Error).message)
     }
   }
@@ -770,7 +772,7 @@ Hands-on Coding & Practice Sessions
                                 disabled={uploadingVideo}
                               />
                               <Form.Text className="text-muted">
-                                Supported formats: MP4, MOV, AVI, WMV, etc. (Max 1.5GB)
+                                Supported formats: MP4, MOV, AVI, WMV, etc. (Max 2GB)
                               </Form.Text>
                             </Form.Group>
                           </Col>
@@ -816,17 +818,25 @@ Hands-on Coding & Practice Sessions
                         
                         {uploadingVideo && (
                           <div className="mb-3">
-                            <div className="d-flex justify-content-between mb-1">
-                              <small>Uploading...</small>
-                              <small>{uploadProgress}%</small>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <small className="text-muted fw-semibold">
+                                Uploading: {formatFileSize(uploadedBytes)} / {formatFileSize(totalBytes)}
+                              </small>
+                              <small className="text-primary fw-bold">{uploadProgress}%</small>
                             </div>
-                            <div className="progress">
-                              <div 
-                                className="progress-bar progress-bar-striped progress-bar-animated" 
-                                role="progressbar" 
-                                style={{ width: `${uploadProgress}%` }}
-                              ></div>
+                            <div className="progress" style={{ height: 12, borderRadius: 6 }}>
+                              <div
+                                className="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                role="progressbar"
+                                style={{ width: `${uploadProgress}%`, borderRadius: 6 }}
+                                aria-valuenow={uploadProgress}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                              />
                             </div>
+                            <small className="text-muted d-block mt-1">
+                              {formatFileSize(uploadedBytes)} of {formatFileSize(totalBytes)} uploaded ({uploadProgress}% complete)
+                            </small>
                           </div>
                         )}
                         
