@@ -649,7 +649,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       },
       {
         key: 'materials',
-        label: 'Tech Reels',
+        label: 'Tech Bytes',
         icon: FaPlayCircle,
         url: '/student/reels',
       }
@@ -690,6 +690,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         icon: FaUserTie, 
         url: '/student/company-rounds',
         parentKey: 'preparation',
+      },
+      {
+        key: 'terminal',
+        label: 'Compiler',
+        icon: BsCpu, // 💻 CPU/terminal
+        url: '/student/terminal',
       },
       /* {
         key: 'attendInterview',
@@ -747,15 +753,9 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
   // Extra Activities parent (collapsible)
   {
     key: 'activities',
-    label: 'Extra Activities',
+    label: 'Jobs Search',
     icon: FaRunning, // 🏃‍♂️ activities
     children: [
-      {
-        key: 'resume',
-        label: 'Resume Preparation',
-        icon: FaRegFileAlt, // 📄 document
-        url: '/student/resume',
-      },
       {
         key: 'interviewDetails',
         label: 'Job Posts',
@@ -763,16 +763,16 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         url: '/student/interview-details',
       },
       {
+        key: 'resume',
+        label: 'Resume Preparation',
+        icon: FaRegFileAlt, // 📄 document
+        url: '/student/resume',
+      },
+      {
         key: 'ATSchecker',
         label: 'ATS Checker',
         icon: FaChartLine, // 📈 ATS analysis score
         url: '/student/ats-checker',
-      },
-       {
-        key: 'terminal',
-        label: 'Compiler',
-        icon: BsCpu, // 💻 CPU/terminal
-        url: '/student/terminal',
       },
       /* {
         key: 'blog',

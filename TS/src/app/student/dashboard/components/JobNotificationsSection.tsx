@@ -1,35 +1,32 @@
 // JobNotificationsSection.tsx - Dark Theme Version
 import React, { useEffect, useState } from 'react'
-import { Card, Badge, Button, Spinner, Alert } from 'react-bootstrap'
-import { 
-  Briefcase, 
-  MapPin, 
-  Clock, 
-  ExternalLink, 
-  IndianRupee,
+import { Card, Button } from 'react-bootstrap'
+import {
+  Briefcase,
+  MapPin,
+  Clock,
   Sparkles,
   ArrowRight,
   Building2,
   TrendingUp,
   Eye,
-  Calendar
+  Globe,
 } from 'lucide-react'
 import { useAuthContext } from '@/context/useAuthContext'
 
-interface Job {
-  _id: string
+interface UnifiedJob {
+  id: string
   title: string
   company: string
   location: string
   salary: string
   jobType: string
-  domain: string
   postedDate: string
-  expiryDate: string
-  isExpired: boolean
-  logo?: string
+  source: 'admin' | 'external'
+  sourceName?: string       // e.g. "Adzuna", "Remotive"
+  logo?: string | null
   skills?: string[]
-  highlights?: string[]
+  externalUrl?: string      // link for external jobs
 }
 
 const JobNotificationsSection: React.FC = () => {
@@ -37,56 +34,81 @@ const JobNotificationsSection: React.FC = () => {
   const { user } = useAuthContext()
   const token = user?.token
 
-  const [jobs, setJobs] = useState<Job[]>([])
+  const [jobs, setJobs] = useState<UnifiedJob[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [totalCount, setTotalCount] = useState(0)
 
   useEffect(() => {
-    if (token) {
-      fetchRecentJobs()
-    }
+    if (token) fetchJobs()
   }, [token])
 
-  const fetchRecentJobs = async () => {
+  const fetchJobs = async () => {
     try {
       setLoading(true)
-      setError(null)
-      
-      const response = await fetch(`${baseURL}/jobs/student`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      
-      if (!response.ok) throw new Error('Failed to fetch jobs')
-      
-      const data = await response.json()
-      
-      // Handle different response formats
-      let allJobs: Job[] = []
-      if (Array.isArray(data)) {
-        allJobs = data
-      } else if (data?.jobs && Array.isArray(data.jobs)) {
-        allJobs = data.jobs
-      } else if (data?.data && Array.isArray(data.data)) {
-        allJobs = data.data
-      } else if (data?.results && Array.isArray(data.results)) {
-        allJobs = data.results
+
+      // Fetch admin + external in parallel
+      const [adminRes, externalRes] = await Promise.allSettled([
+        fetch(`${baseURL}/jobs/student`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${baseURL}/api/jobs/external?query=developer&location=India&page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+
+      // ── Admin jobs ──
+      let adminJobs: UnifiedJob[] = []
+      if (adminRes.status === 'fulfilled' && adminRes.value.ok) {
+        const data = await adminRes.value.json()
+        const raw: any[] = Array.isArray(data) ? data : (data?.jobs ?? data?.data ?? data?.results ?? [])
+        const tenDaysAgo = new Date()
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+        adminJobs = raw
+          .filter(j => !j.isExpired && new Date(j.postedDate) >= tenDaysAgo)
+          .map(j => ({
+            id: j._id,
+            title: j.title,
+            company: j.company,
+            location: j.location || '',
+            salary: j.salary || '',
+            jobType: j.jobType || 'Full-time',
+            postedDate: j.postedDate,
+            source: 'admin' as const,
+            skills: j.skills,
+          }))
       }
-      
-      const tenDaysAgo = new Date()
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
-      
-      const recentJobs = allJobs.filter(job => {
-        const postedDate = new Date(job.postedDate)
-        return postedDate >= tenDaysAgo && !job.isExpired
-      })
-      
-      const shuffled = [...recentJobs].sort(() => 0.5 - Math.random())
-      const selectedJobs = shuffled.slice(0, Math.min(4, shuffled.length))
-      
-      setJobs(selectedJobs)
-    } catch (err: any) {
-      console.error('Error fetching jobs:', err)
-      setError(err.message)
+
+      // ── External jobs ──
+      let externalJobs: UnifiedJob[] = []
+      if (externalRes.status === 'fulfilled' && externalRes.value.ok) {
+        const data = await externalRes.value.json()
+        const raw: any[] = data?.jobs ?? []
+        externalJobs = raw.map(j => ({
+          id: j.id,
+          title: j.title,
+          company: j.company,
+          location: j.location || '',
+          salary: j.salary || '',
+          jobType: j.jobType || 'Full-time',
+          postedDate: j.postedAt || new Date().toISOString(),
+          source: 'external' as const,
+          sourceName: j.source,
+          logo: j.logo,
+          skills: j.skills,
+          externalUrl: j.url,
+        }))
+      }
+
+      // ── Merge: admin first, fill remainder from external ──
+      const shuffledExternal = externalJobs.sort(() => 0.5 - Math.random())
+      const final = [
+        ...adminJobs,
+        ...shuffledExternal.slice(0, Math.max(6 - adminJobs.length, adminJobs.length === 0 ? 6 : 2)),
+      ].slice(0, 6)
+
+      setTotalCount(final.length)
+      setJobs(final)
+    } catch (err) {
       setJobs([])
     } finally {
       setLoading(false)
@@ -94,10 +116,7 @@ const JobNotificationsSection: React.FC = () => {
   }
 
   const getTimeAgo = (dateString: string) => {
-    const posted = new Date(dateString)
-    const now = new Date()
-    const diffHours = Math.floor((now.getTime() - posted.getTime()) / (1000 * 60 * 60))
-    
+    const diffHours = Math.floor((Date.now() - new Date(dateString).getTime()) / 3_600_000)
     if (diffHours < 1) return 'Just now'
     if (diffHours < 24) return `${diffHours}h ago`
     const diffDays = Math.floor(diffHours / 24)
@@ -105,9 +124,12 @@ const JobNotificationsSection: React.FC = () => {
     return `${diffDays}d ago`
   }
 
-  const formatSalary = (salary: string) => {
-    if (!salary) return null
-    return salary
+  const handleView = (job: UnifiedJob) => {
+    if (job.source === 'external' && job.externalUrl) {
+      window.open(job.externalUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      window.open('/student/interview-details', '_blank')
+    }
   }
 
   if (loading) {
@@ -123,18 +145,6 @@ const JobNotificationsSection: React.FC = () => {
     )
   }
 
-  if (error) {
-    return (
-      <Card className="job-notification-dark mb-4">
-        <Card.Body className="py-4">
-          <Alert variant="danger" className="mb-0 text-center bg-transparent text-danger border-danger">
-            Unable to load opportunities. Please try again later.
-          </Alert>
-        </Card.Body>
-      </Card>
-    )
-  }
-
   return (
     <Card className="job-notification-dark mb-4">
       {/* Header */}
@@ -145,11 +155,11 @@ const JobNotificationsSection: React.FC = () => {
           </div>
           <div>
             <h5 className="header-title-dark">Latest Opportunities</h5>
-            <p className="header-subtitle-dark">Posted in last 10 days</p>
+            <p className="header-subtitle-dark">Live jobs from all sources</p>
           </div>
         </div>
         <div className="header-badge-dark">
-          <span className="badge-number-dark">{jobs.length}</span>
+          <span className="badge-number-dark">{totalCount}</span>
           <span className="badge-label-dark">New</span>
         </div>
       </div>
@@ -166,28 +176,38 @@ const JobNotificationsSection: React.FC = () => {
           <div className="jobs-grid-dark">
             {jobs.map((job) => {
               const timeAgo = getTimeAgo(job.postedDate)
-              const isUrgent = timeAgo === 'Just now' || timeAgo === '1h ago'
-              
+              const isUrgent = timeAgo === 'Just now' || timeAgo.endsWith('h ago')
+
               return (
-                <div key={job._id} className="job-card-dark">
+                <div key={job.id} className="job-card-dark">
                   <div className="job-card-inner-dark">
+                    {/* Company logo / icon */}
                     <div className="company-icon-dark">
-                      <Building2 size={22} />
+                      {job.logo ? (
+                        <img
+                          src={job.logo}
+                          alt={job.company}
+                          style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 6 }}
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                      ) : (
+                        <Building2 size={22} />
+                      )}
                     </div>
-                    
+
                     <div className="job-content-dark">
                       <div className="job-title-section-dark">
                         <h6 className="job-title-dark">{job.title}</h6>
                         {isUrgent && (
                           <span className="urgent-tag-dark">
                             <TrendingUp size={10} />
-                            Urgent
+                            New
                           </span>
                         )}
                       </div>
-                      
+
                       <p className="company-name-dark">{job.company}</p>
-                      
+
                       <div className="job-tags-dark">
                         {job.location && (
                           <span className="tag-dark">
@@ -195,26 +215,27 @@ const JobNotificationsSection: React.FC = () => {
                             {job.location}
                           </span>
                         )}
-                        {formatSalary(job.salary) && (
-                          <span className="tag-dark salary-tag-dark">
-                            <IndianRupee size={10} />
-                            {formatSalary(job.salary)}
-                          </span>
+                        {job.salary && (
+                          <span className="tag-dark salary-tag-dark">{job.salary}</span>
                         )}
-                        <span className="tag-dark type-tag-dark">
-                          {job.jobType || 'Fresher'}
-                        </span>
+                        <span className="tag-dark type-tag-dark">{job.jobType}</span>
                         <span className="tag-dark time-tag-dark">
                           <Clock size={10} />
                           {timeAgo}
                         </span>
+                        {job.source === 'external' && (
+                          <span className="tag-dark source-tag-dark">
+                            <Globe size={10} />
+                            {job.sourceName || 'External'}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    
+
                     <Button
                       variant="link"
                       className="view-btn-dark"
-                      onClick={() => window.open('/student/interview-details', '_blank')}
+                      onClick={() => handleView(job)}
                     >
                       <Eye size={16} />
                       <span>View</span>
@@ -224,7 +245,7 @@ const JobNotificationsSection: React.FC = () => {
               )
             })}
           </div>
-          
+
           {/* Footer */}
           <div className="dark-footer">
             <Button
@@ -247,13 +268,10 @@ const JobNotificationsSection: React.FC = () => {
           overflow: hidden;
           transition: all 0.3s ease;
         }
-
         .job-notification-dark:hover {
           border-color: #ff7a00 !important;
           box-shadow: 0 4px 20px rgba(255, 122, 0, 0.1);
         }
-
-        /* Dark Header */
         .dark-header {
           background: #0a0a0a;
           padding: 1rem 1.5rem;
@@ -262,13 +280,11 @@ const JobNotificationsSection: React.FC = () => {
           align-items: center;
           border-bottom: 2px solid #ff7a00;
         }
-
         .header-left-section {
           display: flex;
           align-items: center;
           gap: 0.875rem;
         }
-
         .header-icon-dark {
           width: 40px;
           height: 40px;
@@ -278,7 +294,6 @@ const JobNotificationsSection: React.FC = () => {
           align-items: center;
           justify-content: center;
         }
-
         .header-title-dark {
           color: #ffffff !important;
           font-size: 1rem;
@@ -286,46 +301,36 @@ const JobNotificationsSection: React.FC = () => {
           margin: 0;
           letter-spacing: -0.3px;
         }
-
         .header-subtitle-dark {
           color: #8a8a8a !important;
           font-size: 0.7rem;
           margin: 0.2rem 0 0 0;
         }
-
         .header-badge-dark {
           background: rgba(255, 122, 0, 0.15);
           border-radius: 24px;
           padding: 0.3rem 0.9rem;
           border: 1px solid rgba(255, 122, 0, 0.3);
         }
-
         .badge-number-dark {
           color: #ff7a00 !important;
           font-size: 1rem;
           font-weight: 700;
           margin-right: 0.25rem;
         }
-
         .badge-label-dark {
           color: #ff7a00 !important;
           font-size: 0.7rem;
           font-weight: 500;
         }
-
-        /* Jobs Grid Dark */
         .jobs-grid-dark {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 1rem;
-          padding: 1.25rem;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 0.75rem;
+          padding: 1rem 1.25rem;
           background: #000000;
         }
-
-        .job-card-dark {
-          transition: all 0.2s ease;
-        }
-
+        .job-card-dark { transition: all 0.2s ease; }
         .job-card-inner-dark {
           display: flex;
           align-items: center;
@@ -337,13 +342,11 @@ const JobNotificationsSection: React.FC = () => {
           transition: all 0.2s ease;
           height: 100%;
         }
-
         .job-card-inner-dark:hover {
           background: #0f0f0f;
           border-color: #ff7a00;
           transform: translateY(-2px);
         }
-
         .company-icon-dark {
           width: 48px;
           height: 48px;
@@ -355,13 +358,9 @@ const JobNotificationsSection: React.FC = () => {
           justify-content: center;
           color: #ff7a00;
           flex-shrink: 0;
+          overflow: hidden;
         }
-
-        .job-content-dark {
-          flex: 1;
-          min-width: 0;
-        }
-
+        .job-content-dark { flex: 1; min-width: 0; }
         .job-title-section-dark {
           display: flex;
           align-items: center;
@@ -369,7 +368,6 @@ const JobNotificationsSection: React.FC = () => {
           flex-wrap: wrap;
           margin-bottom: 0.25rem;
         }
-
         .job-title-dark {
           font-size: 0.9rem;
           font-weight: 600;
@@ -377,7 +375,6 @@ const JobNotificationsSection: React.FC = () => {
           margin: 0;
           line-height: 1.3;
         }
-
         .urgent-tag-dark {
           background: linear-gradient(135deg, #ff4757 0%, #ff6b81 100%);
           color: white;
@@ -389,21 +386,18 @@ const JobNotificationsSection: React.FC = () => {
           gap: 0.2rem;
           white-space: nowrap;
         }
-
         .company-name-dark {
           font-size: 0.7rem;
           color: #8a8a8a !important;
           margin: 0 0 0.6rem 0;
           font-weight: 500;
         }
-
         .job-tags-dark {
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
           align-items: center;
         }
-
         .tag-dark {
           display: inline-flex;
           align-items: center;
@@ -416,24 +410,22 @@ const JobNotificationsSection: React.FC = () => {
           white-space: nowrap;
           border: 1px solid #2a2a2a;
         }
-
         .salary-tag-dark {
           color: #4caf50 !important;
           background: rgba(76, 175, 80, 0.1);
           border-color: rgba(76, 175, 80, 0.3);
         }
-
         .type-tag-dark {
           background: rgba(25, 118, 210, 0.1);
           color: #42a5f5 !important;
           border-color: rgba(66, 165, 245, 0.3);
         }
-
-        .time-tag-dark {
-          background: #141414;
-          color: #b0b0b0;
+        .time-tag-dark { background: #141414; color: #b0b0b0; }
+        .source-tag-dark {
+          background: rgba(139, 92, 246, 0.1);
+          color: #a78bfa !important;
+          border-color: rgba(139, 92, 246, 0.3);
         }
-
         .view-btn-dark {
           display: flex;
           align-items: center;
@@ -449,46 +441,34 @@ const JobNotificationsSection: React.FC = () => {
           flex-shrink: 0;
           background: rgba(255, 122, 0, 0.05);
         }
-
         .view-btn-dark:hover {
           background: rgba(255, 122, 0, 0.15);
           color: #ff944d !important;
           gap: 0.5rem;
         }
-
-        /* Empty State Dark */
         .empty-state-dark {
           text-align: center;
           padding: 3rem 1.5rem;
           background: #000000;
         }
-
-        .empty-state-dark svg {
-          color: #2a2a2a;
-          margin-bottom: 1rem;
-        }
-
+        .empty-state-dark svg { color: #2a2a2a; margin-bottom: 1rem; }
         .empty-title-dark {
           font-size: 1rem;
           font-weight: 600;
           color: #ffffff !important;
           margin-bottom: 0.5rem;
         }
-
         .empty-description-dark {
           font-size: 0.8rem;
           color: #8a8a8a !important;
           margin: 0;
         }
-
-        /* Footer Dark */
         .dark-footer {
           padding: 0.75rem 1.25rem;
           border-top: 1px solid #1a1a1a;
           background: #0a0a0a;
           text-align: center;
         }
-
         .view-all-dark {
           display: inline-flex;
           align-items: center;
@@ -501,15 +481,12 @@ const JobNotificationsSection: React.FC = () => {
           border-radius: 20px;
           transition: all 0.2s ease;
         }
-
         .view-all-dark:hover {
           gap: 0.75rem;
           color: #ff944d !important;
           background: rgba(255, 122, 0, 0.1);
           text-decoration: none;
         }
-
-        /* Loading Spinner Dark */
         .dark-spinner {
           width: 30px;
           height: 30px;
@@ -518,49 +495,25 @@ const JobNotificationsSection: React.FC = () => {
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }
-
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
-
-        .text-light-muted {
-          color: #8a8a8a !important;
+        .text-light-muted { color: #8a8a8a !important; }
+        @media (max-width: 992px) {
+          .jobs-grid-dark { grid-template-columns: repeat(2, 1fr); }
         }
-
-        /* Responsive */
+        @media (max-width: 600px) {
+          .jobs-grid-dark { grid-template-columns: 1fr; }
+        }
         @media (max-width: 768px) {
-          .jobs-grid-dark {
-            grid-template-columns: 1fr;
-            padding: 1rem;
-            gap: 0.75rem;
-          }
-          
-          .dark-header {
-            padding: 0.875rem 1rem;
-          }
-          
-          .header-icon-dark {
-            width: 34px;
-            height: 34px;
-          }
-          
-          .header-title-dark {
-            font-size: 0.9rem;
-          }
-          
-          .job-card-inner-dark {
-            padding: 0.875rem;
-          }
-          
-          .company-icon-dark {
-            width: 40px;
-            height: 40px;
-          }
-          
-          .job-title-dark {
-            font-size: 0.85rem;
-          }
+          .jobs-grid-dark { padding: 0.75rem 1rem; }
+          .dark-header { padding: 0.875rem 1rem; }
+          .header-icon-dark { width: 34px; height: 34px; }
+          .header-title-dark { font-size: 0.9rem; }
+          .job-card-inner-dark { padding: 0.875rem; }
+          .company-icon-dark { width: 40px; height: 40px; }
+          .job-title-dark { font-size: 0.85rem; }
         }
       `}</style>
     </Card>
