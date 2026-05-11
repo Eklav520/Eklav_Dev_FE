@@ -134,7 +134,7 @@ const JobNotificationsSection: React.FC = () => {
 
   if (loading) {
     return (
-      <Card className="job-notification-dark mb-4">
+      <Card className="job-notification-dark mb-0 h-100">
         <Card.Body className="py-4">
           <div className="d-flex align-items-center justify-content-center gap-3">
             <div className="dark-spinner"></div>
@@ -146,7 +146,7 @@ const JobNotificationsSection: React.FC = () => {
   }
 
   return (
-    <Card className="job-notification-dark mb-4">
+    <Card className="job-notification-dark mb-0 h-100 d-flex flex-column">
       {/* Header */}
       <div className="dark-header">
         <div className="header-left-section">
@@ -325,10 +325,11 @@ const JobNotificationsSection: React.FC = () => {
         }
         .jobs-grid-dark {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 0.75rem;
           padding: 1rem 1.25rem;
           background: #000000;
+          flex: 1;
         }
         .job-card-dark { transition: all 0.2s ease; }
         .job-card-inner-dark {
@@ -500,9 +501,6 @@ const JobNotificationsSection: React.FC = () => {
           100% { transform: rotate(360deg); }
         }
         .text-light-muted { color: #8a8a8a !important; }
-        @media (max-width: 992px) {
-          .jobs-grid-dark { grid-template-columns: repeat(2, 1fr); }
-        }
         @media (max-width: 600px) {
           .jobs-grid-dark { grid-template-columns: 1fr; }
         }
