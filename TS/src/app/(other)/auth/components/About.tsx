@@ -259,6 +259,10 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                   <BsPatchCheckFill className="me-1 text-orange" />
                   Get Placed
                 </li>
+                <li className="list-inline-item hero-check-item">
+                  <BsPatchCheckFill className="me-1 text-orange" />
+                  Gain Knowledge
+                </li>
               </ul>
 
               {/* Stats */}
