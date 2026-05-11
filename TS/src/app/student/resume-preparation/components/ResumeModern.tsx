@@ -45,7 +45,7 @@ const ResumeModern: React.FC<{ data: ResumeData }> = ({ data }) => {
 
         {/* ── Summary ── */}
         {data.summary && (
-          <Section title="About Me">
+          <Section title="Summary">
             <p style={{ fontSize: 11, color: '#4b5563', lineHeight: 1.8, margin: 0, textAlign: 'justify' }}>{data.summary}</p>
           </Section>
         )}

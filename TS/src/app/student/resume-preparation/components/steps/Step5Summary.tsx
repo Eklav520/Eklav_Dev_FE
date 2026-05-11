@@ -10,7 +10,19 @@ const Step5Summary: React.FC<StepProps> = ({ data, setData, goNext, goBack }) =>
     try {
       setLoading(true);
       const res = await axios.post('http://localhost:3000/generate', data);
-      setData({ ...data, summary: res.data.summary });
+      const raw: string = res.data.summary ?? '';
+      const clean = raw
+        .split('\n')
+        .filter(line => !/^\s*[#]+/.test(line))          // drop markdown headings
+        .filter(line => !/^\s*---+\s*$/.test(line))       // drop horizontal rules
+        .filter(line => !/^\s*\*\*[^*]+\*\*\s*$/.test(line)) // drop standalone **Label** lines
+        .join(' ')
+        .replace(/\*\*(.+?)\*\*/g, '$1')                  // strip bold markers, keep text
+        .replace(/\*(.+?)\*/g, '$1')                       // strip italic markers, keep text
+        .replace(/\[.*?\]\(.*?\)/g, '')                    // strip markdown links
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      setData({ ...data, summary: clean });
     } catch (err) {
       alert('Failed to generate summary');
     } finally {

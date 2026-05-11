@@ -11,6 +11,8 @@ const ACCENTS: Record<TemplateKey, { bg: string; bar: string; badge: string }> =
   executive: { bg: '#f0f4f8',  bar: '#1e2d3d', badge: '#1e2d3d' },
   elegant:   { bg: '#f8fafc',  bar: '#0f172a', badge: '#3b82f6' },
   creative:  { bg: '#f0fdfa',  bar: '#0d9488', badge: '#0d9488' },
+  corporate: { bg: '#f0f6ff',  bar: '#2563eb', badge: '#2563eb' },
+  accent:    { bg: '#f0f9ff',  bar: '#0e7490', badge: '#0e7490' },
 };
 
 // Mini resume preview mockup per template
@@ -19,6 +21,8 @@ const MiniPreview: React.FC<{ id: TemplateKey }> = ({ id }) => {
   const isExecutive = id === 'executive';
   const isModern    = id === 'modern';
   const isCreative  = id === 'creative';
+  const isCorporate = id === 'corporate';
+  const isAccent    = id === 'accent';
 
   return (
     <div style={{ width: '100%', height: 160, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
@@ -46,6 +50,41 @@ const MiniPreview: React.FC<{ id: TemplateKey }> = ({ id }) => {
             ))}
           </div>
         </div>
+      ) : isCorporate ? (
+        /* Corporate: full-width header + left main + right sidebar */
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+          <div style={{ padding: '8px 10px', borderBottom: `2px solid ${a.bar}` }}>
+            <div style={{ height: 8, width: 90, background: a.bar, borderRadius: 2, marginBottom: 3 }} />
+            <div style={{ height: 4, width: 60, background: '#64748b', borderRadius: 2 }} />
+          </div>
+          <div style={{ display: 'flex', flex: 1 }}>
+            <div style={{ width: '64%', padding: '8px 8px', borderRight: '1px solid #e2e8f0' }}>
+              {['85%', '70%', '90%', '75%', '65%'].map((w, i) => (
+                <div key={i} style={{ height: 3, width: w, background: i % 3 === 0 ? a.bar : '#e2e8f0', borderRadius: 2, marginBottom: 5 }} />
+              ))}
+            </div>
+            <div style={{ flex: 1, padding: '8px 6px', background: '#f8fafc' }}>
+              {['90%', '75%', '80%', '65%'].map((w, i) => (
+                <div key={i} style={{ height: 3, width: w, background: i === 0 ? a.bar : '#e2e8f0', borderRadius: 2, marginBottom: 5 }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : isAccent ? (
+        /* Accent: narrow left sidebar + wide right column */
+        <div style={{ display: 'flex', height: '100%' }}>
+          <div style={{ width: '30%', background: '#f0f9ff', borderRight: `2px solid ${a.bar}`, padding: '8px 6px', flexShrink: 0 }}>
+            <div style={{ height: 4, width: '80%', background: a.bar, borderRadius: 2, marginBottom: 8 }} />
+            {[90, 75, 85, 70, 80].map((w, i) => <div key={i} style={{ height: 3, width: `${w}%`, background: `${a.bar}50`, borderRadius: 2, marginBottom: 4 }} />)}
+          </div>
+          <div style={{ flex: 1, padding: '8px 8px' }}>
+            <div style={{ height: 10, width: '75%', background: '#164e63', borderRadius: 2, marginBottom: 4 }} />
+            <div style={{ height: 4, width: 60, background: `${a.bar}30`, borderRadius: 10, marginBottom: 8, border: `1px solid ${a.bar}50` }} />
+            {['90%', '75%', '85%', '70%'].map((w, i) => (
+              <div key={i} style={{ height: 3, width: w, background: i === 0 ? a.bar : '#e2e8f0', borderRadius: 2, marginBottom: 5 }} />
+            ))}
+          </div>
+        </div>
       ) : (
         /* Classic / Elegant */
         <div style={{ padding: '12px 14px', background: a.bg }}>
@@ -60,8 +99,8 @@ const MiniPreview: React.FC<{ id: TemplateKey }> = ({ id }) => {
         </div>
       )}
 
-      {/* Skill pills preview at bottom (for non-executive) */}
-      {!isExecutive && (
+      {/* Skill pills preview at bottom (for classic/modern/creative/elegant) */}
+      {!isExecutive && !isCorporate && !isAccent && (
         <div style={{ position: 'absolute', bottom: 8, left: 10, display: 'flex', gap: 4 }}>
           {['React', 'CSS', 'JS'].map((s, i) => (
             <span key={i} style={{ fontSize: 8, background: `${a.badge}18`, color: a.badge, border: `1px solid ${a.badge}40`, borderRadius: 20, padding: '1px 6px', fontWeight: 700, fontFamily: 'Arial,sans-serif' }}>{s}</span>
@@ -80,7 +119,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate }) =
       {/* Heading */}
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
         <h2 style={{ fontWeight: 800, color: '#f0f0f0', marginBottom: 8, fontSize: 26 }}>Choose Your Resume Template</h2>
-        <p style={{ color: '#888', fontSize: 14 }}>5 professionally designed layouts — pick one and start building</p>
+        <p style={{ color: '#888', fontSize: 14 }}>7 professionally designed layouts — pick one and start building</p>
       </div>
 
       {/* Grid */}

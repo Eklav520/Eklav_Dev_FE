@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import Step1Header from './steps/Step1Header'
 import Step2Experience from './steps/Step2Experience'
-import Step3Education from './steps/Step3Education'
-import Step4Skills from './steps/Step4Skills'
-import Step5Summary from './steps/Step5Summary'
-import Step6Additional from './steps/Step6AdditionalDetails'
-import Step7Preview from './steps/Step7FinalReview'
+import Step3Achievements from './steps/Step3Achievements'
+import Step4Education from './steps/Step3Education'
+import Step5Skills from './steps/Step4Skills'
+import Step6Summary from './steps/Step5Summary'
+import Step7Additional from './steps/Step6AdditionalDetails'
+import Step8Preview from './steps/Step7FinalReview'
 import { ResumeData } from './ResumeData'
 import TemplateGallery from './TemplateGallery'
 import { TemplateKey, templateList } from './templateList'
@@ -19,7 +20,7 @@ export interface StepProps {
   goBack?: () => void
 }
 
-const stepLabels = ['Header', 'Experience', 'Education', 'Skills', 'Summary', 'Extras', 'Preview']
+const stepLabels = ['Header', 'Experience', 'Achievements', 'Education', 'Skills', 'Summary', 'Extras', 'Preview']
 
 const ResumeBuilder: React.FC = () => {
   const [step, setStep] = useState(1)
@@ -34,6 +35,7 @@ const ResumeBuilder: React.FC = () => {
     phone: '',
     email: '',
     experience: [],
+    achievements: [],
     education: [],
     skills: [],
     summary: '',
@@ -52,16 +54,18 @@ const ResumeBuilder: React.FC = () => {
       case 2:
         return <Step2Experience data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
       case 3:
-        return <Step3Education data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
+        return <Step3Achievements data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
       case 4:
-        return <Step4Skills data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
+        return <Step4Education data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
       case 5:
-        return <Step5Summary data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
+        return <Step5Skills data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
       case 6:
-        return <Step6Additional data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
+        return <Step6Summary data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
       case 7:
+        return <Step7Additional data={formData} setData={setFormData} goNext={goNext} goBack={goBack} />
+      case 8:
         return (
-          <Step7Preview
+          <Step8Preview
             data={formData}
             goBack={goBack}
             SelectedTemplateComponent={selectedTemplate ? templateList[selectedTemplate].component : undefined}

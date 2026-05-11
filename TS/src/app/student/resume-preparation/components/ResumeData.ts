@@ -12,6 +12,7 @@ export interface ResumeData {
   skills: string[];
   education: string[];
   experience: string[];
+  achievements?: string[];
   projects: string[];
   certifications?: string[];
   languages?: string[];

@@ -4,9 +4,11 @@ import ResumeModern from './ResumeModern';
 import ResumeProfessional from './ResumeProfessional';
 import ResumeElegant from './ResumeElegant';
 import ResumeMinimalist from './ResumeMinimalist';
+import ResumeCorporate from './ResumeCorporate';
+import ResumeAccent from './ResumeAccent';
 import { ResumeData } from './ResumeData';
 
-export type TemplateKey = 'classic' | 'modern' | 'executive' | 'elegant' | 'creative';
+export type TemplateKey = 'classic' | 'modern' | 'executive' | 'elegant' | 'creative' | 'corporate' | 'accent';
 
 export const templateList: Record<TemplateKey, {
   label: string;
@@ -37,5 +39,15 @@ export const templateList: Record<TemplateKey, {
     label: 'Creative',
     description: 'Teal gradient header with bold left-accent sections',
     component: ResumeMinimalist,
+  },
+  corporate: {
+    label: 'Corporate',
+    description: 'Full-width header · wide main · achievements sidebar',
+    component: ResumeCorporate,
+  },
+  accent: {
+    label: 'Accent',
+    description: 'Narrow teal sidebar · wide right column · bold name header',
+    component: ResumeAccent,
   },
 };
