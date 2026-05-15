@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { useAuthContext } from "@/context/useAuthContext";
 import {
     FaSave,
@@ -15,6 +16,7 @@ import {
     FaPlus,
     FaTrash,
     FaEdit,
+    FaEnvelope,
     FaInfoCircle,
     FaExclamationTriangle
 } from "react-icons/fa";
@@ -59,6 +61,14 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     const [description, setDescription] = useState("");
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    // Notify modal state
+    const [notifyExam, setNotifyExam]       = useState<any | null>(null)
+    const [notifySubject, setNotifySubject] = useState('')
+    const [notifyMsg, setNotifyMsg]         = useState('')
+    const [notifySending, setNotifySending] = useState(false)
+    const [notifyResult, setNotifyResult]   = useState<{ sent: number; failed: { email: string; error: string }[] } | null>(null)
+    const [notifyError, setNotifyError]     = useState('')
 
     /* ================= FETCH EXAMS ================= */
     useEffect(() => {
@@ -170,6 +180,59 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
         updated[index] = { ...updated[index], [field]: value };
         setRounds(updated);
     };
+
+    const roundLabel: Record<string, string> = { mcq: 'MCQ Quiz', coding: 'Code Challenge', tr: 'Technical Round', hr: 'HR Round' }
+
+    const openNotify = (exam: any) => {
+        setNotifyExam(exam)
+        setNotifySubject(`Upcoming Assessment: ${exam.title}`)
+
+        const fmtDate = (dt: string) =>
+            new Date(dt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+
+        const roundLines = (exam.rounds || [])
+            .map((r: any) => `  • ${roundLabel[r.roundType] || r.roundType}: ${fmtDate(r.startDateTime)} → ${fmtDate(r.endDateTime)}`)
+            .join('\n')
+
+        const roundSection = roundLines
+            ? `\nScheduled Rounds:\n${roundLines}\n`
+            : ''
+
+        setNotifyMsg(
+            `Dear {name},\n\nThis is a reminder that the assessment "${exam.title}" has been scheduled for you.${roundSection}\nPlease log in to the Eklav portal and complete your assessment before the deadline.\n\nIf you have any questions, feel free to reach out to your placement team.\n\nBest regards,\nEklav Training & Placement Cell`
+        )
+        setNotifyResult(null)
+        setNotifyError('')
+    }
+
+    const handleNotifySend = async () => {
+        if (!notifySubject.trim() || !notifyMsg.trim()) {
+            setNotifyError('Subject and message are required.')
+            return
+        }
+        setNotifySending(true)
+        setNotifyError('')
+        try {
+            const res = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam/${notifyExam._id}/notify`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+                    body: JSON.stringify({ subject: notifySubject.trim(), message: notifyMsg.trim() }),
+                }
+            )
+            const data = await res.json()
+            if (data.success) {
+                setNotifyResult({ sent: data.sent, failed: data.failed || [] })
+            } else {
+                setNotifyError(data.message || 'Failed to send.')
+            }
+        } catch {
+            setNotifyError('Something went wrong. Please try again.')
+        } finally {
+            setNotifySending(false)
+        }
+    }
 
     const handleDeleteExam = async (id?: string) => {
         const deleteId = id || examId;
@@ -554,73 +617,87 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                      {/* ================= EXAM LIST TABLE ================= */}
                     <div className="exam-list-container">
                         <div className="exam-list-header">
-                            <h6 className="exam-list-title">Existing Exams</h6>
-                            <p className="exam-list-subtitle">Manage and delete existing exam configurations</p>
+                            <div>
+                                <h6 className="exam-list-title">Existing Exams</h6>
+                                <p className="exam-list-subtitle">Manage existing exam configurations</p>
+                            </div>
+                            <span className="exam-count-badge">{examList.length} exam{examList.length !== 1 ? 's' : ''}</span>
                         </div>
 
                         {examList.length === 0 ? (
                             <div className="no-exams">
                                 <FaInfoCircle className="no-exams-icon" />
-                                <span>No exams created yet</span>
+                                <span>No exams created yet. Create one above to get started.</span>
                             </div>
                         ) : (
                             <div className="table-wrapper">
                                 <table className="exam-table">
                                     <thead>
                                         <tr>
-                                            <th>#</th>
-                                            <th>Exam Title</th>
-                                            <th>Rounds</th>
-                                            <th>Description</th>
-                                            <th>Action</th>
+                                            <th style={{ width: 40 }}>#</th>
+                                            <th style={{ width: '28%' }}>Exam</th>
+                                            <th>Scheduled Rounds</th>
+                                            <th style={{ width: 200, textAlign: 'right' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {examList.map((exam, index) => (
                                             <tr key={exam._id} className={examId === exam._id ? "active-row" : ""}>
-                                                <td>{index + 1}</td>
                                                 <td>
-                                                    <span className="exam-title-cell">{exam.title}</span>
-                                                    {examId === exam._id && (
-                                                        <span className="editing-badge">Editing</span>
-                                                    )}
+                                                    <span className="row-num">{index + 1}</span>
                                                 </td>
                                                 <td>
-                                                    <div className="rounds-badges">
-                                                        {exam.rounds?.map((r: any) => (
-                                                            <span key={r.roundType} className={`round-badge ${r.roundType}`}>
-                                                                {roundIcons[r.roundType as RoundType]?.label || r.roundType}
+                                                    <div className="exam-info-cell">
+                                                        <div className="exam-title-row">
+                                                            <span className="exam-title-cell">{exam.title}</span>
+                                                            {examId === exam._id && (
+                                                                <span className="editing-badge">Editing</span>
+                                                            )}
+                                                        </div>
+                                                        {exam.description && (
+                                                            <span className="desc-cell">
+                                                                {exam.description.length > 60
+                                                                    ? exam.description.slice(0, 60) + '…'
+                                                                    : exam.description}
                                                             </span>
-                                                        ))}
+                                                        )}
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    <span className="desc-cell">
-                                                        {exam.description
-                                                            ? exam.description.length > 50
-                                                                ? exam.description.slice(0, 50) + "..."
-                                                                : exam.description
-                                                            : <span style={{ color: "#555" }}>—</span>
-                                                        }
-                                                    </span>
+                                                    {exam.rounds?.length > 0 ? (
+                                                        <div className="rounds-schedule">
+                                                            {exam.rounds.map((r: any) => {
+                                                                const info = roundIcons[r.roundType as RoundType]
+                                                                const fmtD = (dt: string) =>
+                                                                    new Date(dt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
+                                                                return (
+                                                                    <div key={r.roundType} className="round-schedule-row">
+                                                                        <span className={`round-badge ${r.roundType}`}>
+                                                                            {info?.label || r.roundType}
+                                                                        </span>
+                                                                        <span className="round-dates">
+                                                                            {r.startDateTime ? fmtD(r.startDateTime) : '—'}
+                                                                            <span className="date-sep">→</span>
+                                                                            {r.endDateTime ? fmtD(r.endDateTime) : '—'}
+                                                                        </span>
+                                                                    </div>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ color: '#444', fontSize: '0.8rem' }}>No rounds</span>
+                                                    )}
                                                 </td>
                                                 <td>
                                                     <div className="action-btns">
-                                                        <button
-                                                            className="edit-btn"
-                                                            onClick={() => handleExamChange(exam._id)}
-                                                            title="Edit this exam"
-                                                        >
-                                                            <FaEdit /> Edit
+                                                        <button className="action-icon-btn edit-icon-btn" onClick={() => handleExamChange(exam._id)} title="Edit">
+                                                            <FaEdit />
                                                         </button>
-                                                        <button
-                                                            className="delete-btn"
-                                                            onClick={() => handleDeleteExam(exam._id)}
-                                                            disabled={loading}
-                                                            title="Delete this exam"
-                                                        >
+                                                        <button className="action-icon-btn notify-icon-btn" onClick={() => openNotify(exam)} title="Notify Students">
+                                                            <FaEnvelope />
+                                                        </button>
+                                                        <button className="action-icon-btn delete-icon-btn" onClick={() => handleDeleteExam(exam._id)} disabled={loading} title="Delete">
                                                             {loading ? <FaSpinner className="spinner-icon" /> : <FaTrash />}
-                                                            Delete
                                                         </button>
                                                     </div>
                                                 </td>
@@ -1086,192 +1163,330 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                         flex-wrap: wrap;
                     }
                 }
-            .exam-list-section  {
-                max-width: 1200px;
-                margin: 2rem auto 0 auto;
-                background: #0a0a0a;
-                border: 1px solid #1f1f1f;
-                border-radius: 16px;
-                overflow: hidden;
+            /* ── Exam List ── */
+            .exam-list-container {
+                border-top: 1px solid #1f1f1f;
+                margin-top: 0;
             }
 
             .exam-list-header {
-                background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
-                border-bottom: 1px solid #ff6b35;
-                padding: 1.25rem 1.5rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 1.1rem 1.5rem 0.9rem;
+                border-bottom: 1px solid #1f1f1f;
             }
 
             .exam-list-title {
                 color: #ff6b35;
-                font-size: 1rem;
-                font-weight: 600;
+                font-size: 0.95rem;
+                font-weight: 700;
                 margin: 0;
             }
 
             .exam-list-subtitle {
-                color: #8a8a8a;
-                font-size: 0.8rem;
-                margin: 0.2rem 0 0 0;
+                color: #666;
+                font-size: 0.75rem;
+                margin: 0.15rem 0 0 0;
+            }
+
+            .exam-count-badge {
+                background: rgba(255,107,53,0.12);
+                color: #ff6b35;
+                border: 1px solid rgba(255,107,53,0.3);
+                font-size: 0.7rem;
+                font-weight: 700;
+                padding: 3px 10px;
+                border-radius: 20px;
+                white-space: nowrap;
             }
 
             .no-exams {
                 display: flex;
                 align-items: center;
                 gap: 0.75rem;
-                padding: 2rem;
+                padding: 2rem 1.5rem;
                 color: #555;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
             }
 
-            .no-exams-icon {
-                font-size: 1.2rem;
-                color: #333;
-            }
+            .no-exams-icon { font-size: 1.1rem; color: #333; }
 
-            .table-wrapper {
-                overflow-x: auto;
-            }
+            .table-wrapper { overflow-x: auto; }
 
             .exam-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 0.85rem;
+                font-size: 0.83rem;
             }
 
             .exam-table thead tr {
-                background: #111;
-                border-bottom: 1px solid #2c2c2c;
+                background: #0d0d0d;
+                border-bottom: 1px solid #222;
             }
 
             .exam-table th {
-                padding: 0.85rem 1rem;
+                padding: 10px 14px;
                 color: #ff6b35;
-                font-weight: 600;
+                font-weight: 700;
                 text-align: left;
                 white-space: nowrap;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
             }
 
             .exam-table tbody tr {
-                border-bottom: 1px solid #1a1a1a;
+                border-bottom: 1px solid #181818;
                 transition: background 0.15s ease;
             }
 
-            .exam-table tbody tr:hover {
-                background: #111;
-            }
+            .exam-table tbody tr:last-child { border-bottom: none; }
+
+            .exam-table tbody tr:hover { background: #111; }
 
             .exam-table tbody tr.active-row {
-                background: rgba(255, 107, 53, 0.05);
+                background: rgba(255,107,53,0.04);
                 border-left: 3px solid #ff6b35;
             }
 
             .exam-table td {
-                padding: 0.85rem 1rem;
+                padding: 12px 14px;
                 color: #ccc;
                 vertical-align: middle;
             }
 
+            .row-num {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                background: #1a1a1a;
+                border: 1px solid #2a2a2a;
+                color: #666;
+                font-size: 0.72rem;
+                font-weight: 600;
+            }
+
+            .exam-info-cell { display: flex; flex-direction: column; gap: 3px; }
+
+            .exam-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
             .exam-title-cell {
                 color: #fff;
-                font-weight: 500;
-                display: inline-block;
-                margin-right: 0.5rem;
+                font-weight: 600;
+                font-size: 0.88rem;
             }
 
             .editing-badge {
-                background: rgba(255, 107, 53, 0.2);
+                background: rgba(255,107,53,0.18);
                 color: #ff6b35;
-                border: 1px solid rgba(255, 107, 53, 0.4);
-                font-size: 0.65rem;
-                padding: 2px 8px;
+                border: 1px solid rgba(255,107,53,0.35);
+                font-size: 0.6rem;
+                padding: 1px 7px;
                 border-radius: 20px;
-                font-weight: 600;
-                vertical-align: middle;
+                font-weight: 700;
+                letter-spacing: 0.3px;
             }
 
-            .rounds-badges {
+            .desc-cell {
+                color: #666;
+                font-size: 0.75rem;
+                line-height: 1.4;
+            }
+
+            /* Round schedule rows */
+            .rounds-schedule { display: flex; flex-direction: column; gap: 6px; }
+
+            .round-schedule-row {
                 display: flex;
+                align-items: center;
+                gap: 10px;
                 flex-wrap: wrap;
-                gap: 0.35rem;
             }
 
             .round-badge {
-                font-size: 0.65rem;
-                padding: 2px 8px;
+                font-size: 0.64rem;
+                padding: 2px 9px;
                 border-radius: 20px;
-                font-weight: 600;
+                font-weight: 700;
                 white-space: nowrap;
+                flex-shrink: 0;
             }
 
-            .round-badge.mcq   { background: rgba(255,122,0,0.15); color: #ff7a00; border: 1px solid rgba(255,122,0,0.3); }
-            .round-badge.coding { background: rgba(40,167,69,0.15); color: #28a745; border: 1px solid rgba(40,167,69,0.3); }
-            .round-badge.tr    { background: rgba(23,162,184,0.15); color: #17a2b8; border: 1px solid rgba(23,162,184,0.3); }
-            .round-badge.hr    { background: rgba(253,126,20,0.15); color: #fd7e14; border: 1px solid rgba(253,126,20,0.3); }
+            .round-badge.mcq    { background: rgba(255,122,0,0.13);  color: #ff7a00; border: 1px solid rgba(255,122,0,0.28); }
+            .round-badge.coding { background: rgba(40,167,69,0.13);  color: #28a745; border: 1px solid rgba(40,167,69,0.28); }
+            .round-badge.tr     { background: rgba(23,162,184,0.13); color: #17a2b8; border: 1px solid rgba(23,162,184,0.28); }
+            .round-badge.hr     { background: rgba(253,126,20,0.13); color: #fd7e14; border: 1px solid rgba(253,126,20,0.28); }
 
-            .desc-cell {
+            .round-dates {
                 color: #777;
-                font-size: 0.8rem;
+                font-size: 0.72rem;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
             }
 
+            .date-sep { color: #444; font-size: 0.65rem; }
+
+            /* Action icon buttons */
             .action-btns {
                 display: flex;
-                gap: 0.5rem;
+                gap: 6px;
                 align-items: center;
+                justify-content: flex-end;
             }
 
-            .edit-btn {
-                background: rgba(255, 107, 53, 0.15);
-                border: 1px solid rgba(255, 107, 53, 0.4);
+            .action-icon-btn {
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                border: 1px solid;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 0.8rem;
+                transition: all 0.15s ease;
+                flex-shrink: 0;
+            }
+
+            .edit-icon-btn {
+                background: rgba(255,107,53,0.12);
+                border-color: rgba(255,107,53,0.35);
                 color: #ff6b35;
-                padding: 0.4rem 0.85rem;
-                border-radius: 6px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-                transition: all 0.2s ease;
             }
+            .edit-icon-btn:hover { background: rgba(255,107,53,0.24); }
 
-            .edit-btn:hover {
-                background: rgba(255, 107, 53, 0.25);
+            .notify-icon-btn {
+                background: rgba(99,102,241,0.12);
+                border-color: rgba(99,102,241,0.35);
+                color: #818cf8;
             }
+            .notify-icon-btn:hover { background: rgba(99,102,241,0.24); }
 
-            .delete-btn {
-                background: rgba(220, 53, 69, 0.15);
-                border: 1px solid rgba(220, 53, 69, 0.4);
+            .delete-icon-btn {
+                background: rgba(220,53,69,0.12);
+                border-color: rgba(220,53,69,0.35);
                 color: #dc3545;
-                padding: 0.4rem 0.85rem;
-                border-radius: 6px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-                transition: all 0.2s ease;
             }
-
-            .delete-btn:hover:not(:disabled) {
-                background: rgba(220, 53, 69, 0.25);
-            }
-
-            .delete-btn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
+            .delete-icon-btn:hover:not(:disabled) { background: rgba(220,53,69,0.24); }
+            .delete-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
             @media (max-width: 768px) {
-                .exam-list-container {
-                    margin: 1rem auto 0 auto;
-                    border-radius: 12px;
-                }
-                .action-btns {
-                    flex-direction: column;
-                }
+                .round-schedule-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+                .action-btns { justify-content: flex-start; }
             }
             `}</style>
+
+            {/* ── Notify Students Modal ── */}
+            <Modal
+                show={!!notifyExam}
+                onHide={() => setNotifyExam(null)}
+                size="lg"
+                contentClassName="bg-dark text-white"
+                centered
+            >
+                <Modal.Header closeButton closeVariant="white" style={{ borderColor: '#2a2a2a' }}>
+                    <Modal.Title style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FaEnvelope style={{ color: '#818cf8' }} />
+                        Notify All Students
+                        {notifyExam && <span style={{ color: '#818cf8', fontWeight: 700, marginLeft: 4 }}>— {notifyExam.title}</span>}
+                    </Modal.Title>
+                </Modal.Header>
+
+                <Modal.Body style={{ padding: '20px 24px' }}>
+                    {notifyResult ? (
+                        <div className="text-center py-4">
+                            {notifyResult.sent === 0 ? (
+                                <>
+                                    <div style={{ fontSize: 40, marginBottom: 12 }}>❌</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>Failed to Send</div>
+                                    <div className="text-muted mt-1" style={{ fontSize: '0.85rem' }}>No emails were delivered.</div>
+                                </>
+                            ) : notifyResult.failed.length > 0 ? (
+                                <>
+                                    <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f59e0b' }}>Partially Sent</div>
+                                    <div className="text-muted mt-1" style={{ fontSize: '0.85rem' }}>
+                                        Delivered to <strong style={{ color: '#fff' }}>{notifyResult.sent}</strong> student{notifyResult.sent !== 1 ? 's' : ''},{' '}
+                                        <strong style={{ color: '#ef4444' }}>{notifyResult.failed.length}</strong> failed.
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
+                                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#22c55e' }}>Emails Sent!</div>
+                                    <div className="text-muted mt-1" style={{ fontSize: '0.85rem' }}>
+                                        Successfully delivered to <strong style={{ color: '#fff' }}>{notifyResult.sent}</strong> student{notifyResult.sent !== 1 ? 's' : ''}.
+                                    </div>
+                                </>
+                            )}
+                            {notifyResult.failed.length > 0 && (
+                                <div className="mt-3 text-start" style={{ maxHeight: 120, overflowY: 'auto' }}>
+                                    {notifyResult.failed.map((f, i) => (
+                                        <div key={i} className="px-3 py-1 rounded mb-1"
+                                            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', fontSize: '0.76rem' }}>
+                                            <span style={{ color: '#ef4444', fontWeight: 600 }}>{f.email}</span>
+                                            <span className="text-muted ms-2">{f.error}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {notifyError && (
+                                <Alert variant="danger" className="py-2 mb-3" style={{ fontSize: '0.85rem' }}>
+                                    <FaTimesCircle className="me-2" />{notifyError}
+                                </Alert>
+                            )}
+                            <div className="mb-2 px-3 py-2 rounded" style={{ background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.2)', fontSize: '0.78rem', color: '#ccc' }}>
+                                <strong style={{ color: '#818cf8' }}>Bulk send:</strong> Email goes to all students in your institute.
+                                Use <code style={{ color: '#818cf8' }}>{'{name}'}</code> to personalise with each student's name.
+                            </div>
+                            <Form.Group className="mb-3 mt-3">
+                                <Form.Label style={{ fontSize: '0.8rem', color: '#aaa' }}>Subject</Form.Label>
+                                <Form.Control
+                                    className="bg-black text-white border-secondary"
+                                    value={notifySubject}
+                                    onChange={(e) => setNotifySubject(e.target.value)}
+                                />
+                            </Form.Group>
+                            <Form.Group>
+                                <Form.Label style={{ fontSize: '0.8rem', color: '#aaa' }}>Message</Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={10}
+                                    className="bg-black text-white border-secondary"
+                                    style={{ fontFamily: 'inherit', lineHeight: 1.6, resize: 'vertical' }}
+                                    value={notifyMsg}
+                                    onChange={(e) => setNotifyMsg(e.target.value)}
+                                />
+                            </Form.Group>
+                        </>
+                    )}
+                </Modal.Body>
+
+                <Modal.Footer style={{ borderColor: '#2a2a2a' }}>
+                    <Button variant="secondary" onClick={() => setNotifyExam(null)}>
+                        {notifyResult ? 'Close' : 'Cancel'}
+                    </Button>
+                    {!notifyResult && (
+                        <Button
+                            disabled={notifySending}
+                            onClick={handleNotifySend}
+                            style={{ backgroundColor: '#6366f1', borderColor: '#6366f1', color: '#fff', fontWeight: 600 }}
+                        >
+                            <FaEnvelope className="me-2" />
+                            {notifySending ? 'Sending...' : 'Send to All Students'}
+                        </Button>
+                    )}
+                </Modal.Footer>
+            </Modal>
         </>
     );
 }
