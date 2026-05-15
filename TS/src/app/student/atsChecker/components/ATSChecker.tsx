@@ -56,6 +56,14 @@ const detectSections = (text: string): SectionStatus =>
   SECTION_DEFS.reduce((acc, def) => { acc[def.key] = def.regex.test(text.toLowerCase()); return acc; }, {} as SectionStatus);
 
 
+interface UsageInfo {
+  usageCount: number
+  isSubscribed: boolean
+  remaining: number
+  limit: number
+  canUse: boolean
+}
+
 const ATSChecker: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const { user } = useAuthContext();
@@ -67,6 +75,10 @@ const ATSChecker: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [animatedScore, setAnimatedScore] = useState(0);
+
+  // Usage gate
+  const [usage, setUsage] = useState<UsageInfo | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Resume viewer modal
   const [showResumeModal, setShowResumeModal] = useState(false);
@@ -101,6 +113,29 @@ const ATSChecker: React.FC = () => {
     return () => cancelAnimationFrame(fid);
   }, [result?.score]);
 
+  // Fetch usage count; subscription is determined by user.status === 'approved'
+  useEffect(() => {
+    if (!user?.token) return
+    const isSubscribed = (user as any)?.status?.toLowerCase() === 'approved'
+    fetch(`${baseURL}/api/resume/ats-usage`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        // Override isSubscribed from backend with the reliable user.status field
+        const MAX = 50
+        const count = data.usageCount || 0
+        setUsage({
+          usageCount: count,
+          isSubscribed,
+          remaining: isSubscribed ? Math.max(0, MAX - count) : count === 0 ? 1 : 0,
+          limit: MAX,
+          canUse: count === 0 || (isSubscribed && count < MAX),
+        })
+      })
+      .catch(() => {})
+  }, [user?.token])
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -114,6 +149,13 @@ const ATSChecker: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!file) { setError("Please upload a resume"); return; }
+
+    // Pre-flight usage gate
+    if (usage && !usage.canUse) {
+      setShowPaywall(true);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("resume", file);
     if (companyName.trim()) formData.append("company_name", companyName.trim());
@@ -123,8 +165,20 @@ const ATSChecker: React.FC = () => {
       const res = await fetch(`${baseURL}/api/resume/check-ats`, {
         method: "POST", headers: { Authorization: `Bearer ${user?.token}` }, body: formData,
       });
+      if (res.status === 403) {
+        setShowPaywall(true);
+        return;
+      }
       if (!res.ok) throw new Error("Failed to analyze resume");
-      setResult(await res.json());
+      const data = await res.json();
+      setResult(data);
+      // Update usage count after successful check
+      setUsage(prev => {
+        if (!prev) return prev
+        const newCount = prev.usageCount + 1
+        const newRemaining = Math.max(0, prev.remaining - 1)
+        return { ...prev, usageCount: newCount, remaining: newRemaining, canUse: prev.isSubscribed ? newRemaining > 0 : false }
+      })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze resume");
     } finally { setLoading(false); }
@@ -193,6 +247,35 @@ const ATSChecker: React.FC = () => {
           <div className="ats-header-badge">AI-Powered</div>
           <h1 className="ats-title">Resume ATS Analyzer</h1>
           <p className="ats-subtitle">Upload your resume and paste a job description for a tailored ATS score with AI-powered improvements</p>
+
+          {/* Usage counter */}
+          {usage && (
+            <div className="ats-usage-bar">
+              {usage.isSubscribed ? (
+                <>
+                  <span className="ats-usage-dot subscribed" />
+                  <span className="ats-usage-label">Subscribed</span>
+                  <span className="ats-usage-count">{usage.usageCount} / {usage.limit} checks used</span>
+                  <div className="ats-usage-track">
+                    <div className="ats-usage-fill" style={{ width: `${(usage.usageCount / usage.limit) * 100}%`, background: usage.usageCount >= 45 ? '#ef4444' : '#ff7a00' }} />
+                  </div>
+                  <span className="ats-usage-left" style={{ color: usage.remaining <= 5 ? '#ef4444' : '#22c55e' }}>{usage.remaining} remaining</span>
+                </>
+              ) : usage.usageCount === 0 ? (
+                <>
+                  <span className="ats-usage-dot free" />
+                  <span className="ats-usage-label" style={{ color: '#22c55e' }}>1 Free Check Available</span>
+                  <span className="ats-usage-hint">Subscribe for up to 50 checks</span>
+                </>
+              ) : (
+                <>
+                  <span className="ats-usage-dot locked" />
+                  <span className="ats-usage-label" style={{ color: '#ef4444' }}>Free limit reached</span>
+                  <button className="ats-upgrade-pill" onClick={() => setShowPaywall(true)}>🔓 Subscribe to continue</button>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Input + Score Row */}
@@ -602,10 +685,86 @@ const ATSChecker: React.FC = () => {
         </Modal.Body>
       </Modal>
 
+      {/* ===== Paywall Modal ===== */}
+      <Modal show={showPaywall} onHide={() => setShowPaywall(false)} centered dialogClassName="ats-modal-dark">
+        <Modal.Body style={{ padding: 0 }}>
+          <div style={{ background: 'linear-gradient(160deg,#0d0d0f,#111116)', borderRadius: 16, padding: '36px 28px', textAlign: 'center' }}>
+            {/* Icon */}
+            <div style={{ fontSize: '3rem', marginBottom: 12 }}>
+              {usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? '🔒' : '⭐'}
+            </div>
+
+            {usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? (
+              <>
+                <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '1.3rem', marginBottom: 8 }}>Limit Reached</div>
+                <p style={{ color: '#888', fontSize: '0.88rem', marginBottom: 20 }}>
+                  You have used all <strong style={{ color: '#fff' }}>50</strong> ATS checks included in your subscription.
+                  <br />Please contact support for assistance.
+                </p>
+                <Button style={{ background: '#ff7a00', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700 }} onClick={() => setShowPaywall(false)}>
+                  Close
+                </Button>
+              </>
+            ) : (
+              <>
+                <div style={{ color: '#ff7a00', fontWeight: 800, fontSize: '1.3rem', marginBottom: 8 }}>Subscribe to Continue</div>
+                <p style={{ color: '#aaa', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: 6 }}>
+                  You've used your <strong style={{ color: '#fff' }}>1 free ATS check</strong>.
+                </p>
+                <p style={{ color: '#666', fontSize: '0.82rem', marginBottom: 24 }}>
+                  Subscribe to get <strong style={{ color: '#ff7a00' }}>50 ATS checks</strong>, AI resume improvements,<br />
+                  career roadmap insights and more.
+                </p>
+
+                {/* Feature list */}
+                <div style={{ background: '#0a0a0e', border: '1px solid #1e1e24', borderRadius: 12, padding: '14px 18px', marginBottom: 22, textAlign: 'left' }}>
+                  {[
+                    '✅ 50 ATS resume checks',
+                    '✅ AI-powered resume improvements',
+                    '✅ Job description keyword matching',
+                    '✅ Career roadmap & package insights',
+                    '✅ PDF & DOCX resume download',
+                  ].map((f, i) => (
+                    <div key={i} style={{ color: '#ccc', fontSize: '0.82rem', padding: '4px 0', borderBottom: i < 4 ? '1px solid #1e1e24' : 'none' }}>{f}</div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                  <Button
+                    style={{ background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: '0.95rem' }}
+                    onClick={() => { setShowPaywall(false); window.location.href = '/student/subscription'; }}
+                  >
+                    🔓 View Plans
+                  </Button>
+                  <Button
+                    style={{ background: 'transparent', border: '1px solid #2a2a32', borderRadius: 10, padding: '10px 20px', color: '#888', fontWeight: 600, fontSize: '0.85rem' }}
+                    onClick={() => setShowPaywall(false)}
+                  >
+                    Maybe Later
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal.Body>
+      </Modal>
+
       <style>{`
         .ats-root { background: #060608; min-height: 100vh; color: #f0f0f0; }
 
         .ats-header { text-align: center; }
+        .ats-usage-bar { display: inline-flex; align-items: center; gap: 10px; background: rgba(255,122,0,0.06); border: 1px solid rgba(255,122,0,0.18); border-radius: 30px; padding: 7px 18px; margin-top: 14px; font-size: 0.78rem; flex-wrap: wrap; justify-content: center; }
+        .ats-usage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .ats-usage-dot.subscribed { background: #ff7a00; box-shadow: 0 0 6px #ff7a0066; }
+        .ats-usage-dot.free { background: #22c55e; box-shadow: 0 0 6px #22c55e66; }
+        .ats-usage-dot.locked { background: #ef4444; box-shadow: 0 0 6px #ef444466; }
+        .ats-usage-label { font-weight: 700; color: #ff7a00; }
+        .ats-usage-count { color: #888; }
+        .ats-usage-track { width: 80px; height: 5px; background: #1e1e24; border-radius: 3px; overflow: hidden; }
+        .ats-usage-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+        .ats-usage-left { font-weight: 700; }
+        .ats-usage-hint { color: #555; font-size: 0.72rem; }
+        .ats-upgrade-pill { background: linear-gradient(135deg,#ff7a00,#ff9a3c); border: none; border-radius: 20px; color: #fff; font-size: 0.72rem; font-weight: 700; padding: 4px 14px; cursor: pointer; white-space: nowrap; }
         .ats-header-badge { display: inline-block; background: rgba(255,107,53,0.12); color: #ff6b35; border: 1px solid rgba(255,107,53,0.3); border-radius: 20px; padding: 0.25rem 0.9rem; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.75rem; }
         .ats-title { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 0.4rem; }
         .ats-subtitle { color: #666; font-size: 0.9rem; max-width: 580px; margin: 0 auto; }

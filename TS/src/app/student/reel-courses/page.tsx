@@ -101,7 +101,7 @@ export default function HomePage() {
               key={cat}
               onClick={() => setActiveCategory(cat)}
               style={{
-                padding: "8px 16px",
+                padding: "4px 12px",
                 borderRadius: "20px",
                 border:
                   activeCategory === cat
@@ -113,6 +113,8 @@ export default function HomePage() {
                     : "#1a1a1a",
                 color: "#fff",
                 cursor: "pointer",
+                fontSize: "12px",
+                whiteSpace: "nowrap",
               }}
             >
               {cat}
