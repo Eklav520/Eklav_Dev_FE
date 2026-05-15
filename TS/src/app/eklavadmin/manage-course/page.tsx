@@ -3,6 +3,7 @@ import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
 import EditCourseModal from './EditCourseModal'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
+import InstituteAccessModal from './InstituteAccessModal'
 import { Button, Card, CardBody, CardHeader, Col, Form, Row, Badge, Alert, Spinner, Dropdown } from 'react-bootstrap'
 import {
   FaAngleRight,
@@ -19,7 +20,8 @@ import {
   FaEllipsisV,
   FaToggleOn,
   FaToggleOff,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaBuilding
 } from 'react-icons/fa'
 import { FaAngleLeft, FaClock, FaDollarSign, FaChartBar } from 'react-icons/fa6'
 import { useEffect, useState } from 'react'
@@ -81,6 +83,7 @@ interface Course {
   enrolledStudents?: number
   rating?: number
   status?: 'Draft' | 'Published' | 'Archived'
+  allowedInstitutes?: string[]
 }
 
 type SortOption = 'newest' | 'popular' | 'alphabetical' | 'price-low-high' | 'price-high-low'
@@ -103,6 +106,8 @@ const ManageCoursePage = () => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [showAccessModal, setShowAccessModal] = useState(false)
+  const [accessCourse, setAccessCourse] = useState<Course | null>(null)
   const { user } = useAuthContext();
   const token = user?.token;
 
@@ -653,6 +658,18 @@ const ManageCoursePage = () => {
         isDeleting={isUpdating}
       />
 
+      {/* Institute Access Modal */}
+      <InstituteAccessModal
+        show={showAccessModal}
+        course={accessCourse}
+        onHide={() => { setShowAccessModal(false); setAccessCourse(null) }}
+        onUpdated={(courseId, allowedInstitutes) => {
+          setCourses(prev => prev.map(c =>
+            c._id === courseId ? { ...c, allowedInstitutes } : c
+          ))
+        }}
+      />
+
       <Card className="border-0 bg-transparent rounded-3 shadow-sm">
         <CardHeader className="bg-dark border-bottom d-flex justify-content-between align-items-center py-3">
           <div>
@@ -878,6 +895,17 @@ const ManageCoursePage = () => {
                             <Dropdown.Item onClick={() => navigate(`/course/${course._id}`)}>
                               <FaEye className="me-2" />
                               Preview
+                            </Dropdown.Item>
+                            <Dropdown.Item
+                              onClick={() => { setAccessCourse(course); setShowAccessModal(true) }}
+                            >
+                              <FaBuilding className="me-2" />
+                              Institute Access
+                              {course.allowedInstitutes && course.allowedInstitutes.length > 0 && (
+                                <Badge bg="success" pill className="ms-2">
+                                  {course.allowedInstitutes.length}
+                                </Badge>
+                              )}
                             </Dropdown.Item>
                             <Dropdown.Divider />
                             <Dropdown.Item
