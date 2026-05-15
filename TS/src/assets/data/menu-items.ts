@@ -747,16 +747,22 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'myColleges',
     label: 'My Colleges',
-    icon: MdOutlineSchool, // 🏫 college/institution
+    icon: MdOutlineSchool,
     children: [
       {
         key: 'collegeLabs',
         label: 'College Labs',
         icon: BsCpuFill,
         url: '/student/college-labs',
-        parentKey: 'preparation',
+        parentKey: 'myColleges',
       },
-
+      {
+        key: 'placementBoard',
+        label: 'Placement Details',
+        icon: FaUserTie,
+        url: '/student/placement',
+        parentKey: 'myColleges',
+      },
     ],
   },
 

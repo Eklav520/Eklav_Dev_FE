@@ -157,6 +157,7 @@ const JustAMinute = lazy(() => import('@/app/student/just-a-minute/page'))
 const LearningPractice = lazy(() => import('@/app/student/learning-practice/page'))
 const WritingPractice = lazy(() => import('@/app/student/writing-practice/pages'))
 const StudentCollegeLabs = lazy(() => import('@/app/student/college-labs/page'))
+const StudentPlacement = lazy(() => import('@/app/student/placement/page'))
 const StudentCompanyRounds = lazy(() => import('@/app/student/company-rounds/pages'))
 const StudentCompanyDetails = lazy(() => import('@/app/student/company-rounds/pages'))
 const StudentCompanyList = lazy(() => import('@/app/student/company-rounds/pages'))
@@ -950,7 +951,12 @@ export const studentRoutes: RoutesProps[] = [
   {
     path: '/student/company-list',
     name: 'Company List',
-    element: <StudentCompanyList />,  
+    element: <StudentCompanyList />,
+  },
+  {
+    path: '/student/placement',
+    name: 'Placement Board',
+    element: <StudentPlacement />,
   },
 ]
 
