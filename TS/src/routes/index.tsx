@@ -119,6 +119,7 @@ const AddStudent = lazy(() => import('@/app/institute/studentDetails/pages'))
 const FreelancingPage = lazy(() => import('@/app/institute/freelencing/pages'))
 const FreelancingTaskListPage = lazy(() => import('@/app/institute/freelencing/task-list/page'))
 const InstituteCollegeLabsUpload = lazy(() => import('@/app/institute/college-labs-upload/page'))
+const InstitutePlacementDrives = lazy(() => import('@/app/institute/placement-drives/page'))
 
 //Student
 const StudentFreelancing = lazy(() => import('@/app/student/freelencing/pages'))
@@ -734,6 +735,12 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     path: '/institute/college-labs-upload',
     name: 'College Labs Upload',
     element: <InstituteCollegeLabsUpload />,
+  },
+
+  {
+    path: '/institute/placement-drives',
+    name: 'Placement Drives',
+    element: <InstitutePlacementDrives />,
   },
 
   {

@@ -480,6 +480,21 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
+
+  {
+    key: 'placements',
+    label: 'Placements',
+    icon: BsBriefcase,
+    children: [
+      {
+        key: 'placementDrives',
+        label: 'Placement Drives',
+        icon: BsPersonBadgeFill,
+        url: '/institute/placement-drives',
+        parentKey: 'instituteadmin',
+      },
+    ],
+  },
   {
     key: 'collegeAssessment',
     label: 'College Assess',
