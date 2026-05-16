@@ -6,7 +6,7 @@ import { Problem, fetchProblems } from './problems.data'
 import Discussion from './Discussion/Discussion'
 import CodeEditor from './CodeEditor'
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
-import { Container, Row, Col, Tabs, Tab, Badge, Button, Dropdown } from 'react-bootstrap'
+import { Container, Row, Col, Tabs, Tab, Badge, Button, Dropdown, Modal } from 'react-bootstrap'
 import AIResultPanel from './AIResultPanel'
 import { FiFileText, FiBookOpen, FiMessageCircle, FiUpload } from 'react-icons/fi'
 import './ProblemStatement.css'
@@ -16,49 +16,42 @@ import SubmissionList from './SubmissionsTab'
 /* ---------------- TYPES ---------------- */
 
 type Language =
-  | 'cpp'
-  | 'java'
-  | 'python'
-  | 'python3'
   | 'javascript'
   | 'typescript'
+  | 'python'
+  | 'java'
+  | 'cpp'
   | 'c'
   | 'csharp'
-  | 'go'
-  | 'kotlin'
-  | 'swift'
-  | 'rust'
-  | 'ruby'
   | 'php'
-  | 'dart'
-  | 'scala'
+  | 'ruby'
+  | 'go'
+  | 'rust'
 
-type ActiveTab = 'problemsList' | 'description' | 'discussion' | 'submission'
+type ActiveTab = 'problemsList' | 'submission'
 
 /* ---------------- LANGUAGE OPTIONS ---------------- */
 
-const LANGUAGE_GROUPS = [
-  [
-    { key: 'javascript', label: 'JavaScript' },
-    { key: 'typescript', label: 'TypeScript' },
-    { key: 'python', label: 'Python' },
-    { key: 'python3', label: 'Python3' },
-    { key: 'java', label: 'Java' },
-    { key: 'cpp', label: 'C++' },
-    { key: 'c', label: 'C' },
-    { key: 'csharp', label: 'C#' },
-  ],
-  [
-    { key: 'go', label: 'Go' },
-    { key: 'rust', label: 'Rust' },
-    { key: 'ruby', label: 'Ruby' },
-    { key: 'php', label: 'PHP' },
-    { key: 'swift', label: 'Swift' },
-    { key: 'kotlin', label: 'Kotlin' },
-    { key: 'scala', label: 'Scala' },
-    { key: 'dart', label: 'Dart' },
-  ],
+const LANGUAGE_GROUPS: { heading: string; items: { key: string; label: string; color: string }[] }[] = [
+  {
+    heading: 'Supported Languages',
+    items: [
+      { key: 'javascript', label: 'JavaScript', color: '#f7df1e' },
+      { key: 'typescript', label: 'TypeScript', color: '#3178c6' },
+      { key: 'python',     label: 'Python',     color: '#3572a5' },
+      { key: 'java',       label: 'Java',       color: '#b07219' },
+      { key: 'cpp',        label: 'C++',        color: '#f34b7d' },
+      { key: 'c',          label: 'C',          color: '#555555' },
+      { key: 'csharp',     label: 'C#',         color: '#178600' },
+      { key: 'php',        label: 'PHP',        color: '#4f5b93' },
+      { key: 'ruby',       label: 'Ruby',       color: '#cc342d' },
+      { key: 'go',         label: 'Go',         color: '#00add8' },
+      { key: 'rust',       label: 'Rust',       color: '#dea584' },
+    ],
+  },
 ]
+
+const ALL_LANGUAGES = LANGUAGE_GROUPS.flatMap(g => g.items)
 
 /* ---------------- DEFAULT CODE ---------------- */
 
@@ -79,10 +72,6 @@ const DEFAULT_CODE: Record<Language, string> = {
 
   /* ================= PYTHON ================= */
   python: `def solution(nums, target):
-    # Write your code here
-    return []`,
-
-  python3: `def solution(nums, target):
     # Write your code here
     return []`,
 
@@ -124,34 +113,11 @@ public class Solution {
   return [];
 }`,
 
-  /* ================= GO ================= */
-  go: `func solution(nums []int, target int) []int {
-  // Write your code here
-  return []int{}
-}`,
-
-  /* ================= KOTLIN ================= */
-  kotlin: `class Solution {
-  fun solution(nums: IntArray, target: Int): IntArray {
+  /* ================= PHP ================= */
+  php: `<?php
+function solution($nums, $target) {
     // Write your code here
-    return intArrayOf()
-  }
-}`,
-
-  /* ================= SWIFT ================= */
-  swift: `class Solution {
-  func solution(_ nums: [Int], _ target: Int) -> [Int] {
-    // Write your code here
-    return []
-  }
-}`,
-
-  /* ================= RUST ================= */
-  rust: `impl Solution {
-  pub fn solution(nums: Vec<i32>, target: i32) -> Vec<i32> {
-    // Write your code here
-    vec![]
-  }
+    return [];
 }`,
 
   /* ================= RUBY ================= */
@@ -160,29 +126,18 @@ public class Solution {
   []
 end`,
 
-  /* ================= PHP ================= */
-  php: `class Solution {
-  function solution($nums, $target) {
+  /* ================= GO ================= */
+  go: `func solution(nums []int, target int) []int {
     // Write your code here
-    return [];
-  }
+    return []int{}
 }`,
 
-  /* ================= DART ================= */
-  dart: `class Solution {
-  List<int> solution(List<int> nums, int target) {
+  /* ================= RUST ================= */
+  rust: `fn solution(nums: Vec<i32>, target: i32) -> Vec<i32> {
     // Write your code here
-    return [];
-  }
+    vec![]
 }`,
 
-  /* ================= SCALA ================= */
-  scala: `object Solution {
-  def solution(nums: Array[Int], target: Int): Array[Int] = {
-    // Write your code here
-    Array()
-  }
-}`,
 }
 
 /* ---------------- COMPONENT ---------------- */
@@ -208,6 +163,8 @@ const ProblemStatement = () => {
   const [completedIds, setCompletedIds] = useState<number[]>([])
   const [aiLoading, setAiLoading] = useState(false)
   const [loadingProblems, setLoadingProblems] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalDescTab, setModalDescTab] = useState<'description' | 'discussion'>('description')
 
   const PASS_THRESHOLD = 65
 
@@ -507,311 +464,240 @@ const ProblemStatement = () => {
 
   /* ---------------- UI ---------------- */
 
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setShowTestPanel(false)
+    setAiResult(null)
+  }
+
   return (
     <>
       <PageMetaData title="Problem Statement" />
 
-      <Container fluid className="vh-100 p-0">
-        <Row className="h-100 g-0">
-          {/* ================= LEFT PANEL ================= */}
-          <Col md={5} className="border-end h-100 d-flex flex-column p-0">
-            <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k as ActiveTab)} className="problem-tabs">
-              <Tab
-                eventKey="problemsList"
-                title={
+      {/* ================= MAIN PAGE — Problems list ================= */}
+      <Container fluid className="py-3 px-4">
+        <Tabs
+          activeKey={activeTab}
+          onSelect={(k) => setActiveTab(k as ActiveTab)}
+          className="problem-tabs mb-3"
+        >
+          <Tab eventKey="problemsList" title={<><FiBookOpen className="me-1" />Problems</>} />
+          <Tab eventKey="submission"   title={<><FiUpload className="me-1" />Submissions</>} />
+        </Tabs>
+
+        {activeTab === 'problemsList' && (
+          <ProblemsList
+            problems={problems}
+            selectedId={selectedProblem?.id}
+            completedIds={completedIds}
+            onSelect={(p) => {
+              setSelectedProblem(p)
+              setCode(DEFAULT_CODE[language])
+              setAiResult(null)
+              setShowTestPanel(false)
+              setModalDescTab('description')
+              setIsModalOpen(true)
+            }}
+          />
+        )}
+
+        {activeTab === 'submission' && <SubmissionList />}
+      </Container>
+
+      {/* ================= FULLSCREEN MODAL — Coding environment ================= */}
+      <Modal
+        show={isModalOpen}
+        onHide={closeModal}
+        fullscreen
+        dialogClassName="coding-modal"
+      >
+        <Modal.Header
+          style={{ padding: '6px 16px', borderBottom: '1px solid #dee2e6', background: '#fff', minHeight: 'unset' }}
+        >
+          {/* Left: difficulty badge only */}
+          <Badge
+            style={{ backgroundColor: selectedProblem?.difficulty === 'Medium' ? '#ff7a00' : undefined }}
+            bg={selectedProblem?.difficulty === 'Easy' ? 'success' : selectedProblem?.difficulty === 'Hard' ? 'danger' : undefined}
+          >
+            {selectedProblem?.difficulty}
+          </Badge>
+
+          {/* Right: lock badge + close */}
+          <div className="d-flex align-items-center gap-2 ms-auto">
+            <span className="badge" style={{ backgroundColor: '#ff7a00', color: '#fff', fontSize: '0.7rem' }}>
+              🔒 Submit unlocks at {PASS_THRESHOLD}%
+            </span>
+            <Button variant="outline-secondary" size="sm" onClick={closeModal}>✕</Button>
+          </div>
+        </Modal.Header>
+
+        <Modal.Body className="p-0" style={{ display: 'flex', overflow: 'hidden', height: 'calc(100vh - 57px)' }}>
+          <Row className="g-0 w-100 h-100">
+
+            {/* ── LEFT: Description ── */}
+            <Col md={5} className="border-end h-100 d-flex flex-column p-0">
+              <Tabs
+                activeKey={modalDescTab}
+                onSelect={(k) => setModalDescTab(k as any)}
+                className="problem-tabs"
+              >
+                <Tab eventKey="description" title={<><FiFileText className="me-1" />Description</>} />
+                <Tab eventKey="discussion"  title={<><FiMessageCircle className="me-1" />Doubts</>} />
+              </Tabs>
+
+              <div className="flex-grow-1 overflow-auto p-3">
+                {modalDescTab === 'description' && selectedProblem && (
                   <>
-                    <FiBookOpen /> Problems
+                    <h5 className="fw-bold mb-2">
+                      {selectedProblem.id}. {selectedProblem.title}
+                    </h5>
+                    <p style={{ whiteSpace: 'pre-line' }}>{selectedProblem.desc}</p>
+                    <h6 className="fw-semibold mt-3">Examples</h6>
+                    {selectedProblem.testCases.map((tc, idx) => (
+                      <div key={idx} className="border rounded p-2 mb-2 bg-light">
+                        <strong>Input:</strong> <pre className="mb-1">{tc.input}</pre>
+                        <strong>Output:</strong> <pre className="mb-0">{tc.output}</pre>
+                      </div>
+                    ))}
                   </>
-                }
-              />
-              <Tab
-                eventKey="description"
-                title={
-                  <>
-                    <FiFileText /> Description
-                  </>
-                }
-              />
-              <Tab
-                eventKey="discussion"
-                title={
-                  <>
-                    <FiMessageCircle /> Doubts
-                  </>
-                }
-              />
-              <Tab
-                eventKey="submission"
-                title={
-                  <>
-                    <FiUpload /> Submissions
-                  </>
-                }
-              />
-            </Tabs>
+                )}
+                {modalDescTab === 'discussion' && selectedProblem && (
+                  <Discussion problemId={selectedProblem.id} />
+                )}
+              </div>
+            </Col>
 
-            <div className="flex-grow-1 overflow-auto p-3">
-              {activeTab === 'problemsList' && (
-                <ProblemsList
-                  problems={problems}   // ✅ ADD THIS LINE
-                  selectedId={selectedProblem?.id}
-                  completedIds={completedIds}
-                  onSelect={(p) => {
-                    setIsProblemLoading(true)
-                    setSelectedProblem(p)
-                    setActiveTab('description')
-                    setCode(DEFAULT_CODE[language])
-                    setIsProblemLoading(false)
-                  }}
-                />
-              )}
+            {/* ── RIGHT: Code editor ── */}
+            <Col md={7} className="d-flex flex-column p-0 h-100">
 
-              {activeTab === 'submission' && <SubmissionList />}
-
-              {activeTab === 'description' && (
-                <>
-                  <h4 className="fw-bold">
-                    {selectedProblem?.id}. {selectedProblem?.title}
-                  </h4>
-                  <Badge
-                    style={{
-                      backgroundColor:
-                        selectedProblem?.difficulty === 'Medium'
-                          ? '#ff7a00'
-                          : undefined,
-                    }}
-                    bg={
-                      selectedProblem?.difficulty === 'Easy'
-                        ? 'success'
-                        : selectedProblem?.difficulty === 'Hard'
-                          ? 'danger'
-                          : undefined
-                    }
-                  >
-                    {selectedProblem?.difficulty}
-                  </Badge>
-
-                  <p className="mt-3" style={{ whiteSpace: 'pre-line' }}>
-                    {selectedProblem?.desc}
-                  </p>
-
-                  <h6 className="fw-semibold mt-3">Examples</h6>
-                  {selectedProblem?.testCases.map((tc, idx) => (
-                    <div key={idx} className="border rounded p-2 mb-2 bg-light">
-                      <strong>Input:</strong> <pre>{tc.input}</pre>
-                      <strong>Output:</strong> <pre>{tc.output}</pre>
-                    </div>
-                  ))}
-                </>
-              )}
-
-              {activeTab === 'discussion' && selectedProblem && <Discussion problemId={selectedProblem?.id} />}
-            </div>
-          </Col>
-
-          {/* ================= RIGHT PANEL ================= */}
-          <Col md={7} className="d-flex flex-column p-0" style={{ height: '100%', minHeight: 0 }}>
-            {/* Header */}
-            <div className="border-bottom px-3 py-2 d-flex justify-content-between align-items-center">
-              <div className="d-flex align-items-center gap-2">
-                <h6 className="m-0">Code Editor</h6>
-                <span
-                  className="badge"
-                  style={{
-                    backgroundColor: '#ff7a00',
-                    color: '#fff',
-                    fontWeight: 600,
-                    padding: '6px 12px',
-                    borderRadius: '8px',
-                  }}
+              {/* Toolbar */}
+              <div className="border-bottom px-3 py-2 d-flex align-items-center gap-2">
+                <Button
+                  size="sm"
+                  style={{ backgroundColor: '#ff7a00', border: 'none', fontWeight: 500 }}
+                  onClick={handleAIGuidance}
+                  disabled={aiLoading}
                 >
-                  🔒 Submit unlocks at {PASS_THRESHOLD}% pass rate
-                </span>
+                  {aiLoading
+                    ? <><span className="spinner-border spinner-border-sm me-1" />Thinking...</>
+                    : '🤖 AI Help'}
+                </Button>
+
+                <Dropdown align="end" className="ms-auto">
+                  <Dropdown.Toggle
+                    size="sm"
+                    variant="outline-secondary"
+                    className="d-flex align-items-center gap-2"
+                    style={{ borderRadius: 8, padding: '4px 12px', fontWeight: 500 }}
+                  >
+                    {(() => { const l = ALL_LANGUAGES.find(l => l.key === language); return l ? (
+                      <>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, display: 'inline-block', flexShrink: 0 }} />
+                        {l.label}
+                      </>
+                    ) : language })()}
+                    <FiChevronDown size={13} />
+                  </Dropdown.Toggle>
+
+                  <Dropdown.Menu style={{ minWidth: 200, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #e5e7eb', padding: '6px 0' }}>
+                    {LANGUAGE_GROUPS.map((group, gi) => (
+                      <div key={gi}>
+                        {gi > 0 && <Dropdown.Divider style={{ margin: '4px 0' }} />}
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', padding: '4px 14px 2px' }}>
+                          {group.heading}
+                        </div>
+                        {group.items.map((lang) => (
+                          <Dropdown.Item
+                            key={lang.key}
+                            onClick={() => setLanguage(lang.key as Language)}
+                            active={language === lang.key}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', fontSize: '0.875rem', borderRadius: 6, margin: '1px 4px' }}
+                          >
+                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: lang.color, flexShrink: 0, display: 'inline-block' }} />
+                            {lang.label}
+                            {language === lang.key && <span style={{ marginLeft: 'auto', color: '#ff7a00', fontSize: 12 }}>✓</span>}
+                          </Dropdown.Item>
+                        ))}
+                      </div>
+                    ))}
+                  </Dropdown.Menu>
+                </Dropdown>
               </div>
 
-              <Button
-                size="sm"
-                style={{
-                  backgroundColor: '#ff7a00',
-                  border: 'none',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-                onClick={handleAIGuidance}
-                disabled={aiLoading || !selectedProblem}
-              >
-                {aiLoading && (
-                  <span className="spinner-border spinner-border-sm" role="status" />
+              {/* Editor area */}
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                <div style={{ flex: showTestPanel ? '0 0 60%' : '1 1 100%', overflow: 'hidden', transition: 'flex 0.2s ease' }}>
+                  <CodeEditor language={language} value={code} onChange={setCode} />
+                </div>
+
+                {/* Test result panel */}
+                {showTestPanel && (
+                  <div className="border-top d-flex flex-column" style={{ flex: '0 0 40%', minHeight: 0 }}>
+                    <div className="d-flex align-items-center px-3 py-1 border-bottom">
+                      <span className="fw-bold small">Test Result</span>
+                      <Button size="sm" variant="link" className="ms-auto p-1" onClick={() => setShowTestPanel(false)}>
+                        <FiChevronDown size={16} />
+                      </Button>
+                    </div>
+                    <div className="flex-grow-1 overflow-auto px-3 py-2">
+                      <AIResultPanel result={aiResult} />
+                    </div>
+                  </div>
                 )}
 
-                {aiLoading ? "Thinking..." : "🤖 AI Help"}
-              </Button>
-
-              {/* LANGUAGE SELECTOR */}
-              <Dropdown align="end">
-                <Dropdown.Toggle
-                  size="sm"
-                  variant="outline-secondary"
-                  className="d-flex align-items-center"
-                >
-                  <span className="me-2">
-                    {LANGUAGE_GROUPS.flat().find((l) => l.key === language)?.label}
-                  </span>
-                  <FiChevronDown />
-                </Dropdown.Toggle>
-
-                <Dropdown.Menu style={{ maxHeight: "300px", overflowY: "auto" }}>
-                  {LANGUAGE_GROUPS.map((group, groupIndex) => (
-                    <div key={groupIndex}>
-                      {groupIndex > 0 && <Dropdown.Divider />}
-                      {group.map((lang) => (
-                        <Dropdown.Item
-                          key={lang.key}
-                          onClick={() => setLanguage(lang.key as Language)}
-                          active={language === lang.key}
-                        >
-                          {lang.label}
-                        </Dropdown.Item>
-                      ))}
-                    </div>
-                  ))}
-                </Dropdown.Menu>
-              </Dropdown>
-            </div>
-
-            {/* Editor */}
-            <div
-              style={{
-                height: showTestPanel ? '65%' : '100%',
-                transition: 'height 0.2s ease',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-              <div
-                style={{
-                  flex: 1,
-                  overflowY: 'auto',
-                  overflowX: 'hidden',
-                }}>
-                {selectedProblem ? (
-                  <CodeEditor language={language} value={code} onChange={setCode} />
-                ) : (
-                  <div
-                    style={{
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      color: "#888",
-                      fontSize: "18px",
-                      fontWeight: 500
-                    }}
-                  >
-                    👈 Select a problem from the list to start coding
+                {!showTestPanel && aiResult && (
+                  <div className="border-top py-1 d-flex justify-content-center">
+                    <Button size="sm" variant="link" onClick={() => setShowTestPanel(true)}>
+                      <FiChevronUp size={16} /> Show Results
+                    </Button>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Test Result Panel */}
-            {showTestPanel && (
-              <div className="border-top d-flex flex-column" style={{ height: '35%' }}>
-                <div className="d-flex align-items-center px-3 py-2 text-muted small">
-                  <Tabs activeKey={testTab} onSelect={(k) => setTestTab(k as any)} className="border-0">
-                    <Tab eventKey="result" title={<span className="fw-bold">Test Result</span>} />
-                  </Tabs>
+              {/* Footer */}
+              <div className="border-top px-3 py-2 d-flex justify-content-between align-items-center">
+                <div>
+                  {aiResult && (
+                    <>
+                      <span className="badge" style={{
+                        backgroundColor: aiResult.summary?.passPercentage >= PASS_THRESHOLD ? '#198754' : '#ff7a00',
+                        color: '#fff',
+                      }}>
+                        {aiResult.summary?.passPercentage || 0}% {aiResult.feedback?.verdict || 'NOT RUN'}
+                      </span>
+                      {!canSubmit && (
+                        <div>
+                          <small style={{ color: '#ff7a00', fontWeight: 500 }}>
+                            Need {PASS_THRESHOLD}% to unlock Submit
+                          </small>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
 
-                  <Button size="sm" variant="link" className="ms-auto p-1" onClick={() => setShowTestPanel(false)}>
-                    <FiChevronDown size={18} />
+                <div className="d-flex gap-2">
+                  <Button variant="secondary" size="sm" onClick={handleRun} disabled={loading || submitting}>
+                    {loading
+                      ? <><span className="spinner-border spinner-border-sm me-1" />Running…</>
+                      : 'Run'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    style={{ backgroundColor: canSubmit ? '#ff7a00' : '#ffc999', border: 'none' }}
+                    disabled={!canSubmit || submitting}
+                    onClick={handleSubmit}
+                  >
+                    {submitting
+                      ? <><span className="spinner-border spinner-border-sm me-1" />Submitting…</>
+                      : 'Submit'}
                   </Button>
                 </div>
-
-                <div className="flex-grow-1 overflow-auto px-3 pb-2">
-                  <AIResultPanel result={aiResult} />
-                </div>
               </div>
-            )}
-
-            {!showTestPanel && (
-              <div className="border-top py-1 d-flex justify-content-center">
-                <Button size="sm" variant="link" onClick={() => setShowTestPanel(true)}>
-                  <FiChevronUp size={18} /> Show Testcases
-                </Button>
-              </div>
-            )}
-
-            {/* Footer */}
-            {/* Footer */}
-            <div className="border-top px-3 py-2 d-flex justify-content-between align-items-center">
-
-              {/* Left Side - Status */}
-              <div>
-                {aiResult && (
-                  <>
-                    <span
-                      className="badge"
-                      style={{
-                        backgroundColor:
-                          aiResult.summary?.passPercentage >= PASS_THRESHOLD
-                            ? '#198754'   // green when unlocked
-                            : '#ff7a00',  // orange until unlocked
-                        color: '#fff',
-                      }}
-                    >
-                      {aiResult.summary?.passPercentage || 0}%{' '}
-                      {aiResult.feedback?.verdict || 'NOT RUN'}
-                    </span>
-
-                    {/* 🔥 ADD THIS HERE */}
-                    {aiResult && !canSubmit && (
-                      <div>
-                        <small style={{ color: '#ff7a00', fontWeight: 500 }}>
-                          You need at least {PASS_THRESHOLD}% test cases to enable Submit.
-                        </small>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Right Side - Buttons */}
-              <div className="d-flex gap-2">
-                <Button variant="secondary" onClick={handleRun} disabled={loading || submitting || !selectedProblem}>
-                  {loading ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Running…
-                    </>
-                  ) : (
-                    'Run'
-                  )}
-                </Button>
-
-                <Button
-                  style={{
-                    backgroundColor: canSubmit ? '#ff7a00' : '#ffc999',
-                    border: 'none',
-                  }}
-                  disabled={!canSubmit || submitting}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" />
-                      Submitting…
-                    </>
-                  ) : (
-                    'Submit'
-                  )}
-                </Button>
-              </div>
-            </div>
-          </Col>
-        </Row>
-      </Container>
+            </Col>
+          </Row>
+        </Modal.Body>
+      </Modal>
     </>
   )
 }

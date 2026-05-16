@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import { createPortal } from 'react-dom'
 import { Button, Spinner, Alert, Badge, Card, Form, Row, Col, InputGroup, Toast } from 'react-bootstrap'
-import { BookOpen, Clock3, FlaskConical, Laptop, PencilLine, Monitor, Search, BarChart3, Leaf, TrendingUp, Rocket, CheckCircle2, ListChecks, FileText, Target } from 'lucide-react'
+import { BookOpen, Clock3, FlaskConical, Laptop, PencilLine, Monitor, Search, BarChart3, CheckCircle2, ListChecks, FileText, Target } from 'lucide-react'
 import { useAuthContext } from '@/context/useAuthContext'
 
 // ================= TYPES =================
@@ -73,16 +73,26 @@ const DEFAULT_CODE: Record<string, string> = {
   typescript: `function solve(input: string): void {\n    console.log(input);\n}\n\n// Read input\nprocess.stdin.on('data', data => {\n    solve(data.toString().trim());\n});`,
 }
 
-const DIFFICULTY_CONFIG = {
-  Beginner: { color: '#28a745', bg: 'rgba(40, 167, 69, 0.15)' },
-  Intermediate: { color: '#ffc107', bg: 'rgba(255, 193, 7, 0.15)' },
-  Advanced: { color: '#dc3545', bg: 'rgba(220, 53, 69, 0.15)' },
+const DIFFICULTY_CONFIG: Record<string, { color: string; dot: string; bg: string; border: string }> = {
+  Beginner:     { color: '#4ade80', dot: '#22c55e', bg: '#052e16', border: '#166534' },
+  Intermediate: { color: '#fbbf24', dot: '#f59e0b', bg: '#1c1200', border: '#78350f' },
+  Advanced:     { color: '#f87171', dot: '#ef4444', bg: '#1f0a0a', border: '#7f1d1d' },
 }
 
-function getDifficultyIcon(difficulty: LabProgram['difficulty'], size = 14) {
-  if (difficulty === 'Beginner') return <Leaf size={size} strokeWidth={2} />
-  if (difficulty === 'Intermediate') return <TrendingUp size={size} strokeWidth={2} />
-  return <Rocket size={size} strokeWidth={2} />
+function DifficultyBadge({ difficulty }: { difficulty: string }) {
+  const cfg = DIFFICULTY_CONFIG[difficulty] || DIFFICULTY_CONFIG.Beginner
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '5px',
+      background: cfg.bg, border: `1px solid ${cfg.border}`,
+      color: cfg.color, borderRadius: '20px',
+      padding: '3px 10px', fontSize: '0.72rem', fontWeight: 700,
+      letterSpacing: '0.3px', whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: cfg.dot, flexShrink: 0, display: 'inline-block' }} />
+      {difficulty}
+    </span>
+  )
 }
 
 // ================= UTILITIES =================
@@ -644,9 +654,7 @@ const StudentCollegeLabsPage = () => {
                 <Card.Body>
                   <div className="card-header-custom">
                     <Card.Title>{lab.title}</Card.Title>
-                    <Badge className="difficulty-badge" style={{ background: DIFFICULTY_CONFIG[lab.difficulty].bg, color: DIFFICULTY_CONFIG[lab.difficulty].color, border: `1px solid ${DIFFICULTY_CONFIG[lab.difficulty].color}` }}>
-                      <span className="badge-icon">{getDifficultyIcon(lab.difficulty)}</span> {lab.difficulty}
-                    </Badge>
+                    <DifficultyBadge difficulty={lab.difficulty} />
                   </div>
                   <p className="card-description">{lab.description.substring(0, 100)}...</p>
                   <div className="card-meta">
@@ -729,9 +737,7 @@ const StudentCollegeLabsPage = () => {
               <div className="modal-title-wrapper">
                 <span className="modal-icon"><Laptop size={22} strokeWidth={2} /></span>
                 <h3 className="modal-title">{selectedLab.title}</h3>
-                <Badge className="difficulty-badge" style={{ background: DIFFICULTY_CONFIG[selectedLab.difficulty].bg, color: DIFFICULTY_CONFIG[selectedLab.difficulty].color }}>
-                  <span className="badge-icon">{getDifficultyIcon(selectedLab.difficulty)}</span> {selectedLab.difficulty}
-                </Badge>
+                <DifficultyBadge difficulty={selectedLab.difficulty} />
               </div>
               <div className="modal-right-controls">
                 <div className="language-bar">
@@ -1029,13 +1035,6 @@ const StudentCollegeLabsPage = () => {
           border: 1px solid rgba(255,107,53,0.3) !important;
           margin-left: 0.5rem;
           font-weight: 700;
-        }
-
-        .badge-icon {
-          display: inline-flex;
-          align-items: center;
-          margin-right: 0.35rem;
-          vertical-align: middle;
         }
 
         /* Programs Grid */
