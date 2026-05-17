@@ -24,6 +24,8 @@ type LabProgram = {
   tags?: string[]
   timeLimitSeconds?: number
   maxScore?: number
+  branch?: string
+  year?: string
 }
 
 type RunResult = {
@@ -230,6 +232,8 @@ const StudentCollegeLabsPage = () => {
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
+  const [branchFilter, setBranchFilter] = useState<string>('all')
+  const [yearFilter, setYearFilter] = useState<string>('all')
   
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -330,9 +334,29 @@ const StudentCollegeLabsPage = () => {
     if (difficultyFilter !== 'all') {
       filtered = filtered.filter(lab => lab.difficulty === difficultyFilter)
     }
-    
+
+    if (branchFilter !== 'all') {
+      filtered = filtered.filter(lab => lab.branch === branchFilter)
+    }
+
+    if (yearFilter !== 'all') {
+      filtered = filtered.filter(lab => lab.year === yearFilter)
+    }
+
     return filtered
-  }, [labs, completedPrograms, activeTab, searchTerm, difficultyFilter])
+  }, [labs, completedPrograms, activeTab, searchTerm, difficultyFilter, branchFilter, yearFilter])
+
+  /* Derive unique branch + year options from loaded labs */
+  const branchOptions = React.useMemo(() => {
+    const set = new Set(labs.map(l => l.branch).filter(Boolean) as string[])
+    return Array.from(set).sort()
+  }, [labs])
+
+  const yearOptions = React.useMemo(() => {
+    const order = ['1st Year', '2nd Year', '3rd Year', '4th Year']
+    const set = new Set(labs.map(l => l.year).filter(Boolean) as string[])
+    return Array.from(set).sort((a, b) => order.indexOf(a) - order.indexOf(b))
+  }, [labs])
 
   const totalPages = Math.max(1, Math.ceil(filteredLabs.length / ITEMS_PER_PAGE))
 
@@ -343,7 +367,7 @@ const StudentCollegeLabsPage = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, searchTerm, difficultyFilter])
+  }, [activeTab, searchTerm, difficultyFilter, branchFilter, yearFilter])
 
   useEffect(() => {
     setCurrentPage((prev) => Math.min(prev, totalPages))
@@ -593,7 +617,7 @@ const StudentCollegeLabsPage = () => {
         {/* Filters Bar */}
         <div className="filters-bar mb-4">
           <Row className="g-3 align-items-center">
-            <Col md={5}>
+            <Col md={4}>
               <InputGroup>
                 <InputGroup.Text className="search-icon"><Search size={14} strokeWidth={2.2} /></InputGroup.Text>
                 <Form.Control
@@ -605,23 +629,44 @@ const StudentCollegeLabsPage = () => {
                 />
               </InputGroup>
             </Col>
-            <Col md={3}>
+            <Col md={2}>
               <Form.Select
                 value={difficultyFilter}
                 onChange={(e) => setDifficultyFilter(e.target.value)}
                 className="filter-select"
               >
-                <option value="all">All Difficulties</option>
+                <option value="all">All Levels</option>
                 <option value="Beginner">Beginner</option>
                 <option value="Intermediate">Intermediate</option>
                 <option value="Advanced">Advanced</option>
               </Form.Select>
             </Col>
-            <Col md={4}>
-              <div className="stats-badge">
+            <Col md={2}>
+              <Form.Select
+                value={branchFilter}
+                onChange={(e) => setBranchFilter(e.target.value)}
+                className="filter-select"
+                disabled={branchOptions.length === 0}
+              >
+                <option value="all">All Branches</option>
+                {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
+              </Form.Select>
+            </Col>
+            <Col md={2}>
+              <Form.Select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="filter-select"
+                disabled={yearOptions.length === 0}
+              >
+                <option value="all">All Years</option>
+                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
+              </Form.Select>
+            </Col>
+            <Col md={2}>
+              <div className="stats-badge" style={{ flexDirection: 'column', gap: '0.3rem' }}>
                 <span className="stat-item"><span className="stat-icon"><BookOpen size={14} strokeWidth={2} /></span>Total: {labs.length}</span>
-                <span className="stat-item"><span className="stat-icon"><CheckCircle2 size={14} strokeWidth={2} /></span>Completed: {completedPrograms.length}</span>
-                <span className="stat-item"><span className="stat-icon"><Clock3 size={14} strokeWidth={2} /></span>Pending: {labs.length - completedPrograms.length}</span>
+                <span className="stat-item"><span className="stat-icon"><CheckCircle2 size={14} strokeWidth={2} /></span>Done: {completedPrograms.length}</span>
               </div>
             </Col>
           </Row>
@@ -662,6 +707,12 @@ const StudentCollegeLabsPage = () => {
                     {lab.timeLimitSeconds && <span className="meta-item"><Clock3 size={14} strokeWidth={2} className="meta-icon" /> {formatDuration(lab.timeLimitSeconds)}</span>}
                     {lab.maxScore && <span className="meta-item"><Target size={14} strokeWidth={2} className="meta-icon" /> Max Score: {lab.maxScore}</span>}
                   </div>
+                  {(lab.branch || lab.year) && (
+                    <div className="card-tags">
+                      {lab.branch && <span className="card-tag tag-branch">{lab.branch}</span>}
+                      {lab.year && <span className="card-tag tag-year">{lab.year}</span>}
+                    </div>
+                  )}
                   <Button className="view-btn" onClick={() => handleShowDetails(lab)}>
                     View Program →
                   </Button>
@@ -1095,6 +1146,34 @@ const StudentCollegeLabsPage = () => {
 
         .meta-icon {
           color: #ff9a5c;
+        }
+
+        .card-tags {
+          display: flex;
+          gap: 0.4rem;
+          flex-wrap: wrap;
+          margin-bottom: 0.75rem;
+        }
+
+        .card-tag {
+          display: inline-block;
+          padding: 2px 9px;
+          border-radius: 6px;
+          font-size: 0.68rem;
+          font-weight: 700;
+          letter-spacing: 0.03em;
+        }
+
+        .tag-branch {
+          background: #0c1a2e;
+          color: #60a5fa;
+          border: 1px solid #1e3a5f;
+        }
+
+        .tag-year {
+          background: #1a0e00;
+          color: #fb923c;
+          border: 1px solid #7c2d12;
         }
 
         .view-btn {

@@ -12,6 +12,8 @@ type LabProgram = {
   difficulty: 'Beginner' | 'Intermediate' | 'Advanced'
   description: string
   testCases: LabTestCase[]
+  branch: string
+  year: string
 }
 
 type ProgEntry = {
@@ -67,6 +69,8 @@ const CollegeLabsUpload = () => {
   const [selectedFileName, setSelectedFileName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [branch, setBranch] = useState('CSE')
+  const [year, setYear] = useState('3rd Year')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const totalPrograms = useMemo(() => programs.length, [programs])
 
@@ -131,7 +135,7 @@ const CollegeLabsUpload = () => {
           if (input && expectedOutput) testCases.push({ input, expectedOutput })
         }
         if (!title) return null
-        return { id: `${Date.now()}-${index}`, title, difficulty, description, testCases }
+        return { id: `${Date.now()}-${index}`, title, difficulty, description, testCases, branch, year }
       }).filter(Boolean) as LabProgram[]
 
       setPrograms(mapped); setSelectedFile(file); setSelectedFileName(file.name)
@@ -173,7 +177,7 @@ const CollegeLabsUpload = () => {
       const processRes = await fetch(`${baseURL}/api/institute/college-labs/process-upload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ fileUrl: presignData.fileUrl }),
+        body: JSON.stringify({ fileUrl: presignData.fileUrl, branch, year }),
       })
       const processData = await processRes.json()
       if (!processRes.ok || !processData.success) throw new Error(processData.message || 'Failed to process uploaded file')
@@ -277,6 +281,32 @@ const CollegeLabsUpload = () => {
           {error && <Alert variant="danger" onClose={() => setError('')} dismissible className="mb-3">{error}</Alert>}
           {message && <Alert variant="info" onClose={() => setMessage('')} dismissible className="mb-3">{message}</Alert>}
 
+          {/* Branch + Year selectors */}
+          <div className="branch-year-row">
+            <div className="by-field">
+              <label className="by-label">Branch</label>
+              <select className="by-select" value={branch} onChange={e => setBranch(e.target.value)}>
+                {['CSE', 'ECE', 'EEE', 'IT', 'Mechanical', 'Civil', 'Chemical', 'Aerospace', 'Biomedical'].map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+            </div>
+            <div className="by-field">
+              <label className="by-label">Year</label>
+              <select className="by-select" value={year} onChange={e => setYear(e.target.value)}>
+                {['1st Year', '2nd Year', '3rd Year', '4th Year'].map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div className="by-info">
+              <span className="by-badge">{branch}</span>
+              <span className="by-sep">·</span>
+              <span className="by-badge">{year}</span>
+              <span className="by-hint">Programs in this upload will be tagged to the selected branch &amp; year</span>
+            </div>
+          </div>
+
           <div className="upload-box" onClick={() => fileInputRef.current?.click()}>
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFileChange} className="d-none" />
             <BsCloudUpload className="upload-icon" />
@@ -300,14 +330,16 @@ const CollegeLabsUpload = () => {
                 <tr>
                   <th style={{ width: 220 }}>Title</th>
                   <th style={{ width: 130 }}>Difficulty</th>
+                  <th style={{ width: 90 }}>Branch</th>
+                  <th style={{ width: 100 }}>Year</th>
                   <th>Description</th>
-                  <th style={{ width: 180 }}>Test Cases</th>
+                  <th style={{ width: 110 }}>Test Cases</th>
                   <th style={{ width: 80 }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {programs.length === 0 ? (
-                  <tr><td colSpan={5} className="pro-table-empty">No lab programs added yet.</td></tr>
+                  <tr><td colSpan={7} className="pro-table-empty">No lab programs added yet.</td></tr>
                 ) : programs.map(p => (
                   <tr key={p.id} className="pro-table-row">
                     <td>
@@ -315,6 +347,12 @@ const CollegeLabsUpload = () => {
                     </td>
                     <td>
                       <span className={`diff-tag diff-${p.difficulty.toLowerCase()}`}>{p.difficulty}</span>
+                    </td>
+                    <td>
+                      <span className="by-tag by-tag-branch">{p.branch || '—'}</span>
+                    </td>
+                    <td>
+                      <span className="by-tag by-tag-year">{p.year || '—'}</span>
                     </td>
                     <td className="pro-table-desc">{p.description || '—'}</td>
                     <td>
@@ -582,6 +620,20 @@ const CollegeLabsUpload = () => {
         .tab-btn { background: transparent; border: none; color: #9ca3af; font-size: 0.88rem; font-weight: 600; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; transition: all 0.15s; }
         .tab-btn:hover { color: #ff7a00; background: #15181d; }
         .tab-btn.active { color: #ff7a00; background: #1a1000; border: 1px solid #ff7a0055; }
+
+        /* Branch + Year selectors */
+        .branch-year-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0.85rem 1.1rem; background: #0d0d0d; border: 1px solid #1f1f1f; border-radius: 10px; flex-wrap: wrap; }
+        .by-field { display: flex; flex-direction: column; gap: 4px; }
+        .by-label { color: #6b7280; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+        .by-select { background: #141414; border: 1px solid #2a2a2a; color: #e5e7eb; border-radius: 8px; padding: 6px 12px; font-size: 0.83rem; cursor: pointer; outline: none; min-width: 130px; }
+        .by-select:focus { border-color: #ff7a00; }
+        .by-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-left: 0.5rem; }
+        .by-badge { background: #1a1000; border: 1px solid #ff7a0044; color: #ff7a00; border-radius: 6px; padding: 3px 10px; font-size: 0.73rem; font-weight: 700; }
+        .by-sep { color: #333; }
+        .by-hint { color: #444; font-size: 0.7rem; margin-left: 0.25rem; }
+        .by-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
+        .by-tag-branch { background: #0c1a2e; color: #60a5fa; border: 1px solid #1e3a5f; }
+        .by-tag-year { background: #1a0e00; color: #fb923c; border: 1px solid #7c2d12; }
 
         /* Upload tab */
         .header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
