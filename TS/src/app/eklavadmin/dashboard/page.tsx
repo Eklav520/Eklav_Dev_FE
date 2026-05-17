@@ -1,15 +1,31 @@
 import { useState } from 'react'
-import { Card, Col, Modal, Row } from 'react-bootstrap'
-import { FaBookOpen, FaChartBar, FaLanguage } from 'react-icons/fa'
+import { Col, Modal, Row } from 'react-bootstrap'
+import {
+  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaCode, FaClipboardList,
+} from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
+import Counter from './components/Counter'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
 import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
 import CourseEnrollmentFull from '@/components/dashboard/CourseEnrollmentFull'
 import EnglishPracticeWidget from '@/components/dashboard/EnglishPracticeWidget'
 import EnglishPracticeFull from '@/components/dashboard/EnglishPracticeFull'
-import Counter from './components/Counter'
 
+/* ─── Tab definitions ────────────────────────────────────── */
+const TABS = [
+  { key: 'daily-engagement',  label: 'Daily Engagement',   icon: FaChartBar,      color: '#f59e0b' },
+  { key: 'course-enrollment', label: 'Course Progress',  icon: FaBookOpen,      color: '#3b82f6' },
+  { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
+  { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
+  { key: 'college-labs',      label: 'College Labs',       icon: FaCode,          color: '#ef4444' },
+  { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
+] as const
+
+type TabKey   = (typeof TABS)[number]['key']
+type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | null
+
+/* ─── Styles ─────────────────────────────────────────────── */
 const S = {
   page: {
     background: '#0d0d0d',
@@ -17,83 +33,121 @@ const S = {
     color: '#fff',
     padding: '2rem 1.5rem',
   } as React.CSSProperties,
-  sectionTitle: {
-    color: '#fff',
-    fontWeight: 700,
-    fontSize: '1.1rem',
-    letterSpacing: '0.03em',
-    marginBottom: '1rem',
+
+  tabStrip: {
+    display: 'flex',
+    marginTop: '1.75rem',
+    borderBottom: '1px solid #1e1e1e',
+    overflowX: 'auto' as const,
+    gap: 0,
+    scrollbarWidth: 'none' as const,
   } as React.CSSProperties,
-  card: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: '14px',
-    height: '100%',
-  } as React.CSSProperties,
-  iconBox: {
-    background: 'rgba(255, 107, 0, 0.15)',
-    borderRadius: '10px',
-    padding: '12px',
-    display: 'inline-flex',
-  } as React.CSSProperties,
-  moduleTitle: {
-    color: '#fff',
-    fontWeight: 600,
-    fontSize: '1rem',
-    marginBottom: '2px',
-  } as React.CSSProperties,
-  moduleSubtitle: {
-    color: '#888',
-    fontSize: '0.78rem',
-  } as React.CSSProperties,
-  moduleDesc: {
-    color: '#aaa',
-    fontSize: '0.82rem',
-    lineHeight: 1.6,
-    marginBottom: '1.25rem',
-  } as React.CSSProperties,
-  btn: {
-    background: '#ff6b00',
+  tabBtn: (active: boolean, _color?: string): React.CSSProperties => ({
+    position: 'relative',
+    background: 'none',
     border: 'none',
-    color: '#fff',
-    fontWeight: 600,
-    borderRadius: '8px',
-    padding: '8px 0',
-    width: '100%',
-    fontSize: '0.85rem',
-  } as React.CSSProperties,
-  divider: {
-    borderColor: '#2a2a2a',
-    margin: '2rem 0 1.5rem',
-  } as React.CSSProperties,
-  comingSoonCard: {
-    background: '#141414',
-    border: '1px dashed #2a2a2a',
-    borderRadius: '14px',
-    height: '100%',
+    padding: '0.7rem 0.5rem 0.85rem',
+    cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column' as const,
-    textAlign: 'center' as const,
-    padding: '2rem',
-    minHeight: '180px',
+    gap: '0.45rem',
+    flex: 1,
+    fontSize: '0.83rem',
+    fontWeight: active ? 700 : 500,
+    color: active ? '#fff' : '#555',
+    transition: 'color 0.18s',
+  }),
+  tabIndicator: (color: string): React.CSSProperties => ({
+    position: 'absolute',
+    bottom: 0,
+    left: '10%',
+    width: '80%',
+    height: 2.5,
+    borderRadius: 2,
+    background: color,
+  }),
+  tabDot: (color: string): React.CSSProperties => ({
+    width: 7,
+    height: 7,
+    borderRadius: '50%',
+    background: color,
+    flexShrink: 0,
+  }),
+
+  content: {
+    paddingTop: '1.75rem',
+    minHeight: 380,
   } as React.CSSProperties,
+
+  infoCard: {
+    background: '#141414',
+    border: '1px solid #222',
+    borderRadius: 14,
+    padding: '1.5rem',
+    height: '100%',
+    display: 'flex',
+    flexDirection: 'column' as const,
+  } as React.CSSProperties,
+  iconBox: {
+    width: 46, height: 46, borderRadius: 12,
+    background: 'rgba(255,107,0,0.12)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    marginBottom: '1rem', flexShrink: 0,
+  } as React.CSSProperties,
+  infoTitle:  { color: '#fff', fontWeight: 700, fontSize: '1rem', marginBottom: 2 } as React.CSSProperties,
+  infoSub:    { color: '#555', fontSize: '0.76rem', marginBottom: '1rem' } as React.CSSProperties,
+  infoDesc:   { color: '#888', fontSize: '0.81rem', lineHeight: 1.65, flex: 1, marginBottom: '1.25rem' } as React.CSSProperties,
+  btn: {
+    background: '#ff6b00', border: 'none', color: '#fff',
+    fontWeight: 600, borderRadius: 8,
+    padding: '9px 0', width: '100%', fontSize: '0.85rem', cursor: 'pointer',
+  } as React.CSSProperties,
+
+  comingSoon: {
+    display: 'flex', flexDirection: 'column' as const,
+    alignItems: 'center', justifyContent: 'center',
+    minHeight: 360, gap: '1.1rem', textAlign: 'center' as const,
+  } as React.CSSProperties,
+
   modalHeader: {
-    background: '#111',
-    borderBottom: '1px solid #2a2a2a',
-    color: '#fff',
-    padding: '1.25rem 1.75rem',
+    background: '#111', borderBottom: '1px solid #2a2a2a',
+    color: '#fff', padding: '1.25rem 1.75rem',
   } as React.CSSProperties,
   modalBody: {
-    background: '#0d0d0d',
-    padding: '1.75rem',
+    background: '#0d0d0d', padding: '1.75rem',
   } as React.CSSProperties,
 }
 
-type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | null
+/* ─── Coming Soon placeholder ────────────────────────────── */
+const ComingSoon = ({
+  label, icon: Icon, color, description,
+}: { label: string; icon: React.ElementType; color: string; description: string }) => (
+  <div style={S.comingSoon}>
+    <div style={{
+      width: 80, height: 80, borderRadius: '50%',
+      background: `${color}10`, border: `1px solid ${color}25`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <Icon size={30} color={`${color}66`} />
+    </div>
+    <div>
+      <div style={{ color: '#777', fontWeight: 700, fontSize: '1.05rem', marginBottom: 6 }}>{label}</div>
+      <div style={{ color: '#333', fontSize: '0.82rem', maxWidth: 340, lineHeight: 1.6 }}>{description}</div>
+    </div>
+    <div style={{
+      background: '#111', border: '1px solid #1e1e1e',
+      borderRadius: 20, padding: '5px 20px',
+      color: '#333', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em',
+    }}>
+      COMING SOON
+    </div>
+  </div>
+)
 
+/* ─── Page ───────────────────────────────────────────────── */
 const DashboardPage = () => {
+  const [activeTab, setActiveTab] = useState<TabKey>('daily-engagement')
   const [openModal, setOpenModal] = useState<ModalKey>(null)
 
   return (
@@ -103,106 +157,121 @@ const DashboardPage = () => {
       <div style={S.page}>
         <div className="container-lg">
 
-          {/* Overview Stats */}
+          {/* Stats */}
           <Counter />
 
-          {/* Divider */}
-          <hr style={S.divider} />
+          {/* ── Tab bar ───────────────────────────────── */}
+          <div style={S.tabStrip}>
+            {TABS.map(({ key, label, icon: Icon, color }) => {
+              const active = activeTab === key
+              return (
+                <button key={key} style={S.tabBtn(active, color)} onClick={() => setActiveTab(key)}>
+                  {active
+                    ? <div style={S.tabDot(color)} />
+                    : <Icon size={13} color="#3a3a3a" />
+                  }
+                  {label}
+                  {active && <div style={S.tabIndicator(color)} />}
+                </button>
+              )
+            })}
+          </div>
 
-          {/* ── Daily Engagement Section ──────────────── */}
-          <p style={S.sectionTitle}>Daily Engagement</p>
+          {/* ── Tab content ───────────────────────────── */}
+          <div style={S.content}>
 
-          <Row className="g-3">
-
-            {/* Daily Time Spent — live widget */}
-            <Col md={12} lg={8}>
-              <DailyTimePerformers apiBase="/api/adminDashboardCharts" />
-            </Col>
-
-            {/* Daily Engagement — module card */}
-            <Col md={12} lg={4}>
-              <Card style={S.card}>
-                <Card.Body className="p-4 d-flex flex-column">
-                  <div className="d-flex align-items-center gap-3 mb-3">
-                    <div style={S.iconBox}>
-                      <FaChartBar size={22} color="#ff6b00" />
-                    </div>
-                    <div>
-                      <div style={S.moduleTitle}>Daily Engagement</div>
-                      <div style={S.moduleSubtitle}>Student activity tracking</div>
-                    </div>
+            {/* Daily Engagement */}
+            {activeTab === 'daily-engagement' && (
+              <Row className="g-3">
+                <Col md={12} lg={8}>
+                  <DailyTimePerformers apiBase="/api/adminDashboardCharts" />
+                </Col>
+                <Col md={12} lg={4}>
+                  <div style={S.infoCard}>
+                    <div style={S.iconBox}><FaChartBar size={20} color="#ff6b00" /></div>
+                    <div style={S.infoTitle}>Daily Engagement</div>
+                    <div style={S.infoSub}>Student activity tracking</div>
+                    <p style={S.infoDesc}>
+                      Track how many students are active today, who hasn't logged in, and view a 7-day activity trend with detailed records.
+                    </p>
+                    <button style={S.btn} onClick={() => setOpenModal('daily-engagement')}>Full Details</button>
                   </div>
-                  <p style={{ ...S.moduleDesc, flex: 1 }}>
-                    Track how many students are active today, who hasn't logged in, and view a 7-day activity trend with detailed records.
-                  </p>
-                  <button style={S.btn} onClick={() => setOpenModal('daily-engagement')}>
-                    Full Details
-                  </button>
-                </Card.Body>
-              </Card>
-            </Col>
+                </Col>
+              </Row>
+            )}
 
-          </Row>
+            {/* Course Enrollment */}
+            {activeTab === 'course-enrollment' && (
+              <Row className="g-3">
+                <Col md={12}>
+                  <CourseEnrollmentTrend
+                    apiBase="/api/adminDashboardCharts"
+                    onFullDetails={() => setOpenModal('course-enrollment')}
+                  />
+                </Col>
+              </Row>
+            )}
 
-          {/* ── Course Enrollment Section ─────────────── */}
-          <hr style={S.divider} />
-          <p style={S.sectionTitle}>Course Enrollment</p>
-
-          <Row className="g-3">
-            <Col md={12}>
-              <CourseEnrollmentTrend
-                apiBase="/api/adminDashboardCharts"
-                onFullDetails={() => setOpenModal('course-enrollment')}
+            {/* AI Based Interview */}
+            {activeTab === 'ai-interview' && (
+              <ComingSoon
+                label="AI Based Interview"
+                icon={FaRobot}
+                color="#a855f7"
+                description="AI-powered mock interviews with real-time feedback, scoring, and performance analytics across communication and technical skills."
               />
-            </Col>
-          </Row>
+            )}
 
-          {/* ── English Practice Section ──────────────── */}
-          <hr style={S.divider} />
-          <p style={S.sectionTitle}>English Practice</p>
-
-          <Row className="g-3">
-            <Col md={12} lg={8}>
-              <EnglishPracticeWidget apiBase="/api/adminDashboardCharts" />
-            </Col>
-            <Col md={12} lg={4}>
-              <Card style={S.card}>
-                <Card.Body className="p-4 d-flex flex-column">
-                  <div className="d-flex align-items-center gap-3 mb-3">
-                    <div style={S.iconBox}>
-                      <FaLanguage size={22} color="#ff6b00" />
-                    </div>
-                    <div>
-                      <div style={S.moduleTitle}>English Practice</div>
-                      <div style={S.moduleSubtitle}>Speaking · Writing · Reading · Listening · JAM</div>
-                    </div>
+            {/* English Practice */}
+            {activeTab === 'english-practice' && (
+              <Row className="g-3">
+                <Col md={12} lg={8}>
+                  <EnglishPracticeWidget apiBase="/api/adminDashboardCharts" />
+                </Col>
+                <Col md={12} lg={4}>
+                  <div style={S.infoCard}>
+                    <div style={S.iconBox}><FaLanguage size={20} color="#ff6b00" /></div>
+                    <div style={S.infoTitle}>English Practice</div>
+                    <div style={S.infoSub}>Speaking · Writing · Reading · Listening · JAM</div>
+                    <p style={S.infoDesc}>
+                      Track student participation across all English skills — see who has practiced, their best scores, and which skills have the highest and lowest engagement.
+                    </p>
+                    <button style={S.btn} onClick={() => setOpenModal('english-practice')}>Full Details</button>
                   </div>
-                  <p style={{ ...S.moduleDesc, flex: 1 }}>
-                    Track student participation across all English skills — see who has practiced, their best scores, and which skills have the highest and lowest engagement.
-                  </p>
-                  <button style={S.btn} onClick={() => setOpenModal('english-practice')}>
-                    Full Details
-                  </button>
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
+                </Col>
+              </Row>
+            )}
 
+            {/* College Labs */}
+            {activeTab === 'college-labs' && (
+              <ComingSoon
+                label="College Labs"
+                icon={FaCode}
+                color="#ef4444"
+                description="Coding lab assignments, submission tracking, auto-grading, and detailed analytics on student performance per problem set."
+              />
+            )}
+
+            {/* Assessments */}
+            {activeTab === 'assessments' && (
+              <ComingSoon
+                label="Assessments"
+                icon={FaClipboardList}
+                color="#06b6d4"
+                description="Create, schedule, and analyze assessments. View student scores, attempt rates, and skill-level performance breakdowns."
+              />
+            )}
+
+          </div>
         </div>
       </div>
 
       {/* Daily Engagement — Full Screen Modal */}
-      <Modal
-        show={openModal === 'daily-engagement'}
-        onHide={() => setOpenModal(null)}
-        fullscreen
-      >
+      <Modal show={openModal === 'daily-engagement'} onHide={() => setOpenModal(null)} fullscreen>
         <Modal.Header closeButton style={S.modalHeader}>
           <div className="d-flex align-items-center gap-2">
             <FaChartBar size={18} color="#ff6b00" />
-            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>
-              Daily Engagement
-            </Modal.Title>
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>Daily Engagement</Modal.Title>
           </div>
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
@@ -211,17 +280,11 @@ const DashboardPage = () => {
       </Modal>
 
       {/* Course Enrollment — Full Screen Modal */}
-      <Modal
-        show={openModal === 'course-enrollment'}
-        onHide={() => setOpenModal(null)}
-        fullscreen
-      >
+      <Modal show={openModal === 'course-enrollment'} onHide={() => setOpenModal(null)} fullscreen>
         <Modal.Header closeButton style={S.modalHeader}>
           <div className="d-flex align-items-center gap-2">
             <FaBookOpen size={18} color="#ff6b00" />
-            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>
-              Course Enrollment
-            </Modal.Title>
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>Course Enrollment</Modal.Title>
           </div>
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
@@ -230,17 +293,11 @@ const DashboardPage = () => {
       </Modal>
 
       {/* English Practice — Full Screen Modal */}
-      <Modal
-        show={openModal === 'english-practice'}
-        onHide={() => setOpenModal(null)}
-        fullscreen
-      >
+      <Modal show={openModal === 'english-practice'} onHide={() => setOpenModal(null)} fullscreen>
         <Modal.Header closeButton style={S.modalHeader}>
           <div className="d-flex align-items-center gap-2">
             <FaLanguage size={18} color="#ff6b00" />
-            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>
-              English Practice
-            </Modal.Title>
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>English Practice</Modal.Title>
           </div>
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
