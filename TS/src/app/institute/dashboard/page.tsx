@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Card, Col, Modal, Row } from 'react-bootstrap'
-import { FaBookOpen, FaChartBar } from 'react-icons/fa'
+import { FaBookOpen, FaChartBar, FaLanguage } from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
 import Counter from './components/Counter'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
 import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
 import CourseEnrollmentFull from '@/components/dashboard/CourseEnrollmentFull'
+import EnglishPracticeWidget from '@/components/dashboard/EnglishPracticeWidget'
+import EnglishPracticeFull from '@/components/dashboard/EnglishPracticeFull'
 
 const S = {
   page: {
@@ -89,7 +91,7 @@ const S = {
   } as React.CSSProperties,
 }
 
-type ModalKey = 'daily-engagement' | 'course-enrollment' | null
+type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | null
 
 const DashboardPage = () => {
   const [openModal, setOpenModal] = useState<ModalKey>(null)
@@ -155,6 +157,40 @@ const DashboardPage = () => {
             </Col>
           </Row>
 
+          {/* ── English Practice Section ──────────────── */}
+          <hr style={S.divider} />
+          <p style={S.sectionTitle}>English Practice</p>
+
+          <Row className="g-3">
+            {/* English Practice Widget — skill utilization bars */}
+            <Col md={12} lg={8}>
+              <EnglishPracticeWidget apiBase="/api/institute" />
+            </Col>
+
+            {/* English Practice — module card */}
+            <Col md={12} lg={4}>
+              <Card style={S.card}>
+                <Card.Body className="p-4 d-flex flex-column">
+                  <div className="d-flex align-items-center gap-3 mb-3">
+                    <div style={S.iconBox}>
+                      <FaLanguage size={22} color="#ff6b00" />
+                    </div>
+                    <div>
+                      <div style={S.moduleTitle}>English Practice</div>
+                      <div style={S.moduleSubtitle}>Speaking · Writing · Reading · Listening · JAM</div>
+                    </div>
+                  </div>
+                  <p style={{ ...S.moduleDesc, flex: 1 }}>
+                    Track student participation across all English skills — see who has practiced, their best scores, and which skills have the highest and lowest engagement.
+                  </p>
+                  <button style={S.btn} onClick={() => setOpenModal('english-practice')}>
+                    Full Details
+                  </button>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
         </div>
       </div>
 
@@ -193,6 +229,25 @@ const DashboardPage = () => {
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
           <CourseEnrollmentFull apiBase="/api/institute" />
+        </Modal.Body>
+      </Modal>
+
+      {/* English Practice — Full Screen Modal */}
+      <Modal
+        show={openModal === 'english-practice'}
+        onHide={() => setOpenModal(null)}
+        fullscreen
+      >
+        <Modal.Header closeButton style={S.modalHeader}>
+          <div className="d-flex align-items-center gap-2">
+            <FaLanguage size={18} color="#ff6b00" />
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>
+              English Practice
+            </Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={S.modalBody}>
+          <EnglishPracticeFull apiBase="/api/institute" />
         </Modal.Body>
       </Modal>
 
