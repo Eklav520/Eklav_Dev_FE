@@ -11,6 +11,10 @@ import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
 import CourseEnrollmentFull from '@/components/dashboard/CourseEnrollmentFull'
 import EnglishPracticeWidget from '@/components/dashboard/EnglishPracticeWidget'
 import EnglishPracticeFull from '@/components/dashboard/EnglishPracticeFull'
+import AIInterviewWidget from '@/components/dashboard/AIInterviewWidget'
+import AIInterviewFull from '@/components/dashboard/AIInterviewFull'
+import AssessmentWidget from '@/components/dashboard/AssessmentWidget'
+import AssessmentFull from '@/components/dashboard/AssessmentFull'
 
 /* ─── Tab definitions ────────────────────────────────────── */
 const TABS = [
@@ -23,7 +27,7 @@ const TABS = [
 ] as const
 
 type TabKey   = (typeof TABS)[number]['key']
-type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | null
+type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | 'ai-interview' | 'assessments' | null
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
@@ -214,12 +218,22 @@ const DashboardPage = () => {
 
             {/* AI Based Interview */}
             {activeTab === 'ai-interview' && (
-              <ComingSoon
-                label="AI Based Interview"
-                icon={FaRobot}
-                color="#a855f7"
-                description="AI-powered mock interviews with real-time feedback, scoring, and performance analytics across communication and technical skills."
-              />
+              <Row className="g-3">
+                <Col md={12} lg={8}>
+                  <AIInterviewWidget apiBase="/api/adminDashboardCharts" />
+                </Col>
+                <Col md={12} lg={4}>
+                  <div style={S.infoCard}>
+                    <div style={S.iconBox}><FaRobot size={20} color="#ff6b00" /></div>
+                    <div style={S.infoTitle}>AI Based Interview</div>
+                    <div style={S.infoSub}>Topic Based · Resume Based</div>
+                    <p style={S.infoDesc}>
+                      Track student participation in AI-powered mock interviews. See how many students practiced topic-based and resume-based interviews this month, with attempt counts and scores.
+                    </p>
+                    <button style={S.btn} onClick={() => setOpenModal('ai-interview')}>Full Details</button>
+                  </div>
+                </Col>
+              </Row>
             )}
 
             {/* English Practice */}
@@ -254,12 +268,22 @@ const DashboardPage = () => {
 
             {/* Assessments */}
             {activeTab === 'assessments' && (
-              <ComingSoon
-                label="Assessments"
-                icon={FaClipboardList}
-                color="#06b6d4"
-                description="Create, schedule, and analyze assessments. View student scores, attempt rates, and skill-level performance breakdowns."
-              />
+              <Row className="g-3">
+                <Col md={12} lg={8}>
+                  <AssessmentWidget apiBase="/api/adminDashboardCharts" />
+                </Col>
+                <Col md={12} lg={4}>
+                  <div style={S.infoCard}>
+                    <div style={S.iconBox}><FaClipboardList size={20} color="#ff6b00" /></div>
+                    <div style={S.infoTitle}>Assessments</div>
+                    <div style={S.infoSub}>MCQ · Coding · TR · HR</div>
+                    <p style={S.infoDesc}>
+                      Track student performance across all assessment rounds. See top and low scorers for each exam, pass rates, and detailed per-student round-wise scores.
+                    </p>
+                    <button style={S.btn} onClick={() => setOpenModal('assessments')}>Full Details</button>
+                  </div>
+                </Col>
+              </Row>
             )}
 
           </div>
@@ -302,6 +326,32 @@ const DashboardPage = () => {
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
           <EnglishPracticeFull apiBase="/api/adminDashboardCharts" />
+        </Modal.Body>
+      </Modal>
+
+      {/* AI Interview — Full Screen Modal */}
+      <Modal show={openModal === 'ai-interview'} onHide={() => setOpenModal(null)} fullscreen>
+        <Modal.Header closeButton style={S.modalHeader}>
+          <div className="d-flex align-items-center gap-2">
+            <FaRobot size={18} color="#ff6b00" />
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>AI Based Interview</Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={S.modalBody}>
+          <AIInterviewFull apiBase="/api/adminDashboardCharts" />
+        </Modal.Body>
+      </Modal>
+
+      {/* Assessments — Full Screen Modal */}
+      <Modal show={openModal === 'assessments'} onHide={() => setOpenModal(null)} fullscreen>
+        <Modal.Header closeButton style={S.modalHeader}>
+          <div className="d-flex align-items-center gap-2">
+            <FaClipboardList size={18} color="#ff6b00" />
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>Assessments</Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={S.modalBody}>
+          <AssessmentFull apiBase="/api/adminDashboardCharts" />
         </Modal.Body>
       </Modal>
 
