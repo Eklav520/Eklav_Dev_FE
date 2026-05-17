@@ -233,13 +233,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     url: '/eklavadmin/dashboard',
     parentKey: 'eklavadmin',
   },
-  {
+ /*  {
     key: 'student-analytics',
     label: 'Student Analytics',
     icon: BsGraphUp,
     url: '/eklavadmin/student-analytics',
     parentKey: 'eklavadmin',
-  },
+  }, */
   {
     key: 'students',
     label: 'Students List',
