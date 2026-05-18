@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Spinner } from 'react-bootstrap'
-import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaSearch, FaCode, FaMicrophone, FaTasks } from 'react-icons/fa'
+import { FaClipboardList, FaCheckCircle, FaTimesCircle, FaSearch, FaCode, FaMicrophone, FaTasks, FaDownload } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import * as XLSX from 'xlsx'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type Scorer = { name: string; email: string; percentage: number; score: number; resultStatus: string }
@@ -93,7 +94,36 @@ const AssessmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [search, setSearch]             = useState('')
   const [page, setPage]                 = useState(1)
   const [limit, setLimit]               = useState(20)
+  const [exporting, setExporting]       = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleExportExcel = async () => {
+    if (!user?.token || !selectedExam) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ examId: selectedExam, page: '1', limit: '9999', search })
+      const res = await fetch(`${baseURL}${apiBase}/assessment-students?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      const rows = (data.students || []).map((s: StudentRow, i: number) => {
+        const base: Record<string, string | number> = {
+          '#': i + 1, 'Name': s.name, 'Email': s.email,
+          'Status': s.resultStatus, 'Score (%)': s.percentage,
+        }
+        s.roundResults?.forEach((r) => {
+          base[`${r.roundType} Score`] = `${r.score}/${r.total}`
+          base[`${r.roundType} %`] = r.percentage
+        })
+        return base
+      })
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Assessment Students')
+      XLSX.writeFile(wb, `Assessment_${examTitle || selectedExam}.xlsx`)
+    } catch (e) { console.error('Export error:', e) }
+    finally { setExporting(false) }
+  }
 
   /* ── Fetch overview ── */
   useEffect(() => {
@@ -335,6 +365,23 @@ const AssessmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
             </select>
 
             <div style={{ flex: 1 }} />
+
+            {/* Export */}
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting || !selectedExam}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.3)',
+                color: '#ff6b00', borderRadius: 7, padding: '5px 12px',
+                fontSize: '0.78rem', fontWeight: 600,
+                cursor: (exporting || !selectedExam) ? 'not-allowed' : 'pointer',
+                opacity: (exporting || !selectedExam) ? 0.5 : 1, flexShrink: 0,
+              }}
+            >
+              <FaDownload size={11} />
+              {exporting ? 'Exporting…' : 'Export Excel'}
+            </button>
 
             {/* Search */}
             <div style={{ position: 'relative' }}>

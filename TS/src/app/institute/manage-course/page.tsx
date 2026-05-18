@@ -3,7 +3,7 @@ import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
 import EditCourseModal from './EditCourseModal'
 import DeleteConfirmationModal from './DeleteConfirmationModal'
-import { Button, Card, CardBody, CardHeader, Col, Form, Row, Badge, Alert, Spinner, Dropdown } from 'react-bootstrap'
+import { Spinner, Dropdown } from 'react-bootstrap'
 import {
   FaAngleRight,
   FaCheckCircle,
@@ -14,14 +14,12 @@ import {
   FaTimes,
   FaEye,
   FaTrash,
-  FaFilter,
-  FaSort,
   FaEllipsisV,
   FaToggleOn,
   FaToggleOff,
   FaExclamationTriangle
 } from 'react-icons/fa'
-import { FaAngleLeft, FaClock, FaDollarSign, FaChartBar } from 'react-icons/fa6'
+import { FaAngleLeft, FaClock, FaChartBar } from 'react-icons/fa6'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -534,33 +532,6 @@ const ManageCoursePage = () => {
 
 
 
-  const getStatusBadge = (course: Course) => {
-    if (course.isFeatured) {
-      return <Badge bg="warning" className="rounded-pill px-3">Featured</Badge>
-    }
-
-    const status = course.status || 'Draft'
-    const variants = {
-      'Published': 'success',
-      'Draft': 'warning',
-      'Archived': 'secondary'
-    }
-    return <Badge bg={variants[status] || 'secondary'} className="rounded-pill px-3">{status}</Badge>
-  }
-
-  const getLevelBadge = (level?: string[] | string) => {
-    if (!level) return null
-
-    const levelText = Array.isArray(level) ? level[0] : level
-    const variants = {
-      'Beginner': 'info',
-      'Intermediate': 'primary',
-      'Advanced': 'danger',
-      'All level': 'secondary'
-    }
-    return <Badge bg={variants[levelText as keyof typeof variants] || 'secondary'} className="ms-2">{levelText}</Badge>
-  }
-
   const getCategoryText = (category: string[] | string) => {
     return Array.isArray(category) ? category.join(', ') : category
   }
@@ -570,11 +541,15 @@ const ManageCoursePage = () => {
   const startIndex = (currentPage - 1) * itemsPerPage
   const paginatedCourses = filteredCourses.slice(startIndex, startIndex + itemsPerPage)
 
+  const totalVideos = courses.reduce((acc, c) => acc + c.videos.length, 0)
+  const publishedCount = courses.filter(c => c.status === 'Published').length
+  const featuredCount = courses.filter(c => c.isFeatured).length
+  const draftCount = courses.filter(c => c.status === 'Draft').length
+
   return (
     <>
       <PageMetaData title="Course Management" />
 
-      {/* Edit Course Modal */}
       <EditCourseModal
         show={showModal}
         onHide={() => { setShowModal(false); setSelectedCourse(null) }}
@@ -587,14 +562,12 @@ const ManageCoursePage = () => {
         onRemoveFAQ={removeFAQ}
         onUpdate={handleUpdate}
         isUpdating={isUpdating}
-        // Add these video management props
         onVideoChange={handleVideoChange}
         onAddVideo={handleAddVideo}
         onRemoveVideo={handleRemoveVideo}
         onUploadVideo={handleUploadVideo}
       />
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         show={showDeleteModal}
         onHide={() => { setShowDeleteModal(false); setDeleteConfirm('') }}
@@ -603,395 +576,382 @@ const ManageCoursePage = () => {
         isDeleting={isUpdating}
       />
 
-      <Card className="border-0 bg-transparent rounded-3 shadow-sm">
-        <CardHeader className="bg-dark border-bottom d-flex justify-content-between align-items-center py-3">
+      <div className="mc-page">
+        {/* Header */}
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <div>
-            <h3 className="mb-0 text-white fw-semibold">Course Management</h3>
-            <p className="mb-0 text-white-50 small">Manage and organize your course catalog</p>
+            <h5 className="text-white fw-semibold mb-0">Course Management</h5>
+            <p className="text-muted small mb-0">Manage and organise your course catalog</p>
           </div>
-
           <div className="d-flex gap-2">
-            <Button
-              variant="outline-light"
-              size="sm"
-              className="d-flex align-items-center gap-2 px-3"
-              onClick={fetchCourses}
-              disabled={isLoading}
-            >
-              <FaSearch />
-              Refresh
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              className="d-flex align-items-center gap-2 px-3"
-              onClick={() => window.open('/instructor/create-course', '_blank')}
-            >
-              <FaPlus className="fs-5" />
-              <span className="fw-semibold">Create New Course</span>
-            </Button>
+            <button className="mc-btn-outline" onClick={fetchCourses} disabled={isLoading}>
+              <FaSearch size={12} className="me-1" /> Refresh
+            </button>
+            <button className="mc-btn-primary" onClick={() => window.open('/instructor/create-course', '_blank')}>
+              <FaPlus size={12} className="me-1" /> Create Course
+            </button>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardBody className="bg-light">
-          {error && (
-            <Alert variant="danger" className="d-flex align-items-center">
-              <FaExclamationTriangle className="me-2" />
-              {error}
-              <Button variant="link" onClick={fetchCourses} className="ms-auto p-0">
-                Retry
-              </Button>
-            </Alert>
-          )}
-
-          {/* Filters and Search */}
-          <Card className="mb-4 border">
-            <CardBody>
-              <Row className="g-3 align-items-center">
-                <Col md={4}>
-                  <Form.Group>
-                    <Form.Label className="small text-muted mb-1">
-                      <FaSearch className="me-1" />
-                      Search Courses
-                    </Form.Label>
-                    <div className="input-group">
-                      <Form.Control
-                        type="search"
-                        placeholder="Search by title, category, or description..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="bg-white"
-                      />
-                      {searchTerm && (
-                        <Button
-                          variant="outline-secondary"
-                          onClick={() => setSearchTerm('')}
-                        >
-                          <FaTimes />
-                        </Button>
-                      )}
-                    </div>
-                  </Form.Group>
-                </Col>
-
-                <Col md={3}>
-                  <Form.Group>
-                    <Form.Label className="small text-muted mb-1">
-                      <FaFilter className="me-1" />
-                      Filter by Status
-                    </Form.Label>
-                    <Form.Select
-                      value={filterBy}
-                      onChange={(e) => setFilterBy(e.target.value as FilterOption)}
-                      className="bg-white"
-                    >
-                      <option value="all">All Courses</option>
-                      <option value="published">Published</option>
-                      <option value="draft">Draft</option>
-                      <option value="archived">Archived</option>
-                      <option value="featured">Featured</option>
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-
-                <Col md={3}>
-                  <Form.Group>
-                    <Form.Label className="small text-muted mb-1">
-                      <FaSort className="me-1" />
-                      Sort by
-                    </Form.Label>
-                    <Form.Select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortOption)}
-                      className="bg-white"
-                    >
-                      <option value="newest">Newest First</option>
-                      <option value="popular">Most Popular</option>
-                      <option value="alphabetical">Alphabetical</option>
-                      <option value="price-low-high">Price: Low to High</option>
-                      <option value="price-high-low">Price: High to Low</option>
-                    </Form.Select>
-                  </Form.Group>
-                </Col>
-
-                <Col md={2} className="d-flex align-items-end">
-                  <Badge bg="info" className="rounded-pill px-3 py-2">
-                    {filteredCourses.length} courses found
-                  </Badge>
-                </Col>
-              </Row>
-            </CardBody>
-          </Card>
-
-          {/* Courses Table */}
-          <div className="table-responsive rounded border">
-            {isLoading ? (
-              <div className="text-center py-5">
-                <Spinner animation="border" variant="primary" />
-                <p className="mt-3 text-muted">Loading courses...</p>
-              </div>
-            ) : paginatedCourses.length === 0 ? (
-              <div className="text-center py-5">
-                <FaSearch className="display-1 text-muted mb-3" />
-                <h5>No courses found</h5>
-                <p className="text-muted">
-                  {searchTerm ? 'Try a different search term' : 'Create your first course to get started'}
-                </p>
-                {searchTerm && (
-                  <Button variant="outline-primary" onClick={() => setSearchTerm('')}>
-                    Clear Search
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <table className="table table-hover align-middle mb-0">
-                <thead className="table-dark">
-                  <tr>
-                    <th scope="col" className="ps-4">Course</th>
-                    <th scope="col">Category</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Students</th>
-                    <th scope="col">Price</th>
-                    <th scope="col" className="text-end pe-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedCourses.map((course) => (
-                    <tr key={course._id} className="hover-shadow">
-                      <td className="ps-4">
-                        <div className="d-flex align-items-center">
-                          <div className="rounded overflow-hidden" style={{ width: '60px', height: '60px' }}>
-                            <img
-                              src={course.image ||
-                                `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(course.title)}&backgroundColor=4a90e2`
-                              }
-                              alt={course.title}
-                              className="img-fluid h-100 w-100 object-fit-cover"
-                              onError={(e) => {
-                                e.currentTarget.onerror = null
-                                e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(course.title)}&backgroundColor=4a90e2`
-                              }}
-                            />
-                          </div>
-                          <div className="ms-3">
-                            <h6 className="mb-1">{course.title}</h6>
-                            <div className="d-flex align-items-center text-muted small">
-                              <FaTable className="me-1" />
-                              <span className="me-3">{course.videos.length} videos</span>
-                              <FaClock className="me-1" />
-                              <span>{course.duration || 'N/A'}</span>
-                              {getLevelBadge(course.level)}
-                            </div>
-                            {course.isFeatured && (
-                              <Badge bg="warning" className="mt-1">Featured</Badge>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="badge bg-white text-dark">{getCategoryText(course.category)}</span>
-                      </td>
-                      <td>{getStatusBadge(course)}</td>
-                      <td>
-                        <div className="d-flex align-items-center">
-                          <FaChartBar className="text-primary me-2" />
-                          {course.enrolledStudents || 0}
-                        </div>
-                      </td>
-                      <td>
-                        {course.price && course.price !== '' ? (
-                          <div>
-                            <span className="fw-bold">
-                              <FaDollarSign className="small" />
-                              {course.discountPrice || course.price}
-                            </span>
-                            {course.discountPrice && (
-                              <div className="text-muted small text-decoration-line-through">
-                                ${course.price}
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge bg="success">Free</Badge>
-                        )}
-                      </td>
-                      <td className="text-end pe-4">
-                        <Dropdown>
-                          <Dropdown.Toggle variant="light" size="sm" className="px-3">
-                            <FaEllipsisV />
-                          </Dropdown.Toggle>
-                          <Dropdown.Menu>
-                            <Dropdown.Item onClick={() => handleEdit(course)}>
-                              <FaRegEdit className="me-2" />
-                              Edit Details
-                            </Dropdown.Item>
-                            <Dropdown.Item onClick={() => navigate(`/course/${course._id}`)}>
-                              <FaEye className="me-2" />
-                              Preview
-                            </Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item
-                              onClick={() => handleFeatureToggle(course._id, !course.isFeatured)}
-                            >
-                              {course.isFeatured ? (
-                                <>
-                                  <FaToggleOff className="me-2" />
-                                  Remove from Featured
-                                </>
-                              ) : (
-                                <>
-                                  <FaToggleOn className="me-2" />
-                                  Mark as Featured
-                                </>
-                              )}
-                            </Dropdown.Item>
-                            {course.status === 'Published' ? (
-                              <Dropdown.Item
-                                onClick={() => handleStatusToggle(course._id, 'Draft')}
-                              >
-                                <FaTimes className="me-2" />
-                                Unpublish
-                              </Dropdown.Item>
-                            ) : (
-                              <Dropdown.Item
-                                onClick={() => handleStatusToggle(course._id, 'Published')}
-                              >
-                                <FaCheckCircle className="me-2" />
-                                Publish
-                              </Dropdown.Item>
-                            )}
-                            <Dropdown.Divider />
-                            <Dropdown.Item
-                              className="text-danger"
-                              onClick={() => {
-                                setCourseToDelete(course)
-                                setShowDeleteModal(true)
-                              }}
-                            >
-                              <FaTrash className="me-2" />
-                              Delete Course
-                            </Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        {/* Stat pills + search on same row */}
+        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
+          {[
+            { label: 'Total',     value: courses.length,  color: '#ff8c00', bg: 'rgba(255,140,0,0.08)',   border: 'rgba(255,140,0,0.25)' },
+            { label: 'Published', value: publishedCount,  color: '#198754', bg: 'rgba(25,135,84,0.08)',   border: 'rgba(25,135,84,0.25)' },
+            { label: 'Draft',     value: draftCount,      color: '#ffc107', bg: 'rgba(255,193,7,0.08)',   border: 'rgba(255,193,7,0.25)' },
+            { label: 'Featured',  value: featuredCount,   color: '#0dcaf0', bg: 'rgba(13,202,240,0.08)',  border: 'rgba(13,202,240,0.25)' },
+            { label: 'Videos',    value: totalVideos,     color: '#6f42c1', bg: 'rgba(111,66,193,0.08)',  border: 'rgba(111,66,193,0.25)' },
+          ].map(({ label, value, color, bg, border }) => (
+            <div key={label} className="mc-stat-pill flex-shrink-0" style={{ background: bg, border: `1px solid ${border}` }}>
+              <span className="fw-bold" style={{ color, fontSize: '1rem' }}>{value}</span>
+              <span className="text-muted" style={{ fontSize: '0.72rem' }}>{label}</span>
+            </div>
+          ))}
+          <div className="position-relative flex-grow-1" style={{ minWidth: 180 }}>
+            <FaSearch className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" size={12} />
+            <input
+              type="text"
+              className="mc-search"
+              placeholder="Search by title, category, description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="position-absolute top-50 end-0 translate-middle-y me-2 border-0 bg-transparent text-muted"
+                onClick={() => setSearchTerm('')}
+                style={{ lineHeight: 1 }}
+              >
+                <FaTimes size={12} />
+              </button>
             )}
           </div>
+        </div>
 
-          {/* Pagination */}
-          {filteredCourses.length > 0 && (
-            <div className="d-flex justify-content-between align-items-center mt-4">
-              <div className="text-muted">
-                Showing <strong>{startIndex + 1}</strong> to{' '}
-                <strong>{Math.min(startIndex + itemsPerPage, filteredCourses.length)}</strong>{' '}
-                of <strong>{filteredCourses.length}</strong> courses
-              </div>
-              <nav>
-                <ul className="pagination mb-0">
-                  <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                    <Button
-                      variant="light"
-                      className="page-link"
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    >
-                      <FaAngleLeft />
-                    </Button>
-                  </li>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                      <Button
-                        variant="light"
-                        className="page-link"
-                        onClick={() => setCurrentPage(i + 1)}
-                      >
-                        {i + 1}
-                      </Button>
-                    </li>
-                  ))}
-                  <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                    <Button
-                      variant="light"
-                      className="page-link"
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    >
-                      <FaAngleRight />
-                    </Button>
-                  </li>
-                </ul>
-              </nav>
+        {/* Filter bar — single line */}
+        <div className="mc-filter-bar mb-4">
+          <select className="mc-select" value={filterBy} onChange={(e) => setFilterBy(e.target.value as FilterOption)}>
+            <option value="all">All Status</option>
+            <option value="published">Published</option>
+            <option value="draft">Draft</option>
+            <option value="archived">Archived</option>
+            <option value="featured">Featured</option>
+          </select>
+          <select className="mc-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as SortOption)}>
+            <option value="newest">Newest First</option>
+            <option value="popular">Most Popular</option>
+            <option value="alphabetical">Alphabetical</option>
+            <option value="price-low-high">Price: Low → High</option>
+            <option value="price-high-low">Price: High → Low</option>
+          </select>
+          <span className="text-muted small ms-auto flex-shrink-0">
+            {filteredCourses.length} course{filteredCourses.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mc-error mb-3">
+            <FaExclamationTriangle className="me-2" />
+            {error}
+            <button className="mc-btn-outline ms-auto" onClick={fetchCourses}>Retry</button>
+          </div>
+        )}
+
+        {/* Table */}
+        <div className="mc-table-wrap">
+          {isLoading ? (
+            <div className="text-center py-5">
+              <Spinner animation="border" style={{ color: '#ff8c00' }} />
+              <p className="mt-3 text-muted small">Loading courses...</p>
             </div>
+          ) : paginatedCourses.length === 0 ? (
+            <div className="text-center py-5">
+              <FaSearch size={36} className="mb-3 text-muted opacity-25 d-block mx-auto" />
+              <p className="text-muted mb-2">No courses found</p>
+              <p className="text-muted small">
+                {searchTerm ? 'Try a different search term' : 'Create your first course to get started'}
+              </p>
+              {searchTerm && (
+                <button className="mc-btn-outline mt-2" onClick={() => setSearchTerm('')}>Clear Search</button>
+              )}
+            </div>
+          ) : (
+            <table className="mc-table">
+              <thead>
+                <tr>
+                  <th className="ps-3">#</th>
+                  <th>Course</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Students</th>
+                  <th>Price</th>
+                  <th className="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedCourses.map((course, idx) => (
+                  <tr key={course._id}>
+                    <td className="ps-3 text-muted small">{startIndex + idx + 1}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="mc-thumb">
+                          <img
+                            src={course.image || `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(course.title)}&backgroundColor=2a2a2a`}
+                            alt={course.title}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null
+                              e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(course.title)}&backgroundColor=2a2a2a`
+                            }}
+                          />
+                        </div>
+                        <div className="overflow-hidden">
+                          <div className="text-white fw-medium text-truncate" style={{ maxWidth: 260 }}>{course.title}</div>
+                          <div className="d-flex align-items-center gap-2 mt-1">
+                            <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                              <FaTable size={10} className="me-1" />{course.videos.length} videos
+                            </span>
+                            {course.duration && (
+                              <span className="text-muted" style={{ fontSize: '0.75rem' }}>
+                                <FaClock size={10} className="me-1" />{course.duration}
+                              </span>
+                            )}
+                            {course.isFeatured && (
+                              <span className="mc-badge-warning">Featured</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="mc-badge-secondary">{getCategoryText(course.category)}</span>
+                    </td>
+                    <td>
+                      {(() => {
+                        const s = course.status || 'Draft'
+                        const cls = s === 'Published' ? 'mc-badge-success' : s === 'Archived' ? 'mc-badge-secondary' : 'mc-badge-warning'
+                        return <span className={cls}>{s}</span>
+                      })()}
+                    </td>
+                    <td>
+                      <span className="text-white small">
+                        <FaChartBar size={11} className="me-1 text-muted" />
+                        {course.enrolledStudents || 0}
+                      </span>
+                    </td>
+                    <td>
+                      {course.price && course.price !== '' ? (
+                        <div>
+                          <span className="text-white fw-medium small">
+                            ₹{course.discountPrice || course.price}
+                          </span>
+                          {course.discountPrice && (
+                            <div className="text-muted text-decoration-line-through" style={{ fontSize: '0.72rem' }}>
+                              ₹{course.price}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="mc-badge-success">Free</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <Dropdown>
+                        <Dropdown.Toggle as="button" className="mc-action-btn">
+                          <FaEllipsisV size={13} />
+                        </Dropdown.Toggle>
+                        <Dropdown.Menu className="mc-dropdown-menu">
+                          <Dropdown.Item className="mc-dropdown-item" onClick={() => handleEdit(course)}>
+                            <FaRegEdit size={12} className="me-2 text-muted" /> Edit Details
+                          </Dropdown.Item>
+                          <Dropdown.Item className="mc-dropdown-item" onClick={() => navigate(`/course/${course._id}`)}>
+                            <FaEye size={12} className="me-2 text-muted" /> Preview
+                          </Dropdown.Item>
+                          <Dropdown.Divider className="mc-divider" />
+                          <Dropdown.Item className="mc-dropdown-item" onClick={() => handleFeatureToggle(course._id, !course.isFeatured)}>
+                            {course.isFeatured
+                              ? <><FaToggleOff size={12} className="me-2 text-muted" /> Remove Featured</>
+                              : <><FaToggleOn size={12} className="me-2 text-muted" /> Mark as Featured</>}
+                          </Dropdown.Item>
+                          {course.status === 'Published' ? (
+                            <Dropdown.Item className="mc-dropdown-item" onClick={() => handleStatusToggle(course._id, 'Draft')}>
+                              <FaTimes size={12} className="me-2 text-muted" /> Unpublish
+                            </Dropdown.Item>
+                          ) : (
+                            <Dropdown.Item className="mc-dropdown-item" onClick={() => handleStatusToggle(course._id, 'Published')}>
+                              <FaCheckCircle size={12} className="me-2 text-muted" /> Publish
+                            </Dropdown.Item>
+                          )}
+                          <Dropdown.Divider className="mc-divider" />
+                          <Dropdown.Item className="mc-dropdown-item mc-dropdown-danger" onClick={() => { setCourseToDelete(course); setShowDeleteModal(true) }}>
+                            <FaTrash size={12} className="me-2" /> Delete
+                          </Dropdown.Item>
+                        </Dropdown.Menu>
+                      </Dropdown>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
+        </div>
 
-          {/* Quick Stats */}
-          {!isLoading && courses.length > 0 && (
-            <Row className="mt-4 g-3">
-              <Col md={3}>
-                <Card className="border">
-                  <CardBody className="py-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h6 className="mb-0">Total Courses</h6>
-                        <p className="text-muted small mb-0">All time</p>
-                      </div>
-                      <Badge bg="primary" className="fs-5 px-3">
-                        {courses.length}
-                      </Badge>
-                    </div>
-                  </CardBody>
-                </Card>
-              </Col>
-              <Col md={3}>
-                <Card className="border">
-                  <CardBody className="py-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h6 className="mb-0">Published</h6>
-                        <p className="text-muted small mb-0">Live courses</p>
-                      </div>
-                      <Badge bg="success" className="fs-5 px-3">
-                        {courses.filter(c => c.status === 'Published').length}
-                      </Badge>
-                    </div>
-                  </CardBody>
-                </Card>
-              </Col>
-              <Col md={3}>
-                <Card className="border">
-                  <CardBody className="py-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h6 className="mb-0">Featured</h6>
-                        <p className="text-muted small mb-0">Highlighted</p>
-                      </div>
-                      <Badge bg="warning" className="fs-5 px-3">
-                        {courses.filter(c => c.isFeatured).length}
-                      </Badge>
-                    </div>
-                  </CardBody>
-                </Card>
-              </Col>
-              <Col md={3}>
-                <Card className="border">
-                  <CardBody className="py-3">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h6 className="mb-0">Total Videos</h6>
-                        <p className="text-muted small mb-0">Across all courses</p>
-                      </div>
-                      <Badge bg="info" className="fs-5 px-3">
-                        {courses.reduce((acc, course) => acc + course.videos.length, 0)}
-                      </Badge>
-                    </div>
-                  </CardBody>
-                </Card>
-              </Col>
-            </Row>
-          )}
-        </CardBody>
-      </Card>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mc-pagination">
+            <span className="text-muted small">
+              {startIndex + 1}–{Math.min(startIndex + itemsPerPage, filteredCourses.length)} of {filteredCourses.length}
+            </span>
+            <div className="d-flex gap-1">
+              <button className="mc-page-btn" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+                <FaAngleLeft size={12} />
+              </button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  className={`mc-page-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button className="mc-page-btn" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+                <FaAngleRight size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        .mc-page { color: #e0e0e0; }
+
+        .mc-btn-primary {
+          background: #ff8c00; border: none; color: #fff;
+          padding: 7px 14px; border-radius: 8px; font-size: 0.82rem;
+          font-weight: 600; cursor: pointer; display: flex; align-items: center;
+          transition: background 0.2s;
+        }
+        .mc-btn-primary:hover { background: #e67e00; }
+        .mc-btn-outline {
+          background: transparent; border: 1px solid #444; color: #ccc;
+          padding: 7px 14px; border-radius: 8px; font-size: 0.82rem;
+          cursor: pointer; display: flex; align-items: center;
+          transition: border-color 0.2s, color 0.2s;
+        }
+        .mc-btn-outline:hover { border-color: #ff8c00; color: #ff8c00; }
+        .mc-btn-outline:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .mc-stat-pill {
+          display: flex; align-items: center; gap: 6px;
+          border-radius: 8px; padding: 5px 12px;
+          transition: transform 0.15s;
+        }
+        .mc-stat-pill:hover { transform: translateY(-1px); }
+
+        .mc-search {
+          width: 100%; height: 36px; padding: 0 32px 0 36px;
+          background: #1e1e1e; border: 1px solid #333; border-radius: 8px;
+          color: #e0e0e0; font-size: 0.83rem; outline: none;
+          transition: border-color 0.2s;
+        }
+        .mc-search:focus { border-color: rgba(255,140,0,0.5); }
+        .mc-search::placeholder { color: #555; }
+
+        .mc-filter-bar {
+          display: flex; align-items: center; gap: 8px;
+          background: #1a1a1a; border: 1px solid #2a2a2a;
+          border-radius: 10px; padding: 8px 14px;
+          flex-wrap: nowrap; overflow-x: auto;
+        }
+        .mc-select {
+          background: #252525; border: 1px solid #333; color: #e0e0e0;
+          border-radius: 7px; padding: 5px 10px; font-size: 0.82rem;
+          outline: none; cursor: pointer; flex-shrink: 0;
+        }
+        .mc-select:focus { border-color: rgba(255,140,0,0.5); }
+
+        .mc-error {
+          display: flex; align-items: center;
+          background: rgba(220,53,69,0.1); border: 1px solid rgba(220,53,69,0.3);
+          border-radius: 8px; padding: 10px 14px; color: #f8d7da; font-size: 0.85rem;
+        }
+
+        .mc-table-wrap {
+          background: #1a1a1a; border: 1px solid #2a2a2a;
+          border-radius: 12px; overflow: hidden;
+        }
+        .mc-table { width: 100%; border-collapse: collapse; }
+        .mc-table thead tr { background: #141414; border-bottom: 2px solid #2a2a2a; }
+        .mc-table th {
+          padding: 11px 14px; font-size: 0.72rem; font-weight: 700;
+          letter-spacing: 0.6px; text-transform: uppercase; color: #6c757d;
+        }
+        .mc-table tbody tr { border-bottom: 1px solid #222; transition: background 0.15s; }
+        .mc-table tbody tr:last-child { border-bottom: none; }
+        .mc-table tbody tr:hover { background: #1e1e1e; }
+        .mc-table td { padding: 12px 14px; vertical-align: middle; }
+
+        .mc-thumb {
+          width: 50px; height: 50px; border-radius: 8px;
+          overflow: hidden; flex-shrink: 0; background: #2a2a2a;
+        }
+        .mc-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+        .mc-badge-success {
+          background: rgba(25,135,84,0.15); border: 1px solid rgba(25,135,84,0.3);
+          color: #20c374; border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 600;
+        }
+        .mc-badge-warning {
+          background: rgba(255,193,7,0.12); border: 1px solid rgba(255,193,7,0.3);
+          color: #ffc107; border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 600;
+        }
+        .mc-badge-secondary {
+          background: rgba(108,117,125,0.12); border: 1px solid rgba(108,117,125,0.25);
+          color: #adb5bd; border-radius: 20px; padding: 2px 10px; font-size: 0.72rem; font-weight: 600;
+        }
+
+        .mc-action-btn {
+          background: #252525; border: 1px solid #333; color: #ccc;
+          width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+          display: inline-flex; align-items: center; justify-content: center;
+          transition: border-color 0.15s, color 0.15s;
+        }
+        .mc-action-btn:hover { border-color: #ff8c00; color: #ff8c00; }
+        .mc-action-btn::after { display: none !important; }
+
+        .mc-dropdown-menu {
+          background: #1e1e1e !important; border: 1px solid #333 !important;
+          border-radius: 10px !important; padding: 6px !important;
+          min-width: 180px; box-shadow: 0 12px 32px rgba(0,0,0,0.5) !important;
+        }
+        .mc-dropdown-item {
+          color: #ccc !important; font-size: 0.83rem !important;
+          padding: 7px 12px !important; border-radius: 6px !important;
+          display: flex; align-items: center;
+          transition: background 0.15s !important;
+        }
+        .mc-dropdown-item:hover { background: #2a2a2a !important; color: #fff !important; }
+        .mc-dropdown-danger { color: #f87171 !important; }
+        .mc-dropdown-danger:hover { background: rgba(220,53,69,0.12) !important; }
+        .mc-divider { border-color: #2a2a2a !important; margin: 4px 0 !important; }
+
+        .mc-pagination {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-top: 1.25rem; padding: 10px 16px;
+          background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+        }
+        .mc-page-btn {
+          min-width: 34px; height: 34px; background: #252525;
+          border: 1px solid #333; color: #ccc; border-radius: 7px;
+          font-size: 0.8rem; cursor: pointer; display: flex;
+          align-items: center; justify-content: center; padding: 0 8px;
+          transition: all 0.15s;
+        }
+        .mc-page-btn:hover:not(:disabled) { background: #ff8c00; border-color: #ff8c00; color: #fff; }
+        .mc-page-btn.active { background: #ff8c00; border-color: #ff8c00; color: #fff; }
+        .mc-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+      `}</style>
     </>
   )
 }

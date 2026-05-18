@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Col, Row, Spinner } from 'react-bootstrap'
 import {
-  FaBookOpen, FaCheckCircle, FaSearch, FaTimesCircle, FaUserGraduate,
+  FaBookOpen, FaCheckCircle, FaDownload, FaSearch, FaTimesCircle, FaUserGraduate,
 } from 'react-icons/fa'
+import * as XLSX from 'xlsx'
 import ReactApexChart from 'react-apexcharts'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -213,6 +214,34 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     fetchStudents({ page: 1, limit, search, courseId: val })
   }
 
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportExcel = async () => {
+    if (!user?.token) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '9999', search, courseId: filterCourse })
+      const res = await fetch(`${baseURL}${apiBase}/course-enrollment-students?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      if (!data.success) return
+      const rows = data.students.map((s: StudentRow, i: number) => ({
+        '#': i + 1,
+        Name: s.name || '',
+        Email: s.email || '',
+        'Enrolled Courses': s.enrolledCount,
+        'Avg Completion (%)': s.avgCompletion,
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Course Enrollment')
+      const courseTitle = filterCourse ? courses.find((c) => c.courseId === filterCourse)?.title || filterCourse : 'All'
+      XLSX.writeFile(wb, `Course_Enrollment_${courseTitle.slice(0, 40).replace(/[/\\:*?"<>|]/g, '_')}.xlsx`)
+    } catch (err) { console.error(err) }
+    finally { setExporting(false) }
+  }
+
   /* ── Chart options ─────────────────────────────────────── */
   const chartCourses = courses.slice(0, 12) // top 12 for readability
 
@@ -415,6 +444,19 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
               {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
             </select>
             <div style={{ flex: 1 }} />
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              style={{
+                background: exporting ? '#333' : '#ff6b00', border: 'none',
+                color: '#fff', borderRadius: 7, padding: '6px 14px',
+                fontSize: '0.78rem', fontWeight: 700, cursor: exporting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <FaDownload size={11} />
+              {exporting ? 'Exporting…' : 'Export Excel'}
+            </button>
             <div style={S.searchWrap}>
               <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
               <input style={S.searchInput} placeholder="Search name / email" value={search} onChange={(e) => onSearch(e.target.value)} />

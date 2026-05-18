@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Spinner } from 'react-bootstrap'
 import {
   FaMicrophone, FaPencilAlt, FaBook, FaHeadphones, FaBolt,
-  FaSearch, FaArrowUp, FaArrowDown, FaMinus,
+  FaSearch, FaArrowUp, FaArrowDown, FaMinus, FaDownload,
 } from 'react-icons/fa'
+import * as XLSX from 'xlsx'
 import { useAuthContext } from '@/context/useAuthContext'
 
 /* ─── Types ─────────────────────────────────────────────── */
@@ -204,6 +205,38 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     fetchStudents({ page: 1, limit, search, skill, monthKey: '' })
   }
 
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportExcel = async () => {
+    if (!user?.token) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({ page: '1', limit: '9999', search, skill, monthKey: studMonthKey })
+      const res = await fetch(`${baseURL}${apiBase}/english-practice-students?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      if (!data.success) return
+      const skillKeys = ['speaking', 'writing', 'reading', 'listening', 'jam'] as const
+      const skillLabels: Record<string, string> = { speaking: 'Speaking', writing: 'Writing', reading: 'Reading', listening: 'Listening', jam: 'Just a Minute' }
+      const rows = data.students.map((s: StudentRow, i: number) => {
+        const row: Record<string, string | number> = { '#': i + 1, Name: s.name || '', Email: s.email || '' }
+        skillKeys.forEach((sk) => {
+          row[`${skillLabels[sk]} Best Score`]  = s[sk]?.bestScore  ?? '—'
+          row[`${skillLabels[sk]} Latest Score`] = s[sk]?.latestScore ?? '—'
+          row[`${skillLabels[sk]} Attempts`]     = s[sk]?.attemptCount ?? 0
+          row[`${skillLabels[sk]} Trend`]        = s[sk]?.trend ?? '—'
+        })
+        return row
+      })
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'English Practice')
+      XLSX.writeFile(wb, `English_Practice_${studMonthKey || 'All'}.xlsx`)
+    } catch (err) { console.error(err) }
+    finally { setExporting(false) }
+  }
+
   if (overviewLoading) {
     return (
       <div className="d-flex justify-content-center align-items-center py-5">
@@ -373,6 +406,19 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
               {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
             </select>
             <div style={{ flex: 1 }} />
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              style={{
+                background: exporting ? '#333' : '#ff6b00', border: 'none',
+                color: '#fff', borderRadius: 7, padding: '6px 14px',
+                fontSize: '0.78rem', fontWeight: 700, cursor: exporting ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}
+            >
+              <FaDownload size={11} />
+              {exporting ? 'Exporting…' : 'Export Excel'}
+            </button>
             <div style={{ position: 'relative' }}>
               <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
               <input

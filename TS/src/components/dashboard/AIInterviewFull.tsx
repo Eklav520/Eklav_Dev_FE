@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Spinner } from 'react-bootstrap'
-import { FaRobot, FaMicrophone, FaFileAlt, FaSearch } from 'react-icons/fa'
+import { FaRobot, FaMicrophone, FaFileAlt, FaSearch, FaDownload } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import * as XLSX from 'xlsx'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type TypeStats = { attempts: number; uniqueStudents: number; avgScore: number; utilizationPct: number }
@@ -114,7 +115,35 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
   const [stuMonthKey, setStuMonthKey] = useState('')
 
   const yearRange   = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
+  const [exporting, setExporting] = useState(false)
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleExportExcel = async () => {
+    if (!user?.token) return
+    setExporting(true)
+    try {
+      const [y, m] = stuMonthKey ? stuMonthKey.split('-').map(Number) : [undefined, undefined]
+      const params = new URLSearchParams({ page: '1', limit: '9999', search })
+      if (m) params.set('month', String(m))
+      if (y) params.set('year', String(y))
+      const res = await fetch(`${baseURL}${apiBase}/ai-interview-students?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      const rows = (data.students || []).map((s: StudentRow, i: number) => ({
+        '#': i + 1,
+        'Name': s.name,
+        'Email': s.email,
+        'Topic Based Attempts': s.topicBased?.length ?? 0,
+        'Resume Based Attempts': s.resumeBased?.length ?? 0,
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'AI Interview')
+      XLSX.writeFile(wb, `AI_Interview_${stuMonthKey || 'All'}.xlsx`)
+    } catch (e) { console.error('Export error:', e) }
+    finally { setExporting(false) }
+  }
 
   /* ── Fetch overview ─────────────────────────────────────── */
   const fetchOverview = useCallback((month: number, year: number) => {
@@ -367,6 +396,21 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
               {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
             </select>
             <div style={{ flex: 1 }} />
+            <button
+              onClick={handleExportExcel}
+              disabled={exporting}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.3)',
+                color: '#ff6b00', borderRadius: 7, padding: '5px 12px',
+                fontSize: '0.78rem', fontWeight: 600,
+                cursor: exporting ? 'not-allowed' : 'pointer',
+                opacity: exporting ? 0.5 : 1, flexShrink: 0,
+              }}
+            >
+              <FaDownload size={11} />
+              {exporting ? 'Exporting…' : 'Export Excel'}
+            </button>
             <div style={{ position: 'relative' }}>
               <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
               <input

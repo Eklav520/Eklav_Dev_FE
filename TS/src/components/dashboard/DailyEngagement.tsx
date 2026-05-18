@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Col, Row, Spinner } from 'react-bootstrap'
-import { FaCheckCircle, FaSearch, FaTimesCircle, FaUserGraduate } from 'react-icons/fa'
+import { FaCheckCircle, FaDownload, FaSearch, FaTimesCircle, FaUserGraduate } from 'react-icons/fa'
 import ReactApexChart from 'react-apexcharts'
 import { useAuthContext } from '@/context/useAuthContext'
+import * as XLSX from 'xlsx'
 
 /* ─── Types ─────────────────────────────────────────────── */
 type DayData = { minutes: number; isActive: boolean; loginAt: string | null }
@@ -224,8 +225,39 @@ const DailyEngagement = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(20)
   const [chartType, setChartType] = useState<'area' | 'line' | 'bar'>('area')
+  const [exporting, setExporting] = useState(false)
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleExportExcel = async () => {
+    if (!user?.token) return
+    setExporting(true)
+    try {
+      const params = new URLSearchParams({
+        startDate: appliedStart, endDate: appliedEnd,
+        page: '1', limit: '9999', search, filter,
+      })
+      const res = await fetch(`${baseURL}${apiBase}/daily-engagement?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      const rows = (data.students || []).map((s: Student, i: number) => ({
+        '#': i + 1,
+        'Name': s.name,
+        'Email': s.email,
+        'Status': s.isActiveToday ? 'Active' : 'Inactive',
+        'Time Spent (min)': s.totalMinutes,
+      }))
+      const ws = XLSX.utils.json_to_sheet(rows)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Daily Engagement')
+      XLSX.writeFile(wb, `Daily_Engagement_${appliedStart}_${appliedEnd}.xlsx`)
+    } catch (e) {
+      console.error('Export error:', e)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const fetchData = useCallback(async (
     start: string, end: string,
@@ -475,6 +507,21 @@ const DailyEngagement = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
             onChange={(e) => setEndDate(e.target.value)}
           />
           <button style={S.applyBtn} onClick={applyRange}>Apply</button>
+
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.3)',
+              color: '#ff6b00', borderRadius: 7, padding: '5px 12px',
+              fontSize: '0.78rem', fontWeight: 600, cursor: exporting ? 'not-allowed' : 'pointer',
+              opacity: exporting ? 0.6 : 1, flexShrink: 0,
+            }}
+          >
+            <FaDownload size={11} />
+            {exporting ? 'Exporting…' : 'Export Excel'}
+          </button>
 
           <div style={{ flex: 1 }} />
 
