@@ -241,117 +241,129 @@ const CourseCard = ({ course }: { course: CourseType }) => {
     .trim();
 
 
+  const imgSrc = image
+    ? (image.includes('s3.') || image.startsWith('http')
+        ? image
+        : `https://eklav-videos.s3.eu-north-1.amazonaws.com/images/${image}`)
+    : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Course')}`
+
+  const fallbackSrc = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Course')}`
+
   return (
     <>
-      {/* CARD */}
-      <Card className="course-card h-100 d-flex flex-column overflow-hidden">
-        <div className="position-relative cc-image-wrapper">
+      {/* ═══════════════════ CARD ═══════════════════ */}
+      <div className="cc2-card h-100 d-flex flex-column">
+
+        {/* ── Thumbnail ── */}
+        <div className="cc2-thumb-wrap">
           <img
-            src={
-              image
-                ? image.includes('s3.') || image.startsWith('http')
-                  ? image
-                  : `https://eklav-videos.s3.eu-north-1.amazonaws.com/images/${image}`
-                : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Course')}`
-            }
-            onError={(e) => {
-              const img = e.currentTarget as HTMLImageElement
-              img.onerror = null
-              img.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Course')}`
-            }}
-            className="card-img-top course-thumb"
-            alt="Course image"
+            src={imgSrc}
+            onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = fallbackSrc }}
+            className="cc2-thumb"
+            alt={title}
           />
+          {/* gradient overlay */}
+          <div className="cc2-thumb-overlay" />
+
+          {/* Type pill — top-left */}
+          <span className={`cc2-pill cc2-pill--${isComingSoon ? 'soon' : courseType === 'paid' ? 'paid' : 'free'}`}>
+            {isComingSoon ? 'Coming Soon' : courseType === 'paid' ? 'Premium' : 'Free'}
+          </span>
+
+          {/* Custom badge — top-right */}
           {badge?.text && (
-            <Badge bg="" className={`cc-badge position-absolute top-2 start-2 ${badge.class || ''}`}>
-              {badge.text}
-            </Badge>
+            <span className="cc2-custom-badge">{badge.text}</span>
           )}
-          <div className="cc-top-actions">
-            <span
-              className="cc-type-badge"
-              style={{
-                backgroundColor: isComingSoon
-                  ? '#6c757d'
-                  : courseType === 'paid'
-                    ? '#ff7a00'
-                    : '#ff7a00'
-              }}
-            >
-              {isComingSoon
-                ? 'COMING SOON'
-                : courseType === 'paid'
-                  ? 'PREMIUM'
-                  : 'FREE'}
-            </span>
-          </div>
         </div>
 
-        <CardBody className="pb-3 d-flex flex-column">
-          <CardTitle className="fw-semibold d-flex align-items-center gap-2">
-            {/* <a href={`/pages/course/detail-adv/${_id}`} target="_blank" rel="noopener noreferrer" className="text-decoration-none text-body">
-            </a> */}
-            {title}
-          </CardTitle>
+        {/* ── Body ── */}
+        <div className="cc2-body d-flex flex-column flex-grow-1">
 
-          <p className="mb-2 text-truncate-2 text-secondary" title={shortDescription}>
-            {shortDescription || 'No description.'}
-          </p>
-
-          {averageRating > 0 ? (
-            <div className="mb-2 d-flex align-items-center">
-              {renderStarRating(averageRating, false, 12)}
-              <span className="ms-2 text-muted small">
-                {averageRating.toFixed(1)} ({totalRatings})
-              </span>
+          {/* Category chips */}
+          {categories.length > 0 && (
+            <div className="cc2-cats">
+              {categories.slice(0, 2).map((c, i) => (
+                <span key={i} className="cc2-cat-chip">{clean(c)}</span>
+              ))}
+              {categories.length > 2 && (
+                <span className="cc2-cat-chip cc2-cat-chip--more">+{categories.length - 2}</span>
+              )}
             </div>
-          ) : (
-            <div className="mb-2 text-muted small">No ratings yet</div>
           )}
 
-          <div className="mt-auto pt-2">
+          {/* Title */}
+          <h6 className="cc2-title">{title}</h6>
 
-            {/* Row 1: Duration & Lectures */}
-            <div className="d-flex justify-content-between align-items-center small text-secondary mb-2">
+          {/* Description */}
+          <p className="cc2-desc">{shortDescription || 'No description available.'}</p>
 
-              <div className="d-flex align-items-center gap-1">
-                <FaRegClock size={14} style={{ color: '#ff7a00' }} />
-                <span>{duration || 'N/A'} Duration</span>
+          {/* Divider */}
+          <div className="cc2-divider" />
+
+          {/* Rating */}
+          <div className="cc2-rating-row">
+            {averageRating > 0 ? (
+              <>
+                <div className="cc2-stars">{renderStarRating(averageRating, false, 11)}</div>
+                <span className="cc2-rating-val">{averageRating.toFixed(1)}</span>
+                <span className="cc2-rating-count">({totalRatings})</span>
+              </>
+            ) : (
+              <span className="cc2-no-rating">No ratings yet</span>
+            )}
+          </div>
+
+          {/* Meta: duration + lectures + level */}
+          <div className="cc2-meta">
+            {duration && (
+              <span className="cc2-meta-item">
+                <FaRegClock size={11} />
+                {duration}
+              </span>
+            )}
+            <span className="cc2-meta-item">
+              <FaTable size={11} />
+              {totalLectures || videos.length || 0} lectures
+            </span>
+            {level && (
+              <span className="cc2-meta-item">
+                <FaChartBar size={11} />
+                {clean(level)}
+              </span>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="cc2-divider" />
+
+          {/* Price + Button row */}
+          <div className="cc2-footer mt-auto">
+            {price ? (
+              <div className="cc2-price">
+                <span className="cc2-price-now">₹{price}</span>
+                {discountPrice && (
+                  <span className="cc2-price-was">₹{discountPrice}</span>
+                )}
               </div>
+            ) : (
+              <div />
+            )}
 
-              <div className="d-flex align-items-center gap-1">
-                <FaTable size={14} style={{ color: '#ff7a00' }} />
-                <span>{totalLectures || videos.length || 0} lectures</span>
-              </div>
-
-            </div>
-
-            {/* Row 2: View Details Button */}
             <Button
               size="sm"
               disabled={isComingSoon}
-              className={`cc-details-btn d-flex align-items-center gap-2 ${isComingSoon ? 'cc-disabled-btn' : ''}`}
-              onClick={() => {
-                if (isComingSoon) return;
-                setShowDetails(true);
-              }}
+              className={`cc2-btn ${isComingSoon ? 'cc2-btn--disabled' : ''}`}
+              onClick={() => { if (!isComingSoon) setShowDetails(true) }}
             >
-              {isComingSoon ? (
-                <>
-                  <IoLockClosedOutline size={14} />
-                  Coming Soon
-                </>
-              ) : (
-                <>
-                  <FaInfoCircle size={14} />
-                  View Details
-                </>
-              )}
+              {isComingSoon
+                ? <><IoLockClosedOutline size={12} /> Locked</>
+                : <><FaInfoCircle size={12} /> View Details</>
+              }
             </Button>
-
           </div>
-        </CardBody>
-      </Card>
+
+        </div>
+      </div>
 
       {/* MODAL */}
       <Modal show={!isComingSoon && showDetails} onHide={() => setShowDetails(false)} size="xl" fullscreen scrollable className="cc-modal-fullscreen">
@@ -683,22 +695,6 @@ const CourseCard = ({ course }: { course: CourseType }) => {
       </Modal>
 
       <style>{`
-/* ============== Card ============== */
-.cc-badge{
-  top:.75rem; left:.75rem;
-  background:rgba(0,0,0,.65); color:#fff;
-  padding:.35rem .6rem; border-radius:999px;
-  font-weight:600; font-size:.75rem;
-}
-.cc-heart-btn{
-  position:absolute; right:.75rem; top:.75rem;
-  width:36px; height:36px; border-radius:999px;
-  border:1px solid rgba(255,255,255,.35);
-  background:rgba(0,0,0,.35); color:#fff;
-  display:inline-flex; align-items:center; justify-content:center;
-  backdrop-filter:blur(6px) saturate(130%);
-}
-.cc-heart-btn:hover{ background:rgba(0,0,0,.5); }
 
 /* ============== Floating Close Button ============== */
 .cc-close-btn {
@@ -883,192 +879,265 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   font-weight:600; 
 }
 
-/* Card thumbnail */
-.course-thumb{ width:100%; aspect-ratio: 16/14; object-fit: cover; }
-
-.cc-image-wrapper {
-  position: relative;
-  overflow: hidden;
-  border-top-left-radius: 14px;
-  border-top-right-radius: 14px;
-}
-
-/* Utilities */
-.top-2{ top:.5rem; } .start-2{ left:.5rem; }
-
-/* Responsive */
+/* ═══ Modal utility classes (kept for the detail modal) ═══ */
+.modal-fullscreen { padding-right: 0 !important; }
+.cc-content { max-width:1200px; margin:0 auto; padding-left:1rem; padding-right:1rem; }
+.orange-progress .progress-bar { background-color:#ff7a00 !important; }
+.cc-card { background-color:#0f0f0f; border:1px solid rgba(255,122,0,0.15); border-radius:14px; }
+.cc-card.key-features { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; }
+.cc-card.key-features h6 { font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#e5e7eb; }
+.cc-desc p { margin-bottom:.8rem; color:#e5e7eb; }
+.cc-desc ul { padding-left:1rem; }
+.cc-card .list-group-item { background:transparent; border-color:rgba(255,255,255,.08); padding:1rem 1.25rem; display:flex; align-items:center; }
+.badge.bg-dark-subtle.text-body { background:rgba(255,255,255,.06)!important; border:1px solid rgba(255,255,255,.12); color:#e5e7eb!important; padding:.35rem .65rem; border-radius:999px; font-weight:600; }
+.feature-item { padding:0.45rem 0.6rem; border-radius:10px; transition:all 0.2s ease; }
+.feature-item:hover { background:rgba(0,255,128,0.06); transform:translateY(-1px); }
+.feature-icon { width:28px; height:28px; min-width:28px; border-radius:50%; background:rgba(0,255,128,0.15); display:flex; align-items:center; justify-content:center; color:#22c55e; font-size:0.8rem; margin-top:2px; }
+.feature-text { color:#f1f5f9; font-size:0.9rem; line-height:1.4; }
 @media (max-width: 768px) {
-  .cc-hero { aspect-ratio:16/7; min-height:240px; }
-  .cc-hero-inner { padding:1rem; }
-  .cc-title { font-size:1.3rem; }
-  .cc-subtitle { font-size:0.9rem; }
-  .cc-modal-fullscreen {
-    max-width: 100vw;
-    max-height: 100vh;
-    height: 100vh;
-    margin: 0;
-  }
-}
-  .cc-card {
-   background-color: #0f0f0f;
-  border: 1px solid rgba(255, 122, 0, 0.15);
-  border-radius: 10px;
+  .cc2-thumb-wrap { height: 150px; }
 }
 
-.cc-card ul li:hover {
-  background-color: rgba(0, 255, 128, 0.05);
-  transform: translateY(-2px);
-  transition: all 0.2s ease;
+/* ═══════════════════════════════════════════
+   COURSE CARD v2 — Professional Dark Theme
+═══════════════════════════════════════════ */
+
+/* ── Card shell ── */
+.cc2-card {
+  background: #131313;
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  cursor: pointer;
+}
+.cc2-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255,122,0,0.45);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,122,0,0.15);
 }
 
-.cc-card h6 {
-  letter-spacing: 0.5px;
+/* ── Thumbnail ── */
+.cc2-thumb-wrap {
+  position: relative;
+  height: 186px;
+  overflow: hidden;
+  background: #1c1c1c;
+  flex-shrink: 0;
 }
-
-/* --- Key Features Style Improvement --- */
-.cc-card.key-features {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
+.cc2-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.4s ease;
 }
-
-.cc-card.key-features h6 {
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: #e5e7eb;
+.cc2-card:hover .cc2-thumb {
+  transform: scale(1.04);
 }
-
-.feature-item {
-  padding: 0.45rem 0.6rem;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-}
-
-.feature-item:hover {
-  background: rgba(0, 255, 128, 0.06);
-  transform: translateY(-1px);
-}
-  .feature-icon {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  border-radius: 50%;
-  background: rgba(0, 255, 128, 0.15);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #22c55e;
-  font-size: 0.8rem;
-  margin-top: 2px;
-}
-.feature-text {
-  color: #f1f5f9;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-  .modal-fullscreen {
-  padding-right: 0 !important;
-}
-
-.cc-content {
-  max-width: 1200px;     /* readable width */
-  margin: 0 auto;
-  padding-left: 1rem;
-  padding-right: 1rem;
-}
-
-.orange-progress .progress-bar {
-  background-color: #ff7a00 !important;
-}
-
-/* ===== Course Card Border Enhancement ===== */
-.course-card {
-  background-color: #111111;
-  border: 1px solid rgba(255, 122, 0, 0.18);
-  border-radius: 14px;
-  transition: all 0.25s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.course-card:hover {
-  border-color: #ff7a00;
-  box-shadow: 0 8px 24px rgba(255, 122, 0, 0.25);
-  transform: translateY(-4px);
-}
-  /* ===== Top Right Actions (Badge + Heart) ===== */
-.cc-top-actions {
+.cc2-thumb-overlay {
   position: absolute;
-  top: 14px;
-  right: 14px;
-  z-index: 5;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0.08) 0%,
+    rgba(0,0,0,0.55) 100%
+  );
+  pointer-events: none;
 }
 
-.cc-type-badge {
-  background-color: #ff7a00;
-  color: #fff;
-  font-size: 0.7rem;
+/* ── Pills on image ── */
+.cc2-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 0.67rem;
   font-weight: 700;
-  padding: 6px 12px;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
   border-radius: 50px;
-  letter-spacing: 0.6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  border: 1px solid transparent;
+}
+.cc2-pill--paid {
+  background: rgba(255,122,0,0.85);
+  border-color: rgba(255,122,0,0.5);
+  color: #fff;
+}
+.cc2-pill--free {
+  background: rgba(34,197,94,0.85);
+  border-color: rgba(34,197,94,0.5);
+  color: #fff;
+}
+.cc2-pill--soon {
+  background: rgba(100,116,139,0.85);
+  border-color: rgba(100,116,139,0.5);
+  color: #fff;
+}
+.cc2-custom-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 50px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
   backdrop-filter: blur(6px);
 }
- 
-/* Normal button */
-.cc-details-btn {
-  padding: 6px 14px !important;
-  font-size: 0.8rem !important;
-  border-radius: 8px !important;
-  border: 1px solid #ff7a00;
-  color: #ff7a00;
-  background: transparent;
+
+/* ── Body ── */
+.cc2-body {
+  padding: 1rem 1.1rem 1rem;
+}
+
+/* ── Category chips ── */
+.cc2-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 0.55rem;
+}
+.cc2-cat-chip {
+  font-size: 0.62rem;
   font-weight: 600;
-  transition: all 0.2s ease;
+  letter-spacing: 0.4px;
+  padding: 2px 9px;
+  border-radius: 50px;
+  background: rgba(255,122,0,0.1);
+  border: 1px solid rgba(255,122,0,0.25);
+  color: #ff8c30;
+  white-space: nowrap;
+}
+.cc2-cat-chip--more {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+  color: #888;
 }
 
-/* Hover */
-.cc-details-btn:hover:not(:disabled) {
-  background: #ff7a00;
+/* ── Title ── */
+.cc2-title {
+  font-size: 0.93rem;
+  font-weight: 700;
+  color: #f0f0f0;
+  line-height: 1.35;
+  margin-bottom: 0.4rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Disabled Coming Soon style */
-.cc-disabled-btn,
-.cc-details-btn:disabled {
-  background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  color: rgba(255, 255, 255, 0.45) !important;
-  cursor: not-allowed !important;
-  opacity: 1 !important; /* override bootstrap fade */
+/* ── Description ── */
+.cc2-desc {
+  font-size: 0.78rem;
+  color: #7a7a7a;
+  line-height: 1.5;
+  margin-bottom: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
- .cc-success-toast {
-  position: fixed;   /* 🔥 KEY FIX */
-  top: 20px;
-  right: 20px;
 
-  background: #22c55e;
-  color: #fff;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-weight: 600;
+/* ── Divider ── */
+.cc2-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 0.65rem 0;
+}
 
+/* ── Rating ── */
+.cc2-rating-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
+  margin-bottom: 0.5rem;
+}
+.cc2-stars { display: flex; align-items: center; }
+.cc2-rating-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #f59e0b;
+}
+.cc2-rating-count {
+  font-size: 0.72rem;
+  color: #555;
+}
+.cc2-no-rating {
+  font-size: 0.72rem;
+  color: #444;
+  font-style: italic;
+}
 
-  z-index: 99999;  /* 🔥 above modal */
+/* ── Meta row ── */
+.cc2-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 0;
 }
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.cc2-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: #666;
 }
+.cc2-meta-item svg { color: #ff7a00; flex-shrink: 0; }
+
+/* ── Footer: price + button ── */
+.cc2-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.cc2-price { display: flex; align-items: baseline; gap: 6px; }
+.cc2-price-now {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #22c55e;
+}
+.cc2-price-was {
+  font-size: 0.75rem;
+  color: #555;
+  text-decoration: line-through;
+}
+
+/* ── Action button ── */
+.cc2-btn {
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  padding: 6px 16px !important;
+  border-radius: 8px !important;
+  border: 1.5px solid #ff7a00 !important;
+  background: transparent !important;
+  color: #ff7a00 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: all 0.18s ease !important;
+}
+.cc2-btn:hover:not(:disabled) {
+  background: #ff7a00 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(255,122,0,0.35);
+}
+.cc2-btn--disabled,
+.cc2-btn:disabled {
+  background: rgba(255,255,255,0.03) !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: rgba(255,255,255,0.3) !important;
+  cursor: not-allowed !important;
+  opacity: 1 !important;
+}
+
       `}</style>
 
 

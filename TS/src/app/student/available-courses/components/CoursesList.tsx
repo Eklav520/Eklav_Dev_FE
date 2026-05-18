@@ -23,6 +23,8 @@ interface Course {
   discountPrice?: string
   isFeatured?: string
   badge?: { text?: string; class?: string }
+  updatedAt?: string
+  createdAt?: string
 }
 
 interface RatingResponse {
@@ -92,7 +94,12 @@ const CoursesList = () => {
           })
         )
 
-        setCourses(coursesWithRatings)
+        const sorted = coursesWithRatings.sort((a, b) => {
+          const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime()
+          const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime()
+          return dateB - dateA
+        })
+        setCourses(sorted)
 
       } catch (error) {
         console.error('Error fetching courses:', error)
