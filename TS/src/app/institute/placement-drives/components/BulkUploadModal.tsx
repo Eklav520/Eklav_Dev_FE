@@ -41,17 +41,20 @@ interface ErrorRow {
 
 const TEMPLATE_HEADERS = [
   'Name',
+  'Roll Number',
   'Email',
   'Phone Number',
+  'SSC Marks',
+  'Inter Marks',
   'Academic Score',
-  'Has Backlogs',
+  'Backlog Count',
   'Department',
   'Batch',
 ]
 
 const SAMPLE_ROWS = [
-  ['Ravi Kumar', 'ravi@example.com', '9876543210', '8.5', 'No', 'CSE', '2024-2025'],
-  ['Priya Sharma', 'priya@example.com', '9123456789', '7.2', 'Yes', 'ECE', '2025-2026'],
+  ['Ravi Kumar', '21CS001', 'ravi@example.com', '9876543210', '85', '78', '8.5', '0', 'CSE', '2024-2025'],
+  ['Priya Sharma', '21EC045', 'priya@example.com', '9123456789', '72', '68', '7.2', '1', 'ECE', '2025-2026'],
 ]
 
 const downloadTemplate = () => {
@@ -172,9 +175,16 @@ const BulkUploadModal = ({ show, drive, onHide, onUploaded }: Props) => {
               ))}
             </div>
             <div className="text-muted small mt-2">
-              Cutoff: Students with <strong className="text-warning">
-              CGPA / Score &lt; {Number.isInteger(drive.cutoffScore) ? drive.cutoffScore : drive.cutoffScore.toFixed(1)}
-            </strong> will be excluded automatically.
+              Cutoff: Score &lt; <strong className="text-warning">
+                {Number.isInteger(drive.cutoffScore) ? drive.cutoffScore : drive.cutoffScore.toFixed(1)}
+              </strong> will be marked not eligible.
+              {' '}Backlogs: <strong className="text-warning">
+                {drive.backlogPolicy === 'none'
+                  ? 'No backlogs allowed'
+                  : drive.backlogPolicy === 'limited'
+                  ? `Max ${drive.maxBacklogs} backlog${drive.maxBacklogs === 1 ? '' : 's'} allowed`
+                  : 'Any backlogs OK'}
+              </strong>.
             </div>
           </div>
           <Button

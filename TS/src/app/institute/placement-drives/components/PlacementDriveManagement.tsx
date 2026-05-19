@@ -39,6 +39,8 @@ export interface PlacementDrive {
   location: string
   driveDate: string | null
   cutoffScore: number
+  backlogPolicy: 'none' | 'limited' | 'any'
+  maxBacklogs: number
   rounds: PlacementRound[]
   status: 'upcoming' | 'ongoing' | 'completed'
   stats: PlacementDriveStats

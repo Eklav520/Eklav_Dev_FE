@@ -22,6 +22,8 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
   const [location, setLocation] = useState('')
   const [driveDate, setDriveDate] = useState('')
   const [cutoffScore, setCutoffScore] = useState<number | ''>('')
+  const [backlogPolicy, setBacklogPolicy] = useState<'none' | 'limited' | 'any'>('any')
+  const [maxBacklogs, setMaxBacklogs] = useState<number | ''>(1)
   const [rounds, setRounds] = useState<PlacementRound[]>([])
   const [status, setStatus] = useState('upcoming')
   const [submitting, setSubmitting] = useState(false)
@@ -38,6 +40,8 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
         drive.driveDate ? new Date(drive.driveDate).toISOString().split('T')[0] : ''
       )
       setCutoffScore(drive.cutoffScore ?? '')
+      setBacklogPolicy(drive.backlogPolicy ?? 'any')
+      setMaxBacklogs(drive.maxBacklogs ?? 1)
       setRounds(drive.rounds.map((r) => ({ ...r })))
       setStatus(drive.status)
       setError('')
@@ -72,6 +76,8 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
           location: location.trim(),
           driveDate: driveDate || null,
           cutoffScore: cutoffScore === '' ? 0 : cutoffScore,
+          backlogPolicy,
+          maxBacklogs: backlogPolicy === 'limited' ? (maxBacklogs === '' ? 1 : maxBacklogs) : 0,
           rounds,
           status,
         },
@@ -179,6 +185,39 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
                 />
               </Form.Group>
             </Col>
+            <Col md={backlogPolicy === 'limited' ? 4 : 6}>
+              <Form.Group>
+                <Form.Label>Backlog Policy</Form.Label>
+                <Form.Select
+                  className="bg-black text-white border-secondary"
+                  value={backlogPolicy}
+                  onChange={(e) => setBacklogPolicy(e.target.value as 'none' | 'limited' | 'any')}
+                >
+                  <option value="any">Any backlogs allowed</option>
+                  <option value="none">No backlogs allowed</option>
+                  <option value="limited">Allow up to N backlogs</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            {backlogPolicy === 'limited' && (
+              <Col md={2}>
+                <Form.Group>
+                  <Form.Label>Max Backlogs</Form.Label>
+                  <Form.Control
+                    type="number"
+                    min={1}
+                    max={20}
+                    step={1}
+                    placeholder="e.g. 1"
+                    className="bg-black text-white border-secondary"
+                    value={maxBacklogs}
+                    onChange={(e) =>
+                      setMaxBacklogs(e.target.value === '' ? '' : parseInt(e.target.value))
+                    }
+                  />
+                </Form.Group>
+              </Col>
+            )}
             <Col md={6}>
               <Form.Group>
                 <Form.Label>Status</Form.Label>
