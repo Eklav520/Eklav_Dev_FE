@@ -225,7 +225,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
             <Modal.Header closeButton className="modal-header-custom">
                 <Modal.Title>
                     <FaUpload className="modal-icon" />
-                    Bulk Upload Students
+                    Bulk Students Upload
                 </Modal.Title>
             </Modal.Header>
 

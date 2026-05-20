@@ -153,7 +153,7 @@ const BulkUploadModal = ({ show, drive, onHide, onUploaded }: Props) => {
     >
       <Modal.Header closeButton closeVariant="white" className="border-secondary">
         <Modal.Title>
-          Bulk Upload Students
+          Bulk Students Upload
           <span className="text-muted fs-6 ms-2">— {drive.companyName}</span>
         </Modal.Title>
       </Modal.Header>
