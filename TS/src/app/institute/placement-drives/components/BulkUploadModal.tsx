@@ -40,21 +40,25 @@ interface ErrorRow {
 }
 
 const TEMPLATE_HEADERS = [
-  'Name',
+  'Full Name',
   'Roll Number',
-  'Email',
-  'Phone Number',
-  'SSC Marks',
-  'Inter Marks',
-  'Academic Score',
-  'Backlog Count',
-  'Department',
+  'Mobile Number',
+  'Gender',
+  'Personal Mail ID',
+  'Branch',
+  'SSC CGPA',
+  'SSC %',
+  'Inter/Diploma CGPA',
+  'Inter %',
+  'B.Tech CGPA',
+  'B.Tech %',
+  'Backlogs',
   'Batch',
 ]
 
 const SAMPLE_ROWS = [
-  ['Ravi Kumar', '21CS001', 'ravi@example.com', '9876543210', '85', '78', '8.5', '0', 'CSE', '2024-2025'],
-  ['Priya Sharma', '21EC045', 'priya@example.com', '9123456789', '72', '68', '7.2', '1', 'ECE', '2025-2026'],
+  ['Ravi Kumar', '21CS001', '9876543210', 'Male', 'ravi@example.com', 'CSE', '8.5', '85.00', '7.8', '78.00', '8.0', '75.00', '0', '2024-2025'],
+  ['Priya Sharma', '21EC045', '9123456789', 'Female', 'priya@example.com', 'ECE', '7.2', '72.00', '6.8', '68.00', '7.5', '70.00', '1', '2025-2026'],
 ]
 
 const downloadTemplate = () => {
@@ -175,8 +179,9 @@ const BulkUploadModal = ({ show, drive, onHide, onUploaded }: Props) => {
               ))}
             </div>
             <div className="text-muted small mt-2">
-              Cutoff: Score &lt; <strong className="text-warning">
+              Cutoff: {drive.cutoffType === 'percentage' ? 'B.Tech %' : 'B.Tech CGPA'} &lt; <strong className="text-warning">
                 {Number.isInteger(drive.cutoffScore) ? drive.cutoffScore : drive.cutoffScore.toFixed(1)}
+                {drive.cutoffType === 'percentage' ? '%' : ''}
               </strong> will be marked not eligible.
               {' '}Backlogs: <strong className="text-warning">
                 {drive.backlogPolicy === 'none'
@@ -273,7 +278,7 @@ const BulkUploadModal = ({ show, drive, onHide, onUploaded }: Props) => {
             {summary.notEligible > 0 && (
               <Alert variant="warning" className="d-flex align-items-center gap-2">
                 <FaExclamationTriangle />
-                {summary.notEligible} student(s) are below the cutoff CGPA ({Number.isInteger(drive.cutoffScore) ? drive.cutoffScore : drive.cutoffScore.toFixed(1)}) and marked as <strong className="ms-1">Not Eligible</strong>. They are enrolled but cannot participate in rounds.
+                {summary.notEligible} student(s) are below the cutoff {drive.cutoffType === 'percentage' ? 'B.Tech percentage' : 'B.Tech CGPA'} ({Number.isInteger(drive.cutoffScore) ? drive.cutoffScore : drive.cutoffScore.toFixed(1)}{drive.cutoffType === 'percentage' ? '%' : ''}) and marked as <strong className="ms-1">Not Eligible</strong>. They are enrolled but cannot participate in rounds.
               </Alert>
             )}
 

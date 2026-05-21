@@ -20,6 +20,8 @@ interface Drive {
 interface PlacedStudent {
   _id: string
   studentName: string
+  rollNumber: string
+  studentEmail: string
   department: string
   batch: string
   overallStatus: string
@@ -142,12 +144,33 @@ const StudentPlacementPage = () => {
     <div style={{ background: '#000', minHeight: '100vh', padding: '24px' }}>
 
       {/* ── Header ── */}
-      <div className="d-flex align-items-start justify-content-between mb-4">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 24 }}>
         <div>
           <h4 className="text-white fw-bold mb-1">Placement Board</h4>
           <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>
             Track placement drives and selected students from your college
           </p>
+        </div>
+
+        {/* Tabs — right side of header */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { key: 'board', label: 'Selected Students' },
+            { key: 'mine',  label: 'My Status' },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key as 'board' | 'mine')}
+              style={{
+                padding: '8px 20px', borderRadius: 20, fontWeight: 600, fontSize: '0.82rem',
+                border: '1px solid',
+                background: tab === t.key ? '#ff7a00' : 'transparent',
+                borderColor: tab === t.key ? '#ff7a00' : '#2a2a2a',
+                color: tab === t.key ? '#fff' : '#888',
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >{t.label}</button>
+          ))}
         </div>
       </div>
 
@@ -179,26 +202,6 @@ const StudentPlacementPage = () => {
         </div>
       )}
 
-      {/* ── Tabs ── */}
-      <div className="d-flex gap-2 mb-4">
-        {[
-          { key: 'board', label: 'Selected Students' },
-          { key: 'mine',  label: 'My Status' },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key as 'board' | 'mine')}
-            style={{
-              padding: '7px 18px', borderRadius: 20, fontWeight: 600, fontSize: '0.82rem',
-              border: '1px solid',
-              background: tab === t.key ? '#ff7a00' : 'transparent',
-              borderColor: tab === t.key ? '#ff7a00' : '#2a2a2a',
-              color: tab === t.key ? '#fff' : '#888',
-              cursor: 'pointer', transition: 'all 0.15s',
-            }}
-          >{t.label}</button>
-        ))}
-      </div>
 
       {/* ══════════════════════════════
           TAB: SELECTED STUDENTS (BOARD)
@@ -313,6 +316,39 @@ const StudentPlacementPage = () => {
   )
 }
 
+/* ── Human silhouette avatar ── */
+const HumanAvatar = ({ color, size = 40 }: { color: string; size?: number }) => (
+  <div style={{
+    width: size, height: size, borderRadius: '50%', flexShrink: 0,
+    background: `${color}20`, border: `2px solid ${color}55`,
+    display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    overflow: 'hidden', position: 'relative',
+  }}>
+    {/* Head */}
+    <div style={{
+      position: 'absolute',
+      top: size * 0.16,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      width: size * 0.36,
+      height: size * 0.36,
+      borderRadius: '50%',
+      background: color,
+      opacity: 0.85,
+    }} />
+    {/* Shoulders / body */}
+    <div style={{
+      width: size * 0.78,
+      height: size * 0.42,
+      borderRadius: `${size * 0.42}px ${size * 0.42}px 0 0`,
+      background: color,
+      opacity: 0.7,
+      marginBottom: 0,
+      flexShrink: 0,
+    }} />
+  </div>
+)
+
 /* ── List View ── */
 const ListView = ({ students }: { students: PlacedStudent[] }) => (
   <div style={{ background: '#111', border: '1px solid #1f1f1f', borderRadius: 12, overflow: 'hidden' }}>
@@ -320,7 +356,7 @@ const ListView = ({ students }: { students: PlacedStudent[] }) => (
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' }}>
         <thead>
           <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #222' }}>
-            {['#', 'Student', 'Department', 'Batch', 'Company', 'Role', 'Package'].map(h => (
+            {['#', 'Student', 'Roll No / Email', 'Department', 'Batch', 'Company', 'Role', 'Package'].map(h => (
               <th key={h} style={{ padding: '11px 14px', color: '#ff7a00', fontWeight: 700, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.4px', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 {h}
               </th>
@@ -336,19 +372,26 @@ const ListView = ({ students }: { students: PlacedStudent[] }) => (
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <td style={{ padding: '11px 14px', color: '#555', fontSize: '0.72rem' }}>{idx + 1}</td>
+
+                {/* Student name + avatar */}
                 <td style={{ padding: '11px 14px' }}>
-                  <div className="d-flex align-items-center gap-2">
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
-                      background: `${color}22`, border: `1px solid ${color}44`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color, fontWeight: 700, fontSize: '0.75rem',
-                    }}>
-                      {s.studentName.charAt(0).toUpperCase()}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <HumanAvatar color={color} size={38} />
                     <span style={{ color: '#fff', fontWeight: 600 }}>{s.studentName}</span>
                   </div>
                 </td>
+
+                {/* Roll No + Email */}
+                <td style={{ padding: '11px 14px' }}>
+                  {s.rollNumber && (
+                    <div style={{ color: '#ff7a00', fontWeight: 700, fontSize: '0.78rem' }}>{s.rollNumber}</div>
+                  )}
+                  {s.studentEmail && (
+                    <div style={{ color: '#6b7280', fontSize: '0.72rem', marginTop: 2 }}>{s.studentEmail}</div>
+                  )}
+                  {!s.rollNumber && !s.studentEmail && <span style={{ color: '#333' }}>—</span>}
+                </td>
+
                 <td style={{ padding: '11px 14px', color: '#aaa' }}>{s.department || '—'}</td>
                 <td style={{ padding: '11px 14px' }}>
                   {s.batch ? (
@@ -359,7 +402,7 @@ const ListView = ({ students }: { students: PlacedStudent[] }) => (
                 </td>
                 <td style={{ padding: '11px 14px' }}>
                   {s.drive ? (
-                    <div className="d-flex align-items-center gap-2">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ width: 28, height: 28, borderRadius: 7, background: `${getColor(s.drive.companyName)}22`, border: `1px solid ${getColor(s.drive.companyName)}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: getColor(s.drive.companyName), fontWeight: 700, fontSize: '0.65rem', flexShrink: 0 }}>
                         {s.drive.companyName.slice(0, 2).toUpperCase()}
                       </div>
@@ -658,22 +701,27 @@ const GridView = ({ students }: { students: PlacedStudent[] }) => (
             e.currentTarget.style.boxShadow = 'none'
           }}
         >
-          {/* ── Top: avatar + name only ── */}
+          {/* ── Top: avatar + name + roll + email ── */}
           <div style={{
             padding: '20px 18px 16px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
             borderBottom: '1px solid #1a1a1a',
           }}>
-            <div style={{
-              width: 56, height: 56, borderRadius: '50%',
-              background: `${color}22`, border: `2px solid ${color}66`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color, fontWeight: 700, fontSize: '1.3rem',
-            }}>
-              {s.studentName.charAt(0).toUpperCase()}
-            </div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', textAlign: 'center' }}>
-              {s.studentName}
+            <HumanAvatar color={color} size={62} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+                {s.studentName}
+              </div>
+              {s.rollNumber && (
+                <div style={{ color: '#ff7a00', fontWeight: 700, fontSize: '0.72rem', marginTop: 3 }}>
+                  {s.rollNumber}
+                </div>
+              )}
+              {s.studentEmail && (
+                <div style={{ color: '#6b7280', fontSize: '0.68rem', marginTop: 2, wordBreak: 'break-all' }}>
+                  {s.studentEmail}
+                </div>
+              )}
             </div>
           </div>
 

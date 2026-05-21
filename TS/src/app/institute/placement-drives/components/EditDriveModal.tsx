@@ -22,6 +22,7 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
   const [location, setLocation] = useState('')
   const [driveDate, setDriveDate] = useState('')
   const [cutoffScore, setCutoffScore] = useState<number | ''>('')
+  const [cutoffType, setCutoffType] = useState<'cgpa' | 'percentage'>('cgpa')
   const [backlogPolicy, setBacklogPolicy] = useState<'none' | 'limited' | 'any'>('any')
   const [maxBacklogs, setMaxBacklogs] = useState<number | ''>(1)
   const [rounds, setRounds] = useState<PlacementRound[]>([])
@@ -40,6 +41,7 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
         drive.driveDate ? new Date(drive.driveDate).toISOString().split('T')[0] : ''
       )
       setCutoffScore(drive.cutoffScore ?? '')
+      setCutoffType(drive.cutoffType ?? 'cgpa')
       setBacklogPolicy(drive.backlogPolicy ?? 'any')
       setMaxBacklogs(drive.maxBacklogs ?? 1)
       setRounds(drive.rounds.map((r) => ({ ...r })))
@@ -76,6 +78,7 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
           location: location.trim(),
           driveDate: driveDate || null,
           cutoffScore: cutoffScore === '' ? 0 : cutoffScore,
+          cutoffType,
           backlogPolicy,
           maxBacklogs: backlogPolicy === 'limited' ? (maxBacklogs === '' ? 1 : maxBacklogs) : 0,
           rounds,
@@ -163,20 +166,33 @@ const EditDriveModal = ({ show, drive, onHide, onSaved }: Props) => {
                 />
               </Form.Group>
             </Col>
-            <Col md={6}>
+            <Col md={3}>
+              <Form.Group>
+                <Form.Label>Eligibility Criteria</Form.Label>
+                <Form.Select
+                  className="bg-black text-white border-secondary"
+                  value={cutoffType}
+                  onChange={(e) => {
+                    setCutoffType(e.target.value as 'cgpa' | 'percentage')
+                    setCutoffScore('')
+                  }}
+                >
+                  <option value="cgpa">B.Tech CGPA</option>
+                  <option value="percentage">B.Tech Percentage</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col md={3}>
               <Form.Group>
                 <Form.Label>
-                  Minimum CGPA / Score (Cutoff)
-                  <span className="text-muted ms-1" style={{ fontSize: '0.8rem' }}>
-                    — e.g. 7.5, 8.0, 9.2
-                  </span>
+                  Minimum {cutoffType === 'cgpa' ? 'CGPA' : 'Percentage'} (Cutoff)
                 </Form.Label>
                 <Form.Control
                   type="number"
                   min={0}
-                  max={10}
+                  max={cutoffType === 'cgpa' ? 10 : 100}
                   step={0.1}
-                  placeholder="e.g. 7.5"
+                  placeholder={cutoffType === 'cgpa' ? 'e.g. 7.5' : 'e.g. 60.0'}
                   className="bg-black text-white border-secondary"
                   value={cutoffScore}
                   onChange={(e) =>

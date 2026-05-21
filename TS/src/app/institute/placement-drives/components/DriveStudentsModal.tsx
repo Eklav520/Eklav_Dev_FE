@@ -45,11 +45,13 @@ interface RoundResult {
 interface DriveStudent {
   _id: string
   studentName: string
+  rollNumber: string
   studentEmail: string
   phoneNumber: string
   department: string
   batch: string
   academicScore: number
+  btechPercentage: number | null
   hasBacklogs: boolean
   isEligible: boolean
   totalScore: number
@@ -256,11 +258,14 @@ const DriveStudentsModal = ({ show, drive, onHide, onUpdated }: Props) => {
         [`Placed: ${report.placed}`],
         [`Eliminated: ${report.eliminated}`],
         [],
-        ['Student Name', 'Email', 'Phone', 'Department', 'Batch', 'CGPA', 'Backlogs', 'Eligible', 'Status',
+        ['Student Name', 'Roll Number', 'Email', 'Phone', 'Department', 'Batch',
+          drive.cutoffType === 'percentage' ? 'B.Tech %' : 'B.Tech CGPA',
+          'Backlogs', 'Eligible', 'Status',
           ...drive.rounds.map((r) => r.name)],
         ...students.map((s) => [
-          s.studentName, s.studentEmail, s.phoneNumber || '',
-          s.department || '', s.batch || '', s.academicScore,
+          s.studentName, s.rollNumber || '', s.studentEmail, s.phoneNumber || '',
+          s.department || '', s.batch || '',
+          drive.cutoffType === 'percentage' ? (s.btechPercentage ?? '') : s.academicScore,
           s.hasBacklogs ? 'Yes' : 'No', s.isEligible ? 'Yes' : 'No', s.overallStatus,
           ...drive.rounds.map((r) => {
             const rr = s.roundResults.find((x) => x.order === r.order)
@@ -413,7 +418,11 @@ const DriveStudentsModal = ({ show, drive, onHide, onUpdated }: Props) => {
 
         {/* Meta chips pushed to the far right */}
         <div className="d-flex gap-2 flex-wrap ms-auto">
-          <MetaChip label="Cutoff CGPA" value={cutoffDisplay}                              color="#ff7a00" />
+          <MetaChip
+            label={`Cutoff ${drive.cutoffType === 'percentage' ? 'B.Tech %' : 'B.Tech CGPA'}`}
+            value={drive.cutoffType === 'percentage' ? `${cutoffDisplay}%` : cutoffDisplay}
+            color="#ff7a00"
+          />
           {drive.driveDate && (
             <MetaChip label="Drive Date" value={new Date(drive.driveDate).toDateString()} color="#e2e8f0" />
           )}
@@ -655,7 +664,9 @@ const DriveStudentsModal = ({ show, drive, onHide, onUpdated }: Props) => {
                       </button>
                     </div>
                   </th>
-                  <th style={{ color: '#ff7a00', fontWeight: 700 }}>CGPA</th>
+                  <th style={{ color: '#ff7a00', fontWeight: 700 }}>
+                    {drive.cutoffType === 'percentage' ? 'B.Tech %' : 'CGPA'}
+                  </th>
                   <th style={{ color: '#ff7a00', fontWeight: 700 }}>
                     <div className="d-flex align-items-center gap-2">
                       Backlogs
@@ -757,8 +768,11 @@ const DriveStudentsModal = ({ show, drive, onHide, onUpdated }: Props) => {
                         <StudentAvatar name={student.studentName} />
                         <div>
                           <div className="fw-semibold text-white">{student.studentName}</div>
+                          {student.rollNumber && (
+                            <div style={{ fontSize: '0.73rem', color: '#ff7a00', fontWeight: 600 }}>{student.rollNumber}</div>
+                          )}
                           {student.phoneNumber && (
-                            <div className="text-muted" style={{ fontSize: '0.75rem' }}>{student.phoneNumber}</div>
+                            <div className="text-muted" style={{ fontSize: '0.73rem' }}>{student.phoneNumber}</div>
                           )}
                         </div>
                       </div>
@@ -774,21 +788,20 @@ const DriveStudentsModal = ({ show, drive, onHide, onUpdated }: Props) => {
                         <div className="text-muted" style={{ fontSize: '0.75rem' }}>{student.batch}</div>
                       )}
                     </td>
-                    {/* CGPA */}
+                    {/* CGPA / Percentage */}
                     <td style={{ verticalAlign: 'middle' }}>
-                      <span
-                        style={{
-                          color:      student.isEligible ? '#22c55e' : '#ef4444',
-                          fontWeight: 700,
-                          fontSize:   '0.92rem',
-                        }}
-                      >
-                        {student.academicScore > 0
-                          ? (Number.isInteger(student.academicScore)
-                              ? student.academicScore
-                              : student.academicScore.toFixed(1))
-                          : '—'}
-                      </span>
+                      {(() => {
+                        const isPct = drive.cutoffType === 'percentage'
+                        const val   = isPct ? student.btechPercentage : student.academicScore
+                        const display = val != null && val > 0
+                          ? (Number.isInteger(val) ? String(val) : val.toFixed(2)) + (isPct ? '%' : '')
+                          : '—'
+                        return (
+                          <span style={{ color: student.isEligible ? '#22c55e' : '#ef4444', fontWeight: 700, fontSize: '0.92rem' }}>
+                            {display}
+                          </span>
+                        )
+                      })()}
                     </td>
                     {/* Backlogs */}
                     <td style={{ verticalAlign: 'middle' }}>
@@ -1180,6 +1193,9 @@ const StudentCard = ({
           <div className="fw-bold text-white text-truncate" style={{ fontSize: '0.9rem' }}>
             {student.studentName}
           </div>
+          {student.rollNumber && (
+            <div style={{ fontSize: '0.72rem', color: '#ff7a00', fontWeight: 600 }}>{student.rollNumber}</div>
+          )}
           <div className="text-muted small text-truncate">{student.studentEmail}</div>
           {student.phoneNumber && <div className="text-muted small">{student.phoneNumber}</div>}
         </div>
@@ -1204,9 +1220,13 @@ const StudentCard = ({
           </Badge>
         )}
         <Badge bg={student.isEligible ? 'success' : 'danger'} style={{ fontSize: '0.7rem' }}>
-          {student.academicScore > 0
-            ? (Number.isInteger(student.academicScore) ? student.academicScore : student.academicScore.toFixed(1))
-            : '—'}{' '}CGPA
+          {(() => {
+            const isPct = drive.cutoffType === 'percentage'
+            const val   = isPct ? student.btechPercentage : student.academicScore
+            if (val == null || val <= 0) return `— ${isPct ? '%' : 'CGPA'}`
+            const num = Number.isInteger(val) ? String(val) : val.toFixed(2)
+            return isPct ? `${num}%` : `${num} CGPA`
+          })()}
         </Badge>
         <Badge bg={student.hasBacklogs ? 'danger' : 'success'} style={{ fontSize: '0.7rem' }}>
           {student.hasBacklogs ? 'Backlogs' : 'Clear'}

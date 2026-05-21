@@ -39,6 +39,7 @@ export interface PlacementDrive {
   location: string
   driveDate: string | null
   cutoffScore: number
+  cutoffType: 'cgpa' | 'percentage'
   backlogPolicy: 'none' | 'limited' | 'any'
   maxBacklogs: number
   rounds: PlacementRound[]
