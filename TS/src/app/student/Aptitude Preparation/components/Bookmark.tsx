@@ -37,6 +37,21 @@ function shuffle<T>(arr: T[]) {
 
 const normalize = (s: any) => (s ?? '').toString().trim().toLowerCase()
 
+const formatExplanation = (text: string) => {
+  const sentences = text.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
+  if (sentences.length <= 1) return <span>{text}</span>
+  return (
+    <div style={{ margin: 0 }}>
+      {sentences.map((sentence, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '6px', lineHeight: '1.6' }}>
+          <span style={{ color: '#ff7a00', marginRight: '8px', marginTop: '1px', flexShrink: 0 }}>›</span>
+          <span>{sentence.endsWith('.') ? sentence : `${sentence}.`}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const CategoryGrid: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const [categories, setCategories] = useState<Category[]>([])
@@ -334,14 +349,16 @@ const CategoryGrid: React.FC = () => {
                                     <Accordion.Item eventKey="0" className="bg-black border-secondary">
                                       <Accordion.Header className="bg-black text-white">Show Answer & Explanation</Accordion.Header>
                                       <Accordion.Body className="bg-black text-secondary">
-                                        <p>
-                                          <strong className="text-white">Correct Answer:</strong> Option {qa.correctOptionKey} —{' '}
-                                          {qa[`option${qa.correctOptionKey}` as keyof QA]}
-                                        </p>
+                                        <div className="mb-3 p-2 rounded" style={{ background: 'rgba(255,122,0,0.07)', borderLeft: '3px solid #ff7a00' }}>
+                                          <strong className="text-white">Correct Answer:</strong>{' '}
+                                          <span className="text-orange">Option {qa.correctOptionKey}</span>{' '}
+                                          — {qa[`option${qa.correctOptionKey}` as keyof QA]}
+                                        </div>
                                         {qa.explanation && (
-                                          <p className="text-secondary mb-0">
-                                            <strong className="text-white">Explanation:</strong> {qa.explanation}
-                                          </p>
+                                          <div className="text-secondary">
+                                            <strong className="text-white d-block mb-2">Explanation:</strong>
+                                            {formatExplanation(qa.explanation)}
+                                          </div>
                                         )}
                                       </Accordion.Body>
                                     </Accordion.Item>
@@ -549,9 +566,11 @@ const CategoryGrid: React.FC = () => {
                               </div>
                             </div>
                             {quizQuestions[currentIndex]?.explanation && (
-                              <div className="text-secondary mt-3 p-3 bg-black rounded border border-secondary">
+                              <div className="mt-3 p-3 bg-black rounded" style={{ borderLeft: '3px solid #ff7a00' }}>
                                 <strong className="text-white d-block mb-2">Explanation:</strong>
-                                {quizQuestions[currentIndex].explanation}
+                                <div className="text-secondary">
+                                  {formatExplanation(quizQuestions[currentIndex].explanation!)}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -641,8 +660,11 @@ const CategoryGrid: React.FC = () => {
                                 Correct: Option {q.correctOptionKey} ({q[`option${q.correctOptionKey}` as keyof QA]})
                               </div>
                               {q.explanation && (
-                                <div className="text-secondary small mt-2">
-                                  <span className="text-white">Explanation:</span> {q.explanation}
+                                <div className="mt-2 p-2 rounded" style={{ background: 'rgba(255,122,0,0.05)', borderLeft: '3px solid #ff7a00' }}>
+                                  <span className="text-white d-block mb-1" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Explanation:</span>
+                                  <div className="text-secondary small">
+                                    {formatExplanation(q.explanation)}
+                                  </div>
                                 </div>
                               )}
                             </div>
