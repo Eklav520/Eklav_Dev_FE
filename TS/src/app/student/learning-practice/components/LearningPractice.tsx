@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { useEffect } from 'react'
-import { Button, Card, Container, Row, Col, Spinner, ProgressBar, Form } from 'react-bootstrap'
+import { Button, Card, Container, Row, Col, Spinner, ProgressBar, Form, Modal } from 'react-bootstrap'
 import { FaClipboardList, FaArrowRight, FaPlay, FaVolumeUp, FaCheckCircle, FaArrowLeft } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -179,8 +179,7 @@ const ListeningPractice: React.FC = () => {
 
   return (
     <Container fluid className="listening-practice-container">
-      {!started ? (
-        <div className="start-screen">
+      <div className="start-screen">
           <Card className="start-card">
             <Card.Body className="start-card-body">
               <div className="icon-wrapper">
@@ -249,8 +248,15 @@ const ListeningPractice: React.FC = () => {
             </Card.Body>
           </Card>
         </div>
-      ) : (
-        <div className="practice-layout">
+
+      <Modal show={started} fullscreen onHide={() => setStarted(false)} className="practice-fullscreen-modal">
+        <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
+          <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
+            <FaVolumeUp style={{ marginRight: 8 }} /> Listening Practice
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '2rem 1.5rem' }}>
+          <div className="practice-layout">
           {/* Main Challenge Area */}
           <div className="challenge-section">
             <Card className="challenge-card">
@@ -402,9 +408,18 @@ const ListeningPractice: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+        </Modal.Body>
+      </Modal>
 
       <style>{`
+        .practice-fullscreen-modal .modal-header .btn-close {
+          filter: invert(1) brightness(2);
+          opacity: 0.9;
+        }
+        .practice-fullscreen-modal .modal-header .btn-close:hover {
+          opacity: 1;
+        }
+
         .listening-practice-container {
           padding: 1rem;
           min-height: calc(100vh - 80px);

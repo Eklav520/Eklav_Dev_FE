@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Container, Card, Form, Button, Row, Col, Spinner, ProgressBar, Badge } from 'react-bootstrap'
+import { Container, Card, Form, Button, Row, Col, Spinner, ProgressBar, Badge, Modal } from 'react-bootstrap'
 import { FaFeatherAlt, FaPlay, FaRedo, FaLightbulb, FaCheckCircle, FaPenNib, FaStar } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -218,8 +218,7 @@ const WritingPractice: React.FC = () => {
 
   return (
     <Container fluid className="writing-practice-container">
-      {!started ? (
-        <div className="start-screen text-center">
+      <div className="start-screen text-center">
           <div className="start-card">
             <div className="icon-wrapper">
               <FaFeatherAlt className="main-icon" />
@@ -288,10 +287,18 @@ const WritingPractice: React.FC = () => {
 
           </div>
         </div>
-      ) : (
+
+      <Modal show={started} fullscreen onHide={restartPractice} className="practice-fullscreen-modal">
+        <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
+          <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
+            <FaFeatherAlt style={{ marginRight: 8 }} />
+            {mode === 'essay' ? 'Essay Writing' : mode === 'email' ? 'Email Writing' : 'Summary Writing'}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#f8fafc', overflow: 'hidden', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', height: 0, flex: 1 }}>
         <div className="practice-container">
           {/* Question Section - Top */}
-          <Card className="question-card mb-4">
+          <Card className="question-card">
             <Card.Body className="question-body">
               <div className="question-header">
                 <h4 className="question-title">
@@ -316,9 +323,9 @@ const WritingPractice: React.FC = () => {
           </Card>
 
           {/* Writing and Feedback Section - Bottom */}
-          <Row className="practice-layout g-4">
+          <Row className="practice-layout g-2">
             {/* Left: Writing Area */}
-            <Col xl={6}>
+            <Col md={6}>
               <Card className="writing-card">
                 <Card.Header className="writing-header">
                   <FaFeatherAlt className="me-2" />
@@ -335,7 +342,12 @@ const WritingPractice: React.FC = () => {
                       placeholder={`Start writing your ${mode} here... Express your thoughts clearly and creatively.`}
                       value={text}
                       onChange={(e) => setText(e.target.value)}
+                      onPaste={(e) => e.preventDefault()}
+                      onCopy={(e) => e.preventDefault()}
+                      onCut={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
                       className="writing-textarea flex-grow-1"
+                      style={{ userSelect: 'none' }}
                     />
                   </Form.Group>
 
@@ -345,7 +357,6 @@ const WritingPractice: React.FC = () => {
                       <Col md={6}>
                         <Button
                           variant="success"
-                          size="lg"
                           disabled={loading || !text.trim() || isLimitReached}
                           onClick={handleSubmit}
                           className="w-100 submit-button">
@@ -363,7 +374,7 @@ const WritingPractice: React.FC = () => {
                         </Button>
                       </Col>
                       <Col md={6}>
-                        <Button variant="outline-primary" size="lg" onClick={restartPractice} className="w-100 restart-button">
+                        <Button variant="outline-primary" onClick={restartPractice} className="w-100 restart-button">
                           <FaRedo className="me-2" />
                           Try Another Topic
                         </Button>
@@ -375,7 +386,7 @@ const WritingPractice: React.FC = () => {
             </Col>
 
             {/* Right: AI Feedback */}
-            <Col xl={6}>
+            <Col md={6}>
               <Card className="feedback-card">
                 <Card.Header className="feedback-header">
                   <FaLightbulb className="me-2" />
@@ -488,9 +499,18 @@ const WritingPractice: React.FC = () => {
             </Col>
           </Row>
         </div>
-      )}
+        </Modal.Body>
+      </Modal>
 
       <style>{`
+        .practice-fullscreen-modal .modal-header .btn-close {
+          filter: invert(1) brightness(2);
+          opacity: 0.9;
+        }
+        .practice-fullscreen-modal .modal-header .btn-close:hover {
+          opacity: 1;
+        }
+
         .writing-practice-container {
           padding: 2rem;
           min-height: 80vh;
@@ -640,215 +660,256 @@ const WritingPractice: React.FC = () => {
 
         /* Practice Container */
         .practice-container {
-          max-width: 1600px;
-          margin: 0 auto;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
         }
 
-        /* Question Card - Top */
+        /* Question Card - Top (compact) */
         .question-card {
           border: none;
-          border-radius: 20px;
-          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          border-radius: 14px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
           background: #ffffff;
+          flex-shrink: 0;
         }
 
         .question-body {
-          padding: 2.5rem;
+          padding: 1rem 1.25rem;
         }
 
         .question-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 1.5rem;
+          margin-bottom: 0.5rem;
         }
 
         .question-title {
           color: #2d3748;
           font-weight: 700;
-          font-size: 1.5rem;
+          font-size: 1rem;
           margin: 0;
           display: flex;
           align-items: center;
         }
 
         .mode-badge {
-          font-size: 0.9rem;
-          padding: 0.6rem 1.2rem;
+          font-size: 0.75rem;
+          padding: 0.3rem 0.85rem;
           border-radius: 20px;
+          background: #ff7a00 !important;
         }
 
         .question-content {
-          background: #f8fafc;
-          padding: 2rem;
-          border-radius: 16px;
-         border-left: 6px solid #ff7a00;
+          background: #fff9f5;
+          padding: 0.75rem 1rem;
+          border-radius: 10px;
+          border-left: 4px solid #ff7a00;
         }
 
         .question-text {
-          color: #4a5568;
-          font-size: 1.3rem;
-          line-height: 1.7;
-          font-weight: 500;
+          color: #2d3748;
+          font-size: 1.05rem;
+          line-height: 1.6;
+          font-weight: 650;
+          margin: 0;
         }
 
         .loading-prompt {
           color: #667eea;
           font-weight: 500;
+          font-size: 0.9rem;
         }
 
-        /* Practice Layout */
+        /* Practice Layout — fills remaining height */
         .practice-layout {
-          margin: 0;
-          align-items: flex-start; /* This prevents cards from stretching */
+          flex: 1;
+          min-height: 0;
+          align-items: stretch;
+          margin-left: 0;
+          margin-right: 0;
+          width: 100%;
+        }
+
+        .practice-layout > [class*="col-"] {
+          display: flex;
+          flex-direction: column;
         }
 
         /* Writing Card */
         .writing-card {
           border: none;
-          border-radius: 20px;
-          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          border-radius: 14px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
           background: #ffffff;
-          height: auto; /* Remove fixed height */
-          min-height: 500px; /* Minimum height but can grow with content */
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
         }
 
         .writing-header {
           background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
-          font-size: 1.3rem;
+          font-size: 1rem;
           font-weight: 600;
-          padding: 1.5rem 2rem;
+          padding: 0.75rem 1.25rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
           border-bottom: none;
-          border-radius: 20px 20px 0 0 !important;
+          border-radius: 14px 14px 0 0 !important;
+          flex-shrink: 0;
         }
 
         .word-count {
           background: rgba(255, 255, 255, 0.2);
-          padding: 0.4rem 1rem;
-          border-radius: 15px;
-          font-size: 0.9rem;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-size: 0.8rem;
           font-weight: 500;
-          backdrop-filter: blur(10px);
         }
 
         .writing-body {
-          padding: 2rem;
-          height: auto; /* Let content determine height */
+          padding: 1rem 1.25rem;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .writing-body .form-group,
+        .writing-body .flex-grow-1 {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
         }
 
         .writing-textarea {
-          border-radius: 12px;
+          border-radius: 10px;
           border: 2px solid #e2e8f0;
-          padding: 1.5rem;
-          font-size: 1.1rem;
+          padding: 1rem;
+          font-size: 1rem;
           line-height: 1.6;
-          resize: vertical; /* Allow vertical resize only */
-          min-height: 350px;
-          max-height: 600px; /* Maximum height before scrolling */
-          transition: all 0.3s ease;
+          resize: none;
+          flex: 1;
+          min-height: 120px;
+          background: #ffffff !important;
+          color: #2d3748 !important;
+          transition: border-color 0.2s ease;
           font-family: 'Inter', sans-serif;
         }
 
         .writing-textarea:focus {
           border-color: #ff7a00;
-          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
+          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.2);
         }
 
         /* Action Buttons */
         .action-buttons {
-          margin-top: 2rem;
+          margin-top: 0.75rem;
+          flex-shrink: 0;
         }
 
         .submit-button, .restart-button {
-          padding: 1rem 2rem;
-          border-radius: 12px;
-          font-size: 1.1rem;
+          padding: 0.6rem 1.25rem;
+          border-radius: 10px;
+          font-size: 0.95rem;
           font-weight: 600;
           border: none;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
         }
-          .submit-button {
-            background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-          }
 
-          .submit-button:hover:not(:disabled) {
-            box-shadow: 0 8px 25px rgba(255, 122, 0, 0.35);
-          }
+        .submit-button {
+          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+        }
+
+        .submit-button:hover:not(:disabled) {
+          box-shadow: 0 6px 18px rgba(255, 122, 0, 0.35);
+        }
 
         .restart-button {
-          border: 2px solid #ff7a00;
-          color: #ff7a00;
+          border: 2px solid #ff7a00 !important;
+          color: #ff7a00 !important;
+          background: transparent !important;
         }
 
         .restart-button:hover {
-          background: #ff7a00;
-          color: white;
+          background: #ff7a00 !important;
+          color: white !important;
         }
+
         /* Feedback Card */
         .feedback-card {
           border: none;
-          border-radius: 20px;
-          box-shadow: 0 15px 50px rgba(0, 0, 0, 0.1);
+          border-radius: 14px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
           background: #ffffff;
+          flex: 1;
           display: flex;
           flex-direction: column;
-          height: 100%;
-          min-height: 500px;
+          min-height: 0;
         }
-
 
         .feedback-header {
           background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
           color: white;
-          font-size: 1.3rem;
+          font-size: 1rem;
           font-weight: 600;
-          padding: 1.5rem 2rem;
+          padding: 0.75rem 1.25rem;
           border-bottom: none;
-          border-radius: 20px 20px 0 0 !important;
+          border-radius: 14px 14px 0 0 !important;
+          flex-shrink: 0;
         }
 
         .feedback-body {
-          padding: 2rem;
+          padding: 1rem 1.25rem;
           flex: 1;
           overflow-y: auto;
-          min-height: 0; /* 🔴 VERY IMPORTANT */
+          min-height: 0;
         }
-        
+
         .feedback-content {
           min-height: 0;
         }
 
         .empty-feedback {
-          min-height: 300px;
+          height: 100%;
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: center;
+          gap: 0.25rem;
         }
 
         .empty-feedback .display-1 {
-          font-size: 4rem;
+          font-size: 2.5rem;
         }
 
         .empty-feedback h5 {
-          font-size: 1.3rem;
+          font-size: 1rem;
+          margin: 0;
         }
 
         .empty-feedback p {
-          font-size: 1rem;
-          max-width: 250px;
+          font-size: 0.85rem;
+          max-width: 220px;
+          margin: 0;
+          color: #a0aec0;
         }
 
         .loading-feedback {
-          min-height: 300px;
+          height: 100%;
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: center;
+          gap: 0.5rem;
         }
 
         /* Score Display */

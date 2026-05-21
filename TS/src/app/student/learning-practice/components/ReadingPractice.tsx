@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useEffect } from 'react'
-import { Button, Card, Container, Spinner, ProgressBar, Form, Badge } from 'react-bootstrap'
+import { Button, Card, Container, Spinner, ProgressBar, Badge, Modal } from 'react-bootstrap'
 import { FaBookOpen, FaPlay, FaCheckCircle, FaArrowRight } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -162,8 +162,7 @@ const ReadingPractice: React.FC = () => {
 
   return (
     <Container fluid className="reading-practice-container">
-      {!started ? (
-        <div className="start-screen text-center">
+      <div className="start-screen text-center">
           <div className="start-card">
             <div className="icon-wrapper">
               <FaBookOpen className="main-icon" />
@@ -227,8 +226,15 @@ const ReadingPractice: React.FC = () => {
 
           </div>
         </div>
-      ) : (
-        <div className="practice-layout">
+
+      <Modal show={started} fullscreen onHide={() => setStarted(false)} className="practice-fullscreen-modal">
+        <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
+          <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
+            <FaBookOpen style={{ marginRight: 8 }} /> Reading Practice
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '2rem 1.5rem' }}>
+          <div className="practice-layout">
           {/* Main Challenge Area - Full Width */}
           <div className="challenge-section">
             <Card className="challenge-card">
@@ -265,29 +271,40 @@ const ReadingPractice: React.FC = () => {
                     {prompt.questions.length > 0 && (
                       <div className="questions-section">
                         <div className="current-question">
-                          <div className="question-header">
-                            <h5 className="question-text">{prompt.questions[currentQ].q}</h5>
-                            <div className="question-number">
-                              Question {currentQ + 1} of {prompt.questions.length}
+
+                          {/* Question badge + progress */}
+                          <div className="question-meta">
+                            <span className="question-badge">
+                              Question {currentQ + 1} <span className="q-of">of {prompt.questions.length}</span>
+                            </span>
+                            <div className="q-progress-track">
+                              <div
+                                className="q-progress-fill"
+                                style={{ width: `${((currentQ + 1) / prompt.questions.length) * 100}%` }}
+                              />
                             </div>
                           </div>
 
+                          {/* Question text */}
+                          <h5 className="question-text">{prompt.questions[currentQ].q}</h5>
+
+                          {/* Options */}
                           <div className="options-grid">
-                            {prompt.questions[currentQ].options.map((opt, i) => (
-                              <div key={i} className="option-item">
-                                <Form.Check
-                                  type="radio"
-                                  id={`opt-${currentQ}-${i}`}
-                                  label={opt}
-                                  disabled={!!feedback}
-                                  name={`q-${currentQ}`}
-                                  value={opt}
-                                  checked={answers[currentQ] === opt}
-                                  onChange={(e) => handleOptionChange(currentQ, e.target.value)}
-                                  className="custom-radio"
-                                />
-                              </div>
-                            ))}
+                            {prompt.questions[currentQ].options.map((opt, i) => {
+                              const isSelected = answers[currentQ] === opt
+                              return (
+                                <div
+                                  key={i}
+                                  className={`option-item${isSelected ? ' option-selected' : ''}${feedback ? ' option-disabled' : ''}`}
+                                  onClick={() => !feedback && handleOptionChange(currentQ, opt)}
+                                >
+                                  <div className={`option-radio-ring${isSelected ? ' ring-selected' : ''}`}>
+                                    {isSelected && <div className="option-radio-dot" />}
+                                  </div>
+                                  <span className="option-label">{opt}</span>
+                                </div>
+                              )
+                            })}
                           </div>
 
                           {/* Navigation */}
@@ -406,9 +423,18 @@ const ReadingPractice: React.FC = () => {
             </div>
           )}
         </div>
-      )}
+        </Modal.Body>
+      </Modal>
 
       <style>{`
+        .practice-fullscreen-modal .modal-header .btn-close {
+          filter: invert(1) brightness(2);
+          opacity: 0.9;
+        }
+        .practice-fullscreen-modal .modal-header .btn-close:hover {
+          opacity: 1;
+        }
+
         .reading-practice-container {
           padding: 2rem;
           min-height: 80vh;
@@ -563,74 +589,128 @@ const ReadingPractice: React.FC = () => {
           margin-top: 2rem;
         }
 
-        .question-header {
-          margin-bottom: 2rem;
-          text-align: center;
+        /* Question meta row: badge + progress bar */
+        .question-meta {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          margin-bottom: 1.25rem;
         }
 
-        .question-text {
-          color: #1a202c;
-          margin-bottom: 0.5rem;
+        .question-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: #fff4e6;
+          color: #ff7a00;
+          border: 1.5px solid #ffd8a8;
+          border-radius: 20px;
+          padding: 4px 14px;
+          font-size: 0.8rem;
           font-weight: 700;
-          font-size: 1.5rem;
-          line-height: 1.4;
-          text-align: center;
-          background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          white-space: nowrap;
+          letter-spacing: 0.3px;
         }
 
-        .question-number {
-          color: #718096;
-          font-size: 1rem;
+        .q-of {
+          color: #f09840;
           font-weight: 500;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
 
+        .q-progress-track {
+          flex: 1;
+          height: 5px;
+          background: #e2e8f0;
+          border-radius: 99px;
+          overflow: hidden;
+        }
+
+        .q-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #ff7a00, #ffb347);
+          border-radius: 99px;
+          transition: width 0.4s ease;
+        }
+
+        /* Question text */
+        .question-text {
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #1a202c;
+          line-height: 1.55;
+          margin-bottom: 1.5rem;
+        }
+
+        /* Options */
         .options-grid {
           display: grid;
-          gap: 1rem;
-          margin-bottom: 2.5rem;
-          max-width: 900px;
-          margin: 0 auto 2.5rem;
+          gap: 0.75rem;
+          margin-bottom: 2rem;
         }
 
         .option-item {
-          background: #f8fafc;
-          padding: 1.25rem 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          background: #fff;
+          padding: 1rem 1.25rem;
           border-radius: 12px;
           border: 2px solid #e2e8f0;
-          transition: all 0.3s ease;
           cursor: pointer;
+          transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+          user-select: none;
         }
 
-        .option-item:hover {
-          border-color: #667eea;
-          background: #f0f4ff;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        .option-item:hover:not(.option-disabled) {
+          border-color: #ff7a00;
+          background: #fff9f5;
+          box-shadow: 0 2px 10px rgba(255, 122, 0, 0.1);
         }
 
-        .custom-radio :global(.form-check-input) {
-          width: 1.3em;
-          height: 1.3em;
-          margin-right: 1rem;
+        .option-item.option-selected {
+          border-color: #ff7a00;
+          background: #fff4e6;
+          box-shadow: 0 2px 12px rgba(255, 122, 0, 0.15);
+        }
+
+        .option-item.option-disabled {
+          cursor: default;
+          opacity: 0.8;
+        }
+
+        .option-radio-ring {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
           border: 2px solid #cbd5e0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: border-color 0.15s ease;
         }
 
-        .custom-radio :global(.form-check-input:checked) {
-          background-color: #ff7a00;
+        .option-radio-ring.ring-selected {
           border-color: #ff7a00;
         }
 
-        .custom-radio :global(.form-check-label) {
-          font-size: 1.1rem;
+        .option-radio-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #ff7a00;
+        }
+
+        .option-label {
+          font-size: 1rem;
           font-weight: 500;
           color: #2d3748;
-          cursor: pointer;
           line-height: 1.4;
+        }
+
+        .option-item.option-selected .option-label {
+          color: #c05c00;
+          font-weight: 600;
         }
 
         /* Navigation */
