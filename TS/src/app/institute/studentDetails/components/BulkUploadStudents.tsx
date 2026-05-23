@@ -14,10 +14,23 @@ import { FaUpload, FaDownload, FaFileExcel, FaUsers, FaEye, FaFileDownload } fro
 import * as XLSX from 'xlsx';
 import { useAuthContext } from '@/context/useAuthContext';
 
+interface StudentUploadRow {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    rollNumber: string;
+    gender: string;
+    branch: string;
+}
+
 interface BulkUploadResult {
     name: string;
     email: string;
     phone?: string;
+    rollNumber?: string;
+    gender?: string;
+    branch?: string;
     userId?: string;
     error?: string;
 }
@@ -45,11 +58,11 @@ interface BulkUploadStudentsProps {
 }
 
 const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, onSuccess }) => {
-    const [studentsData, setStudentsData] = useState<any[]>([]);
+    const [studentsData, setStudentsData] = useState<StudentUploadRow[]>([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<BulkUploadResponse | null>(null);
-    const [previewData, setPreviewData] = useState<any[]>([]);
+    const [previewData, setPreviewData] = useState<StudentUploadRow[]>([]);
     
     // Pagination states for failed records
     const [currentPage, setCurrentPage] = useState(1);
@@ -82,27 +95,60 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-                // Validate required columns
-                const requiredColumns = ['name', 'email', 'password'];
+                if (!Array.isArray(jsonData) || jsonData.length === 0) {
+                    setError('Uploaded file is empty or invalid.');
+                    return;
+                }
+
+                const requiredColumns = ['name', 'email', 'password', 'rollnumber', 'gender', 'branch'];
                 const firstRow = jsonData[0] as any;
-                const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+                const normalizedHeaders = Object.keys(firstRow).map((key) => key.toString().trim().toLowerCase());
+                const missingColumns = requiredColumns.filter(col => !normalizedHeaders.includes(col));
 
                 if (missingColumns.length > 0) {
                     setError(`Missing required columns: ${missingColumns.join(', ')}`);
                     return;
                 }
 
-                // Check for duplicate emails in the file
-                const emails = jsonData.map((row: any) => row.email.toLowerCase());
-                const duplicateEmails = emails.filter((email: string, index: number) => emails.indexOf(email) !== index);
-                
+                const mappedData = jsonData.map((row: any, index: number) => {
+                    const normalizedRow: any = {};
+                    Object.keys(row).forEach((key) => {
+                        normalizedRow[key.toString().trim().toLowerCase()] = row[key];
+                    });
+
+                    return {
+                        name: normalizedRow.name || normalizedRow['full name'] || normalizedRow['student name'] || '',
+                        email: normalizedRow.email || normalizedRow['personal mail id'] || '',
+                        password: normalizedRow.password || normalizedRow['password'] || '',
+                        phone: normalizedRow.phone || normalizedRow['phone'] || normalizedRow['mobile number'] || normalizedRow['phone number'] || '',
+                        rollNumber: normalizedRow.rollnumber || normalizedRow['roll number'] || normalizedRow['roll'] || '',
+                        gender: normalizedRow.gender || '',
+                        branch: normalizedRow.branch || '',
+                    } as StudentUploadRow;
+                });
+
+                const invalidRows = mappedData.filter((row) => !row.name || !row.email || !row.password || !row.rollNumber || !row.gender || !row.branch);
+                if (invalidRows.length > 0) {
+                    setError('Some rows are missing required student values. Please verify Name, Email, Password, Roll Number, Gender, and Branch.');
+                    return;
+                }
+
+                const emails = mappedData.map((row) => row.email.toString().toLowerCase());
+                const duplicateEmails = emails.filter((email, index) => emails.indexOf(email) !== index);
                 if (duplicateEmails.length > 0) {
                     setError(`Duplicate emails found in file: ${[...new Set(duplicateEmails)].join(', ')}`);
                     return;
                 }
 
-                setStudentsData(jsonData);
-                setPreviewData(jsonData.slice(0, 5));
+                const rollNumbers = mappedData.map((row) => row.rollNumber.toString().toLowerCase());
+                const duplicateRollNumbers = rollNumbers.filter((roll, index) => rollNumbers.indexOf(roll) !== index);
+                if (duplicateRollNumbers.length > 0) {
+                    setError(`Duplicate roll numbers found in file: ${[...new Set(duplicateRollNumbers)].join(', ')}`);
+                    return;
+                }
+
+                setStudentsData(mappedData);
+                setPreviewData(mappedData.slice(0, 5));
                 setError(null);
             } catch (err) {
                 setError('Failed to parse file. Please check the format.');
@@ -114,8 +160,24 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
     // Download template
     const downloadTemplate = () => {
         const template = [
-            { name: 'John Doe', email: 'john@example.com', phone: '1234567890', password: 'password123' },
-            { name: 'Jane Smith', email: 'jane@example.com', phone: '0987654321', password: 'password123' }
+            {
+                name: 'John Doe',
+                email: 'john@example.com',
+                phone: '1234567890',
+                password: 'password123',
+                rollNumber: '21CS001',
+                gender: 'Male',
+                branch: 'CSE'
+            },
+            {
+                name: 'Jane Smith',
+                email: 'jane@example.com',
+                phone: '0987654321',
+                password: 'password123',
+                rollNumber: '21EC045',
+                gender: 'Female',
+                branch: 'ECE'
+            }
         ];
 
         const ws = XLSX.utils.json_to_sheet(template);
@@ -132,6 +194,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
             'Name': record.name,
             'Email': record.email,
             'Phone': record.phone || 'N/A',
+            'Roll Number': record.rollNumber || 'N/A',
+            'Gender': record.gender || 'N/A',
+            'Branch': record.branch || 'N/A',
             'Error': record.error
         }));
         
@@ -149,6 +214,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
             'Name': record.name,
             'Email': record.email,
             'Phone': record.phone || 'N/A',
+            'Roll Number': record.rollNumber || 'N/A',
+            'Gender': record.gender || 'N/A',
+            'Branch': record.branch || 'N/A',
             'User ID': record.userId
         }));
         
@@ -295,6 +363,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                                 <th>#</th>
                                                 <th>Name</th>
                                                 <th>Email</th>
+                                                <th>Roll Number</th>
+                                                <th>Gender</th>
+                                                <th>Branch</th>
                                                 <th>Phone</th>
                                                 <th>Error</th>
                                             </tr>
@@ -305,6 +376,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                                     <td>{(currentPage - 1) * recordsPerPage + idx + 1}</td>
                                                     <td>{failed.name}</td>
                                                     <td>{failed.email}</td>
+                                                    <td>{failed.rollNumber || '-'}</td>
+                                                    <td>{failed.gender || '-'}</td>
+                                                    <td>{failed.branch || '-'}</td>
                                                     <td>{failed.phone || '-'}</td>
                                                     <td className="text-danger">{failed.error}</td>
                                                 </tr>
@@ -392,7 +466,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                 </Button>
                             </div>
                             <small className="form-text text-muted mt-2">
-                                File should contain columns: name, email, phone (optional), password
+                                File should contain columns: name, email, password, rollNumber, gender, branch and optional phone
                                 <br />
                                 <strong>Limits:</strong> Max 1000 students, Max file size 5MB
                             </small>
@@ -407,6 +481,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                             <tr>
                                                 <th>Name</th>
                                                 <th>Email</th>
+                                                <th>Roll Number</th>
+                                                <th>Gender</th>
+                                                <th>Branch</th>
                                                 <th>Phone</th>
                                                 <th>Password</th>
                                             </tr>
@@ -416,6 +493,9 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                                 <tr key={idx}>
                                                     <td>{row.name}</td>
                                                     <td>{row.email}</td>
+                                                    <td>{row.rollNumber || '-'}</td>
+                                                    <td>{row.gender || '-'}</td>
+                                                    <td>{row.branch || '-'}</td>
                                                     <td>{row.phone || '-'}</td>
                                                     <td>{'•'.repeat(8)}</td>
                                                 </tr>

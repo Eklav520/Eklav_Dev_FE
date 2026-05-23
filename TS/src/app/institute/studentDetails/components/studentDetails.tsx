@@ -11,6 +11,9 @@ type Student = {
   fullname: string
   email: string
   phoneNumber?: string
+  rollNumber?: string
+  gender?: string
+  branch?: string
 }
 
 type Profile = {
@@ -35,7 +38,10 @@ const InstituteAdmin: React.FC = () => {
     fullname: '',
     email: '',
     phoneNumber: '',
-    password: ''
+    password: '',
+    rollNumber: '',
+    gender: 'Male',
+    branch: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -107,7 +113,10 @@ const InstituteAdmin: React.FC = () => {
         fullname: '',
         email: '',
         phoneNumber: '',
-        password: ''
+        password: '',
+        rollNumber: '',
+        gender: 'Male',
+        branch: ''
       })
 
       setShowModal(false)
@@ -222,9 +231,11 @@ const InstituteAdmin: React.FC = () => {
                   <Table className="students-table" hover>
                     <thead>
                       <tr>
-                        <th style={{ width: '30%' }}>Student Name</th>
-                        <th style={{ width: '35%' }}>Email Address</th>
-                        <th style={{ width: '25%' }}>Phone Number</th>
+                        <th style={{ width: '25%' }}>Student Name</th>
+                        <th style={{ width: '25%' }}>Email Address</th>
+                        <th style={{ width: '15%' }}>Roll Number</th>
+                        <th style={{ width: '15%' }}>Branch</th>
+                        <th style={{ width: '10%' }}>Phone</th>
                         <th style={{ width: '10%' }} className="text-center">Actions</th>
                       </tr>
                     </thead>
@@ -245,6 +256,16 @@ const InstituteAdmin: React.FC = () => {
                             <div className="student-email-cell">
                               <FaEnvelope className="email-icon" />
                               <span>{stu.email}</span>
+                            </div>
+                           </td>
+                           <td>
+                            <div className="student-roll-cell">
+                              <span>{stu.rollNumber || '–'}</span>
+                            </div>
+                           </td>
+                           <td>
+                            <div className="student-branch-cell">
+                              <span>{stu.branch || '–'}</span>
                             </div>
                            </td>
                            <td>
@@ -279,6 +300,7 @@ const InstituteAdmin: React.FC = () => {
         show={showModal}
         onHide={() => setShowModal(false)}
         centered
+        dialogClassName="student-modal-dialog"
         className="student-modal"
       >
         <Modal.Header closeButton className="modal-header-custom">
@@ -321,6 +343,57 @@ const InstituteAdmin: React.FC = () => {
                 }
                 className="form-control-custom"
               />
+            </Form.Group>
+
+            <Form.Group className="form-group-custom mb-4">
+              <Form.Label className="form-label-custom">
+                <FaBuilding className="label-icon" />
+                Roll Number
+              </Form.Label>
+              <Form.Control
+                required
+                placeholder="Enter student's roll number"
+                value={form.rollNumber}
+                onChange={(e) =>
+                  setForm({ ...form, rollNumber: e.target.value })
+                }
+                className="form-control-custom"
+              />
+            </Form.Group>
+
+            <Form.Group className="form-group-custom mb-4">
+              <Form.Label className="form-label-custom">
+                <FaUniversity className="label-icon" />
+                Branch
+              </Form.Label>
+              <Form.Control
+                required
+                placeholder="Enter student's branch"
+                value={form.branch}
+                onChange={(e) =>
+                  setForm({ ...form, branch: e.target.value })
+                }
+                className="form-control-custom"
+              />
+            </Form.Group>
+
+            <Form.Group className="form-group-custom mb-4">
+              <Form.Label className="form-label-custom">
+                <FaUser className="label-icon" />
+                Gender
+              </Form.Label>
+              <Form.Select
+                required
+                value={form.gender}
+                onChange={(e) =>
+                  setForm({ ...form, gender: e.target.value })
+                }
+                className="form-control-custom"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </Form.Select>
             </Form.Group>
 
             <Form.Group className="form-group-custom mb-4">
@@ -704,6 +777,12 @@ const InstituteAdmin: React.FC = () => {
         }
 
         /* Modal Styles */
+        .student-modal .modal-dialog {
+          max-width: 75vw !important;
+          width: 75vw;
+          margin: 0 auto;
+        }
+
         .student-modal .modal-content {
           background: #0a0a0a;
           border: 1px solid #ff7a00;
