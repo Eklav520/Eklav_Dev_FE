@@ -97,6 +97,31 @@ const CourseCard = ({ course }: { course: CourseType }) => {
     badge,
   } = course
 
+  const rawPrice = Number(price)
+  const rawDiscountPrice = Number(discountPrice)
+  const hasOriginalPrice =
+    price !== undefined &&
+    price !== null &&
+    String(price).trim() !== '' &&
+    !Number.isNaN(rawPrice)
+  const hasDiscountPrice =
+    discountPrice !== undefined &&
+    discountPrice !== null &&
+    String(discountPrice).trim() !== '' &&
+    !Number.isNaN(rawDiscountPrice)
+
+  const hasValidDiscount =
+    hasOriginalPrice &&
+    hasDiscountPrice &&
+    rawDiscountPrice > 0
+  const effectivePrice = hasValidDiscount
+    ? Math.max(rawPrice - rawDiscountPrice, 0)
+    : rawPrice
+  const discountAmount = hasValidDiscount
+    ? Math.max(rawDiscountPrice, 0)
+    : 0
+  const formatRupee = (value: number) => value.toLocaleString('en-IN')
+
   // Modal hero image logic
   const [heroOk, setHeroOk] = useState(true)
   const hasImg = !!(image && String(image).trim())
@@ -338,11 +363,14 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
           {/* Price + Button row */}
           <div className="cc2-footer mt-auto">
-            {price ? (
+            {(hasOriginalPrice || hasDiscountPrice) ? (
               <div className="cc2-price">
-                <span className="cc2-price-now">₹{price}</span>
-                {discountPrice && (
-                  <span className="cc2-price-was">₹{discountPrice}</span>
+                <span className="cc2-price-now">₹{formatRupee(effectivePrice)}</span>
+                {hasValidDiscount && (
+                  <>
+                    <span className="cc2-price-was">₹{formatRupee(rawPrice)}</span>
+                    <span className="cc2-price-save">Save ₹{formatRupee(discountAmount)}</span>
+                  </>
                 )}
               </div>
             ) : (
@@ -443,17 +471,17 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
                     {price && (
                       <div>
-                        {discountPrice ? (
+                        {hasValidDiscount ? (
                           <>
                             <span className="text-decoration-line-through opacity-75 me-2">
-                              ₹{discountPrice}
+                              ₹{formatRupee(rawPrice)}
                             </span>
                             <span className="text-success">
-                              ₹{price}
+                              ₹{formatRupee(effectivePrice)}
                             </span>
                           </>
                         ) : (
-                          <span className="text-success">₹{price}</span>
+                          <span className="text-success">₹{formatRupee(rawPrice)}</span>
                         )}
                       </div>
                     )}
@@ -539,13 +567,13 @@ const CourseCard = ({ course }: { course: CourseType }) => {
                               <div className="mt-3 pt-3 border-top d-flex align-items-center justify-content-between">
                                 <span className="text-secondary">Price</span>
                                 <span className="fw-bold">
-                                  {discountPrice ? (
+                                  {hasValidDiscount ? (
                                     <>
-                                      <span className="text-success me-2">₹{price}</span>
-                                      <span className="text-muted text-decoration-line-through ">₹{discountPrice}</span>
+                                      <span className="text-success me-2">₹{formatRupee(effectivePrice)}</span>
+                                      <span className="text-muted text-decoration-line-through ">₹{formatRupee(rawPrice)}</span>
                                     </>
                                   ) : (
-                                    <span className="text-success">₹{price}</span>
+                                    <span className="text-success">₹{formatRupee(rawPrice)}</span>
                                   )}
                                 </span>
                               </div>
@@ -1097,16 +1125,25 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   justify-content: space-between;
   gap: 0.5rem;
 }
-.cc2-price { display: flex; align-items: baseline; gap: 6px; }
-.cc2-price-now {
-  font-size: 1rem;
-  font-weight: 800;
-  color: #22c55e;
-}
-.cc2-price-was {
-  font-size: 0.75rem;
-  color: #555;
-  text-decoration: line-through;
+.cc2-price { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+  .cc2-price-now {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #22c55e;
+  }
+  .cc2-price-was {
+    font-size: 0.75rem;
+    color: #555;
+    text-decoration: line-through;
+  }
+  .cc2-price-save {
+    font-size: 0.75rem;
+    color: #facc15;
+    background: rgba(250,204,21,0.12);
+    border-radius: 999px;
+    padding: 2px 8px;
+    margin-left: 0.25rem;
+    white-space: nowrap;
 }
 
 /* ── Action button ── */
