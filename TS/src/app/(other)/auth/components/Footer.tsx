@@ -390,6 +390,8 @@ const Footer = () => {
             <h4 className="footer-column-title">Contact Us</h4>
             <div className="contact-info">
               <p><a href="mailto:admin@eklav.in">admin@eklav.in</a></p>
+              <p><Link to="/privacy-policy">Privacy Policy</Link></p>
+              <p><Link to="/delete-account">Delete Account</Link></p>
               <div className="made-with">
                 <span>Made with</span>
                 <FaApple />

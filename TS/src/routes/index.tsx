@@ -47,6 +47,7 @@ const BlogGrid = lazy(() => import('@/app/pages/about/blog-grid/page'))
 const BlogMasonry = lazy(() => import('@/app/pages/about/blog-masonry/page'))
 const Pricing = lazy(() => import('@/app/pages/about/pricing/page'))
 const BlogDetail = lazy(() => import('@/app/pages/about/blog-grid/[blogId]/page'))
+const PrivacyPolicy = lazy(() => import('@/app/privacy-policy/page'))
 
 //shop
 const Shop = lazy(() => import('@/app/shop/page'))
@@ -69,6 +70,7 @@ const ComingSoon = lazy(() => import('@/app/coming-soon/page'))
 const SignIn = lazy(() => import('@/app/(other)/auth/sign-in/page'))
 const SignUp = lazy(() => import('@/app/(other)/auth/sign-up/page'))
 const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/page'))
+const DeleteAccountPublic = lazy(() => import('@/app/delete-account/page'))
 
 //Instructor
 const InstructorDashboard = lazy(() => import('@/app/eklavadmin/dashboard/page'))
@@ -478,6 +480,16 @@ const otherRoutes: RoutesProps[] = [
 ]
 
 export const authRoutes: RoutesProps[] = [
+  {
+    path: '/privacy-policy',
+    name: 'Privacy Policy',
+    element: <PrivacyPolicy />,
+  },
+  {
+    path: '/delete-account',
+    name: 'Delete Account',
+    element: <DeleteAccountPublic />,
+  },
   {
     path: '/auth/sign-in',
     name: 'Sign In',
