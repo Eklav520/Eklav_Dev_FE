@@ -254,6 +254,7 @@ const StudentCollegeLabsPage = () => {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState('')
   const [terminalOutput, setTerminalOutput] = useState('')
+  const editorRef = useRef<any | null>(null)
   const [toastState, setToastState] = useState<{
     show: boolean
     title: string
@@ -554,6 +555,45 @@ const StudentCollegeLabsPage = () => {
       showToast('Submission Error', errMessage, 'danger')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editorRef.current = editor
+    editor.focus()
+
+    const stopClipboard = (event: any) => {
+      event.preventDefault()
+      event.stopPropagation?.()
+      return false
+    }
+
+    const domNode = editor.getDomNode?.() || editor.getContainerDomNode?.()
+    if (domNode) {
+      domNode.addEventListener('copy', stopClipboard)
+      domNode.addEventListener('paste', stopClipboard)
+      domNode.addEventListener('cut', stopClipboard)
+      domNode.addEventListener('contextmenu', stopClipboard)
+    }
+
+    editor.onKeyDown((e: any) => {
+      const key = e.browserEvent?.key?.toLowerCase?.()
+      if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(key)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    })
+
+    if (monaco?.KeyMod && monaco?.KeyCode) {
+      const blockedKeys = [
+        monaco.KeyCode.KEY_C,
+        monaco.KeyCode.KEY_V,
+        monaco.KeyCode.KEY_X,
+        monaco.KeyCode.KEY_A,
+      ]
+      blockedKeys.forEach((keyCode) => {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | keyCode, () => null)
+      })
     }
   }
 
@@ -881,6 +921,7 @@ const StudentCollegeLabsPage = () => {
                     language={getMonacoLanguage(language)}
                     value={code}
                     onChange={(value) => setCode(value || '')}
+                    onMount={handleEditorDidMount}
                     theme="custom-dark"
                     beforeMount={(monaco) => monaco.editor.defineTheme('custom-dark', editorTheme)}
                     options={{
@@ -894,6 +935,7 @@ const StudentCollegeLabsPage = () => {
                       padding: { top: 10, bottom: 10 },
                       renderLineHighlight: 'all',
                       cursorBlinking: 'smooth',
+                      contextmenu: false,
                     }}
                   />
                 </div>

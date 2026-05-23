@@ -306,6 +306,28 @@ const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose })
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor
     editor.focus()
+
+    const stopClipboard = (event: any) => {
+      event.preventDefault()
+      event.stopPropagation?.()
+      return false
+    }
+
+    const domNode = editor.getDomNode?.() || editor.getContainerDomNode?.()
+    if (domNode) {
+      domNode.addEventListener('copy', stopClipboard)
+      domNode.addEventListener('paste', stopClipboard)
+      domNode.addEventListener('cut', stopClipboard)
+      domNode.addEventListener('contextmenu', stopClipboard)
+    }
+
+    editor.onKeyDown((e: any) => {
+      const key = e.browserEvent?.key?.toLowerCase?.()
+      if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(key)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    })
   }
 
   if (!question) {
@@ -465,6 +487,7 @@ const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose })
                 renderWhitespace: 'selection',
                 tabSize: 4,
                 insertSpaces: true,
+                contextmenu: false,
               }}
             />
           </div>

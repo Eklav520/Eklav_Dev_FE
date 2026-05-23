@@ -306,6 +306,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   const [result, setResult] = useState<JudgeResult | null>(null)
   const [showRawJson, setShowRawJson] = useState(false)
   const [showTerminal, setShowTerminal] = useState(true)
+  const editorRef = useRef<any | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [roundConfig, setRoundConfig] = useState<any>(null)
 
@@ -512,6 +513,45 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
     setCode(newCode)
     if (currentChallenge) {
       setCodes(prev => ({ ...prev, [currentChallenge._id]: newCode }))
+    }
+  }
+
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editorRef.current = editor
+    editor.focus()
+
+    const stopClipboard = (event: any) => {
+      event.preventDefault()
+      event.stopPropagation?.()
+      return false
+    }
+
+    const domNode = editor.getDomNode?.() || editor.getContainerDomNode?.()
+    if (domNode) {
+      domNode.addEventListener('copy', stopClipboard)
+      domNode.addEventListener('paste', stopClipboard)
+      domNode.addEventListener('cut', stopClipboard)
+      domNode.addEventListener('contextmenu', stopClipboard)
+    }
+
+    editor.onKeyDown((e: any) => {
+      const key = e.browserEvent?.key?.toLowerCase?.()
+      if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a'].includes(key)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    })
+
+    if (monaco?.KeyMod && monaco?.KeyCode) {
+      const blockedKeys = [
+        monaco.KeyCode.KEY_C,
+        monaco.KeyCode.KEY_V,
+        monaco.KeyCode.KEY_X,
+        monaco.KeyCode.KEY_A,
+      ]
+      blockedKeys.forEach((keyCode) => {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | keyCode, () => null)
+      })
     }
   }
 
@@ -1000,6 +1040,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
               language={getMonacoLanguage(language)}
               value={code}
               onChange={handleCodeChange}
+              onMount={handleEditorDidMount}
               theme="custom-dark"
               beforeMount={(monaco) => monaco.editor.defineTheme('custom-dark', editorTheme)}
               options={{
@@ -1013,6 +1054,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
                 padding: { top: 0, bottom: 0 },
                 renderLineHighlight: 'all',
                 cursorBlinking: 'smooth',
+                contextmenu: false,
                 scrollbar: {
                   verticalScrollbarSize: 6,
                   horizontalScrollbarSize: 6,
