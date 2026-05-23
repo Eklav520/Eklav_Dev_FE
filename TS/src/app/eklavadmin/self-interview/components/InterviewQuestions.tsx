@@ -27,7 +27,7 @@ const InterviewQuestions: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "TR_InterviewQuestions_Template.csv";
+    a.download = "SelfInterview_InterviewQuestions_Template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -52,7 +52,7 @@ const InterviewQuestions: React.FC = () => {
       const formData = new FormData();
       formData.append("excelFile", file);
 
-      const response = await fetch(`${baseURL}/admin/tr/upload-questions`, {
+      const response = await fetch(`${baseURL}/admin/self-interview/upload-questions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

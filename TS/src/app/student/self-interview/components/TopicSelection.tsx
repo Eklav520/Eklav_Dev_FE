@@ -62,12 +62,13 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
 
     const fetchTopicsAndLimits = async () => {
       try {
-        const topicsResponse = await fetch(`${baseURL}/api/tr/topics`, {
+        const topicsResponse = await fetch(`${baseURL}/topics`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const topicsData = await topicsResponse.json()
-        setTopics(topicsData.topics)
-        if (topicsData.topics.length > 0) setTopic(topicsData.topics[0])
+        const loadedTopics = Array.isArray(topicsData?.topics) ? topicsData.topics : []
+        setTopics(loadedTopics)
+        if (loadedTopics.length > 0) setTopic(loadedTopics[0])
 
         /*    const limitsResponse = await fetch(`${baseURL}/interview/limits`, {
              headers: { Authorization: `Bearer ${token}` },
