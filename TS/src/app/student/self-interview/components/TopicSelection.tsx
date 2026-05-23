@@ -62,7 +62,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
 
     const fetchTopicsAndLimits = async () => {
       try {
-        const topicsResponse = await fetch(`${baseURL}/topics`, {
+        const topicsResponse = await fetch(`${baseURL}/api/tr/topics`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const topicsData = await topicsResponse.json()
