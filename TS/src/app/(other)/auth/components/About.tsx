@@ -209,7 +209,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
               <h1 className="about-title">
                 About{" "}
                 <span className="position-relative d-inline-block">
-                  <span className="text-orange position-relative fw-bold" style={{ zIndex: 1 }}>{tenantNameFirstTwo}</span>
+                  <span className="text-white position-relative fw-bold" style={{ zIndex: 1 }}>{tenantNameFirstTwo}</span>
                   <span className="text-white position-relative fw-bold" style={{ zIndex: 1 }}>{tenantNameRest}</span>
                   <span className="position-absolute top-50 start-50 translate-middle z-index-n1">
                     <svg
@@ -230,7 +230,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
               <p className="about-description">
                 <span className="lead-text">
                   <strong>
-                    <span className="text-orange">{tenantNameFirstTwo}</span>
+                    <span className="text-white">{tenantNameFirstTwo}</span>
                     {tenantNameRest}
                   </strong>{" "}
                   is a modern{" "}
@@ -395,7 +395,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
             <h2 className="section-title">
               What Makes{" "}
               <span>
-                <span className="text-orange">{tenantNameFirstTwo}</span>
+                <span className="text-white">{tenantNameFirstTwo}</span>
                 <span className="text-white">{tenantNameRest}</span>
               </span>{" "}
               Different
