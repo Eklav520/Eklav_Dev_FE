@@ -47,7 +47,30 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
 
   const maxAllowed =
     status === 'pending' ? TRIAL_MAX_ATTEMPTS : MAX_ATTEMPTS
+  const selectStyle: React.CSSProperties = {
+    borderRadius: '14px',
+    border: '1px solid rgba(255,122,0,0.55)',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+    backgroundColor: '#121212',
+    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0))',
+    color: '#ffffff',
+    minHeight: '54px',
+    padding: '0.78rem 1rem',
+    fontWeight: 600,
+    letterSpacing: '0.01em',
+  };
 
+  const badgeStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    padding: '0.35rem 0.85rem',
+    borderRadius: '999px',
+    background: 'linear-gradient(135deg, #fff1d6 0%, #ffd6a2 100%)',
+    color: '#8a5200',
+    fontWeight: 600,
+    fontSize: '0.92rem',
+  };
   // Convert backend remaining (always based on 5) into correct remaining
   const getRemaining = (backendRemaining: number) => {
     if (status !== 'pending') return backendRemaining
@@ -154,46 +177,54 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
           <Form.Select
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
-            style={{
-              borderRadius: '8px',
-              border: '1px solid rgba(255,122,0,0.3)',
-              boxShadow: 'none'
-            }}
-          >
-            {topics.length === 0 ? (
-              <option>Loading topics...</option>
-            ) : (
-              topics.map((t) => {
-                const backendRemaining =
-                  limits[t]?.remaining ?? MAX_ATTEMPTS
+              style={selectStyle}
+            >
+              {topics.length === 0 ? (
+                <option>Loading topics...</option>
+              ) : (
+                topics.map((t) => {
+                  const backendRemaining =
+                    limits[t]?.remaining ?? MAX_ATTEMPTS
 
-                const remaining = getRemaining(backendRemaining)
-                const used = maxAllowed - remaining
+                  const remaining = getRemaining(backendRemaining)
+                  const used = maxAllowed - remaining
 
-                const countdownMs = countdowns[t] || 0
-                const isDisabled =
-                  remaining <= 0 && countdownMs > 0
+                  const countdownMs = countdowns[t] || 0
+                  const isDisabled =
+                    remaining <= 0 && countdownMs > 0
 
-                return (
-                  <option key={t} value={t} disabled={isDisabled}>
-                    {t.toUpperCase()} — Used {used}/{maxAllowed}
-                    {isDisabled
-                      ? ` (Retry in ${formatTime(countdownMs)})`
-                      : ''}
-                  </option>
-                )
-              })
+                  return (
+                    <option
+                      key={t}
+                      value={t}
+                      disabled={isDisabled}
+                      style={{
+                        backgroundColor: isDisabled ? '#1b1b1b' : '#121212',
+                        color: isDisabled ? 'rgba(255,255,255,0.55)' : '#ffffff',
+                      }}
+                    >
+                      {t.toUpperCase()} — Used {used}/{maxAllowed}
+                      {isDisabled
+                        ? ` (Retry in ${formatTime(countdownMs)})`
+                        : ''}
+                    </option>
+                  )
+                })
+              )}
+            </Form.Select>
+            {topic && (
+              <div style={{ marginTop: '0.9rem' }}>
+                <span style={badgeStyle}>Selected topic: {topic}</span>
+              </div>
             )}
-          </Form.Select>
-        </Form.Group>
+            <Form.Text className="text-muted" style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.95rem' }}>
+              {status === 'pending'
+                ? 'Trial users can attempt only 2 interviews per topic.'
+                : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
+            </Form.Text>
+          </Form.Group>
 
-        <p className="small mb-4" style={{ color: '#6c757d' }}>
-          {status === 'pending'
-            ? 'Trial users can attempt only 2 interviews per topic.'
-            : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
-        </p>
-
-        <div className="d-grid">
+          <div className="d-grid">
           <Button
             size="lg"
             onClick={startInterview}
