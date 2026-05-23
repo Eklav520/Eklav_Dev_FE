@@ -45,6 +45,10 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
   const tenant = useTenant();
 
   const tenantName = tenant?.name || "Eklav";
+  const normalizedTenantName =
+    tenantName.charAt(0).toUpperCase() + tenantName.slice(1).toLowerCase();
+  const tenantNameFirstTwo = normalizedTenantName.slice(0, 2);
+  const tenantNameRest = normalizedTenantName.slice(2);
   const isCoreDataLabs =
     tenant?.name === "coredatalabs" ||
     window?.location?.hostname === "coredatalabs.eklav.in";
@@ -205,7 +209,8 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
               <h1 className="about-title">
                 About{" "}
                 <span className="position-relative d-inline-block">
-                  <span className="text-white position-relative fw-bold" style={{ zIndex: 1 }}>{tenantName}</span>
+                  <span className="text-orange position-relative fw-bold" style={{ zIndex: 1 }}>{tenantNameFirstTwo}</span>
+                  <span className="text-white position-relative fw-bold" style={{ zIndex: 1 }}>{tenantNameRest}</span>
                   <span className="position-absolute top-50 start-50 translate-middle z-index-n1">
                     <svg
                       width="200px"
@@ -224,7 +229,11 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
 
               <p className="about-description">
                 <span className="lead-text">
-                  {tenantName} is a modern{" "}
+                  <strong>
+                    <span className="text-orange">{tenantNameFirstTwo}</span>
+                    {tenantNameRest}
+                  </strong>{" "}
+                  is a modern{" "}
                   <strong>All-in-One E-Learning Platform</strong> designed to
                   help students move from{" "}
                   <strong className="text-orange">Campus to Career</strong>.
@@ -385,7 +394,11 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
           <div className="section-header text-center">
             <h2 className="section-title">
               What Makes{" "}
-              <span className="text-orange">{tenantName}</span> Different
+              <span>
+                <span className="text-orange">{tenantNameFirstTwo}</span>
+                <span className="text-white">{tenantNameRest}</span>
+              </span>{" "}
+              Different
             </h2>
             <p className="section-subtitle">
               Comprehensive learning ecosystem designed for your success
