@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Table, Modal, Spinner, Alert } from 'react-bootstrap'
+import { Card, Button, Form, Table, Modal, Spinner, Alert, Pagination } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import { FaUserGraduate, FaPlus, FaTrash, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload } from 'react-icons/fa'
 import BulkUploadStudents from './BulkUploadStudents'
@@ -46,7 +46,9 @@ const InstituteAdmin: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showBulkUpload, setShowBulkUpload] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   /* ============================
      FETCH PROFILE (GET INSTITUTE)
@@ -152,6 +154,51 @@ const InstituteAdmin: React.FC = () => {
   const totalStudents = students.length
   const instituteName = profile?.instituteName || profile?.collegeName || 'Not Assigned'
 
+  const totalPages = Math.max(1, Math.ceil(totalStudents / rowsPerPage))
+  const currentStart = (currentPage - 1) * rowsPerPage
+  const currentEnd = Math.min(currentStart + rowsPerPage, totalStudents)
+  const paginatedStudents = students.slice(currentStart, currentEnd)
+
+  const visiblePageNumbers = React.useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1)
+    }
+
+    const pages: Array<number | 'start-ellipsis' | 'end-ellipsis'> = [1]
+    if (currentPage > 3) {
+      pages.push('start-ellipsis')
+    }
+
+    const middleStart = Math.max(2, currentPage - 1)
+    const middleEnd = Math.min(totalPages - 1, currentPage + 1)
+    for (let page = middleStart; page <= middleEnd; page += 1) {
+      pages.push(page)
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push('end-ellipsis')
+    }
+
+    pages.push(totalPages)
+    return pages
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  const changePage = (page: number) => {
+    if (page < 1 || page > totalPages) return
+    setCurrentPage(page)
+  }
+
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setRowsPerPage(Number(event.target.value))
+    setCurrentPage(1)
+  }
+
   return (
     <div className="institute-admin-container">
       <Card className="students-management-card">
@@ -235,12 +282,12 @@ const InstituteAdmin: React.FC = () => {
                         <th style={{ width: '25%' }}>Email Address</th>
                         <th style={{ width: '15%' }}>Roll Number</th>
                         <th style={{ width: '15%' }}>Branch</th>
-                        <th style={{ width: '10%' }}>Phone</th>
-                        <th style={{ width: '10%' }} className="text-center">Actions</th>
+                        <th style={{ width: '12%' }}>Phone</th>
+                        <th style={{ width: '13%' }} className="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {students.map((stu) => (
+                      {paginatedStudents.map((stu) => (
                         <tr key={stu._id}>
                           <td>
                             <div className="student-name-cell">
@@ -288,6 +335,38 @@ const InstituteAdmin: React.FC = () => {
                       ))}
                     </tbody>
                   </Table>
+                  {students.length > 0 && (
+                    <div className="table-footer">
+                      <div className="footer-summary">
+                        Showing <strong>{currentStart + 1}</strong> to <strong>{currentEnd}</strong> of <strong>{totalStudents}</strong> students
+                      </div>
+                      <div className="footer-actions">
+                        <div className="rows-per-page">
+                          <span>Rows per page</span>
+                          <Form.Select size="sm" value={rowsPerPage} onChange={handleRowsPerPageChange} className="rows-per-page-select">
+                            {[5, 10, 15, 20].map((size) => (
+                              <option key={size} value={size}>{size}</option>
+                            ))}
+                          </Form.Select>
+                        </div>
+                        <Pagination className="table-pagination">
+                          <Pagination.First onClick={() => changePage(1)} disabled={currentPage === 1} />
+                          <Pagination.Prev onClick={() => changePage(currentPage - 1)} disabled={currentPage === 1} />
+                          {visiblePageNumbers.map((page, index) => (
+                            page === 'start-ellipsis' || page === 'end-ellipsis' ? (
+                              <Pagination.Ellipsis key={`${page}-${index}`} disabled />
+                            ) : (
+                              <Pagination.Item key={page} active={page === currentPage} onClick={() => changePage(page)}>
+                                {page}
+                              </Pagination.Item>
+                            )
+                          ))}
+                          <Pagination.Next onClick={() => changePage(currentPage + 1)} disabled={currentPage === totalPages} />
+                          <Pagination.Last onClick={() => changePage(totalPages)} disabled={currentPage === totalPages} />
+                        </Pagination>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -345,71 +424,75 @@ const InstituteAdmin: React.FC = () => {
               />
             </Form.Group>
 
-            <Form.Group className="form-group-custom mb-4">
-              <Form.Label className="form-label-custom">
-                <FaBuilding className="label-icon" />
-                Roll Number
-              </Form.Label>
-              <Form.Control
-                required
-                placeholder="Enter student's roll number"
-                value={form.rollNumber}
-                onChange={(e) =>
-                  setForm({ ...form, rollNumber: e.target.value })
-                }
-                className="form-control-custom"
-              />
-            </Form.Group>
+            <div className="form-row">
+              <Form.Group className="form-group-custom mb-4 form-col">
+                <Form.Label className="form-label-custom">
+                  <FaBuilding className="label-icon" />
+                  Roll Number
+                </Form.Label>
+                <Form.Control
+                  required
+                  placeholder="Enter student's roll number"
+                  value={form.rollNumber}
+                  onChange={(e) =>
+                    setForm({ ...form, rollNumber: e.target.value })
+                  }
+                  className="form-control-custom"
+                />
+              </Form.Group>
 
-            <Form.Group className="form-group-custom mb-4">
-              <Form.Label className="form-label-custom">
-                <FaUniversity className="label-icon" />
-                Branch
-              </Form.Label>
-              <Form.Control
-                required
-                placeholder="Enter student's branch"
-                value={form.branch}
-                onChange={(e) =>
-                  setForm({ ...form, branch: e.target.value })
-                }
-                className="form-control-custom"
-              />
-            </Form.Group>
+              <Form.Group className="form-group-custom mb-4 form-col">
+                <Form.Label className="form-label-custom">
+                  <FaUniversity className="label-icon" />
+                  Branch
+                </Form.Label>
+                <Form.Control
+                  required
+                  placeholder="Enter student's branch"
+                  value={form.branch}
+                  onChange={(e) =>
+                    setForm({ ...form, branch: e.target.value })
+                  }
+                  className="form-control-custom"
+                />
+              </Form.Group>
+            </div>
 
-            <Form.Group className="form-group-custom mb-4">
-              <Form.Label className="form-label-custom">
-                <FaUser className="label-icon" />
-                Gender
-              </Form.Label>
-              <Form.Select
-                required
-                value={form.gender}
-                onChange={(e) =>
-                  setForm({ ...form, gender: e.target.value })
-                }
-                className="form-control-custom"
-              >
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </Form.Select>
-            </Form.Group>
+            <div className="form-row">
+              <Form.Group className="form-group-custom mb-4 form-col">
+                <Form.Label className="form-label-custom">
+                  <FaUser className="label-icon" />
+                  Gender
+                </Form.Label>
+                <Form.Select
+                  required
+                  value={form.gender}
+                  onChange={(e) =>
+                    setForm({ ...form, gender: e.target.value })
+                  }
+                  className="form-control-custom"
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </Form.Select>
+              </Form.Group>
 
-            <Form.Group className="form-group-custom mb-4">
-              <Form.Label className="form-label-custom">
-                <FaPhone className="label-icon" />
-                Phone Number
-              </Form.Label>
-              <Form.Control
-                placeholder="+91 1234567890"
-                value={form.phoneNumber}
-                onChange={(e) =>
-                  setForm({ ...form, phoneNumber: e.target.value })
-                }
-                className="form-control-custom"
-              />
-            </Form.Group>
+              <Form.Group className="form-group-custom mb-4 form-col">
+                <Form.Label className="form-label-custom">
+                  <FaPhone className="label-icon" />
+                  Phone Number
+                </Form.Label>
+                <Form.Control
+                  placeholder="+91 1234567890"
+                  value={form.phoneNumber}
+                  onChange={(e) =>
+                    setForm({ ...form, phoneNumber: e.target.value })
+                  }
+                  className="form-control-custom"
+                />
+              </Form.Group>
+            </div>
 
             <Form.Group className="form-group-custom mb-4">
               <Form.Label className="form-label-custom">
@@ -655,6 +738,11 @@ const InstituteAdmin: React.FC = () => {
         /* Table Styles */
         .table-wrapper {
           overflow-x: auto;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 18px;
+          padding: 0.75rem;
+          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.18);
         }
 
         .table-responsive {
@@ -664,35 +752,46 @@ const InstituteAdmin: React.FC = () => {
 
         .students-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           margin-bottom: 0;
+          background: #080808;
+          border-radius: 16px;
+          overflow: hidden;
         }
 
         .students-table thead th {
-          background: #000000;
-          color: #ff7a00;
-          padding: 1rem;
+          background: rgba(255, 122, 0, 0.08);
+          color: #ffbf80;
+          padding: 1rem 1rem;
           text-align: left;
-          font-weight: 600;
+          font-weight: 700;
           font-size: 0.85rem;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          border-bottom: 2px solid #ff7a00;
+          border-bottom: 1px solid rgba(255, 122, 0, 0.25);
         }
 
         .students-table tbody tr {
-          border-bottom: 1px solid #1f1f1f;
-          transition: background 0.2s ease;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          transition: background 0.2s ease, transform 0.2s ease;
+          background: rgba(255, 255, 255, 0.015);
+        }
+
+        .students-table tbody tr:nth-child(even) {
+          background: rgba(255, 255, 255, 0.01);
         }
 
         .students-table tbody tr:hover {
-          background: #141414;
+          background: rgba(255, 122, 0, 0.12);
+          transform: translateY(-1px);
         }
 
         .students-table td {
-          padding: 1rem;
-          color: #e5e5e5;
+          padding: 1rem 0.95rem;
+          color: #d8d8d8;
           vertical-align: middle;
+          white-space: nowrap;
         }
 
         .student-name-cell {
@@ -725,6 +824,7 @@ const InstituteAdmin: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 0.5rem;
+          white-space: nowrap;
         }
 
         .email-icon, .phone-icon {
@@ -734,7 +834,9 @@ const InstituteAdmin: React.FC = () => {
         }
 
         .student-email-cell span, .student-phone-cell span {
-          word-break: break-word;
+          word-break: normal;
+          overflow-wrap: normal;
+          white-space: nowrap;
         }
 
         .delete-student-btn {
@@ -759,6 +861,109 @@ const InstituteAdmin: React.FC = () => {
           padding: 3rem;
         }
 
+        .table-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 1rem;
+          padding: 1rem 1rem 0.75rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          margin-top: 0.75rem;
+          background: rgba(255, 255, 255, 0.02);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 14px;
+        }
+
+        .footer-summary {
+          color: #d7d7d7;
+          font-size: 0.92rem;
+          line-height: 1.6;
+          white-space: nowrap;
+        }
+
+        .footer-actions {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .rows-per-page {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.75rem;
+          color: #e8e8e8;
+          font-size: 0.88rem;
+          white-space: nowrap;
+          padding: 0.45rem 0.9rem;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.04);
+          min-height: 2.7rem;
+        }
+
+        .rows-per-page span {
+          color: #bdbdbd;
+          line-height: 1.2;
+        }
+
+        .rows-per-page-select {
+          min-width: 4.5rem;
+          height: 2.1rem;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #0a0a0a;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: 0 0.75rem;
+          line-height: 1.5;
+        }
+
+        .table-pagination {
+          margin: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+
+        .table-pagination .page-item {
+          margin: 0;
+        }
+
+        .table-pagination .page-link {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 2.3rem;
+          height: 2.3rem;
+          padding: 0 0.75rem;
+          background: #0c0c0c;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          color: #f5f5f5;
+          border-radius: 10px;
+          transition: background 0.2s ease, color 0.2s ease;
+          line-height: 1;
+        }
+
+        .table-pagination .page-item.active .page-link {
+          background: #ff7a00;
+          border-color: #ff7a00;
+          color: #000000;
+        }
+
+        .table-pagination .page-link:hover {
+          background: rgba(255, 122, 0, 0.15);
+          color: #ffffff;
+        }
+
+        .table-pagination .page-item.disabled .page-link {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
         .empty-icon {
           font-size: 4rem;
           color: #ff7a00;
@@ -778,8 +983,8 @@ const InstituteAdmin: React.FC = () => {
 
         /* Modal Styles */
         .student-modal .modal-dialog {
-          max-width: 75vw !important;
-          width: 75vw;
+          max-width: 55vw !important;
+          width: 55vw;
           margin: 0 auto;
         }
 
@@ -787,6 +992,17 @@ const InstituteAdmin: React.FC = () => {
           background: #0a0a0a;
           border: 1px solid #ff7a00;
           border-radius: 16px;
+        }
+
+        .form-row {
+          display: flex;
+          gap: 1.25rem;
+          flex-wrap: wrap;
+        }
+
+        .form-col {
+          flex: 1 1 240px;
+          min-width: 240px;
         }
 
         .modal-header-custom {
