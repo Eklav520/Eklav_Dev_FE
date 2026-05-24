@@ -367,7 +367,7 @@ const StepNode = ({
   const arrowColor = hasCourse ? color : '#3d4459'
 
   return (
-    <div className="rm-step-col" style={{ cursor: 'default' }}>
+    <div className="rm-step-col" data-step-id={step.id} style={{ cursor: 'default' }}>
       {/* Node box */}
       <div
         className="rm-node"
@@ -438,7 +438,7 @@ const OrGroupNode = ({
   const anyEnrolled = step.orOptions?.some(o => o.status === 'enrolled') ?? false
 
   return (
-    <div className="rm-step-col" style={{ cursor: 'default' }}>
+    <div className="rm-step-col" data-step-id={step.id} style={{ cursor: 'default' }}>
       <div
         className="rm-node"
         style={{
@@ -484,6 +484,9 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
   const { user } = useAuthContext()
   const token = user?.token
   const navigate = useNavigate()
+
+  const flowRef = React.useRef<HTMLDivElement>(null)
+  const runnerRef = React.useRef<HTMLDivElement>(null)
 
   const [courses, setCourses] = useState<FullCourse[]>([])
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set())
@@ -558,6 +561,34 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
     }
     return result
   }, [flatSteps])
+
+  /* Animate runner along the snake path once rows are ready */
+  React.useEffect(() => {
+    if (!flowRef.current || !runnerRef.current || rows.length === 0) return
+    const timer = setTimeout(() => {
+      const flowEl = flowRef.current!
+      const runnerEl = runnerRef.current!
+      const flowRect = flowEl.getBoundingClientRect()
+      const positions: { x: number; y: number; right: boolean }[] = []
+      rows.forEach((row, rowIdx) => {
+        const isRTL = rowIdx % 2 === 1
+        // DOM order already traces correctly: LTR → left-to-right, RTL → right-to-left (flex row-reverse)
+        row.forEach((step) => {
+          const el = flowEl.querySelector(`[data-step-id="${step.id}"]`) as HTMLElement | null
+          if (!el) return
+          const r = el.getBoundingClientRect()
+          positions.push({ x: r.left - flowRect.left + r.width / 2, y: r.top - flowRect.top + 18, right: !isRTL })
+        })
+      })
+      if (positions.length < 2) return
+      const kf: Keyframe[] = positions.map((p, i) => ({
+        offset: i / (positions.length - 1),
+        transform: `translate(${p.x - 12}px, ${p.y - 12}px) scaleX(${p.right ? -1 : 1})`,
+      }))
+      runnerEl.animate(kf, { duration: positions.length * 1400, easing: 'linear', fill: 'forwards', delay: 300 })
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [rows])
 
   const allSteps = flatSteps
   const enrolledCount = allSteps.filter((s) => s.status === 'enrolled').length
@@ -650,9 +681,9 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
         </div>
 
         {/* ── Flow ── */}
-        <div className="rm-flow-body">
+        <div className="rm-flow-body" ref={flowRef}>
           {/* Running boy */}
-          <div className="rm-runner" key={roadmap.id}>
+          <div className="rm-runner" ref={runnerRef} key={roadmap.id}>
             <span className="rm-runner-icon">🏃</span>
           </div>
 
@@ -1031,26 +1062,21 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
         /* Running boy */
         .rm-runner {
           position: absolute;
-          left: 14px;
+          left: 0;
           top: 0;
           z-index: 20;
           pointer-events: none;
-          animation: rmTravel 3.2s cubic-bezier(0.4, 0, 0.55, 1) forwards;
+          transform: translate(-100px, -100px);
         }
         .rm-runner-icon {
           display: block;
           font-size: 22px;
           line-height: 1;
-          transform: scaleX(-1);
           animation: rmBounce 0.32s infinite ease-in-out;
         }
-        @keyframes rmTravel {
-          0%   { top: 10px; }
-          100% { top: calc(100% - 48px); }
-        }
         @keyframes rmBounce {
-          0%, 100% { transform: scaleX(-1) translateY(0px); }
-          50%       { transform: scaleX(-1) translateY(-5px); }
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-4px); }
         }
 
         /* CTA */
