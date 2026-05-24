@@ -23,11 +23,21 @@ type Round = {
   questions: Question[]
 }
 
+type CodingAnswerEntry = {
+  qid: string
+  title: string
+  description: string
+  code: string
+  language: string
+}
+
 type Props = {
   round: Round
   companyName: string
   role: string
   onClose: () => void
+  onAttemptComplete?: (answers: CodingAnswerEntry[]) => void
+  selectedQuestionId?: string
 }
 
 // ================= LANGUAGE CONFIGURATION =================
@@ -160,14 +170,18 @@ const EDITOR_THEME = {
 }
 
 // ================= MAIN COMPONENT =================
-const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose }) => {
+const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose, onAttemptComplete, selectedQuestionId }) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
-  // Pick random question on mount
+  // Use the specifically chosen question, or fall back to random
   const [question] = useState<Question>(() => {
     const qs = round.questions || []
     if (qs.length === 0) return null as any
+    if (selectedQuestionId) {
+      const found = qs.find(q => q._id === selectedQuestionId)
+      if (found) return found
+    }
     return qs[Math.floor(Math.random() * qs.length)]
   })
 
@@ -296,6 +310,13 @@ const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose })
       setTimerActive(false)
       setSubmitted(true)
       setTerminalOutput(prev => `${prev}\n\n🎉 Solution submitted successfully!`)
+      onAttemptComplete?.([{
+        qid: question._id,
+        title: question.title || 'Coding Problem',
+        description: question.description || '',
+        code,
+        language: language.id,
+      }])
     } catch (err: any) {
       setError(err.message || 'Failed to submit solution')
     } finally {

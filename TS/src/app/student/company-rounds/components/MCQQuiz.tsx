@@ -20,15 +20,23 @@ type Round = {
   questions: Question[]
 }
 
+type AttemptData = {
+  answers: Record<string, any>
+  score: number
+  totalQuestions: number
+  correctAnswers: number
+}
+
 type Props = {
   round: Round
   companyName: string
   role: string
   quizQuestions: Question[]
   onClose: () => void
+  onAttemptComplete?: (data: AttemptData) => void
 }
 
-const MCQQuiz: React.FC<Props> = ({ round, companyName, role, quizQuestions, onClose }) => {
+const MCQQuiz: React.FC<Props> = ({ round, companyName, role, quizQuestions, onClose, onAttemptComplete }) => {
   const total = quizQuestions.length
   const [currentIdx, setCurrentIdx] = useState(0)
   const [answers, setAnswers] = useState<Record<string, any>>({})
@@ -61,9 +69,17 @@ const MCQQuiz: React.FC<Props> = ({ round, companyName, role, quizQuestions, onC
   const doSubmit = () => {
     let correct = 0
     quizQuestions.forEach(q => { if (answers[q._id] === q.correctAnswer) correct++ })
-    setScore((correct / total) * 100)
+    const pct = (correct / total) * 100
+    setScore(pct)
     setSubmitted(true)
     setTimerActive(false)
+    // Fire attempt callback so parent can save + show result screen
+    onAttemptComplete?.({
+      answers,
+      score: Math.round(pct),
+      totalQuestions: total,
+      correctAnswers: correct,
+    })
   }
 
   const answeredCount = Object.keys(answers).length

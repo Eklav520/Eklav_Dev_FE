@@ -65,6 +65,31 @@ type CompanyDetailResponse = {
   data: Company
 }
 
+type PerQuestionFeedback = {
+  qid?: string
+  questionText: string
+  textAnswer: string
+  expectedAnswer?: string
+  rating: number
+  feedback: string
+}
+
+type RoundResult = {
+  score: number
+  totalQuestions: number
+  correctAnswers: number
+  avgRating: number
+  aiFeedback: string
+  perQuestionFeedback: PerQuestionFeedback[]
+  roundType: string
+}
+
+type RecentAttempt = {
+  score: number
+  roundType: string
+  attemptedAt: string
+}
+
 // ================= CONSTANTS =================
 // All rounds now use orange color
 const ROUND_TYPE_COLORS = {
@@ -207,7 +232,7 @@ const StudentCompanyInterviewPage = () => {
   const [showCompanyModal, setShowCompanyModal] = useState(false)
   const [showRoundModal, setShowRoundModal] = useState(false)
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
-  const [activeMode, setActiveMode] = useState<'preview' | 'quiz' | 'coding' | 'interview'>('preview')
+  const [activeMode, setActiveMode] = useState<'preview' | 'quiz' | 'coding' | 'interview' | 'result'>('preview')
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({})
   
   // MCQ state
@@ -224,6 +249,14 @@ const StudentCompanyInterviewPage = () => {
   // Timer state
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [roundActive, setRoundActive] = useState(false)
+
+  // Attempt / score state
+  const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [recentAttempts, setRecentAttempts] = useState<Record<string, RecentAttempt>>({})
+
+  // Coding — which specific problem the student chose to practice
+  const [selectedCodingQuestionId, setSelectedCodingQuestionId] = useState<string | null>(null)
 
   const companyFilterOptions = useMemo(() => {
     const names = companies
@@ -327,20 +360,45 @@ const StudentCompanyInterviewPage = () => {
     fetchCompanies()
   }, [token, baseURL, currentPage, searchQuery, companyFilter])
 
+  const fetchRecentAttempts = async (companyId: string) => {
+    if (!token) return
+    try {
+      const res = await fetch(
+        `${baseURL}/api/company-interview-attempt/student?companyInterviewId=${companyId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await res.json()
+      if (data.success && Array.isArray(data.data)) {
+        const map: Record<string, RecentAttempt> = {}
+        data.data.forEach((attempt: any) => {
+          map[String(attempt.roundId)] = {
+            score: attempt.score,
+            roundType: attempt.roundType,
+            attemptedAt: attempt.attemptedAt,
+          }
+        })
+        setRecentAttempts(map)
+      }
+    } catch {
+      // non-critical — ignore
+    }
+  }
+
   // Fetch company details
   const fetchCompanyDetails = async (companyId: string) => {
     try {
       const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      
+
       const data: CompanyDetailResponse = await res.json()
       if (!res.ok || !data.success) {
         throw new Error('Failed to fetch company details')
       }
-      
+
       setSelectedCompany(data.data)
       setShowCompanyModal(true)
+      fetchRecentAttempts(companyId)
     } catch (err: any) {
       setError(err.message || 'Failed to load company details')
     }
@@ -352,10 +410,161 @@ const StudentCompanyInterviewPage = () => {
     setTimeLeft(null)
     setRoundActive(false)
     setQuizQuestions([])
+    setRoundResult(null)
+    setIsAnalyzing(false)
+    setSelectedCodingQuestionId(null)
     try {
       window.speechSynthesis?.cancel()
     } catch {
       // ignore speech synthesis cleanup failures
+    }
+  }
+
+  const downloadResultPDF = () => {
+    if (!roundResult || !selectedRound || !selectedCompany) return
+
+    const passColor = '#22c55e'
+    const failColor = '#ef4444'
+    const isPassed = roundResult.score >= 60
+    const scoreColor = isPassed ? passColor : failColor
+    const date = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+
+    const questionsHTML = roundResult.perQuestionFeedback.map((item, idx) => {
+      const isMCQCorrect = roundResult.roundType === 'MCQ' && item.rating === 5
+      const isMCQWrong = roundResult.roundType === 'MCQ' && item.rating === 0
+      const answerColor = isMCQCorrect ? passColor : isMCQWrong ? failColor : '#d1d5db'
+      const stars = '★'.repeat(item.rating) + '☆'.repeat(Math.max(0, 5 - item.rating))
+
+      const expectedLabel = roundResult.roundType === 'MCQ' ? 'Correct Answer' : roundResult.roundType === 'CODING' ? 'Problem Description' : 'Suggested Answer'
+      return `
+        <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;">
+          <div style="font-weight:600;color:#111;margin-bottom:8px;">Q${idx + 1}. ${item.questionText}</div>
+          <div style="background:#f9fafb;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Your Answer</div>
+            <div style="color:${answerColor};font-size:13px;white-space:pre-wrap;">${item.textAnswer || 'Not answered'}</div>
+          </div>
+          ${item.expectedAnswer ? `
+          <div style="background:#f5f3ff;border:1px solid #d8b4fe;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-size:11px;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${expectedLabel}</div>
+            <div style="color:#5b21b6;font-size:13px;white-space:pre-wrap;">${item.expectedAnswer}</div>
+          </div>` : ''}
+          ${roundResult.roundType !== 'MCQ' ? `<div style="color:#f59e0b;font-size:16px;margin-bottom:4px;">${stars} <span style="font-size:11px;color:#6b7280;">${item.rating}/5</span></div>` : ''}
+          <div style="font-size:12px;color:#374151;margin-top:4px;"><strong>Feedback:</strong> ${item.feedback}</div>
+        </div>`
+    }).join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+      <title>${selectedCompany.companyName} - ${selectedRound.roundName} Result</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;margin:0;padding:32px;max-width:760px;margin:auto;}
+        @media print{body{padding:16px;}}
+      </style>
+    </head><body>
+      <div style="border-bottom:3px solid #ff6b35;padding-bottom:16px;margin-bottom:24px;">
+        <h1 style="color:#ff6b35;margin:0;font-size:22px;">Interview Practice Report</h1>
+        <div style="color:#6b7280;font-size:13px;margin-top:4px;">${date}</div>
+      </div>
+      <table style="width:100%;margin-bottom:20px;border-collapse:collapse;">
+        <tr><td style="padding:4px 0;color:#6b7280;width:120px;">Company</td><td style="font-weight:600;">${selectedCompany.companyName}</td></tr>
+        <tr><td style="padding:4px 0;color:#6b7280;">Role</td><td>${selectedCompany.role || '—'}</td></tr>
+        <tr><td style="padding:4px 0;color:#6b7280;">Round</td><td>${selectedRound.roundName} (${roundResult.roundType})</td></tr>
+      </table>
+      <div style="display:flex;align-items:center;gap:24px;background:#f9fafb;border-radius:12px;padding:18px;margin-bottom:24px;">
+        <div style="text-align:center;min-width:90px;">
+          <div style="font-size:40px;font-weight:800;color:${scoreColor};">${roundResult.score}%</div>
+          <div style="font-size:12px;color:#6b7280;">Score</div>
+        </div>
+        <div>
+          <div style="font-weight:700;color:${scoreColor};margin-bottom:4px;">${isPassed ? '✓ Good Performance' : '✗ Needs More Practice'}</div>
+          ${roundResult.roundType === 'MCQ' ? `<div style="font-size:13px;color:#374151;">${roundResult.correctAnswers}/${roundResult.totalQuestions} correct</div>` : ''}
+          ${roundResult.avgRating > 0 ? `<div style="font-size:13px;color:#374151;">Avg Rating: ${roundResult.avgRating.toFixed(1)}/5</div>` : ''}
+          <div style="font-size:13px;color:#374151;margin-top:6px;">${roundResult.aiFeedback}</div>
+        </div>
+      </div>
+      ${roundResult.perQuestionFeedback.length > 0 ? `<h3 style="color:#111;margin-bottom:14px;">Question-wise Breakdown</h3>${questionsHTML}` : ''}
+    </body></html>`
+
+    const win = window.open('', '_blank', 'width=900,height=700')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.onload = () => win.print()
+  }
+
+  const handleReattempt = () => {
+    setRoundResult(null)
+    setIsAnalyzing(false)
+    setSelectedCodingQuestionId(null)
+    handleTakeQuiz()
+  }
+
+  const handleStartCodingQuestion = (questionId: string) => {
+    setSelectedCodingQuestionId(questionId)
+    setActiveMode('coding')
+  }
+
+  const handleAttemptComplete = async (answers: any) => {
+    if (!selectedRound || !selectedCompany) return
+
+    setActiveMode('result')
+    setIsAnalyzing(true)
+    setRoundResult(null)
+
+    let payload: any = {
+      companyInterviewId: selectedCompany._id,
+      roundId: selectedRound._id,
+      roundType: selectedRound.roundType,
+      answers: selectedRound.roundType === 'MCQ' ? answers.answers : answers,
+    }
+
+    try {
+      const res = await fetch(`${baseURL}/api/company-interview-attempt/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save attempt')
+
+      setRoundResult(data.data)
+      // Refresh recent attempts badge
+      setRecentAttempts(prev => ({
+        ...prev,
+        [selectedRound._id]: {
+          score: data.data.score,
+          roundType: selectedRound.roundType,
+          attemptedAt: new Date().toISOString(),
+        },
+      }))
+    } catch {
+      // Fallback: show client-side score for MCQ if server fails
+      if (selectedRound.roundType === 'MCQ' && answers.score != null) {
+        setRoundResult({
+          score: answers.score,
+          totalQuestions: answers.totalQuestions || 0,
+          correctAnswers: answers.correctAnswers || 0,
+          avgRating: 0,
+          aiFeedback: answers.score >= 70 ? 'Good job! You passed.' : 'Keep practicing and try again.',
+          perQuestionFeedback: [],
+          roundType: 'MCQ',
+        })
+      } else {
+        setRoundResult({
+          score: 0,
+          totalQuestions: 0,
+          correctAnswers: 0,
+          avgRating: 0,
+          aiFeedback: 'Could not analyze performance. Please try again.',
+          perQuestionFeedback: [],
+          roundType: selectedRound.roundType,
+        })
+      }
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
@@ -385,6 +594,13 @@ const StudentCompanyInterviewPage = () => {
 
   const toggleAnswer = (questionId: string) => {
     setExpandedAnswers(prev => ({ ...prev, [questionId]: !prev[questionId] }))
+  }
+
+  const formatExplanation = (text?: string) => {
+    if (!text) return 'Explanation not available.'
+    return text
+      .replace(/\.\s+/g, '.\n')
+      .replace(/\s-\s+/g, '\n- ')
   }
 
   if (loading) {
@@ -645,13 +861,19 @@ const StudentCompanyInterviewPage = () => {
                             <span><FileText size={11} /> {round.questionCount} questions</span>
                           </div>
                         </div>
+                        {recentAttempts[round._id] && (
+                          <div className={`recent-score-badge ${recentAttempts[round._id].score >= 60 ? 'pass' : 'fail'}`}>
+                            <Trophy size={10} />
+                            {recentAttempts[round._id].score}%
+                          </div>
+                        )}
                       </div>
-                      <Button 
+                      <Button
                         className="start-round-btn"
                         style={{ background: visuals.colors.color }}
                         onClick={() => handleStartRound(round)}
                       >
-                        View Round →
+                        {recentAttempts[round._id] ? 'Reattempt →' : 'View Round →'}
                       </Button>
                     </Card.Body>
                   </Card>
@@ -676,13 +898,13 @@ const StudentCompanyInterviewPage = () => {
                 </div>
               </div>
               <div className="round-modal-actions">
-                <Button className="header-quiz-btn" onClick={handleTakeQuiz}>
-                  {selectedRound?.roundType === 'CODING'
-                    ? 'Start Challenge'
-                    : selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR'
+                {selectedRound?.roundType !== 'CODING' && (
+                  <Button className="header-quiz-btn" onClick={handleTakeQuiz}>
+                    {selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR'
                       ? 'Start Practice'
                       : 'Take Quiz'}
-                </Button>
+                  </Button>
+                )}
               </div>
             </Modal.Header>
             <Modal.Body className="round-modal-body">
@@ -703,13 +925,16 @@ const StudentCompanyInterviewPage = () => {
                           </div>
                         ))}
                       </div>
-                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
                         {expandedAnswers[q._id] ? 'Hide Answer & Explanation' : 'Show Answer & Explanation'}
                       </Button>
                       {expandedAnswers[q._id] && (
                         <div className="answer-panel">
                           <p><strong>Answer:</strong> {q.correctAnswer ?? 'Not provided'}</p>
-                          <p><strong>Explanation:</strong> {q.explanation || 'Explanation not available.'}</p>
+                          <p><strong>Explanation:</strong></p>
+                          <div className="answer-text multi-line-text">
+                            {formatExplanation(q.explanation)}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -733,6 +958,19 @@ const StudentCompanyInterviewPage = () => {
                           <code>{q.output ?? 'N/A'}</code>
                         </div>
                       </div>
+                      <div className="coding-question-footer">
+                        {recentAttempts[selectedRound._id] && (
+                          <span className={`recent-score-badge ${recentAttempts[selectedRound._id].score >= 60 ? 'pass' : 'fail'}`}>
+                            <Trophy size={10} /> Last: {recentAttempts[selectedRound._id].score}%
+                          </span>
+                        )}
+                        <Button
+                          className="coding-start-btn"
+                          onClick={() => handleStartCodingQuestion(q._id)}
+                        >
+                          <Code2 size={14} /> Start Challenge
+                        </Button>
+                      </div>
                     </div>
                   ))}
 
@@ -743,7 +981,7 @@ const StudentCompanyInterviewPage = () => {
                         <Badge className="question-type hr">HR</Badge>
                       </div>
                       <h5 className="question-text">{q.question}</h5>
-                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
                         {expandedAnswers[q._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
                       </Button>
                       {expandedAnswers[q._id] && (
@@ -768,7 +1006,7 @@ const StudentCompanyInterviewPage = () => {
                           {q.output != null && <p><strong>Expected:</strong> {String(q.output)}</p>}
                         </div>
                       )}
-                      <Button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
                         {expandedAnswers[q._id] ? 'Hide Suggested Direction' : 'Show Suggested Direction'}
                       </Button>
                       {expandedAnswers[q._id] && (
@@ -792,6 +1030,7 @@ const StudentCompanyInterviewPage = () => {
               role={selectedCompany?.role || ''}
               quizQuestions={quizQuestions}
               onClose={handleCloseRoundModal}
+              onAttemptComplete={handleAttemptComplete}
             />
           </Modal.Body>
         )}
@@ -803,6 +1042,8 @@ const StudentCompanyInterviewPage = () => {
               companyName={selectedCompany?.companyName || ''}
               role={selectedCompany?.role || ''}
               onClose={handleCloseRoundModal}
+              onAttemptComplete={handleAttemptComplete}
+              selectedQuestionId={selectedCodingQuestionId ?? undefined}
             />
           </Modal.Body>
         )}
@@ -815,6 +1056,7 @@ const StudentCompanyInterviewPage = () => {
                 companyName={selectedCompany?.companyName || ''}
                 role={selectedCompany?.role || ''}
                 onClose={handleCloseRoundModal}
+                onAttemptComplete={handleAttemptComplete}
               />
             ) : (
               <TRInterviewPractice
@@ -822,8 +1064,98 @@ const StudentCompanyInterviewPage = () => {
                 companyName={selectedCompany?.companyName || ''}
                 role={selectedCompany?.role || ''}
                 onClose={handleCloseRoundModal}
+                onAttemptComplete={handleAttemptComplete}
               />
             )}
+          </Modal.Body>
+        )}
+
+        {activeMode === 'result' && (
+          <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh', background: '#080808', overflowY: 'auto' }}>
+            <div className="round-result-screen">
+              {isAnalyzing ? (
+                <div className="result-analyzing">
+                  <Spinner animation="border" style={{ color: '#ff6b35', width: '3rem', height: '3rem' }} />
+                  <p className="result-analyzing-text">Analyzing your performance with AI…</p>
+                  <small className="result-analyzing-sub">This may take a few seconds</small>
+                </div>
+              ) : roundResult ? (
+                <>
+                  <div className="result-header">
+                    <Trophy size={22} color="#ff6b35" />
+                    <h4>{selectedRound?.roundName} — Result</h4>
+                    <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
+                  </div>
+
+                  <div className={`result-score-ring ${roundResult.score >= 60 ? 'pass' : 'fail'}`}>
+                    <span className="result-score-num">{roundResult.score}%</span>
+                    <span className="result-score-label">
+                      {roundResult.roundType === 'MCQ'
+                        ? `${roundResult.correctAnswers}/${roundResult.totalQuestions} correct`
+                        : roundResult.avgRating > 0
+                          ? `Avg Rating ${roundResult.avgRating.toFixed(1)}/5`
+                          : 'Score'}
+                    </span>
+                  </div>
+
+                  <div className={`result-status-badge ${roundResult.score >= 60 ? 'pass' : 'fail'}`}>
+                    {roundResult.score >= 60 ? '✓ Good Performance' : '✗ Needs More Practice'}
+                  </div>
+
+                  <div className="result-feedback-card">
+                    <h6>AI Feedback</h6>
+                    <p>{roundResult.aiFeedback}</p>
+                  </div>
+
+                  {roundResult.perQuestionFeedback.length > 0 && (
+                    <div className="result-breakdown">
+                      <h6>Question Breakdown</h6>
+                      {roundResult.perQuestionFeedback.map((item, idx) => {
+                        const isMCQ = roundResult.roundType === 'MCQ'
+                        const isCorrect = isMCQ && item.rating === 5
+                        const isWrong = isMCQ && item.rating === 0
+                        return (
+                          <div key={idx} className="result-q-item">
+                            <div className="result-q-title">Q{idx + 1}. {item.questionText}</div>
+                            <div className={`result-q-answer ${isCorrect ? 'correct' : isWrong ? 'wrong' : ''}`}>
+                              <span className="result-q-answer-label">Your Answer</span>
+                              <span className="result-q-answer-text">{item.textAnswer || 'Not answered'}</span>
+                            </div>
+                            {item.expectedAnswer && (
+                              <div className="result-q-expected">
+                                <span className="result-q-answer-label">
+                                  {roundResult.roundType === 'MCQ' ? 'Correct Answer' : roundResult.roundType === 'CODING' ? 'Problem Description' : 'Suggested Answer'}
+                                </span>
+                                <span className="result-q-expected-text">{item.expectedAnswer}</span>
+                              </div>
+                            )}
+                            {!isMCQ && (
+                              <div className="result-q-stars">
+                                {'★'.repeat(item.rating)}{'☆'.repeat(Math.max(0, 5 - item.rating))}
+                                <span className="result-q-rating-num">{item.rating}/5</span>
+                              </div>
+                            )}
+                            <div className="result-q-feedback">{item.feedback}</div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="result-actions">
+                    <Button variant="secondary" className="result-reattempt-btn" onClick={handleReattempt}>
+                      Reattempt
+                    </Button>
+                    <Button variant="secondary" className="result-reattempt-btn" onClick={downloadResultPDF}>
+                      Download PDF
+                    </Button>
+                    <Button className="header-quiz-btn" onClick={handleCloseRoundModal}>
+                      Done
+                    </Button>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </Modal.Body>
         )}
       </Modal>
@@ -1152,8 +1484,11 @@ const StudentCompanyInterviewPage = () => {
         }
 
         .round-type-badge {
+          background: #ff6b35 !important;
+          color: #ffffff !important;
           font-size: 0.7rem;
           padding: 0.25rem 0.6rem;
+          border: none !important;
         }
 
         .view-details-btn {
@@ -1461,6 +1796,274 @@ const StudentCompanyInterviewPage = () => {
           filter: brightness(1.1);
         }
 
+        /* Recent score badge on round card */
+        .recent-score-badge {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.25rem 0.5rem;
+          border-radius: 20px;
+          white-space: nowrap;
+        }
+
+        .recent-score-badge.pass {
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .recent-score-badge.fail {
+          background: rgba(239, 68, 68, 0.12);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        /* Result screen */
+        .round-result-screen {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 2rem 1.5rem;
+          gap: 1.2rem;
+          max-width: 680px;
+          margin: 0 auto;
+          width: 100%;
+        }
+
+        .result-analyzing {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 1rem;
+          min-height: 60vh;
+          text-align: center;
+        }
+
+        .result-analyzing-text {
+          color: #f3f3f3;
+          font-size: 1rem;
+          margin: 0;
+        }
+
+        .result-analyzing-sub {
+          color: #888;
+          font-size: 0.82rem;
+        }
+
+        .result-header {
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.3rem;
+        }
+
+        .result-header h4 {
+          color: #ff6b35;
+          margin: 0;
+          font-size: 1.15rem;
+        }
+
+        .result-header p {
+          color: #888;
+          font-size: 0.83rem;
+          margin: 0;
+        }
+
+        .result-score-ring {
+          width: 140px;
+          height: 140px;
+          border-radius: 50%;
+          border: 5px solid;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.15rem;
+        }
+
+        .result-score-ring.pass { border-color: #22c55e; }
+        .result-score-ring.fail { border-color: #ef4444; }
+
+        .result-score-num {
+          font-size: 2.2rem;
+          font-weight: 800;
+          color: #f3f3f3;
+          line-height: 1;
+        }
+
+        .result-score-label {
+          font-size: 0.72rem;
+          color: #9ca3af;
+          text-align: center;
+          padding: 0 0.5rem;
+        }
+
+        .result-status-badge {
+          font-size: 0.88rem;
+          font-weight: 700;
+          padding: 0.4rem 1.2rem;
+          border-radius: 20px;
+        }
+
+        .result-status-badge.pass {
+          background: rgba(34, 197, 94, 0.15);
+          color: #22c55e;
+          border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .result-status-badge.fail {
+          background: rgba(239, 68, 68, 0.12);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .result-feedback-card {
+          background: #0d0d0d;
+          border: 1px solid #232323;
+          border-radius: 14px;
+          padding: 1rem 1.2rem;
+          width: 100%;
+        }
+
+        .result-feedback-card h6 {
+          color: #ff6b35;
+          font-size: 0.82rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 0.5rem;
+        }
+
+        .result-feedback-card p {
+          color: #d1d5db;
+          font-size: 0.9rem;
+          margin: 0;
+          line-height: 1.55;
+        }
+
+        .result-breakdown {
+          background: #0d0d0d;
+          border: 1px solid #232323;
+          border-radius: 14px;
+          padding: 1rem 1.2rem;
+          width: 100%;
+        }
+
+        .result-breakdown h6 {
+          color: #ff6b35;
+          font-size: 0.82rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 0.8rem;
+        }
+
+        .result-q-item {
+          border-top: 1px solid #1e1e1e;
+          padding: 0.7rem 0;
+        }
+
+        .result-q-item:first-of-type { border-top: none; padding-top: 0; }
+
+        .result-q-title {
+          font-size: 0.85rem;
+          color: #e5e7eb;
+          margin-bottom: 0.3rem;
+          font-weight: 500;
+        }
+
+        .result-q-stars {
+          color: #f59e0b;
+          font-size: 1rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .result-q-rating-num {
+          font-size: 0.72rem;
+          color: #9ca3af;
+        }
+
+        .result-q-answer {
+          background: #111;
+          border: 1px solid #2a2a2a;
+          border-radius: 8px;
+          padding: 0.55rem 0.8rem;
+          margin: 0.35rem 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .result-q-answer.correct { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
+        .result-q-answer.wrong   { border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.06); }
+
+        .result-q-answer-label {
+          font-size: 0.68rem;
+          text-transform: uppercase;
+          letter-spacing: .05em;
+          color: #6b7280;
+          font-weight: 600;
+        }
+
+        .result-q-answer-text {
+          font-size: 0.85rem;
+          color: #e5e7eb;
+          white-space: pre-wrap;
+          line-height: 1.45;
+        }
+
+        .result-q-expected {
+          background: #111;
+          border: 1px solid rgba(168, 85, 247, 0.3);
+          border-radius: 8px;
+          padding: 0.55rem 0.8rem;
+          margin: 0.35rem 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.2rem;
+        }
+
+        .result-q-expected-text {
+          font-size: 0.85rem;
+          color: #c084fc;
+          white-space: pre-wrap;
+          line-height: 1.45;
+        }
+
+        .result-q-feedback {
+          font-size: 0.8rem;
+          color: #9ca3af;
+          line-height: 1.45;
+        }
+
+        .result-actions {
+          display: flex;
+          gap: 0.8rem;
+          width: 100%;
+          justify-content: center;
+          padding-top: 0.5rem;
+        }
+
+        .result-reattempt-btn {
+          border: 1px solid #444;
+          background: #141414;
+          color: #d8d8d8;
+          border-radius: 8px;
+          font-size: 0.88rem;
+          padding: 0.5rem 1.4rem;
+        }
+
+        .result-reattempt-btn:hover {
+          border-color: #ff6b35;
+          color: #ff6b35;
+          background: #1a1a1a;
+        }
+
         /* Round Modal */
         .round-modal .modal-content {
           background: #0a0a0a;
@@ -1470,6 +2073,7 @@ const StudentCompanyInterviewPage = () => {
         }
 
         .round-modal-header {
+          position: relative;
           background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
           border-bottom: 2px solid #ff6b35;
           padding: 0.75rem 1rem;
@@ -1478,6 +2082,22 @@ const StudentCompanyInterviewPage = () => {
           align-items: center;
           flex: 0 0 auto;
           padding-right: 4.5rem;
+        }
+
+        .round-modal-header .btn-close {
+          position: absolute;
+          right: 1rem;
+          top: 50%;
+          transform: translateY(-50%);
+          margin: 0;
+          width: 2rem;
+          height: 2rem;
+          opacity: 0.85;
+          filter: invert(1);
+        }
+
+        .round-modal-header .btn-close:hover {
+          opacity: 1;
         }
 
         .round-modal-title {
@@ -1549,6 +2169,35 @@ const StudentCompanyInterviewPage = () => {
           padding: 1.25rem;
         }
 
+        .coding-question-footer {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 0.75rem;
+          margin-top: 1rem;
+          padding-top: 0.9rem;
+          border-top: 1px solid #1e1e1e;
+        }
+
+        .coding-start-btn {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          background: #ff6b35;
+          border: none;
+          border-radius: 8px;
+          color: #fff;
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 0.45rem 1.1rem;
+          transition: filter 0.18s;
+        }
+
+        .coding-start-btn:hover {
+          filter: brightness(1.12);
+          background: #ff6b35;
+        }
+
         .question-header {
           display: flex;
           justify-content: space-between;
@@ -1563,14 +2212,14 @@ const StudentCompanyInterviewPage = () => {
         }
 
         .question-type {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-          padding: 0.25rem 0.75rem;
+          background: rgba(255, 107, 53, 0.15) !important;
+          color: #ff6b35 !important;
+          padding: 0.25rem 0.75rem !important;
         }
 
         .question-type.coding {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
+          background: rgba(255, 107, 53, 0.15) !important;
+          color: #ff6b35 !important;
         }
 
         .question-type.hr {
@@ -1681,9 +2330,9 @@ const StudentCompanyInterviewPage = () => {
           margin-top: 0.75rem;
           width: 100%;
           text-align: left;
-          background: transparent;
-          border: 1px solid #2e2e2e;
-          color: #e0e0e0;
+          background: transparent !important;
+          border: 1px solid #2e2e2e !important;
+          color: #e0e0e0 !important;
           padding: 0.65rem 0.8rem;
           border-radius: 8px;
         }
@@ -1705,6 +2354,14 @@ const StudentCompanyInterviewPage = () => {
           margin: 0.25rem 0;
           color: #cccccc;
           font-size: 0.85rem;
+        }
+
+        .answer-text {
+          white-space: pre-line;
+          color: #cccccc;
+          font-size: 0.85rem;
+          margin-top: 0.35rem;
+          line-height: 1.6;
         }
 
         /* Scrollbar */
