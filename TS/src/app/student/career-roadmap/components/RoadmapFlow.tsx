@@ -52,6 +52,8 @@ interface FlatStep extends StepWithCourse {
   sectionId: string
   sectionTitle: string
   isFirstInSection: boolean
+  isOrGroup?: boolean
+  orOptions?: StepWithCourse[]
 }
 
 /* ─────────────────────────────────────────────────
@@ -420,6 +422,55 @@ const StepNode = ({
 }
 
 /* ─────────────────────────────────────────────────
+   OR Group Node
+───────────────────────────────────────────────── */
+const OrGroupNode = ({
+  step,
+  color,
+  isRTL = false,
+}: {
+  step: FlatStep
+  color: string
+  isRTL?: boolean
+}) => {
+  const arrowColor = color + '66'
+  const names = step.orOptions?.map(o => o.name) ?? [step.name]
+  const anyEnrolled = step.orOptions?.some(o => o.status === 'enrolled') ?? false
+
+  return (
+    <div className="rm-step-col" style={{ cursor: 'default' }}>
+      <div
+        className="rm-node"
+        style={{
+          border: `1.5px solid ${color + '55'}`,
+          boxShadow: anyEnrolled ? `0 0 16px ${color}30, inset 0 0 20px ${color}08` : 'none',
+        }}
+      >
+        <div className="d-flex align-items-center justify-content-center gap-2">
+          {isRTL && <span style={{ color: arrowColor, fontSize: 18, flexShrink: 0, lineHeight: 1 }}>‹</span>}
+          <span className="rm-node-title" style={{ textAlign: 'center', lineHeight: 1.6 }}>
+            {names.map((name, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span style={{ opacity: 0.4, margin: '0 3px', fontSize: 11 }}>|</span>}
+                {name}
+              </React.Fragment>
+            ))}
+          </span>
+          {!isRTL && <span style={{ color: arrowColor, fontSize: 18, flexShrink: 0, lineHeight: 1 }}>›</span>}
+        </div>
+        <span className="rm-project-badge" style={{ borderColor: color + '44', color: color + 'cc', borderStyle: 'dashed' }}>
+          Pick one
+        </span>
+      </div>
+      <div className="rm-dot" style={{ backgroundColor: color + '55' }} />
+      <div className="rm-pills">
+        <span className="rm-pill">Choose your framework</span>
+      </div>
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────────
    Main Component
 ───────────────────────────────────────────────── */
 const N_PER_ROW = 4
@@ -437,7 +488,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
   const [courses, setCourses] = useState<FullCourse[]>([])
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [sections, setSections] = useState<{ id: string; title: string; steps: StepWithCourse[] }[]>([])
+  const [sections, setSections] = useState<{ id: string; title: string; steps: StepWithCourse[]; isChoiceGroup?: boolean }[]>([])
 
   useEffect(() => {
     if (!token) { setLoading(false); return }
@@ -464,6 +515,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
     if (loading) return
     const mapped = roadmap.sections.map((sec) => ({
       ...sec,
+      isChoiceGroup: sec.isChoiceGroup,
       steps: sec.steps.map((step) => {
         const matched = matchCourse(courses, step)
         const status: 'enrolled' | 'available' | 'coming_soon' = !matched
@@ -481,9 +533,20 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
   const flatSteps = useMemo<FlatStep[]>(() => {
     const result: FlatStep[] = []
     sections.forEach((sec) => {
-      sec.steps.forEach((step, idx) => {
-        result.push({ ...step, sectionId: sec.id, sectionTitle: sec.title, isFirstInSection: idx === 0 })
-      })
+      if (sec.isChoiceGroup) {
+        result.push({
+          ...sec.steps[0],
+          sectionId: sec.id,
+          sectionTitle: sec.title,
+          isFirstInSection: true,
+          isOrGroup: true,
+          orOptions: sec.steps,
+        })
+      } else {
+        sec.steps.forEach((step, idx) => {
+          result.push({ ...step, sectionId: sec.id, sectionTitle: sec.title, isFirstInSection: idx === 0 })
+        })
+      }
     })
     return result
   }, [sections])
@@ -599,8 +662,13 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
             const firstStep = row[0]
             const lastStep = row[row.length - 1]
 
-            /* Show section label when a new section starts at this row's first step */
-            const sectionLabel = firstStep?.isFirstInSection ? firstStep.sectionTitle : undefined
+            /* Section label — only show above row 0; rows 1+ get label from previous snake connector */
+            const sectionLabel = rowIdx === 0 ? row.find(s => s.isFirstInSection)?.sectionTitle : undefined
+
+            /* Section label for the NEXT row — embedded in snake connector */
+            const nextSectionLabel = !isLastRow
+              ? rows[rowIdx + 1]?.find(s => s.isFirstInSection)?.sectionTitle
+              : undefined
 
             const incomingColor = firstStep?.status === 'enrolled'
               ? color
@@ -610,7 +678,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
 
             return (
               <div key={rowIdx} className="rm-row-block">
-                {/* Section label */}
+                {/* Section label above row — only for row 0 */}
                 {sectionLabel && (
                   <div className="rm-section-label-row">
                     <div className="rm-h-line" />
@@ -634,10 +702,14 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
                   {/* Incoming connector */}
                   <div className="rm-connector" style={{ backgroundColor: incomingColor }} />
 
-                  {/* Nodes + inter-connectors */}
+                  {/* Nodes — OR group renders as inline choice node */}
                   {row.map((step, stepIdx) => (
                     <React.Fragment key={step.id}>
-                      <StepNode step={step} color={color} isRTL={isRTL} />
+                      {step.isOrGroup ? (
+                        <OrGroupNode step={step} color={color} isRTL={isRTL} />
+                      ) : (
+                        <StepNode step={step} color={color} isRTL={isRTL} />
+                      )}
                       {stepIdx < row.length - 1 && (
                         <div className="rm-connector" style={{ backgroundColor: getConnColor(step, row[stepIdx + 1]) }} />
                       )}
@@ -645,22 +717,41 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
                   ))}
                 </div>
 
-                {/* Snake turn — vertical drop on trailing side, outside the row */}
+                {/* Snake turn — vertical drop on trailing side with next section label embedded */}
                 {!isLastRow && (
                   <div
                     className="rm-snake-drop"
-                    style={{ justifyContent: isRTL ? 'flex-start' : 'flex-end' }}
+                    style={{ position: 'relative', minHeight: nextSectionLabel ? 120 : 72 }}
                   >
-                    <div className="rm-snake-drop-inner">
-                      {/* Horizontal arm connecting from node row to vertical bar */}
-                      <div className="rm-snake-arm" style={{ backgroundColor: dropColor }} />
-                      {/* Vertical bar + arrowhead */}
-                      <div className="rm-v-bar" style={{ backgroundColor: dropColor }}>
-                        <div className="rm-v-arrow" style={{
-                          borderTop: `13px solid ${dropColor}`,
-                        }} />
+                    {/* Vertical bar — absolutely positioned at trailing edge */}
+                    <div
+                      className="rm-v-bar"
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 14,
+                        [isRTL ? 'left' : 'right']: 20,
+                        backgroundColor: dropColor,
+                      }}
+                    />
+                    {/* Arrowhead at bottom of vertical bar */}
+                    <div
+                      className="rm-v-arrow"
+                      style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        [isRTL ? 'left' : 'right']: 12,
+                        borderTop: `13px solid ${dropColor}`,
+                      }}
+                    />
+                    {/* Next section label — anchored near the bottom (just above next row) */}
+                    {nextSectionLabel && (
+                      <div className="rm-section-label-row" style={{ position: 'absolute', bottom: 22, left: 0, right: 0, zIndex: 1, margin: 0 }}>
+                        <div className="rm-h-line" />
+                        <div className="rm-section-label">{nextSectionLabel}</div>
+                        <div className="rm-h-line" />
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -775,7 +866,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
         .rm-section-label-row {
           display: flex;
           align-items: center;
-          margin: 16px 0 20px;
+          margin: 16px 0 16px;
         }
         .rm-h-line { flex: 1; height: 1px; background: #1e2535; }
         .rm-section-label {
@@ -791,6 +882,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
           text-transform: uppercase;
           background: #0d1117;
         }
+
 
         /* Node row — full width, NO horizontal scroll */
         .rm-node-row {
@@ -923,33 +1015,13 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
 
         /* Snake turn connector */
         .rm-snake-drop {
-          display: flex;
-          padding: 0 0 8px;
           margin-top: 0;
-        }
-        .rm-snake-drop-inner {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 0 20px;
-        }
-        .rm-snake-arm {
-          width: 2px;
-          height: 0;
-          /* arm is handled by the v-bar starting immediately */
         }
         .rm-v-bar {
           width: 3px;
-          height: 56px;
           border-radius: 2px;
-          position: relative;
-          margin-top: -2px;
         }
         .rm-v-arrow {
-          position: absolute;
-          bottom: -12px;
-          left: 50%;
-          transform: translateX(-50%);
           width: 0;
           height: 0;
           border-left: 9px solid transparent;

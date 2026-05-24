@@ -71,7 +71,7 @@ const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
           <div className="d-flex align-items-center gap-2">
             <Badge
               className="text-uppercase fw-semibold"
-              style={{ backgroundColor: roadmap.color + '22', color: roadmap.color, fontSize: '10px', letterSpacing: '0.05em' }}
+              style={{ backgroundColor: roadmap.color, color: '#fff', fontSize: '10px', letterSpacing: '0.05em' }}
             >
               {roadmap.type}
             </Badge>
@@ -173,7 +173,13 @@ const CareerRoadmapList = () => {
             >
               {icon}
               {type === 'ALL' ? 'All Roadmaps' : type === 'ROLE' ? 'Role-Based' : 'Skill-Based'}
-              <Badge bg={activeType === type ? 'light' : 'secondary'} text={activeType === type ? 'dark' : 'light'} style={{ fontSize: '10px' }}>
+              <Badge
+                style={{
+                  fontSize: '10px',
+                  backgroundColor: activeType === type ? '#ffffff' : '#4b5563',
+                  color: activeType === type ? '#111' : '#f1f5f9',
+                }}
+              >
                 {count}
               </Badge>
             </Button>

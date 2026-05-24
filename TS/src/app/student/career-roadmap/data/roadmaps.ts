@@ -13,6 +13,7 @@ export interface RoadmapSection {
   id: string
   title: string
   steps: RoadmapStep[]
+  isChoiceGroup?: boolean
 }
 
 export interface CareerRoadmap {
@@ -53,15 +54,28 @@ export const careerRoadmaps: CareerRoadmap[] = [
         ],
       },
       {
-        id: 'frontend',
-        title: 'FRONTEND FRAMEWORK',
+        id: 'css-tooling',
+        title: 'CSS & TOOLING',
         steps: [
           t('css-frameworks', 'CSS Frameworks', ['Tailwind CSS', 'Bootstrap 5', 'Sass / SCSS', 'CSS Modules'], ['tailwind', 'bootstrap', 'css framework', 'sass', 'scss']),
+        ],
+      },
+      {
+        id: 'framework-choice',
+        title: 'PICK YOUR FRAMEWORK',
+        isChoiceGroup: true,
+        steps: [
           t('react', 'React', ['Components & Props', 'Hooks', 'Context API', 'React Router'], ['react', 'reactjs', 'frontend framework', 'ui library']),
           t('vue', 'Vue.js', ['Vue 3 Composition API', 'Components', 'Pinia / Vuex', 'Vue Router'], ['vue', 'vuejs', 'vue.js', 'vue 3', 'vuex', 'pinia']),
           t('angular', 'Angular', ['Components & Modules', 'Services & DI', 'RxJS', 'Angular Router'], ['angular', 'angularjs', 'angular framework']),
           t('svelte', 'Svelte / SvelteKit', ['Svelte Basics', 'Reactivity', 'Stores', 'SvelteKit Routing'], ['svelte', 'sveltekit', 'svelte framework']),
           t('nextjs', 'Next.js', ['App Router', 'SSR & SSG', 'API Routes', 'Image Optimization'], ['nextjs', 'next.js', 'ssr', 'server side rendering', 'nextjs 14']),
+        ],
+      },
+      {
+        id: 'frontend-essentials',
+        title: 'FRONTEND ESSENTIALS',
+        steps: [
           t('typescript', 'TypeScript', ['Types & Interfaces', 'Generics', 'TypeScript with React/Vue'], ['typescript', 'ts', 'typed javascript']),
           p('framework-project', 'Frontend Framework — Project', ['E-Commerce UI', 'Dashboard App', 'Real-time Features'], ['react project', 'vue project', 'angular project', 'frontend app'], 'Build a full SPA with your chosen framework'),
         ],
@@ -104,14 +118,27 @@ export const careerRoadmaps: CareerRoadmap[] = [
         ],
       },
       {
-        id: 'frontend',
-        title: 'FRONTEND',
+        id: 'css-tooling',
+        title: 'CSS & TOOLING',
         steps: [
           t('css-frameworks', 'CSS Frameworks', ['Tailwind CSS', 'Bootstrap', 'Sass/SCSS', 'Styled Components'], ['tailwind', 'bootstrap', 'css framework', 'sass']),
+        ],
+      },
+      {
+        id: 'framework-choice',
+        title: 'PICK YOUR FRAMEWORK',
+        isChoiceGroup: true,
+        steps: [
           t('react', 'React', ['Hooks', 'Context API', 'State Management', 'React Router'], ['react', 'reactjs']),
           t('vue', 'Vue.js', ['Vue 3', 'Composition API', 'Pinia', 'Vue Router'], ['vue', 'vuejs', 'vue 3']),
           t('angular', 'Angular', ['Components', 'Services & DI', 'RxJS', 'Angular Forms'], ['angular', 'angularjs']),
           t('nextjs', 'Next.js / Nuxt.js', ['SSR & SSG', 'App Router', 'API Routes', 'Middleware'], ['nextjs', 'next.js', 'nuxt', 'ssr']),
+        ],
+      },
+      {
+        id: 'frontend-essentials',
+        title: 'FRONTEND ESSENTIALS',
+        steps: [
           t('typescript', 'TypeScript', ['Types & Interfaces', 'Generics', 'TS with Frameworks'], ['typescript', 'ts']),
           p('frontend-project', 'Frontend Project', ['Dashboard App', 'E-Commerce UI', 'SPA with Auth'], ['react project', 'frontend project', 'vue project']),
         ],
