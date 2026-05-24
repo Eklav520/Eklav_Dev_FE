@@ -163,6 +163,8 @@ const StudentPlacement = lazy(() => import('@/app/student/placement/page'))
 const StudentCompanyRounds = lazy(() => import('@/app/student/company-rounds/pages'))
 const StudentCompanyDetails = lazy(() => import('@/app/student/company-rounds/pages'))
 const StudentCompanyList = lazy(() => import('@/app/student/company-rounds/pages'))
+const CareerRoadmap = lazy(() => import('@/app/student/career-roadmap/page'))
+const CareerRoadmapDetail = lazy(() => import('@/app/student/career-roadmap/[roleId]/page'))
 //const BlogDetail = lazy(() => import('@/app/student/blog-details/[blogId]/page'))
 
 //Admin
@@ -969,6 +971,16 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/placement',
     name: 'Placement Board',
     element: <StudentPlacement />,
+  },
+  {
+    path: '/student/career-roadmap',
+    name: 'Career Roadmap',
+    element: <CareerRoadmap />,
+  },
+  {
+    path: '/student/career-roadmap/:roleId',
+    name: 'Career Roadmap Detail',
+    element: <CareerRoadmapDetail />,
   },
 ]
 

@@ -648,6 +648,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     label: 'Courses',
     icon: BsBook, // 📚 tech-related
     children: [
+      { key: 'careerRoadmap', label: 'Career Roadmap', icon: BsGraphUp, url: '/student/career-roadmap', parentKey: 'courses' },
       { key: 'availableCourses', label: 'Available Courses', icon: BsGridFill, url: '/student/available-courses', parentKey: 'courses' },
       { key: 'enrolledCourses', label: 'Enrolled Courses', icon: FaUserGraduate, url: '/student/course-list', parentKey: 'courses' },
       {
