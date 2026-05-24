@@ -159,8 +159,8 @@ const getPlainTextFromHtml = (html?: string) => {
 }
 
 // ================= COMPONENTS =================
-const CompanyCard: React.FC<{ company: Company; onClick: () => void }> = ({ company, onClick }) => (
-  <Card className="company-card" onClick={onClick}>
+const CompanyCard: React.FC<{ company: Company; onClick: () => void; isLoading?: boolean }> = ({ company, onClick, isLoading }) => (
+  <Card className={`company-card ${isLoading ? 'company-card--loading' : ''}`}>
     <Card.Body>
       <div className="company-header">
         <div className="company-icon">
@@ -202,7 +202,13 @@ const CompanyCard: React.FC<{ company: Company; onClick: () => void }> = ({ comp
             })}
           </div>
         </div>
-        <Button className="view-details-btn">View Details →</Button>
+        <Button className="view-details-btn" onClick={onClick} disabled={isLoading}>
+          {isLoading ? (
+            <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" /> Loading...</>
+          ) : (
+            'View Details →'
+          )}
+        </Button>
       </div>
     </Card.Body>
   </Card>
@@ -257,6 +263,9 @@ const StudentCompanyInterviewPage = () => {
 
   // Coding — which specific problem the student chose to practice
   const [selectedCodingQuestionId, setSelectedCodingQuestionId] = useState<string | null>(null)
+
+  // Which company card is currently loading details
+  const [loadingCompanyId, setLoadingCompanyId] = useState<string | null>(null)
 
   const companyFilterOptions = useMemo(() => {
     const names = companies
@@ -386,6 +395,8 @@ const StudentCompanyInterviewPage = () => {
 
   // Fetch company details
   const fetchCompanyDetails = async (companyId: string) => {
+    if (loadingCompanyId) return
+    setLoadingCompanyId(companyId)
     try {
       const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -401,6 +412,8 @@ const StudentCompanyInterviewPage = () => {
       fetchRecentAttempts(companyId)
     } catch (err: any) {
       setError(err.message || 'Failed to load company details')
+    } finally {
+      setLoadingCompanyId(null)
     }
   }
 
@@ -716,10 +729,11 @@ const StudentCompanyInterviewPage = () => {
         ) : (
           <div className="companies-grid">
             {filteredCompanies.map((company) => (
-              <CompanyCard 
-                key={company._id} 
-                company={company} 
+              <CompanyCard
+                key={company._id}
+                company={company}
                 onClick={() => fetchCompanyDetails(company._id)}
+                isLoading={loadingCompanyId === company._id}
               />
             ))}
           </div>
