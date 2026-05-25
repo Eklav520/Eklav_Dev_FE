@@ -172,9 +172,9 @@ const EditCourseModal = ({
         return
       }
       
-      // Check file size (limit to 2GB)
-      if (file.size > 2 * 1024 * 1024 * 1024) {
-        alert('File size too large. Please select a video under 2GB')
+      // Check file size (limit to 5GB)
+      if (file.size > 5 * 1024 * 1024 * 1024) {
+        alert('File size too large. Please select a video under 5GB')
         return
       }
       
@@ -545,7 +545,7 @@ const EditCourseModal = ({
                           <div className="ecm-field">
                             <label className="ecm-label">Video File</label>
                             <input ref={fileInputRef} type="file" accept="video/*" className="ecm-file-input" onChange={handleVideoFileSelect} disabled={uploadingVideo} />
-                            <span className="ecm-hint">MP4, MOV, AVI — max 2 GB</span>
+                            <span className="ecm-hint">MP4, MOV, AVI — max 5 GB</span>
                           </div>
                         </Col>
                         <Col md={6}>
