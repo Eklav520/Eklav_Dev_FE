@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Container, Card, Form, Button, Row, Col, Spinner, ProgressBar, Badge, Modal } from 'react-bootstrap'
-import { FaFeatherAlt, FaPlay, FaRedo, FaLightbulb, FaCheckCircle, FaPenNib, FaStar } from 'react-icons/fa'
+import { FaFeatherAlt, FaPlay, FaRedo, FaLightbulb, FaCheckCircle, FaPenNib } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
 interface WritingFeedbackResult {
@@ -295,7 +295,7 @@ const WritingPractice: React.FC = () => {
             {mode === 'essay' ? 'Essay Writing' : mode === 'email' ? 'Email Writing' : 'Summary Writing'}
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ background: '#f8fafc', overflow: 'hidden', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', height: 0, flex: 1 }}>
+        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '1rem 1.25rem' }}>
         <div className="practice-container">
           {/* Question Section - Top */}
           <Card className="question-card">
@@ -352,34 +352,20 @@ const WritingPractice: React.FC = () => {
                   </Form.Group>
 
                   {/* Action Buttons */}
-                  <div className="action-buttons mt-4">
-                    <Row className="g-3">
-                      <Col md={6}>
-                        <Button
-                          variant="success"
-                          disabled={loading || !text.trim() || isLimitReached}
-                          onClick={handleSubmit}
-                          className="w-100 submit-button">
-                          {loading ? (
-                            <>
-                              <Spinner animation="border" size="sm" className="me-2" />
-                              Evaluating...
-                            </>
-                          ) : (
-                            <>
-                              <FaCheckCircle className="me-2" />
-                              Submit
-                            </>
-                          )}
-                        </Button>
-                      </Col>
-                      <Col md={6}>
-                        <Button variant="outline-primary" onClick={restartPractice} className="w-100 restart-button">
-                          <FaRedo className="me-2" />
-                          Try Another Topic
-                        </Button>
-                      </Col>
-                    </Row>
+                  <div className="action-buttons">
+                    <Button
+                      disabled={loading || !text.trim() || isLimitReached}
+                      onClick={handleSubmit}
+                      className="submit-button">
+                      {loading ? (
+                        <><Spinner animation="border" size="sm" className="me-1" />Evaluating...</>
+                      ) : (
+                        <><FaCheckCircle className="me-1" />Submit</>
+                      )}
+                    </Button>
+                    <Button onClick={restartPractice} className="restart-button">
+                      <FaRedo className="me-1" />New Topic
+                    </Button>
                   </div>
                 </Card.Body>
               </Card>
@@ -402,96 +388,78 @@ const WritingPractice: React.FC = () => {
                     </div>
                   ) : feedback ? (
                     <div className="feedback-content">
-                      {/* Score Section */}
-                      <div className="score-display text-center mb-4">
-                        <h3 className="fw-bold mb-3">Your Writing Score</h3>
-                        <div className="score-circle mb-3">
-                          <span className="score-number">{feedback.score}/10</span>
-                          <span className="score-text">{getScoreFeedback(feedback.score!)}</span>
+
+                      {/* Score Row */}
+                      <div className="score-row">
+                        <div className="score-circle-sm">
+                          <span className="score-num">{feedback.score}</span>
+                          <span className="score-denom">/10</span>
                         </div>
-                        <ProgressBar now={feedback.score! * 10} variant={getScoreVariant(feedback.score!)} className="score-bar" />
+                        <div className="score-details">
+                          <div className="score-label">{getScoreFeedback(feedback.score!)}</div>
+                          <ProgressBar now={feedback.score! * 10} variant={getScoreVariant(feedback.score!)} className="score-bar" />
+                          <div className="score-hint">{feedback.score! >= 7 ? 'Great work! Keep it up.' : feedback.score! >= 4 ? 'Good effort, room to improve.' : 'Keep practising — you\'ll get there!'}</div>
+                        </div>
                       </div>
 
                       {/* Corrected Version */}
                       {feedback.corrections && (
-                        <div className="feedback-item corrected-version mb-3">
-                          <h6 className="fw-bold">
-                            <FaCheckCircle className="me-2" />
-                            Corrected Version
-                          </h6>
-                          {feedback.corrections && <div className="content-box">{formatParagraphs(feedback.corrections)}</div>}
+                        <div className="fb-section fb-correction">
+                          <div className="fb-section-title"><span className="fb-icon">✅</span>Corrected Version</div>
+                          <div className="fb-section-body">{formatParagraphs(feedback.corrections)}</div>
                         </div>
                       )}
 
-                      {/* Detailed Feedback */}
                       {feedback.feedback && (
                         <>
-                          {/* Overall Feedback */}
                           {feedback.feedback.overall && (
-                            <div className="feedback-item overall-feedback mb-3">
-                              <h6 className="fw-bold">
-                                <FaStar className="me-2" />
-                                Overall Feedback
-                              </h6>
-                              {feedback.feedback?.overall && <div className="content-box">{formatParagraphs(feedback.feedback?.overall)}</div>}
+                            <div className="fb-section fb-overall">
+                              <div className="fb-section-title"><span className="fb-icon">⭐</span>Overall Feedback</div>
+                              <div className="fb-section-body">{formatParagraphs(feedback.feedback.overall)}</div>
                             </div>
                           )}
 
-                          {/* Skills Assessment */}
                           {(feedback.feedback.grammar || feedback.feedback.tone) && (
-                            <div className="feedback-item skills-assessment mb-3">
-                              <h6 className="fw-bold mb-3">Skills Breakdown</h6>
-                              <Row className="g-2">
-                                {feedback.feedback.grammar && (
-                                  <Col md={6}>
-                                    <div className="skill-card grammar h-100">
-                                      <div className="skill-icon">📚</div>
-                                      <div className="skill-content">
-                                        <h6 className="fw-bold">Grammar & Vocabulary</h6>
-                                        {feedback.feedback?.grammar && <p className="mb-0 small">{formatParagraphs(feedback.feedback?.grammar)}</p>}
-                                      </div>
-                                    </div>
-                                  </Col>
-                                )}
-                                {feedback.feedback.tone && (
-                                  <Col md={6}>
-                                    <div className="skill-card tone h-100">
-                                      <div className="skill-icon">🎯</div>
-                                      <div className="skill-content">
-                                        <h6 className="fw-bold">Tone & Structure</h6>
-                                        {feedback.feedback?.tone && <p className="mb-0 small">{formatParagraphs(feedback.feedback?.tone)}</p>}
-                                      </div>
-                                    </div>
-                                  </Col>
-                                )}
-                              </Row>
+                            <div className="fb-skills-row">
+                              {feedback.feedback.grammar && (
+                                <div className="fb-skill-chip">
+                                  <span className="fb-skill-icon">📚</span>
+                                  <div>
+                                    <div className="fb-skill-title">Grammar</div>
+                                    <div className="fb-skill-text">{formatParagraphs(feedback.feedback.grammar)}</div>
+                                  </div>
+                                </div>
+                              )}
+                              {feedback.feedback.tone && (
+                                <div className="fb-skill-chip">
+                                  <span className="fb-skill-icon">🎯</span>
+                                  <div>
+                                    <div className="fb-skill-title">Tone & Structure</div>
+                                    <div className="fb-skill-text">{formatParagraphs(feedback.feedback.tone)}</div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
 
-                          {/* Suggestions */}
                           {feedback.feedback.suggestions?.length ? (
-                            <div className="feedback-item recommendations">
-                              <h6 className="fw-bold">
-                                <FaLightbulb className="me-2" />
-                                Suggestions for Improvement
-                              </h6>
-                              <div className="content-box">
-                                <ul className="mb-0 suggestions-list">
-                                  {feedback.feedback.suggestions.map((s, i) => (
-                                    <li key={i}>{s}</li>
-                                  ))}
-                                </ul>
-                              </div>
+                            <div className="fb-section fb-suggestions">
+                              <div className="fb-section-title"><span className="fb-icon">💡</span>Suggestions</div>
+                              <ul className="fb-suggestions-list">
+                                {feedback.feedback.suggestions.map((s, i) => (
+                                  <li key={i}><span className="fb-bullet">→</span>{s}</li>
+                                ))}
+                              </ul>
                             </div>
                           ) : null}
                         </>
                       )}
                     </div>
                   ) : (
-                    <div className="empty-feedback text-center d-flex flex-column justify-content-center align-items-center">
-                      <div className="display-1 text-muted mb-3">✍️</div>
-                      <h5 className="text-muted">Ready for Feedback</h5>
-                      <p className="text-muted">Submit your writing to receive detailed AI feedback on your skills.</p>
+                    <div className="empty-feedback">
+                      <div className="empty-icon">✍️</div>
+                      <h5>Ready for Feedback</h5>
+                      <p>Submit your writing to receive detailed AI analysis on grammar, tone, and structure.</p>
                     </div>
                   )}
                 </Card.Body>
@@ -661,7 +629,6 @@ const WritingPractice: React.FC = () => {
         /* Practice Container */
         .practice-container {
           width: 100%;
-          height: 100%;
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
@@ -724,10 +691,9 @@ const WritingPractice: React.FC = () => {
           font-size: 0.9rem;
         }
 
-        /* Practice Layout — fills remaining height */
+        /* Practice Layout */
         .practice-layout {
-          flex: 1;
-          min-height: 0;
+          height: calc(100vh - 210px);
           align-items: stretch;
           margin-left: 0;
           margin-right: 0;
@@ -737,26 +703,27 @@ const WritingPractice: React.FC = () => {
         .practice-layout > [class*="col-"] {
           display: flex;
           flex-direction: column;
+          height: 100%;
         }
 
-        /* Writing Card */
+        /* ── Writing Card ── */
         .writing-card {
           border: none;
           border-radius: 14px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-          background: #ffffff;
-          flex: 1;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+          background: #fff;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          min-height: 0;
+          overflow: hidden;
         }
 
         .writing-header {
-          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-          color: white;
-          font-size: 1rem;
+          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
+          color: #fff;
+          font-size: 0.9rem;
           font-weight: 600;
-          padding: 0.75rem 1.25rem;
+          padding: 0.6rem 1rem;
           display: flex;
           align-items: center;
           justify-content: space-between;
@@ -766,19 +733,19 @@ const WritingPractice: React.FC = () => {
         }
 
         .word-count {
-          background: rgba(255, 255, 255, 0.2);
-          padding: 0.25rem 0.75rem;
-          border-radius: 12px;
-          font-size: 0.8rem;
+          background: rgba(255,255,255,0.22);
+          padding: 0.2rem 0.65rem;
+          border-radius: 20px;
+          font-size: 0.75rem;
           font-weight: 500;
         }
 
         .writing-body {
-          padding: 1rem 1.25rem;
+          padding: 0.75rem 1rem;
           flex: 1;
+          min-height: 0;
           display: flex;
           flex-direction: column;
-          min-height: 0;
           overflow: hidden;
         }
 
@@ -792,264 +759,279 @@ const WritingPractice: React.FC = () => {
 
         .writing-textarea {
           border-radius: 10px;
-          border: 2px solid #e2e8f0;
-          padding: 1rem;
-          font-size: 1rem;
-          line-height: 1.6;
+          border: 1.5px solid #e2e8f0;
+          padding: 0.85rem;
+          font-size: 0.92rem;
+          line-height: 1.65;
           resize: none;
           flex: 1;
-          min-height: 120px;
-          background: #ffffff !important;
+          min-height: 0;
+          background: #fafafa !important;
           color: #2d3748 !important;
-          transition: border-color 0.2s ease;
-          font-family: 'Inter', sans-serif;
+          transition: border-color 0.2s;
         }
 
         .writing-textarea:focus {
           border-color: #ff7a00;
-          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.2);
+          background: #fff !important;
+          box-shadow: 0 0 0 3px rgba(255,122,0,0.12);
+          outline: none;
         }
 
-        /* Action Buttons */
+        /* ── Action Buttons ── */
         .action-buttons {
-          margin-top: 0.75rem;
+          display: flex;
+          gap: 8px;
+          padding-top: 0.6rem;
           flex-shrink: 0;
-        }
-
-        .submit-button, .restart-button {
-          padding: 0.6rem 1.25rem;
-          border-radius: 10px;
-          font-size: 0.95rem;
-          font-weight: 600;
-          border: none;
-          transition: all 0.2s ease;
         }
 
         .submit-button {
-          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
+          flex: 1;
+          padding: 0.45rem 1rem;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          font-weight: 600;
+          border: none;
+          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
+          color: #fff;
+          transition: opacity 0.15s, box-shadow 0.15s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
         }
 
-        .submit-button:hover:not(:disabled) {
-          box-shadow: 0 6px 18px rgba(255, 122, 0, 0.35);
-        }
+        .submit-button:hover:not(:disabled) { opacity: 0.92; box-shadow: 0 4px 12px rgba(255,122,0,0.3); }
+        .submit-button:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .restart-button {
-          border: 2px solid #ff7a00 !important;
+          flex: 1;
+          padding: 0.45rem 1rem;
+          border-radius: 8px;
+          font-size: 0.82rem;
+          font-weight: 600;
+          border: 1.5px solid #ff7a00 !important;
           color: #ff7a00 !important;
           background: transparent !important;
+          transition: all 0.15s;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
         }
 
-        .restart-button:hover {
-          background: #ff7a00 !important;
-          color: white !important;
-        }
+        .restart-button:hover { background: #ff7a00 !important; color: #fff !important; }
 
-        /* Feedback Card */
+        /* ── Feedback Card ── */
         .feedback-card {
           border: none;
           border-radius: 14px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-          background: #ffffff;
-          flex: 1;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+          background: #fff;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          min-height: 0;
+          overflow: hidden;
         }
 
         .feedback-header {
-          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-          color: white;
-          font-size: 1rem;
+          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
+          color: #fff;
+          font-size: 0.9rem;
           font-weight: 600;
-          padding: 0.75rem 1.25rem;
+          padding: 0.6rem 1rem;
           border-bottom: none;
           border-radius: 14px 14px 0 0 !important;
           flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          gap: 6px;
         }
 
         .feedback-body {
-          padding: 1rem 1.25rem;
+          padding: 0.85rem 1rem;
           flex: 1;
           overflow-y: auto;
           min-height: 0;
         }
 
-        .feedback-content {
-          min-height: 0;
+        /* ── Score Row ── */
+        .score-row {
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 14px;
+          background: linear-gradient(135deg, #fff7f0, #fff3e8);
+          border: 1px solid #ffe0c0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          margin-bottom: 12px;
         }
 
+        .score-circle-sm {
+          width: 68px;
+          height: 68px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
+          box-shadow: 0 6px 18px rgba(255,122,0,0.38);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          gap: 1px;
+        }
+
+        .score-num { font-size: 1.25rem; font-weight: 800; color: #fff; line-height: 1; }
+        .score-denom { font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.8); line-height: 1.2; }
+
+        .score-details { flex: 1; min-width: 0; }
+
+        .score-label {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #c45000;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .score-bar { height: 7px; border-radius: 4px; margin-bottom: 5px; }
+
+        .score-hint { font-size: 0.74rem; color: #999; }
+
+        /* ── Feedback Sections ── */
+        .fb-section {
+          border-radius: 10px;
+          margin-bottom: 10px;
+          overflow: hidden;
+          border: 1px solid #eee;
+        }
+
+        .fb-section-title {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 7px 12px;
+          color: #fff;
+        }
+
+        .fb-icon { font-size: 0.88rem; }
+
+        .fb-correction .fb-section-title { background: #1565c0; }
+        .fb-overall .fb-section-title   { background: #2e7d32; }
+        .fb-suggestions .fb-section-title { background: #e65100; }
+
+        .fb-section-body {
+          padding: 10px 12px;
+          font-size: 0.83rem;
+          line-height: 1.65;
+          color: #374151;
+          background: #fff;
+        }
+
+        /* Corrected Version — document styling */
+        .fb-correction {
+          border: none;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+
+        .fb-correction .fb-section-body {
+          background: #f9fbff;
+          padding: 16px 18px;
+          font-size: 0.88rem;
+          line-height: 1.85;
+          color: #1e293b;
+          font-family: 'Georgia', 'Times New Roman', serif;
+          border-left: 4px solid #1565c0;
+          white-space: pre-wrap;
+          letter-spacing: 0.01em;
+        }
+
+        .fb-correction .fb-section-body p {
+          margin-bottom: 0.65em;
+        }
+
+        .fb-correction .fb-section-body p:last-child {
+          margin-bottom: 0;
+        }
+
+        /* ── Skill chips ── */
+        .fb-skills-row {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 10px;
+        }
+
+        .fb-skill-chip {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          background: #f8f9fa;
+          border: 1px solid #e9ecef;
+          border-radius: 10px;
+          padding: 9px 12px;
+        }
+
+        .fb-skill-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+        .fb-skill-title { font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .fb-skill-text { font-size: 0.81rem; color: #6b7280; line-height: 1.5; }
+
+        /* ── Suggestions list ── */
+        .fb-suggestions-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .fb-suggestions-list li {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          font-size: 0.83rem;
+          color: #374151;
+          line-height: 1.55;
+          padding: 4px 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .fb-suggestions-list li:last-child { border-bottom: none; }
+        .fb-bullet { color: #ff7a00; font-weight: 700; flex-shrink: 0; font-size: 0.85rem; }
+
+        /* ── Empty / Loading states ── */
         .empty-feedback {
           height: 100%;
           display: flex;
           flex-direction: column;
-          justify-content: center;
           align-items: center;
-          gap: 0.25rem;
+          justify-content: center;
+          gap: 8px;
+          text-align: center;
+          padding: 1rem;
         }
 
-        .empty-feedback .display-1 {
-          font-size: 2.5rem;
-        }
-
-        .empty-feedback h5 {
-          font-size: 1rem;
-          margin: 0;
-        }
-
-        .empty-feedback p {
-          font-size: 0.85rem;
-          max-width: 220px;
-          margin: 0;
-          color: #a0aec0;
-        }
+        .empty-icon { font-size: 2.2rem; }
+        .empty-feedback h5 { font-size: 0.95rem; font-weight: 700; color: #374151; margin: 0; }
+        .empty-feedback p { font-size: 0.8rem; color: #9ca3af; max-width: 200px; margin: 0; line-height: 1.5; }
 
         .loading-feedback {
           height: 100%;
           display: flex;
           flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        /* Score Display */
-        .score-display h3 {
-          color: #2d3748;
-          font-weight: 700;
-          font-size: 1.6rem;
-        }
-
-        .score-circle {
-          background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-          box-shadow: 0 10px 30px rgba(255, 122, 0, 0.4);
-          color: white;
-          width: 130px;
-          height: 130px;
-          border-radius: 50%;
-          display: flex;
-          flex-direction: column;
           align-items: center;
           justify-content: center;
-          margin: 0 auto;
-          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+          gap: 8px;
+          text-align: center;
         }
 
-        .score-number {
-          font-size: 2rem;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        .score-text {
-          font-size: 0.85rem;
-          opacity: 0.9;
-          margin-top: 0.4rem;
-        }
-
-        .score-bar {
-          height: 10px;
-          border-radius: 5px;
-          max-width: 280px;
-          margin: 0 auto;
-        }
-
-        /* Feedback Items */
-        .feedback-item {
-          padding: 1.25rem;
-          border-radius: 14px;
-          margin-bottom: 1.25rem;
-        }
-
-        .feedback-item h6 {
-          font-weight: 600;
-          margin-bottom: 0.75rem;
-          color: #2d3748;
-          display: flex;
-          align-items: center;
-          font-size: 1.1rem;
-        }
-
-        .corrected-version {
-          background: #e3f2fd;
-          border-left: 5px solid #1976d2;
-        }
-
-        .overall-feedback {
-          background: #f0fff4;
-          border-left: 5px solid #48bb78;
-        }
-
-        .skills-assessment {
-          background: #f7fafc;
-          border-left: 5px solid #ed8936;
-        }
-
-        .recommendations {
-          background: #fffaf0;
-          border-left: 5px solid #ed8936;
-        }
-
-        .general-feedback {
-          background: #f0f9ff;
-          border-left: 5px solid #0ea5e9;
-        }
-
-        .content-box {
-          line-height: 1.6;
-          color: #4a5568;
-          font-size: 1rem;
-        }
-
-        .suggestions-list {
-          padding-left: 1.25rem;
-          margin-bottom: 0;
-        }
-
-        .suggestions-list li {
-          margin-bottom: 0.4rem;
-          line-height: 1.5;
-        }
-
-        .suggestions-list li:last-child {
-          margin-bottom: 0;
-        }
-
-        /* Skill Cards */
-        .skill-card {
-          background: white;
-          padding: 1rem;
-          border-radius: 10px;
-          border: 1px solid #e2e8f0;
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-          transition: all 0.3s ease;
-          height: 100%;
-          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
-        }
-
-        .skill-card:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-        }
-
-        .skill-icon {
-          font-size: 1.3rem;
-          flex-shrink: 0;
-          margin-top: 0.2rem;
-        }
-
-        .skill-content h6 {
-          margin: 0 0 0.5rem 0;
-          font-size: 0.9rem;
-        }
-
-        .skill-content p {
-          margin: 0;
-          font-size: 0.85rem;
-          color: #718096;
-          line-height: 1.4;
-        }
+        .loading-feedback h5 { font-size: 0.9rem; color: #374151; margin: 0; }
+        .loading-feedback p  { font-size: 0.78rem; color: #9ca3af; margin: 0; }
 
         /* Responsive Design */
         @media (max-width: 1200px) {
