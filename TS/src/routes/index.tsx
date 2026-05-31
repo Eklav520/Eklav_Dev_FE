@@ -110,6 +110,8 @@ const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManageme
 const AddInstitute = lazy(() => import('@/app/eklavadmin/instituteDetails/pages'))
 
 
+const FacultyAdminPage = lazy(() => import('@/app/institute/facultyAdmin/page'))
+
 const InstituteDashboard = lazy(() => import('@/app/institute/dashboard/page'))
 const InstituteCourses = lazy(() => import('@/app/institute//manage-course/page'))
 const InstituteOnlineClasses = lazy(() => import('@/app/institute/online-classes/page'))
@@ -764,6 +766,20 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     element: <InstituteEditProfile />,
   },
 
+  {
+    path: '/institute/faculty-admin',
+    name: 'Faculty Admin',
+    element: <FacultyAdminPage />,
+  },
+
+]
+
+export const facultyAdminRoutes: RoutesProps[] = [
+  {
+    path: '/faculty-admin/dashboard',
+    name: 'Faculty Admin Dashboard',
+    element: <FacultyAdminPage />,
+  },
 ]
 
 export const studentRoutes: RoutesProps[] = [

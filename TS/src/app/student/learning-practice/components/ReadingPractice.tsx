@@ -136,7 +136,13 @@ const ReadingPractice: React.FC = () => {
           studentId: user?.id,
           promptId: prompt.promptId,
           passage: prompt.passage,
-          answers,
+          answers: Object.fromEntries(
+            prompt.questions.map((q, i) => {
+              const letterIndex = q.options.indexOf(answers[i])
+              const letter = letterIndex >= 0 ? String.fromCharCode(65 + letterIndex) : answers[i]
+              return [i, letter]
+            })
+          ),
           correctAnswers,
         }),
       })

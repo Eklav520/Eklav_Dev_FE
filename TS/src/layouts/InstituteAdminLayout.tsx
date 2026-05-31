@@ -13,7 +13,7 @@ import { Link, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import type { IconType } from 'react-icons'
 
-import { INSTITUTEADMIN_MENU_ITEMS } from '@/assets/data/menu-items'
+import { INSTITUTEADMIN_MENU_ITEMS, FACULTY_ADMIN_MENU_ITEMS } from '@/assets/data/menu-items'
 import Preloader from '@/components/Preloader'
 import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
@@ -183,11 +183,12 @@ const InstituteAdminLayout = ({ children }: ChildrenType) => {
 
 const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
   const { pathname } = useLocation()
-  const { removeSession } = useAuthContext()
+  const { removeSession, user } = useAuthContext()
 
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
-    return INSTITUTEADMIN_MENU_ITEMS as unknown as MenuItemTypeLocal[]
-  }, [])
+    const items = user?.role === 'facultyAdmin' ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS
+    return items as unknown as MenuItemTypeLocal[]
+  }, [user?.role])
 
   const tree = useMemo(() => {
     const hasNested = baseMenu.some((it) => it.children && it.children.length > 0)

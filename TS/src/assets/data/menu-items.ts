@@ -551,6 +551,14 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
+/* 
+  {
+    key: 'facultyAdmin',
+    label: 'Faculty Admin',
+    icon: FaChalkboardTeacher,
+    url: '/institute/faculty-admin',
+    parentKey: 'instituteadmin',
+  }, */
 
   {
     key: 'profile',
@@ -558,6 +566,16 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
     icon: FaUserCog,
     url: '/institute/edit-profile',
     parentKey: 'instituteadmin',
+  },
+]
+
+export const FACULTY_ADMIN_MENU_ITEMS: MenuItemType[] = [
+  {
+    key: 'dashboard',
+    label: 'My Students',
+    icon: BsPeople,
+    url: '/faculty-admin/dashboard',
+    parentKey: 'facultyadmin',
   },
 ]
 

@@ -5,6 +5,7 @@ import {
   authRoutes,
   EklavAdminRoutes,
   InstituteAdminRoutes,
+  facultyAdminRoutes,
   shopRoutes,
   studentRoutes,
   tutorRoutes
@@ -95,6 +96,21 @@ const AppRouter = (props: RouteProps) => {
           path={route.path}
           element={
             <ProtectedRoute allowedRoles={['instituteAdmin']}>
+              <InstituteAdminLayout {...props}>
+                {route.element}
+              </InstituteAdminLayout>
+            </ProtectedRoute>
+          }
+        />
+      ))}
+
+      {/* Faculty Admin Routes */}
+      {(facultyAdminRoutes || []).map((route, idx) => (
+        <Route
+          key={idx + route.name}
+          path={route.path}
+          element={
+            <ProtectedRoute allowedRoles={['facultyAdmin']}>
               <InstituteAdminLayout {...props}>
                 {route.element}
               </InstituteAdminLayout>

@@ -56,6 +56,7 @@ const ListeningPractice: React.FC = () => {
   const [currentQ, setCurrentQ] = useState(0)
   const [history, setHistory] = useState<ListeningHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
+  const [submittedData, setSubmittedData] = useState<{ answers: { [k: string]: string }; prompt: typeof prompt } | null>(null)
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
@@ -140,6 +141,7 @@ const ListeningPractice: React.FC = () => {
     if (!prompt) return
     setLoading(true)
     setFeedback(null)
+    setSubmittedData({ answers: { ...answers }, prompt })
 
     try {
       const res = await fetch(`${baseURL}/learning/listening/submit`, {
@@ -150,7 +152,14 @@ const ListeningPractice: React.FC = () => {
         },
         body: JSON.stringify({
           promptId: prompt.promptId,
-          answers,
+          // Convert selected option text → letter (A/B/C/D) to match correctAnswers format
+          answers: Object.fromEntries(
+            prompt.questions.map((q, i) => {
+              const letterIndex = q.options.indexOf(answers[i])
+              const letter = letterIndex >= 0 ? String.fromCharCode(65 + letterIndex) : answers[i]
+              return [i, letter]
+            })
+          ),
           correctAnswers: Object.fromEntries(prompt.questions.map((q, i) => [i, q.answer])),
         }),
       })
@@ -396,6 +405,48 @@ const ListeningPractice: React.FC = () => {
                       </h6>
                       <p className="feedback-item-text">{feedback.recommendations || 'No recommendations available.'}</p>
                     </div>
+
+                    {/* Answer Review */}
+                    {submittedData?.prompt && (
+                      <div className="feedback-item answer-review-section">
+                        <h6 className="feedback-item-title">
+                          <span className="feedback-item-icon">🧠</span>
+                          Answer Review
+                        </h6>
+                        <div className="answer-review-list">
+                          {submittedData.prompt.questions.map((q, idx) => {
+                            const selectedText = submittedData.answers[idx] || '—'
+                            const correctLetter = q.answer // e.g. "A"
+                            const correctIndex = correctLetter.charCodeAt(0) - 65
+                            const correctText = q.options[correctIndex] ?? correctLetter
+                            const isCorrect = selectedText === correctText
+                            return (
+                              <div key={idx} className={`ar-item ${isCorrect ? 'ar-correct' : 'ar-wrong'}`}>
+                                <div className="ar-q-header">
+                                  <span className="ar-q-num">Q{idx + 1}</span>
+                                  <span className="ar-q-text">{q.question}</span>
+                                  <span className={`ar-badge ${isCorrect ? 'ar-badge-correct' : 'ar-badge-wrong'}`}>
+                                    {isCorrect ? '✓ Correct' : '✗ Wrong'}
+                                  </span>
+                                </div>
+                                <div className="ar-answers">
+                                  <div className="ar-answer-row">
+                                    <span className="ar-label">Your answer:</span>
+                                    <span className={`ar-value ${isCorrect ? 'ar-value-correct' : 'ar-value-wrong'}`}>{selectedText}</span>
+                                  </div>
+                                  {!isCorrect && (
+                                    <div className="ar-answer-row">
+                                      <span className="ar-label">Correct answer:</span>
+                                      <span className="ar-value ar-value-correct">{correctText}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="action-buttons">
@@ -1110,6 +1161,25 @@ const ListeningPractice: React.FC = () => {
           color: #cbd5e0;
           font-style: italic;
         }
+
+        /* Answer Review */
+        .answer-review-section { margin-top: 1.5rem; }
+        .answer-review-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .ar-item { border-radius: 10px; overflow: hidden; border: 1px solid; }
+        .ar-correct { border-color: #d1fae5; background: #f0fdf4; }
+        .ar-wrong { border-color: #fee2e2; background: #fff5f5; }
+        .ar-q-header { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px 8px; flex-wrap: wrap; }
+        .ar-q-num { font-size: 0.72rem; font-weight: 700; background: #e2e8f0; color: #475569; border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+        .ar-q-text { flex: 1; font-size: 0.85rem; font-weight: 600; color: #1e293b; line-height: 1.4; }
+        .ar-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
+        .ar-badge-correct { background: #dcfce7; color: #16a34a; }
+        .ar-badge-wrong { background: #fee2e2; color: #dc2626; }
+        .ar-answers { padding: 0 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+        .ar-answer-row { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+        .ar-label { color: #64748b; min-width: 110px; font-weight: 500; }
+        .ar-value { font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+        .ar-value-correct { background: #dcfce7; color: #15803d; }
+        .ar-value-wrong { background: #fee2e2; color: #dc2626; }
 
         .trial-badge-modern {
           background: rgba(255, 122, 0, 0.15);

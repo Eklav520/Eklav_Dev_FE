@@ -178,6 +178,10 @@ const ManageCoursePage = () => {
       if (!presignRes.ok) throw new Error('Failed to get upload URL')
       const presignData = await presignRes.json()
 
+      if (!presignData.key || !presignData.uploadUrl || !presignData.fields) {
+        throw new Error('Invalid presign response from server')
+      }
+
       // Step 2: Upload directly to S3 with real progress (XHR)
       const s3Key: string = await new Promise((resolve, reject) => {
         const formData = new FormData()
@@ -191,13 +195,18 @@ const ManageCoursePage = () => {
         xhr.upload.onprogress = (e) => {
           if (e.lengthComputable) onProgress(e.loaded, e.total)
         }
-        xhr.onload = () =>
-          xhr.status === 204 || xhr.status === 201
-            ? resolve(presignData.key)
-            : reject(new Error(`S3 upload failed: ${xhr.status}`))
-        xhr.onerror = () => reject(new Error('S3 upload failed'))
+        xhr.onload = () => {
+          if (xhr.status === 204 || xhr.status === 201 || xhr.status === 200) {
+            resolve(presignData.key)
+          } else {
+            reject(new Error(`S3 upload failed with status ${xhr.status}: ${xhr.responseText}`))
+          }
+        }
+        xhr.onerror = () => reject(new Error('S3 upload network error'))
         xhr.send(formData)
       })
+
+      if (!s3Key) throw new Error('S3 key missing after upload')
 
       // Step 3: Register the S3 key with the course
       const res = await fetch(`${baseURL}/courses/${selectedCourse._id}/video`, {
