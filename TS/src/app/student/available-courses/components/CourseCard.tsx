@@ -14,10 +14,12 @@ import {
   FaPlay,
   FaLanguage,
   FaChartBar,
+  FaChartLine,
   FaListUl,
   FaCheck,
 } from 'react-icons/fa'
 import { IoLockClosedOutline } from 'react-icons/io5'
+import ReactApexChart from 'react-apexcharts'
 
 type CourseType = {
   _id: string
@@ -56,6 +58,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   const { isTrue: isWishlisted, toggle } = useToggle()
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([])
   const [showDetails, setShowDetails] = useState(false)
+  const [showMarketInsight, setShowMarketInsight] = useState(false)
   const { user } = useAuthContext()
   const token = user?.token
   const [showPreview, setShowPreview] = useState(false)
@@ -325,17 +328,42 @@ const CourseCard = ({ course }: { course: CourseType }) => {
           {/* Divider */}
           <div className="cc2-divider" />
 
-          {/* Rating */}
-          <div className="cc2-rating-row">
-            {averageRating > 0 ? (
-              <>
-                <div className="cc2-stars">{renderStarRating(averageRating, false, 11)}</div>
-                <span className="cc2-rating-val">{averageRating.toFixed(1)}</span>
-                <span className="cc2-rating-count">({totalRatings})</span>
-              </>
-            ) : (
-              <span className="cc2-no-rating">No ratings yet</span>
-            )}
+          {/* Rating row + Market Insight button */}
+          <div className="cc2-rating-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {averageRating > 0 ? (
+                <>
+                  <div className="cc2-stars">{renderStarRating(averageRating, false, 11)}</div>
+                  <span className="cc2-rating-val">{averageRating.toFixed(1)}</span>
+                  <span className="cc2-rating-count">({totalRatings})</span>
+                </>
+              ) : (
+                <span className="cc2-no-rating">No ratings yet</span>
+              )}
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowMarketInsight(true) }}
+              style={{
+                background: 'linear-gradient(135deg,#1e1b4b,#3730a3)',
+                border: '1px solid rgba(99,102,241,0.4)',
+                borderRadius: '6px',
+                color: '#c7d2fe',
+                fontSize: '10px',
+                fontWeight: 700,
+                padding: '4px 9px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                letterSpacing: '0.03em',
+                boxShadow: '0 1px 4px rgba(99,102,241,0.25)',
+                transition: 'all 0.15s',
+              }}
+              title="AI-powered Market Insight"
+            >
+              <FaChartLine size={9} /> Market Insight
+            </button>
           </div>
 
           {/* Meta: duration + lectures + level */}
@@ -1177,7 +1205,301 @@ const CourseCard = ({ course }: { course: CourseType }) => {
 
       `}</style>
 
+      {/* Market Insight Modal */}
+      <MarketInsightModal
+        courseId={_id}
+        courseTitle={title}
+        show={showMarketInsight}
+        onHide={() => setShowMarketInsight(false)}
+      />
 
+    </>
+  )
+}
+
+/* ─── Trend Chart ────────────────────────────────────────── */
+function TrendChart({ labels, historical, projection }: {
+  labels: string[]
+  historical: number[]
+  projection: number[]
+}) {
+  // All labels = 12 historical + 6 projection
+  const allLabels = labels.length > 0 ? labels : [
+    ...historical.map((_, i) => `M${i + 1}`),
+    ...projection.map((_, i) => `P${i + 1}`),
+  ]
+
+  // Historical series: 12 values then nulls for projection months
+  const historicalData = [
+    ...historical,
+    ...Array(projection.length).fill(null),
+  ]
+
+  // Projection series: nulls for 11 months, then connect from last historical point, then projection values
+  const projectionData = [
+    ...Array(historical.length - 1).fill(null),
+    historical[historical.length - 1], // bridge
+    ...projection,
+  ]
+
+  const options: ApexCharts.ApexOptions = {
+    chart: {
+      type: 'area',
+      background: 'transparent',
+      toolbar: { show: false },
+      animations: { enabled: true, speed: 500 },
+    },
+    colors: ['#6366f1', '#f59e0b'],
+    stroke: { curve: 'smooth', width: [2.5, 2], dashArray: [0, 6] },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shade: 'dark',
+        type: 'vertical',
+        shadeIntensity: 0.5,
+        opacityFrom: 0.25,
+        opacityTo: 0.02,
+      },
+    },
+    markers: { size: 0 },
+    xaxis: {
+      categories: allLabels,
+      labels: { style: { colors: '#555', fontSize: '9px' }, rotateAlways: false, rotate: -35 },
+      tickAmount: 8,
+      axisBorder: { color: '#222' },
+      axisTicks: { color: '#222' },
+    },
+    yaxis: {
+      min: 0,
+      max: 100,
+      labels: { style: { colors: '#555', fontSize: '10px' }, formatter: (v: number) => `${Math.round(v)}` },
+    },
+    grid: { borderColor: '#1a1a1a', strokeDashArray: 3 },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: (v: number | null) =>
+          v !== null && v !== undefined ? `${Math.round(v)} / 100` : '—',
+      },
+    },
+    legend: { show: false },
+    annotations: {
+      xaxis: [{
+        x: allLabels[historical.length - 1] ?? '',
+        borderColor: '#374151',
+        strokeDashArray: 4,
+        label: {
+          text: 'Today',
+          style: { color: '#9ca3af', fontSize: '10px', background: '#111', padding: { left: 4, right: 4, top: 2, bottom: 2 } },
+        },
+      }],
+    },
+  }
+
+  const series = [
+    { name: 'Past Demand', data: historicalData },
+    { name: 'Forecast', data: projectionData },
+  ]
+
+  return (
+    <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: '12px', padding: '1rem 1.1rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ color: '#a855f7', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <FaChartLine size={11} /> Market Demand Trend
+        </div>
+        <div style={{ display: 'flex', gap: '1.1rem', fontSize: '0.7rem' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#6366f1' }}>
+            <span style={{ width: 18, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 2 }} />Past 12 months
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f59e0b' }}>
+            <span style={{ width: 18, height: 2, background: '#f59e0b', display: 'inline-block', borderRadius: 2, opacity: 0.7, borderTop: '2px dashed #f59e0b' }} />6-month forecast
+          </span>
+        </div>
+      </div>
+
+      <ReactApexChart options={options} series={series} type="area" height={240} />
+    </div>
+  )
+}
+
+/* ─── Market Insight Modal ───────────────────────────────── */
+interface MarketInsightData {
+  marketStatus: string
+  marketScope: string
+  marketGrowth: string
+  companiesUsing: string[]
+  jobRoles: string[]
+  keySkills: string[]
+  salaryEntry: string
+  salaryMid: string
+  salarySenior: string
+  trendLabels?: string[]
+  trendHistorical?: number[]
+  trendProjection?: number[]
+  fromCache: boolean
+  lastFetched?: string
+}
+
+function MarketInsightModal({ courseId, courseTitle, show, onHide }: {
+  courseId: string
+  courseTitle: string
+  show: boolean
+  onHide: () => void
+}) {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+  const [data, setData] = useState<MarketInsightData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!show || !user?.token) return
+    setLoading(true)
+    setError('')
+    fetch(`${baseURL}/courses/${courseId}/market-insight`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then(r => r.json())
+      .then(d => { if (d.message && !d.marketScope) throw new Error(d.message); setData(d) })
+      .catch(e => setError(e.message || 'Failed to load insight'))
+      .finally(() => setLoading(false))
+  }, [show, courseId])
+
+  const statusColor: Record<string, string> = {
+    'In Demand': '#22c55e',
+    'Emerging': '#3b82f6',
+    'Niche': '#f59e0b',
+    'Declining': '#ef4444',
+  }
+
+  return (
+    <>
+    <style>{`
+      .mi-modal-backdrop.modal-backdrop { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.65) !important; opacity: 1 !important; }
+      .mi-modal .modal-dialog { width: 75vw !important; max-width: 75vw !important; height: 80vh; }
+      .mi-modal .modal-content { height: 80vh; display: flex; flex-direction: column; background: #0d0d0d; border: 1px solid #2a1060; border-radius: 16px; }
+      .mi-modal .modal-body { flex: 1; overflow-y: auto; }
+    `}</style>
+    <Modal show={show} onHide={onHide} centered scrollable backdropClassName="mi-modal-backdrop" className="mi-modal">
+      <Modal.Header closeButton style={{ background: 'linear-gradient(135deg,#1a0030,#2e0050)', borderBottom: '1px solid #3a1060' }}>
+        <Modal.Title style={{ color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <FaChartLine size={16} color="#a855f7" />
+          Market Insight — <span style={{ color: '#a855f7' }}>{courseTitle}</span>
+        </Modal.Title>
+      </Modal.Header>
+
+      <Modal.Body style={{ background: '#0d0d0d', padding: '1.5rem' }}>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
+            <Spinner animation="border" size="sm" style={{ color: '#a855f7' }} />
+            <div style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>Analyzing market data with AI…</div>
+            <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '0.3rem' }}>This may take a few seconds</div>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '1rem', color: '#f87171', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
+
+        {data && !loading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+            {/* Status + Growth + Cache info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <span style={{
+                background: `${statusColor[data.marketStatus] ?? '#888'}20`,
+                border: `1px solid ${statusColor[data.marketStatus] ?? '#888'}50`,
+                color: statusColor[data.marketStatus] ?? '#888',
+                borderRadius: '20px', padding: '0.3rem 1rem',
+                fontSize: '0.82rem', fontWeight: 700,
+              }}>
+                <FaChartLine size={11} style={{ marginRight: 4 }} />{data.marketStatus}
+              </span>
+              {data.marketGrowth && (
+                <span style={{ color: '#22c55e', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FaChartBar size={11} /> {data.marketGrowth}
+                </span>
+              )}
+              <span style={{ color: '#333', fontSize: '0.72rem', marginLeft: 'auto' }}>
+                {data.fromCache ? '⚡ Cached' : '🤖 AI Generated'} · refreshes every 45 days
+              </span>
+            </div>
+
+            {/* Market Scope */}
+            <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: '12px', padding: '1rem 1.1rem' }}>
+              <div style={{ color: '#a855f7', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Market Scope</div>
+              <p style={{ color: '#ccc', fontSize: '0.88rem', lineHeight: 1.7, margin: 0 }}>{data.marketScope}</p>
+            </div>
+
+            {/* Growth Trend Chart */}
+            {Array.isArray(data.trendHistorical) && data.trendHistorical.length > 0 && (
+              <TrendChart
+                labels={data.trendLabels ?? []}
+                historical={data.trendHistorical}
+                projection={data.trendProjection ?? []}
+              />
+            )}
+
+            {/* Salary */}
+            <div>
+              <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.65rem' }}>💰 Salary Range (India)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
+                {[
+                  { label: 'Entry Level', value: data.salaryEntry, color: '#3b82f6' },
+                  { label: 'Mid Level', value: data.salaryMid, color: '#a855f7' },
+                  { label: 'Senior Level', value: data.salarySenior, color: '#22c55e' },
+                ].map(tier => (
+                  <div key={tier.label} style={{ background: '#141414', border: `1px solid ${tier.color}22`, borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
+                    <div style={{ color: tier.color, fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>{tier.value}</div>
+                    <div style={{ color: '#555', fontSize: '0.7rem', marginTop: '5px' }}>{tier.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Companies */}
+            {data.companiesUsing.length > 0 && (
+              <div>
+                <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>🏢 Companies Hiring</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  {data.companiesUsing.map(c => (
+                    <span key={c} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '0.3rem 0.75rem', color: '#ddd', fontSize: '0.8rem', fontWeight: 500 }}>{c}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Job Roles + Key Skills */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {data.jobRoles.length > 0 && (
+                <div>
+                  <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>💼 Job Roles</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {data.jobRoles.map(r => (
+                      <span key={r} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '6px', padding: '0.28rem 0.65rem', color: '#c084fc', fontSize: '0.78rem' }}>{r}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {data.keySkills.length > 0 && (
+                <div>
+                  <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>🛠 Key Skills</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                    {data.keySkills.map(s => (
+                      <span key={s} style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '6px', padding: '0.28rem 0.65rem', color: '#86efac', fontSize: '0.78rem' }}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+      </Modal.Body>
+    </Modal>
     </>
   )
 }
