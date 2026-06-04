@@ -26,6 +26,11 @@ const RoleRedirect = () => {
     return <Navigate to="/tutor/online-classes" replace />
   }
 
+  // 👨‍🏫 Faculty Admin
+  if (user.role === 'facultyAdmin') {
+    return <Navigate to="/faculty-admin/dashboard" replace />
+  }
+
   // 👨‍🎓 Student
   if (user.role === 'student') {
     return <Navigate to="/student/dashboard" replace />

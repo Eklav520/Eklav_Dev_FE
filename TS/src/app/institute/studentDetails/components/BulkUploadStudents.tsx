@@ -22,6 +22,7 @@ interface StudentUploadRow {
     rollNumber: string;
     gender: string;
     branch: string;
+    joiningYear?: string;
 }
 
 interface BulkUploadResult {
@@ -61,6 +62,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
     const [studentsData, setStudentsData] = useState<StudentUploadRow[]>([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [warning, setWarning] = useState<string | null>(null);
     const [success, setSuccess] = useState<BulkUploadResponse | null>(null);
     const [previewData, setPreviewData] = useState<StudentUploadRow[]>([]);
     
@@ -79,6 +81,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
 
         // Reset states
         setError(null);
+        setWarning(null);
         setSuccess(null);
         
         // Check file size (max 5MB)
@@ -124,6 +127,14 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                         rollNumber: normalizedRow.rollnumber || normalizedRow['roll number'] || normalizedRow['roll'] || '',
                         gender: normalizedRow.gender || '',
                         branch: normalizedRow.branch || '',
+                        joiningYear: String(
+                            normalizedRow.joiningyear ||
+                            normalizedRow['joining year'] ||
+                            normalizedRow['joiningyear'] ||
+                            normalizedRow['joining_year'] ||
+                            normalizedRow['year'] ||
+                            ''
+                        ).trim(),
                     } as StudentUploadRow;
                 });
 
@@ -140,16 +151,28 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                     return;
                 }
 
-                const rollNumbers = mappedData.map((row) => row.rollNumber.toString().toLowerCase());
-                const duplicateRollNumbers = rollNumbers.filter((roll, index) => rollNumbers.indexOf(roll) !== index);
-                if (duplicateRollNumbers.length > 0) {
-                    setError(`Duplicate roll numbers found in file: ${[...new Set(duplicateRollNumbers)].join(', ')}`);
-                    return;
+                const seenRollNumbers = new Set<string>();
+                const dedupedData: StudentUploadRow[] = [];
+                const skippedRollNumbers: string[] = [];
+
+                mappedData.forEach((row) => {
+                    const key = row.rollNumber.toString().trim().toLowerCase();
+                    if (seenRollNumbers.has(key)) {
+                        skippedRollNumbers.push(row.rollNumber.toString());
+                    } else {
+                        seenRollNumbers.add(key);
+                        dedupedData.push(row);
+                    }
+                });
+
+                if (skippedRollNumbers.length > 0) {
+                    setWarning(`${skippedRollNumbers.length} duplicate roll number(s) removed — kept first occurrence: ${[...new Set(skippedRollNumbers)].join(', ')}. Proceeding with ${dedupedData.length} unique records.`);
+                } else {
+                    setWarning(null);
                 }
 
-                setStudentsData(mappedData);
-                setPreviewData(mappedData.slice(0, 5));
-                setError(null);
+                setStudentsData(dedupedData);
+                setPreviewData(dedupedData.slice(0, 5));
             } catch (err) {
                 setError('Failed to parse file. Please check the format.');
             }
@@ -167,7 +190,8 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                 password: 'password123',
                 rollNumber: '21CS001',
                 gender: 'Male',
-                branch: 'CSE'
+                branch: 'CSE',
+                joiningYear: '2021'
             },
             {
                 name: 'Jane Smith',
@@ -176,7 +200,8 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                 password: 'password123',
                 rollNumber: '21EC045',
                 gender: 'Female',
-                branch: 'ECE'
+                branch: 'ECE',
+                joiningYear: '2021'
             }
         ];
 
@@ -279,6 +304,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
         setStudentsData([]);
         setPreviewData([]);
         setError(null);
+        setWarning(null);
         setSuccess(null);
         setCurrentPage(1);
     };
@@ -302,6 +328,13 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                     <Alert variant="danger" className="custom-alert">
                         <Alert.Heading>Error!</Alert.Heading>
                         <p>{error}</p>
+                    </Alert>
+                )}
+
+                {warning && (
+                    <Alert variant="warning" className="custom-alert warning-alert">
+                        <Alert.Heading>⚠️ Duplicates Removed</Alert.Heading>
+                        <p>{warning}</p>
                     </Alert>
                 )}
 
@@ -466,7 +499,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                 </Button>
                             </div>
                             <small className="form-text text-muted mt-2">
-                                File should contain columns: name, email, password, rollNumber, gender, branch and optional phone
+                                Required columns: name, email, password, rollNumber, gender, branch — Optional: phone, joiningYear
                                 <br />
                                 <strong>Limits:</strong> Max 1000 students, Max file size 5MB
                             </small>
@@ -484,6 +517,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                                 <th>Roll Number</th>
                                                 <th>Gender</th>
                                                 <th>Branch</th>
+                                                <th>Year</th>
                                                 <th>Phone</th>
                                                 <th>Password</th>
                                             </tr>
@@ -496,6 +530,7 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                                                     <td>{row.rollNumber || '-'}</td>
                                                     <td>{row.gender || '-'}</td>
                                                     <td>{row.branch || '-'}</td>
+                                                    <td>{row.joiningYear || '-'}</td>
                                                     <td>{row.phone || '-'}</td>
                                                     <td>{'•'.repeat(8)}</td>
                                                 </tr>
@@ -655,6 +690,12 @@ const BulkUploadStudents: React.FC<BulkUploadStudentsProps> = ({ show, onHide, o
                     background: rgba(40, 167, 69, 0.1);
                     border-color: #28a745;
                     color: #28a745;
+                }
+
+                .warning-alert {
+                    background: rgba(255, 193, 7, 0.1);
+                    border-color: #ffc107;
+                    color: #ffc107;
                 }
 
                 .summary-stats {

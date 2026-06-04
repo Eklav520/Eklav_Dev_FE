@@ -551,14 +551,14 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
       },
     ],
   },
-/* 
+ 
   {
     key: 'facultyAdmin',
     label: 'Faculty Admin',
     icon: FaChalkboardTeacher,
     url: '/institute/faculty-admin',
     parentKey: 'instituteadmin',
-  }, */
+  },
 
   {
     key: 'profile',

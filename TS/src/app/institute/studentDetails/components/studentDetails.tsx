@@ -14,6 +14,7 @@ type Student = {
   rollNumber?: string
   gender?: string
   branch?: string
+  joiningYear?: string
 }
 
 type Profile = {
@@ -41,7 +42,8 @@ const InstituteAdmin: React.FC = () => {
     password: '',
     rollNumber: '',
     gender: 'Male',
-    branch: ''
+    branch: '',
+    joiningYear: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -118,7 +120,8 @@ const InstituteAdmin: React.FC = () => {
         password: '',
         rollNumber: '',
         gender: 'Male',
-        branch: ''
+        branch: '',
+        joiningYear: ''
       })
 
       setShowModal(false)
@@ -278,12 +281,13 @@ const InstituteAdmin: React.FC = () => {
                   <Table className="students-table" hover>
                     <thead>
                       <tr>
-                        <th style={{ width: '25%' }}>Student Name</th>
-                        <th style={{ width: '25%' }}>Email Address</th>
-                        <th style={{ width: '15%' }}>Roll Number</th>
-                        <th style={{ width: '15%' }}>Branch</th>
-                        <th style={{ width: '12%' }}>Phone</th>
-                        <th style={{ width: '13%' }} className="text-center">Actions</th>
+                        <th style={{ width: '22%' }}>Student Name</th>
+                        <th style={{ width: '22%' }}>Email Address</th>
+                        <th style={{ width: '12%' }}>Roll Number</th>
+                        <th style={{ width: '12%' }}>Branch</th>
+                        <th style={{ width: '10%' }}>Joined Year</th>
+                        <th style={{ width: '10%' }}>Phone</th>
+                        <th style={{ width: '12%' }} className="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -314,6 +318,9 @@ const InstituteAdmin: React.FC = () => {
                             <div className="student-branch-cell">
                               <span>{stu.branch || '–'}</span>
                             </div>
+                           </td>
+                           <td>
+                            <span>{stu.joiningYear || '–'}</span>
                            </td>
                            <td>
                             <div className="student-phone-cell">
@@ -455,6 +462,27 @@ const InstituteAdmin: React.FC = () => {
                   }
                   className="form-control-custom"
                 />
+              </Form.Group>
+            </div>
+
+            <div className="form-row">
+              <Form.Group className="form-group-custom mb-4 form-col">
+                <Form.Label className="form-label-custom">
+                  <FaUser className="label-icon" />
+                  Joining Year
+                </Form.Label>
+                <Form.Select
+                  required
+                  value={form.joiningYear}
+                  onChange={(e) => setForm({ ...form, joiningYear: e.target.value })}
+                  className="form-control-custom"
+                >
+                  <option value="">Select year</option>
+                  {Array.from({ length: 10 }, (_, i) => {
+                    const year = new Date().getFullYear() - i
+                    return <option key={year} value={String(year)}>{year}</option>
+                  })}
+                </Form.Select>
               </Form.Group>
             </div>
 
