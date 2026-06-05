@@ -17,6 +17,9 @@ import {
   FaChartLine,
   FaListUl,
   FaCheck,
+  FaBriefcase,
+  FaCode,
+  FaBuilding,
 } from 'react-icons/fa'
 import { IoLockClosedOutline } from 'react-icons/io5'
 import ReactApexChart from 'react-apexcharts'
@@ -1247,40 +1250,45 @@ function TrendChart({ labels, historical, projection }: {
       type: 'area',
       background: 'transparent',
       toolbar: { show: false },
-      animations: { enabled: true, speed: 500 },
+      animations: { enabled: true, speed: 600 },
+      sparkline: { enabled: false },
     },
-    colors: ['#6366f1', '#f59e0b'],
-    stroke: { curve: 'smooth', width: [2.5, 2], dashArray: [0, 6] },
+    colors: ['#3b82f6', '#f59e0b'],
+    stroke: { curve: 'smooth', width: [2.5, 2], dashArray: [0, 5] },
     fill: {
       type: 'gradient',
       gradient: {
         shade: 'dark',
         type: 'vertical',
-        shadeIntensity: 0.5,
-        opacityFrom: 0.25,
-        opacityTo: 0.02,
+        shadeIntensity: 0.4,
+        opacityFrom: 0.18,
+        opacityTo: 0.01,
       },
     },
-    markers: { size: 0 },
+    markers: {
+      size: [3, 3],
+      colors: ['#3b82f6', '#f59e0b'],
+      strokeColors: '#0d0d0d',
+      strokeWidth: 2,
+      hover: { size: 5 },
+    },
     xaxis: {
       categories: allLabels,
-      labels: { style: { colors: '#555', fontSize: '9px' }, rotateAlways: false, rotate: -35 },
-      tickAmount: 8,
-      axisBorder: { color: '#222' },
-      axisTicks: { color: '#222' },
+      labels: { style: { colors: '#4b5563', fontSize: '10px' }, rotate: -35, rotateAlways: false },
+      tickAmount: 9,
+      axisBorder: { color: '#1f2937' },
+      axisTicks: { color: '#1f2937' },
     },
     yaxis: {
       min: 0,
       max: 100,
-      labels: { style: { colors: '#555', fontSize: '10px' }, formatter: (v: number) => `${Math.round(v)}` },
+      tickAmount: 5,
+      labels: { style: { colors: '#4b5563', fontSize: '10px' }, formatter: (v: number) => `${Math.round(v)}` },
     },
-    grid: { borderColor: '#1a1a1a', strokeDashArray: 3 },
+    grid: { borderColor: '#1a1a1a', strokeDashArray: 4, padding: { left: 4, right: 8 } },
     tooltip: {
       theme: 'dark',
-      y: {
-        formatter: (v: number | null) =>
-          v !== null && v !== undefined ? `${Math.round(v)} / 100` : '—',
-      },
+      y: { formatter: (v: number | null) => v !== null && v !== undefined ? `${Math.round(v)} / 100` : '—' },
     },
     legend: { show: false },
     annotations: {
@@ -1298,29 +1306,69 @@ function TrendChart({ labels, historical, projection }: {
 
   const series = [
     { name: 'Past Demand', data: historicalData },
-    { name: 'Forecast', data: projectionData },
+    { name: 'Forecast',    data: projectionData },
   ]
 
   return (
-    <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: '12px', padding: '1rem 1.1rem' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ color: '#a855f7', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
-          <FaChartLine size={11} /> Market Demand Trend
-        </div>
-        <div style={{ display: 'flex', gap: '1.1rem', fontSize: '0.7rem' }}>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#6366f1' }}>
-            <span style={{ width: 18, height: 2, background: '#6366f1', display: 'inline-block', borderRadius: 2 }} />Past 12 months
-          </span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f59e0b' }}>
-            <span style={{ width: 18, height: 2, background: '#f59e0b', display: 'inline-block', borderRadius: 2, opacity: 0.7, borderTop: '2px dashed #f59e0b' }} />6-month forecast
-          </span>
-        </div>
+    <div>
+      <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.72rem', marginBottom: '0.5rem' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#3b82f6' }}>
+          <span style={{ width: 16, height: 3, background: '#3b82f6', display: 'inline-block', borderRadius: 2 }} /> Past 12 months
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#f59e0b' }}>
+          <span style={{ width: 16, height: 3, background: '#f59e0b', display: 'inline-block', borderRadius: 2, opacity: 0.8 }} /> 6-month forecast
+        </span>
       </div>
-
-      <ReactApexChart options={options} series={series} type="area" height={240} />
+      <ReactApexChart options={options} series={series} type="area" height={220} />
     </div>
   )
+}
+
+/* ─── Industry Donut Chart ───────────────────────────────── */
+function IndustryDonutChart({ data }: { data: { name: string; percentage: number }[] }) {
+  const COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7', '#6b7280', '#f59e0b']
+  const options: ApexCharts.ApexOptions = {
+    chart: { type: 'donut', background: 'transparent', toolbar: { show: false } },
+    labels: data.map(d => `${d.name} ${d.percentage}%`),
+    colors: COLORS,
+    dataLabels: { enabled: false },
+    legend: {
+      position: 'bottom',
+      fontSize: '11px',
+      labels: { colors: '#9ca3af' },
+      markers: { size: 7 },
+      itemMargin: { horizontal: 8, vertical: 3 },
+    },
+    plotOptions: { pie: { donut: { size: '65%' } } },
+    stroke: { width: 2, colors: ['#0d0d0d'] },
+    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v}%` } },
+  }
+  return <ReactApexChart options={options} series={data.map(d => d.percentage)} type="donut" height={220} />
+}
+
+/* ─── Top Areas Horizontal Bar Chart ─────────────────────── */
+function TopAreasChart({ data }: { data: { area: string; percentage: number }[] }) {
+  const COLORS = ['#3b82f6', '#22c55e', '#a855f7', '#f97316', '#f59e0b', '#0891b2', '#be185d']
+  const options: ApexCharts.ApexOptions = {
+    chart: { type: 'bar', background: 'transparent', toolbar: { show: false } },
+    plotOptions: { bar: { horizontal: true, barHeight: '55%', borderRadius: 4, distributed: true } },
+    colors: COLORS,
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: data.map(d => d.area),
+      labels: {
+        style: { colors: '#6b7280', fontSize: '10px' },
+        formatter: (v: string) => `${v}%`,
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: { labels: { style: { colors: '#9ca3af', fontSize: '11px' } } },
+    grid: { borderColor: '#1a1a1a', strokeDashArray: 3, xaxis: { lines: { show: true } }, yaxis: { lines: { show: false } } },
+    legend: { show: false },
+    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v}%` } },
+  }
+  return <ReactApexChart options={options} series={[{ data: data.map(d => d.percentage) }]} type="bar" height={Math.max(160, data.length * 30 + 40)} />
 }
 
 /* ─── Market Insight Modal ───────────────────────────────── */
@@ -1328,12 +1376,23 @@ interface MarketInsightData {
   marketStatus: string
   marketScope: string
   marketGrowth: string
+  demandScore?: number
+  marketSizeEstimate?: string
+  avgSalaryBoost?: string
   companiesUsing: string[]
   jobRoles: string[]
   keySkills: string[]
   salaryEntry: string
   salaryMid: string
   salarySenior: string
+  topCities?: string[]
+  industrySectors?: string[]
+  careerPath?: string[]
+  certifications?: string[]
+  remotePercentage?: string
+  industryBreakdown?: { name: string; percentage: number }[]
+  sectorDemandIndex?: { sector: string; score: number }[]
+  topJobAreas?: { area: string; percentage: number }[]
   trendLabels?: string[]
   trendHistorical?: number[]
   trendProjection?: number[]
@@ -1366,140 +1425,433 @@ function MarketInsightModal({ courseId, courseTitle, show, onHide }: {
       .finally(() => setLoading(false))
   }, [show, courseId])
 
-  const statusColor: Record<string, string> = {
-    'In Demand': '#22c55e',
-    'Emerging': '#3b82f6',
-    'Niche': '#f59e0b',
-    'Declining': '#ef4444',
+  const statusConfig: Record<string, { color: string; emoji: string; bg: string; border: string }> = {
+    'In Demand':  { color: '#22c55e', emoji: '🟢', bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.35)' },
+    'Emerging':   { color: '#3b82f6', emoji: '🔵', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.35)' },
+    'Niche':      { color: '#f59e0b', emoji: '🟡', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)' },
+    'Declining':  { color: '#ef4444', emoji: '🔴', bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.35)' },
   }
+
+  const sc = statusConfig[data?.marketStatus ?? ''] ?? { color: '#888', emoji: '⚪', bg: 'rgba(136,136,136,0.12)', border: 'rgba(136,136,136,0.35)' }
+
+  /* ── inline style helpers ── */
+  const card = (extra?: React.CSSProperties): React.CSSProperties => ({
+    background: '#111',
+    border: '1px solid #1a1a1a',
+    borderRadius: '12px',
+    padding: '0.75rem 1rem',
+    ...extra,
+  })
+
+  const sectionLabel = (extra?: React.CSSProperties): React.CSSProperties => ({
+    color: '#6366f1',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    marginBottom: '0.6rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    ...extra,
+  })
 
   return (
     <>
-    <style>{`
-      .mi-modal-backdrop.modal-backdrop { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.65) !important; opacity: 1 !important; }
-      .mi-modal .modal-dialog { width: 75vw !important; max-width: 75vw !important; height: 80vh; }
-      .mi-modal .modal-content { height: 80vh; display: flex; flex-direction: column; background: #0d0d0d; border: 1px solid #2a1060; border-radius: 16px; }
-      .mi-modal .modal-body { flex: 1; overflow-y: auto; }
-    `}</style>
-    <Modal show={show} onHide={onHide} centered scrollable backdropClassName="mi-modal-backdrop" className="mi-modal">
-      <Modal.Header closeButton style={{ background: 'linear-gradient(135deg,#1a0030,#2e0050)', borderBottom: '1px solid #3a1060' }}>
-        <Modal.Title style={{ color: '#fff', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <FaChartLine size={16} color="#a855f7" />
-          Market Insight — <span style={{ color: '#a855f7' }}>{courseTitle}</span>
-        </Modal.Title>
-      </Modal.Header>
+      <style>{`
+        .mi-full-modal .modal-dialog { margin: 0 !important; width: 100vw !important; max-width: 100vw !important; height: 100vh !important; }
+        .mi-full-modal .modal-content { width: 100vw; height: 100vh; border-radius: 0 !important; background: #0a0a0a; border: none; display: flex; flex-direction: column; }
+        .mi-full-modal .modal-body { padding: 0; flex: 1; min-height: 0; display: flex; overflow: hidden; }
+        .mi-modal-backdrop.modal-backdrop { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.65) !important; opacity: 1 !important; }
+      `}</style>
 
-      <Modal.Body style={{ background: '#0d0d0d', padding: '1.5rem' }}>
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#666' }}>
-            <Spinner animation="border" size="sm" style={{ color: '#a855f7' }} />
-            <div style={{ marginTop: '0.75rem', fontSize: '0.85rem' }}>Analyzing market data with AI…</div>
-            <div style={{ color: '#444', fontSize: '0.75rem', marginTop: '0.3rem' }}>This may take a few seconds</div>
+      <Modal show={show} onHide={onHide} backdropClassName="mi-modal-backdrop" className="mi-full-modal" dialogClassName="mi-full-dialog">
+
+        {/* ══════════ HEADER (40px-ish) ══════════ */}
+        <div style={{
+          height: '52px',
+          flexShrink: 0,
+          background: '#0d0d0d',
+          borderBottom: '1px solid #1a1a1a',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 1.25rem',
+          gap: '0.75rem',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+            <FaChartLine size={16} color="#6366f1" style={{ flexShrink: 0 }} />
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', whiteSpace: 'nowrap' }}>Market Intelligence</span>
+            <span style={{ color: '#374151', fontSize: '0.95rem' }}> — </span>
+            <span style={{
+              color: '#a855f7',
+              fontSize: '0.85rem',
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>{courseTitle}</span>
           </div>
-        )}
+          <button
+            onClick={onHide}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid #2a2a2a',
+              borderRadius: '8px',
+              color: '#9ca3af',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '1.1rem',
+              flexShrink: 0,
+              lineHeight: 1,
+            }}
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
 
-        {error && !loading && (
-          <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '1rem', color: '#f87171', fontSize: '0.85rem' }}>
-            {error}
-          </div>
-        )}
+        {/* ══════════ BODY (sidebar + content) ══════════ */}
+        <Modal.Body>
 
-        {data && !loading && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {/* ── LEFT SIDEBAR (30%) ── */}
+          <div style={{
+            width: '30%',
+            flexShrink: 0,
+            background: '#0d0d0d',
+            borderRight: '1px solid #1a1a1a',
+            padding: '1.5rem',
+            overflowY: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+          }}>
 
-            {/* Status + Growth + Cache info */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <span style={{
-                background: `${statusColor[data.marketStatus] ?? '#888'}20`,
-                border: `1px solid ${statusColor[data.marketStatus] ?? '#888'}50`,
-                color: statusColor[data.marketStatus] ?? '#888',
-                borderRadius: '20px', padding: '0.3rem 1rem',
-                fontSize: '0.82rem', fontWeight: 700,
-              }}>
-                <FaChartLine size={11} style={{ marginRight: 4 }} />{data.marketStatus}
-              </span>
-              {data.marketGrowth && (
-                <span style={{ color: '#22c55e', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <FaChartBar size={11} /> {data.marketGrowth}
-                </span>
-              )}
-              <span style={{ color: '#333', fontSize: '0.72rem', marginLeft: 'auto' }}>
-                {data.fromCache ? '⚡ Cached' : '🤖 AI Generated'} · refreshes every 45 days
-              </span>
+            {/* Course title in sidebar */}
+            <div>
+              <div style={{ color: '#444', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Course</div>
+              <div style={{ color: '#e5e7eb', fontSize: '0.9rem', fontWeight: 600, lineHeight: 1.4 }}>{courseTitle}</div>
             </div>
+
+            {/* Status badge */}
+            {(data || loading) && (
+              <div>
+                <div style={{ color: '#444', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Market Status</div>
+                {loading ? (
+                  <div style={{ height: '36px', background: '#1a1a1a', borderRadius: '999px', width: '60%', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                ) : data ? (
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: sc.bg,
+                    border: `1px solid ${sc.border}`,
+                    color: sc.color,
+                    borderRadius: '999px',
+                    padding: '0.4rem 1.1rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                  }}>
+                    {sc.emoji} {data.marketStatus}
+                  </span>
+                ) : null}
+              </div>
+            )}
 
             {/* Market Scope */}
-            <div style={{ background: '#141414', border: '1px solid #1f1f1f', borderRadius: '12px', padding: '1rem 1.1rem' }}>
-              <div style={{ color: '#a855f7', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Market Scope</div>
-              <p style={{ color: '#ccc', fontSize: '0.88rem', lineHeight: 1.7, margin: 0 }}>{data.marketScope}</p>
-            </div>
-
-            {/* Growth Trend Chart */}
-            {Array.isArray(data.trendHistorical) && data.trendHistorical.length > 0 && (
-              <TrendChart
-                labels={data.trendLabels ?? []}
-                historical={data.trendHistorical}
-                projection={data.trendProjection ?? []}
-              />
-            )}
-
-            {/* Salary */}
-            <div>
-              <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.65rem' }}>💰 Salary Range (India)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                {[
-                  { label: 'Entry Level', value: data.salaryEntry, color: '#3b82f6' },
-                  { label: 'Mid Level', value: data.salaryMid, color: '#a855f7' },
-                  { label: 'Senior Level', value: data.salarySenior, color: '#22c55e' },
-                ].map(tier => (
-                  <div key={tier.label} style={{ background: '#141414', border: `1px solid ${tier.color}22`, borderRadius: '10px', padding: '0.85rem', textAlign: 'center' }}>
-                    <div style={{ color: tier.color, fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>{tier.value}</div>
-                    <div style={{ color: '#555', fontSize: '0.7rem', marginTop: '5px' }}>{tier.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Companies */}
-            {data.companiesUsing.length > 0 && (
+            {(data || loading) && (
               <div>
-                <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>🏢 Companies Hiring</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {data.companiesUsing.map(c => (
-                    <span key={c} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '6px', padding: '0.3rem 0.75rem', color: '#ddd', fontSize: '0.8rem', fontWeight: 500 }}>{c}</span>
-                  ))}
+                <div style={sectionLabel()}>Market Scope</div>
+                {loading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {[100, 85, 90, 70].map((w, i) => (
+                      <div key={i} style={{ height: '10px', background: '#1a1a1a', borderRadius: '4px', width: `${w}%` }} />
+                    ))}
+                  </div>
+                ) : data ? (
+                  <p style={{ color: '#9ca3af', fontSize: '0.85rem', lineHeight: 1.7, margin: 0 }}>{data.marketScope}</p>
+                ) : null}
+              </div>
+            )}
+
+            {/* Market Growth highlight */}
+            {data && !loading && data.marketGrowth && (
+              <div style={{
+                background: 'rgba(34,197,94,0.08)',
+                border: '1px solid rgba(34,197,94,0.2)',
+                borderRadius: '10px',
+                padding: '0.75rem 1rem',
+              }}>
+                <div style={{ color: '#444', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Market Growth</div>
+                <div style={{ color: '#22c55e', fontWeight: 700, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FaChartBar size={13} /> {data.marketGrowth}
                 </div>
               </div>
             )}
 
-            {/* Job Roles + Key Skills */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              {data.jobRoles.length > 0 && (
-                <div>
-                  <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>💼 Job Roles</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {data.jobRoles.map(r => (
-                      <span key={r} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '6px', padding: '0.28rem 0.65rem', color: '#c084fc', fontSize: '0.78rem' }}>{r}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {data.keySkills.length > 0 && (
-                <div>
-                  <div style={{ color: '#888', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '0.6rem' }}>🛠 Key Skills</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                    {data.keySkills.map(s => (
-                      <span key={s} style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: '6px', padding: '0.28rem 0.65rem', color: '#86efac', fontSize: '0.78rem' }}>{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Spacer */}
+            <div style={{ flex: 1 }} />
 
+            {/* AI / cache badge at bottom */}
+            {data && !loading && (
+              <div style={{ marginTop: 'auto' }}>
+                <div style={{
+                  background: '#111',
+                  border: '1px solid #1f1f1f',
+                  borderRadius: '8px',
+                  padding: '0.55rem 0.8rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.72rem',
+                  color: '#555',
+                }}>
+                  <span style={{ fontSize: '0.85rem' }}>{data.fromCache ? '⚡' : '🤖'}</span>
+                  <span>{data.fromCache ? 'Cached result' : 'AI Generated'}</span>
+                  <span style={{ marginLeft: 'auto', color: '#333' }}>· refreshes every 45 days</span>
+                </div>
+                {data.lastFetched && (
+                  <div style={{ color: '#333', fontSize: '0.68rem', marginTop: '0.4rem', paddingLeft: '0.2rem' }}>
+                    Last fetched: {new Date(data.lastFetched).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        )}
-      </Modal.Body>
-    </Modal>
+
+          {/* ── RIGHT CONTENT (70%) ── */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '1.25rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1rem',
+            minWidth: 0,
+          }}>
+
+            {/* ── Loading state ── */}
+            {loading && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '0.75rem', color: '#555' }}>
+                <Spinner animation="border" style={{ color: '#6366f1', width: '2rem', height: '2rem', borderWidth: '3px' }} />
+                <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>Analyzing market data with AI…</div>
+                <div style={{ fontSize: '0.78rem', color: '#374151' }}>This may take a few seconds</div>
+              </div>
+            )}
+
+            {/* ── Error state ── */}
+            {error && !loading && (
+              <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '1.25rem', color: '#f87171', fontSize: '0.875rem', display: 'flex', alignItems: 'flex-start', gap: '0.6rem' }}>
+                <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* ── Data state ── */}
+            {data && !loading && (
+              <>
+                {/* ══ SECTION 1 — OVERVIEW stat cards ══ */}
+                <div>
+                  <div style={{ color: '#444', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.65rem' }}>OVERVIEW</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.65rem' }}>
+                    {[
+                      { label: 'Market Size',     value: data.marketSizeEstimate || '—',    sub: data.marketGrowth || '',      subColor: '#22c55e' },
+                      { label: 'Demand Score',     value: `${data.demandScore ?? '—'}/100`,  sub: data.marketStatus || '',      subColor: sc.color },
+                      { label: 'Companies Hiring', value: String(data.companiesUsing.length), sub: 'Active recruiters',         subColor: '#6366f1' },
+                      { label: 'Job Roles',        value: String(data.jobRoles.length),       sub: 'Distinct positions',        subColor: '#a855f7' },
+                      { label: 'Avg Salary Boost', value: data.avgSalaryBoost || '—',        sub: 'Post-certification',        subColor: '#f59e0b' },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '0.9rem 1rem' }}>
+                        <div style={{ color: '#555', fontSize: '0.65rem', fontWeight: 600, marginBottom: '0.45rem' }}>{s.label}</div>
+                        <div style={{ color: '#f0f0f0', fontSize: '1.3rem', fontWeight: 800, lineHeight: 1, marginBottom: '0.3rem' }}>{s.value}</div>
+                        {s.sub && <div style={{ color: s.subColor, fontSize: '0.68rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px' }}>↑ {s.sub}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ══ SECTION 2 — Market Demand Trend chart ══ */}
+                {Array.isArray(data.trendHistorical) && data.trendHistorical.length > 0 && (
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ marginBottom: '0.2rem', color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700 }}>Market demand trend — {courseTitle}</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.75rem' }}>Demand index trajectory (past 12 months + 6-month forecast)</div>
+                    <TrendChart labels={data.trendLabels ?? []} historical={data.trendHistorical} projection={data.trendProjection ?? []} />
+                  </div>
+                )}
+
+                {/* ══ SECTION 3 — Donut + Horizontal bar ══ */}
+                {((data.industryBreakdown && data.industryBreakdown.length > 0) || (data.topJobAreas && data.topJobAreas.length > 0)) && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                    {/* Industries donut */}
+                    {data.industryBreakdown && data.industryBreakdown.length > 0 && (
+                      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                        <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Industries using this skill</div>
+                        <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.5rem' }}>By hiring share</div>
+                        <IndustryDonutChart data={data.industryBreakdown} />
+                      </div>
+                    )}
+
+                    {/* Top job areas horizontal bar */}
+                    {data.topJobAreas && data.topJobAreas.length > 0 && (
+                      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                        <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Top job areas</div>
+                        <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.75rem' }}>Learner demand by subject</div>
+                        <TopAreasChart data={data.topJobAreas} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ══ SECTION 4 — Sector Demand Index ══ */}
+                {data.sectorDemandIndex && data.sectorDemandIndex.length > 0 && (
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Sector demand index</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '1rem' }}>Hiring demand score per sector for certified professionals (out of 100)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {data.sectorDemandIndex.map(({ sector, score }) => {
+                        const color = score >= 80 ? '#3b82f6' : score >= 60 ? '#22c55e' : '#f59e0b'
+                        return (
+                          <div key={sector} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 36px', alignItems: 'center', gap: '0.75rem' }}>
+                            <span style={{ color: '#9ca3af', fontSize: '0.78rem', textAlign: 'right' }}>{sector}</span>
+                            <div style={{ height: '10px', background: '#1a1a1a', borderRadius: '999px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${score}%`, background: color, borderRadius: '999px', transition: 'width 0.6s ease' }} />
+                            </div>
+                            <span style={{ color: '#e5e7eb', fontSize: '0.78rem', fontWeight: 700 }}>{score}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ SECTION 5 — Salary + Cities + Career + Certifications ══ */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                  {/* Salary card */}
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Salary range · India</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.8rem' }}>Annual package in LPA</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {[
+                        { label: 'Entry Level',  value: data.salaryEntry,  color: '#3b82f6', fill: 33 },
+                        { label: 'Mid Level',    value: data.salaryMid,    color: '#a855f7', fill: 66 },
+                        { label: 'Senior Level', value: data.salarySenior, color: '#22c55e', fill: 100 },
+                      ].map(tier => (
+                        <div key={tier.label}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.3rem' }}>
+                            <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{tier.label}</span>
+                            <span style={{ color: tier.color, fontWeight: 700, fontSize: '0.82rem' }}>{tier.value}</span>
+                          </div>
+                          <div style={{ height: '6px', background: '#1a1a1a', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${tier.fill}%`, background: tier.color, borderRadius: '999px' }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Career path */}
+                  {data.careerPath && data.careerPath.length > 0 && (
+                    <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                      <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Career progression path</div>
+                      <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.8rem' }}>From fresher to senior</div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {data.careerPath.map((step, i) => (
+                          <div key={i} style={{ display: 'flex', gap: '10px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: `rgba(249,115,22,${1 - i * 0.15})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 800, color: '#fff' }}>{i + 1}</div>
+                              {i < data.careerPath!.length - 1 && <div style={{ width: '2px', flex: 1, background: 'rgba(249,115,22,0.15)', minHeight: '14px', margin: '2px 0' }} />}
+                            </div>
+                            <div style={{ paddingBottom: i < data.careerPath!.length - 1 ? '0.55rem' : 0 }}>
+                              <span style={{ color: '#d1d5db', fontSize: '0.78rem', lineHeight: 1.5 }}>{step}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* ══ SECTION 6 — Subject areas + Target sectors / companies ══ */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+
+                  {/* Key Skills */}
+                  {data.keySkills.length > 0 && (
+                    <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                      <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Subject areas</div>
+                      <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.75rem' }}>Topics covered across catalog</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                        {(() => {
+                          const chipColors = [
+                            { bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)', color: '#93c5fd' },
+                            { bg: 'rgba(34,197,94,0.12)',  border: 'rgba(34,197,94,0.3)',  color: '#86efac' },
+                            { bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.3)', color: '#c084fc' },
+                            { bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', color: '#fcd34d' },
+                            { bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.3)',  color: '#fca5a5' },
+                            { bg: 'rgba(20,184,166,0.12)', border: 'rgba(20,184,166,0.3)', color: '#5eead4' },
+                          ]
+                          return data.keySkills.map((skill, i) => {
+                            const c = chipColors[i % chipColors.length]
+                            return (
+                              <span key={skill} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: '8px', padding: '0.3rem 0.7rem', color: c.color, fontSize: '0.75rem', fontWeight: 600 }}>{skill}</span>
+                            )
+                          })
+                        })()}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Companies + Cities */}
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>Target sectors & companies</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.75rem' }}>Industries placing certified learners</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '0.65rem' }}>
+                      {data.companiesUsing.map((company, i) => {
+                        const avatarColors = ['#4f46e5','#0891b2','#059669','#b45309','#be185d','#7c3aed','#1d4ed8','#15803d']
+                        const ac = avatarColors[i % avatarColors.length]
+                        return (
+                          <span key={company} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#1a1a1a', border: '1px solid #252525', borderRadius: '8px', padding: '0.28rem 0.6rem', color: '#d1d5db', fontSize: '0.75rem', fontWeight: 500 }}>
+                            <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: ac, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.58rem', fontWeight: 800, flexShrink: 0 }}>{company.charAt(0).toUpperCase()}</span>
+                            {company}
+                          </span>
+                        )
+                      })}
+                    </div>
+                    {data.topCities && data.topCities.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        {data.topCities.map(city => (
+                          <span key={city} style={{ background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: '8px', padding: '0.28rem 0.65rem', color: '#7dd3fc', fontSize: '0.73rem', fontWeight: 500 }}>📍 {city}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ══ SECTION 7 — Certifications ══ */}
+                {data.certifications && data.certifications.length > 0 && (
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>🎓 Recommended Certifications</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.75rem' }}>Credentials that boost employability</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.5rem' }}>
+                      {data.certifications.map((cert, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', background: 'rgba(234,179,8,0.05)', border: '1px solid rgba(234,179,8,0.15)', borderRadius: '8px', padding: '0.5rem 0.75rem' }}>
+                          <span style={{ color: '#facc15', flexShrink: 0 }}>🏅</span>
+                          <span style={{ color: '#d1d5db', fontSize: '0.78rem', lineHeight: 1.4 }}>{cert}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </Modal.Body>
+      </Modal>
     </>
   )
 }

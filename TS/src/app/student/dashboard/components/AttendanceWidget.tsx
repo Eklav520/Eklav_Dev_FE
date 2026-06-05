@@ -28,13 +28,29 @@ const fmtTime = (iso: string | null) => {
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAY_LABELS  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
+/* ── Helper: get week's 7 date strings (Sun–Sat) from any date ── */
+const getWeekDates = (dateStr: string): string[] => {
+  const d = new Date(dateStr + 'T00:00:00')
+  const sunday = new Date(d)
+  sunday.setDate(d.getDate() - d.getDay())
+  return Array.from({ length: 7 }, (_, i) => {
+    const dd = new Date(sunday)
+    dd.setDate(sunday.getDate() + i)
+    return dd.toISOString().slice(0, 10)
+  })
+}
+
 /* ── Col 1: Line Graph ── */
-const LineGraph: React.FC<{ data: DayRecord[] }> = ({ data }) => {
+const LineGraph: React.FC<{ data: DayRecord[]; weekDates: string[] }> = ({ data, weekDates }) => {
   const today = new Date().toISOString().slice(0, 10)
-  const last7 = [...data]
-    .filter(d => d.date <= today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-7)
+
+  // Build a lookup from date → record
+  const byDate: Record<string, DayRecord> = {}
+  data.forEach(d => { byDate[d.date] = d })
+
+  // Show exactly the 7 days of the selected week (fill missing with 0h)
+  const last7 = weekDates.map(date => byDate[date] ?? { date, hours: 0, isPresent: false, totalSeconds: 0, loginAt: null, logoutAt: null, isActive: false })
+
   const rawMax = Math.max(...last7.map(d => d.hours), 0.1)
   // Snap to a clean ceiling: 1, 2, 4, 6, 8, 10, 12...
   const niceMax = rawMax <= 1 ? 1
@@ -58,9 +74,12 @@ const LineGraph: React.FC<{ data: DayRecord[] }> = ({ data }) => {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ marginBottom: 6, display: 'flex', alignItems: 'baseline', gap: 8 }}>
+      <div style={{ marginBottom: 6, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Weekly Activity</span>
-        <span style={{ color: '#6b7280', fontSize: '0.65rem' }}>Last 7 days · hrs/day</span>
+        <span style={{ color: '#ff7a00', fontSize: '0.65rem', fontWeight: 600 }}>
+          {weekDates[0]} – {weekDates[6]}
+        </span>
+        <span style={{ color: '#4b5563', fontSize: '0.6rem' }}>· hrs/day · click a week in calendar</span>
       </div>
 
       {!hasData ? (
@@ -168,7 +187,13 @@ const StatsPanel: React.FC<{
 }
 
 /* ── Col 3: Calendar ── */
-const CalendarGrid: React.FC<{ records: DayRecord[]; month: number; year: number }> = ({ records, month, year }) => {
+const CalendarGrid: React.FC<{
+  records: DayRecord[]
+  month: number
+  year: number
+  selectedWeekDates: string[]
+  onSelectWeek: (dates: string[]) => void
+}> = ({ records, month, year, selectedWeekDates, onSelectWeek }) => {
   const byDate = useMemo(() => {
     const m: Record<string, DayRecord> = {}
     records.forEach(r => { m[r.date] = r })
@@ -211,52 +236,83 @@ const CalendarGrid: React.FC<{ records: DayRecord[]; month: number; year: number
         ))}
       </div>
 
-      {/* Day cells */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3, flex: 1 }}>
-        {cells.map((day, i) => {
-          if (!day) return <div key={`blank-${i}`} />
+      {/* Week rows — each row of 7 is clickable */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+        {Array.from({ length: cells.length / 7 }, (_, weekIdx) => {
+          const weekCells = cells.slice(weekIdx * 7, weekIdx * 7 + 7)
 
-          const dateStr  = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
-          const rec      = byDate[dateStr]
-          const isToday  = dateStr === today
-          const isFuture = dateStr > today
-          const present  = rec?.isPresent ?? false
-          const hLabel   = fmtHours(rec?.hours ?? 0)
+          // Get dates for this week row (skip nulls)
+          const weekDayDates = weekCells.map(day => {
+            if (!day) return null
+            return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+          })
 
-          let bg     = '#111'
-          let color  = '#4b5563'
-          let border = '1px solid #1e1e1e'
-
-          if (!isFuture) {
-            if (present) { bg = 'rgba(16,185,129,0.13)'; color = '#10b981'; border = '1px solid rgba(16,185,129,0.3)' }
-            else         { bg = 'rgba(239,68,68,0.08)';  color = '#ef4444'; border = '1px solid rgba(239,68,68,0.2)' }
-          }
-          if (isToday) { border = '1.5px solid #ff7a00'; color = '#ff7a00' }
+          // Find a valid date in this row to get the full week (Mon-Sun logic via getWeekDates)
+          const firstValidDate = weekDayDates.find(d => d !== null)
+          const isSelected = firstValidDate ? selectedWeekDates.includes(firstValidDate) : false
 
           return (
             <div
-              key={dateStr}
-              title={`${dateStr}${hLabel ? ` · ${hLabel}` : ''}\nLogin: ${fmtTime(rec?.loginAt ?? null)}\nLogout: ${fmtTime(rec?.logoutAt ?? null)}`}
-              style={{
-                background: bg, border, borderRadius: 6,
-                padding: '4px 2px', textAlign: 'center', cursor: 'default',
-                transition: 'transform 0.12s',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                minHeight: 32,
+              key={`week-${weekIdx}`}
+              onClick={() => {
+                if (firstValidDate) onSelectWeek(getWeekDates(firstValidDate))
               }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; e.currentTarget.style.zIndex = '2' }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1' }}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7,1fr)',
+                gap: 3,
+                cursor: 'pointer',
+                borderRadius: 7,
+                outline: isSelected ? '2px solid #ff7a00' : '2px solid transparent',
+                padding: '2px',
+                transition: 'outline 0.15s',
+                background: isSelected ? 'rgba(255,122,0,0.05)' : 'transparent',
+              }}
+              title="Click to view this week's activity"
             >
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color, lineHeight: 1 }}>{day}</div>
-              {!isFuture && (
-                <div style={{ fontSize: '0.52rem', color: present ? '#6ee7b7' : '#fca5a5', marginTop: 2, lineHeight: 1 }}>
-                  {hLabel ?? (present ? '—' : 'abs')}
-                </div>
-              )}
-              {rec?.isActive && (
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff7a00',
-                  marginTop: 2, boxShadow: '0 0 4px #ff7a00' }} />
-              )}
+              {weekCells.map((day, ci) => {
+                if (!day) return <div key={`blank-${weekIdx}-${ci}`} />
+
+                const dateStr  = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`
+                const rec      = byDate[dateStr]
+                const isToday  = dateStr === today
+                const isFuture = dateStr > today
+                const present  = rec?.isPresent ?? false
+                const hLabel   = fmtHours(rec?.hours ?? 0)
+
+                let bg     = '#111'
+                let color  = '#4b5563'
+                let border = '1px solid #1e1e1e'
+
+                if (!isFuture) {
+                  if (present) { bg = 'rgba(16,185,129,0.13)'; color = '#10b981'; border = '1px solid rgba(16,185,129,0.3)' }
+                  else         { bg = 'rgba(239,68,68,0.08)';  color = '#ef4444'; border = '1px solid rgba(239,68,68,0.2)' }
+                }
+                if (isToday) { border = '1.5px solid #ff7a00'; color = '#ff7a00' }
+
+                return (
+                  <div
+                    key={dateStr}
+                    title={`${dateStr}${hLabel ? ` · ${hLabel}` : ''}\nLogin: ${fmtTime(rec?.loginAt ?? null)}\nLogout: ${fmtTime(rec?.logoutAt ?? null)}`}
+                    style={{
+                      background: bg, border, borderRadius: 5,
+                      padding: '4px 2px', textAlign: 'center',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      minHeight: 30,
+                    }}
+                  >
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color, lineHeight: 1 }}>{day}</div>
+                    {!isFuture && (
+                      <div style={{ fontSize: '0.52rem', color: present ? '#6ee7b7' : '#fca5a5', marginTop: 2, lineHeight: 1 }}>
+                        {hLabel ?? (present ? '—' : 'abs')}
+                      </div>
+                    )}
+                    {rec?.isActive && (
+                      <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#ff7a00', marginTop: 2, boxShadow: '0 0 4px #ff7a00' }} />
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )
         })}
@@ -275,6 +331,8 @@ const AttendanceWidget: React.FC = () => {
   const [year,    setYear]    = useState(now.getFullYear())
   const [records, setRecords] = useState<DayRecord[]>([])
   const [loading, setLoading] = useState(true)
+  // Default selected week = current week
+  const [selectedWeek, setSelectedWeek] = useState<string[]>(() => getWeekDates(now.toISOString().slice(0, 10)))
 
   const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - i)
 
@@ -368,7 +426,7 @@ const AttendanceWidget: React.FC = () => {
               display: 'flex',
               flexDirection: 'column',
             }}>
-              <LineGraph data={records} />
+              <LineGraph data={records} weekDates={selectedWeek} />
             </div>
 
             {/* Col 2: Stats */}
@@ -395,7 +453,13 @@ const AttendanceWidget: React.FC = () => {
               borderRadius: 12,
               padding: '14px 16px',
             }}>
-              <CalendarGrid records={records} month={month} year={year} />
+              <CalendarGrid
+                records={records}
+                month={month}
+                year={year}
+                selectedWeekDates={selectedWeek}
+                onSelectWeek={setSelectedWeek}
+              />
             </div>
 
           </div>
