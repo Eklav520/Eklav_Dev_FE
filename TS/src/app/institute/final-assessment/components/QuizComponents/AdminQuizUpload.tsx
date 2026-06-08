@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { Card, Form, Button, Alert, Spinner, Table } from "react-bootstrap";
 import * as XLSX from "xlsx";
 import axios from "axios";
-import { FaFileExcel, FaUpload, FaEye, FaCheckCircle, FaTimesCircle } from "react-icons/fa";
+import { FaFileExcel, FaUpload, FaEye, FaCheckCircle, FaTimesCircle, FaDownload } from "react-icons/fa";
 import { useAuthContext } from "@/context/useAuthContext";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "";
@@ -40,6 +40,19 @@ const AdminFinalAssessmentUpload: React.FC = () => {
 
     fetchExams();
   }, []);
+
+  const handleDownloadTemplate = () => {
+    const templateRows = [
+      { questionType: "MCQ", question: "What is the capital of India?", option1: "Mumbai", option2: "New Delhi", option3: "Chennai", option4: "Kolkata", correctAnswer: "B" },
+      { questionType: "MCQ", question: "Which language runs in a web browser?", option1: "Java", option2: "C++", option3: "JavaScript", option4: "Python", correctAnswer: "C" },
+      { questionType: "FILL", question: "The process of converting source code to machine code is called ___.", option1: "", option2: "", option3: "", option4: "", correctAnswer: "Compilation" },
+      { questionType: "FILL", question: "HTML stands for ___ Markup Language.", option1: "", option2: "", option3: "", option4: "", correctAnswer: "HyperText" },
+    ];
+    const ws = XLSX.utils.json_to_sheet(templateRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Questions");
+    XLSX.writeFile(wb, "quiz_template.xlsx");
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFile(e.target.files?.[0] || null);
@@ -163,10 +176,27 @@ const AdminFinalAssessmentUpload: React.FC = () => {
           <div className="upload-header">
             <FaFileExcel className="upload-icon" />
             <div>
-              <h5 className="upload-title">Upload MCQ Questions</h5>
+              <h5 className="upload-title">Upload Quiz Questions (MCQ + Fill in the Blank)</h5>
               <p className="upload-subtitle">
-                Upload Excel (.xlsx, .xls) with MCQ data
+                Upload Excel (.xlsx, .xls) — supports both MCQ and Fill in the Blank
               </p>
+            </div>
+          </div>
+
+          {/* ================= FORMAT GUIDE ================= */}
+          <div style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: '8px', padding: '0.85rem 1rem', marginBottom: '1rem', fontSize: '0.8rem', color: '#888' }}>
+            <div style={{ color: '#ff7a00', fontWeight: 700, marginBottom: '0.4rem' }}>📋 Excel Column Format</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.3rem 1.5rem' }}>
+              <span><b style={{ color: '#ccc' }}>questionType</b> — MCQ or FILL</span>
+              <span><b style={{ color: '#ccc' }}>question</b> — Question text</span>
+              <span><b style={{ color: '#ccc' }}>option1–4</b> — Options (MCQ only)</span>
+              <span><b style={{ color: '#ccc' }}>correctAnswer</b> — A/B/C/D for MCQ, text for FILL</span>
+            </div>
+            <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: '#555' }}>💡 Leave option1–4 empty for FILL type questions</span>
+              <button onClick={handleDownloadTemplate} style={{ background: 'transparent', border: '1px solid #ff7a00', color: '#ff7a00', borderRadius: '6px', padding: '0.3rem 0.75rem', fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                <FaDownload size={11} /> Download Template
+              </button>
             </div>
           </div>
 

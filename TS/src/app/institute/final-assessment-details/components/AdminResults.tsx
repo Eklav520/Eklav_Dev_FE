@@ -9,7 +9,7 @@ import {
   FaCheckDouble, FaFileExport, FaGraduationCap,
   FaTrophy, FaUsers, FaAward, FaCalendarAlt,
   FaUser, FaEnvelope, FaBookOpen, FaPercent,
-  FaPlay, FaStop
+  FaPlay, FaStop, FaRedoAlt, FaFilePdf
 } from 'react-icons/fa';
 import { useAuthContext } from '@/context/useAuthContext';
 import axios from 'axios';
@@ -77,6 +77,9 @@ const AdminResults: React.FC = () => {
   const itemsPerPage = 30;
   const [exams, setExams] = useState<{ id: string; title: string }[]>([]);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
+  const [answersLoading, setAnswersLoading] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
   const [showLiveStudentsModal, setShowLiveStudentsModal] = useState(false);
   const [liveStudents, setLiveStudents] = useState<LiveStudent[]>([]);
   const [selectedLiveExamId, setSelectedLiveExamId] = useState<string>('');
@@ -341,6 +344,172 @@ const AdminResults: React.FC = () => {
     } else {
       setSelectedSubmissions([...selectedSubmissions, id]);
     }
+  };
+
+  const fetchDetailedAnswers = async (resultId: string) => {
+    try {
+      setAnswersLoading(true);
+      setDetailedAnswers([]);
+      const res = await axios.get(`${baseURL}/api/assessment/admin/results/${resultId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setDetailedAnswers(res.data.data?.detailedAnswers || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch detailed answers', err);
+    } finally {
+      setAnswersLoading(false);
+    }
+  };
+
+  const handleRescore = async () => {
+    if (!selectedResult) return;
+    try {
+      setRescoring(true);
+      const res = await axios.post(
+        `${baseURL}/api/assessment/admin/results/${selectedResult._id}/rescore`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        // Refresh answers display and result list
+        await fetchDetailedAnswers(selectedResult._id);
+        await fetchResults();
+        // Update selectedResult score inline
+        setSelectedResult(prev => prev ? {
+          ...prev,
+          totalScore: res.data.data.score,
+          finalPercentage: res.data.data.percentage,
+          resultStatus: res.data.data.resultStatus,
+        } : prev);
+        alert(`Re-scored: ${res.data.message}`);
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Re-score failed');
+    } finally {
+      setRescoring(false);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!selectedResult) return;
+
+    const correctCount = detailedAnswers.filter(a => a.isCorrect === true).length;
+    const totalCount = detailedAnswers.length;
+
+    const answersHTML = detailedAnswers.length > 0 ? detailedAnswers.map((ans, idx) => {
+      const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+      const isCorrect = ans.isCorrect === true;
+      const isWrong = ans.isCorrect === false;
+      const borderColor = isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#ccc';
+      const statusIcon = isCorrect ? '✓' : isWrong ? '✗' : '—';
+      const statusColor = isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#999';
+
+      const optionsHTML = !isFill && ans.options?.length > 0
+        ? `<div style="margin:6px 0 8px 0; display:flex; flex-wrap:wrap; gap:6px;">
+            ${ans.options.map((opt: any) => {
+              const isSel = opt.key === ans.selectedOption;
+              const isCorr = opt.key === ans.correctAnswer;
+              return `<span style="padding:3px 10px; border-radius:4px; font-size:12px; font-weight:600;
+                background:${isCorr ? '#d4edda' : isSel && !isCorr ? '#f8d7da' : '#f5f5f5'};
+                border:1px solid ${isCorr ? '#28a745' : isSel && !isCorr ? '#dc3545' : '#ddd'};
+                color:${isCorr ? '#155724' : isSel && !isCorr ? '#721c24' : '#555'};">
+                ${opt.key}. ${opt.text}${isCorr ? ' ✓' : isSel && !isCorr ? ' ✗' : ''}
+              </span>`;
+            }).join('')}
+           </div>` : '';
+
+      return `<div style="border:1px solid ${borderColor}; border-radius:8px; padding:14px 16px; margin-bottom:10px; background:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div style="display:flex; gap:8px; flex:1;">
+            <span style="color:#999; font-size:12px; min-width:24px; padding-top:2px;">Q${idx + 1}.</span>
+            <span style="font-size:14px; color:#111; line-height:1.5;">${ans.questionText || '—'}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:12px;">
+            <span style="background:${isFill ? '#d4edda' : '#fff3e0'}; color:${isFill ? '#155724' : '#e65100'}; border:1px solid ${isFill ? '#28a745' : '#ff7a00'}; border-radius:20px; padding:1px 9px; font-size:10px; font-weight:700;">
+              ${isFill ? 'FILL' : 'MCQ'}
+            </span>
+            <span style="font-size:18px; font-weight:700; color:${statusColor};">${statusIcon}</span>
+          </div>
+        </div>
+        ${optionsHTML}
+        <div style="display:flex; gap:10px; flex-wrap:wrap; padding-left:32px;">
+          <span style="background:#f5f5f5; border-radius:4px; padding:4px 10px; font-size:12px;">
+            <span style="color:#999;">Student: </span>
+            <span style="font-weight:600; color:${statusColor};">${ans.selectedOption || '(no answer)'}</span>
+          </span>
+          ${ans.correctAnswer ? `<span style="background:#f5f5f5; border-radius:4px; padding:4px 10px; font-size:12px;">
+            <span style="color:#999;">Correct: </span>
+            <span style="font-weight:600; color:#28a745;">${ans.correctAnswer}</span>
+          </span>` : ''}
+        </div>
+      </div>`;
+    }).join('') : '<p style="color:#999; text-align:center;">No answer data available</p>';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Exam Report — ${selectedResult.student.name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #111; background: #fff; }
+    @media print { body { padding: 0; } .no-print { display: none; } }
+    h1 { color: #ff7a00; font-size: 22px; margin-bottom: 4px; }
+    .meta { color: #555; font-size: 13px; margin-bottom: 24px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #ff7a00; border-bottom: 2px solid #ff7a00; padding-bottom: 6px; margin-bottom: 14px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    .info-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; font-size: 13px; }
+    .info-label { color: #777; }
+    .info-value { font-weight: 600; }
+    .score-box { background: ${selectedResult.resultStatus === 'passed' ? '#d4edda' : '#f8d7da'}; border: 1px solid ${selectedResult.resultStatus === 'passed' ? '#28a745' : '#dc3545'}; border-radius: 8px; padding: 16px; display: flex; justify-content: space-around; margin-bottom: 24px; text-align: center; }
+    .score-item span { display: block; font-size: 12px; color: #777; margin-bottom: 4px; }
+    .score-item strong { font-size: 20px; font-weight: 700; color: ${selectedResult.resultStatus === 'passed' ? '#155724' : '#721c24'}; }
+    .print-btn { background: #ff7a00; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:20px;">
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <h1>📋 Exam Assessment Report</h1>
+  <p class="meta">Generated on ${new Date().toLocaleString('en-IN')}</p>
+
+  <div class="section">
+    <div class="section-title">Student Information</div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Name</span><span class="info-value">${selectedResult.student.name || 'N/A'}</span></div>
+      <div class="info-item"><span class="info-label">Email</span><span class="info-value">${selectedResult.student.email || 'N/A'}</span></div>
+      <div class="info-item"><span class="info-label">Exam</span><span class="info-value">${selectedResult.exam.title}</span></div>
+      <div class="info-item"><span class="info-label">Submitted</span><span class="info-value">${formatDate(selectedResult.createdAt)}</span></div>
+    </div>
+  </div>
+
+  <div class="score-box">
+    <div class="score-item"><span>Total Score</span><strong>${selectedResult.totalScore}</strong></div>
+    <div class="score-item"><span>Percentage</span><strong>${selectedResult.finalPercentage?.toFixed(1)}%</strong></div>
+    <div class="score-item"><span>Result</span><strong>${selectedResult.resultStatus?.toUpperCase()}</strong></div>
+    <div class="score-item"><span>Correct Answers</span><strong>${correctCount} / ${totalCount}</strong></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Student Answers</div>
+    ${answersHTML}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `exam-report-${selectedResult.student.name?.replace(/\s+/g, '-')}-${Date.now()}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   const exportCSV = async () => {
@@ -656,6 +825,7 @@ const AdminResults: React.FC = () => {
                           onClick={() => {
                             setSelectedResult(result);
                             setShowDetailsModal(true);
+                            fetchDetailedAnswers(result._id);
                           }}
                         >
                           <FaEye /> View
@@ -721,7 +891,7 @@ const AdminResults: React.FC = () => {
       </div>
 
       {/* Professional Details Modal */}
-      <Modal show={showDetailsModal} onHide={() => setShowDetailsModal(false)} size="lg" centered className="professional-modal">
+      <Modal show={showDetailsModal} onHide={() => { setShowDetailsModal(false); setDetailedAnswers([]); }} fullscreen className="professional-modal">
         <Modal.Header closeButton className="modal-header-custom">
           <Modal.Title className="modal-title-custom">
             <FaUserGraduate className="me-2" />
@@ -836,6 +1006,101 @@ const AdminResults: React.FC = () => {
                 </div>
               </div>
 
+              {/* Student Answers */}
+              <div className="info-card" style={{ marginBottom: '20px' }}>
+                <h5 className="section-title">
+                  <FaBookOpen className="me-2" /> Student Answers
+                  {!answersLoading && detailedAnswers.length > 0 && (
+                    <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#8a8a8a', fontWeight: 400 }}>
+                      {detailedAnswers.filter(a => a.isCorrect === true).length} / {detailedAnswers.length} correct
+                    </span>
+                  )}
+                </h5>
+
+                {answersLoading ? (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#8a8a8a' }}>
+                    <Spinner animation="border" size="sm" style={{ color: '#ff7a00' }} />
+                    <span style={{ marginLeft: '10px' }}>Loading answers...</span>
+                  </div>
+                ) : detailedAnswers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#555', fontSize: '13px' }}>
+                    No answer data available for this submission.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {detailedAnswers.map((ans, idx) => {
+                      const isCorrect = ans.isCorrect === true;
+                      const isWrong = ans.isCorrect === false;
+                      const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+                      return (
+                        <div key={idx} style={{
+                          background: '#0d0d0d',
+                          border: `1px solid ${isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#2c2c2c'}`,
+                          borderRadius: '10px',
+                          padding: '14px 16px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
+                              <span style={{ color: '#555', fontSize: '12px', minWidth: '26px', paddingTop: '2px' }}>Q{idx + 1}.</span>
+                              <span style={{ color: '#e0e0e0', fontSize: '14px', lineHeight: '1.5' }}>{ans.questionText || '—'}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              <span style={{
+                                background: isFill ? 'rgba(40,167,69,0.15)' : 'rgba(255,107,53,0.15)',
+                                color: isFill ? '#28a745' : '#ff6b35',
+                                border: `1px solid ${isFill ? '#28a745' : '#ff6b35'}`,
+                                borderRadius: '20px', padding: '1px 9px', fontSize: '10px', fontWeight: 700
+                              }}>
+                                {isFill ? 'FILL' : 'MCQ'}
+                              </span>
+                              {isCorrect && <span style={{ color: '#28a745', fontSize: '18px', fontWeight: 700 }}>✓</span>}
+                              {isWrong && <span style={{ color: '#dc3545', fontSize: '18px', fontWeight: 700 }}>✗</span>}
+                            </div>
+                          </div>
+
+                          {/* MCQ options with highlight */}
+                          {!isFill && ans.options?.length > 0 && (
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', paddingLeft: '34px', marginBottom: '8px' }}>
+                              {ans.options.map((opt: any) => {
+                                const isSelected = opt.key === ans.selectedOption;
+                                const isCorrectOpt = opt.key === ans.correctAnswer;
+                                return (
+                                  <span key={opt.key} style={{
+                                    padding: '3px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                                    background: isCorrectOpt ? 'rgba(40,167,69,0.2)' : isSelected ? 'rgba(220,53,69,0.2)' : '#1a1a1a',
+                                    border: `1px solid ${isCorrectOpt ? '#28a745' : isSelected ? '#dc3545' : '#333'}`,
+                                    color: isCorrectOpt ? '#28a745' : isSelected ? '#dc3545' : '#888',
+                                  }}>
+                                    {opt.key}. {opt.text}
+                                    {isSelected && !isCorrectOpt && ' ✗'}
+                                    {isCorrectOpt && ' ✓'}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingLeft: '34px' }}>
+                            <div style={{ background: '#1a1a1a', borderRadius: '6px', padding: '5px 12px', fontSize: '12px' }}>
+                              <span style={{ color: '#8a8a8a' }}>Student: </span>
+                              <span style={{ color: isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#aaa', fontWeight: 600 }}>
+                                {ans.selectedOption || '(no answer)'}
+                              </span>
+                            </div>
+                            {ans.correctAnswer && (
+                              <div style={{ background: '#1a1a1a', borderRadius: '6px', padding: '5px 12px', fontSize: '12px' }}>
+                                <span style={{ color: '#8a8a8a' }}>Correct: </span>
+                                <span style={{ color: '#28a745', fontWeight: 600 }}>{ans.correctAnswer}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Video Recordings */}
               {selectedResult.recordings && Object.keys(selectedResult.recordings).length > 0 && (
                 <div className="recordings-card">
@@ -881,8 +1146,25 @@ const AdminResults: React.FC = () => {
             </div>
           )}
         </Modal.Body>
-        <Modal.Footer className="modal-footer-custom">
-          <Button variant="secondary" onClick={() => setShowDetailsModal(false)} className="close-modal-btn">
+        <Modal.Footer className="modal-footer-custom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Button
+              style={{ background: '#1a6fc4', border: 'none', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleRescore}
+              disabled={rescoring}
+            >
+              {rescoring ? <Spinner size="sm" animation="border" /> : <FaRedoAlt />}
+              {rescoring ? 'Re-scoring...' : 'Re-score'}
+            </Button>
+            <Button
+              style={{ background: '#28a745', border: 'none', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleDownloadReport}
+              disabled={answersLoading}
+            >
+              <FaFilePdf /> Download Report
+            </Button>
+          </div>
+          <Button variant="secondary" onClick={() => { setShowDetailsModal(false); setDetailedAnswers([]); }} className="close-modal-btn">
             Close
           </Button>
         </Modal.Footer>
@@ -1405,8 +1687,8 @@ const AdminResults: React.FC = () => {
         .modal-body-custom {
           padding: 24px;
           color: #e0e0e0;
-          max-height: 70vh;
           overflow-y: auto;
+          flex: 1;
         }
 
         .modal-footer-custom {

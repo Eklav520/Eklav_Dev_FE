@@ -16,7 +16,9 @@ type Option = {
 type Question = {
   id: string
   text: string
+  questionType: 'MCQ' | 'FILL'
   options: Option[]
+  correctAnswer?: string
 }
 
 export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props) {
@@ -136,7 +138,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
         const formatted = (data.data || []).map((q: any) => ({
           id: q._id,
           text: q.text || q.question,
+          questionType: q.questionType === 'FILL' ? 'FILL' : 'MCQ',
           options: q.options || [],
+          correctAnswer: q.correctAnswer || '',
         }))
 
         setQuestions(formatted)
@@ -548,47 +552,96 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
             }}
             className="p-4"
           >
+            <div style={{ marginBottom: "10px" }}>
+              {questions[current].questionType === 'FILL' ? (
+                <span style={{ background: "rgba(40,167,69,0.15)", color: "#28a745", border: "1px solid #28a745", borderRadius: "20px", padding: "2px 12px", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.5px" }}>
+                  ✏️ FILL IN THE BLANK
+                </span>
+              ) : (
+                <span style={{ background: "rgba(255,107,53,0.15)", color: "#ff6b35", border: "1px solid #ff6b35", borderRadius: "20px", padding: "2px 12px", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.5px" }}>
+                  ☑️ MCQ
+                </span>
+              )}
+            </div>
             <div style={{ fontSize: "1.2rem", lineHeight: "1.6", fontWeight: "500" }}>
               {questions[current].text}
             </div>
           </Card>
 
-          {/* Options - Compact but readable */}
+          {/* Answer area — MCQ or FILL */}
           <div className="mb-4">
-            <h6 style={{ color: "#888", marginBottom: "12px", fontSize: "0.9rem" }}>Select your answer:</h6>
-            {questions[current].options.map((opt) => (
-              <Button
-                key={opt.key}
-                className="w-100 mb-2 text-start"
-                style={{
-                  background: answers[questions[current].id] === opt.key ? "#ff6b35" : "#111",
-                  border: answers[questions[current].id] === opt.key ? "none" : "1px solid #333",
-                  color: "#fff",
-                  justifyContent: "flex-start",
-                  padding: "12px 16px",
-                  fontSize: "0.95rem",
-                  transition: "all 0.2s",
-                  borderRadius: "8px"
-                }}
-                onClick={() => selectOption(opt.key)}
-                disabled={submitted}
-                onMouseEnter={(e) => {
-                  if (answers[questions[current].id] !== opt.key) {
-                    e.currentTarget.style.background = "#222"
-                    e.currentTarget.style.borderColor = "#ff6b35"
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (answers[questions[current].id] !== opt.key) {
-                    e.currentTarget.style.background = "#111"
-                    e.currentTarget.style.borderColor = "#333"
-                  }
-                }}
-              >
-                <b style={{ marginRight: "12px", color: "#ff6b35", fontSize: "1rem" }}>{opt.key}.</b>
-                {opt.text}
-              </Button>
-            ))}
+            {questions[current].questionType === 'FILL' ? (
+              <>
+                <h6 style={{ color: "#888", marginBottom: "12px", fontSize: "0.9rem" }}>Type your answer:</h6>
+                <div style={{
+                  background: "#111",
+                  border: "1px solid #ff6b35",
+                  borderRadius: "10px",
+                  padding: "4px 8px",
+                }}>
+                  <input
+                    type="text"
+                    value={answers[questions[current].id] || ""}
+                    onChange={e => {
+                      if (submitted) return
+                      const q = questions[current]
+                      setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))
+                    }}
+                    disabled={submitted}
+                    placeholder="Write your answer here..."
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                      border: "none",
+                      outline: "none",
+                      color: "#fff",
+                      fontSize: "1rem",
+                      padding: "10px 8px",
+                    }}
+                  />
+                </div>
+                <div style={{ color: "#555", fontSize: "0.78rem", marginTop: "6px" }}>
+                  Fill in the blank — type your answer exactly
+                </div>
+              </>
+            ) : (
+              <>
+                <h6 style={{ color: "#888", marginBottom: "12px", fontSize: "0.9rem" }}>Select your answer:</h6>
+                {questions[current].options.map((opt) => (
+                  <Button
+                    key={opt.key}
+                    className="w-100 mb-2 text-start"
+                    style={{
+                      background: answers[questions[current].id] === opt.key ? "#ff6b35" : "#111",
+                      border: answers[questions[current].id] === opt.key ? "none" : "1px solid #333",
+                      color: "#fff",
+                      justifyContent: "flex-start",
+                      padding: "12px 16px",
+                      fontSize: "0.95rem",
+                      transition: "all 0.2s",
+                      borderRadius: "8px"
+                    }}
+                    onClick={() => selectOption(opt.key)}
+                    disabled={submitted}
+                    onMouseEnter={(e) => {
+                      if (answers[questions[current].id] !== opt.key) {
+                        e.currentTarget.style.background = "#222"
+                        e.currentTarget.style.borderColor = "#ff6b35"
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (answers[questions[current].id] !== opt.key) {
+                        e.currentTarget.style.background = "#111"
+                        e.currentTarget.style.borderColor = "#333"
+                      }
+                    }}
+                  >
+                    <b style={{ marginRight: "12px", color: "#ff6b35", fontSize: "1rem" }}>{opt.key}.</b>
+                    {opt.text}
+                  </Button>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Navigation Buttons */}
