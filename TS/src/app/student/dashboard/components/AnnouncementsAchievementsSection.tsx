@@ -315,14 +315,16 @@ function AnnouncementCard({ item, onRead }: { item: any; onRead: () => void }) {
 }
 
 /* ── Achievement card ──────────────────────────────────────── */
-function AchievementCard({ item, onRead }: { item: any; onRead: () => void }) {
+function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: () => void; onLike: (id: string) => void; userId?: string }) {
   const s = ACHIEVE_STYLE[item.category] || ACHIEVE_STYLE.general
+  const liked = userId ? item.likes?.some((id: any) => id.toString() === userId) : false
+  const likeCount = item.likes?.length || 0
   return (
     <div
       onClick={onRead}
       onMouseEnter={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(-4px)'; el.style.boxShadow = `0 20px 48px ${s.color}44` }}
       onMouseLeave={e => { const el = e.currentTarget as HTMLDivElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = `0 6px 24px ${s.color}28` }}
-      style={{ borderRadius: 20, overflow: 'hidden', boxShadow: `0 6px 24px ${s.color}28`, display: 'flex', flexDirection: 'row', height: 230, cursor: 'pointer', transition: 'transform .22s, box-shadow .22s' }}
+      style={{ borderRadius: 20, overflow: 'hidden', border: `2px solid ${s.color}55`, boxShadow: `0 6px 24px ${s.color}28`, display: 'flex', flexDirection: 'row', height: 230, cursor: 'pointer', transition: 'transform .22s, box-shadow .22s' }}
     >
       {/* Left: student photo on gradient */}
       <div style={{ width: 220, flexShrink: 0, background: s.bg, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '20px 16px' }}>
@@ -364,8 +366,17 @@ function AchievementCard({ item, onRead }: { item: any; onRead: () => void }) {
             </div>
           )}
         </div>
-        <div style={{ display: 'inline-flex', background: s.bg, borderRadius: 20, padding: '6px 18px', width: 'fit-content', boxShadow: `0 3px 12px ${s.color}44` }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>View Details →</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'inline-flex', background: s.bg, borderRadius: 20, padding: '6px 18px', boxShadow: `0 3px 12px ${s.color}44` }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>View Details →</span>
+          </div>
+          <button
+            onClick={e => { e.stopPropagation(); onLike(item._id) }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, background: liked ? '#fff0f0' : '#f8fafc', border: `1.5px solid ${liked ? '#ef4444' : '#e2e8f0'}`, borderRadius: 20, padding: '5px 12px', cursor: 'pointer', transition: 'all .18s' }}
+          >
+            <span style={{ fontSize: 16, lineHeight: 1, color: liked ? '#ef4444' : '#94a3b8', transition: 'color .18s' }}>{liked ? '❤️' : '🤍'}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: liked ? '#ef4444' : '#94a3b8' }}>{likeCount}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -397,10 +408,12 @@ function useCarousel(total: number, groupSize: number, interval = 4000) {
 }
 
 /* ── Carousel panel ────────────────────────────────────────── */
-function CarouselPanel({ items, type, groupSize }: {
+function CarouselPanel({ items, type, groupSize, onLike, userId }: {
   items: any[]
   type: 'announce' | 'achieve'
   groupSize: number
+  onLike: (id: string) => void
+  userId?: string
 }) {
   const { idx, setIdx, next, prev, totalGroups, pause, resume } = useCarousel(items.length, groupSize)
   const [modal, setModal] = useState<any>(null)
@@ -430,7 +443,7 @@ function CarouselPanel({ items, type, groupSize }: {
             <div key={item._id} style={{ minWidth: 0, overflow: 'hidden' }}>
               {type === 'announce'
                 ? <AnnouncementCard item={item} onRead={() => setModal(item)} />
-                : <AchievementCard  item={item} onRead={() => setModal(item)} />
+                : <AchievementCard  item={item} onRead={() => setModal(item)} onLike={onLike} userId={userId} />
               }
             </div>
           ))}
@@ -508,6 +521,24 @@ export default function AnnouncementsAchievementsSection() {
     }).catch(() => {}).finally(() => setLoading(false))
   }, [user?.token])
 
+  const handleLike = async (id: string) => {
+    if (!user?.token) return
+    try {
+      const res = await fetch(`${baseURL}/api/institute/achievements/${id}/like`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${user.token}` },
+      }).then(r => r.json())
+      if (res.success) {
+        setAchievements(prev => prev.map(a =>
+          a._id === id ? { ...a, likes: res.liked
+            ? [...(a.likes || []), user.id || user.userId]
+            : (a.likes || []).filter((l: any) => l.toString() !== (user.id || user.userId))
+          } : a
+        ))
+      }
+    } catch {}
+  }
+
   const active = tab === 'announcements' ? announcements : achievements
   const groupSize = active.length >= 6 ? 3 : active.length >= 3 ? 2 : 1
 
@@ -563,6 +594,8 @@ export default function AnnouncementsAchievementsSection() {
           items={active}
           type={tab === 'announcements' ? 'announce' : 'achieve'}
           groupSize={groupSize}
+          onLike={handleLike}
+          userId={user?.id || user?.userId}
         />
       )}
     </div>
