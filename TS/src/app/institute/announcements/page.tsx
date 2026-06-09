@@ -173,7 +173,7 @@ export default function AnnouncementsAdminPage() {
     try {
       const isAnn = tab === 'announce'
       const url   = isAnn ? '/api/institute/announcements' : '/api/institute/achievements'
-      const body  = isAnn ? aForm : bForm
+      const body  = { ...(isAnn ? aForm : bForm), instituteId: user?.instituteId }
       if (editId) await axios.put(`${baseURL}${url}/${editId}`, body, { headers: h })
       else        await axios.post(`${baseURL}${url}`, body, { headers: h })
       await fetchAll()
@@ -191,7 +191,7 @@ export default function AnnouncementsAdminPage() {
 
   const toggleActive = async (item: any) => {
     const url = tab === 'announce' ? '/api/institute/announcements' : '/api/institute/achievements'
-    await axios.put(`${baseURL}${url}/${item._id}`, { active: !item.active }, { headers: h })
+    await axios.put(`${baseURL}${url}/${item._id}`, { active: !item.active, instituteId: user?.instituteId }, { headers: h })
     fetchAll()
   }
 
