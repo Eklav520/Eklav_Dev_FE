@@ -30,6 +30,7 @@ import AttendanceCalendar from './AttendanceCalendar'
 import { FaBookOpen, FaBullseye, FaTrophy, FaClock, FaTasks, FaCheckDouble } from 'react-icons/fa'
 import JobNotificationsSection from './JobNotificationsSection'
 import AttendanceWidget from './AttendanceWidget'
+import AnnouncementsAchievementsSection from './AnnouncementsAchievementsSection'
 
 const StudentDashboardUpdated: React.FC = () => {
   /* ================= HOOKS (NO CONDITIONS EVER) ================= */
@@ -228,6 +229,7 @@ const StudentDashboardUpdated: React.FC = () => {
       }}>
       <HeroSection student={student} />
       <KPISection kpis={kpis} />
+      <AnnouncementsAchievementsSection />
       {/* ── Latest Opportunities — full width ── */}
       <Row className="g-3 mt-4">
         <Col xs={12}>

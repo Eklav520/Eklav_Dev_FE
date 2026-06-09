@@ -32,6 +32,7 @@ import {
   BsGrid,
   BsGridFill,
   BsHouse,
+  BsBellFill,
   BsInfoSquareFill,
   BsLightbulb,
   BsLightningCharge,
@@ -339,6 +340,20 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     ],
   },
   {
+    key: 'announcementsAchievements',
+    label: 'Achievements',
+    icon: BsBellFill,
+    children: [
+      {
+        key: 'announcements',
+        label: 'Achievements',
+        icon: BsBellFill,
+        url: '/eklavadmin/announcements',
+        parentKey: 'eklavadmin',
+      },
+    ],
+  },
+  {
     key: 'admin',
     label: 'Admin Chatbox',
     icon: FaComments,
@@ -552,6 +567,21 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
     ],
   },
  
+  {
+    key: 'instituteAnnouncements',
+    label: 'Achievements',
+    icon: BsBellFill,
+    children: [
+      {
+        key: 'instituteAnnouncementsList',
+        label: 'Achievements',
+        icon: BsBellFill,
+        url: '/institute/announcements',
+        parentKey: 'instituteadmin',
+      },
+      
+    ],
+  },
   {
     key: 'facultyAdmin',
     label: 'Faculty Admin',
