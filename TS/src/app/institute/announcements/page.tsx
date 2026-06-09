@@ -236,7 +236,14 @@ export default function AnnouncementsAdminPage() {
       {/* Form */}
       {showForm && user?.token && (
         <div style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 16, padding: '24px', marginBottom: 24 }}>
-          <h4 style={{ color: '#ff7a00', marginBottom: 16 }}>{editId ? 'Edit' : 'New'} {tab === 'announce' ? 'Announcement' : 'Achievement'}</h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <h4 style={{ color: '#ff7a00', margin: 0 }}>{editId ? 'Edit' : 'New'} {tab === 'announce' ? 'Announcement' : 'Achievement'}</h4>
+            {user?.role === 'admin' && (
+              <span style={{ background: '#ff7a0022', color: '#ff7a00', border: '1px solid #ff7a0055', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>
+                GLOBAL — visible to all institutes
+              </span>
+            )}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             {tab === 'announce' ? (
               <>
@@ -362,9 +369,16 @@ export default function AnnouncementsAdminPage() {
                 borderRadius: 14, padding: '18px', opacity: item.active ? 1 : 0.5,
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <span style={{ background: `${color}22`, color, border: `1px solid ${color}55`, borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
-                    {tab === 'announce' ? item.type?.toUpperCase() : item.category?.toUpperCase()}
-                  </span>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ background: `${color}22`, color, border: `1px solid ${color}55`, borderRadius: 20, padding: '2px 12px', fontSize: 11, fontWeight: 700 }}>
+                      {tab === 'announce' ? item.type?.toUpperCase() : item.category?.toUpperCase()}
+                    </span>
+                    {item.isGlobal && (
+                      <span style={{ background: '#ff7a0022', color: '#ff7a00', border: '1px solid #ff7a0055', borderRadius: 20, padding: '2px 10px', fontSize: 10, fontWeight: 700 }}>
+                        GLOBAL
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => toggleActive(item)} title={item.active ? 'Deactivate' : 'Activate'} style={iconBtn(item.active ? '#28a745' : '#666')}>
                       {item.active ? '✓' : '○'}
