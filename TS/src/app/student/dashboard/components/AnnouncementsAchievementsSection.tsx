@@ -498,8 +498,13 @@ export default function AnnouncementsAchievementsSection() {
       fetch(`${baseURL}/api/institute/announcements`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/institute/achievements`,  { headers: h }).then(r => r.json()),
     ]).then(([a, b]) => {
-      setAnnouncements(a.data || [])
-      setAchievements(b.data  || [])
+      const ann = a.data || []
+      const ach = b.data  || []
+      setAnnouncements(ann)
+      setAchievements(ach)
+      // Auto-select whichever tab has data; prefer announcements if both or neither have data
+      if (ann.length === 0 && ach.length > 0) setTab('achievements')
+      else setTab('announcements')
     }).catch(() => {}).finally(() => setLoading(false))
   }, [user?.token])
 
