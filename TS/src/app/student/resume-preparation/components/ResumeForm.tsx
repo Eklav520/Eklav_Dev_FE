@@ -46,7 +46,7 @@ const ResumeForm: React.FC<ResumeFormProps> = ({ data, setData }) => {
         className="btn btn-primary my-2"
         onClick={async () => {
           try {
-            const response = await axios.post('http://localhost:3000/generate', data)
+            const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL || ''}/generate`, data)
             handleChange('summary', response.data.summary)
             alert('Summary generated successfully!')
           } catch (err) {
