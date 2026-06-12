@@ -5,6 +5,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import RoboAvatar from './RoboAvatar'
 
 interface Message {
+  id: string
   sender: 'user' | 'eklav'
   text: string
   type: 'user' | 'correction' | 'reply'
@@ -36,6 +37,12 @@ const EnglishVoicePractice: React.FC = () => {
 
   const [liveSpeech, setLiveSpeech] = useState('')
   const [isUserSpeaking, setIsUserSpeaking] = useState(false)
+  const [typewriterMap, setTypewriterMap] = useState<Record<string, number>>({})
+
+  const mkId = () => `${Date.now()}-${Math.random()}`
+
+  const clearTypewriter = (msgId: string) =>
+    setTypewriterMap(prev => { const n = { ...prev }; delete n[msgId]; return n })
 
   const recognitionRef = useRef<any>(null)
   const transcriptRef = useRef('')
@@ -99,6 +106,16 @@ const EnglishVoicePractice: React.FC = () => {
 
     loadVoices()
     speechSynthesis.onvoiceschanged = loadVoices
+
+    // Chrome bug: speechSynthesis freezes after ~15s of inactivity — resume it periodically
+    const keepAlive = setInterval(() => {
+      if (speechSynthesis.speaking) {
+        speechSynthesis.pause()
+        speechSynthesis.resume()
+      }
+    }, 10000)
+
+    return () => clearInterval(keepAlive)
   }, [])
 
   useEffect(() => {
@@ -124,15 +141,6 @@ const EnglishVoicePractice: React.FC = () => {
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
-  const fixSpeechText = async (text: string) => {
-    try {
-      const res = await axios.post(`${baseURL}/api/english/fix-speech`, { text })
-      return res.data.corrected || text
-    } catch {
-      return text
-    }
-  }
-
   const clearSilenceTimer = () => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current)
@@ -148,13 +156,19 @@ const EnglishVoicePractice: React.FC = () => {
 
       if (noResponseCountRef.current <= MAX_NO_RESPONSE) {
         const msg = 'Are you there? Please respond.'
-        setMessages((p) => [...p, { sender: 'eklav', text: msg, type: 'reply' }])
-        await speak(msg)
+        const id = mkId()
+        setMessages((p) => [...p, { id, sender: 'eklav', text: msg, type: 'reply' }])
+        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+        await speak(msg, { msgId: id, displayText: msg })
+        clearTypewriter(id)
         startSilenceTimer()
       } else {
         const msg = 'Sorry, closing the session. Have a nice day.'
-        setMessages((p) => [...p, { sender: 'eklav', text: msg, type: 'reply' }])
-        await speak(msg)
+        const id = mkId()
+        setMessages((p) => [...p, { id, sender: 'eklav', text: msg, type: 'reply' }])
+        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+        await speak(msg, { msgId: id, displayText: msg })
+        clearTypewriter(id)
         handleEndSession()
       }
     }, SILENCE_TIMEOUT)
@@ -189,18 +203,22 @@ const EnglishVoicePractice: React.FC = () => {
       let interim = ''
       let final = ''
 
-      for (let i = 0; i < e.results.length; i++) {
+      // Start from resultIndex so we only process NEW results (not accumulated history)
+      for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i][0]
-        const txt = result.transcript
-        const confidence = result.confidence || 0.5
-
-        if (confidence < 0.6) continue
-        e.results[i].isFinal ? (final += txt) : (interim += txt)
+        const txt = result.transcript.trim()
+        if (!txt) continue
+        // Final results: always accept (Chrome often returns confidence=0 for finals)
+        // Interim results: light filter only
+        if (!e.results[i].isFinal && (result.confidence || 0.5) < 0.3) continue
+        e.results[i].isFinal ? (final += ' ' + txt) : (interim += ' ' + txt)
       }
 
       if (interim.trim()) {
         noResponseCountRef.current = 0
         setLiveSpeech(interim.trim())
+        // Student is still speaking — cancel any pending send so we don't cut them off
+        clearTimeout(speechPauseTimerRef.current)
       }
 
       if (final.trim()) {
@@ -208,17 +226,17 @@ const EnglishVoicePractice: React.FC = () => {
         const text = final.trim()
 
         clearTimeout(speechPauseTimerRef.current)
+        // 3s pause: enough time for a learner to think and continue their sentence
         speechPauseTimerRef.current = setTimeout(async () => {
           if (!sessionActiveRef.current || text === lastUserRef.current) return
           lastUserRef.current = text
           setLiveSpeech('')
           clearSilenceTimer()
 
-          setMessages((p) => [...p, { sender: 'user', text, type: 'user' }])
+          setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
           transcriptRef.current += `You: ${text}\n`
-          const cleanText = await fixSpeechText(text)
-          await sendToRob(cleanText)
-        }, 2500)
+          await sendToRob(text)
+        }, 3000)
       }
     }
 
@@ -262,38 +280,78 @@ const EnglishVoicePractice: React.FC = () => {
     }
   }
 
-  const getBestVoice = (gender: 'male' | 'female'): SpeechSynthesisVoice | undefined => {
-    const femalePriority = [
-      'google uk english female', 'microsoft zira desktop', 'microsoft hazel desktop',
-      'samantha', 'karen', 'moira', 'victoria', 'tessa', 'female', 'zira',
-    ]
-    const malePriority = [
-      'google uk english male', 'microsoft david desktop', 'microsoft george desktop',
-      'alex', 'daniel', 'oliver', 'aaron', 'fred', 'male', 'david',
-    ]
-    const priority = gender === 'female' ? femalePriority : malePriority
-    for (const term of priority) {
-      const found = voices.find(v => v.name.toLowerCase().includes(term))
-      if (found) return found
-    }
-    return voices[0]
-  }
 
-  const speak = (text: string) => new Promise<void>(async (resolve) => {
+  const waitForVoices = (): Promise<SpeechSynthesisVoice[]> => new Promise(resolve => {
+    const v = speechSynthesis.getVoices()
+    if (v.length) return resolve(v)
+    const handler = () => resolve(speechSynthesis.getVoices())
+    speechSynthesis.addEventListener('voiceschanged', handler, { once: true })
+    // Fallback: don't wait forever
+    setTimeout(() => resolve(speechSynthesis.getVoices()), 3000)
+  })
+
+  // tw: typewriter sync — drives character-by-character reveal timed to actual TTS playback
+  const speak = (text: string, tw?: { msgId: string; displayText: string; displayOffset?: number }) =>
+    new Promise<void>(async (resolve) => {
     if (!sessionActiveRef.current) return resolve()
     onTTSStart()
 
+    const availableVoices = voices.length > 0 ? voices : await waitForVoices()
+    const getBest = (gender: 'male' | 'female') => {
+      const femalePriority = ['google uk english female', 'microsoft zira', 'samantha', 'karen', 'female']
+      const malePriority   = ['google uk english male',  'microsoft david', 'alex', 'daniel', 'male']
+      for (const term of (gender === 'female' ? femalePriority : malePriority)) {
+        const found = availableVoices.find(v => v.name.toLowerCase().includes(term))
+        if (found) return found
+      }
+      return availableVoices[0] ?? null
+    }
+
     const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
-    utter.voice = getBestVoice(voiceGender) || voices[0]
+    const voice = getBest(voiceGender)
+    if (voice) utter.voice = voice
     utter.pitch = voiceGender === 'female' ? 1.05 : 0.95
     utter.rate = 0.95
 
+    let twInterval: any = null
+
+    if (tw) {
+      const { msgId, displayText, displayOffset = 0 } = tw
+      const wordCount = text.trim().split(/\s+/).filter(Boolean).length
+      // estimate how long TTS will take (rate 0.95 ≈ 2.3 words/sec)
+      const estimatedMs = Math.max(1500, (wordCount / 2.3) * 1000)
+      const totalChars = displayText.length
+
+      // Start interval exactly when audio begins, not before
+      utter.onstart = () => {
+        let elapsed = 0
+        twInterval = setInterval(() => {
+          elapsed += 40
+          const target = Math.min(totalChars - 1, Math.round((elapsed / estimatedMs) * totalChars))
+          setTypewriterMap(prev => ({ ...prev, [msgId]: target }))
+        }, 40)
+      }
+
+      // Fine-tune with word boundaries if the browser fires them
+      utter.onboundary = (e: any) => {
+        if (e.name !== 'word') return
+        const spaceIdx = text.indexOf(' ', e.charIndex)
+        const wordEnd = spaceIdx === -1 ? text.length : spaceIdx
+        const dispIdx = Math.max(0, wordEnd - displayOffset)
+        setTypewriterMap(prev => ({ ...prev, [msgId]: Math.max(prev[msgId] ?? 0, dispIdx) }))
+      }
+    }
+
+    const cleanup = () => { if (twInterval) clearInterval(twInterval) }
+
     utter.onend = async () => {
+      cleanup()
       await waitForTTS()
       onTTSEnd()
       resolve()
     }
     utter.onerror = async () => {
+      cleanup()
       await waitForTTS()
       onTTSEnd()
       resolve()
@@ -307,13 +365,27 @@ const EnglishVoicePractice: React.FC = () => {
 
     try {
       const { data } = await axios.post(`${baseURL}/api/english/chat`, { userMessage: msg })
+
+      const toSpeak: Array<{ spokenText: string; displayText: string; msgId: string; displayOffset: number }> = []
       if (data.correction && data.correction !== '-') {
-        setMessages((p) => [...p, { sender: 'eklav', text: data.correction, type: 'correction' }])
-        await speak('Correction: ' + data.correction)
+        const id = mkId()
+        setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction' }])
+        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+        toSpeak.push({ spokenText: 'Correction: ' + data.correction, displayText: data.correction, msgId: id, displayOffset: 'Correction: '.length })
       }
       if (data.reply) {
-        setMessages((p) => [...p, { sender: 'eklav', text: data.reply, type: 'reply' }])
-        await speak(data.reply)
+        const id = mkId()
+        setMessages((p) => [...p, { id, sender: 'eklav', text: data.reply, type: 'reply' }])
+        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+        toSpeak.push({ spokenText: data.reply, displayText: data.reply, msgId: id, displayOffset: 0 })
+      }
+
+      setIsTyping(false)
+
+      for (const item of toSpeak) {
+        if (!sessionActiveRef.current) break
+        await speak(item.spokenText, { msgId: item.msgId, displayText: item.displayText, displayOffset: item.displayOffset })
+        clearTypewriter(item.msgId)
       }
     } finally {
       setIsTyping(false)
@@ -341,9 +413,21 @@ const EnglishVoicePractice: React.FC = () => {
   const handleStartSession = async () => {
     resetSessionState()
     sessionActiveRef.current = true
+
+    // Pre-warm TTS engine during API call (user gesture context = no Chrome delay)
+    const warmUp = new SpeechSynthesisUtterance(' ')
+    warmUp.volume = 0
+    warmUp.rate = 16
+    speechSynthesis.speak(warmUp)
+
     const res = await axios.post(`${baseURL}/api/english/start`)
-    setMessages([{ sender: 'eklav', text: res.data.aiMessage, type: 'reply' }])
-    await speak(res.data.aiMessage)
+    speechSynthesis.cancel()
+    const welcomeId = mkId()
+    const welcomeText = res.data.aiMessage
+    setMessages([{ id: welcomeId, sender: 'eklav', text: welcomeText, type: 'reply' }])
+    setTypewriterMap(prev => ({ ...prev, [welcomeId]: 0 }))
+    await speak(welcomeText, { msgId: welcomeId, displayText: welcomeText })
+    clearTypewriter(welcomeId)
   }
 
   const handleEndSession = async () => {
@@ -519,7 +603,10 @@ const EnglishVoicePractice: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      {messages.map((m, i) => (
+                      {messages.map((m, i) => {
+                        const isTypingOut = m.sender === 'eklav' && typewriterMap[m.id] !== undefined
+                        const displayText = isTypingOut ? m.text.slice(0, typewriterMap[m.id]) : m.text
+                        return (
                         <div key={i} className={`message-container ${m.sender === 'user' ? 'user-message' : 'eklav-message'}`}>
                           {m.sender === 'user' ? (
                             <div className="message-bubble user-bubble">
@@ -544,7 +631,7 @@ const EnglishVoicePractice: React.FC = () => {
                                 </div>
                                 <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
                               </div>
-                              <div className="message-text">{m.text}</div>
+                              <div className="message-text">{displayText}{isTypingOut && <span className="tw-cursor">|</span>}</div>
                             </div>
                           ) : (
                             <div className="message-bubble rob-bubble">
@@ -555,11 +642,12 @@ const EnglishVoicePractice: React.FC = () => {
                                 </div>
                                 <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
                               </div>
-                              <div className="message-text">{m.text}</div>
+                              <div className="message-text">{displayText}{isTypingOut && <span className="tw-cursor">|</span>}</div>
                             </div>
                           )}
                         </div>
-                      ))}
+                        )
+                      })}
 
                       {liveSpeech && (
                         <div className="message-container user-message">
@@ -1271,6 +1359,18 @@ const EnglishVoicePractice: React.FC = () => {
           color: #e5e5e5;
           line-height: 1.5;
           word-break: break-word;
+        }
+
+        .tw-cursor {
+          color: #ff7a00;
+          font-weight: 700;
+          animation: blink 0.6s step-start infinite;
+          margin-left: 1px;
+        }
+
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
 
         @keyframes pulse {
