@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Table, Modal, Spinner, Alert, Badge, Pagination, Row, Col } from 'react-bootstrap'
+import { Card, Button, Form, Modal, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList } from 'react-icons/fa'
 import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
@@ -266,118 +266,46 @@ const InstituteAdmin: React.FC = () => {
   return (
     <>
       <div className="institute-admin-dashboard">
-        {/* Header Section */}
-        <div className="dashboard-header mb-4">
-          <div className="header-left">
-            <div className="header-icon">
-              <FaUniversity />
-            </div>
-            <div>
-              <h2 className="text-white mb-1">Institute Management</h2>
-              <p className="text-muted mb-0">Manage and oversee all registered institutes</p>
-            </div>
+
+        {/* ── Compact top bar ── */}
+        <div className="ia-topbar">
+          <div className="ia-topbar-left">
+            <div className="ia-topbar-icon"><FaUniversity size={15} /></div>
+            <span className="ia-topbar-title">Institute Management</span>
+            <div className="ia-pill"><FaBuilding size={10} /><b>{institutes.length}</b><span>Total</span></div>
+            <div className="ia-pill succ"><MdVerified size={10} /><b>{institutes.filter(i => i.domain).length}</b><span>Domains</span></div>
           </div>
-          <Button
-            className="add-institute-btn"
-            onClick={() => {
-              setEditing(null)
-              setForm({ name: '', email: '', phone: '' })
-              setShowModal(true)
-            }}
+
+          {/* Inline search */}
+          <div className="ia-search-wrap">
+            <FaSearch size={11} className="ia-search-icon" />
+            <input
+              className="ia-search"
+              placeholder="Search name, email, phone or domain…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="ia-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>
+            )}
+            {searchTerm && <span className="ia-pill info" style={{ marginLeft: 6 }}>{filteredInstitutes.length} results</span>}
+          </div>
+
+          <button
+            className="ia-add-btn"
+            onClick={() => { setEditing(null); setForm({ name: '', email: '', phone: '' }); setShowModal(true); }}
           >
-            <FaPlus className="me-2" />
-            Add Institute
-          </Button>
+            <FaPlus size={11} /> Add Institute
+          </button>
         </div>
 
-        {/* Success/Error Messages */}
+        {/* Toast messages */}
         {successMessage && (
-          <Alert variant="success" className="custom-alert" onClose={() => setSuccessMessage(null)} dismissible>
-            <FaCheck className="me-2" />
-            {successMessage}
-          </Alert>
+          <div className="ia-toast ia-toast-success"><FaCheck className="me-2" />{successMessage}</div>
         )}
         {error && (
-          <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
-            <FaTimes className="me-2" />
-            {error}
-          </Alert>
+          <div className="ia-toast ia-toast-error"><FaTimes className="me-2" />{error}</div>
         )}
-
-        {/* Stats Cards */}
-        <Row className="g-3 mb-4">
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Institutes</h6>
-                  <h2 className="text-white mb-0">{institutes.length}</h2>
-                </div>
-                <div className="stat-icon bg-orange">
-                  <FaBuilding size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Active Domains</h6>
-                  <h2 className="text-white mb-0">{institutes.filter(i => i.domain).length}</h2>
-                </div>
-                <div className="stat-icon bg-success">
-                  <MdVerified size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Admins</h6>
-                  <h2 className="text-white mb-0">—</h2>
-                </div>
-                <div className="stat-icon bg-info">
-                  <FaUserGraduate size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Search Bar */}
-        <Card className="bg-dark border-secondary mb-4">
-          <Card.Body>
-            <div className="search-wrapper">
-              <FaSearch className="search-icon" />
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search by institute name, email, phone or domain..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button className="clear-search" onClick={() => setSearchTerm('')}>
-                  <FaTimes />
-                </button>
-              )}
-            </div>
-            <div className="filter-info mt-2">
-              <Badge bg="secondary" className="me-2">
-                <FaFilter className="me-1" size={10} />
-                Total Records: {filteredInstitutes.length}
-              </Badge>
-              {searchTerm && (
-                <Badge bg="orange" className="me-2">
-                  Search: "{searchTerm}"
-                </Badge>
-              )}
-            </div>
-          </Card.Body>
-        </Card>
 
         {/* Loading State */}
         {loading && (
@@ -707,97 +635,67 @@ const InstituteAdmin: React.FC = () => {
 
       {/* Global Styles */}
       <style>{`
-        .institute-admin-dashboard { padding: 0; }
-        
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 140, 0, 0.2);
+        .institute-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+        /* ── Compact top bar ── */
+        .ia-topbar {
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          background: #141414; border: 1px solid #222; border-radius: 12px;
+          padding: 8px 14px;
         }
-        
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        
-        .header-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 24px;
+        .ia-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .ia-topbar-icon {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,140,0,.12); display: flex; align-items: center;
+          justify-content: center; color: #ff8c00;
         }
-        
-        .add-institute-btn {
-          background: #ff8c00;
-          border: none;
-          padding: 0.5rem 1.5rem;
-          font-weight: 500;
-          transition: all 0.3s ease;
+        .ia-topbar-title { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; }
+        .ia-pill {
+          display: flex; align-items: center; gap: 4px;
+          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
+          padding: 3px 10px; font-size: .72rem; color: #888; white-space: nowrap;
         }
-        
-        .add-institute-btn:hover {
-          background: #e67e00;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+        .ia-pill b { color: #ccc; }
+        .ia-pill.succ { border-color: #22c55e33; } .ia-pill.succ b { color: #22c55e; }
+        .ia-pill.info { border-color: #38bdf833; } .ia-pill.info b { color: #38bdf8; }
+
+        .ia-search-wrap {
+          flex: 1; min-width: 200px; position: relative;
+          display: flex; align-items: center; gap: 6px;
         }
-        
-        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
-        
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
+        .ia-search-icon { position: absolute; left: 10px; color: #555; pointer-events: none; }
+        .ia-search {
+          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+          color: #ccc; font-size: .8rem; padding: 6px 30px 6px 28px; outline: none;
+          transition: border-color .15s;
         }
-        
+        .ia-search:focus { border-color: #ff8c00; }
+        .ia-search-clear {
+          position: absolute; right: 8px;
+          background: none; border: none; color: #555; cursor: pointer; padding: 0;
+        }
+        .ia-search-clear:hover { color: #ff8c00; }
+
+        .ia-add-btn {
+          background: #ff8c00; border: none; color: #fff; border-radius: 8px;
+          padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
+          display: flex; align-items: center; gap: 6px; white-space: nowrap;
+          transition: background .15s; flex-shrink: 0;
+        }
+        .ia-add-btn:hover { background: #e67e00; }
+
+        /* Toast */
+        .ia-toast {
+          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
+          display: flex; align-items: center;
+        }
+        .ia-toast-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
+        .ia-toast-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
+
         .bg-orange { background-color: #ff8c00; }
         .bg-dark-lighter { background-color: #2a2a2a; }
         .text-orange { color: #ff8c00; }
         .border-orange { border-color: #ff8c00; }
-        
-        .search-wrapper { position: relative; }
-        .search-icon {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-        }
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 2.5rem 0.75rem 2.5rem;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          border-radius: 12px;
-          color: white;
-          transition: all 0.2s;
-        }
-        .search-input:focus {
-          outline: none;
-          border-color: #ff8c00;
-          box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
-        }
-        .clear-search {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #6c757d;
-          cursor: pointer;
-        }
-        .clear-search:hover { color: #ff8c00; }
         
         .institute-table {
           width: 100%;

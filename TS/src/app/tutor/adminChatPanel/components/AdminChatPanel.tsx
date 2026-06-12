@@ -54,14 +54,16 @@ const AdminChatPanel = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const authHeader = () => ({ Authorization: `Bearer ${user?.token}` });
+
   const loadQueries = async () => {
-    const res = await fetch(`${baseURL}/api/admin/chat/queries`);
+    const res = await fetch(`${baseURL}/api/admin/chat/queries`, { headers: authHeader() });
     const data = await res.json();
     if (data.success) setQueries(data.queries);
   };
 
   const loadStats = async () => {
-    const res = await fetch(`${baseURL}/api/admin/chat/stats`);
+    const res = await fetch(`${baseURL}/api/admin/chat/stats`, { headers: authHeader() });
     const data = await res.json();
     if (data.success) setStats(data.stats);
   };
@@ -69,7 +71,7 @@ const AdminChatPanel = () => {
   const loadStudentMessages = async (studentId: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${baseURL}/api/admin/chat/student/${studentId}`);
+      const res = await fetch(`${baseURL}/api/admin/chat/student/${studentId}`, { headers: authHeader() });
       const data = await res.json();
       if (data.success) {
         setMessages(
@@ -94,7 +96,7 @@ const AdminChatPanel = () => {
 
     await fetch(`${baseURL}/api/admin/chat/reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader() },
       body: JSON.stringify({
         studentId: selectedStudent,
         message: newMessage,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Row, Col, Table, Image, Modal, Spinner, Alert, Badge, Pagination, CardBody } from 'react-bootstrap'
+import { Card, Button, Form, Row, Col, Image, Modal, Spinner, Badge } from 'react-bootstrap'
 import { FaBuilding, FaMapMarkerAlt, FaMailBulk, FaEdit, FaTrash, FaPlus, FaSearch, FaUniversity, FaFileImage, FaTimes, FaCheck, FaSpinner, FaInfoCircle, FaFilter } from 'react-icons/fa'
 import { MdLocationPin, MdPinDrop, MdVerified, MdPending } from 'react-icons/md'
 
@@ -324,118 +324,46 @@ const CollegeAdmin: React.FC = () => {
   return (
     <>
       <div className="college-admin-dashboard">
-        {/* Header Section */}
-        <div className="dashboard-header mb-4">
-          <div className="header-left">
-            <div className="header-icon">
-              <FaUniversity />
-            </div>
-            <div>
-              <h2 className="text-white mb-1">College Management</h2>
-              <p className="text-muted mb-0">Manage and oversee all registered educational institutions</p>
-            </div>
+
+        {/* ── Compact top bar ── */}
+        <div className="ca-topbar">
+          <div className="ca-topbar-left">
+            <div className="ca-topbar-icon"><FaUniversity size={15} /></div>
+            <span className="ca-topbar-title">College Management</span>
+            <div className="ca-pill"><FaUniversity size={10} /><b>{colleges.length}</b><span>Total</span></div>
+            <div className="ca-pill succ"><MdVerified size={10} /><b>{colleges.filter(c => c.name).length}</b><span>Active</span></div>
           </div>
-          <Button
-            className="add-college-btn"
-            onClick={() => {
-              setEditing(null)
-              setForm({ name: '', address: '', pincode: '', logo: null })
-              setShowModal(true)
-            }}
+
+          {/* Inline search */}
+          <div className="ca-search-wrap">
+            <FaSearch size={11} className="ca-search-icon" />
+            <input
+              className="ca-search"
+              placeholder="Search name, address or pincode…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="ca-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>
+            )}
+            {searchTerm && <span className="ca-pill info" style={{ marginLeft: 6 }}>{filteredColleges.length} results</span>}
+          </div>
+
+          <button
+            className="ca-add-btn"
+            onClick={() => { setEditing(null); setForm({ name: '', address: '', pincode: '', logo: null }); setShowModal(true); }}
           >
-            <FaPlus className="me-2" />
-            Add New College
-          </Button>
+            <FaPlus size={11} /> Add New College
+          </button>
         </div>
 
-        {/* Success/Error Messages */}
+        {/* Toast messages */}
         {successMessage && (
-          <Alert variant="success" className="custom-alert" onClose={() => setSuccessMessage(null)} dismissible>
-            <FaCheck className="me-2" />
-            {successMessage}
-          </Alert>
+          <div className="ca-toast ca-toast-success"><FaCheck className="me-2" />{successMessage}</div>
         )}
         {error && (
-          <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
-            <FaTimes className="me-2" />
-            {error}
-          </Alert>
+          <div className="ca-toast ca-toast-error"><FaTimes className="me-2" />{error}</div>
         )}
-
-        {/* Stats Cards */}
-        <Row className="g-3 mb-4">
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <CardBody className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Colleges</h6>
-                  <h2 className="text-white mb-0">{colleges.length}</h2>
-                </div>
-                <div className="stat-icon bg-orange">
-                  <FaUniversity size={24} />
-                </div>
-              </CardBody>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <CardBody className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Active Colleges</h6>
-                  <h2 className="text-white mb-0">{colleges.filter(c => c.name).length}</h2>
-                </div>
-                <div className="stat-icon bg-success">
-                  <MdVerified size={24} />
-                </div>
-              </CardBody>
-            </Card>
-          </Col>
-          <Col md={4}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <CardBody className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Students</h6>
-                  <h2 className="text-white mb-0">—</h2>
-                </div>
-                <div className="stat-icon bg-info">
-                  <FaBuilding size={24} />
-                </div>
-              </CardBody>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Search and Filter Bar */}
-        <Card className="bg-dark border-secondary mb-4">
-          <CardBody>
-            <div className="search-wrapper">
-              <FaSearch className="search-icon" />
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search by college name, address or pincode..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button className="clear-search" onClick={() => setSearchTerm('')}>
-                  <FaTimes />
-                </button>
-              )}
-            </div>
-            <div className="filter-info mt-2">
-              <Badge bg="secondary" className="me-2">
-                <FaFilter className="me-1" size={10} />
-                Total Records: {filteredColleges.length}
-              </Badge>
-              {searchTerm && (
-                <Badge bg="orange" className="me-2">
-                  Search: "{searchTerm}"
-                </Badge>
-              )}
-            </div>
-          </CardBody>
-        </Card>
 
         {/* Loading State */}
         {loading && (
@@ -654,113 +582,63 @@ const CollegeAdmin: React.FC = () => {
 
       {/* Global Styles */}
       <style>{`
-        .college-admin-dashboard {
-          padding: 0;
-        }
+        .college-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
 
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 140, 0, 0.2);
+        /* ── Compact top bar ── */
+        .ca-topbar {
+          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+          background: #141414; border: 1px solid #222; border-radius: 12px;
+          padding: 8px 14px;
         }
+        .ca-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .ca-topbar-icon {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,140,0,.12); display: flex; align-items: center;
+          justify-content: center; color: #ff8c00;
+        }
+        .ca-topbar-title { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; }
+        .ca-pill {
+          display: flex; align-items: center; gap: 4px;
+          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
+          padding: 3px 10px; font-size: .72rem; color: #888; white-space: nowrap;
+        }
+        .ca-pill b { color: #ccc; }
+        .ca-pill.succ { border-color: #22c55e33; } .ca-pill.succ b { color: #22c55e; }
+        .ca-pill.info { border-color: #38bdf833; } .ca-pill.info b { color: #38bdf8; }
 
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
+        /* Inline search */
+        .ca-search-wrap {
+          flex: 1; min-width: 200px; position: relative;
+          display: flex; align-items: center; gap: 6px;
         }
+        .ca-search-icon { position: absolute; left: 10px; color: #555; pointer-events: none; }
+        .ca-search {
+          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+          color: #ccc; font-size: .8rem; padding: 6px 30px 6px 28px; outline: none;
+          transition: border-color .15s;
+        }
+        .ca-search:focus { border-color: #ff8c00; }
+        .ca-search-clear {
+          position: absolute; right: 8px;
+          background: none; border: none; color: #555; cursor: pointer; padding: 0;
+        }
+        .ca-search-clear:hover { color: #ff8c00; }
 
-        .header-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 24px;
+        .ca-add-btn {
+          background: #ff8c00; border: none; color: #fff; border-radius: 8px;
+          padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
+          display: flex; align-items: center; gap: 6px; white-space: nowrap;
+          transition: background .15s; flex-shrink: 0;
         }
+        .ca-add-btn:hover { background: #e67e00; }
 
-        .add-college-btn {
-          background: #ff8c00;
-          border: none;
-          padding: 0.5rem 1.5rem;
-          font-weight: 500;
-          transition: all 0.3s ease;
+        /* Toast */
+        .ca-toast {
+          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
+          display: flex; align-items: center;
         }
-
-        .add-college-btn:hover {
-          background: #e67e00;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
-        }
-
-        .stat-card {
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-        }
-
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        .search-wrapper {
-          position: relative;
-        }
-
-        .search-icon {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-        }
-
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 2.5rem 0.75rem 2.5rem;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          border-radius: 12px;
-          color: white;
-          transition: all 0.2s;
-        }
-
-        .search-input:focus {
-          outline: none;
-          border-color: #ff8c00;
-          box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
-        }
-
-        .clear-search {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #6c757d;
-          cursor: pointer;
-        }
-
-        .clear-search:hover {
-          color: #ff8c00;
-        }
+        .ca-toast-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
+        .ca-toast-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
 
         .college-table {
           width: 100%;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Row, Col, Table, Modal, Spinner, Alert, Badge } from 'react-bootstrap'
+import { Card, Button, Form, Row, Col, Modal, Spinner, Badge } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import CollegeSearch from '@/app/(other)/auth/sign-up/components/CollegeSearch'
 import {
@@ -12,13 +12,11 @@ import {
   FaCheck,
   FaTimes,
   FaSpinner,
-  FaFilter,
   FaSearch,
   FaCalendarAlt,
   FaPercentage,
   FaUniversity,
   FaInfinity,
-  FaToggleOn,
   FaToggleOff,
   FaDownload,
   FaEye,
@@ -326,150 +324,44 @@ const CouponAdmin: React.FC = () => {
   return (
     <>
       <div className="coupon-admin-dashboard">
-        {/* Header Section */}
-        <div className="dashboard-header mb-4">
-          <div className="header-left">
-            <div className="header-icon">
-              <FaTicketAlt />
-            </div>
-            <div>
-              <h2 className="text-white mb-1">Coupon Management</h2>
-              <p className="text-muted mb-0">Create and manage discount coupons for students</p>
-            </div>
+        {/* Compact Top Bar */}
+        <div className="cp-topbar">
+          <div className="cp-topbar-left">
+            <div className="cp-topbar-icon"><FaTicketAlt size={15} /></div>
+            <span className="cp-topbar-title">Coupon Management</span>
+            <div className="cp-pill"><b>{coupons.length}</b><span>Total</span></div>
+            <div className="cp-pill cp-pill-green"><b>{activeCoupons}</b><span>Active</span></div>
+            <div className="cp-pill cp-pill-blue"><b>{universalCoupons}</b><span>Universal</span></div>
+            <div className="cp-pill cp-pill-yellow"><b>{totalDiscountGiven}%</b><span>Discount</span></div>
           </div>
-          <Button
-            className="create-coupon-btn"
-            onClick={() => {
-              setEditing(null)
-              setForm({ ...emptyForm })
-              setError(null)
-              setShowModal(true)
-            }}
+          <div className="cp-search-wrap">
+            <FaSearch size={11} className="cp-search-icon" />
+            <input
+              className="cp-search"
+              placeholder="Search by code or college..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && <button className="cp-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>}
+          </div>
+          <select
+            className="cp-filter-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <FaPlus className="me-2" />
-            Create Coupon
-          </Button>
+            <option value="all">All Coupons</option>
+            <option value="active">Active Only</option>
+            <option value="inactive">Inactive Only</option>
+            <option value="expired">Expired</option>
+            <option value="universal">Universal</option>
+            <option value="specific">College Specific</option>
+          </select>
+          <button className="cp-add-btn" onClick={() => { setEditing(null); setForm({ ...emptyForm }); setError(null); setShowModal(true) }}>
+            <FaPlus size={11} /> Create Coupon
+          </button>
         </div>
-
-        {/* Success/Error Messages */}
-        {success && (
-          <Alert variant="success" className="custom-alert" onClose={() => setSuccess(null)} dismissible>
-            <FaCheck className="me-2" /> {success}
-          </Alert>
-        )}
-        {error && (
-          <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
-            <FaTimes className="me-2" /> {error}
-          </Alert>
-        )}
-
-        {/* Stats Cards */}
-        <Row className="g-3 mb-4">
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Coupons</h6>
-                  <h2 className="text-white mb-0">{coupons.length}</h2>
-                </div>
-                <div className="stat-icon bg-orange">
-                  <FaTicketAlt size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Active Coupons</h6>
-                  <h2 className="text-white mb-0">{activeCoupons}</h2>
-                </div>
-                <div className="stat-icon bg-success">
-                  <FaToggleOn size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Universal Coupons</h6>
-                  <h2 className="text-white mb-0">{universalCoupons}</h2>
-                </div>
-                <div className="stat-icon bg-info">
-                  <FaUniversity size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Discount</h6>
-                  <h2 className="text-white mb-0">{totalDiscountGiven}%</h2>
-                </div>
-                <div className="stat-icon bg-warning">
-                  <FaPercentage size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Search and Filters */}
-        <Card className="bg-dark border-secondary mb-4">
-          <Card.Body>
-            <Row className="g-3">
-              <Col md={5}>
-                <div className="search-wrapper">
-                  <FaSearch className="search-icon" />
-                  <input
-                    type="text"
-                    className="search-input"
-                    placeholder="Search by coupon code or college..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button className="clear-search" onClick={() => setSearchTerm('')}>
-                      <FaTimes />
-                    </button>
-                  )}
-                </div>
-              </Col>
-              <Col md={4}>
-                <select
-                  className="form-select bg-dark-lighter border-secondary text-white"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Coupons</option>
-                  <option value="active">Active Only</option>
-                  <option value="inactive">Inactive Only</option>
-                  <option value="expired">Expired</option>
-                  <option value="universal">Universal Coupons</option>
-                  <option value="specific">College Specific</option>
-                </select>
-              </Col>
-              <Col md={3}>
-                <div className="filter-info">
-                  <Badge bg="secondary" className="me-2">
-                    <FaFilter className="me-1" size={10} />
-                    Total: {filteredCoupons.length}
-                  </Badge>
-                  {searchTerm && (
-                    <Badge bg="orange">
-                      Search: "{searchTerm}"
-                    </Badge>
-                  )}
-                </div>
-              </Col>
-            </Row>
-          </Card.Body>
-        </Card>
+        {success && <div className="cp-toast cp-toast-success"><FaCheck size={11} /> {success}</div>}
+        {error && <div className="cp-toast cp-toast-error"><FaTimes size={11} /> {error}</div>}
 
         {/* Loading State */}
         {loading && (
@@ -847,57 +739,73 @@ const CouponAdmin: React.FC = () => {
       {/* Global Styles */}
       <style>{`
         .coupon-admin-dashboard { padding: 0; }
-        
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 140, 0, 0.2);
+
+        /* ── Compact Top Bar ── */
+        .cp-topbar {
+          display: flex; align-items: center; gap: 10px;
+          background: #1e1e1e; border: 1px solid #2e2e2e;
+          border-radius: 10px; padding: 0 14px; height: 46px;
+          margin-bottom: 14px; flex-wrap: nowrap; overflow: hidden;
         }
-        
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        
-        .header-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 24px;
+        .cp-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .cp-topbar-icon {
+          width: 28px; height: 28px; border-radius: 7px;
+          background: rgba(255,140,0,0.12); display: flex;
+          align-items: center; justify-content: center; color: #ff8c00;
         }
-        
-        .create-coupon-btn {
-          background: #ff8c00;
-          border: none;
-          padding: 0.5rem 1.5rem;
-          font-weight: 500;
-          transition: all 0.3s ease;
+        .cp-topbar-title { font-size: 0.82rem; font-weight: 700; color: #e0e0e0; white-space: nowrap; }
+        .cp-pill {
+          display: flex; align-items: center; gap: 5px;
+          background: rgba(255,140,0,0.08); border: 1px solid rgba(255,140,0,0.2);
+          border-radius: 20px; padding: 3px 10px; flex-shrink: 0;
         }
-        .create-coupon-btn:hover {
-          background: #e67e00;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+        .cp-pill b { color: #ff8c00; font-size: 0.78rem; }
+        .cp-pill span { color: #888; font-size: 0.68rem; }
+        .cp-pill-green { background: rgba(40,167,69,0.08); border-color: rgba(40,167,69,0.25); }
+        .cp-pill-green b { color: #28a745; }
+        .cp-pill-blue { background: rgba(13,202,240,0.08); border-color: rgba(13,202,240,0.25); }
+        .cp-pill-blue b { color: #0dcaf0; }
+        .cp-pill-yellow { background: rgba(255,193,7,0.08); border-color: rgba(255,193,7,0.25); }
+        .cp-pill-yellow b { color: #ffc107; }
+        .cp-search-wrap {
+          position: relative; flex: 1; min-width: 160px; max-width: 280px;
         }
-        
-        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
-        
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
+        .cp-search-icon {
+          position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #555;
         }
-        
+        .cp-search {
+          width: 100%; height: 30px; background: #2a2a2a; border: 1px solid #3a3a3a;
+          border-radius: 7px; color: #e0e0e0; font-size: 0.75rem;
+          padding: 0 26px 0 26px;
+        }
+        .cp-search:focus { outline: none; border-color: #ff8c00; }
+        .cp-search::placeholder { color: #555; }
+        .cp-search-clear {
+          position: absolute; right: 7px; top: 50%; transform: translateY(-50%);
+          background: none; border: none; color: #555; cursor: pointer; padding: 0; line-height: 1;
+        }
+        .cp-search-clear:hover { color: #ff8c00; }
+        .cp-filter-select {
+          height: 30px; background: #2a2a2a; border: 1px solid #3a3a3a;
+          border-radius: 7px; color: #e0e0e0; font-size: 0.75rem;
+          padding: 0 8px; flex-shrink: 0;
+        }
+        .cp-filter-select:focus { outline: none; border-color: #ff8c00; }
+        .cp-add-btn {
+          display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+          background: #ff8c00; border: none; border-radius: 7px;
+          color: #fff; font-size: 0.75rem; font-weight: 600;
+          padding: 0 12px; height: 30px; cursor: pointer; white-space: nowrap;
+        }
+        .cp-add-btn:hover { background: #e67e00; }
+        .cp-toast {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 14px; border-radius: 8px; font-size: 0.8rem;
+          margin-bottom: 10px;
+        }
+        .cp-toast-success { background: rgba(40,167,69,0.12); border: 1px solid rgba(40,167,69,0.3); color: #28a745; }
+        .cp-toast-error   { background: rgba(220,53,69,0.12);  border: 1px solid rgba(220,53,69,0.3);  color: #dc3545; }
+
         .bg-orange { background-color: #ff8c00; }
         .bg-dark-lighter { background-color: #2a2a2a; }
         .text-orange { color: #ff8c00; }
@@ -915,40 +823,6 @@ const CouponAdmin: React.FC = () => {
           background-color: #ff8c00;
           color: white;
         }
-        
-        .search-wrapper { position: relative; }
-        .search-icon {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-        }
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 2.5rem 0.75rem 2.5rem;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          border-radius: 12px;
-          color: white;
-          transition: all 0.2s;
-        }
-        .search-input:focus {
-          outline: none;
-          border-color: #ff8c00;
-          box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
-        }
-        .clear-search {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #6c757d;
-          cursor: pointer;
-        }
-        .clear-search:hover { color: #ff8c00; }
         
         .coupon-table {
           width: 100%;
@@ -1108,8 +982,6 @@ const CouponAdmin: React.FC = () => {
         .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .pagination-dots { color: #6c757d; padding: 0 0.5rem; }
         
-        .custom-alert { border-radius: 12px; border: none; }
-        
         .modal-content { background-color: #1a1a1a; }
         .modal-header { border-bottom-color: #2a2a2a; }
         .modal-footer { border-top-color: #2a2a2a; }
@@ -1118,8 +990,6 @@ const CouponAdmin: React.FC = () => {
           border-color: #ff8c00;
           box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25);
         }
-        
-        .filter-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
         
         .status-switch-wrapper { width: 100%; }
         .custom-switch-lg .form-check-input {

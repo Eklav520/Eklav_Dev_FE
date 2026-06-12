@@ -10,7 +10,7 @@ import {
   Spinner,
   Table,
   Badge,
-  Alert,
+
 } from "react-bootstrap";
 import { useAuthContext } from "@/context/useAuthContext";
 import {
@@ -27,7 +27,7 @@ import {
   FaTimes,
   FaSpinner,
   FaInfoCircle,
-  FaFilter,
+
   FaSearch,
   FaCalendarAlt,
   FaPlay,
@@ -392,155 +392,57 @@ const AdminReels: React.FC = () => {
   return (
     <>
       <div className="reel-admin-dashboard">
-        {/* Header Section */}
-        <div className="dashboard-header mb-4">
-          <div className="header-left">
-            <div className="header-icon">
-              <FaVideo />
-            </div>
-            <div>
-              <h2 className="text-white mb-1">Reel Management</h2>
-              <p className="text-muted mb-0">Manage educational video reels and course content</p>
-            </div>
+
+        {/* ── Compact top bar ── */}
+        <div className="ra-topbar">
+          <div className="ra-topbar-left">
+            <div className="ra-topbar-icon"><FaVideo size={14} /></div>
+            <span className="ra-topbar-title">Reel Management</span>
+            <div className="ra-pill"><FaList size={10} /><b>{sections.length}</b><span>Sections</span></div>
+            <div className="ra-pill succ"><MdVideoLibrary size={10} /><b>{totalReels}</b><span>Reels</span></div>
+            <div className="ra-pill info"><FaEye size={10} /><b>{activeSections}</b><span>Active</span></div>
+            {sections.length - activeSections > 0 && (
+              <div className="ra-pill muted"><FaEyeSlash size={10} /><b>{sections.length - activeSections}</b><span>Inactive</span></div>
+            )}
           </div>
-          <Button className="create-section-btn" onClick={() => { resetForm(); setShowModal(true); }}>
-            <FaPlus className="me-2" />
-            Create Section
-          </Button>
+
+          {/* Search + status filter + view toggle inline */}
+          <div className="ra-search-wrap">
+            <FaSearch size={11} className="ra-search-icon" />
+            <input
+              className="ra-search"
+              placeholder="Search course name or description…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="ra-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>
+            )}
+          </div>
+
+          <select className="ra-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+
+          <div className="ra-view-toggle">
+            <button className={`ra-view-btn ${viewMode === 'table' ? 'active' : ''}`} onClick={() => setViewMode('table')}><FaList size={12} /> Table</button>
+            <button className={`ra-view-btn ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}><FaGripVertical size={12} /> Grid</button>
+          </div>
+
+          <button className="ra-add-btn" onClick={() => { resetForm(); setShowModal(true); }}>
+            <FaPlus size={11} /> Create Section
+          </button>
         </div>
 
-        {/* Success/Error Messages */}
+        {/* Toast messages */}
         {successMessage && (
-          <Alert variant="success" className="custom-alert" onClose={() => setSuccessMessage(null)} dismissible>
-            <FaSave className="me-2" /> {successMessage}
-          </Alert>
+          <div className="ra-toast ra-toast-success"><FaSave className="me-2" />{successMessage}</div>
         )}
         {error && (
-          <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
-            <FaTimes className="me-2" /> {error}
-          </Alert>
+          <div className="ra-toast ra-toast-error"><FaTimes className="me-2" />{error}</div>
         )}
-
-        {/* Stats Cards */}
-        <Row className="g-3 mb-4">
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Sections</h6>
-                  <h2 className="text-white mb-0">{sections.length}</h2>
-                </div>
-                <div className="stat-icon bg-orange">
-                  <FaList size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Total Reels</h6>
-                  <h2 className="text-white mb-0">{totalReels}</h2>
-                </div>
-                <div className="stat-icon bg-success">
-                  <MdVideoLibrary size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Active Sections</h6>
-                  <h2 className="text-white mb-0">{activeSections}</h2>
-                </div>
-                <div className="stat-icon bg-info">
-                  <FaEye size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-          <Col md={3}>
-            <Card className="stat-card bg-dark-lighter border-secondary">
-              <Card.Body className="d-flex align-items-center justify-content-between">
-                <div>
-                  <h6 className="text-muted mb-1">Inactive Sections</h6>
-                  <h2 className="text-white mb-0">{sections.length - activeSections}</h2>
-                </div>
-                <div className="stat-icon bg-secondary">
-                  <FaEyeSlash size={24} />
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-
-        {/* Search and Filters */}
-        <Card className="bg-dark border-secondary mb-4">
-          <Card.Body>
-            <Row className="g-3">
-              <Col md={6}>
-                <div className="search-wrapper">
-                  <FaSearch className="search-icon" />
-                  <input
-                    type="text"
-                    className="search-input"
-                    placeholder="Search by course name or description..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button className="clear-search" onClick={() => setSearchTerm('')}>
-                      <FaTimes />
-                    </button>
-                  )}
-                </div>
-              </Col>
-              <Col md={3}>
-                <select
-                  className="form-select bg-dark-lighter border-secondary text-white"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </Col>
-              <Col md={3}>
-                <div className="d-flex gap-2">
-                  <Button
-                    variant={viewMode === "table" ? "orange" : "outline-secondary"}
-                    onClick={() => setViewMode("table")}
-                    className="flex-grow-1"
-                  >
-                    <FaList className="me-1" /> Table View
-                  </Button>
-                  <Button
-                    variant={viewMode === "grid" ? "orange" : "outline-secondary"}
-                    onClick={() => setViewMode("grid")}
-                    className="flex-grow-1"
-                  >
-                    <FaGripVertical className="me-1" /> Grid View
-                  </Button>
-                </div>
-              </Col>
-            </Row>
-            <div className="filter-info mt-3">
-              <Badge bg="secondary" className="me-2">
-                <FaFilter className="me-1" size={10} />
-                Total Records: {filteredSections.length}
-              </Badge>
-              {searchTerm && (
-                <Badge bg="orange" className="me-2">
-                  Search: "{searchTerm}"
-                </Badge>
-              )}
-            </div>
-          </Card.Body>
-        </Card>
 
         {/* Loading State */}
         {loading && (
@@ -866,113 +768,89 @@ const AdminReels: React.FC = () => {
 
       {/* Global Styles */}
       <style>{`
-        .reel-admin-dashboard { padding: 0; }
-        
-        .dashboard-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 140, 0, 0.2);
+        .reel-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+        /* ── Compact top bar ── */
+        .ra-topbar {
+          display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+          background: #141414; border: 1px solid #222; border-radius: 12px;
+          padding: 8px 14px;
         }
-        
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        .header-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 24px;
+        .ra-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .ra-topbar-icon {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,140,0,.12); display: flex; align-items: center;
+          justify-content: center; color: #ff8c00; flex-shrink: 0;
         }
-        
-        .create-section-btn {
-          background: #ff8c00;
-          border: none;
-          padding: 0.5rem 1.5rem;
-          font-weight: 500;
-          transition: all 0.3s ease;
+        .ra-topbar-title { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; }
+        .ra-pill {
+          display: flex; align-items: center; gap: 4px;
+          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
+          padding: 3px 10px; font-size: .72rem; color: #888; white-space: nowrap;
         }
-        .create-section-btn:hover {
-          background: #e67e00;
-          transform: translateY(-2px);
-          box-shadow: 0 4px 15px rgba(255, 140, 0, 0.3);
+        .ra-pill b { color: #ccc; }
+        .ra-pill.succ  { border-color: #22c55e33; } .ra-pill.succ b  { color: #22c55e; }
+        .ra-pill.info  { border-color: #38bdf833; } .ra-pill.info b  { color: #38bdf8; }
+        .ra-pill.muted { border-color: #44444466; } .ra-pill.muted b { color: #888; }
+
+        .ra-search-wrap {
+          flex: 1; min-width: 180px; position: relative;
+          display: flex; align-items: center;
         }
-        
-        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
-        
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
+        .ra-search-icon { position: absolute; left: 10px; color: #555; pointer-events: none; }
+        .ra-search {
+          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+          color: #ccc; font-size: .8rem; padding: 6px 28px 6px 28px; outline: none;
+          transition: border-color .15s;
         }
-        
+        .ra-search:focus { border-color: #ff8c00; }
+        .ra-search-clear {
+          position: absolute; right: 8px;
+          background: none; border: none; color: #555; cursor: pointer; padding: 0;
+        }
+        .ra-search-clear:hover { color: #ff8c00; }
+
+        .ra-select {
+          background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+          color: #ccc; font-size: .8rem; padding: 6px 10px; outline: none;
+          cursor: pointer; transition: border-color .15s; flex-shrink: 0;
+        }
+        .ra-select:focus { border-color: #ff8c00; }
+
+        .ra-view-toggle { display: flex; border: 1px solid #2a2a2a; border-radius: 8px; overflow: hidden; flex-shrink: 0; }
+        .ra-view-btn {
+          background: #1a1a1a; border: none; color: #666; font-size: .75rem;
+          padding: 5px 10px; cursor: pointer; display: flex; align-items: center; gap: 4px;
+          transition: all .15s;
+        }
+        .ra-view-btn:hover { background: #222; color: #ccc; }
+        .ra-view-btn.active { background: #ff8c00; color: #fff; }
+
+        .ra-add-btn {
+          background: #ff8c00; border: none; color: #fff; border-radius: 8px;
+          padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
+          display: flex; align-items: center; gap: 6px; white-space: nowrap;
+          transition: background .15s; flex-shrink: 0;
+        }
+        .ra-add-btn:hover { background: #e67e00; }
+
+        /* Toast */
+        .ra-toast {
+          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
+          display: flex; align-items: center;
+        }
+        .ra-toast-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
+        .ra-toast-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
+
         .bg-orange { background-color: #ff8c00; }
         .bg-dark-lighter { background-color: #2a2a2a; }
         .text-orange { color: #ff8c00; }
         .border-orange { border-color: #ff8c00; }
-        .btn-orange {
-          background-color: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-        .btn-orange:hover {
-          background-color: #e67e00;
-          border-color: #e67e00;
-        }
-        .btn-outline-orange {
-          border-color: #ff8c00;
-          color: #ff8c00;
-        }
-        .btn-outline-orange:hover {
-          background-color: #ff8c00;
-          color: white;
-        }
-        
-        .search-wrapper { position: relative; }
-        .search-icon {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-        }
-        .search-input {
-          width: 100%;
-          padding: 0.75rem 2.5rem 0.75rem 2.5rem;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          border-radius: 12px;
-          color: white;
-          transition: all 0.2s;
-        }
-        .search-input:focus {
-          outline: none;
-          border-color: #ff8c00;
-          box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1);
-        }
-        .clear-search {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          background: none;
-          border: none;
-          color: #6c757d;
-          cursor: pointer;
-        }
-        .clear-search:hover { color: #ff8c00; }
-        
+        .btn-orange { background-color: #ff8c00; border-color: #ff8c00; color: white; }
+        .btn-orange:hover { background-color: #e67e00; border-color: #e67e00; }
+        .btn-outline-orange { border-color: #ff8c00; color: #ff8c00; }
+        .btn-outline-orange:hover { background-color: #ff8c00; color: white; }
+
         .reel-table {
           width: 100%;
           border-collapse: collapse;

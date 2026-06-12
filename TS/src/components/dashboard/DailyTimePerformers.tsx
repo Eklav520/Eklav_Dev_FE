@@ -128,6 +128,7 @@ const DailyTimePerformers = ({ apiBase = '/api/institute' }: { apiBase?: string 
   const [top, setTop]                 = useState<Performer[]>([])
   const [bottom, setBottom]           = useState<Performer[]>([])
   const [totalStudents, setTotal]     = useState(0)
+  const [totalMinutes, setTotalMin]   = useState(0)
   const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
@@ -142,6 +143,7 @@ const DailyTimePerformers = ({ apiBase = '/api/institute' }: { apiBase?: string 
           setTop(data.topPerformers)
           setBottom(data.bottomPerformers)
           setTotal(data.totalStudents)
+          setTotalMin(data.totalMinutes ?? 0)
         }
       })
       .catch(console.error)
@@ -193,6 +195,15 @@ const DailyTimePerformers = ({ apiBase = '/api/institute' }: { apiBase?: string 
               )}
             </div>
           </div>
+        </div>
+
+        {/* Total time pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.18)', borderRadius: 20, padding: '4px 14px' }}>
+          <FaClock size={11} color="#ff6b00" />
+          <span style={{ color: '#ff6b00', fontWeight: 700, fontSize: '0.78rem' }}>
+            {fmtMin(totalMinutes)}
+          </span>
+          <span style={{ color: '#554030', fontSize: '0.7rem' }}>total today</span>
         </div>
 
         {/* Date picker */}

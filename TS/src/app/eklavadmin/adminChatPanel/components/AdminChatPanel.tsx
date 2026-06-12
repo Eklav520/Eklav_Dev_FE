@@ -123,9 +123,11 @@ const AdminChatPanel = () => {
     return () => clearInterval(interval);
   }, [selectedStudent]);
 
+  const authHeader = () => ({ Authorization: `Bearer ${user?.token}` });
+
   const loadQueries = async () => {
     try {
-      const res = await fetch(`${baseURL}/api/admin/chat/queries`);
+      const res = await fetch(`${baseURL}/api/admin/chat/queries`, { headers: authHeader() });
       const data = await res.json();
       if (data.success) {
         setQueries(data.queries);
@@ -140,7 +142,7 @@ const AdminChatPanel = () => {
 
   const loadStats = async () => {
     try {
-      const res = await fetch(`${baseURL}/api/admin/chat/stats`);
+      const res = await fetch(`${baseURL}/api/admin/chat/stats`, { headers: authHeader() });
       const data = await res.json();
       if (data.success) setStats(data.stats);
     } catch (err) {
@@ -151,7 +153,7 @@ const AdminChatPanel = () => {
   const loadStudentMessages = async (studentId: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${baseURL}/api/admin/chat/student/${studentId}`);
+      const res = await fetch(`${baseURL}/api/admin/chat/student/${studentId}`, { headers: authHeader() });
       const data = await res.json();
       if (data.success) {
         setMessages(
@@ -178,7 +180,7 @@ const AdminChatPanel = () => {
     try {
       await fetch(`${baseURL}/api/admin/chat/mark-read/${studentId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json', ...authHeader() }
       });
       loadQueries();
     } catch (err) {
@@ -221,7 +223,7 @@ const AdminChatPanel = () => {
     try {
       await fetch(`${baseURL}/api/admin/chat/reply`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({
           studentId: selectedStudent,
           message: newMessage,
@@ -261,7 +263,7 @@ const AdminChatPanel = () => {
     try {
       await fetch(`${baseURL}/api/admin/chat/status/${selectedStudent}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader() },
         body: JSON.stringify({ status })
       });
 
@@ -294,661 +296,427 @@ const AdminChatPanel = () => {
   const totalUnread = queries.reduce((sum, q) => sum + q.unreadCount, 0);
   const needsResponse = queries.filter(q => q.needsResponse).length;
 
+  const PANEL_H = 'calc(100vh - 160px)';
+
   return (
-    <div className="admin-chat-panel">
-      {/* Header Section */}
-      <div className="chat-header mb-4">
-        <div className="header-left">
-          <div className="header-icon">
-            <BsChatDots />
-          </div>
-          <div>
-            <h2 className="text-white mb-1">Chat Support</h2>
-            <p className="text-muted mb-0">Manage and respond to student inquiries</p>
-          </div>
+    <div className="acp-wrap">
+
+      {/* ── Compact top bar ── */}
+      <div className="acp-topbar">
+        <div className="acp-topbar-left">
+          <div className="acp-topbar-icon"><BsChatDots size={16} /></div>
+          <span className="acp-topbar-title">Chat Support</span>
+          <div className="acp-stat-pill"><BsChatDots size={11} /><b>{stats?.totalQueries || 0}</b><span>Total</span></div>
+          <div className="acp-stat-pill warn"><BsExclamationCircle size={11} /><b>{stats?.pendingQueries || 0}</b><span>Open</span></div>
+          <div className="acp-stat-pill succ"><BsCheckCircle size={11} /><b>{stats?.statusCounts?.resolved || 0}</b><span>Resolved</span></div>
+          <div className="acp-stat-pill info"><BsClock size={11} /><b>{stats?.todayQueries || 0}</b><span>Today</span></div>
+          {needsResponse > 0 && <div className="acp-stat-pill danger"><BsFlag size={11} /><b>{needsResponse}</b><span>Needs Reply</span></div>}
         </div>
-        <div className="header-stats">
-          <div className="stat-chip">
-            <BsExclamationCircle className="text-warning me-1" />
-            <span>{needsResponse} Needs Response</span>
-          </div>
-          <div className="stat-chip">
-            <BsEye className="text-info me-1" />
-            <span>{totalUnread} Unread</span>
-          </div>
+        <div className="acp-topbar-right">
+          <Form.Control
+            value={adminName}
+            onChange={e => setAdminName(e.target.value)}
+            className="acp-name-input"
+            size="sm"
+            placeholder="Your display name"
+          />
+          <span className="acp-online-chip"><FaHeadset size={11} /> Online</span>
         </div>
       </div>
 
-      {/* Admin Name Section */}
-      <Card className="bg-dark border-secondary mb-4">
-        <Card.Body className="py-3">
-          <Row className="align-items-center">
-            <Col md={4}>
-              <Form.Label className="text-muted mb-0">Display Name</Form.Label>
-              <Form.Control
-                value={adminName}
-                onChange={e => setAdminName(e.target.value)}
-                className="bg-dark-lighter border-secondary text-white mt-1"
-                size="sm"
-              />
-            </Col>
-            <Col md={8}>
-              <div className="text-end">
-                <Badge bg="orange" className="me-2">
-                  <FaHeadset className="me-1" />
-                  Online
-                </Badge>
-                <Badge bg="secondary">
-                  <BsClock className="me-1" />
-                  Response Time: &lt; 5min
-                </Badge>
-              </div>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
-
-      {/* Success/Error Messages */}
+      {/* ── Toast messages ── */}
       {successMessage && (
-        <Alert variant="success" className="custom-alert" onClose={() => setSuccessMessage(null)} dismissible>
-          <BsCheckCircle className="me-2" /> {successMessage}
-        </Alert>
+        <div className="acp-toast acp-toast-success"><BsCheckCircle className="me-2" />{successMessage}</div>
       )}
       {error && (
-        <Alert variant="danger" className="custom-alert" onClose={() => setError(null)} dismissible>
-          <BsExclamationCircle className="me-2" /> {error}
-        </Alert>
+        <div className="acp-toast acp-toast-error"><BsExclamationCircle className="me-2" />{error}</div>
       )}
 
-      {/* Stats Cards */}
-      <Row className="g-3 mb-4">
-        <Col md={3}>
-          <Card className="stat-card bg-dark-lighter border-secondary">
-            <Card.Body className="d-flex align-items-center justify-content-between">
-              <div>
-                <h6 className="text-muted mb-1">Total Queries</h6>
-                <h2 className="text-white mb-0">{stats?.totalQueries || 0}</h2>
-              </div>
-              <div className="stat-icon bg-orange">
-                <BsChatDots size={24} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="stat-card bg-dark-lighter border-secondary">
-            <Card.Body className="d-flex align-items-center justify-content-between">
-              <div>
-                <h6 className="text-muted mb-1">Open/Pending</h6>
-                <h2 className="text-white mb-0">{stats?.pendingQueries || 0}</h2>
-              </div>
-              <div className="stat-icon bg-warning">
-                <BsHourglassSplit size={24} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="stat-card bg-dark-lighter border-secondary">
-            <Card.Body className="d-flex align-items-center justify-content-between">
-              <div>
-                <h6 className="text-muted mb-1">Resolved</h6>
-                <h2 className="text-white mb-0">{stats?.statusCounts?.resolved || 0}</h2>
-              </div>
-              <div className="stat-icon bg-success">
-                <BsCheckCircle size={24} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col md={3}>
-          <Card className="stat-card bg-dark-lighter border-secondary">
-            <Card.Body className="d-flex align-items-center justify-content-between">
-              <div>
-                <h6 className="text-muted mb-1">Today's Queries</h6>
-                <h2 className="text-white mb-0">{stats?.todayQueries || 0}</h2>
-              </div>
-              <div className="stat-icon bg-info">
-                <BsClock size={24} />
-              </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
+      {/* ── Main split panel ── */}
+      <div className="acp-main" style={{ height: PANEL_H }}>
 
-      <Row className="g-4">
-        {/* LEFT PANEL - Student List */}
-        <Col lg={showSidebar ? 4 : 3}>
-          <Card className="chat-sidebar bg-dark border-secondary">
-            <Card.Header className="bg-dark border-secondary">
-              <div className="d-flex justify-content-between align-items-center">
-                <span className="text-white">Student Queries</span>
-                <div className="d-flex gap-2">
-                  <Button 
-                    variant="outline-secondary" 
-                    size="sm" 
-                    onClick={() => setShowSidebar(!showSidebar)}
-                    title="Toggle Sidebar"
-                  >
-                    {showSidebar ? <BsArrowLeft /> : <BsArrowRight />}
-                  </Button>
-                  <Button variant="outline-secondary" size="sm" onClick={loadQueries}>
-                    <BsArrowRight /> Refresh
-                  </Button>
+        {/* LEFT — student list */}
+        <div className="acp-sidebar">
+          {/* Sidebar header */}
+          <div className="acp-sidebar-hdr">
+            <span className="acp-sidebar-title">
+              Student Queries
+              {totalUnread > 0 && <span className="acp-unread-dot">{totalUnread}</span>}
+            </span>
+            <button className="acp-icon-btn" onClick={loadQueries} title="Refresh"><BsArrowRight size={13} /></button>
+          </div>
+
+          {/* Search */}
+          <div className="acp-search-wrap">
+            <BsSearch size={12} className="acp-search-icon" />
+            <input
+              className="acp-search"
+              placeholder="Search students..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          {/* Filter tabs */}
+          <div className="acp-tabs">
+            {(['all','open','pending','resolved'] as QueryTab[]).map(tab => {
+              const count = tab === 'all' ? queries.length : queries.filter(q => q.status === tab).length;
+              return (
+                <button key={tab} className={`acp-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  <span className="acp-tab-count">{count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* List */}
+          <div className="acp-list">
+            {filteredQueries.length === 0 ? (
+              <div className="acp-empty-list">
+                <BsChatDots size={28} /><p>No queries found</p>
+              </div>
+            ) : filteredQueries.map(q => (
+              <div
+                key={q._id}
+                className={`acp-row ${selectedStudent === q._id ? 'active' : ''} ${q.needsResponse ? 'urgent' : ''}`}
+                onClick={() => setSelectedStudent(q._id)}
+              >
+                <div className="acp-row-avatar">
+                  <FaUserGraduate size={14} />
+                </div>
+                <div className="acp-row-body">
+                  <div className="acp-row-top">
+                    <span className="acp-row-name">{q.studentName}</span>
+                    <span className="acp-row-time">{getTimeAgo(q.lastMessageTime)}</span>
+                  </div>
+                  <div className="acp-row-preview">{q.lastMessageText || q.lastMessage}</div>
+                  <div className="acp-row-bottom">
+                    <span className={`acp-status-dot status-${q.status}`}>{q.status}</span>
+                    {q.unreadCount > 0 && <span className="acp-badge-red">{q.unreadCount}</span>}
+                  </div>
                 </div>
               </div>
-            </Card.Header>
+            ))}
+          </div>
+        </div>
 
-            {/* Search Bar */}
-            <div className="p-2 border-bottom border-secondary">
-              <InputGroup size="sm">
-                <InputGroup.Text className="bg-dark-lighter border-secondary">
-                  <BsSearch />
-                </InputGroup.Text>
-                <Form.Control
-                  placeholder="Search students..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="bg-dark-lighter border-secondary text-white"
+        {/* RIGHT — chat area */}
+        <div className="acp-chat">
+          {selectedStudentInfo ? (
+            <>
+              {/* Chat header */}
+              <div className="acp-chat-hdr">
+                <div className="acp-chat-avatar"><FaUserGraduate size={18} /></div>
+                <div className="acp-chat-info">
+                  <span className="acp-chat-name">{selectedStudentInfo.studentName}</span>
+                  <span className={`acp-status-dot status-${selectedStudentInfo.status} ms-2`}>{selectedStudentInfo.status}</span>
+                  <span className="acp-chat-meta">{selectedStudentInfo.messageCount} msgs</span>
+                </div>
+                <div className="ms-auto d-flex gap-2 align-items-center">
+                  <Dropdown>
+                    <Dropdown.Toggle variant="outline-secondary" size="sm" style={{ borderColor: '#3a3a3a', background: 'transparent', color: '#aaa' }}>
+                      <BsThreeDots />
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu align="end" className="bg-dark border-secondary">
+                      <Dropdown.Item onClick={() => updateStatus('open')} className="text-warning"><BsExclamationCircle className="me-2" />Mark as Open</Dropdown.Item>
+                      <Dropdown.Item onClick={() => updateStatus('pending')} className="text-info"><BsHourglassSplit className="me-2" />Mark as Pending</Dropdown.Item>
+                      <Dropdown.Item onClick={() => updateStatus('resolved')} className="text-success"><BsCheckCircle className="me-2" />Mark as Resolved</Dropdown.Item>
+                      <Dropdown.Divider />
+                      <Dropdown.Item onClick={() => { setSelectedStudent(null); setMessages([]); }} className="text-danger"><BsTrash className="me-2" />Close Chat</Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="acp-messages" ref={messagesContainerRef}>
+                {isLoading ? (
+                  <div className="acp-msg-center"><Spinner animation="border" style={{ color: '#ff8c00', width: 22, height: 22 }} /></div>
+                ) : messages.length === 0 ? (
+                  <div className="acp-msg-center">
+                    <BsChatDots size={40} style={{ color: '#333' }} />
+                    <p style={{ color: '#555', marginTop: 8 }}>No messages yet</p>
+                  </div>
+                ) : messages.map((msg) => (
+                  <div key={msg.id} className={`acp-msg ${msg.sender === 'admin' ? 'out' : 'in'}`}>
+                    <div className="acp-bubble">
+                      <div className="acp-bubble-sender">
+                        {msg.sender === 'student' ? <FaUserGraduate size={10} className="me-1" /> : <FaHeadset size={10} className="me-1" />}
+                        {msg.sender === 'student' ? 'Student' : (msg.adminName || 'Support')}
+                      </div>
+                      <div className="acp-bubble-text">{msg.text}</div>
+                      <div className="acp-bubble-meta">
+                        <span>{formatTime(msg.timestamp)}</span>
+                        {msg.sender === 'admin' && (msg.isDelivered
+                          ? <BsCheck2All size={11} style={{ color: '#4ade80' }} />
+                          : <BsCheck2 size={11} style={{ color: '#666' }} />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {typingStatus.isTyping && typingStatus.studentId === selectedStudent && (
+                  <div className="acp-typing"><span className="dot" /><span className="dot" /><span className="dot" /></div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="acp-input-bar">
+                <input
+                  ref={inputRef as any}
+                  className="acp-input"
+                  placeholder="Type a message… (Enter to send)"
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && sendReply()}
                 />
-              </InputGroup>
-            </div>
-
-            {/* Tabs - Fixed Layout */}
-            <div className="chat-tabs-container">
-              <div className="chat-tabs-wrapper">
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className={`chat-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-                >
-                  <BsChatDots className="tab-icon" />
-                  <span>All</span>
-                  <Badge bg={activeTab === 'all' ? 'orange' : 'secondary'} pill className="tab-count">
-                    {queries.length}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setActiveTab('open')}
-                  className={`chat-tab-btn ${activeTab === 'open' ? 'active' : ''}`}
-                >
-                  <BsExclamationCircle className="tab-icon" />
-                  <span>Open</span>
-                  <Badge bg={activeTab === 'open' ? 'orange' : 'warning'} pill className="tab-count">
-                    {queries.filter(q => q.status === 'open').length}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`chat-tab-btn ${activeTab === 'pending' ? 'active' : ''}`}
-                >
-                  <BsHourglassSplit className="tab-icon" />
-                  <span>Pending</span>
-                  <Badge bg={activeTab === 'pending' ? 'orange' : 'info'} pill className="tab-count">
-                    {queries.filter(q => q.status === 'pending').length}
-                  </Badge>
-                </button>
-                <button
-                  onClick={() => setActiveTab('resolved')}
-                  className={`chat-tab-btn ${activeTab === 'resolved' ? 'active' : ''}`}
-                >
-                  <BsCheckCircle className="tab-icon" />
-                  <span>Resolved</span>
-                  <Badge bg={activeTab === 'resolved' ? 'orange' : 'success'} pill className="tab-count">
-                    {queries.filter(q => q.status === 'resolved').length}
-                  </Badge>
+                <button className="acp-send-btn" onClick={sendReply} disabled={isSending || !newMessage.trim()}>
+                  {isSending ? <Spinner animation="border" size="sm" /> : <BsSend size={15} />}
                 </button>
               </div>
-            </div>
-
-            <Card.Body className="p-0 overflow-auto" style={{ height: 'calc(100vh - 520px)' }}>
-              {isLoading && !filteredQueries.length ? (
-                <div className="text-center py-5">
-                  <Spinner animation="border" variant="orange" size="sm" />
-                  <p className="text-muted mt-2">Loading queries...</p>
-                </div>
-              ) : filteredQueries.length === 0 ? (
-                <div className="text-center py-5">
-                  <BsChatDots size={32} className="text-muted mb-2" />
-                  <p className="text-muted">No queries found</p>
-                </div>
-              ) : (
-                <ListGroup variant="flush">
-                  {filteredQueries.map(q => (
-                    <ListGroup.Item
-                      key={q._id}
-                      action
-                      onClick={() => setSelectedStudent(q._id)}
-                      className={`chat-student-item ${selectedStudent === q._id ? 'active' : ''} ${q.needsResponse ? 'needs-response' : ''}`}
-                    >
-                      <div className="d-flex justify-content-between align-items-start">
-                        <div className="student-info">
-                          <div className="student-name">
-                            <FaUserGraduate className="text-orange me-1" size={12} />
-                            <strong>{q.studentName}</strong>
-                          </div>
-                          <div className="last-message">
-                            <small className="text-muted">{q.lastMessageText || q.lastMessage}</small>
-                          </div>
-                        </div>
-                        <div className="student-meta">
-                          <div className="timestamp">
-                            <small className="text-muted">{getTimeAgo(q.lastMessageTime)}</small>
-                          </div>
-                          <div className="mt-1 d-flex gap-1">
-                            {getStatusBadge(q.status)}
-                            {q.unreadCount > 0 && (
-                              <Badge bg="danger" pill className="unread-badge">
-                                {q.unreadCount}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
+            </>
+          ) : (
+            <div className="acp-msg-center acp-select-prompt">
+              <BsChatDots size={52} style={{ color: '#2a2a2a', marginBottom: 12 }} />
+              <h6 style={{ color: '#555' }}>Select a Conversation</h6>
+              <p style={{ color: '#333', fontSize: 13 }}>Choose a student from the left panel</p>
+              {filteredQueries.length > 0 && (
+                <button className="acp-open-btn" onClick={() => setSelectedStudent(filteredQueries[0]._id)}>
+                  Open Latest Query
+                </button>
               )}
-            </Card.Body>
-          </Card>
-        </Col>
+            </div>
+          )}
+        </div>
+      </div>
 
-        {/* RIGHT PANEL - Chat Area */}
-        <Col lg={showSidebar ? 8 : 9}>
-          <Card className="chat-area bg-dark border-secondary">
-            {selectedStudentInfo ? (
-              <>
-                <Card.Header className="bg-dark border-secondary chat-area-header">
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="student-avatar">
-                        <FaUserGraduate size={24} />
-                      </div>
-                      <div>
-                        <h6 className="text-white mb-0">{selectedStudentInfo.studentName}</h6>
-                        <div className="d-flex gap-2 mt-1">
-                          {getStatusBadge(selectedStudentInfo.status)}
-                          <small className="text-muted">
-                            {selectedStudentInfo.messageCount} messages
-                          </small>
-                        </div>
-                      </div>
-                    </div>
-                    <Dropdown>
-                      <Dropdown.Toggle variant="outline-secondary" size="sm">
-                        <BsThreeDots />
-                      </Dropdown.Toggle>
-                      <Dropdown.Menu align="end" className="bg-dark border-secondary">
-                        <Dropdown.Item onClick={() => updateStatus('open')} className="text-warning">
-                          <BsExclamationCircle className="me-2" /> Mark as Open
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={() => updateStatus('pending')} className="text-info">
-                          <BsHourglassSplit className="me-2" /> Mark as Pending
-                        </Dropdown.Item>
-                        <Dropdown.Item onClick={() => updateStatus('resolved')} className="text-success">
-                          <BsCheckCircle className="me-2" /> Mark as Resolved
-                        </Dropdown.Item>
-                        <Dropdown.Divider />
-                        <Dropdown.Item onClick={() => {
-                          setSelectedStudent(null);
-                          setMessages([]);
-                        }} className="text-danger">
-                          <BsTrash className="me-2" /> Close Chat
-                        </Dropdown.Item>
-                      </Dropdown.Menu>
-                    </Dropdown>
-                  </div>
-                </Card.Header>
-
-                <Card.Body 
-                  className="chat-messages overflow-auto" 
-                  ref={messagesContainerRef}
-                  style={{ background: '#1a1a1a' }}
-                >
-                  {isLoading ? (
-                    <div className="text-center py-5">
-                      <Spinner animation="border" variant="orange" />
-                      <p className="text-muted mt-2">Loading messages...</p>
-                    </div>
-                  ) : messages.length === 0 ? (
-                    <div className="text-center py-5">
-                      <BsChatDots size={48} className="text-muted mb-3" />
-                      <p className="text-muted">No messages yet</p>
-                      <small className="text-muted">Start the conversation by sending a message</small>
-                    </div>
-                  ) : (
-                    messages.map((msg, idx) => (
-                      <div
-                        key={msg.id}
-                        className={`message ${msg.sender === 'admin' ? 'message-out' : 'message-in'}`}
-                      >
-                        <div className="message-bubble">
-                          {msg.sender === 'student' && (
-                            <div className="message-sender">
-                              <FaUserGraduate size={12} className="me-1" />
-                              Student
-                            </div>
-                          )}
-                          {msg.sender === 'admin' && (
-                            <div className="message-sender">
-                              <FaHeadset size={12} className="me-1" />
-                              {msg.adminName || 'Support'}
-                            </div>
-                          )}
-                          <div className="message-text">{msg.text}</div>
-                          <div className="message-meta">
-                            <small>{formatTime(msg.timestamp)}</small>
-                            {msg.sender === 'admin' && (
-                              msg.isDelivered ? 
-                                <BsCheck2All className="ms-1 text-success" size={12} /> :
-                                <BsCheck2 className="ms-1 text-muted" size={12} />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  {typingStatus.isTyping && typingStatus.studentId === selectedStudent && (
-                    <div className="typing-indicator">
-                      <div className="typing-bubble">
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                        <span className="dot"></span>
-                      </div>
-                    </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </Card.Body>
-
-                <Card.Footer className="bg-dark border-secondary">
-                  <InputGroup>
-                    <Form.Control
-                      ref={inputRef}
-                      placeholder="Type your message here..."
-                      value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && sendReply()}
-                      className="bg-dark-lighter border-secondary text-white"
-                    />
-                    <Button 
-                      variant="orange" 
-                      onClick={sendReply}
-                      disabled={isSending || !newMessage.trim()}
-                    >
-                      {isSending ? <Spinner animation="border" size="sm" /> : <BsSend />}
-                    </Button>
-                  </InputGroup>
-                  <div className="text-muted mt-2 small">
-                    <BsFlag className="me-1" size={10} />
-                    Press Enter to send
-                  </div>
-                </Card.Footer>
-              </>
-            ) : (
-              <Card.Body className="d-flex flex-column align-items-center justify-content-center text-center" style={{ minHeight: 400 }}>
-                <div className="empty-chat-state">
-                  <BsChatDots size={64} className="text-muted mb-3" />
-                  <h5 className="text-white">Select a Conversation</h5>
-                  <p className="text-muted">Choose a student from the sidebar to start chatting</p>
-                  {filteredQueries.length > 0 && (
-                    <Button 
-                      variant="orange" 
-                      onClick={() => setSelectedStudent(filteredQueries[0]._id)}
-                    >
-                      View Latest Query
-                    </Button>
-                  )}
-                </div>
-              </Card.Body>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Global Styles */}
       <style>{`
-        .admin-chat-panel { padding: 0; }
-        
-        .chat-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 140, 0, 0.2);
+        .acp-wrap { padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+        /* ── Top bar ── */
+        .acp-topbar {
+          display: flex; align-items: center; justify-content: space-between;
+          background: #141414; border: 1px solid #222; border-radius: 12px;
+          padding: 8px 16px; gap: 10px; flex-wrap: wrap;
         }
-        
-        .header-left { display: flex; align-items: center; gap: 1rem; }
-        
-        .header-icon {
-          width: 48px;
-          height: 48px;
-          background: rgba(255, 140, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 24px;
+        .acp-topbar-left  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .acp-topbar-right { display: flex; align-items: center; gap: 8px; }
+        .acp-topbar-icon  {
+          width: 30px; height: 30px; border-radius: 8px;
+          background: rgba(255,140,0,.12); display: flex; align-items: center;
+          justify-content: center; color: #ff8c00;
         }
-        
-        .header-stats { display: flex; gap: 1rem; }
-        .stat-chip {
-          background: #2a2a2a;
-          padding: 0.5rem 1rem;
-          border-radius: 20px;
-          color: #e0e0e0;
-          font-size: 0.875rem;
+        .acp-topbar-title { color: #fff; font-weight: 700; font-size: .92rem; margin-right: 4px; }
+        .acp-stat-pill {
+          display: flex; align-items: center; gap: 4px;
+          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
+          padding: 3px 10px; font-size: .72rem; color: #888;
         }
-        
-        .stat-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3); }
-        
-        .stat-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
+        .acp-stat-pill b { color: #ccc; }
+        .acp-stat-pill.warn  { border-color: #f59e0b33; } .acp-stat-pill.warn b  { color: #f59e0b; }
+        .acp-stat-pill.succ  { border-color: #22c55e33; } .acp-stat-pill.succ b  { color: #22c55e; }
+        .acp-stat-pill.info  { border-color: #38bdf833; } .acp-stat-pill.info b  { color: #38bdf8; }
+        .acp-stat-pill.danger{ border-color: #ef444433; } .acp-stat-pill.danger b{ color: #ef4444; }
+        .acp-name-input {
+          background: #1e1e1e !important; border: 1px solid #2a2a2a !important;
+          color: #ccc !important; border-radius: 8px !important; font-size: .8rem !important;
+          width: 160px;
         }
-        
+        .acp-online-chip {
+          background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25);
+          color: #22c55e; border-radius: 20px; padding: 3px 10px; font-size: .72rem;
+          display: flex; align-items: center; gap: 5px; white-space: nowrap;
+        }
+
+        /* ── Toast ── */
+        .acp-toast {
+          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
+          display: flex; align-items: center;
+        }
+        .acp-toast-success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
+        .acp-toast-error   { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
+
+        /* ── Main panel ── */
+        .acp-main {
+          display: flex; gap: 0;
+          background: #141414; border: 1px solid #222; border-radius: 12px;
+          overflow: hidden;
+        }
+
+        /* ── Sidebar ── */
+        .acp-sidebar {
+          width: 300px; min-width: 260px; max-width: 320px; flex-shrink: 0;
+          border-right: 1px solid #1e1e1e;
+          display: flex; flex-direction: column;
+        }
+        .acp-sidebar-hdr {
+          display: flex; align-items: center; justify-content: space-between;
+          padding: 10px 14px; border-bottom: 1px solid #1e1e1e;
+        }
+        .acp-sidebar-title { color: #ccc; font-weight: 700; font-size: .85rem; display: flex; align-items: center; gap: 6px; }
+        .acp-unread-dot {
+          background: #ef4444; color: #fff; border-radius: 20px;
+          font-size: .65rem; font-weight: 700; padding: 1px 7px;
+        }
+        .acp-icon-btn {
+          background: none; border: 1px solid #2a2a2a; color: #666;
+          border-radius: 6px; padding: 3px 7px; cursor: pointer;
+          transition: all .15s;
+        }
+        .acp-icon-btn:hover { border-color: #ff8c00; color: #ff8c00; }
+
+        .acp-search-wrap {
+          position: relative; padding: 8px 10px; border-bottom: 1px solid #1e1e1e;
+        }
+        .acp-search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: #555; }
+        .acp-search {
+          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
+          color: #ccc; font-size: .78rem; padding: 5px 10px 5px 30px; outline: none;
+        }
+        .acp-search:focus { border-color: #ff8c00; }
+
+        .acp-tabs {
+          display: flex; gap: 4px; padding: 8px 10px; border-bottom: 1px solid #1e1e1e;
+          overflow-x: auto; scrollbar-width: none;
+        }
+        .acp-tabs::-webkit-scrollbar { display: none; }
+        .acp-tab {
+          flex: 1; background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 6px;
+          color: #666; font-size: .7rem; font-weight: 600; padding: 4px 6px;
+          cursor: pointer; white-space: nowrap; display: flex; align-items: center;
+          justify-content: center; gap: 4px; transition: all .15s;
+        }
+        .acp-tab:hover { border-color: #ff8c0055; color: #ff8c00; }
+        .acp-tab.active { background: #ff8c00; border-color: #ff8c00; color: #fff; }
+        .acp-tab-count {
+          background: rgba(255,255,255,.15); border-radius: 10px;
+          padding: 0 5px; font-size: .65rem;
+        }
+
+        .acp-list { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #2a2a2a #141414; }
+        .acp-empty-list {
+          display: flex; flex-direction: column; align-items: center;
+          justify-content: center; height: 120px; color: #333; font-size: .8rem; gap: 6px;
+        }
+
+        .acp-row {
+          display: flex; gap: 10px; padding: 10px 12px;
+          border-bottom: 1px solid #1a1a1a; cursor: pointer; transition: background .15s;
+        }
+        .acp-row:hover { background: rgba(255,140,0,.06); }
+        .acp-row.active { background: rgba(255,140,0,.12); border-left: 3px solid #ff8c00; padding-left: 9px; }
+        .acp-row.urgent { background: rgba(245,158,11,.06); }
+        .acp-row-avatar {
+          width: 34px; height: 34px; border-radius: 50%; background: rgba(255,140,0,.1);
+          display: flex; align-items: center; justify-content: center; color: #ff8c00;
+          flex-shrink: 0; margin-top: 2px;
+        }
+        .acp-row-body { flex: 1; min-width: 0; }
+        .acp-row-top { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        .acp-row-name { color: #ddd; font-weight: 600; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .acp-row-time { color: #444; font-size: .68rem; flex-shrink: 0; margin-left: 4px; }
+        .acp-row-preview { color: #555; font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 4px; }
+        .acp-row-bottom { display: flex; align-items: center; gap: 6px; }
+
+        .acp-status-dot {
+          font-size: .65rem; font-weight: 700; text-transform: capitalize;
+          padding: 1px 7px; border-radius: 10px;
+        }
+        .status-open     { background: rgba(245,158,11,.15); color: #f59e0b; }
+        .status-pending  { background: rgba(56,189,248,.15);  color: #38bdf8; }
+        .status-resolved { background: rgba(34,197,94,.15);   color: #22c55e; }
+        .acp-badge-red {
+          background: #ef4444; color: #fff; font-size: .65rem;
+          font-weight: 700; border-radius: 10px; padding: 1px 6px;
+        }
+
+        /* ── Chat panel ── */
+        .acp-chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+        .acp-chat-hdr {
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 16px; border-bottom: 1px solid #1e1e1e;
+          background: #141414; flex-shrink: 0;
+        }
+        .acp-chat-avatar {
+          width: 36px; height: 36px; border-radius: 50%;
+          background: rgba(255,140,0,.15); display: flex; align-items: center;
+          justify-content: center; color: #ff8c00; flex-shrink: 0;
+        }
+        .acp-chat-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .acp-chat-name { color: #fff; font-weight: 700; font-size: .88rem; }
+        .acp-chat-meta { color: #444; font-size: .72rem; }
+
+        .acp-messages {
+          flex: 1; overflow-y: auto; padding: 14px 16px;
+          background: #111; scrollbar-width: thin; scrollbar-color: #2a2a2a #111;
+          display: flex; flex-direction: column; gap: 2px;
+        }
+        .acp-msg-center {
+          flex: 1; display: flex; flex-direction: column;
+          align-items: center; justify-content: center; text-align: center;
+        }
+        .acp-select-prompt { gap: 4px; }
+        .acp-open-btn {
+          margin-top: 8px; background: #ff8c00; border: none; color: #fff;
+          border-radius: 8px; padding: 6px 18px; font-size: .82rem;
+          font-weight: 600; cursor: pointer;
+        }
+
+        .acp-msg { display: flex; margin-bottom: 10px; }
+        .acp-msg.in  { justify-content: flex-start; }
+        .acp-msg.out { justify-content: flex-end; }
+        .acp-bubble {
+          max-width: 68%; padding: 8px 12px; border-radius: 12px;
+          background: #1e1e1e; color: #ddd;
+        }
+        .acp-msg.out .acp-bubble { background: #ff8c00; color: #fff; }
+        .acp-bubble-sender { font-size: .65rem; opacity: .7; margin-bottom: 3px; display: flex; align-items: center; }
+        .acp-bubble-text { font-size: .83rem; word-wrap: break-word; line-height: 1.45; }
+        .acp-bubble-meta {
+          font-size: .62rem; opacity: .65; margin-top: 4px;
+          display: flex; justify-content: flex-end; align-items: center; gap: 3px;
+        }
+
+        .acp-typing {
+          display: flex; gap: 4px; padding: 8px 12px; background: #1e1e1e;
+          border-radius: 12px; width: fit-content; margin-bottom: 8px;
+        }
+        .dot {
+          width: 6px; height: 6px; background: #555; border-radius: 50%;
+          animation: acp-bounce 1.4s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: .2s; }
+        .dot:nth-child(3) { animation-delay: .4s; }
+        @keyframes acp-bounce {
+          0%,60%,100% { transform: translateY(0); opacity:.4; }
+          30% { transform: translateY(-5px); opacity:1; }
+        }
+
+        .acp-input-bar {
+          display: flex; gap: 8px; padding: 10px 14px;
+          border-top: 1px solid #1e1e1e; background: #141414; flex-shrink: 0;
+        }
+        .acp-input {
+          flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px;
+          color: #ccc; font-size: .84rem; padding: 8px 14px; outline: none;
+          transition: border-color .15s;
+        }
+        .acp-input:focus { border-color: #ff8c00; }
+        .acp-send-btn {
+          background: #ff8c00; border: none; color: #fff; border-radius: 10px;
+          width: 40px; height: 40px; display: flex; align-items: center;
+          justify-content: center; cursor: pointer; flex-shrink: 0;
+          transition: background .15s;
+        }
+        .acp-send-btn:hover:not(:disabled) { background: #e67e00; }
+        .acp-send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
         .bg-orange { background-color: #ff8c00; }
         .bg-dark-lighter { background-color: #2a2a2a; }
         .text-orange { color: #ff8c00; }
-        
-        /* Fixed Tabs Styles - No Overlap */
-       .chat-tabs-container {
-  padding: 12px;
-  border-bottom: 1px solid #3a3a3a;
-  background: #1a1a1a;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-}
-        
-        .chat-tabs-wrapper {
-  display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
-  min-width: min-content;
-  width: 100%;
-}
-
-.chat-tab-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  color: #adb5bd;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* Alternative: If you want them to wrap on very small screens instead of scroll */
-@media (max-width: 576px) {
-  .chat-tabs-wrapper {
-    flex-wrap: wrap;
-  }
-  
-  .chat-tab-btn {
-    flex: 1;
-    min-width: calc(50% - 4px);
-  }
-}
-        
-        .chat-tab-btn:hover {
-          background: rgba(255, 140, 0, 0.1);
-          border-color: #ff8c00;
-          color: #ff8c00;
-        }
-        
-        .chat-tab-btn.active {
-          background: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-        
-        .tab-icon {
-          font-size: 12px;
-        }
-        
-        .tab-count {
-          font-size: 10px;
-          padding: 2px 6px;
-          margin-left: 4px;
-        }
-        
-        .chat-student-item {
-          background: #2a2a2a;
-          border-bottom: 1px solid #3a3a3a;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .chat-student-item:hover { background: rgba(255, 140, 0, 0.1); }
-        .chat-student-item.active { background: rgba(255, 140, 0, 0.15); border-left: 3px solid #ff8c00; }
-        .chat-student-item.needs-response { background: rgba(255, 193, 7, 0.1); }
-        
-        .student-name { color: white; font-weight: 500; margin-bottom: 0.25rem; }
-        .last-message { font-size: 0.75rem; }
-        .timestamp { font-size: 0.7rem; }
-        
-        .unread-badge { font-size: 0.7rem; min-width: 20px; }
-        
-        .chat-area-header { padding: 1rem; }
-        .student-avatar {
-          width: 40px;
-          height: 40px;
-          background: rgba(255, 140, 0, 0.2);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-        }
-        
-        .chat-messages { padding: 1rem; }
-        
-        .message {
-          display: flex;
-          margin-bottom: 1rem;
-        }
-        .message-in { justify-content: flex-start; }
-        .message-out { justify-content: flex-end; }
-        
-        .message-bubble {
-          max-width: 70%;
-          padding: 0.75rem 1rem;
-          border-radius: 12px;
-          background: #2a2a2a;
-          color: #e0e0e0;
-        }
-        .message-out .message-bubble {
-          background: #ff8c00;
-          color: white;
-        }
-        
-        .message-sender {
-          font-size: 0.7rem;
-          margin-bottom: 0.25rem;
-          opacity: 0.8;
-        }
-        
-        .message-text { word-wrap: break-word; }
-        
-        .message-meta {
-          font-size: 0.65rem;
-          margin-top: 0.25rem;
-          opacity: 0.7;
-          display: flex;
-          justify-content: flex-end;
-          gap: 0.25rem;
-        }
-        
-        .typing-indicator { margin-bottom: 1rem; }
-        .typing-bubble {
-          background: #2a2a2a;
-          padding: 0.5rem 1rem;
-          border-radius: 12px;
-          display: inline-flex;
-          gap: 0.25rem;
-        }
-        .dot {
-          width: 6px;
-          height: 6px;
-          background: #6c757d;
-          border-radius: 50%;
-          animation: typing 1.4s infinite;
-        }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typing {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-6px); opacity: 1; }
-        }
-        
-        .empty-chat-state { text-align: center; }
-        
-        .custom-alert { border-radius: 12px; border: none; }
-        
-        .btn-orange {
-          background-color: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-        .btn-orange:hover { background-color: #e67e00; border-color: #e67e00; }
-        
-        .form-control:focus, .form-select:focus {
-          border-color: #ff8c00;
-          box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25);
-        }
-        
-        /* Scrollbar Styling */
-        .overflow-auto::-webkit-scrollbar {
-          width: 6px;
-        }
-        .overflow-auto::-webkit-scrollbar-track {
-          background: #2a2a2a;
-        }
-        .overflow-auto::-webkit-scrollbar-thumb {
-          background: #ff8c00;
-          border-radius: 3px;
-        }
-        
-        @media (max-width: 768px) {
-          .chat-tab-btn span { display: none; }
-          .chat-tab-btn { justify-content: center; }
-          .tab-count { margin-left: 0; }
-        }
       `}</style>
     </div>
   );
