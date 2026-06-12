@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Button, Card, Container, Row, Col, Spinner, Badge, ProgressBar, Alert, Modal, Form } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaMicrophone, FaStop, FaStar, FaLightbulb, FaCheckCircle, FaRedo, FaPlay, FaExclamationTriangle, FaMobileAlt, FaKeyboard } from 'react-icons/fa'
+import { FaMicrophone, FaStop, FaStar, FaLightbulb, FaCheckCircle, FaRedo, FaPlay, FaExclamationTriangle, FaMobileAlt, FaKeyboard, FaArrowLeft } from 'react-icons/fa'
+import { useNavigate } from 'react-router-dom'
 
 type Prompt = {
   _id: string
@@ -37,6 +38,7 @@ type JamHistory = {
 
 const SpeakingPractice: React.FC = () => {
   const { user } = useAuthContext()
+  const navigate = useNavigate()
   const status = user?.status?.toLowerCase()
   const TRIAL_LIMIT = 5
   const isTrialUser = status === 'pending'
@@ -66,6 +68,7 @@ const SpeakingPractice: React.FC = () => {
   const [history, setHistory] = useState<JamHistory | null>(null)
 
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [loadingNewTopic, setLoadingNewTopic] = useState(false)
   const [showMobileHelp, setShowMobileHelp] = useState(false)
   const [recordingError, setRecordingError] = useState<string>('')
   const [isMobile, setIsMobile] = useState(false)
@@ -630,6 +633,29 @@ const SpeakingPractice: React.FC = () => {
     }
   }
 
+  const fetchAnotherTopic = async () => {
+    if (recording) return
+    stopAllMedia()
+    sessionIdRef.current = ''
+    finalTranscriptRef.current = ''
+    audioChunks.current = []
+    setTranscript('')
+    setManualTranscript('')
+    setFeedback(null)
+    setSampleAnswer('')
+    setRecordingTime(0)
+    setRecordingError('')
+    setShowManualInput(false)
+    setPendingAudioUri(null)
+    setTimeUp(false)
+    setLoadingNewTopic(true)
+    try {
+      await fetchPrompt()
+    } finally {
+      setLoadingNewTopic(false)
+    }
+  }
+
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
   const getScoreVariant = (score: number) => (score >= 8 ? 'success' : score >= 6 ? 'warning' : 'danger')
@@ -843,9 +869,19 @@ const SpeakingPractice: React.FC = () => {
       {showPrompt && !loadingPrompt && prompt && (
         <Card className="main-practice-card">
           <div className="practice-header">
-            <h4 className="practice-title">
-              <FaMicrophone /> Speaking Challenge
-            </h4>
+            <div className="d-flex align-items-center gap-3">
+              <button
+                className="back-btn"
+                onClick={() => { if (!recording) { stopAllMedia(); setShowPrompt(false); setFeedback(null); setTranscript(''); setSampleAnswer(''); setRecordingTime(0); setRecordingError('') } }}
+                disabled={recording}
+                title="Back to Home"
+              >
+                <FaArrowLeft size={13} /> Back
+              </button>
+              <h4 className="practice-title mb-0">
+                <FaMicrophone /> Speaking Challenge
+              </h4>
+            </div>
             <div className="d-flex align-items-center gap-2">
               {isWebView && (
                 <Badge bg="info" className="app-badge">
@@ -861,8 +897,24 @@ const SpeakingPractice: React.FC = () => {
           <div className="practice-content">
             <div className="topic-section">
               <div className="topic-card">
-                <h5 className="topic-title">🎯 Your Topic</h5>
-                <p className="topic-text">{prompt.text}</p>
+                <div className="topic-card-header">
+                  <h5 className="topic-title mb-0">🎯 Your Topic</h5>
+                  <button
+                    className="another-topic-btn"
+                    onClick={fetchAnotherTopic}
+                    disabled={recording || loadingNewTopic}
+                    title="Get a different topic"
+                  >
+                    {loadingNewTopic
+                      ? <Spinner animation="border" size="sm" style={{ width: 12, height: 12, borderWidth: 2 }} />
+                      : <FaRedo size={11} />
+                    }
+                    <span>{loadingNewTopic ? 'Loading...' : 'Another Topic'}</span>
+                  </button>
+                </div>
+                <p className="topic-text mt-3 mb-0">
+                  {loadingNewTopic ? <span className="topic-loading-text">Generating a new topic for you…</span> : prompt.text}
+                </p>
               </div>
 
               <div className="recording-controls">
@@ -1092,6 +1144,48 @@ const SpeakingPractice: React.FC = () => {
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
           border: none;
           width: 100%;
+          position: relative;
+        }
+
+        /* back-btn used in both start screen (white card) and practice header (dark card) */
+        .back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255,122,0,0.08);
+          border: 1.5px solid rgba(255,122,0,0.35);
+          color: #ff7a00;
+          border-radius: 20px;
+          padding: 5px 14px;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: background 0.18s, border-color 0.18s;
+        }
+        .back-btn:hover:not(:disabled) {
+          background: #ff7a00;
+          border-color: #ff7a00;
+          color: #fff;
+        }
+        .back-btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        /* position override for start-screen card only */
+        .start-screen-card .back-btn {
+          position: absolute;
+          top: 1.2rem;
+          left: 1.2rem;
+          background: none;
+          border-color: #e0e0e0;
+          color: #888;
+        }
+        .start-screen-card .back-btn:hover {
+          background: none;
+          border-color: #ff7a00;
+          color: #ff7a00;
         }
         
         .welcome-icon {
@@ -1250,12 +1344,48 @@ const SpeakingPractice: React.FC = () => {
           border-left: 5px solid #ff7a00;
           margin-bottom: 1.5rem;
         }
-        
+
+        .topic-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
         .topic-title {
           color: #ff7a00;
           font-weight: bold;
-          margin-bottom: 1rem;
           font-size: 1.1rem;
+        }
+
+        .another-topic-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #fff;
+          border: 1.5px solid #ff7a00;
+          color: #ff7a00;
+          border-radius: 20px;
+          padding: 5px 14px;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.18s, color 0.18s;
+          flex-shrink: 0;
+        }
+        .another-topic-btn:hover:not(:disabled) {
+          background: #ff7a00;
+          color: #fff;
+        }
+        .another-topic-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .topic-loading-text {
+          color: #aaa;
+          font-style: italic;
         }
         
         .topic-text {
