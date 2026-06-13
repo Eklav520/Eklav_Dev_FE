@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Col, Modal, Row } from 'react-bootstrap'
 import {
-  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaCode, FaClipboardList,
+  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt,
 } from 'react-icons/fa'
+import StudentReports from '@/components/dashboard/StudentReports'
 import PageMetaData from '@/components/PageMetaData'
 import Counter from './components/Counter'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
@@ -22,7 +23,7 @@ const TABS = [
   { key: 'course-enrollment', label: 'Course Progress',  icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
-  { key: 'college-labs',      label: 'College Labs',       icon: FaCode,          color: '#ef4444' },
+  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
 ] as const
 
@@ -135,31 +136,6 @@ const S = {
   } as React.CSSProperties,
 }
 
-/* ─── Coming Soon placeholder ────────────────────────────── */
-const ComingSoon = ({
-  label, icon: Icon, color, description,
-}: { label: string; icon: React.ElementType; color: string; description: string }) => (
-  <div style={S.comingSoon}>
-    <div style={{
-      width: 80, height: 80, borderRadius: '50%',
-      background: `${color}10`, border: `1px solid ${color}25`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <Icon size={30} color={`${color}66`} />
-    </div>
-    <div>
-      <div style={{ color: '#777', fontWeight: 700, fontSize: '1.05rem', marginBottom: 6 }}>{label}</div>
-      <div style={{ color: '#333', fontSize: '0.82rem', maxWidth: 340, lineHeight: 1.6 }}>{description}</div>
-    </div>
-    <div style={{
-      background: '#111', border: '1px solid #1e1e1e',
-      borderRadius: 20, padding: '5px 20px',
-      color: '#333', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.1em',
-    }}>
-      COMING SOON
-    </div>
-  </div>
-)
 
 /* ─── Page ───────────────────────────────────────────────── */
 const DashboardPage = () => {
@@ -268,14 +244,9 @@ const DashboardPage = () => {
               </Row>
             )}
 
-            {/* College Labs */}
-            {activeTab === 'college-labs' && (
-              <ComingSoon
-                label="College Labs"
-                icon={FaCode}
-                color="#ef4444"
-                description="Coding lab assignments, submission tracking, auto-grading, and detailed analytics on student performance per problem set."
-              />
+            {/* Student Reports */}
+            {activeTab === 'student-reports' && (
+              <StudentReports apiBase="/api/institute" />
             )}
 
             {/* Assessments */}
