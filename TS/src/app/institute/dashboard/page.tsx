@@ -23,8 +23,8 @@ const TABS = [
   { key: 'course-enrollment', label: 'Course Progress',  icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
-  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
+  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
 ] as const
 
 type TabKey   = (typeof TABS)[number]['key']
