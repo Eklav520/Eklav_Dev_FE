@@ -29,9 +29,9 @@ type Props = {
   onSelect: (p: Problem) => void
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
 
-const ProblemsList = ({ problems,selectedId, completedIds, onSelect }: Props) => {
+const ProblemsList = ({ problems, selectedId, completedIds, onSelect }: Props) => {
   /* -------------------- STATE -------------------- */
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -148,22 +148,27 @@ const ProblemsList = ({ problems,selectedId, completedIds, onSelect }: Props) =>
               key={p._id}
               action
               onClick={() => onSelect(p)}
-              className={`d-flex align-items-center gap-3 ${isActive ? 'bg-primary bg-opacity-10' : ''
-                }`}
+              className="d-flex align-items-center gap-3"
               style={{
                 borderLeft: isActive
                   ? '4px solid #0d6efd'
+                  : isCompleted
+                  ? '4px solid #facc15'
                   : '4px solid transparent',
+                background: isCompleted
+                  ? 'rgba(250,204,21,0.07)'
+                  : isActive
+                  ? 'rgba(13,110,253,0.08)'
+                  : undefined,
               }}
             >
               {/* Title */}
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,     // 🔥 important for truncation
-                }}
-              >
-                <span className="fw-medium text-truncate d-block">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span
+                  className="fw-medium text-truncate d-block"
+                  style={{ color: isCompleted ? '#facc15' : undefined }}
+                >
+                  {isCompleted && <span style={{ marginRight: 5 }}>✓</span>}
                   {p.id}. {p.title}
                 </span>
               </div>
@@ -171,7 +176,7 @@ const ProblemsList = ({ problems,selectedId, completedIds, onSelect }: Props) =>
               {/* Difficulty */}
               <div
                 className="d-flex align-items-center gap-1 small text-muted"
-                style={{ flexShrink: 0 }}  // 🔥 VERY IMPORTANT
+                style={{ flexShrink: 0 }}
               >
                 <span
                   className={`rounded-circle bg-${difficultyColor[p.difficulty]}`}
@@ -180,7 +185,6 @@ const ProblemsList = ({ problems,selectedId, completedIds, onSelect }: Props) =>
                 {p.difficulty}
               </div>
             </ListGroup.Item>
-
           )
         })}
       </ListGroup>

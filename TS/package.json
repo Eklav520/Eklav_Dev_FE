@@ -63,6 +63,7 @@
     "lodash": "^4.17.21",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.562.0",
+    "mermaid": "^11.15.0",
     "plyr": "^3.7.7",
     "plyr-react": "^5.3.0",
     "quill": "^2.0.3",

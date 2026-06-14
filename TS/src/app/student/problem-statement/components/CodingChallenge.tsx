@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PageMetaData from '@/components/PageMetaData'
 import ProblemsList from './ProblemsList'
 import { Problem, fetchProblems } from './problems.data'
@@ -8,7 +8,8 @@ import CodeEditor from './CodeEditor'
 import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
 import { Container, Row, Col, Tabs, Tab, Badge, Button, Dropdown, Modal } from 'react-bootstrap'
 import AIResultPanel from './AIResultPanel'
-import { FiFileText, FiBookOpen, FiMessageCircle, FiUpload } from 'react-icons/fi'
+import AIGuidePanel from './AIGuidePanel'
+import { FiFileText, FiBookOpen, FiMessageCircle, FiUpload, FiCpu } from 'react-icons/fi'
 import './ProblemStatement.css'
 import { useAuthContext } from '@/context/useAuthContext'
 import SubmissionList from './SubmissionsTab'
@@ -158,13 +159,15 @@ const ProblemStatement = () => {
   const [aiResult, setAiResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [submissionResult, setSubmissionResult] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<ActiveTab>('problemsList')
   const [testTab, setTestTab] = useState<'result'>('result')
   const [completedIds, setCompletedIds] = useState<number[]>([])
   const [aiLoading, setAiLoading] = useState(false)
   const [loadingProblems, setLoadingProblems] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [modalDescTab, setModalDescTab] = useState<'description' | 'discussion'>('description')
+  const [modalDescTab, setModalDescTab] = useState<'description' | 'discussion' | 'ai-guide'>('description')
+  const codeRef = useRef<string>(DEFAULT_CODE.javascript)
 
   const PASS_THRESHOLD = 65
 
@@ -195,26 +198,23 @@ const ProblemStatement = () => {
   }, [token]) // ✅ IMPORTANT
 
   useEffect(() => {
+    if (!token) return
+
     const fetchCompletedProblems = async () => {
       try {
-        const res = await fetch(`${baseURL}/api/ai/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
+        const res = await fetch(`${baseURL}/api/ai/me`, { headers: { Authorization: `Bearer ${token}` } })
         const result = await res.json()
         if (!result.success) return
-
-        const completed = result.data.filter((s: any) => s.verdict === 'ACCEPTED' && s.isBestSubmission === true).map((s: any) => Number(s.problemId)) // 👈 FORCE NUMBER
-
+        const completed = result.data
+          .filter((s: any) => s.verdict === 'ACCEPTED' && s.isBestSubmission === true)
+          .map((s: any) => Number(s.problemId))
         setCompletedIds([...new Set<number>(completed)])
       } catch (err) {
         console.error('Failed to load submissions', err)
       }
     }
 
-    if (token) fetchCompletedProblems()
+    fetchCompletedProblems()
   }, [token])
 
   /* ---------------- LANGUAGE CHANGE ---------------- */
@@ -222,6 +222,10 @@ const ProblemStatement = () => {
   useEffect(() => {
     setCode(DEFAULT_CODE[language])
   }, [language])
+
+  // Keep a ref so AIGuidePanel always reads the latest code without needing re-renders
+  useEffect(() => { codeRef.current = code }, [code])
+  const getCode = () => codeRef.current
 
   /* ---------------- DEBUG LOGGING ---------------- */
 
@@ -446,15 +450,29 @@ const ProblemStatement = () => {
         body: JSON.stringify(payload),
       })
 
-      if (!response.ok) {
-        throw new Error('Submission failed')
-      }
+      if (!response.ok) throw new Error('Submission failed')
 
-      // Show success message
-      alert('Solution submitted successfully!')
+      const saved = await response.json()
+      setSubmissionResult({
+        ...payload,
+        attemptNumber: saved.data?.attemptNumber ?? 1,
+        isBestSubmission: saved.data?.isBestSubmission ?? true,
+        createdAt: saved.data?.createdAt ?? new Date().toISOString(),
+      })
+      setShowTestPanel(false)
+
+      // Refresh completed IDs
+      const meRes = await fetch(`${baseURL}/api/ai/me`, { headers: { Authorization: `Bearer ${token}` } })
+      const meData = await meRes.json()
+      if (meData.success) {
+        const ids = meData.data
+          .filter((s: any) => s.verdict === 'ACCEPTED' && s.isBestSubmission === true)
+          .map((s: any) => Number(s.problemId))
+        setCompletedIds([...new Set<number>(ids)])
+      }
     } catch (error) {
       console.error('Submission error:', error)
-      alert('Failed to submit solution')
+      alert('Failed to submit solution. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -468,6 +486,7 @@ const ProblemStatement = () => {
     setIsModalOpen(false)
     setShowTestPanel(false)
     setAiResult(null)
+    setSubmissionResult(null)
   }
 
   return (
@@ -495,6 +514,7 @@ const ProblemStatement = () => {
               setCode(DEFAULT_CODE[language])
               setAiResult(null)
               setShowTestPanel(false)
+              setSubmissionResult(null)
               setModalDescTab('description')
               setIsModalOpen(true)
             }}
@@ -531,7 +551,7 @@ const ProblemStatement = () => {
           </div>
         </Modal.Header>
 
-        <Modal.Body className="p-0" style={{ display: 'flex', overflow: 'hidden', height: 'calc(100vh - 57px)' }}>
+        <Modal.Body className="p-0" style={{ display: 'flex', overflow: 'hidden', height: 'calc(100vh - 57px)', position: 'relative' }}>
           <Row className="g-0 w-100 h-100">
 
             {/* ── LEFT: Description ── */}
@@ -543,9 +563,10 @@ const ProblemStatement = () => {
               >
                 <Tab eventKey="description" title={<><FiFileText className="me-1" />Description</>} />
                 <Tab eventKey="discussion"  title={<><FiMessageCircle className="me-1" />Doubts</>} />
+                <Tab eventKey="ai-guide"    title={<><FiCpu className="me-1" />AI Guide</>} />
               </Tabs>
 
-              <div className="flex-grow-1 overflow-auto p-3">
+              <div className="flex-grow-1 overflow-auto p-3" style={modalDescTab === 'ai-guide' ? { padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' } : undefined}>
                 {modalDescTab === 'description' && selectedProblem && (
                   <>
                     <h5 className="fw-bold mb-2">
@@ -564,6 +585,14 @@ const ProblemStatement = () => {
                 {modalDescTab === 'discussion' && selectedProblem && (
                   <Discussion problemId={selectedProblem.id} />
                 )}
+                {modalDescTab === 'ai-guide' && selectedProblem && (
+                  <AIGuidePanel
+                    problem={selectedProblem.desc}
+                    problemTitle={selectedProblem.title}
+                    language={language}
+                    getCode={getCode}
+                  />
+                )}
               </div>
             </Col>
 
@@ -572,17 +601,6 @@ const ProblemStatement = () => {
 
               {/* Toolbar */}
               <div className="border-bottom px-3 py-2 d-flex align-items-center gap-2">
-                <Button
-                  size="sm"
-                  style={{ backgroundColor: '#ff7a00', border: 'none', fontWeight: 500 }}
-                  onClick={handleAIGuidance}
-                  disabled={aiLoading}
-                >
-                  {aiLoading
-                    ? <><span className="spinner-border spinner-border-sm me-1" />Thinking...</>
-                    : '🤖 AI Help'}
-                </Button>
-
                 <Dropdown align="end" className="ms-auto">
                   <Dropdown.Toggle
                     size="sm"
@@ -696,6 +714,106 @@ const ProblemStatement = () => {
               </div>
             </Col>
           </Row>
+          {/* ── Submission success overlay ── */}
+          {submissionResult && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 50,
+              background: 'rgba(0,0,0,0.88)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              backdropFilter: 'blur(4px)',
+            }}>
+              <div style={{
+                background: '#111', border: '1px solid #222',
+                borderRadius: 16, padding: '36px 40px', maxWidth: 480, width: '90%',
+                textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}>
+                {/* Icon */}
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: submissionResult.verdict === 'ACCEPTED'
+                    ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 16px', fontSize: 30,
+                }}>
+                  {submissionResult.verdict === 'ACCEPTED' ? '✅' : '⚡'}
+                </div>
+
+                {/* Headline */}
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#f3f4f6', marginBottom: 4 }}>
+                  {submissionResult.verdict === 'ACCEPTED' ? 'Accepted!' : 'Partially Accepted'}
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#6b7280', marginBottom: 24 }}>
+                  {selectedProblem?.title}
+                </div>
+
+                {/* Stats grid */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 12, marginBottom: 24,
+                }}>
+                  {[
+                    { label: 'Score', value: `${submissionResult.passPercentage}%`, color: submissionResult.verdict === 'ACCEPTED' ? '#22c55e' : '#f59e0b' },
+                    { label: 'Tests Passed', value: `${submissionResult.passed}/${submissionResult.total}`, color: '#9ca3af' },
+                    { label: 'Attempt', value: `#${submissionResult.attemptNumber}`, color: '#9ca3af' },
+                  ].map(item => (
+                    <div key={item.label} style={{
+                      background: '#1a1a1a', borderRadius: 10, padding: '12px 8px',
+                      border: '1px solid #2a2a2a',
+                    }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: item.color }}>{item.value}</div>
+                      <div style={{ fontSize: '0.65rem', color: '#555', marginTop: 2 }}>{item.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Language + Best badge */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+                  <span style={{
+                    fontSize: '0.72rem', background: '#1a1a1a', border: '1px solid #2a2a2a',
+                    borderRadius: 6, padding: '3px 10px', color: '#9ca3af', textTransform: 'capitalize',
+                  }}>
+                    {submissionResult.language}
+                  </span>
+                  {submissionResult.isBestSubmission && (
+                    <span style={{
+                      fontSize: '0.72rem', background: 'rgba(250,204,21,0.12)',
+                      border: '1px solid rgba(250,204,21,0.3)', color: '#facc15',
+                      borderRadius: 6, padding: '3px 10px', fontWeight: 700,
+                    }}>
+                      ⭐ Best Submission
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => { setSubmissionResult(null) }}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 9, border: '1px solid #2a2a2a',
+                      background: '#1a1a1a', color: '#9ca3af', fontSize: '0.83rem',
+                      fontWeight: 600, cursor: 'pointer',
+                    }}
+                  >
+                    Continue Coding
+                  </button>
+                  <button
+                    onClick={() => {
+                      closeModal()
+                      setActiveTab('submission')
+                    }}
+                    style={{
+                      flex: 1, padding: '10px 0', borderRadius: 9, border: 'none',
+                      background: '#ff7a00', color: '#fff', fontSize: '0.83rem',
+                      fontWeight: 700, cursor: 'pointer',
+                    }}
+                  >
+                    View Submissions
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </Modal.Body>
       </Modal>
     </>
