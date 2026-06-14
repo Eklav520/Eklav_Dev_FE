@@ -12,6 +12,7 @@ type Institute = {
   phone?: string
   domain?: string
   dbName?: string
+  navSections?: string[] | null
   createdAt?: string
   updatedAt?: string
 }
@@ -293,6 +294,7 @@ const InstituteAdmin: React.FC = () => {
       })
       setSuccessMessage(`Navigation saved for ${navInstitute.name}`)
       setShowNavModal(false)
+      fetchInstitutes()
       setTimeout(() => setSuccessMessage(null), 3000)
     } catch {
       setError('Failed to save navigation config')
@@ -420,10 +422,21 @@ const InstituteAdmin: React.FC = () => {
                         <td>
                           {inst.domain ? (
                             <div className="domain-info">
-                              <Badge bg="dark" className="domain-badge">
-                                <MdDomain className="me-1" />
-                                {inst.domain}
-                              </Badge>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <Badge bg="dark" className="domain-badge">
+                                  <MdDomain className="me-1" />
+                                  {inst.domain}
+                                </Badge>
+                                {inst.navSections && inst.navSections.length > 0 && inst.navSections.length < ALL_KEYS.length ? (
+                                  <span style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                                    Nav: {inst.navSections.length}/{ALL_KEYS.length}
+                                  </span>
+                                ) : inst.navSections && inst.navSections.length === ALL_KEYS.length ? (
+                                  <span style={{ fontSize: '0.65rem', background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
+                                    Nav: All
+                                  </span>
+                                ) : null}
+                              </div>
                               <div className="domain-actions mt-1">
                                 <Button
                                   variant="link"
