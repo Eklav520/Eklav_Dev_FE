@@ -3,7 +3,9 @@ import { Card, Col, Row, Spinner, Alert, Modal, Button, CardHeader, CardBody, Fo
 
 type QA = {
   _id?: string
+  questionType?: 'text' | 'image'
   question: string
+  questionImageUrl?: string
   optionA: string
   optionB: string
   optionC: string
@@ -36,6 +38,9 @@ function shuffle<T>(arr: T[]) {
 }
 
 const normalize = (s: any) => (s ?? '').toString().trim().toLowerCase()
+
+const isPuzzleCategory = (cat: Category) =>
+  cat.items.some((t) => t.questions.some((q) => q.questionType === 'image'))
 
 const formatExplanation = (text: string) => {
   const sentences = text.split(/(?<=\.)\s+/).filter(s => s.trim().length > 0)
@@ -192,37 +197,40 @@ const CategoryGrid: React.FC = () => {
               {error}
             </Alert>
           ) : (
-            categories.map((category) => (
-              <Col key={category._id}>
-                <Card className="category-card bg-dark text-white h-100">
-                  <Card.Body>
-                    <div className="d-flex justify-content-between align-items-start mb-3">
-                      <h5 className="fw-bold text-white category-title">{category.title}</h5>
-                      <Button
-                        size="sm"
-                        className="btn-orange"
-                        onClick={() => openQuizForCategory(category)}
-                      >
-                        Take Quiz
-                      </Button>
-                    </div>
-
-                    <div className="topic-list">
-                      {category.items.map((item, index) => (
-                        <div
-                          key={item._id}
-                          className="topic-item"
-                          onClick={() => openTopicPreview(item)}
+            categories.map((category) => {
+              const isPuzzle = isPuzzleCategory(category)
+              return (
+                <Col key={category._id}>
+                  <Card className="category-card bg-dark text-white h-100">
+                    <Card.Body>
+                      <div className="d-flex justify-content-between align-items-start mb-3">
+                        <h5 className="fw-bold text-white category-title">{category.title}</h5>
+                        <Button
+                          size="sm"
+                          className="btn-orange"
+                          onClick={() => openQuizForCategory(category)}
                         >
-                          <span className="topic-bullet">›</span>
-                          <span className="topic-name">{item.topic}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))
+                          Take Quiz
+                        </Button>
+                      </div>
+
+                      <div className="topic-list">
+                        {category.items.map((item) => (
+                          <div
+                            key={item._id}
+                            className="topic-item"
+                            onClick={() => openTopicPreview(item)}
+                          >
+                            <span className="topic-bullet">›</span>
+                            <span className="topic-name">{item.topic}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              )
+            })
           )}
         </Row>
 
@@ -330,8 +338,19 @@ const CategoryGrid: React.FC = () => {
                               {currentQuestions.map((qa, i) => (
                                 <div key={qa._id ?? i} className="mb-4 pb-3 border-bottom border-secondary">
                                   <h6 className="fw-semibold text-white">
-                                    Q{startIndex + i + 1}: {qa.question}
+                                    Q{startIndex + i + 1}:{qa.question ? ` ${qa.question}` : ''}
                                   </h6>
+
+                                  {/* Puzzle image question */}
+                                  {qa.questionType === 'image' && qa.questionImageUrl && (
+                                    <div className="my-3 text-center">
+                                      <img
+                                        src={qa.questionImageUrl}
+                                        alt={`Question ${startIndex + i + 1}`}
+                                        style={{ maxWidth: '100%', maxHeight: 280, borderRadius: 8, border: '1px solid #333' }}
+                                      />
+                                    </div>
+                                  )}
 
                                   <ul className="mb-2 mt-2 text-secondary" style={{ listStyle: 'none', paddingLeft: 0 }}>
                                     {['A', 'B', 'C', 'D'].map((k) => {
@@ -504,9 +523,24 @@ const CategoryGrid: React.FC = () => {
                           </Badge>
                         </div>
 
-                        <h6 className="text-white mb-4">
-                          {quizQuestions[currentIndex]?.question}
-                        </h6>
+                        {/* Question text (optional caption) */}
+                        {quizQuestions[currentIndex]?.question && (
+                          <h6 className="text-white mb-3">
+                            {quizQuestions[currentIndex].question}
+                          </h6>
+                        )}
+
+                        {/* Puzzle image */}
+                        {quizQuestions[currentIndex]?.questionType === 'image' &&
+                          quizQuestions[currentIndex]?.questionImageUrl && (
+                          <div className="text-center mb-4">
+                            <img
+                              src={quizQuestions[currentIndex].questionImageUrl}
+                              alt={`Question ${currentIndex + 1}`}
+                              style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 8, border: '1px solid #333' }}
+                            />
+                          </div>
+                        )}
 
                         {!submitted ? (
                           <Form>
@@ -654,7 +688,14 @@ const CategoryGrid: React.FC = () => {
                                   {r.correct ? 'Correct' : 'Incorrect'}
                                 </Badge>
                               </div>
-                              <div className="text-white mb-2">{q.question}</div>
+                              {q.question && <div className="text-white mb-2">{q.question}</div>}
+                              {q.questionType === 'image' && q.questionImageUrl && (
+                                <img
+                                  src={q.questionImageUrl}
+                                  alt={`Q${idx + 1}`}
+                                  style={{ maxWidth: '100%', maxHeight: 160, borderRadius: 6, border: '1px solid #333', marginBottom: 8 }}
+                                />
+                              )}
                               <div className="small text-secondary mb-1">Your answer: {your}</div>
                               <div className="small text-secondary mb-2">
                                 Correct: Option {q.correctOptionKey} ({q[`option${q.correctOptionKey}` as keyof QA]})
@@ -716,6 +757,7 @@ const CategoryGrid: React.FC = () => {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(255, 122, 0, 0.3);
           }
+
           
           .orange-progress .progress-bar {
             background: #ff7a00 !important;
