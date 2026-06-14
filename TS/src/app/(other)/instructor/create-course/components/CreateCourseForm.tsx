@@ -229,7 +229,7 @@ const CreateCourseForm = () => {
       await axios.post(
         `${baseURL}/courses/${courseId}/video`,
         {
-          videoKey: s3Key,
+          key: s3Key,
           description: video.description,
           caseStudy: video.caseStudy || null,
         },
