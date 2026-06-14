@@ -37,8 +37,11 @@ interface ImproveResult {
   experience_improvements: string[];
   project_suggestion: string;
   keywords_added: string[];
+  jd_keywords_added: string[];
   full_improved_resume: string;
   changes_made: string[];
+  estimated_ats_score?: number;
+  estimated_jd_score?: number | null;
 }
 
 const SECTION_DEFS = [
@@ -75,6 +78,7 @@ const ATSChecker: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [animatedScore, setAnimatedScore] = useState(0);
+  const [animatedJd, setAnimatedJd] = useState(0);
 
   // Usage gate
   const [usage, setUsage] = useState<UsageInfo | null>(null);
@@ -113,6 +117,21 @@ const ATSChecker: React.FC = () => {
     return () => cancelAnimationFrame(fid);
   }, [result?.score]);
 
+  useEffect(() => {
+    if (!result || result.jd_match_score == null) { setAnimatedJd(0); return; }
+    const target = result.jd_match_score;
+    const duration = 1400; const start = performance.now(); let fid = 0;
+    setAnimatedJd(0);
+    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+    const animate = (now: number) => {
+      const p = Math.min((now - start) / duration, 1);
+      setAnimatedJd(target * ease(p));
+      if (p < 1) fid = requestAnimationFrame(animate);
+    };
+    fid = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(fid);
+  }, [result?.jd_match_score]);
+
   // Fetch usage count; subscription is determined by user.status === 'approved'
   useEffect(() => {
     if (!user?.token) return
@@ -123,7 +142,7 @@ const ATSChecker: React.FC = () => {
       .then(r => r.json())
       .then(data => {
         // Override isSubscribed from backend with the reliable user.status field
-        const MAX = 50
+        const MAX = 20
         const count = data.usageCount || 0
         setUsage({
           usageCount: count,
@@ -195,9 +214,12 @@ const ATSChecker: React.FC = () => {
           resume_text: result.resume_text,
           missing_keywords: result.missing_keywords,
           jd_missing_keywords: result.jd_missing_keywords,
+          jd_matched_keywords: result.jd_matched_keywords,
           section_feedback: result.section_feedback,
           job_description: jobDescription,
           company_name: companyName,
+          current_ats_score: result.score,
+          current_jd_score: result.jd_match_score ?? null,
         }),
       });
       if (!res.ok) throw new Error("Failed to generate improvements");
@@ -265,7 +287,7 @@ const ATSChecker: React.FC = () => {
                 <>
                   <span className="ats-usage-dot free" />
                   <span className="ats-usage-label" style={{ color: '#22c55e' }}>1 Free Check Available</span>
-                  <span className="ats-usage-hint">Subscribe for up to 50 checks</span>
+                  <span className="ats-usage-hint">Subscribe for up to 20 checks</span>
                 </>
               ) : (
                 <>
@@ -337,46 +359,152 @@ const ATSChecker: React.FC = () => {
           </Col>
 
           <Col lg={4}>
-            <Card className={`ats-score-card score-border-${variant(result?.score || 0)}`}>
-              <Card.Body className="p-4 text-center d-flex flex-column align-items-center justify-content-center" style={{ minHeight: 340 }}>
-                {result ? (
-                  <>
+            {!result && (
+              <Card className="ats-score-card h-100">
+                <Card.Body className="p-4 d-flex flex-column align-items-center justify-content-center" style={{ minHeight: 340 }}>
+                  <div className="ats-placeholder">
+                    <div className="ats-placeholder-ring">ATS</div>
+                    <p>Your scores appear here</p>
+                    <small>Upload a resume to get started</small>
+                  </div>
+                </Card.Body>
+              </Card>
+            )}
+            {result && result.company_name && (
+              <Card className="ats-score-card h-100">
+                <Card.Body className="p-4 d-flex flex-column align-items-center justify-content-center">
+                  <div className="ats-company-pill">🏢 {result.company_name}</div>
+                  <div style={{ fontSize: '0.78rem', color: '#666', marginTop: 8, textAlign: 'center' }}>Scores calculated for this company's JD</div>
+                </Card.Body>
+              </Card>
+            )}
+          </Col>
+        </Row>
+
+        {/* 3-box Score Row — shown only when results available */}
+        {result && (
+          <Row className="g-4 mb-4">
+            {/* Box 1 — JD Match (Primary) */}
+            <Col md={4}>
+              <Card className="ats-sbox ats-sbox-jd h-100">
+                <Card.Body className="p-4 d-flex flex-column align-items-center text-center">
+                  <div className="ats-sbox-label">
+                    Job Match Score
+                    <span className="ats-primary-badge ms-2">Most Important</span>
+                  </div>
+                  {result.jd_match_score != null ? (
+                    <>
+                      <div style={{ position: 'relative', display: 'inline-block', margin: '16px 0 10px' }}>
+                        <div className="ats-ring ats-ring-jd" style={{ ["--score" as string]: animatedJd } as React.CSSProperties}>
+                          <div className="ats-ring-inner ats-ring-inner-jd">
+                            <div className="ats-score-num" style={{ color: animatedJd >= 70 ? '#22c55e' : animatedJd >= 40 ? '#f59e0b' : '#ef4444' }}>
+                              {Math.round(animatedJd)}%
+                            </div>
+                            <div className="ats-score-grade">{animatedJd >= 70 ? 'Strong' : animatedJd >= 40 ? 'Moderate' : 'Low'}</div>
+                          </div>
+                        </div>
+                        <div className="ats-info-anchor" style={{ position: 'absolute', top: 4, right: -4 }}>
+                          <span className="ats-info-icon">ℹ</span>
+                          <div className="ats-info-tip">
+                            <strong>JD Match Score — Most Important</strong>
+                            <p>How many keywords from the Job Description are found in your resume. This is exactly what company ATS software checks first.</p>
+                            <ul>
+                              <li><strong>70%+</strong> — Strong match for this role</li>
+                              <li><strong>40–69%</strong> — Moderate: add more JD keywords</li>
+                              <li><strong>Below 40%</strong> — Low: high risk of rejection</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                      <ProgressBar now={animatedJd} style={{ height: 6, borderRadius: 4, width: '100%', background: '#111', ['--bs-progress-bar-bg' as string]: animatedJd >= 70 ? '#22c55e' : animatedJd >= 40 ? '#f59e0b' : '#ef4444' }} className="ats-bar mb-2" />
+                      <div className="ats-sbox-verdict">
+                        {animatedJd >= 70 ? '✅ Likely to pass ATS for this role' : animatedJd >= 40 ? '⚠️ Add more JD keywords to improve' : '❌ Resume may be auto-rejected'}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="ats-no-jd-hint mt-3">
+                      💡 Paste a Job Description above to unlock your <strong>JD Match score</strong> — the #1 metric companies check
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+
+            {/* Box 2 — ATS / Resume Quality Score */}
+            <Col md={4}>
+              <Card className="ats-sbox ats-sbox-ats h-100">
+                <Card.Body className="p-4 d-flex flex-column align-items-center text-center">
+                  <div className="ats-sbox-label">
+                    Resume Quality Score
+                    <span className="ats-secondary-badge ms-2">General</span>
+                  </div>
+                  <div style={{ position: 'relative', display: 'inline-block', margin: '16px 0 10px' }}>
                     <div className="ats-ring" style={{ ["--score" as string]: animatedScore } as React.CSSProperties}>
                       <div className="ats-ring-inner">
                         <div className="ats-score-num">{Math.round(animatedScore)}%</div>
                         <div className="ats-score-grade">{scoreGrade(result.score)}</div>
                       </div>
                     </div>
-                    <div className="ats-score-label mt-2">{scoreLabel(result.score)}</div>
-                    {result.company_name && <div className="ats-company-pill mt-2">🏢 {result.company_name}</div>}
-                    {result.jd_match_score != null && (
-                      <div className="ats-jd-pill mt-2">
-                        <span>JD Match</span><strong>{result.jd_match_score}%</strong>
+                    <div className="ats-info-anchor" style={{ position: 'absolute', top: 4, right: -4 }}>
+                      <span className="ats-info-icon">ℹ</span>
+                      <div className="ats-info-tip">
+                        <strong>ATS Score</strong>
+                        <p>Generic resume quality — keyword density, sections, formatting. Same score regardless of which job you apply to.</p>
+                        <ul>
+                          <li><strong>80%+</strong> — Excellent</li>
+                          <li><strong>60–79%</strong> — Good</li>
+                          <li><strong>40–59%</strong> — Fair</li>
+                          <li><strong>Below 40%</strong> — At risk</li>
+                        </ul>
                       </div>
-                    )}
-                    <div className="ats-score-desc mt-2">
-                      {result.score >= 80 ? "Highly optimized for ATS!" : result.score >= 60 ? "Good foundation. Minor improvements needed." : result.score >= 40 ? "Fair score. Use AI Improve below." : "Major improvements recommended."}
                     </div>
-                    <ProgressBar now={animatedScore} variant={variant(result.score)} className="ats-bar mt-3 w-100" />
-                    <div className="ats-sections-mini mt-3 w-100">
-                      <div className="d-flex justify-content-between mb-1">
-                        <small className="ats-muted">Sections found</small>
-                        <small className="ats-muted">{presentCount}/{SECTION_DEFS.length}</small>
-                      </div>
-                      <ProgressBar now={(presentCount / SECTION_DEFS.length) * 100} variant="info" style={{ height: 5, borderRadius: 3 }} />
-                    </div>
-                  </>
-                ) : (
-                  <div className="ats-placeholder">
-                    <div className="ats-placeholder-ring">ATS</div>
-                    <p>Your ATS score appears here</p>
-                    <small>Upload a resume to get started</small>
                   </div>
-                )}
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
+                  <ProgressBar now={animatedScore} variant={variant(result.score)} className="ats-bar mb-2 w-100" style={{ height: 6, borderRadius: 4 }} />
+                  <div className="ats-sbox-verdict">
+                    {result.score >= 80 ? '✅ Highly optimized for ATS' : result.score >= 60 ? '⚠️ Good foundation, minor gaps' : result.score >= 40 ? '⚠️ Fair — use AI Improve below' : '❌ Major improvements recommended'}
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+
+            {/* Box 3 — Resume Health */}
+            <Col md={4}>
+              <Card className="ats-sbox ats-sbox-health h-100">
+                <Card.Body className="p-4 d-flex flex-column">
+                  <div className="ats-sbox-label mb-3">Resume Health</div>
+
+                  {/* Sections progress */}
+                  <div className="ats-health-row mb-3">
+                    <div className="d-flex justify-content-between mb-1">
+                      <span className="ats-health-key">Sections Detected</span>
+                      <span className="ats-health-val" style={{ color: presentCount >= 6 ? '#22c55e' : presentCount >= 4 ? '#f59e0b' : '#ef4444' }}>{presentCount}/{SECTION_DEFS.length}</span>
+                    </div>
+                    <ProgressBar now={(presentCount / SECTION_DEFS.length) * 100} variant={presentCount >= 6 ? 'success' : presentCount >= 4 ? 'warning' : 'danger'} style={{ height: 6, borderRadius: 4 }} />
+                  </div>
+
+                  {/* Key metrics list */}
+                  {[
+                    { label: 'Overall Grade', value: scoreGrade(result.score), color: result.score >= 80 ? '#22c55e' : result.score >= 60 ? '#f59e0b' : '#ef4444' },
+                    { label: 'ATS Readability', value: result.score >= 60 ? 'Good' : 'Needs work', color: result.score >= 60 ? '#22c55e' : '#ef4444' },
+                    ...(result.jd_match_score != null ? [{ label: 'JD Keyword Match', value: `${result.jd_match_score}%`, color: result.jd_match_score >= 70 ? '#22c55e' : result.jd_match_score >= 40 ? '#f59e0b' : '#ef4444' }] : []),
+                    ...(result.company_name ? [{ label: 'Company', value: result.company_name, color: '#74c0fc' }] : []),
+                  ].map((item, i) => (
+                    <div key={i} className="ats-health-item">
+                      <span className="ats-health-key">{item.label}</span>
+                      <span className="ats-health-val" style={{ color: item.color }}>{item.value}</span>
+                    </div>
+                  ))}
+
+                  <div className="mt-auto pt-3">
+                    <div className="ats-sbox-verdict">
+                      {presentCount >= 6 ? '✅ Resume structure looks complete' : `⚠️ ${SECTION_DEFS.length - presentCount} sections missing — add them to improve score`}
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        )}
 
         {/* Results */}
         {result && (
@@ -441,6 +569,114 @@ const ATSChecker: React.FC = () => {
                 </Card.Body>
               </Card>
             )}
+
+            {/* How Companies Use ATS */}
+            <Card className="ats-card mb-4">
+              <Card.Header className="ats-card-header" style={{ borderLeft: '4px solid #ff7a00' }}>
+                <span>🏢</span>
+                <h5 className="mb-0">How Companies Filter Resumes</h5>
+                {result.jd_match_score != null && (
+                  <span className="ats-badge ms-auto" style={{ background: 'rgba(255,122,0,0.15)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.3)' }}>
+                    JD Match is the key factor
+                  </span>
+                )}
+              </Card.Header>
+              <Card.Body className="p-4">
+
+                {/* Our checker note */}
+                <div className="ats-process-note mb-4">
+                  <span className="ats-process-note-icon">✅</span>
+                  <div>
+                    <strong>Our ATS checker follows the same process</strong>
+                    <p>The <strong>JD Match %</strong> and <strong>ATS Score</strong> you see above are calculated exactly the way real company ATS software works — keyword scanning, section detection, and match scoring against the job description you provided.</p>
+                  </div>
+                </div>
+
+                {/* Hiring funnel */}
+                <div className="ats-funnel">
+                  {[
+                    { step: '1', icon: '📋', title: 'Job Posted', desc: 'Company posts a job. 500–5,000 applications arrive within days.', color: '#6f42c1' },
+                    { step: '2', icon: '🤖', title: 'ATS Auto-Scan', desc: 'ATS software (Workday, Taleo, Greenhouse) scans every resume for JD keywords, required skills, and qualifications.', color: '#0d6efd', highlight: true },
+                    { step: '3', icon: '📊', title: 'Score & Rank', desc: 'Each resume gets a match score. Only top 20–30% move forward. Low-scoring resumes are auto-rejected — no human sees them.', color: '#dc3545', highlight: true },
+                    { step: '4', icon: '👁️', title: 'HR Reviews Top Resumes', desc: 'A recruiter manually reads only the shortlisted resumes (usually 20–50 out of thousands).', color: '#fd7e14' },
+                    { step: '5', icon: '📞', title: 'Interview Call', desc: 'Candidates who pass ATS + HR review get called for an interview.', color: '#20c997' },
+                  ].map((item, i, arr) => (
+                    <div key={i} className="ats-funnel-step">
+                      <div className="ats-funnel-icon" style={{ background: `${item.color}22`, border: `1.5px solid ${item.color}55`, color: item.color }}>
+                        {item.icon}
+                      </div>
+                      <div className={`ats-funnel-body${item.highlight ? ' ats-funnel-highlight' : ''}`} style={item.highlight ? { borderColor: item.color } : {}}>
+                        <div className="ats-funnel-title" style={{ color: item.color }}>
+                          <span className="ats-funnel-num" style={{ background: item.color, color: '#000' }}>{item.step}</span> {item.title}
+                        </div>
+                        <div className="ats-funnel-desc">{item.desc}</div>
+                      </div>
+                      {i < arr.length - 1 && <div className="ats-funnel-arrow">↓</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Key insight box */}
+                <div className="ats-insight-box mt-4">
+                  <div className="ats-insight-title">💡 What this means for your resume</div>
+                  <div className="ats-insight-grid">
+                    <div className="ats-insight-item">
+                      <span className="ats-insight-icon" style={{ color: '#ffd166' }}>🎯</span>
+                      <div>
+                        <strong>JD Match score matters most</strong>
+                        <p>When applying to a specific role, the JD Match % is more important than your overall ATS score. Companies configure their ATS with keywords from their exact job description.</p>
+                      </div>
+                    </div>
+                    <div className="ats-insight-item">
+                      <span className="ats-insight-icon" style={{ color: '#ff6b6b' }}>⚠️</span>
+                      <div>
+                        <strong>Tailor resume per job</strong>
+                        <p>One generic resume won't work. For each job, add the specific skills and tools mentioned in that job's description to increase your JD match score.</p>
+                      </div>
+                    </div>
+                    <div className="ats-insight-item">
+                      <span className="ats-insight-icon" style={{ color: '#51cf66' }}>✅</span>
+                      <div>
+                        <strong>Use simple formatting</strong>
+                        <p>ATS cannot read tables, columns, headers/footers, or images. Use a clean single-column layout with standard section headings.</p>
+                      </div>
+                    </div>
+                    <div className="ats-insight-item">
+                      <span className="ats-insight-icon" style={{ color: '#74c0fc' }}>🔑</span>
+                      <div>
+                        <strong>Keywords must be exact</strong>
+                        <p>ATS does exact keyword matching. Write "React.js" if the JD says "React.js" — not just "React". Include both acronyms and full forms (e.g., "ML" and "Machine Learning").</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score guide */}
+                {result.jd_match_score != null && (
+                  <div className="ats-jd-guide mt-4">
+                    <div className="ats-insight-title mb-3">📈 Your JD Match: {result.jd_match_score}% — What it means</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {[
+                        { range: '70–100%', label: 'Strong', desc: 'Likely to pass ATS', color: '#22c55e', active: result.jd_match_score >= 70 },
+                        { range: '40–69%', label: 'Moderate', desc: 'Add more JD keywords', color: '#f59e0b', active: result.jd_match_score >= 40 && result.jd_match_score < 70 },
+                        { range: '0–39%', label: 'Low', desc: 'High risk of rejection', color: '#ef4444', active: result.jd_match_score < 40 },
+                      ].map(b => (
+                        <div key={b.range} style={{
+                          flex: 1, minWidth: 120, padding: '10px 14px', borderRadius: 8,
+                          background: b.active ? `${b.color}18` : '#111',
+                          border: `1.5px solid ${b.active ? b.color : '#222'}`,
+                        }}>
+                          <div style={{ fontSize: '0.7rem', color: b.active ? b.color : '#444', fontWeight: 700 }}>{b.range}</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 800, color: b.active ? b.color : '#333' }}>{b.label}</div>
+                          <div style={{ fontSize: '0.72rem', color: b.active ? '#aaa' : '#333' }}>{b.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+              </Card.Body>
+            </Card>
 
             {/* Strengths + Improvements */}
             <Row className="g-4 mb-4">
@@ -575,6 +811,67 @@ const ATSChecker: React.FC = () => {
               {/* Left: What changed */}
               <Col lg={4}>
                 <div className="ats-improve-sidebar">
+
+                  {/* Before / After Score Comparison */}
+                  <div className="ats-improve-section mb-3">
+                    <div className="ats-improve-section-title">📊 Score Improvement</div>
+                    <div className="ats-score-compare mt-2">
+                      {/* ATS Score */}
+                      <div className="ats-compare-row">
+                        <span className="ats-compare-label">Resume Quality</span>
+                        <div className="ats-compare-bars">
+                          <div className="ats-compare-bar-wrap">
+                            <span className="ats-compare-tag">Before</span>
+                            <div className="ats-compare-bar">
+                              <div className="ats-compare-fill" style={{ width: `${result?.score ?? 0}%`, background: '#ff6b35' }} />
+                            </div>
+                            <span className="ats-compare-pct" style={{ color: '#ff6b35' }}>{result?.score ?? '—'}%</span>
+                          </div>
+                          <div className="ats-compare-bar-wrap">
+                            <span className="ats-compare-tag">After</span>
+                            <div className="ats-compare-bar">
+                              <div className="ats-compare-fill" style={{ width: `${improveResult.estimated_ats_score ?? 0}%`, background: '#22c55e' }} />
+                            </div>
+                            <span className="ats-compare-pct" style={{ color: '#22c55e' }}>
+                              {improveResult.estimated_ats_score != null ? `${improveResult.estimated_ats_score}%` : '—'}
+                              {improveResult.estimated_ats_score != null && result?.score != null && (
+                                <span className="ats-compare-delta">+{Math.max(0, improveResult.estimated_ats_score - result.score)}%</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* JD Match Score */}
+                      {result?.jd_match_score != null && (
+                        <div className="ats-compare-row mt-2">
+                          <span className="ats-compare-label">JD Match</span>
+                          <div className="ats-compare-bars">
+                            <div className="ats-compare-bar-wrap">
+                              <span className="ats-compare-tag">Before</span>
+                              <div className="ats-compare-bar">
+                                <div className="ats-compare-fill" style={{ width: `${result.jd_match_score}%`, background: result.jd_match_score >= 70 ? '#22c55e' : result.jd_match_score >= 40 ? '#f59e0b' : '#ef4444' }} />
+                              </div>
+                              <span className="ats-compare-pct" style={{ color: '#f59e0b' }}>{result.jd_match_score}%</span>
+                            </div>
+                            <div className="ats-compare-bar-wrap">
+                              <span className="ats-compare-tag">After</span>
+                              <div className="ats-compare-bar">
+                                <div className="ats-compare-fill" style={{ width: `${improveResult.estimated_jd_score ?? 0}%`, background: '#22c55e' }} />
+                              </div>
+                              <span className="ats-compare-pct" style={{ color: '#22c55e' }}>
+                                {improveResult.estimated_jd_score != null ? `${improveResult.estimated_jd_score}%` : '—'}
+                                {improveResult.estimated_jd_score != null && (
+                                  <span className="ats-compare-delta">+{Math.max(0, improveResult.estimated_jd_score - result.jd_match_score)}%</span>
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <p className="ats-compare-note mt-2">* Estimates based on keywords added. Re-run ATS check to see exact scores.</p>
+                    </div>
+                  </div>
+
                   {improveResult.changes_made?.length ? (
                     <div className="ats-improve-section mb-3">
                       <div className="ats-improve-section-title">🔄 Changes Made</div>
@@ -583,12 +880,25 @@ const ATSChecker: React.FC = () => {
                       </ul>
                     </div>
                   ) : null}
-                  {improveResult.keywords_added?.length ? (
+                  {(improveResult.jd_keywords_added?.length || improveResult.keywords_added?.length) ? (
                     <div className="ats-improve-section mb-3">
                       <div className="ats-improve-section-title">🔑 Keywords Added</div>
-                      <div className="ats-kw-wrap mt-2">
-                        {improveResult.keywords_added.map((k, i) => <span key={i} className="ats-kw ats-kw-green">{k}</span>)}
-                      </div>
+                      {improveResult.jd_keywords_added?.length ? (
+                        <>
+                          <div style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700, marginBottom: 4, marginTop: 6 }}>JD Keywords (boost match score)</div>
+                          <div className="ats-kw-wrap mb-2">
+                            {improveResult.jd_keywords_added.map((k, i) => <span key={i} className="ats-kw ats-kw-green">{k}</span>)}
+                          </div>
+                        </>
+                      ) : null}
+                      {improveResult.keywords_added?.length ? (
+                        <>
+                          <div style={{ fontSize: '0.7rem', color: '#ff6b35', fontWeight: 700, marginBottom: 4, marginTop: 6 }}>ATS Keywords (boost quality score)</div>
+                          <div className="ats-kw-wrap">
+                            {improveResult.keywords_added.map((k, i) => <span key={i} className="ats-kw ats-kw-orange">{k}</span>)}
+                          </div>
+                        </>
+                      ) : null}
                     </div>
                   ) : null}
 
@@ -698,7 +1008,7 @@ const ATSChecker: React.FC = () => {
               <>
                 <div style={{ color: '#ef4444', fontWeight: 800, fontSize: '1.3rem', marginBottom: 8 }}>Limit Reached</div>
                 <p style={{ color: '#888', fontSize: '0.88rem', marginBottom: 20 }}>
-                  You have used all <strong style={{ color: '#fff' }}>50</strong> ATS checks included in your subscription.
+                  You have used all <strong style={{ color: '#fff' }}>20</strong> ATS checks included in your subscription.
                   <br />Please contact support for assistance.
                 </p>
                 <Button style={{ background: '#ff7a00', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700 }} onClick={() => setShowPaywall(false)}>
@@ -712,14 +1022,14 @@ const ATSChecker: React.FC = () => {
                   You've used your <strong style={{ color: '#fff' }}>1 free ATS check</strong>.
                 </p>
                 <p style={{ color: '#666', fontSize: '0.82rem', marginBottom: 24 }}>
-                  Subscribe to get <strong style={{ color: '#ff7a00' }}>50 ATS checks</strong>, AI resume improvements,<br />
+                  Subscribe to get <strong style={{ color: '#ff7a00' }}>20 ATS checks</strong>, AI resume improvements,<br />
                   career roadmap insights and more.
                 </p>
 
                 {/* Feature list */}
                 <div style={{ background: '#0a0a0e', border: '1px solid #1e1e24', borderRadius: 12, padding: '14px 18px', marginBottom: 22, textAlign: 'left' }}>
                   {[
-                    '✅ 50 ATS resume checks',
+                    '✅ 20 ATS resume checks',
                     '✅ AI-powered resume improvements',
                     '✅ Job description keyword matching',
                     '✅ Career roadmap & package insights',
@@ -805,18 +1115,69 @@ const ATSChecker: React.FC = () => {
         .ats-download-box { background: #111116; border: 1px solid #1e1e24; border-radius: 12px; padding: 1rem; }
 
         .ats-score-card { background: linear-gradient(160deg, #0a0a0e, #0e0e14); border: 1px solid #1e1e24; border-radius: 16px; }
-        .score-border-success { border-top: 3px solid #28a745; }
-        .score-border-warning { border-top: 3px solid #ffc107; }
-        .score-border-danger { border-top: 3px solid #dc3545; }
+
+        /* 3-box score row */
+        .ats-sbox { background: linear-gradient(160deg, #0a0a0e, #0e0e14); border: 1px solid #1e1e24; border-radius: 14px; }
+        .ats-sbox-jd { border-top: 3px solid #22c55e; }
+        .ats-sbox-ats { border-top: 3px solid #ff6b35; }
+        .ats-sbox-health { border-top: 3px solid #74c0fc; }
+        .ats-sbox-label { font-size: 0.72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .ats-sbox-verdict { font-size: 0.75rem; color: #888; line-height: 1.5; }
+        .ats-health-row { }
+        .ats-health-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #13131a; }
+        .ats-health-item:last-child { border-bottom: none; }
+        .ats-health-key { font-size: 0.78rem; color: #666; }
+        .ats-health-val { font-size: 0.82rem; font-weight: 700; }
+
+        /* Primary JD ring */
+        .ats-primary-label { font-size: 0.72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .ats-primary-badge { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); border-radius: 20px; padding: 1px 8px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .ats-ring { --score: 0; width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(#ff6b35 calc(var(--score) * 1%), rgba(255,255,255,0.05) calc(var(--score) * 1%)); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 24px rgba(255,107,53,0.15); }
         .ats-ring-inner { width: 152px; height: 152px; border-radius: 50%; background: linear-gradient(135deg, #0e0e14, #0a0a0e); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid rgba(255,107,53,0.25); }
+        .ats-ring-jd { background: conic-gradient(#22c55e calc(var(--score) * 1%), rgba(255,255,255,0.04) calc(var(--score) * 1%)); box-shadow: 0 0 28px rgba(34,197,94,0.18); }
+        .ats-ring-inner-jd { border-color: rgba(34,197,94,0.2); }
         .ats-score-num { font-size: 2.6rem; font-weight: 900; color: #ff6b35; line-height: 1; }
         .ats-score-grade { font-size: 0.9rem; color: #888; font-weight: 600; }
         .ats-score-label { font-size: 1.05rem; font-weight: 700; color: #f0f0f0; }
         .ats-score-desc { font-size: 0.78rem; color: #666; max-width: 200px; line-height: 1.4; }
+        .ats-jd-verdict { font-size: 0.75rem; color: #888; text-align: center; line-height: 1.4; }
+        .ats-score-divider { height: 1px; background: linear-gradient(90deg, transparent, #2a2a36, transparent); }
+
+        /* Secondary ATS mini ring */
+        .ats-secondary-label { font-size: 0.7rem; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+        .ats-secondary-badge { background: rgba(255,107,53,0.1); color: #ff6b35; border: 1px solid rgba(255,107,53,0.25); border-radius: 20px; padding: 1px 8px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; }
+        .ats-mini-ring-row { display: flex; align-items: center; gap: 14px; width: 100%; }
+        .ats-ring-mini { width: 90px; height: 90px; flex-shrink: 0; background: conic-gradient(#ff6b35 calc(var(--score) * 1%), rgba(255,255,255,0.04) calc(var(--score) * 1%)); box-shadow: 0 0 14px rgba(255,107,53,0.1); }
+        .ats-ring-inner-mini { width: 74px; height: 74px; border-color: rgba(255,107,53,0.2); }
+        .ats-score-num-mini { font-size: 1.4rem; font-weight: 900; color: #ff6b35; line-height: 1; }
+        .ats-mini-ring-info { flex: 1; text-align: left; }
+        .ats-no-jd-hint { background: rgba(255,209,102,0.06); border: 1px solid rgba(255,209,102,0.15); border-radius: 8px; padding: 0.55rem 0.85rem; font-size: 0.75rem; color: #9a8a50; line-height: 1.5; text-align: center; }
+        .ats-no-jd-hint strong { color: #ffd166; }
         .ats-company-pill { background: rgba(255,255,255,0.05); border: 1px solid #2a2a32; border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.78rem; color: #ccc; }
-        .ats-jd-pill { display: flex; align-items: center; gap: 0.5rem; background: rgba(255,209,102,0.1); border: 1px solid rgba(255,209,102,0.25); border-radius: 20px; padding: 0.3rem 0.9rem; font-size: 0.78rem; color: #ffd166; }
-        .ats-jd-pill strong { font-size: 0.9rem; }
+
+        /* Info tooltip */
+        .ats-info-anchor { position: relative; display: inline-flex; align-items: center; }
+        .ats-info-icon {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 16px; height: 16px; border-radius: 50%;
+          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+          color: #aaa; font-size: 0.7rem; font-weight: 700; cursor: pointer;
+          font-style: normal; line-height: 1; user-select: none;
+        }
+        .ats-info-tip {
+          display: none; position: absolute; left: 50%; top: 1.8rem;
+          transform: translateX(-50%); z-index: 200;
+          background: #1a1a24; border: 1px solid #2a2a36;
+          border-radius: 10px; padding: 12px 14px;
+          width: 260px; text-align: left;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+          color: #ccc; font-size: 0.75rem; line-height: 1.5;
+        }
+        .ats-info-tip strong { color: #fff; font-size: 0.82rem; display: block; margin-bottom: 6px; }
+        .ats-info-tip p { margin: 0 0 6px; }
+        .ats-info-tip ul { margin: 6px 0 0; padding-left: 14px; }
+        .ats-info-tip ul li { margin-bottom: 3px; }
+        .ats-info-anchor:hover .ats-info-tip { display: block; }
         .ats-bar { height: 7px; border-radius: 4px; }
         .ats-muted { color: #555; font-size: 0.78rem; }
         .ats-placeholder { padding: 1.5rem 0; }
@@ -863,6 +1224,33 @@ const ATSChecker: React.FC = () => {
 
         .ats-error { background: rgba(220,53,69,0.08); border: 1px solid rgba(220,53,69,0.3); border-radius: 10px; color: #e06c75; font-size: 0.85rem; padding: 0.75rem 1rem; }
 
+        /* Company ATS process note */
+        .ats-process-note { display: flex; gap: 0.75rem; align-items: flex-start; background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.2); border-radius: 10px; padding: 0.9rem 1rem; }
+        .ats-process-note-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+        .ats-process-note strong { font-size: 0.85rem; color: #22c55e; display: block; margin-bottom: 4px; }
+        .ats-process-note p { font-size: 0.78rem; color: #888; line-height: 1.55; margin: 0; }
+        .ats-process-note p strong { display: inline; font-size: inherit; color: #ccc; }
+
+        /* Company ATS funnel */
+        .ats-funnel { display: flex; flex-direction: column; gap: 0; }
+        .ats-funnel-step { display: flex; flex-direction: column; align-items: center; }
+        .ats-funnel-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; flex-shrink: 0; margin-bottom: 8px; }
+        .ats-funnel-body { width: 100%; background: #0d0d14; border: 1px solid #1e1e2e; border-radius: 10px; padding: 12px 16px; margin-bottom: 2px; }
+        .ats-funnel-highlight { background: #0d0d1a; border-color: rgba(13,110,253,0.3); }
+        .ats-funnel-title { font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .ats-funnel-num { width: 20px; height: 20px; border-radius: 50%; font-size: 0.68rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .ats-funnel-desc { font-size: 0.78rem; color: #888; line-height: 1.5; }
+        .ats-funnel-arrow { font-size: 1.1rem; color: #333; margin: 3px 0; }
+        .ats-insight-box { background: #080810; border: 1px solid #1a1a28; border-radius: 12px; padding: 1.25rem; }
+        .ats-insight-title { font-size: 0.85rem; font-weight: 700; color: #ddd; margin-bottom: 1rem; }
+        .ats-insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+        @media (max-width: 600px) { .ats-insight-grid { grid-template-columns: 1fr; } }
+        .ats-insight-item { display: flex; gap: 0.6rem; align-items: flex-start; }
+        .ats-insight-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+        .ats-insight-item strong { font-size: 0.82rem; color: #ddd; display: block; margin-bottom: 3px; }
+        .ats-insight-item p { font-size: 0.75rem; color: #777; line-height: 1.5; margin: 0; }
+        .ats-jd-guide { background: #080810; border: 1px solid #1a1a28; border-radius: 12px; padding: 1.25rem; }
+
         /* Modals */
         .ats-modal-dark .modal-content { background: #0d0d0f; border: 1px solid #1e1e24; border-radius: 16px; color: #f0f0f0; }
         .ats-modal-header { background: #111116; border-bottom: 1px solid #1e1e24; border-radius: 16px 16px 0 0; padding: 1rem 1.25rem; }
@@ -881,6 +1269,17 @@ const ATSChecker: React.FC = () => {
         .sec-status-dot { font-size: 0.7rem; }
 
         /* AI Improve Modal */
+        .ats-score-compare { }
+        .ats-compare-row { }
+        .ats-compare-label { font-size: 0.72rem; font-weight: 700; color: #aaa; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px; }
+        .ats-compare-bars { display: flex; flex-direction: column; gap: 5px; }
+        .ats-compare-bar-wrap { display: flex; align-items: center; gap: 6px; }
+        .ats-compare-tag { font-size: 0.65rem; color: #555; width: 32px; flex-shrink: 0; }
+        .ats-compare-bar { flex: 1; height: 8px; background: #111; border-radius: 4px; overflow: hidden; }
+        .ats-compare-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+        .ats-compare-pct { font-size: 0.72rem; font-weight: 700; min-width: 36px; display: flex; align-items: center; gap: 3px; }
+        .ats-compare-delta { font-size: 0.62rem; background: rgba(34,197,94,0.15); color: #22c55e; border-radius: 4px; padding: 1px 4px; font-weight: 700; }
+        .ats-compare-note { font-size: 0.65rem; color: #444; font-style: italic; margin: 0; }
         .ats-improve-sidebar { height: 75vh; overflow-y: auto; padding-right: 0.5rem; }
         .ats-improve-sidebar::-webkit-scrollbar { width: 4px; }
         .ats-improve-sidebar::-webkit-scrollbar-thumb { background: #2a2a32; border-radius: 3px; }
@@ -937,6 +1336,9 @@ const ATSChecker: React.FC = () => {
           .ats-ring { width: 140px; height: 140px; }
           .ats-ring-inner { width: 116px; height: 116px; }
           .ats-score-num { font-size: 2rem; }
+          .ats-ring-mini { width: 72px; height: 72px; }
+          .ats-ring-inner-mini { width: 58px; height: 58px; }
+          .ats-score-num-mini { font-size: 1.1rem; }
         }
       `}</style>
     </div>
