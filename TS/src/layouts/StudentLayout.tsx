@@ -51,6 +51,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const isSidebarExpanded = !isCollapsed || isHovering
   const isOrangeTheme = isHovering && isCollapsed
   const location = useLocation()
+  const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
 
   const hostname = window.location.hostname
 
@@ -85,6 +86,22 @@ const StudentLayout = ({ children }: ChildrenType) => {
       })
       .catch(() => { })
   }, [token, baseURL])
+
+  // Fetch per-institute nav config on subdomains
+  useEffect(() => {
+    if (isMainDomain) return
+    fetch(`${baseURL}/api/institute/nav-config-by-domain`, {
+      headers: { 'x-tenant-domain': hostname },
+      cache: 'no-store',
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.navSections) && d.navSections.length > 0) {
+          setAllowedNavKeys(d.navSections)
+        }
+      })
+      .catch(() => { })
+  }, [isMainDomain, hostname, baseURL])
 
   // Toggle sidebar collapse
   const toggleSidebar = () => {
@@ -284,6 +301,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             <VerticalMenu
               isCollapsed={!isSidebarExpanded}
               isMainDomain={isMainDomain}
+              allowedNavKeys={allowedNavKeys}
             />
           </aside>
         )}
@@ -334,6 +352,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
               isCollapsed={false}
               onItemClick={toggleOffCanvasMenu}
               isMainDomain={isMainDomain}
+              allowedNavKeys={allowedNavKeys}
             />
           </OffcanvasBody>
         </Offcanvas>
@@ -352,11 +371,13 @@ const StudentLayout = ({ children }: ChildrenType) => {
 const VerticalMenu = ({
   isCollapsed,
   onItemClick,
-  isMainDomain
+  isMainDomain,
+  allowedNavKeys,
 }: {
   isCollapsed: boolean
   onItemClick?: () => void
   isMainDomain?: boolean
+  allowedNavKeys?: string[] | null
 }) => {
   const { pathname } = useLocation()
   const { user } = useAuthContext()
@@ -366,16 +387,21 @@ const VerticalMenu = ({
   const filteredMenu = useMemo(() => {
     let items = STUDENT_MENU_ITEMS
 
-    // ✅ Hide subscription for subdomains
+    // Hide subscription for subdomains
     if (!isMainDomain) {
       items = items.filter(item => item.key !== "subscriptions")
+    }
+
+    // Apply per-institute nav config (only on subdomain, only when config is set)
+    if (!isMainDomain && allowedNavKeys && allowedNavKeys.length > 0) {
+      items = items.filter(item => allowedNavKeys.includes(item.key))
     }
 
     return items.map((item) => ({
       ...item,
       isDisabled: !isApproved && !alwaysEnabledKeys.includes(item.key),
     }))
-  }, [isApproved, isMainDomain])
+  }, [isApproved, isMainDomain, allowedNavKeys])
 
   const tree = useMemo(() => filteredMenu, [filteredMenu])
 

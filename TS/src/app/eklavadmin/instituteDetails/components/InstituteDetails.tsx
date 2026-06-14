@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import axios from 'axios'
 import { Card, Button, Form, Modal, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList } from 'react-icons/fa'
+import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH } from 'react-icons/fa'
 import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
 
 type Institute = {
@@ -15,6 +15,22 @@ type Institute = {
   createdAt?: string
   updatedAt?: string
 }
+
+// All configurable student sidebar sections
+const NAV_SECTION_DEFS = [
+  { key: 'dashboard',      label: 'Dashboard',             alwaysOn: true },
+  { key: 'englishPractice',label: 'English Practice',      alwaysOn: false },
+  { key: 'selfInterview',  label: 'Self Interview with AI', alwaysOn: false },
+  { key: 'courses',        label: 'Courses',               alwaysOn: false },
+  { key: 'preparation',    label: 'Self Preparation',      alwaysOn: false },
+  { key: 'freelancing',    label: 'Freelancing Tasks',     alwaysOn: false },
+  { key: 'myColleges',     label: 'My Colleges',           alwaysOn: false },
+  { key: 'activities',     label: 'Jobs Search',           alwaysOn: false },
+  { key: 'assessment',     label: 'Final Assessment',      alwaysOn: false },
+  { key: 'profile',        label: 'Update Profile',        alwaysOn: true },
+]
+
+const ALL_KEYS = NAV_SECTION_DEFS.map(s => s.key)
 
 // Professional Pagination Component
 const InstitutePagination: React.FC<{
@@ -99,6 +115,12 @@ const InstituteAdmin: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [copiedDomain, setCopiedDomain] = useState<string | null>(null)
+
+  // Nav config
+  const [showNavModal, setShowNavModal] = useState(false)
+  const [navInstitute, setNavInstitute] = useState<Institute | null>(null)
+  const [navChecked, setNavChecked] = useState<string[]>(ALL_KEYS)
+  const [navLoading, setNavLoading] = useState(false)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const institutesPerPage = 10
@@ -243,6 +265,49 @@ const InstituteAdmin: React.FC = () => {
       setError("Password reset failed")
       setTimeout(() => setError(null), 3000)
     }
+  }
+
+  const openNavConfig = async (inst: Institute) => {
+    setNavInstitute(inst)
+    setNavLoading(true)
+    setShowNavModal(true)
+    try {
+      const res = await axios.get(`${baseURL}/api/institute/nav-config/${inst._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const sections = res.data?.navSections
+      setNavChecked(sections && sections.length > 0 ? sections : ALL_KEYS)
+    } catch {
+      setNavChecked(ALL_KEYS)
+    } finally {
+      setNavLoading(false)
+    }
+  }
+
+  const handleSaveNavConfig = async () => {
+    if (!navInstitute) return
+    try {
+      setNavLoading(true)
+      await axios.put(`${baseURL}/api/institute/nav-config/${navInstitute._id}`, { navSections: navChecked }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccessMessage(`Navigation saved for ${navInstitute.name}`)
+      setShowNavModal(false)
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch {
+      setError('Failed to save navigation config')
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setNavLoading(false)
+    }
+  }
+
+  const toggleNavSection = (key: string) => {
+    const def = NAV_SECTION_DEFS.find(s => s.key === key)
+    if (def?.alwaysOn) return
+    setNavChecked(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    )
   }
 
   const handleCopyDomain = (domain: string) => {
@@ -407,6 +472,14 @@ const InstituteAdmin: React.FC = () => {
                             title="Create Admin"
                           >
                             <FaUserPlus />
+                          </Button>
+                          <Button
+                            variant="outline-info"
+                            size="sm"
+                            onClick={() => openNavConfig(inst)}
+                            title="Configure Navigation"
+                          >
+                            <FaSlidersH />
                           </Button>
                         </td>
                       </tr>
@@ -629,6 +702,91 @@ const InstituteAdmin: React.FC = () => {
           </Button>
           <Button variant="danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm._id)}>
             Delete Institute
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ── Nav Config Modal ── */}
+      <Modal show={showNavModal} onHide={() => setShowNavModal(false)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              <FaSlidersH className="text-info" />
+              <span>Configure Navigation — {navInstitute?.name}</span>
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          {navLoading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
+              <p className="text-muted mt-2" style={{ fontSize: '0.85rem' }}>Loading config…</p>
+            </div>
+          ) : (
+            <>
+              <p style={{ color: '#888', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+                Choose which sections appear in the student sidebar for <strong style={{ color: '#fff' }}>{navInstitute?.name}</strong>.
+                Sections marked <span style={{ color: '#22c55e' }}>Always On</span> cannot be hidden.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {NAV_SECTION_DEFS.map(sec => {
+                  const checked = navChecked.includes(sec.key)
+                  return (
+                    <div
+                      key={sec.key}
+                      onClick={() => toggleNavSection(sec.key)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        background: checked ? 'rgba(255,140,0,0.08)' : '#1a1a1a',
+                        border: `1px solid ${checked ? '#ff8c0055' : '#2a2a2a'}`,
+                        borderRadius: 10, padding: '12px 16px',
+                        cursor: sec.alwaysOn ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                        opacity: sec.alwaysOn ? 0.7 : 1,
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+                        border: `2px solid ${checked ? '#ff8c00' : '#444'}`,
+                        background: checked ? '#ff8c00' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}>
+                        {checked && <FaCheck size={10} color="#000" />}
+                      </div>
+                      <div>
+                        <div style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>{sec.label}</div>
+                        {sec.alwaysOn && (
+                          <div style={{ color: '#22c55e', fontSize: '0.68rem', marginTop: 2 }}>Always On</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: '1rem', padding: '10px 14px', background: '#111', borderRadius: 8, border: '1px solid #222', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaInfoCircle size={12} color="#555" />
+                <span style={{ fontSize: '0.75rem', color: '#555' }}>
+                  {navChecked.length === ALL_KEYS.length
+                    ? 'All sections are enabled (default)'
+                    : `${navChecked.length} of ${ALL_KEYS.length} sections enabled`}
+                </span>
+                {navChecked.length < ALL_KEYS.length && (
+                  <button
+                    onClick={() => setNavChecked(ALL_KEYS)}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ff8c00', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    Enable All
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setShowNavModal(false)}>Cancel</Button>
+          <Button variant="orange" onClick={handleSaveNavConfig} disabled={navLoading} style={{ background: '#ff8c00', border: 'none', fontWeight: 600 }}>
+            {navLoading ? <FaSpinner className="spinning" /> : 'Save Navigation'}
           </Button>
         </Modal.Footer>
       </Modal>
