@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Col, Modal, Row } from 'react-bootstrap'
 import {
-  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt,
+  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaCode,
 } from 'react-icons/fa'
 import StudentReports from '@/components/dashboard/StudentReports'
 import PageMetaData from '@/components/PageMetaData'
@@ -16,19 +16,22 @@ import AIInterviewWidget from '@/components/dashboard/AIInterviewWidget'
 import AIInterviewFull from '@/components/dashboard/AIInterviewFull'
 import AssessmentWidget from '@/components/dashboard/AssessmentWidget'
 import AssessmentFull from '@/components/dashboard/AssessmentFull'
+import CodeChallengeWidget from '@/components/dashboard/CodeChallengeWidget'
+import CodeChallengeFull from '@/components/dashboard/CodeChallengeFull'
 
 /* ─── Tab definitions ────────────────────────────────────── */
 const TABS = [
   { key: 'daily-engagement',  label: 'Daily Engagement',   icon: FaChartBar,      color: '#f59e0b' },
-  { key: 'course-enrollment', label: 'Course Progress',  icon: FaBookOpen,      color: '#3b82f6' },
+  { key: 'course-enrollment', label: 'Course Progress',    icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
+  { key: 'code-challenge',    label: 'Code Challenge',     icon: FaCode,          color: '#6366f1' },
   { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
 ] as const
 
 type TabKey   = (typeof TABS)[number]['key']
-type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | 'ai-interview' | 'assessments' | null
+type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | 'ai-interview' | 'assessments' | 'code-challenge' | null
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
@@ -269,6 +272,26 @@ const DashboardPage = () => {
               </Row>
             )}
 
+            {/* Code Challenge */}
+            {activeTab === 'code-challenge' && (
+              <Row className="g-3">
+                <Col md={12} lg={8}>
+                  <CodeChallengeWidget apiBase="/api/adminDashboardCharts" />
+                </Col>
+                <Col md={12} lg={4}>
+                  <div style={S.infoCard}>
+                    <div style={{ ...S.iconBox, background: 'rgba(99,102,241,0.12)' }}><FaCode size={20} color="#6366f1" /></div>
+                    <div style={S.infoTitle}>Code Challenge</div>
+                    <div style={S.infoSub}>Easy · Medium · Hard</div>
+                    <p style={S.infoDesc}>
+                      Track how many coding problems students have solved across all difficulty levels. View student-wise breakdowns, top problems, and a 14-day completion trend.
+                    </p>
+                    <button style={S.btn} onClick={() => setOpenModal('code-challenge')}>Full Details</button>
+                  </div>
+                </Col>
+              </Row>
+            )}
+
           </div>
         </div>
       </div>
@@ -335,6 +358,19 @@ const DashboardPage = () => {
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
           <AssessmentFull apiBase="/api/institute" />
+        </Modal.Body>
+      </Modal>
+
+      {/* Code Challenge — Full Screen Modal */}
+      <Modal show={openModal === 'code-challenge'} onHide={() => setOpenModal(null)} fullscreen>
+        <Modal.Header closeButton style={S.modalHeader}>
+          <div className="d-flex align-items-center gap-2">
+            <FaCode size={18} color="#6366f1" />
+            <Modal.Title style={{ color: '#fff', fontSize: '1.05rem', fontWeight: 700 }}>Code Challenge</Modal.Title>
+          </div>
+        </Modal.Header>
+        <Modal.Body style={S.modalBody}>
+          <CodeChallengeFull apiBase="/api/adminDashboardCharts" />
         </Modal.Body>
       </Modal>
 
