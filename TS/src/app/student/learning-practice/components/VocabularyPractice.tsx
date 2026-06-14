@@ -169,7 +169,11 @@ const VocabularyPractice: React.FC = () => {
                               <h6>Choose the correct meaning:</h6>
                               <div className="options-grid">
                                 {word.quizOptions.map((opt, i) => (
-                                  <div key={i} className="option-item">
+                                  <div
+                                    key={i}
+                                    className="option-item"
+                                    onClick={() => handleChange(word._id, opt)}
+                                  >
                                     <Form.Check
                                       type="radio"
                                       id={`${word._id}-${i}`}

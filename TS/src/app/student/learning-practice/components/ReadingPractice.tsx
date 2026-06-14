@@ -123,7 +123,13 @@ const ReadingPractice: React.FC = () => {
     setLoading(true)
     setFeedback(null)
 
-    const correctAnswers = Object.fromEntries(prompt.questions.map((q, i) => [i, q.answer]))
+    // Convert letter (A/B/C/D) → full option text so backend string comparison works
+    const correctAnswers = Object.fromEntries(
+      prompt.questions.map((q, i) => {
+        const idx = q.answer.charCodeAt(0) - 65  // A=0, B=1, C=2, D=3
+        return [i, q.options[idx] ?? q.answer]
+      })
+    )
 
     try {
       const res = await fetch(`${baseURL}/learning/reading/submit`, {
@@ -136,13 +142,7 @@ const ReadingPractice: React.FC = () => {
           studentId: user?.id,
           promptId: prompt.promptId,
           passage: prompt.passage,
-          answers: Object.fromEntries(
-            prompt.questions.map((q, i) => {
-              const letterIndex = q.options.indexOf(answers[i])
-              const letter = letterIndex >= 0 ? String.fromCharCode(65 + letterIndex) : answers[i]
-              return [i, letter]
-            })
-          ),
+          answers: Object.fromEntries(prompt.questions.map((_, i) => [i, answers[i] || ''])),
           correctAnswers,
         }),
       })

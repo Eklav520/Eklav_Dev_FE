@@ -5,7 +5,8 @@ import { FaClipboardList, FaArrowRight, FaPlay, FaVolumeUp, FaCheckCircle, FaArr
 import { useAuthContext } from '@/context/useAuthContext'
 
 type Question = {
-  q: string
+  q?: string
+  question?: string
   options: string[]
   answer: string
 }
@@ -152,15 +153,13 @@ const ListeningPractice: React.FC = () => {
         },
         body: JSON.stringify({
           promptId: prompt.promptId,
-          // Convert selected option text → letter (A/B/C/D) to match correctAnswers format
-          answers: Object.fromEntries(
+          answers: Object.fromEntries(prompt.questions.map((_, i) => [i, answers[i] || ''])),
+          correctAnswers: Object.fromEntries(
             prompt.questions.map((q, i) => {
-              const letterIndex = q.options.indexOf(answers[i])
-              const letter = letterIndex >= 0 ? String.fromCharCode(65 + letterIndex) : answers[i]
-              return [i, letter]
+              const idx = q.answer.charCodeAt(0) - 65  // A=0, B=1, C=2, D=3
+              return [i, q.options[idx] ?? q.answer]
             })
           ),
-          correctAnswers: Object.fromEntries(prompt.questions.map((q, i) => [i, q.answer])),
         }),
       })
 
@@ -306,11 +305,15 @@ const ListeningPractice: React.FC = () => {
                     {audioEnded && prompt.questions.length > 0 && (
                       <div className="questions-section">
                         <div className="current-question">
-                          <h5 className="question-text">{prompt.questions[currentQ].q}</h5>
+                          <h5 className="question-text">{prompt.questions[currentQ].q ?? prompt.questions[currentQ].question}</h5>
 
                           <div className="options-container">
                             {prompt.questions[currentQ].options.map((opt, i) => (
-                              <div key={i} className="option-item">
+                              <div
+                                key={i}
+                                className="option-item"
+                                onClick={() => !feedback && handleOptionChange(currentQ, opt)}
+                              >
                                 <Form.Check
                                   type="radio"
                                   disabled={!!feedback}
@@ -424,7 +427,7 @@ const ListeningPractice: React.FC = () => {
                               <div key={idx} className={`ar-item ${isCorrect ? 'ar-correct' : 'ar-wrong'}`}>
                                 <div className="ar-q-header">
                                   <span className="ar-q-num">Q{idx + 1}</span>
-                                  <span className="ar-q-text">{q.question}</span>
+                                  <span className="ar-q-text">{q.question ?? q.q}</span>
                                   <span className={`ar-badge ${isCorrect ? 'ar-badge-correct' : 'ar-badge-wrong'}`}>
                                     {isCorrect ? '✓ Correct' : '✗ Wrong'}
                                   </span>
@@ -698,6 +701,7 @@ const ListeningPractice: React.FC = () => {
         }
 
         .option-item {
+          cursor: pointer;
           background: #f8fafc;
           padding: 1rem;
           border-radius: 12px;
