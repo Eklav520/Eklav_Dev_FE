@@ -31,16 +31,20 @@ const card: React.CSSProperties = {
 const today = () => new Date().toISOString().slice(0, 10)
 const daysAgo = (n: number) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10) }
 
+const EMPTY_TP: TotalProblems = { Easy: 0, Medium: 0, Hard: 0, total: 0 }
+const EMPTY_DIFF: DiffBreakdown = { Easy: 0, Medium: 0, Hard: 0 }
+
 /* ─── Summary Cards ──────────────────────────────────────── */
 function SummaryCards({ data }: { data: OverviewData }) {
-  const tp = data.totalProblems
+  const tp   = data.totalProblems  || EMPTY_TP
+  const diff = data.diffBreakdown  || EMPTY_DIFF
   const stats = [
-    { label: 'Total Programs',   value: tp.total,                  color: '#6366f1', sub: 'available in system' },
-    { label: 'Total Solved',     value: data.totalCompleted,        color: '#818cf8', sub: 'accepted by all students' },
-    { label: 'Active Students',  value: data.uniqueStudents,        color: '#22c55e', sub: 'solved ≥ 1 problem' },
-    { label: 'Easy',             value: data.diffBreakdown.Easy,    color: '#22c55e', sub: `out of ${tp.Easy} problems`, outOf: tp.Easy },
-    { label: 'Medium',           value: data.diffBreakdown.Medium,  color: '#f59e0b', sub: `out of ${tp.Medium} problems`, outOf: tp.Medium },
-    { label: 'Hard',             value: data.diffBreakdown.Hard,    color: '#ef4444', sub: `out of ${tp.Hard} problems`, outOf: tp.Hard },
+    { label: 'Total Programs',   value: tp.total,       color: '#6366f1', sub: 'available in system' },
+    { label: 'Total Solved',     value: data.totalCompleted ?? 0, color: '#818cf8', sub: 'accepted by all students' },
+    { label: 'Active Students',  value: data.uniqueStudents ?? 0, color: '#22c55e', sub: 'solved ≥ 1 problem' },
+    { label: 'Easy',             value: diff.Easy,      color: '#22c55e', sub: `out of ${tp.Easy} problems`, outOf: tp.Easy },
+    { label: 'Medium',           value: diff.Medium,    color: '#f59e0b', sub: `out of ${tp.Medium} problems`, outOf: tp.Medium },
+    { label: 'Hard',             value: diff.Hard,      color: '#ef4444', sub: `out of ${tp.Hard} problems`, outOf: tp.Hard },
   ]
   return (
     <Row className="g-3 mb-4">
@@ -70,7 +74,8 @@ function SummaryCards({ data }: { data: OverviewData }) {
 
 /* ─── Difficulty Chart ───────────────────────────────────── */
 function DifficultyChart({ data }: { data: OverviewData }) {
-  const tp = data.totalProblems
+  const tp   = data.totalProblems || EMPTY_TP
+  const diff = data.diffBreakdown || EMPTY_DIFF
   return (
     <div style={{ ...card, height: '100%' }}>
       <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.25rem' }}>Difficulty Distribution</div>
@@ -78,7 +83,7 @@ function DifficultyChart({ data }: { data: OverviewData }) {
         Total programs: <span style={{ color: '#818cf8', fontWeight: 700 }}>{tp.total}</span>
       </div>
       {(['Easy', 'Medium', 'Hard'] as const).map(d => {
-        const solved   = data.diffBreakdown[d]
+        const solved   = diff[d]
         const avail    = tp[d] || 1
         const pct      = Math.round((solved / avail) * 100)
         return (
@@ -103,7 +108,7 @@ function DifficultyChart({ data }: { data: OverviewData }) {
         <div style={{ fontSize: '0.72rem', color: '#444', marginBottom: 5 }}>Overall Split</div>
         <div style={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden' }}>
           {(['Easy', 'Medium', 'Hard'] as const).map(d => (
-            <div key={d} style={{ flex: data.diffBreakdown[d] || 0.01, background: DC[d] }} title={`${d}: ${data.diffBreakdown[d]}`} />
+            <div key={d} style={{ flex: diff[d] || 0.01, background: DC[d] }} title={`${d}: ${diff[d]}`} />
           ))}
         </div>
         <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
@@ -121,8 +126,9 @@ function DifficultyChart({ data }: { data: OverviewData }) {
 
 /* ─── Trend Chart ────────────────────────────────────────── */
 function TrendChart({ trend }: { trend: TrendPoint[] }) {
-  const max   = Math.max(...trend.map(t => t.count), 1)
-  const total = trend.reduce((s, t) => s + t.count, 0)
+  const safeT = trend || []
+  const max   = Math.max(...safeT.map(t => t.count), 1)
+  const total = safeT.reduce((s, t) => s + t.count, 0)
   return (
     <div style={{ ...card, height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -133,15 +139,15 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
         <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{total}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
-        {trend.map((t, i) => (
+        {safeT.map((t, i) => (
           <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', height: '100%' }}>
             <div style={{ width: '100%', borderRadius: '3px 3px 0 0', minHeight: t.count > 0 ? 4 : 2, height: `${Math.max((t.count / max) * 100, t.count > 0 ? 8 : 2)}%`, background: t.count > 0 ? 'linear-gradient(180deg,#818cf8,#6366f1)' : '#1a1a1a', transition: 'height 0.5s ease' }} title={`${t.date}: ${t.count}`} />
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-        <span style={{ fontSize: '0.62rem', color: '#333' }}>{trend[0]?.date?.slice(5)}</span>
-        <span style={{ fontSize: '0.62rem', color: '#333' }}>{trend[trend.length - 1]?.date?.slice(5)}</span>
+        <span style={{ fontSize: '0.62rem', color: '#333' }}>{safeT[0]?.date?.slice(5)}</span>
+        <span style={{ fontSize: '0.62rem', color: '#333' }}>{safeT[safeT.length - 1]?.date?.slice(5)}</span>
       </div>
     </div>
   )
@@ -149,11 +155,12 @@ function TrendChart({ trend }: { trend: TrendPoint[] }) {
 
 /* ─── Top Problems ───────────────────────────────────────── */
 function TopProblems({ problems }: { problems: TopProblem[] }) {
+  const safeP = problems || []
   return (
     <div style={{ ...card, height: '100%' }}>
       <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '1rem' }}>Most Solved Problems</div>
-      {problems.length === 0 && <div style={{ color: '#555', fontSize: '0.82rem' }}>No data yet</div>}
-      {problems.map((p, i) => (
+      {safeP.length === 0 && <div style={{ color: '#555', fontSize: '0.82rem' }}>No data yet</div>}
+      {safeP.map((p, i) => (
         <div key={p.problemId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0', borderBottom: '1px solid #1a1a1a' }}>
           <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#333', width: 16, flexShrink: 0 }}>#{i + 1}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -196,7 +203,13 @@ function StudentTable({ apiBase }: { apiBase: string }) {
       cache: 'no-store',
     })
       .then(r => r.json())
-      .then(d => { if (d.success) { setRows(d.students); setTotal(d.total); if (d.totalProblems) setTp(d.totalProblems) } })
+      .then(d => {
+        if (d.success) {
+          setRows(Array.isArray(d.students) ? d.students : [])
+          setTotal(d.total ?? 0)
+          if (d.totalProblems) setTp(d.totalProblems)
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }

@@ -237,9 +237,14 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   /* ── Report body ── */
   const ReportBody = ({ rep }: { rep: Report }) => {
     const sec     = rep.sections
+    const monthlyLimit    = sec.selfInterview.monthlyLimit ?? 5
     const topicsWithUsage = sec.selfInterview.topicsAttempted || []
     const topicUsageMap   = Object.fromEntries(topicsWithUsage.map(t => [t.topic, t]))
-    const monthlyLimit    = sec.selfInterview.monthlyLimit ?? 5
+    const topicsAvailable = sec.selfInterview.topicsAvailable || []
+    // Merge: all available topics, with usage data overlaid from topicsAttempted
+    const allTopics = topicsAvailable.length > 0
+      ? topicsAvailable.map(name => topicUsageMap[name] ?? { topic: name, usedThisMonth: 0, remaining: monthlyLimit })
+      : topicsWithUsage
     const topRank = rep.rank ? Math.max(1, Math.ceil((rep.rank.position / rep.rank.total) * 100)) : null
     const totalCodeAvail = (rep.codeStats?.available.easy ?? 0) + (rep.codeStats?.available.medium ?? 0) + (rep.codeStats?.available.hard ?? 0)
 
@@ -572,9 +577,9 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                     <div className="bar-fill" style={{ width: `${barPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}88, ${color})`, borderRadius: 4 }} />
                   </div>
                   {/* Mini attempt dots */}
-                  {stat.attempts.length > 0 && (
+                  {(stat.attempts?.length ?? 0) > 0 && (
                     <div style={{ display: 'flex', gap: 3, marginTop: '0.5rem', flexWrap: 'wrap' as const }}>
-                      {stat.attempts.slice(-10).map((a, i) => {
+                      {(stat.attempts || []).slice(-10).map((a, i) => {
                         const displayScore = Math.min(100, Math.round(a.score * scale))
                         return (
                           <div key={i} title={`Attempt ${a.attempt}: ${displayScore}`} style={{
@@ -616,11 +621,11 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                 </div>
                 <span style={{ fontSize: '0.6rem', color: '#666' }}>{monthlyLimit} attempts/topic · this month</span>
               </div>
-              {topicsWithUsage.length === 0 ? (
+              {allTopics.length === 0 ? (
                 <div style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center' as const, padding: '1rem 0' }}>No topics available yet</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' }}>
-                  {topicsWithUsage.map(t => {
+                  {allTopics.map(t => {
                     const usedPct = Math.round((t.usedThisMonth / monthlyLimit) * 100);
                     const barColor = t.usedThisMonth >= monthlyLimit ? '#ef4444' : t.usedThisMonth > 0 ? '#a855f7' : '#1e1e1e';
                     return (
@@ -700,7 +705,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                 <div style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center' as const, padding: '0.75rem 0' }}>No resume interviews yet</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.35rem' }}>
-                  {sec.resumeInterview.attempts.map((a, i) => (
+                  {(sec.resumeInterview.attempts || []).map((a, i) => (
                     <div key={i} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       background: '#141414', borderRadius: 7, padding: '0.45rem 0.7rem',
