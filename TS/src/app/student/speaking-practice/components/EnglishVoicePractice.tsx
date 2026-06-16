@@ -53,6 +53,9 @@ const EnglishVoicePractice: React.FC = () => {
   const [history, setHistory] = useState<any>(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
   const speechPauseTimerRef = useRef<any>(null)
+  const [isPaused, setIsPaused] = useState(false)
+  const isPausedRef = useRef(false)
+
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
   const TRIAL_LIMIT = 5
@@ -135,14 +138,14 @@ const EnglishVoicePractice: React.FC = () => {
   }, [messages, liveSpeech, isTyping])
 
   useEffect(() => {
-    if (!sessionStarted || sessionEnded) return
+    if (!sessionStarted || sessionEnded || isPaused) return
     if (timeLeft <= 0) {
       handleEndSession()
       return
     }
     const t = setInterval(() => setTimeLeft((p) => p - 1), 1000)
     return () => clearInterval(t)
-  }, [sessionStarted, sessionEnded, timeLeft])
+  }, [sessionStarted, sessionEnded, timeLeft, isPaused])
 
   const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
@@ -310,10 +313,10 @@ const EnglishVoicePractice: React.FC = () => {
 
   const onTTSEnd = () => {
     ttsCountRef.current -= 1
-    if (ttsCountRef.current === 0 && sessionActiveRef.current) {
+    if (ttsCountRef.current === 0 && sessionActiveRef.current && !isPausedRef.current) {
       startListening()
       setTimeout(() => {
-        if (sessionActiveRef.current) startSilenceTimer()
+        if (sessionActiveRef.current && !isPausedRef.current) startSilenceTimer()
       }, 500)
     }
   }
@@ -435,6 +438,8 @@ const EnglishVoicePractice: React.FC = () => {
     noResponseCountRef.current = 0
     manualStopRef.current = false
     ttsCountRef.current = 0
+    isPausedRef.current = false
+    setIsPaused(false)
     stopListening()
     speechSynthesis.cancel()
     transcriptRef.current = ''
@@ -446,6 +451,25 @@ const EnglishVoicePractice: React.FC = () => {
     setTimeLeft(180)
     setLiveSpeech('')
     setIsUserSpeaking(false)
+  }
+
+  const handlePause = () => {
+    isPausedRef.current = true
+    setIsPaused(true)
+    clearSilenceTimer()
+    stopListening()
+    speechSynthesis.cancel()
+    ttsCountRef.current = 0
+    setLiveSpeech('')
+  }
+
+  const handleResume = () => {
+    isPausedRef.current = false
+    setIsPaused(false)
+    startListening()
+    setTimeout(() => {
+      if (sessionActiveRef.current && !isPausedRef.current) startSilenceTimer()
+    }, 500)
   }
 
   const handleStartSession = async () => {
@@ -620,10 +644,18 @@ const EnglishVoicePractice: React.FC = () => {
                         >
                           ▶ Start
                         </Button>
-                        <Button 
-                          variant={canStop ? 'outline' : 'outline-secondary'} 
-                          className="action-btn stop-btn" 
-                          disabled={!canStop} 
+                        <Button
+                          variant={canStop ? 'outline' : 'outline-secondary'}
+                          className={`action-btn ${isPaused ? 'resume-btn' : 'pause-btn'}`}
+                          disabled={!canStop}
+                          onClick={isPaused ? handleResume : handlePause}
+                        >
+                          {isPaused ? '▶ Resume' : '⏸ Pause'}
+                        </Button>
+                        <Button
+                          variant={canStop ? 'outline' : 'outline-secondary'}
+                          className="action-btn end-btn"
+                          disabled={!canStop}
                           onClick={handleEndSession}
                         >
                           ⏹ Stop
@@ -637,26 +669,6 @@ const EnglishVoicePractice: React.FC = () => {
                           🔄 New
                         </Button>
                       </div>
-                      {sessionStarted && !sessionEnded && (
-                        <div className="mic-buttons">
-                          <Button 
-                            variant={isListening ? 'outline-secondary' : 'outline'} 
-                            disabled={isListening || ttsCountRef.current > 0} 
-                            onClick={startListening} 
-                            className="mic-action-btn speak-btn"
-                          >
-                            🎙 Speak
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            disabled={!isListening} 
-                            onClick={() => { manualStopRef.current = true; stopListening(); clearSilenceTimer(); }} 
-                            className="mic-action-btn stop-btn"
-                          >
-                            ⏹ Stop
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1014,14 +1026,44 @@ const EnglishVoicePractice: React.FC = () => {
           transform: translateY(-1px);
         }
 
-        .action-btn.stop-btn {
+        .action-btn.pause-btn {
           border-color: #000000 !important;
           color: #000000 !important;
         }
 
-        .action-btn.stop-btn:hover:not(:disabled) {
+        .action-btn.pause-btn:hover:not(:disabled) {
           background: #000000 !important;
           color: #ff7a00 !important;
+          transform: translateY(-1px);
+        }
+
+        .action-btn.resume-btn {
+          border-color: #000000 !important;
+          color: #000000 !important;
+          animation: resumePulse 1.2s ease-in-out infinite;
+        }
+
+        .action-btn.resume-btn:hover:not(:disabled) {
+          background: #000000 !important;
+          color: #ff7a00 !important;
+          transform: translateY(-1px);
+          animation: none;
+        }
+
+        @keyframes resumePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+
+        .action-btn.end-btn {
+          border-color: #000000 !important;
+          color: #000000 !important;
+        }
+
+        .action-btn.end-btn:hover:not(:disabled) {
+          background: #7f0000 !important;
+          border-color: #7f0000 !important;
+          color: #ffffff !important;
           transform: translateY(-1px);
         }
 
