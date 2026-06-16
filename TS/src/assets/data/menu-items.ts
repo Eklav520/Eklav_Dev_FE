@@ -461,7 +461,7 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
 
   {
     key: 'freelencing',
-    label: 'Freelencing',
+    label: 'Internship Tasks',
     icon: BsPersonWorkspace,
     children: [
       {

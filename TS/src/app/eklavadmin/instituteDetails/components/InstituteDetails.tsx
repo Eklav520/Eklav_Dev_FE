@@ -13,6 +13,7 @@ type Institute = {
   domain?: string
   dbName?: string
   navSections?: string[] | null
+  adminNavSections?: string[] | null
   createdAt?: string
   updatedAt?: string
 }
@@ -31,7 +32,23 @@ const NAV_SECTION_DEFS = [
   { key: 'profile',        label: 'Update Profile',        alwaysOn: true },
 ]
 
+// All configurable institute admin sidebar sections
+const ADMIN_NAV_SECTION_DEFS = [
+  { key: 'dashboard',         label: 'Dashboard',           alwaysOn: true },
+  { key: 'courses',           label: 'Courses',             alwaysOn: false },
+  { key: 'students',          label: 'Students',            alwaysOn: false },
+  { key: 'onlineClasses',     label: 'Online Classes',      alwaysOn: false },
+  { key: 'freelencing',       label: 'Internship Tasks',    alwaysOn: false },
+  { key: 'jobOpenings',       label: 'Job Openings',        alwaysOn: false },
+  { key: 'placements',        label: 'Placements',          alwaysOn: false },
+  { key: 'collegeAssessment', label: 'College Assessment',  alwaysOn: false },
+  { key: 'finalAssessment',   label: 'Final Assessment',    alwaysOn: false },
+  { key: 'achievements',      label: 'Achievements',        alwaysOn: false },
+  { key: 'facultyAdmin',      label: 'Faculty Admin',       alwaysOn: false },
+]
+
 const ALL_KEYS = NAV_SECTION_DEFS.map(s => s.key)
+const ALL_ADMIN_KEYS = ADMIN_NAV_SECTION_DEFS.map(s => s.key)
 
 // Professional Pagination Component
 const InstitutePagination: React.FC<{
@@ -117,11 +134,17 @@ const InstituteAdmin: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [copiedDomain, setCopiedDomain] = useState<string | null>(null)
 
-  // Nav config
+  // Student nav config
   const [showNavModal, setShowNavModal] = useState(false)
   const [navInstitute, setNavInstitute] = useState<Institute | null>(null)
   const [navChecked, setNavChecked] = useState<string[]>(ALL_KEYS)
   const [navLoading, setNavLoading] = useState(false)
+
+  // Admin nav config
+  const [showAdminNavModal, setShowAdminNavModal] = useState(false)
+  const [adminNavInstitute, setAdminNavInstitute] = useState<Institute | null>(null)
+  const [adminNavChecked, setAdminNavChecked] = useState<string[]>(ALL_ADMIN_KEYS)
+  const [adminNavLoading, setAdminNavLoading] = useState(false)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const institutesPerPage = 10
@@ -312,6 +335,50 @@ const InstituteAdmin: React.FC = () => {
     )
   }
 
+  const openAdminNavConfig = async (inst: Institute) => {
+    setAdminNavInstitute(inst)
+    setAdminNavLoading(true)
+    setShowAdminNavModal(true)
+    try {
+      const res = await axios.get(`${baseURL}/api/institute/nav-config/${inst._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const sections = res.data?.adminNavSections
+      setAdminNavChecked(sections && sections.length > 0 ? sections : ALL_ADMIN_KEYS)
+    } catch {
+      setAdminNavChecked(ALL_ADMIN_KEYS)
+    } finally {
+      setAdminNavLoading(false)
+    }
+  }
+
+  const handleSaveAdminNavConfig = async () => {
+    if (!adminNavInstitute) return
+    try {
+      setAdminNavLoading(true)
+      await axios.put(`${baseURL}/api/institute/nav-config/${adminNavInstitute._id}`, { adminNavSections: adminNavChecked }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      setSuccessMessage(`Admin navigation saved for ${adminNavInstitute.name}`)
+      setShowAdminNavModal(false)
+      fetchInstitutes()
+      setTimeout(() => setSuccessMessage(null), 3000)
+    } catch {
+      setError('Failed to save admin navigation config')
+      setTimeout(() => setError(null), 3000)
+    } finally {
+      setAdminNavLoading(false)
+    }
+  }
+
+  const toggleAdminNavSection = (key: string) => {
+    const def = ADMIN_NAV_SECTION_DEFS.find(s => s.key === key)
+    if (def?.alwaysOn) return
+    setAdminNavChecked(prev =>
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    )
+  }
+
   const handleCopyDomain = (domain: string) => {
     navigator.clipboard.writeText(`https://${domain}`)
     setCopiedDomain(domain)
@@ -490,9 +557,17 @@ const InstituteAdmin: React.FC = () => {
                             variant="outline-info"
                             size="sm"
                             onClick={() => openNavConfig(inst)}
-                            title="Configure Navigation"
+                            title="Student Navigation"
                           >
                             <FaSlidersH />
+                          </Button>
+                          <Button
+                            variant="outline-warning"
+                            size="sm"
+                            onClick={() => openAdminNavConfig(inst)}
+                            title="Admin Navigation"
+                          >
+                            <FaClipboardList />
                           </Button>
                         </td>
                       </tr>
@@ -800,6 +875,91 @@ const InstituteAdmin: React.FC = () => {
           <Button variant="secondary" onClick={() => setShowNavModal(false)}>Cancel</Button>
           <Button variant="orange" onClick={handleSaveNavConfig} disabled={navLoading} style={{ background: '#ff8c00', border: 'none', fontWeight: 600 }}>
             {navLoading ? <FaSpinner className="spinning" /> : 'Save Navigation'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ── Admin Nav Config Modal ── */}
+      <Modal show={showAdminNavModal} onHide={() => setShowAdminNavModal(false)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              <FaClipboardList className="text-warning" />
+              <span>Admin Navigation — {adminNavInstitute?.name}</span>
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          {adminNavLoading ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
+              <p className="text-muted mt-2" style={{ fontSize: '0.85rem' }}>Loading config…</p>
+            </div>
+          ) : (
+            <>
+              <p style={{ color: '#888', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
+                Choose which sections appear in the <strong style={{ color: '#fff' }}>institute admin</strong> sidebar for <strong style={{ color: '#fff' }}>{adminNavInstitute?.name}</strong>.
+                Sections marked <span style={{ color: '#22c55e' }}>Always On</span> cannot be hidden.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {ADMIN_NAV_SECTION_DEFS.map(sec => {
+                  const checked = adminNavChecked.includes(sec.key)
+                  return (
+                    <div
+                      key={sec.key}
+                      onClick={() => toggleAdminNavSection(sec.key)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 12,
+                        background: checked ? 'rgba(251,191,36,0.08)' : '#1a1a1a',
+                        border: `1px solid ${checked ? '#fbbf2455' : '#2a2a2a'}`,
+                        borderRadius: 10, padding: '12px 16px',
+                        cursor: sec.alwaysOn ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                        opacity: sec.alwaysOn ? 0.7 : 1,
+                      }}
+                    >
+                      <div style={{
+                        width: 20, height: 20, borderRadius: 5, flexShrink: 0,
+                        border: `2px solid ${checked ? '#fbbf24' : '#444'}`,
+                        background: checked ? '#fbbf24' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.15s',
+                      }}>
+                        {checked && <FaCheck size={10} color="#000" />}
+                      </div>
+                      <div>
+                        <div style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>{sec.label}</div>
+                        {sec.alwaysOn && (
+                          <div style={{ color: '#22c55e', fontSize: '0.68rem', marginTop: 2 }}>Always On</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ marginTop: '1rem', padding: '10px 14px', background: '#111', borderRadius: 8, border: '1px solid #222', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <FaInfoCircle size={12} color="#555" />
+                <span style={{ fontSize: '0.75rem', color: '#555' }}>
+                  {adminNavChecked.length === ALL_ADMIN_KEYS.length
+                    ? 'All admin sections enabled (default)'
+                    : `${adminNavChecked.length} of ${ALL_ADMIN_KEYS.length} sections enabled`}
+                </span>
+                {adminNavChecked.length < ALL_ADMIN_KEYS.length && (
+                  <button
+                    onClick={() => setAdminNavChecked(ALL_ADMIN_KEYS)}
+                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#fbbf24', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    Enable All
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setShowAdminNavModal(false)}>Cancel</Button>
+          <Button onClick={handleSaveAdminNavConfig} disabled={adminNavLoading} style={{ background: '#fbbf24', border: 'none', fontWeight: 600, color: '#000' }}>
+            {adminNavLoading ? <FaSpinner className="spinning" /> : 'Save Admin Navigation'}
           </Button>
         </Modal.Footer>
       </Modal>

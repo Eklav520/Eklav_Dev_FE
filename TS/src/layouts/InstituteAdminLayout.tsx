@@ -184,11 +184,33 @@ const InstituteAdminLayout = ({ children }: ChildrenType) => {
 const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
   const { pathname } = useLocation()
   const { removeSession, user } = useAuthContext()
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  const [allowedAdminKeys, setAllowedAdminKeys] = useState<string[] | null>(null)
+
+  useEffect(() => {
+    const hostname = window.location.hostname.split(':')[0].toLowerCase()
+    const isMainDomain = hostname === 'localhost' || hostname === 'eklav.in' || hostname === 'www.eklav.in'
+    if (isMainDomain) return
+    fetch(`${baseURL}/api/institute/nav-config-by-domain`, {
+      headers: { 'x-tenant-domain': hostname },
+      cache: 'no-store',
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.adminNavSections) && d.adminNavSections.length > 0) {
+          setAllowedAdminKeys(d.adminNavSections)
+        }
+      })
+      .catch(() => {})
+  }, [baseURL])
 
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
     const items = user?.role === 'facultyAdmin' ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS
-    return items as unknown as MenuItemTypeLocal[]
-  }, [user?.role])
+    const all = items as unknown as MenuItemTypeLocal[]
+    if (!allowedAdminKeys) return all
+    return all.filter(item => allowedAdminKeys.includes(item.key))
+  }, [user?.role, allowedAdminKeys])
 
   const tree = useMemo(() => {
     const hasNested = baseMenu.some((it) => it.children && it.children.length > 0)
