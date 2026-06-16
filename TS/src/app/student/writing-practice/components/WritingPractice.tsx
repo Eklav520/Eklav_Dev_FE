@@ -6,6 +6,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 interface WritingFeedbackResult {
   score: number
   corrections?: string
+  idealAnswer?: string
   feedback?: FeedbackDetail
 }
 
@@ -174,6 +175,7 @@ const WritingPractice: React.FC = () => {
       setFeedback({
         score: data.score,
         corrections: data.feedback?.corrections,
+        idealAnswer: data.feedback?.idealAnswer,
         feedback: data.feedback?.feedback,
       })
     } catch (err) {
@@ -190,17 +192,35 @@ const WritingPractice: React.FC = () => {
     setText('')
   }
 
+  const fetchNewTopic = async () => {
+    setFeedback(null)
+    setText('')
+    setPrompt('')
+    setFetchingPrompt(true)
+    try {
+      const res = await fetch(`${baseURL}/writing/prompt/${mode}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setPrompt(data?.prompt || 'Write about a topic of your choice.')
+    } catch {
+      setPrompt('Write about a topic of your choice.')
+    } finally {
+      setFetchingPrompt(false)
+    }
+  }
+
   const getScoreVariant = (score: number) => {
-    if (score >= 8) return 'success'
-    if (score >= 6) return 'warning'
+    if (score >= 80) return 'success'
+    if (score >= 60) return 'warning'
     return 'danger'
   }
 
   const getScoreFeedback = (score: number) => {
-    if (score >= 9) return 'Excellent!'
-    if (score >= 8) return 'Very Good!'
-    if (score >= 7) return 'Good!'
-    if (score >= 6) return 'Fair'
+    if (score >= 90) return 'Excellent!'
+    if (score >= 80) return 'Very Good!'
+    if (score >= 70) return 'Good!'
+    if (score >= 60) return 'Fair'
     return 'Needs Improvement'
   }
 
@@ -271,7 +291,9 @@ const WritingPractice: React.FC = () => {
                   <div className="stat-box score">
                     <div className="stat-label">Best Score</div>
                     <div className="stat-value">
-                      {history.bestScore !== null ? `${history.bestScore}/10 ⭐` : 'No attempts yet'}
+                      {history.bestScore !== null
+                        ? `${history.bestScore <= 10 ? history.bestScore * 10 : history.bestScore}/100 ⭐`
+                        : 'No attempts yet'}
                     </div>
                   </div>
                 </div>
@@ -363,8 +385,11 @@ const WritingPractice: React.FC = () => {
                         <><FaCheckCircle className="me-1" />Submit</>
                       )}
                     </Button>
-                    <Button onClick={restartPractice} className="restart-button">
-                      <FaRedo className="me-1" />New Topic
+                    <Button onClick={fetchNewTopic} disabled={fetchingPrompt} className="restart-button">
+                      {fetchingPrompt
+                        ? <><Spinner animation="border" size="sm" className="me-1" />Loading...</>
+                        : <><FaRedo className="me-1" />New Topic</>
+                      }
                     </Button>
                   </div>
                 </Card.Body>
@@ -392,13 +417,18 @@ const WritingPractice: React.FC = () => {
                       {/* Score Row */}
                       <div className="score-row">
                         <div className="score-circle-sm">
-                          <span className="score-num">{feedback.score}</span>
-                          <span className="score-denom">/10</span>
+                          <span className="score-num">{feedback.score! <= 10 ? feedback.score! * 10 : feedback.score!}</span>
+                          <span className="score-denom">/100</span>
                         </div>
                         <div className="score-details">
-                          <div className="score-label">{getScoreFeedback(feedback.score!)}</div>
-                          <ProgressBar now={feedback.score! * 10} variant={getScoreVariant(feedback.score!)} className="score-bar" />
-                          <div className="score-hint">{feedback.score! >= 7 ? 'Great work! Keep it up.' : feedback.score! >= 4 ? 'Good effort, room to improve.' : 'Keep practising — you\'ll get there!'}</div>
+                          {(() => {
+                            const s = feedback.score! <= 10 ? feedback.score! * 10 : feedback.score!
+                            return <>
+                              <div className="score-label">{getScoreFeedback(s)}</div>
+                              <ProgressBar now={s} variant={getScoreVariant(s)} className="score-bar" />
+                              <div className="score-hint">{s >= 70 ? 'Great work! Keep it up.' : s >= 40 ? 'Good effort, room to improve.' : "Keep practising — you'll get there!"}</div>
+                            </>
+                          })()}
                         </div>
                       </div>
 
@@ -407,6 +437,17 @@ const WritingPractice: React.FC = () => {
                         <div className="fb-section fb-correction">
                           <div className="fb-section-title"><span className="fb-icon">✅</span>Corrected Version</div>
                           <div className="fb-section-body">{formatParagraphs(feedback.corrections)}</div>
+                        </div>
+                      )}
+
+                      {/* Ideal / Model Answer */}
+                      {feedback.idealAnswer && (
+                        <div className="fb-section fb-ideal">
+                          <div className="fb-section-title">
+                            <span className="fb-icon">⭐</span>
+                            {mode === 'summary' ? 'Model Summary' : mode === 'email' ? 'Model Email' : 'Ideal Essay'}
+                          </div>
+                          <div className="fb-section-body">{formatParagraphs(feedback.idealAnswer)}</div>
                         </div>
                       )}
 
@@ -923,9 +964,25 @@ const WritingPractice: React.FC = () => {
 
         .fb-icon { font-size: 0.88rem; }
 
-        .fb-correction .fb-section-title { background: #1565c0; }
-        .fb-overall .fb-section-title   { background: #2e7d32; }
-        .fb-suggestions .fb-section-title { background: #e65100; }
+        .fb-correction .fb-section-title  { background: #1565c0; }
+        .fb-ideal .fb-section-title        { background: #6a1b9a; }
+        .fb-overall .fb-section-title      { background: #2e7d32; }
+        .fb-suggestions .fb-section-title  { background: #e65100; }
+
+        .fb-ideal .fb-section-body {
+          background: #fdf8ff;
+          padding: 16px 18px;
+          font-size: 0.88rem;
+          line-height: 1.85;
+          color: #1e293b;
+          font-family: 'Georgia', 'Times New Roman', serif;
+          border-left: 4px solid #6a1b9a;
+          white-space: pre-wrap;
+          letter-spacing: 0.01em;
+        }
+
+        .fb-ideal .fb-section-body p { margin-bottom: 0.65em; }
+        .fb-ideal .fb-section-body p:last-child { margin-bottom: 0; }
 
         .fb-section-body {
           padding: 10px 12px;

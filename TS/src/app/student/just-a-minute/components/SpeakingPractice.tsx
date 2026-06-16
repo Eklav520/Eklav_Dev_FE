@@ -658,10 +658,10 @@ const SpeakingPractice: React.FC = () => {
 
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-  const getScoreVariant = (score: number) => (score >= 8 ? 'success' : score >= 6 ? 'warning' : 'danger')
+  const getScoreVariant = (score: number) => (score >= 80 ? 'success' : score >= 60 ? 'warning' : 'danger')
 
   const getScoreFeedback = (score: number) =>
-    score >= 9 ? 'Excellent!' : score >= 8 ? 'Very Good!' : score >= 7 ? 'Good!' : score >= 6 ? 'Fair' : 'Needs Improvement'
+    score >= 90 ? 'Excellent!' : score >= 80 ? 'Very Good!' : score >= 70 ? 'Good!' : score >= 60 ? 'Fair' : 'Needs Improvement'
 
   const closeMobileHelp = () => {
     setShowMobileHelp(false)
@@ -843,7 +843,9 @@ const SpeakingPractice: React.FC = () => {
                       <div>
                         <div className="history-label">Best Score</div>
                         <div className="history-value highlight">
-                          {history.summary.bestScore ?? '--'} / 10
+                          {history.summary.bestScore != null
+                            ? (history.summary.bestScore <= 10 ? history.summary.bestScore * 10 : history.summary.bestScore)
+                            : '--'} / 100
                         </div>
                       </div>
                     </div>
@@ -1020,11 +1022,11 @@ const SpeakingPractice: React.FC = () => {
               <>
                 <div className="score-display">
                   <h5>Your Score</h5>
-                  <div className="score-number">{feedback.score}/10</div>
-                  <div className="score-feedback">{getScoreFeedback(feedback.score)}</div>
+                  <div className="score-number">{feedback.score <= 10 ? feedback.score * 10 : feedback.score}/100</div>
+                  <div className="score-feedback">{getScoreFeedback(feedback.score <= 10 ? feedback.score * 10 : feedback.score)}</div>
                   <ProgressBar
-                    now={feedback.score * 10}
-                    variant={getScoreVariant(feedback.score)}
+                    now={feedback.score <= 10 ? feedback.score * 10 : feedback.score}
+                    variant={getScoreVariant(feedback.score <= 10 ? feedback.score * 10 : feedback.score)}
                     className="score-progress"
                   />
                 </div>
