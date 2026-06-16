@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
+import ReactDOM from 'react-dom'
 import axios from 'axios'
 import { Card, Button, Form, Modal, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH } from 'react-icons/fa'
+import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH, FaEye, FaIdCard, FaCodeBranch, FaCalendarAlt, FaVenusMars, FaPhoneAlt } from 'react-icons/fa'
 import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
 
 type Institute = {
@@ -134,6 +135,18 @@ const InstituteAdmin: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [copiedDomain, setCopiedDomain] = useState<string | null>(null)
+  const [studentCounts, setStudentCounts] = useState<Record<string, number>>({})
+
+  // Student details modal
+  const [showStudentsModal, setShowStudentsModal] = useState(false)
+  const [studentsInstitute, setStudentsInstitute] = useState<Institute | null>(null)
+  const [studentList, setStudentList] = useState<any[]>([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentSearch, setStudentSearch] = useState('')
+  const [studentPage, setStudentPage] = useState(1)
+  const [studentTotal, setStudentTotal] = useState(0)
+  const [studentTotalPages, setStudentTotalPages] = useState(1)
+  const STUDENT_PAGE_SIZE = 20
 
   // Student nav config
   const [showNavModal, setShowNavModal] = useState(false)
@@ -154,12 +167,16 @@ const InstituteAdmin: React.FC = () => {
     if (!token) return
     try {
       setLoading(true)
-      const res = await axios.get(`${baseURL}/api/institute/institutes`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const data = res.data?.institutes || []
+      const [instRes, countRes] = await Promise.allSettled([
+        axios.get(`${baseURL}/api/institute/institutes`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${baseURL}/api/institute/student-counts`, { headers: { Authorization: `Bearer ${token}` } }),
+      ])
+      const data = instRes.status === 'fulfilled' ? (instRes.value.data?.institutes || []) : []
       setInstitutes(data)
       setFilteredInstitutes(data)
+      if (countRes.status === 'fulfilled') {
+        setStudentCounts(countRes.value.data?.counts || {})
+      }
       setError(null)
     } catch (err) {
       console.error(err)
@@ -400,6 +417,55 @@ const InstituteAdmin: React.FC = () => {
     setTimeout(() => setCopiedDomain(null), 2000)
   }
 
+  const fetchStudents = async (inst: Institute, page: number, search: string) => {
+    setStudentsLoading(true)
+    try {
+      const res = await axios.get(`${baseURL}/api/institute/${inst._id}/students`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { page, limit: STUDENT_PAGE_SIZE, search: search.trim() }
+      })
+      setStudentList(res.data?.students || [])
+      setStudentTotal(res.data?.total ?? 0)
+      setStudentTotalPages(res.data?.totalPages ?? 1)
+      setStudentPage(page)
+    } catch {
+      setStudentList([])
+      setStudentTotal(0)
+      setStudentTotalPages(1)
+    } finally {
+      setStudentsLoading(false)
+    }
+  }
+
+  const openStudentsModal = (inst: Institute) => {
+    setStudentsInstitute(inst)
+    setStudentSearch('')
+    setStudentPage(1)
+    setStudentTotal(0)
+    setStudentTotalPages(1)
+    setStudentList([])
+    setShowStudentsModal(true)
+    fetchStudents(inst, 1, '')
+  }
+
+  const handleStudentSearch = (val: string) => {
+    setStudentSearch(val)
+    setStudentPage(1)
+    if (studentsInstitute) fetchStudents(studentsInstitute, 1, val)
+  }
+
+  const handleStudentPageChange = (page: number) => {
+    if (studentsInstitute) fetchStudents(studentsInstitute, page, studentSearch)
+  }
+
+  const thStyle: React.CSSProperties = { padding: '10px 14px', color: '#555', fontWeight: 600, textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }
+  const tdStyle: React.CSSProperties = { padding: '10px 14px', verticalAlign: 'middle' }
+  const pgBtnStyle = (disabled: boolean, active = false): React.CSSProperties => ({
+    minWidth: 28, height: 28, borderRadius: 6, border: active ? '1px solid #ff8c00' : '1px solid #2a2a2a',
+    background: active ? '#ff8c00' : '#111', color: active ? '#000' : disabled ? '#333' : '#aaa',
+    cursor: disabled ? 'not-allowed' : 'pointer', fontSize: '0.78rem', fontWeight: 600, padding: '0 6px',
+  })
+
   // Pagination
   const totalPages = Math.ceil(filteredInstitutes.length / institutesPerPage)
   const paginatedInstitutes = filteredInstitutes.slice(
@@ -474,6 +540,7 @@ const InstituteAdmin: React.FC = () => {
                     <th>Institute Name</th>
                     <th>Contact Info</th>
                     <th>Domain</th>
+                    <th className="text-center">Students</th>
                     <th className="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -543,7 +610,28 @@ const InstituteAdmin: React.FC = () => {
                             <Badge bg="secondary">No Domain</Badge>
                           )}
                         </td>
+                        <td className="text-center">
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                            <span style={{
+                              fontSize: '1.3rem', fontWeight: 700,
+                              color: (studentCounts[inst._id] ?? 0) > 0 ? '#ff8c00' : '#444',
+                            }}>
+                              {studentCounts[inst._id] ?? '—'}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              {(studentCounts[inst._id] ?? 0) === 1 ? 'student' : 'students'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="action-buttons">
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
+                            onClick={() => openStudentsModal(inst)}
+                            title="View Students"
+                          >
+                            <FaEye />
+                          </Button>
                           <Button
                             variant="outline-orange"
                             size="sm"
@@ -589,7 +677,7 @@ const InstituteAdmin: React.FC = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="empty-state">
+                      <td colSpan={5} className="empty-state">
                         <div className="empty-state-content">
                           <FaBuilding size={48} className="text-muted mb-3" />
                           <h5>No Institutes Found</h5>
@@ -891,6 +979,162 @@ const InstituteAdmin: React.FC = () => {
           <Button variant="orange" onClick={handleSaveNavConfig} disabled={navLoading} style={{ background: '#ff8c00', border: 'none', fontWeight: 600 }}>
             {navLoading ? <FaSpinner className="spinning" /> : 'Save Navigation'}
           </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ── Students Modal ── */}
+      {showStudentsModal && ReactDOM.createPortal(
+        <div
+          onClick={() => setShowStudentsModal(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1049,
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(0,0,0,0.55)',
+          }}
+        />,
+        document.body
+      )}
+      <Modal show={showStudentsModal} onHide={() => setShowStudentsModal(false)} centered size="xl" backdrop={false} className="institute-modal students-modal" style={{ zIndex: 1050 }}>
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              <FaUserGraduate className="text-primary" />
+              <span>Students — {studentsInstitute?.name}</span>
+              {!studentsLoading && (
+                <span style={{ fontSize: '0.75rem', background: 'rgba(255,140,0,0.15)', color: '#ff8c00', border: '1px solid rgba(255,140,0,0.3)', borderRadius: 20, padding: '2px 10px', fontWeight: 600, marginLeft: 4 }}>
+                  {studentList.length} total
+                </span>
+              )}
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark" style={{ padding: 0 }}>
+          {/* Search bar */}
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <FaSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '0.75rem' }} />
+              <input
+                value={studentSearch}
+                onChange={e => handleStudentSearch(e.target.value)}
+                placeholder="Search by name, email, roll number or branch…"
+                style={{
+                  width: '100%', background: '#111', border: '1px solid #222', borderRadius: 8,
+                  padding: '7px 10px 7px 30px', color: '#ddd', fontSize: '0.82rem', outline: 'none'
+                }}
+              />
+            </div>
+            {studentSearch && (
+              <button onClick={() => handleStudentSearch('')} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+                <FaTimes size={12} />
+              </button>
+            )}
+            <span style={{ fontSize: '0.72rem', color: '#555', whiteSpace: 'nowrap' }}>
+              {studentTotal} student{studentTotal !== 1 ? 's' : ''}
+            </span>
+          </div>
+
+          {studentsLoading ? (
+            <div style={{ textAlign: 'center', padding: '3rem' }}>
+              <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
+              <p className="text-muted mt-2" style={{ fontSize: '0.85rem' }}>Loading students…</p>
+            </div>
+          ) : studentList.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', color: '#555' }}>
+              <FaUserGraduate size={36} style={{ marginBottom: 12, opacity: 0.3 }} />
+              <p style={{ fontSize: '0.85rem' }}>{studentSearch ? 'No students match your search' : 'No students enrolled yet'}</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', maxHeight: '55vh', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <th style={thStyle}>#</th>
+                    <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Email</th>
+                    <th style={thStyle}><FaIdCard style={{ marginRight: 4 }} />Roll No</th>
+                    <th style={thStyle}><FaCodeBranch style={{ marginRight: 4 }} />Branch</th>
+                    <th style={thStyle}><FaCalendarAlt style={{ marginRight: 4 }} />Year</th>
+                    <th style={thStyle}><FaVenusMars style={{ marginRight: 4 }} />Gender</th>
+                    <th style={thStyle}><FaPhoneAlt style={{ marginRight: 4 }} />Phone</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Joined</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentList.map((s, i) => (
+                    <tr key={s._id} style={{ borderBottom: '1px solid #111', transition: 'background 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#0f0f0f')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={tdStyle}><span style={{ color: '#444', fontWeight: 600 }}>{(studentPage - 1) * STUDENT_PAGE_SIZE + i + 1}</span></td>
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{
+                            width: 30, height: 30, borderRadius: '50%',
+                            background: `hsl(${(s.name || 'A').charCodeAt(0) * 13 % 360}, 55%, 30%)`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.72rem', fontWeight: 700, color: '#fff', flexShrink: 0
+                          }}>
+                            {(s.name || s.fullname || '?')[0].toUpperCase()}
+                          </div>
+                          <span style={{ color: '#e0e0e0', fontWeight: 600 }}>{s.name || s.fullname || '—'}</span>
+                        </div>
+                      </td>
+                      <td style={tdStyle}><span style={{ color: '#888' }}>{s.email}</span></td>
+                      <td style={tdStyle}><span style={{ color: '#ff8c00', fontWeight: 600 }}>{s.rollNumber || '—'}</span></td>
+                      <td style={tdStyle}><span style={{ color: '#ccc' }}>{s.branch || '—'}</span></td>
+                      <td style={tdStyle}><span style={{ color: '#ccc' }}>{s.joiningYear || '—'}</span></td>
+                      <td style={tdStyle}><span style={{ color: '#ccc', textTransform: 'capitalize' }}>{s.gender || '—'}</span></td>
+                      <td style={tdStyle}><span style={{ color: '#888' }}>{s.phoneNumber || '—'}</span></td>
+                      <td style={tdStyle}>
+                        <span style={{
+                          fontSize: '0.68rem', padding: '2px 8px', borderRadius: 20, fontWeight: 600,
+                          background: s.status === 'approved' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)',
+                          color: s.status === 'approved' ? '#22c55e' : '#fbbf24',
+                          border: `1px solid ${s.status === 'approved' ? 'rgba(34,197,94,0.25)' : 'rgba(251,191,36,0.25)'}`,
+                          textTransform: 'capitalize'
+                        }}>
+                          {s.status || 'active'}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={{ color: '#555', fontSize: '0.75rem' }}>
+                          {s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Pagination */}
+          {studentTotalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => handleStudentPageChange(1)} disabled={studentPage === 1} style={pgBtnStyle(studentPage === 1)}>«</button>
+              <button onClick={() => handleStudentPageChange(studentPage - 1)} disabled={studentPage === 1} style={pgBtnStyle(studentPage === 1)}>‹</button>
+              {Array.from({ length: studentTotalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === studentTotalPages || Math.abs(p - studentPage) <= 1)
+                .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...')
+                  acc.push(p)
+                  return acc
+                }, [])
+                .map((p, idx) => p === '...'
+                  ? <span key={`d${idx}`} style={{ color: '#444', padding: '0 4px' }}>…</span>
+                  : <button key={p} onClick={() => handleStudentPageChange(p as number)} style={pgBtnStyle(false, studentPage === p)}>{p}</button>
+                )}
+              <button onClick={() => handleStudentPageChange(studentPage + 1)} disabled={studentPage === studentTotalPages} style={pgBtnStyle(studentPage === studentTotalPages)}>›</button>
+              <button onClick={() => handleStudentPageChange(studentTotalPages)} disabled={studentPage === studentTotalPages} style={pgBtnStyle(studentPage === studentTotalPages)}>»</button>
+              <span style={{ fontSize: '0.72rem', color: '#555', marginLeft: 6 }}>
+                Page {studentPage} of {studentTotalPages} · Showing {(studentPage - 1) * STUDENT_PAGE_SIZE + 1}–{Math.min(studentPage * STUDENT_PAGE_SIZE, studentTotal)} of {studentTotal}
+              </span>
+            </div>
+          )}
+          <Button variant="secondary" onClick={() => setShowStudentsModal(false)}>Close</Button>
         </Modal.Footer>
       </Modal>
 
