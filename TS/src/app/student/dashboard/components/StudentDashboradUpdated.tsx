@@ -27,7 +27,7 @@ import UpdatesAndStats from './UpdatesAndStats'
 import MonthlyReport from './MonthlyReport'
 import AttendanceCalendar from './AttendanceCalendar'
 
-import { FaBookOpen, FaBullseye, FaTrophy, FaClock, FaTasks } from 'react-icons/fa'
+import { FaBookOpen, FaBullseye, FaClock, FaTasks } from 'react-icons/fa'
 import JobNotificationsSection from './JobNotificationsSection'
 import AttendanceWidget from './AttendanceWidget'
 import AnnouncementsAchievementsSection from './AnnouncementsAchievementsSection'
@@ -199,15 +199,15 @@ const StudentDashboardUpdated: React.FC = () => {
       bgColor: 'rgba(255,122,0,0.1)',
       trend: dashboardSummary?.accuracy?.trend || 'NA',
     },
-    {
-      label: 'Rank',
-      value: dashboardSummary?.rank?.value || 0,
-      icon: FaTrophy,
-      color: '#ff7a00',
-      bgColor: 'rgba(255,122,0,0.1)',
-      trend: '',
-    },
   ]
+
+  const rankData = dashboardSummary?.rank ? {
+    instituteValue: dashboardSummary.rank.instituteValue || 'N/A',
+    instituteTotal: dashboardSummary.rank.instituteTotal || 0,
+    overallValue:   dashboardSummary.rank.overallValue   || 'N/A',
+    overallTotal:   dashboardSummary.rank.overallTotal   || 0,
+    trend:          dashboardSummary.rank.trend          || '',
+  } : undefined
 
   /* ================= JSX ================= */
   return (
@@ -220,7 +220,7 @@ const StudentDashboardUpdated: React.FC = () => {
         minHeight: '100svh',
       }}>
       <HeroSection student={student} />
-      <KPISection kpis={kpis} />
+      <KPISection kpis={kpis} rankData={rankData} />
       <AnnouncementsAchievementsSection />
       {/* ── Latest Opportunities — full width ── */}
       <Row className="g-3 mt-4">

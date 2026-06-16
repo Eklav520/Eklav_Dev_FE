@@ -55,6 +55,10 @@ const SpeakingPractice: React.FC = () => {
   const audioChunks = useRef<Blob[]>([]);
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const micCheckRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [micWarning, setMicWarning] = useState<'muted' | 'low' | null>(null);
 
   const [maxDuration] = useState(60);
   const [timeUp, setTimeUp] = useState(false);
@@ -108,6 +112,33 @@ const SpeakingPractice: React.FC = () => {
       if (event.data.size > 0) audioChunks.current.push(event.data);
     };
 
+    // Monitor mic volume — warn if muted or too quiet (like Google Meet)
+    setMicWarning(null);
+    try {
+      const audioCtx = new AudioContext();
+      audioCtxRef.current = audioCtx;
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      let silentTicks = 0;
+      micCheckRef.current = setInterval(() => {
+        analyser.getByteFrequencyData(data);
+        const avg = data.reduce((s, v) => s + v, 0) / data.length;
+        if (avg < 1) {
+          silentTicks++;
+          if (silentTicks >= 3) setMicWarning('muted');
+        } else if (avg < 5) {
+          silentTicks++;
+          if (silentTicks >= 3) setMicWarning('low');
+        } else {
+          silentTicks = 0;
+          setMicWarning(null);
+        }
+      }, 1000);
+    } catch (_) { /* AudioContext not supported — skip */ }
+
     mediaRecorderRef.current.start();
     setRecording(true);
 
@@ -151,6 +182,9 @@ const SpeakingPractice: React.FC = () => {
 
   const stopRecording = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (micCheckRef.current) clearInterval(micCheckRef.current);
+    if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null; }
+    setMicWarning(null);
     if (!mediaRecorderRef.current) return;
 
     if (recognitionRef.current) {
@@ -322,6 +356,64 @@ const SpeakingPractice: React.FC = () => {
                 >
                   ⏱ {formatTime(recordingTime)} / {formatTime(maxDuration)}
                 </Badge>
+              )}
+
+              {/* Mic warning — Google Meet style floating popup */}
+              {micWarning && (
+                <div style={{
+                  position: 'fixed',
+                  bottom: 32,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  zIndex: 9999,
+                  background: '#3c4043',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+                  padding: '16px 20px',
+                  minWidth: 320,
+                  maxWidth: 400,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                }}>
+                  {/* Warning icon */}
+                  <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+
+                  {/* Text */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem', marginBottom: 4 }}>
+                      {micWarning === 'muted' ? 'Microphone muted by system' : 'Microphone volume is very low'}
+                    </div>
+                    <div style={{ color: '#bdc1c6', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: 8 }}>
+                      Go to your computer's settings to unmute your mic and increase its level
+                    </div>
+                    <button
+                      onClick={() => window.open('ms-settings:sound', '_blank')}
+                      style={{
+                        background: 'none', border: 'none', padding: 0,
+                        color: '#8ab4f8', fontSize: '0.82rem', fontWeight: 600,
+                        cursor: 'pointer', textDecoration: 'none',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
+                      onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
+                    >
+                      Open Sound Settings
+                    </button>
+                  </div>
+
+                  {/* Close button */}
+                  <button
+                    onClick={() => setMicWarning(null)}
+                    style={{
+                      background: 'none', border: 'none', color: '#bdc1c6',
+                      fontSize: '1.1rem', cursor: 'pointer', lineHeight: 1,
+                      padding: '0 0 0 4px', flexShrink: 0,
+                    }}
+                    aria-label="Dismiss"
+                  >
+                    ✕
+                  </button>
+                </div>
               )}
             </Col>
 

@@ -3,6 +3,7 @@ import { Card, Button, Spinner, Container, Badge } from 'react-bootstrap'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
 import RoboAvatar from './RoboAvatar'
+import { FaMicrophoneSlash } from 'react-icons/fa'
 
 interface Message {
   id: string
@@ -62,6 +63,10 @@ const EnglishVoicePractice: React.FC = () => {
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
+
+  const audioCtxRef = useRef<AudioContext | null>(null)
+  const micCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [micWarning, setMicWarning] = useState<'muted' | 'low' | null>(null)
 
   const MAX_NO_RESPONSE = 3
   const SILENCE_TIMEOUT = 6000
@@ -172,6 +177,39 @@ const EnglishVoicePractice: React.FC = () => {
         handleEndSession()
       }
     }, SILENCE_TIMEOUT)
+  }
+
+  const startMicMonitor = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const ctx = new AudioContext()
+      audioCtxRef.current = ctx
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 256
+      source.connect(analyser)
+      const data = new Uint8Array(analyser.frequencyBinCount)
+
+      micCheckRef.current = setInterval(() => {
+        analyser.getByteFrequencyData(data)
+        const avg = data.reduce((s, v) => s + v, 0) / data.length
+        if (avg === 0) {
+          setMicWarning('muted')
+        } else if (avg < 5) {
+          setMicWarning('low')
+        } else {
+          setMicWarning(null)
+        }
+      }, 1000)
+    } catch {
+      // mic permission denied — silently skip monitoring
+    }
+  }
+
+  const stopMicMonitor = () => {
+    if (micCheckRef.current) { clearInterval(micCheckRef.current); micCheckRef.current = null }
+    if (audioCtxRef.current) { audioCtxRef.current.close(); audioCtxRef.current = null }
+    setMicWarning(null)
   }
 
   const startListening = () => {
@@ -413,6 +451,7 @@ const EnglishVoicePractice: React.FC = () => {
   const handleStartSession = async () => {
     resetSessionState()
     sessionActiveRef.current = true
+    startMicMonitor()
 
     // Pre-warm TTS engine during API call (user gesture context = no Chrome delay)
     const warmUp = new SpeechSynthesisUtterance(' ')
@@ -436,6 +475,7 @@ const EnglishVoicePractice: React.FC = () => {
     noResponseCountRef.current = 0
     sessionActiveRef.current = false
     stopListening()
+    stopMicMonitor()
     speechSynthesis.cancel()
     ttsCountRef.current = 0
     setSessionEnded(true)
@@ -472,6 +512,31 @@ const EnglishVoicePractice: React.FC = () => {
 
   return (
     <div className="english-practice-container">
+      {micWarning && (
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: '#3c4043', borderRadius: 12,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.45)', padding: '16px 20px',
+          minWidth: 320, maxWidth: 400, display: 'flex', alignItems: 'flex-start', gap: 12,
+        }}>
+          <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem', marginBottom: 4 }}>
+              {micWarning === 'muted' ? 'Microphone muted by system' : 'Microphone volume is very low'}
+            </div>
+            <div style={{ color: '#bdc1c6', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: 8 }}>
+              Go to your computer's settings to unmute your mic and increase its level
+            </div>
+            <button onClick={() => window.open('ms-settings:sound', '_blank')}
+              style={{ background: 'none', border: 'none', padding: 0, color: '#8ab4f8', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+              Open Sound Settings
+            </button>
+          </div>
+          <button onClick={() => setMicWarning(null)} style={{ background: 'none', border: 'none', color: '#bdc1c6', fontSize: '1.1rem', cursor: 'pointer' }}>
+            ✕
+          </button>
+        </div>
+      )}
       <Container fluid className="px-0">
         <div className="main-layout">
           {/* Left Column - Avatar */}
@@ -537,8 +602,12 @@ const EnglishVoicePractice: React.FC = () => {
                         <small className="stat-label">Time</small>
                         <strong className="stat-value">{formatTime(timeLeft)}</strong>
                       </div>
-                      <div className="mic-status">
-                        <span className={`mic-icon ${isListening ? 'listening' : ''}`}>🎤</span>
+                      <div className="mic-status" title={micWarning === 'muted' ? 'Microphone muted' : micWarning === 'low' ? 'Mic volume very low' : ''}>
+                        {micWarning ? (
+                          <FaMicrophoneSlash size={18} style={{ color: '#ef4444', animation: 'pulse 1.2s infinite' }} />
+                        ) : (
+                          <span className={`mic-icon ${isListening ? 'listening' : ''}`}>🎤</span>
+                        )}
                       </div>
                     </div>
                     <div className="action-buttons-group">

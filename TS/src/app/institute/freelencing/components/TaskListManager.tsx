@@ -152,6 +152,7 @@ const TaskListManager = () => {
   const [selectedTask, setSelectedTask] = useState<FreelancingTask | null>(null);
   const [editForm, setEditForm] = useState<EditFormState>(defaultEditState);
   const [newAttachments, setNewAttachments] = useState<File[]>([]);
+  const [deletedAttachmentKeys, setDeletedAttachmentKeys] = useState<string[]>([]);
 
   const [showSubmissionsModal, setShowSubmissionsModal] = useState(false);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
@@ -219,6 +220,7 @@ const TaskListManager = () => {
   const openEditModal = (task: FreelancingTask) => {
     setSelectedTask(task);
     setNewAttachments([]);
+    setDeletedAttachmentKeys([]);
     setEditForm({
       title: task.title || "",
       category: task.category || "",
@@ -244,6 +246,7 @@ const TaskListManager = () => {
     setSelectedTask(null);
     setEditForm(defaultEditState);
     setNewAttachments([]);
+    setDeletedAttachmentKeys([]);
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -265,7 +268,12 @@ const TaskListManager = () => {
 
   const handleAttachmentInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    setNewAttachments(files);
+    setNewAttachments(prev => [...prev, ...files]);
+    e.target.value = '';
+  };
+
+  const removeNewAttachment = (index: number) => {
+    setNewAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleUpdateTask = async (e: React.FormEvent) => {
@@ -297,6 +305,7 @@ const TaskListManager = () => {
       payload.append("terms", editForm.terms);
       payload.append("ndaRequired", String(editForm.ndaRequired));
       payload.append("replaceAttachments", String(editForm.replaceAttachments));
+      payload.append("deletedAttachmentKeys", JSON.stringify(deletedAttachmentKeys));
 
       const parsedSkills = editForm.skills
         .split(",")
@@ -1067,6 +1076,53 @@ const TaskListManager = () => {
                         />
                       </Col>
                       <Col xs={12}>
+                        {/* Existing attachments */}
+                        {selectedTask?.attachments && selectedTask.attachments.length > 0 && (
+                          <div style={{ marginBottom: '1rem' }}>
+                            <Form.Label style={{ color: '#aaa', fontSize: '0.82rem', marginBottom: '0.5rem', display: 'block' }}>
+                              Existing Attachments
+                            </Form.Label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                              {selectedTask.attachments.map((att, idx) => {
+                                const key = att.s3Key || att.fileUrl || String(idx)
+                                const isDeleted = deletedAttachmentKeys.includes(key)
+                                if (isDeleted) return null
+                                return (
+                                  <div key={key} style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                    background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px',
+                                    padding: '0.3rem 0.6rem', fontSize: '0.78rem', color: '#e0e0e0',
+                                  }}>
+                                    <span>📄</span>
+                                    <a href={att.fileUrl} target="_blank" rel="noreferrer"
+                                      style={{ color: '#ff9a5c', textDecoration: 'none', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                      title={att.fileName || `Attachment ${idx + 1}`}>
+                                      {att.fileName || `Attachment ${idx + 1}`}
+                                    </a>
+                                    <button
+                                      type="button"
+                                      onClick={() => setDeletedAttachmentKeys(prev => [...prev, key])}
+                                      style={{
+                                        background: 'none', border: 'none', color: '#ef4444',
+                                        cursor: 'pointer', padding: '0 2px', fontSize: '0.85rem',
+                                        lineHeight: 1, display: 'flex', alignItems: 'center',
+                                      }}
+                                      title="Remove attachment"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                              {selectedTask.attachments.every(
+                                (att, idx) => deletedAttachmentKeys.includes(att.s3Key || att.fileUrl || String(idx))
+                              ) && (
+                                <span style={{ color: '#666', fontSize: '0.78rem' }}>All existing attachments removed</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <Form.Group>
                           <Form.Label>Add Attachments</Form.Label>
                           <Form.Control
@@ -1076,9 +1132,47 @@ const TaskListManager = () => {
                             className="file-input"
                           />
                           <Form.Text className="text-muted">
-                            {selectedTask?.attachments?.length || 0} existing attachment(s).
+                            {(selectedTask?.attachments?.length || 0) - deletedAttachmentKeys.length} existing attachment(s) kept.
                             Max file size: 10MB per file
                           </Form.Text>
+                          {newAttachments.length > 0 && (
+                            <div style={{ marginTop: '0.75rem' }}>
+                              <div style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: '0.4rem' }}>
+                                {newAttachments.length} new file{newAttachments.length > 1 ? 's' : ''} queued for upload:
+                              </div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                {newAttachments.map((file, idx) => (
+                                  <div key={`${file.name}-${idx}`} style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                                    background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
+                                    borderRadius: '8px', padding: '0.3rem 0.6rem',
+                                    fontSize: '0.78rem', color: '#ff9a5c',
+                                  }}>
+                                    <span>📎</span>
+                                    <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                      title={file.name}>
+                                      {file.name}
+                                    </span>
+                                    <span style={{ color: '#888', fontSize: '0.7rem' }}>
+                                      ({(file.size / 1024).toFixed(0)} KB)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeNewAttachment(idx)}
+                                      style={{
+                                        background: 'none', border: 'none', color: '#ef4444',
+                                        cursor: 'pointer', padding: '0 2px', fontSize: '0.85rem',
+                                        lineHeight: 1, display: 'flex', alignItems: 'center',
+                                      }}
+                                      title="Remove file"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </Form.Group>
                       </Col>
                     </Row>

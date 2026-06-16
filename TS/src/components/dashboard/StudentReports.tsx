@@ -31,7 +31,7 @@ type Report = {
   student: { _id: string; name: string; email: string; branch: string; rollNumber: string; gender: string; college: string; department: string; joiningYear: string | number; batch: string; skills: string[]; profileImage: string; reportId: string }
   period: { from: string | null; to: string | null }
   overallScore: number; englishAvg: number; aiAvg: number
-  rank: { position: number; total: number; score?: number } | null
+  rank: { position: number; total: number; score?: number; overallPosition?: number | null; overallTotal?: number | null } | null
   timeSpent: { totalSecs: number; uniqueDays: number; avgMinPerDay: number; label: string }
   courses: CourseItem[]
   totalCoursesAvailable: number
@@ -396,22 +396,43 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                 </div>
               </div>
 
-              {/* Rank badge */}
+              {/* Rank badges */}
               {rep.rank && (
-                <div style={{
-                  background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.22)',
-                  borderRadius: 10, padding: '0.6rem 1rem', textAlign: 'center' as const, width: '100%',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: 3 }}>
-                    <FaTrophy size={10} color="#fbbf24" />
-                    <span style={{ fontSize: '0.55rem', color: '#8a6a20', fontWeight: 700, letterSpacing: '0.08em' }}>INSTITUTE RANK</span>
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, width: '100%' }}>
+                  {/* Institute Rank */}
+                  <div style={{
+                    background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.22)',
+                    borderRadius: 10, padding: '0.55rem 1rem', textAlign: 'center' as const,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: 3 }}>
+                      <FaTrophy size={10} color="#fbbf24" />
+                      <span style={{ fontSize: '0.55rem', color: '#8a6a20', fontWeight: 700, letterSpacing: '0.08em' }}>INSTITUTE RANK</span>
+                    </div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fbbf24', lineHeight: 1 }}>
+                      #{rep.rank.position}
+                    </div>
+                    <div style={{ fontSize: '0.6rem', color: '#8a6a20', marginTop: 3 }}>
+                      of {rep.rank.total} students · Top {topRank}%
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fbbf24', lineHeight: 1 }}>
-                    #{rep.rank.position}
-                  </div>
-                  <div style={{ fontSize: '0.6rem', color: '#8a6a20', marginTop: 3 }}>
-                    of {rep.rank.total} students · Top {topRank}%
-                  </div>
+                  {/* Overall Rank */}
+                  {rep.rank.overallPosition && (
+                    <div style={{
+                      background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.22)',
+                      borderRadius: 10, padding: '0.55rem 1rem', textAlign: 'center' as const,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: 3 }}>
+                        <FaGraduationCap size={10} color="#818cf8" />
+                        <span style={{ fontSize: '0.55rem', color: '#4a4a8a', fontWeight: 700, letterSpacing: '0.08em' }}>OVERALL RANK</span>
+                      </div>
+                      <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#818cf8', lineHeight: 1 }}>
+                        #{rep.rank.overallPosition}
+                      </div>
+                      <div style={{ fontSize: '0.6rem', color: '#4a4a8a', marginTop: 3 }}>
+                        of {rep.rank.overallTotal} students
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -445,6 +466,15 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
               unit={rep.rank ? `of ${rep.rank.total}` : undefined}
               color="#fbbf24" icon={FaTrophy}
               sub={topRank ? `Top ${topRank}%` : undefined}
+            />
+            <MetricBox
+              label="Overall Rank"
+              value={rep.rank?.overallPosition ? `#${rep.rank.overallPosition}` : '—'}
+              unit={rep.rank?.overallTotal ? `of ${rep.rank.overallTotal}` : undefined}
+              color="#818cf8" icon={FaGraduationCap}
+              sub={rep.rank?.overallPosition && rep.rank?.overallTotal
+                ? `Top ${Math.max(1, Math.ceil((rep.rank.overallPosition / rep.rank.overallTotal) * 100))}%`
+                : undefined}
             />
             <MetricBox
               label="Daily Avg Time"
