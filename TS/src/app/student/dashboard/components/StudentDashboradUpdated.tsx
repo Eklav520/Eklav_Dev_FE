@@ -176,7 +176,7 @@ const StudentDashboardUpdated: React.FC = () => {
       trend: dashboardSummary?.coursesAvailable?.trend || 0,
     },
     {
-      label: 'Freelance Tasks Available',
+      label: 'Internship Tasks Available',
       value: dashboardSummary?.freelancingTasksAvailable?.value || 0,
       icon: FaTasks,
       color: '#ff7a00',
