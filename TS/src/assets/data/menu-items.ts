@@ -773,7 +773,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
 
   {
     key: 'freelancing',
-    label: 'Freelancing Tasks',
+    label: 'Internship Tasks',
     icon: FaBriefcase,
     children: [
       {

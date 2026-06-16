@@ -5,7 +5,7 @@ import TaskListManager from "../components/TaskListManager";
 const FreelancingTaskListPage = () => {
   return (
     <>
-      <PageMetaData title="Freelancing Tasks" />
+      <PageMetaData title="Internship Tasks" />
       <Card className="bg-transparent border rounded-4">
         <TaskListManager />
       </Card>

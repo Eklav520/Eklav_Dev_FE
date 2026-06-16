@@ -582,7 +582,7 @@ const StudentFreelancingDashboard: React.FC = () => {
         <div className="sf-header">
           <div className="sf-header-left">
             <FaBriefcase className="header-icon me-2" />
-            <h1 className="sf-title mb-0">Freelancing Tasks</h1>
+            <h1 className="sf-title mb-0">Task Board</h1>
           </div>
           <div className="sf-header-right">
             <Tabs

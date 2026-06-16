@@ -24,7 +24,7 @@ const NAV_SECTION_DEFS = [
   { key: 'selfInterview',  label: 'Self Interview with AI', alwaysOn: false },
   { key: 'courses',        label: 'Courses',               alwaysOn: false },
   { key: 'preparation',    label: 'Self Preparation',      alwaysOn: false },
-  { key: 'freelancing',    label: 'Freelancing Tasks',     alwaysOn: false },
+  { key: 'freelancing',    label: 'Internship Tasks',      alwaysOn: false },
   { key: 'myColleges',     label: 'My Colleges',           alwaysOn: false },
   { key: 'activities',     label: 'Jobs Search',           alwaysOn: false },
   { key: 'assessment',     label: 'Final Assessment',      alwaysOn: false },

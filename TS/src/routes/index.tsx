@@ -821,17 +821,17 @@ export const studentRoutes: RoutesProps[] = [
   },
   {
     path: '/student/freelancing',
-    name: 'Freelancing',
+    name: 'Internship',
     element: <StudentFreelancing />,
   },
   {
     path: '/student/freelancing/available-tasks',
-    name: 'Freelancing Available Tasks',
+    name: 'Internship Available Tasks',
     element: <StudentFreelancing />,
   },
   {
     path: '/student/freelancing/my-tasks',
-    name: 'Freelancing My Tasks',
+    name: 'Internship My Tasks',
     element: <StudentFreelancing />,
   },
   {
