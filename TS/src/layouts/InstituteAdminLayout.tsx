@@ -205,11 +205,20 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
       .catch(() => {})
   }, [baseURL])
 
+  // Keys that are controlled by admin nav config — items NOT in this set always show
+  const KNOWN_ADMIN_KEYS = new Set([
+    'dashboard','courses','students','onlineClasses','freelencing',
+    'jobOpenings','placements','collegeAssessment','finalAssessment',
+    'instituteAnnouncements','facultyAdmin','profile',
+  ])
+
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
     const items = user?.role === 'facultyAdmin' ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS
     const all = items as unknown as MenuItemTypeLocal[]
     if (!allowedAdminKeys) return all
-    return all.filter(item => allowedAdminKeys.includes(item.key))
+    return all.filter(item =>
+      !KNOWN_ADMIN_KEYS.has(item.key) || allowedAdminKeys.includes(item.key)
+    )
   }, [user?.role, allowedAdminKeys])
 
   const tree = useMemo(() => {

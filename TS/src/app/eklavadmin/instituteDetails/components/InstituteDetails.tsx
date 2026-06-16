@@ -32,19 +32,20 @@ const NAV_SECTION_DEFS = [
   { key: 'profile',        label: 'Update Profile',        alwaysOn: true },
 ]
 
-// All configurable institute admin sidebar sections
+// All configurable institute admin sidebar sections — keys must match INSTITUTEADMIN_MENU_ITEMS
 const ADMIN_NAV_SECTION_DEFS = [
-  { key: 'dashboard',         label: 'Dashboard',           alwaysOn: true },
-  { key: 'courses',           label: 'Courses',             alwaysOn: false },
-  { key: 'students',          label: 'Students',            alwaysOn: false },
-  { key: 'onlineClasses',     label: 'Online Classes',      alwaysOn: false },
-  { key: 'freelencing',       label: 'Internship Tasks',    alwaysOn: false },
-  { key: 'jobOpenings',       label: 'Job Openings',        alwaysOn: false },
-  { key: 'placements',        label: 'Placements',          alwaysOn: false },
-  { key: 'collegeAssessment', label: 'College Assessment',  alwaysOn: false },
-  { key: 'finalAssessment',   label: 'Final Assessment',    alwaysOn: false },
-  { key: 'achievements',      label: 'Achievements',        alwaysOn: false },
-  { key: 'facultyAdmin',      label: 'Faculty Admin',       alwaysOn: false },
+  { key: 'dashboard',              label: 'Dashboard',           alwaysOn: true },
+  { key: 'courses',                label: 'Courses',             alwaysOn: false },
+  { key: 'students',               label: 'Students',            alwaysOn: false },
+  { key: 'onlineClasses',          label: 'Online Classes',      alwaysOn: false },
+  { key: 'freelencing',            label: 'Internship Tasks',    alwaysOn: false },
+  { key: 'jobOpenings',            label: 'Job Openings',        alwaysOn: false },
+  { key: 'placements',             label: 'Placements',          alwaysOn: false },
+  { key: 'collegeAssessment',      label: 'College Assessment',  alwaysOn: false },
+  { key: 'finalAssessment',        label: 'Final Assessment',    alwaysOn: false },
+  { key: 'instituteAnnouncements', label: 'Achievements',        alwaysOn: false },
+  { key: 'facultyAdmin',           label: 'Faculty Admin',       alwaysOn: false },
+  { key: 'profile',                label: 'Edit Profile',        alwaysOn: true },
 ]
 
 const ALL_KEYS = NAV_SECTION_DEFS.map(s => s.key)
