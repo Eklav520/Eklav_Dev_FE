@@ -1128,12 +1128,6 @@ const CreateTask = () => {
             min-width: auto;
           }
         }
-        .form-select {
-          max-height: 22px; /* keep closed height normal */
-          overflow-y: auto;
-        }
-
-        /* 👇 This targets dropdown list (works in most browsers like Chrome) */
         .form-select option {
           white-space: nowrap;
         }

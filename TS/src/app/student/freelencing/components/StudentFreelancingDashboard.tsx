@@ -142,6 +142,7 @@ const StudentFreelancingDashboard: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('all')
 
   const [selectedTask, setSelectedTask] = useState<FreelancingTask | null>(null)
+  const [boardFilter, setBoardFilter] = useState<string | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [showWorkflowModal, setShowWorkflowModal] = useState(false)
   const [enrollError, setEnrollError] = useState('')
@@ -280,180 +281,115 @@ const StudentFreelancingDashboard: React.FC = () => {
     const notStarted = isBeforeStartDate(task.startDate)
     const submissionStatus = task.mySubmission?.status || 'pending'
     const reviewStatus = task.mySubmission?.adminReviewStatus || 'pending'
+    const enrolledPct = task.maxStudents ? Math.round(((task.enrolledCount ?? 0) / task.maxStudents) * 100) : 0
 
-    const reviewLabel =
-      reviewStatus === 'approved'
-        ? 'Approved'
-        : reviewStatus === 'rejected'
-          ? 'Rejected'
-          : 'Pending Review'
+    const statusChip = deadlinePast
+      ? <span className="tc-status-chip closed">Closed</span>
+      : full
+        ? <span className="tc-status-chip full">Full</span>
+        : notStarted
+          ? <span className="tc-status-chip soon">{getStartCountdown(task.startDate)}</span>
+          : task.isEnrolled
+            ? <span className="tc-status-chip enrolled">Enrolled</span>
+            : <span className="tc-status-chip open">{task.spotsLeft ?? task.maxStudents ?? 0} spot{(task.spotsLeft ?? 1) !== 1 ? 's' : ''} left</span>
 
     return (
       <Col key={task._id} lg={4} md={6} xs={12}>
-        <Card className="task-card">
-          <Card.Body>
-            {/* Category badge + NDA */}
-           <div className="task-header">
-  <div className="task-badges">
-    {task.category && (
-      <span className="badge cat-badge">
-        {CATEGORY_LABELS[task.category] || task.category}
-      </span>
-    )}
-    {task.ndaRequired && (
-      <span className="badge nda-badge">
-        <FaLock size={10} className="me-1" />
-        NDA
-      </span>
-    )}
-  </div>
-
-  {notStarted && (
-    <span className="start-badge">
-      {getStartCountdown(task.startDate)}
-    </span>
-  )}
-</div>
-
-            <h4 className="task-title">{task.title}</h4>
-
-            {/* Meta row */}
-            <div className="task-meta">
-              {task.amount ? (
-                <span className="meta-item budget">
-                  ₹{task.amount.toLocaleString()}
-                </span>
-              ) : null}
-
-              {task.experience && (
-                <span className="meta-item exp">
-                  {EXPERIENCE_LABELS[task.experience] || task.experience}
+        <div className="tc-card" onClick={() => enrolled ? openWorkflow(task) : openDetails(task)}>
+          {/* Top row: category + status */}
+          <div className="tc-top">
+            <div className="tc-chips">
+              {task.category && (
+                <span className="tc-chip tc-cat">
+                  {(CATEGORY_LABELS[task.category] || task.category).replace(/^[^\s]+\s/, '')}
                 </span>
               )}
-            </div>
-
-            {/* Deadline + spots */}
-            <div className="task-info-row">
-              <div className="info-item">
-                <FaCalendarAlt className="info-icon" />
-                <span>
-                  {task.startDate ? formatDate(task.startDate) : '—'}
-                  {' → '}
-                  <span className={deadlinePast ? 'text-danger' : ''}>
-                    {task.deadline ? formatDate(task.deadline) : '—'}
-                  </span>
-                  {deadlinePast && ' (Closed)'}
-                </span>
-              </div>
-              <div className="info-item">
-                <FaUsers className="info-icon" />
-                <span>
-                  {task.spotsLeft ?? task.maxStudents ?? 0} spots left
-                </span>
-              </div>
-            </div>
-
-            {/* Skills */}
-            {(task.skills?.length ?? 0) > 0 && (
-              <div className="skills-row">
-                {task.skills!.slice(0, 4).map((s) => (
-                  <span key={s} className="skill-chip">
-                    {s}
-                  </span>
-                ))}
-                {task.skills!.length > 4 && (
-                  <span className="skill-chip more">+{task.skills!.length - 4}</span>
-                )}
-              </div>
-            )}
-
-            {/* Spots bar */}
-            {typeof task.maxStudents === 'number' && task.maxStudents > 0 && (
-              <div className="spots-bar-wrap">
-                <div className="spots-bar">
-                  <div
-                    className="spots-fill"
-                    style={{
-                      width: `${Math.round(
-                        ((task.enrolledCount ?? 0) / task.maxStudents) * 100
-                      )}%`,
-                    }}
-                  />
-                </div>
-                <span className="spots-text">
-                  {task.enrolledCount ?? 0}/{task.maxStudents} enrolled
-                </span>
-              </div>
-            )}
-
-            {enrolled && (
-              <div className="submission-status-row">
-                <span className={`submission-chip ${submissionStatus === 'completed' ? 'completed' : 'pending'}`}>
-                  Submission: {submissionStatus === 'completed' ? 'Completed' : 'Pending'}
-                </span>
-                <span
-                  className={`submission-chip review ${reviewStatus === 'approved'
-                    ? 'approved'
-                    : reviewStatus === 'rejected'
-                      ? 'rejected'
-                      : 'pending-review'
-                    }`}
-                >
-                  Review: {reviewLabel}
-                </span>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="task-actions">
-              <Button
-                className="btn-details"
-                variant="outline-primary"
-                size="sm"
-                onClick={() => (enrolled ? openWorkflow(task) : openDetails(task))}
-              >
-                {enrolled ? 'Open 3-Step Flow' : 'View Details'}
-              </Button>
-
-              {enrolled || task.isEnrolled ? (
-                enrolled ? (
-                  <Button className="btn-enroll" size="sm" onClick={() => openWorkflow(task)}>
-                    Continue Task
-                  </Button>
-                ) : (
-                  <Button className="btn-enrolled" size="sm" disabled>
-                    <FaCheckCircle size={12} className="me-1" />
-                    Enrolled
-                  </Button>
-                )
-              ) : notStarted ? (
-                <Button className="btn-closed" size="sm" disabled>
-                  Starts Soon
-                </Button>
-              ) : deadlinePast ? (
-                <Button className="btn-closed" size="sm" disabled>
-                  Closed
-                </Button>
-              ) : full ? (
-                <Button className="btn-closed" size="sm" disabled>
-                  Full
-                </Button>
-              ) : (
-                <Button
-                  className="btn-enroll"
-                  size="sm"
-                  disabled={enrolling === task._id}
-                  onClick={() => handleEnroll(task._id)}
-                >
-                  {enrolling === task._id ? (
-                    <Spinner animation="border" size="sm" className="me-1" />
-                  ) : null}
-                  Apply Now
-                </Button>
+              {task.ndaRequired && (
+                <span className="tc-chip tc-nda"><FaLock size={9} style={{marginRight:3}}/>NDA</span>
               )}
             </div>
-          </Card.Body>
-        </Card>
+            {statusChip}
+          </div>
+
+          {/* Title */}
+          <h4 className="tc-title">{task.title}</h4>
+
+          {/* Meta line */}
+          <div className="tc-meta">
+            {task.amount
+              ? <span className="tc-budget">₹{task.amount.toLocaleString()}</span>
+              : <span className="tc-budget-nil">No budget</span>
+            }
+            {task.deadline && (
+              <>
+                <span className="tc-sep">·</span>
+                <span className={deadlinePast ? 'tc-date overdue' : 'tc-date'}>
+                  <FaCalendarAlt style={{fontSize:'0.6rem', marginRight:3}}/>
+                  Due {new Date(task.deadline).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}
+                </span>
+              </>
+            )}
+            {task.experience && (
+              <>
+                <span className="tc-sep">·</span>
+                <span className="tc-exp">{EXPERIENCE_LABELS[task.experience]?.replace(/^[^\s]+\s/, '') || task.experience}</span>
+              </>
+            )}
+          </div>
+
+          {/* Skills */}
+          {(task.skills?.length ?? 0) > 0 && (
+            <div className="tc-skills">
+              {task.skills!.slice(0, 3).map((s) => (
+                <span key={s} className="tc-skill">{s}</span>
+              ))}
+              {task.skills!.length > 3 && (
+                <span className="tc-skill more">+{task.skills!.length - 3}</span>
+              )}
+            </div>
+          )}
+
+          {/* Enrollment bar */}
+          {typeof task.maxStudents === 'number' && task.maxStudents > 0 && (
+            <div className="tc-bar-wrap">
+              <div className="tc-bar">
+                <div className="tc-bar-fill" style={{ width: `${enrolledPct}%` }} />
+              </div>
+              <span className="tc-bar-text">{task.enrolledCount ?? 0}/{task.maxStudents}</span>
+            </div>
+          )}
+
+          {/* Submission status (enrolled tab) */}
+          {enrolled && (
+            <div className="tc-sub-row">
+              <span className={`tc-sub-chip ${submissionStatus === 'completed' ? 'done' : 'pend'}`}>
+                {submissionStatus === 'completed' ? '✓ Submitted' : '● Pending'}
+              </span>
+              <span className={`tc-sub-chip ${reviewStatus === 'approved' ? 'appr' : reviewStatus === 'rejected' ? 'rej' : 'rev'}`}>
+                {reviewStatus === 'approved' ? '✓ Approved' : reviewStatus === 'rejected' ? '✕ Rejected' : '⌛ In Review'}
+              </span>
+            </div>
+          )}
+
+          {/* Footer actions */}
+          <div className="tc-actions" onClick={e => e.stopPropagation()}>
+            <button className="tc-btn-ghost" onClick={() => enrolled ? openWorkflow(task) : openDetails(task)}>
+              {enrolled ? 'Open Task' : 'View Details'}
+            </button>
+            {enrolled ? (
+              <button className="tc-btn-primary" onClick={() => openWorkflow(task)}>Continue →</button>
+            ) : task.isEnrolled ? (
+              <button className="tc-btn-success" disabled><FaCheckCircle size={11} style={{marginRight:4}}/>Enrolled</button>
+            ) : deadlinePast || notStarted || full ? (
+              <button className="tc-btn-disabled" disabled>{deadlinePast ? 'Closed' : notStarted ? 'Soon' : 'Full'}</button>
+            ) : (
+              <button className="tc-btn-primary" disabled={enrolling === task._id} onClick={() => handleEnroll(task._id)}>
+                {enrolling === task._id ? <Spinner animation="border" size="sm" className="me-1"/> : null}
+                Apply Now
+              </button>
+            )}
+          </div>
+        </div>
       </Col>
     )
   }
@@ -470,6 +406,173 @@ const StudentFreelancingDashboard: React.FC = () => {
   if (hours > 0) return `Starts in ${hours}h ${mins}m`
   return `Starts in ${mins}m`
 }
+
+  // ── Render: Jira Kanban Board ────────────────────────────────────────────
+  const renderMyTasksJiraBoard = () => {
+    const COLUMNS = [
+      { key: 'todo',     label: 'To Do',           color: '#6b778c', actionLabel: 'Submit Work',     actionStyle: { background: '#ff6b35', border: 'none', color: '#fff' } },
+      { key: 'inreview', label: 'In Review',        color: '#0052cc', actionLabel: 'View Submission', actionStyle: { border: '1px solid #0052cc', color: '#0052cc', background: 'transparent' } },
+      { key: 'approved', label: 'Approved',          color: '#36b37e', actionLabel: 'View Result',     actionStyle: { border: '1px solid #36b37e', color: '#36b37e', background: 'transparent' } },
+      { key: 'revision', label: 'Revision Needed',   color: '#de350b', actionLabel: 'Resubmit',        actionStyle: { border: '1px solid #de350b', color: '#de350b', background: 'transparent' } },
+    ]
+
+    const classify = (task: FreelancingTask): string => {
+      const sub = task.mySubmission
+      if (!sub) return 'todo'
+      const r = sub.adminReviewStatus || 'pending'
+      if (r === 'approved') return 'approved'
+      if (r === 'rejected') return 'revision'
+      if ((sub.status || 'pending') === 'completed') return 'inreview'
+      return 'todo'
+    }
+
+    const buckets: Record<string, FreelancingTask[]> = { todo: [], inreview: [], approved: [], revision: [] }
+    myTasks.forEach((t) => buckets[classify(t)].push(t))
+
+    const formatShortDate = (d?: string | null) => {
+      if (!d) return '—'
+      const dt = new Date(d)
+      return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+    }
+
+    const getDaysLeft = (d?: string | null) => {
+      if (!d) return { label: '', overdue: false }
+      const diff = new Date(d).getTime() - Date.now()
+      if (diff < 0) return { label: 'Overdue', overdue: true }
+      const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+      return { label: `${days}d left`, overdue: false }
+    }
+
+
+    return (
+      <div className="jira-kanban-board">
+        {COLUMNS.map(col => {
+          const colTasks = buckets[col.key]
+          const isActive = boardFilter === col.key || boardFilter === null
+          return (
+            <div key={col.key} className={`jira-kanban-col${!isActive ? ' jira-col-dimmed' : ''}`}>
+              {/* Column header */}
+              <div
+                className="jira-kanban-header"
+                onClick={() => setBoardFilter(boardFilter === col.key ? null : col.key)}
+              >
+                <span className="jira-kanban-label" style={{ color: col.color }}>
+                  {col.label.toUpperCase()}
+                </span>
+                <span className="jira-kanban-count">{colTasks.length}</span>
+              </div>
+
+              {/* Cards */}
+              <div className="jira-kanban-cards">
+                {colTasks.length === 0 ? (
+                  <div className="jira-kanban-empty">No tasks</div>
+                ) : colTasks.map((task, idx) => {
+                  const { overdue } = getDaysLeft(task.deadline)
+                  const categoryLabel = task.category ? (CATEGORY_LABELS[task.category] || task.category) : null
+                  const CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
+                    web_development:   { bg: '#0052cc22', text: '#4c9aff' },
+                    mobile_development:{ bg: '#6554c022', text: '#998dd9' },
+                    design:            { bg: '#00875a22', text: '#57d9a3' },
+                    data_science:      { bg: '#ff5630220', text: '#ff8f73' },
+                    writing:           { bg: '#ff991f22', text: '#ffc400' },
+                    marketing:         { bg: '#00b8d922', text: '#00c7e6' },
+                    other:             { bg: '#42526e22', text: '#8993a4' },
+                  }
+                  const catColor = categoryLabel
+                    ? (CATEGORY_COLORS[task.category!] ?? { bg: 'rgba(255,107,53,0.12)', text: '#ff6b35' })
+                    : null
+
+                  return (
+                    <div
+                      key={task._id}
+                      className="jira-kanban-card"
+                      style={{ borderLeft: `3px solid ${col.color}` }}
+                      onClick={() => openWorkflow(task)}
+                    >
+                      {/* EK ticket id */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.45rem' }}>
+                        <span style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.66rem',
+                          fontWeight: 700,
+                          color: col.color,
+                          background: `${col.color}18`,
+                          padding: '0.1rem 0.4rem',
+                          borderRadius: '3px',
+                          letterSpacing: '0.3px',
+                        }}>
+                          EK-{(idx + 1).toString().padStart(3, '0')}
+                        </span>
+                        {task.amount ? (
+                          <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 700, color: '#ff6b35' }}>
+                            ₹{task.amount.toLocaleString()}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Title */}
+                      <div className="jira-kanban-card-title">{task.title}</div>
+
+                      {/* Feedback for revision */}
+                      {task.mySubmission?.adminFeedback && col.key === 'revision' && (
+                        <div className="jira-feedback" style={{ marginTop: '0.5rem' }}>
+                          {task.mySubmission.adminFeedback}
+                        </div>
+                      )}
+
+                      {/* Category badge */}
+                      {categoryLabel && catColor && (
+                        <div style={{ marginTop: '0.55rem' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            fontSize: '0.65rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.3px',
+                            background: catColor.bg,
+                            color: catColor.text,
+                            padding: '0.15rem 0.5rem',
+                            borderRadius: '4px',
+                            border: `1px solid ${catColor.text}33`,
+                          }}>
+                            {categoryLabel.replace(/^[^\s]+\s/, '').toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Deadline row */}
+                      {task.deadline && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          marginTop: '0.55rem',
+                          fontSize: '0.68rem',
+                          color: overdue ? '#de350b' : '#555',
+                        }}>
+                          <span style={{ fontSize: '0.6rem' }}>📅</span>
+                          {formatShortDate(task.deadline)}
+                          {overdue && <span style={{ fontWeight: 600, color: '#de350b' }}>· Overdue</span>}
+                        </div>
+                      )}
+
+                      {/* Action button */}
+                      <button
+                        className="kanban-action-btn"
+                        style={{ ...col.actionStyle, marginTop: '0.7rem' }}
+                        onClick={e => { e.stopPropagation(); openWorkflow(task) }}
+                      >
+                        {col.actionLabel}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
 
   // ── JSX ──────────────────────────────────────────────────────────────────
   return (
@@ -611,9 +714,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                   </Button>
                 </div>
               ) : (
-                <Row className="g-3 g-md-4">
-                  {myTasks.map((t) => renderTaskCard(t, true))}
-                </Row>
+                renderMyTasksJiraBoard()
               )}
             </>
           )}
@@ -625,251 +726,159 @@ const StudentFreelancingDashboard: React.FC = () => {
         show={showModal}
         onHide={() => setShowModal(false)}
         fullscreen={true}
-        centered
-        className="task-detail-modal"
-        dialogClassName="modal-dialog-scrollable"
+        className="td-modal"
         style={{ zIndex: 10001 }}
       >
-        <Modal.Header closeButton>
-          <Modal.Title>
-            <FaBriefcase className="me-2" />
-            Task Details
-          </Modal.Title>
+        <Modal.Header closeButton className="td-modal-header">
+          <span className="td-modal-title"><FaBriefcase size={15} style={{marginRight:8,color:'#ff6b35'}}/>Task Details</span>
         </Modal.Header>
 
-        <Modal.Body>
+        <Modal.Body className="td-modal-body p-0">
           {selectedTask && (
-            <div className="detail-body">
-              {/* Title + badges */}
-              <div className="detail-hero">
-                <h3 className="detail-title">{selectedTask.title}</h3>
-                <div className="detail-badges">
+            <div className="td-layout">
+              {/* ── Left sidebar ── */}
+              <div className="td-sidebar">
+                {/* Category + NDA chips */}
+                <div className="td-chip-row">
                   {selectedTask.category && (
-                    <Badge className="cat-badge">
-                      {CATEGORY_LABELS[selectedTask.category] || selectedTask.category}
-                    </Badge>
+                    <span className="td-chip td-chip-cat">
+                      {(CATEGORY_LABELS[selectedTask.category] || selectedTask.category).replace(/^[^\s]+\s/, '')}
+                    </span>
                   )}
                   {selectedTask.ndaRequired && (
-                    <Badge className="nda-badge">
-                      <FaLock size={10} className="me-1" />
-                      NDA Required
-                    </Badge>
+                    <span className="td-chip td-chip-nda"><FaLock size={9} style={{marginRight:3}}/>NDA</span>
                   )}
                 </div>
-              </div>
 
-              {/* Key stats row */}
-              <Row className="g-3 mb-4">
-                <Col sm={3} xs={6}>
-                  <div className="stat-card">
-                    <span className="stat-label">Budget</span>
-                    <span className="stat-value budget">
-                      {selectedTask.amount ? `₹${selectedTask.amount.toLocaleString()}` : '—'}
-                    </span>
+                <h2 className="td-title">{selectedTask.title}</h2>
+
+                {/* Stats */}
+                <div className="td-stats">
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Budget</span>
+                    <span className="td-stat-val budget">{selectedTask.amount ? `₹${selectedTask.amount.toLocaleString()}` : '—'}</span>
                   </div>
-                </Col>
-                <Col sm={3} xs={6}>
-                  <div className="stat-card">
-                    <span className="stat-label">Max Students</span>
-                    <span className="stat-value">{selectedTask.maxStudents ?? '—'}</span>
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Experience</span>
+                    <span className="td-stat-val">{EXPERIENCE_LABELS[selectedTask.experience || ''] || selectedTask.experience || '—'}</span>
                   </div>
-                </Col>
-                <Col sm={3} xs={6}>
-                  <div className="stat-card">
-                    <span className="stat-label">Spots Left</span>
-                    <span className={`stat-value ${(selectedTask.spotsLeft ?? 0) === 0 ? 'danger' : 'success'}`}>
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Team Size</span>
+                    <span className="td-stat-val">{selectedTask.maxStudents ?? '—'} students</span>
+                  </div>
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Spots Left</span>
+                    <span className={`td-stat-val ${(selectedTask.spotsLeft ?? 0) === 0 ? 'danger' : 'success'}`}>
                       {selectedTask.spotsLeft ?? selectedTask.maxStudents ?? '—'}
                     </span>
                   </div>
-                </Col>
-                <Col sm={3} xs={6}>
-                  <div className="stat-card">
-                    <span className="stat-label">Experience</span>
-                    <span className="stat-value exp-sm">
-                      {EXPERIENCE_LABELS[selectedTask.experience || ''] || selectedTask.experience || '—'}
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Start</span>
+                    <span className="td-stat-val sm">{formatDate(selectedTask.startDate)}</span>
+                  </div>
+                  <div className="td-stat-row">
+                    <span className="td-stat-label">Deadline</span>
+                    <span className={`td-stat-val sm ${isDeadlinePast(selectedTask.deadline) ? 'danger' : ''}`}>
+                      {formatDate(selectedTask.deadline)}{isDeadlinePast(selectedTask.deadline) ? ' · Closed' : ''}
                     </span>
                   </div>
-                </Col>
-              </Row>
+                </div>
 
-              {/* Dates */}
-              <div className="detail-section">
-                <h6 className="section-heading">
-                  <FaCalendarAlt className="me-2" />
-                  Timeline
-                </h6>
-                <div className="dates-row">
-                  <div className="date-item">
-                    <span className="date-lbl">Start Date</span>
-                    <span className="date-val">{formatDate(selectedTask.startDate)}</span>
+                {/* Enrollment bar */}
+                {typeof selectedTask.maxStudents === 'number' && selectedTask.maxStudents > 0 && (
+                  <div className="td-enroll-bar-wrap">
+                    <div className="td-enroll-bar">
+                      <div className="td-enroll-fill" style={{
+                        width: `${Math.round(((selectedTask.enrolledCount ?? 0) / selectedTask.maxStudents) * 100)}%`
+                      }}/>
+                    </div>
+                    <span className="td-enroll-txt">{selectedTask.enrolledCount ?? 0}/{selectedTask.maxStudents} enrolled</span>
                   </div>
-                  <FaChevronRight className="date-arrow" />
-                  <div className="date-item">
-                    <span className="date-lbl">Deadline</span>
-                    <span className={`date-val ${isDeadlinePast(selectedTask.deadline) ? 'text-danger' : ''}`}>
-                      {formatDate(selectedTask.deadline)}
-                      {isDeadlinePast(selectedTask.deadline) && ' (Closed)'}
-                    </span>
+                )}
+
+                {/* Skills */}
+                {(selectedTask.skills?.length ?? 0) > 0 && (
+                  <div className="td-skills-wrap">
+                    <span className="td-skills-label">Required Skills</span>
+                    <div className="td-skills">
+                      {selectedTask.skills!.map((s) => (
+                        <span key={s} className="td-skill">{s}</span>
+                      ))}
+                    </div>
                   </div>
+                )}
+
+                {/* Feedback */}
+                {enrollError && <div className="td-alert error">{enrollError}</div>}
+                {enrollSuccess && <div className="td-alert success">✓ {enrollSuccess}</div>}
+
+                {/* CTA button */}
+                <div className="td-cta">
+                  {selectedTask.isEnrolled ? (
+                    <button className="td-btn-success" disabled><FaCheckCircle size={13} style={{marginRight:6}}/>Already Enrolled</button>
+                  ) : isBeforeStartDate(selectedTask.startDate) ? (
+                    <button className="td-btn-disabled" disabled>Not Started Yet</button>
+                  ) : isDeadlinePast(selectedTask.deadline) ? (
+                    <button className="td-btn-disabled" disabled>Deadline Passed</button>
+                  ) : (selectedTask.spotsLeft ?? 0) <= 0 ? (
+                    <button className="td-btn-disabled" disabled>No Spots Available</button>
+                  ) : (
+                    <button className="td-btn-primary" disabled={enrolling === selectedTask._id} onClick={() => handleEnroll(selectedTask._id)}>
+                      {enrolling === selectedTask._id ? <><Spinner animation="border" size="sm" className="me-1"/>Enrolling…</> : 'Apply Now →'}
+                    </button>
+                  )}
+                  <button className="td-btn-ghost" onClick={() => setShowModal(false)}>Close</button>
                 </div>
               </div>
 
-              {/* Description */}
-              {selectedTask.description && (
-                <div className="detail-section">
-                  <h6 className="section-heading">
-                    <FaTags className="me-2" />
-                    Description
-                  </h6>
-                  <div
-                    className="rich-content"
-                    dangerouslySetInnerHTML={{ __html: selectedTask.description }}
-                  />
-                </div>
-              )}
-
-              {/* Highlights */}
-              {selectedTask.highlights && (
-                <div className="detail-section">
-                  <h6 className="section-heading">⭐ Key Highlights</h6>
-                  <div
-                    className="rich-content"
-                    dangerouslySetInnerHTML={{ __html: selectedTask.highlights }}
-                  />
-                </div>
-              )}
-
-              {/* Acceptance Criteria */}
-              {selectedTask.acceptanceCriteria && (
-                <div className="detail-section">
-                  <h6 className="section-heading">
-                    <FaCheckCircle className="me-2" />
-                    Acceptance Criteria
-                  </h6>
-                  <div
-                    className="rich-content"
-                    dangerouslySetInnerHTML={{ __html: selectedTask.acceptanceCriteria }}
-                  />
-                </div>
-              )}
-
-              {/* Skills */}
-              {(selectedTask.skills?.length ?? 0) > 0 && (
-                <div className="detail-section">
-                  <h6 className="section-heading">
-                    <FaUserGraduate className="me-2" />
-                    Required Skills
-                  </h6>
-                  <div className="skills-row">
-                    {selectedTask.skills!.map((s) => (
-                      <span key={s} className="skill-chip">
-                        {s}
-                      </span>
-                    ))}
+              {/* ── Right content ── */}
+              <div className="td-content">
+                {selectedTask.description && (
+                  <div className="td-section">
+                    <div className="td-section-heading"><FaTags size={13} style={{marginRight:8}}/>Description</div>
+                    <div className="td-rich" dangerouslySetInnerHTML={{ __html: selectedTask.description }}/>
                   </div>
-                </div>
-              )}
-
-              {/* GitHub */}
-              {selectedTask.githubLink && (
-                <div className="detail-section">
-                  <h6 className="section-heading">
-                    <FaCodeBranch className="me-2" />
-                    Repository
-                  </h6>
-                  <a
-                    href={selectedTask.githubLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="github-link"
-                  >
-                    {selectedTask.githubLink}
-                  </a>
-                </div>
-              )}
-
-              {/* Terms */}
-              {selectedTask.terms && (
-                <div className="detail-section">
-                  <h6 className="section-heading">📋 Terms & Conditions</h6>
-                  <div
-                    className="rich-content"
-                    dangerouslySetInnerHTML={{ __html: selectedTask.terms }}
-                  />
-                </div>
-              )}
-
-              {/* Attachments */}
-              {(selectedTask.attachments?.length ?? 0) > 0 && (
-                <div className="detail-section">
-                  <h6 className="section-heading">📎 Attachments</h6>
-                  <div className="attachments-list">
-                    {selectedTask.attachments!.map((att, i) => (
-                      <a
-                        key={i}
-                        href={att.fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="attachment-link"
-                      >
-                        📄 {att.fileName || `Attachment ${i + 1}`}
-                      </a>
-                    ))}
+                )}
+                {selectedTask.highlights && (
+                  <div className="td-section">
+                    <div className="td-section-heading">⭐ Key Highlights</div>
+                    <div className="td-rich" dangerouslySetInnerHTML={{ __html: selectedTask.highlights }}/>
                   </div>
-                </div>
-              )}
-
-              {/* Enroll feedback */}
-              {enrollError && (
-                <div className="enroll-alert error">{enrollError}</div>
-              )}
-              {enrollSuccess && (
-                <div className="enroll-alert success">✓ {enrollSuccess}</div>
-              )}
+                )}
+                {selectedTask.acceptanceCriteria && (
+                  <div className="td-section">
+                    <div className="td-section-heading"><FaCheckCircle size={13} style={{marginRight:8}}/>Acceptance Criteria</div>
+                    <div className="td-rich" dangerouslySetInnerHTML={{ __html: selectedTask.acceptanceCriteria }}/>
+                  </div>
+                )}
+                {selectedTask.githubLink && (
+                  <div className="td-section">
+                    <div className="td-section-heading"><FaCodeBranch size={13} style={{marginRight:8}}/>Repository</div>
+                    <a href={selectedTask.githubLink} target="_blank" rel="noreferrer" className="td-link">{selectedTask.githubLink}</a>
+                  </div>
+                )}
+                {selectedTask.terms && (
+                  <div className="td-section">
+                    <div className="td-section-heading">📋 Terms & Conditions</div>
+                    <div className="td-rich" dangerouslySetInnerHTML={{ __html: selectedTask.terms }}/>
+                  </div>
+                )}
+                {(selectedTask.attachments?.length ?? 0) > 0 && (
+                  <div className="td-section">
+                    <div className="td-section-heading">📎 Attachments</div>
+                    <div className="td-attachments">
+                      {selectedTask.attachments!.map((att, i) => (
+                        <a key={i} href={att.fileUrl} target="_blank" rel="noreferrer" className="td-att-link">
+                          📄 {att.fileName || `Attachment ${i + 1}`}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </Modal.Body>
-
-        <Modal.Footer>
-          <Button variant="outline-secondary" className="modal-footer-btn" onClick={() => setShowModal(false)}>
-            Close
-          </Button>
-          {selectedTask && (
-            selectedTask.isEnrolled ? (
-              <Button className="btn-enrolled modal-footer-btn" disabled>
-                <FaCheckCircle size={14} className="me-1" />
-                Already Enrolled
-              </Button>
-            ) : isBeforeStartDate(selectedTask.startDate) ? (
-              <Button className="btn-closed modal-footer-btn small-btn" disabled>
-                Not Started Yet
-              </Button>
-            ) : isDeadlinePast(selectedTask.deadline) ? (
-              <Button className="btn-closed" disabled>
-                Deadline Passed
-              </Button>
-            ) : (selectedTask.spotsLeft ?? 0) <= 0 ? (
-              <Button className="btn-closed" disabled>
-                No Spots Available
-              </Button>
-            ) : (
-              <Button
-                className="btn-enroll modal-footer-btn"
-                disabled={enrolling === selectedTask._id}
-                onClick={() => handleEnroll(selectedTask._id)}
-              >
-                {enrolling === selectedTask._id ? (
-                  <>
-                    <Spinner animation="border" size="sm" className="me-1" />
-                    Enrolling…
-                  </>
-                ) : (
-                  'Apply Now'
-                )}
-              </Button>
-            )
-          )}
-        </Modal.Footer>
       </Modal>
 
       <StudentTaskSubmissionWizard
@@ -885,43 +894,6 @@ const StudentFreelancingDashboard: React.FC = () => {
 
       {/* ── Styles ─────────────────────────────────────────────────────────── */}
       <style>{`
-        .task-card .card-body {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-
-        .task-actions {
-          margin-top: auto; /* 👈 pushes buttons to bottom */
-        }
-        .task-title {
-          min-height: 48px;
-        }
-
-        .task-info-row {
-          min-height: 40px;
-        }
-        .small-btn {
-          flex: 0 0 auto !important;
-          width: auto !important;
-          padding: 0.4rem 0.9rem !important;
-        }
-          .task-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.75rem;
-        }
-
-        .start-badge {
-          font-size: 0.7rem;
-          background: rgba(255, 193, 7, 0.15);
-          color: #ff6b35;
-          border: 1px solid rgba(255, 193, 7, 0.4);
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
-          white-space: nowrap;
-        }
         /* Layout */
         .student-freelancing {
           background: #000;
@@ -1064,461 +1036,787 @@ const StudentFreelancingDashboard: React.FC = () => {
         .empty-icon { opacity: 0.35; color: #ff6b35; margin-bottom: 1rem; }
         .sf-empty h3 { color: #888; }
 
-        /* Task Card */
-        .task-card {
-          background: #0d0d0d;
-          border: 1px solid #1f1f1f;
-          border-radius: 16px;
+        /* ── Task Card ─────────────────────────────────────────────────── */
+        .tc-card {
+          background: #0f0f0f;
+          border: 1px solid #1a1a1a;
+          border-radius: 12px;
+          padding: 1rem 1.1rem;
           height: 100%;
-          transition: border-color 0.2s, transform 0.2s;
-        }
-
-        .task-card:hover {
-          border-color: #ff6b35;
-          transform: translateY(-2px);
-        }
-
-        .task-badges {
           display: flex;
-          flex-wrap: wrap;
-          gap: 0.4rem;
-          margin-bottom: 0.75rem;
+          flex-direction: column;
+          cursor: pointer;
+          transition: border-color 0.2s, box-shadow 0.2s;
         }
-
-        .cat-badge {
-          background: rgba(255,107,53,0.15) !important;
-          color: #ff6b35 !important;
-          font-size: 0.75rem;
-          padding: 0.3rem 0.7rem;
-          border-radius: 8px;
-          font-weight: 500;
+        .tc-card:hover {
+          border-color: #2a2a2a;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
-
-        .nda-badge {
-          background: rgba(220,53,69,0.15) !important;
-          color: #ff4d5e !important;
-          font-size: 0.72rem;
-          padding: 0.3rem 0.6rem;
-          border-radius: 8px;
+        .tc-top {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-        }
-
-        .task-title {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #fff;
-          margin-bottom: 0.6rem;
-          line-height: 1.4;
-        }
-
-        .task-meta {
-          display: flex;
-          gap: 0.75rem;
-          flex-wrap: wrap;
-          margin-bottom: 0.75rem;
-        }
-
-        .meta-item.budget {
-          font-size: 1rem;
-          font-weight: 700;
-          color: #ff6b35;
-        }
-
-        .meta-item.exp {
-          font-size: 0.78rem;
-          color: #aaa;
-          background: #1a1a1a;
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
-        }
-
-        .task-info-row {
-          display: flex;
-          gap: 1rem;
-          flex-wrap: wrap;
-          margin-bottom: 0.75rem;
-        }
-
-        .info-item {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          font-size: 0.82rem;
-          color: #999;
-        }
-
-        .info-icon { color: #ff6b35; font-size: 0.8rem; }
-
-        /* Skills */
-        .skills-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.4rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .skill-chip {
-          background: #1a1a1a;
-          border: 1px solid #2a2a2a;
-          color: #ccc;
-          font-size: 0.75rem;
-          padding: 0.2rem 0.6rem;
-          border-radius: 6px;
-        }
-
-        .skill-chip.more {
-          background: #333;
-          color: #aaa;
-        }
-
-        /* Spots bar */
-        .spots-bar-wrap {
-          display: flex;
-          align-items: center;
+          margin-bottom: 0.5rem;
           gap: 0.5rem;
-          margin-bottom: 1rem;
         }
-
-        .spots-bar {
-          flex: 1;
-          height: 5px;
-          background: #1f1f1f;
-          border-radius: 3px;
-          overflow: hidden;
+        .tc-chips { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+        .tc-chip {
+          font-size: 0.65rem;
+          font-weight: 500;
+          padding: 0.12rem 0.5rem;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
         }
-
-        .spots-fill {
-          height: 100%;
-          background: linear-gradient(90deg, #ff6b35, #ff9a5c);
-          border-radius: 3px;
-          transition: width 0.4s;
-        }
-
-        .spots-text {
-          font-size: 0.75rem;
-          color: #888;
+        .tc-chip.tc-cat { background: transparent; border: 1px solid #2a2a2a; color: #888; }
+        .tc-chip.tc-nda { background: rgba(220,53,69,0.1); border: 1px solid rgba(220,53,69,0.3); color: #ff7784; }
+        .tc-status-chip {
+          font-size: 0.63rem;
+          font-weight: 600;
+          padding: 0.12rem 0.5rem;
+          border-radius: 4px;
           white-space: nowrap;
         }
+        .tc-status-chip.open { background: rgba(255,107,53,0.1); color: #ff6b35; border: 1px solid rgba(255,107,53,0.3); }
+        .tc-status-chip.enrolled { background: rgba(40,167,69,0.1); color: #4ad46d; border: 1px solid rgba(40,167,69,0.35); }
+        .tc-status-chip.closed, .tc-status-chip.full { background: transparent; color: #555; border: 1px solid #2a2a2a; }
+        .tc-status-chip.soon { background: rgba(255,193,7,0.1); color: #ffc107; border: 1px solid rgba(255,193,7,0.3); }
 
-        .submission-status-row {
+        .tc-title {
+          font-size: 0.92rem;
+          font-weight: 600;
+          color: #e0e0e0;
+          margin: 0 0 0.5rem;
+          line-height: 1.4;
+        }
+        .tc-meta {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 0.2rem;
+          font-size: 0.72rem;
+          color: #666;
+          margin-bottom: 0.5rem;
+        }
+        .tc-budget { color: #ff6b35; font-weight: 700; font-size: 0.85rem; }
+        .tc-budget-nil { color: #444; font-style: italic; }
+        .tc-sep { color: #333; margin: 0 0.15rem; }
+        .tc-date { display: inline-flex; align-items: center; }
+        .tc-date.overdue { color: #de350b; }
+        .tc-exp { color: #666; }
+        .tc-skills {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.5rem;
-          margin-bottom: 0.9rem;
+          gap: 0.3rem;
+          margin-bottom: 0.55rem;
         }
-
-        .submission-chip {
-          font-size: 0.74rem;
-          border-radius: 999px;
-          padding: 0.2rem 0.65rem;
+        .tc-skill {
+          font-size: 0.65rem;
+          padding: 0.1rem 0.45rem;
+          border-radius: 4px;
+          background: transparent;
+          border: 1px solid #1e1e1e;
+          color: #777;
+          font-weight: 500;
+        }
+        .tc-skill.more { border-style: dashed; color: #555; }
+        .tc-bar-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.55rem;
+        }
+        .tc-bar { flex: 1; height: 3px; background: #1a1a1a; border-radius: 2px; overflow: hidden; }
+        .tc-bar-fill { height: 100%; background: linear-gradient(90deg,#ff6b35,#ff9a5c); border-radius: 2px; }
+        .tc-bar-text { font-size: 0.65rem; color: #555; white-space: nowrap; }
+        .tc-sub-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .tc-sub-chip {
+          font-size: 0.65rem;
+          padding: 0.1rem 0.5rem;
+          border-radius: 4px;
+          font-weight: 600;
           border: 1px solid transparent;
-          font-weight: 600;
         }
-
-        .submission-chip.completed {
-          background: rgba(40, 167, 69, 0.12);
-          color: #4ad46d;
-          border-color: rgba(40, 167, 69, 0.45);
-        }
-
-        .submission-chip.pending {
-          background: rgba(255, 193, 7, 0.14);
-          color: #ffd85d;
-          border-color: rgba(255, 193, 7, 0.4);
-        }
-
-        .submission-chip.review.approved {
-          background: rgba(40, 167, 69, 0.12);
-          color: #4ad46d;
-          border-color: rgba(40, 167, 69, 0.45);
-        }
-
-        .submission-chip.review.rejected {
-          background: rgba(220, 53, 69, 0.12);
-          color: #ff7784;
-          border-color: rgba(220, 53, 69, 0.45);
-        }
-
-        .submission-chip.review.pending-review {
-          background: rgba(255, 193, 7, 0.14);
-          color: #ffd85d;
-          border-color: rgba(255, 193, 7, 0.4);
-        }
-
-        /* Buttons */
-        .task-actions {
+        .tc-sub-chip.done { background: rgba(40,167,69,0.1); color: #4ad46d; border-color: rgba(40,167,69,0.3); }
+        .tc-sub-chip.pend { background: rgba(255,193,7,0.1); color: #ffd85d; border-color: rgba(255,193,7,0.3); }
+        .tc-sub-chip.appr { background: rgba(40,167,69,0.1); color: #4ad46d; border-color: rgba(40,167,69,0.3); }
+        .tc-sub-chip.rej { background: rgba(220,53,69,0.1); color: #ff7784; border-color: rgba(220,53,69,0.3); }
+        .tc-sub-chip.rev { background: rgba(255,193,7,0.1); color: #ffd85d; border-color: rgba(255,193,7,0.3); }
+        .tc-actions {
           display: flex;
-          gap: 0.5rem;
-          flex-wrap: wrap;
+          gap: 0.45rem;
+          margin-top: auto;
+          padding-top: 0.65rem;
         }
-
-        .btn-details {
+        .tc-btn-ghost, .tc-btn-primary, .tc-btn-success, .tc-btn-disabled {
           flex: 1;
-          font-size: 0.82rem;
-          border-color: #444;
-          color: #ccc;
-          background: transparent;
-          border-radius: 8px;
-        }
-
-        .btn-details:hover {
-          border-color: #ff6b35;
-          color: #ff6b35;
-          background: transparent;
-        }
-
-        .btn-enroll {
-          flex: 1;
-          font-size: 0.82rem;
-          background: linear-gradient(135deg, #ff6b35, #ff9a5c) !important;
-          border: none !important;
-          color: #fff !important;
-          border-radius: 8px;
+          height: 32px;
+          border: none;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 600;
-        }
-
-        .btn-enrolled {
-          flex: 0 0 auto;
-          width: auto;
-          font-size: 0.78rem;
-          background: rgba(40,167,69,0.15) !important;
-          border: 1px solid #28a745 !important;
-          color: #28a745 !important;
-          border-radius: 8px;
-          padding: 0.28rem 0.65rem;
-          line-height: 1.2;
-        }
-
-        .btn-closed {
-          flex: 1;
-          font-size: 0.82rem;
-          background: #1a1a1a !important;
-          border: 1px solid #444 !important;
-          color: #666 !important;
-          border-radius: 8px;
-        }
-
-        .modal-footer-btn {
-          min-width: 148px;
-          height: 38px;
+          cursor: pointer;
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.15s;
         }
-
-        .btn-enroll.modal-footer-btn {
-          flex: 0 0 auto;
-          width: auto;
-        }
+        .tc-btn-ghost { background: transparent; border: 1px solid #2a2a2a; color: #888; }
+        .tc-btn-ghost:hover { border-color: #ff6b35; color: #ff6b35; }
+        .tc-btn-primary { background: linear-gradient(135deg,#ff6b35,#ff9a5c); color: #fff; }
+        .tc-btn-primary:hover { opacity: 0.9; }
+        .tc-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .tc-btn-success { background: rgba(40,167,69,0.12); border: 1px solid #28a745; color: #4ad46d; cursor: not-allowed; }
+        .tc-btn-disabled { background: transparent; border: 1px solid #1e1e1e; color: #444; cursor: not-allowed; }
 
         /* ── Detail Modal ──────────────────────────────────────────────── */
-        .task-detail-modal .modal-content {
+        .td-modal .modal-content {
           background: #0a0a0a;
-          border: 1px solid #333;
-          border-radius: 16px;
+          border: none;
           color: #fff;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
         }
-
-        .task-detail-modal .modal-header {
+        .td-modal-header {
           background: #0d0d0d;
-          border-bottom: 1px solid #1f1f1f;
+          border-bottom: 1px solid #1a1a1a;
+          padding: 0.75rem 1.25rem;
+          flex-shrink: 0;
         }
-
-        .task-detail-modal .modal-title {
-          color: #ff6b35;
+        .td-modal-header .btn-close { filter: invert(1) brightness(0.6); }
+        .td-modal-title {
+          font-size: 0.95rem;
           font-weight: 700;
+          color: #ccc;
           display: flex;
           align-items: center;
         }
-
-        .task-detail-modal .modal-footer {
-          background: #0d0d0d;
-          border-top: 1px solid #1f1f1f;
+        .td-modal-body {
+          flex: 1;
+          overflow: hidden;
         }
-
-        .task-detail-modal .btn-close {
-          filter: invert(1) brightness(0.7);
+        .td-layout {
+          display: grid;
+          grid-template-columns: 300px 1fr;
+          height: 100%;
+          overflow: hidden;
         }
-
-        .detail-hero {
-          margin-bottom: 1.5rem;
-        }
-
-        .detail-title {
-          font-size: 1.3rem;
-          font-weight: 700;
-          color: #fff;
-          margin-bottom: 0.75rem;
-        }
-
-        .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-
-        /* Stat cards */
-        .stat-card {
-          background: #111;
-          border: 1px solid #222;
-          border-radius: 12px;
-          padding: 0.85rem;
+        .td-sidebar {
+          border-right: 1px solid #161616;
+          overflow-y: auto;
+          padding: 1.5rem 1.25rem;
           display: flex;
           flex-direction: column;
-          gap: 0.3rem;
-          height: 100%;
+          gap: 0;
+          background: #0d0d0d;
         }
-
-        .stat-label {
-          font-size: 0.75rem;
-          color: #666;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
+        .td-chip-row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+        .td-chip {
+          font-size: 0.65rem;
+          font-weight: 500;
+          padding: 0.15rem 0.55rem;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
         }
-
-        .stat-value {
+        .td-chip-cat { background: transparent; border: 1px solid #2a2a2a; color: #888; }
+        .td-chip-nda { background: rgba(220,53,69,0.1); border: 1px solid rgba(220,53,69,0.3); color: #ff7784; }
+        .td-title {
           font-size: 1rem;
           font-weight: 700;
-          color: #fff;
+          color: #e8e8e8;
+          line-height: 1.4;
+          margin: 0 0 1.25rem;
         }
-
-        .stat-value.budget { color: #ff6b35; }
-        .stat-value.success { color: #28a745; }
-        .stat-value.danger { color: #dc3545; }
-        .stat-value.exp-sm { font-size: 0.78rem; }
-
-        /* Detail sections */
-        .detail-section {
-          margin-bottom: 1.5rem;
-          padding-bottom: 1.5rem;
-          border-bottom: 1px solid #1a1a1a;
-        }
-
-        .detail-section:last-child {
-          border-bottom: none;
-          margin-bottom: 0;
-          padding-bottom: 0;
-        }
-
-        .section-heading {
-          color: #ff6b35;
-          font-size: 0.95rem;
-          font-weight: 600;
-          margin-bottom: 0.75rem;
+        .td-stats { display: flex; flex-direction: column; gap: 0; margin-bottom: 1rem; }
+        .td-stat-row {
           display: flex;
-          align-items: center;
-        }
-
-        /* Timeline */
-        .dates-row {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .date-item {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-        }
-
-        .date-lbl { font-size: 0.75rem; color: #666; }
-        .date-val { font-size: 0.95rem; color: #ccc; font-weight: 500; }
-        .date-arrow { color: #555; }
-
-        .rich-content {
-          font-size: 0.9rem;
-          color: #bbb;
-          line-height: 1.65;
-
-          /* ✅ FIXES */
-          word-break: break-word;
-          overflow-wrap: anywhere;
-          white-space: normal;
-          max-width: 100%;
-        }
-
-        .rich-content * {
-          max-width: 100%;
-          word-break: break-word;
-        }
-
-        .rich-content img,
-        .rich-content video {
-          max-width: 100%;
-          height: auto;
-        }
-
-        /* VERY IMPORTANT (handles code blocks) */
-        .rich-content pre,
-        .rich-content code {
-          white-space: pre-wrap !important;
-          word-break: break-word;
-          overflow-x: auto;
-        }
-
-        .rich-content p { margin-bottom: 0.5rem; }
-        .rich-content ul, .rich-content ol { padding-left: 1.5rem; }
-        .rich-content li { margin-bottom: 0.25rem; }
-        .rich-content strong { color: #fff; }
-        .rich-content a { color: #ff6b35; }
-
-        /* GitHub link */
-        .github-link {
-          color: #ff6b35;
-          font-size: 0.88rem;
-          word-break: break-all;
-          text-decoration: none;
-        }
-        .github-link:hover { text-decoration: underline; }
-
-        /* Attachments */
-        .attachments-list {
-          display: flex;
-          flex-direction: column;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #161616;
           gap: 0.5rem;
         }
-
-        .attachment-link {
-          background: #111;
-          border: 1px solid #222;
-          color: #ccc;
-          padding: 0.5rem 0.85rem;
+        .td-stat-row:last-child { border-bottom: none; }
+        .td-stat-label { font-size: 0.67rem; color: #555; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 500; flex-shrink: 0; }
+        .td-stat-val { font-size: 0.82rem; font-weight: 600; color: #ccc; text-align: right; }
+        .td-stat-val.budget { color: #ff6b35; font-size: 1rem; }
+        .td-stat-val.success { color: #4ad46d; }
+        .td-stat-val.danger { color: #ff5555; }
+        .td-stat-val.sm { font-size: 0.72rem; font-weight: 400; color: #999; }
+        .td-enroll-bar-wrap { margin-bottom: 1rem; }
+        .td-enroll-bar { height: 4px; background: #1a1a1a; border-radius: 2px; overflow: hidden; margin-bottom: 0.3rem; }
+        .td-enroll-fill { height: 100%; background: linear-gradient(90deg,#ff6b35,#ff9a5c); border-radius: 2px; }
+        .td-enroll-txt { font-size: 0.67rem; color: #555; }
+        .td-skills-wrap { margin-bottom: 1rem; }
+        .td-skills-label { font-size: 0.62rem; color: #555; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 0.4rem; }
+        .td-skills { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+        .td-skill { font-size: 0.67rem; padding: 0.12rem 0.5rem; border-radius: 4px; background: transparent; border: 1px solid #1e1e1e; color: #777; font-weight: 500; }
+        .td-alert { padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.82rem; margin-bottom: 0.75rem; }
+        .td-alert.error { background: rgba(220,53,69,0.1); border: 1px solid #dc3545; color: #ff7784; }
+        .td-alert.success { background: rgba(40,167,69,0.1); border: 1px solid #28a745; color: #4ad46d; }
+        .td-cta { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; padding-top: 1rem; }
+        .td-btn-primary, .td-btn-ghost, .td-btn-success, .td-btn-disabled {
+          width: 100%;
+          height: 38px;
+          border: none;
           border-radius: 8px;
-          font-size: 0.85rem;
-          text-decoration: none;
-          transition: border-color 0.2s;
-          width: fit-content;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: opacity 0.15s;
         }
-
-        .attachment-link:hover {
-          border-color: #ff6b35;
+        .td-btn-primary { background: linear-gradient(135deg,#ff6b35,#ff9a5c); color: #fff; }
+        .td-btn-primary:hover { opacity: 0.9; }
+        .td-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .td-btn-ghost { background: transparent; border: 1px solid #2a2a2a; color: #777; }
+        .td-btn-ghost:hover { border-color: #444; color: #aaa; }
+        .td-btn-success { background: rgba(40,167,69,0.12); border: 1px solid #28a745; color: #4ad46d; cursor: not-allowed; }
+        .td-btn-disabled { background: transparent; border: 1px solid #1e1e1e; color: #444; cursor: not-allowed; }
+        .td-content { overflow-y: auto; padding: 1.5rem 2rem; }
+        .td-section { margin-bottom: 1.75rem; padding-bottom: 1.75rem; border-bottom: 1px solid #141414; }
+        .td-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .td-section-heading {
+          font-size: 0.8rem;
+          font-weight: 700;
           color: #ff6b35;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.85rem;
+          display: flex;
+          align-items: center;
         }
-
-        /* Enroll alerts */
-        .enroll-alert {
-          padding: 0.75rem 1rem;
-          border-radius: 10px;
-          font-size: 0.88rem;
-          margin-top: 1rem;
+        .td-rich { font-size: 0.88rem; color: #bbb; line-height: 1.7; word-break: break-word; overflow-wrap: anywhere; }
+        .td-rich p { margin-bottom: 0.5rem; }
+        .td-rich ul, .td-rich ol { padding-left: 1.5rem; }
+        .td-rich li { margin-bottom: 0.25rem; }
+        .td-rich strong { color: #e0e0e0; }
+        .td-rich a { color: #ff6b35; }
+        .td-rich pre, .td-rich code { white-space: pre-wrap !important; word-break: break-word; }
+        .td-link { color: #ff6b35; font-size: 0.85rem; word-break: break-all; text-decoration: none; }
+        .td-link:hover { text-decoration: underline; }
+        .td-attachments { display: flex; flex-direction: column; gap: 0.45rem; }
+        .td-att-link {
+          background: #111;
+          border: 1px solid #1e1e1e;
+          color: #aaa;
+          padding: 0.45rem 0.85rem;
+          border-radius: 6px;
+          font-size: 0.82rem;
+          text-decoration: none;
+          width: fit-content;
+          transition: border-color 0.2s;
         }
-
-        .enroll-alert.error {
-          background: rgba(220,53,69,0.1);
-          border: 1px solid #dc3545;
-          color: #ff6b6b;
-        }
-
-        .enroll-alert.success {
-          background: rgba(40,167,69,0.1);
-          border: 1px solid #28a745;
-          color: #6ddf8c;
-        }
+        .td-att-link:hover { border-color: #ff6b35; color: #ff6b35; }
 
         /* Responsive */
+        @media (max-width: 768px) {
+          .td-layout { grid-template-columns: 1fr; }
+          .td-sidebar { border-right: none; border-bottom: 1px solid #161616; }
+        }
         @media (max-width: 576px) {
           .sf-header { flex-direction: column; align-items: flex-start; }
           .sf-filters { flex-direction: column; }
           .search-box { max-width: 100%; }
+        }
+
+        /* ── Jira Kanban Board ─────────────────────────────────────────── */
+        /* ── Jira stat boxes ── */
+        .jira-stat-row {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+          .jira-stat-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .jira-stat-box {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          padding: 1.1rem 1.2rem 0.9rem;
+          position: relative;
+          transition: border-color 0.2s, background 0.2s;
+          user-select: none;
+        }
+
+        .jira-stat-box:hover {
+          border-color: #333;
+          background: #111;
+        }
+
+        .jira-stat-box.active {
+          background: #111;
+          border-color: #333;
+        }
+
+        .jira-stat-count {
+          font-size: 2rem;
+          font-weight: 800;
+          line-height: 1;
+          margin-bottom: 0.3rem;
+        }
+
+        .jira-stat-label {
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #888;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+        }
+
+        .jira-stat-active-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          position: absolute;
+          top: 0.75rem;
+          right: 0.75rem;
+        }
+
+        /* ── New Jira Board (jb-*) ── */
+        .jb-stat-row {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1rem;
+          margin-bottom: 1.25rem;
+        }
+        @media (max-width: 768px) {
+          .jb-stat-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        .jb-stat-box {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          padding: 1rem 1.1rem 0.85rem;
+          position: relative;
+          cursor: pointer;
+          overflow: hidden;
+          transition: border-color 0.2s, background 0.2s;
+          user-select: none;
+        }
+        .jb-stat-box:hover { border-color: #333; background: #111; }
+        .jb-stat-box.active { background: #111; border-color: #333; }
+
+        .jb-stat-top {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          margin-bottom: 0.65rem;
+        }
+        .jb-stat-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+        .jb-stat-name {
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #888;
+          letter-spacing: 0.4px;
+          text-transform: uppercase;
+        }
+        .jb-stat-count {
+          font-size: 2rem;
+          font-weight: 800;
+          line-height: 1;
+          margin-bottom: 0.2rem;
+        }
+        .jb-stat-sub {
+          font-size: 0.68rem;
+          color: #555;
+        }
+        .jb-stat-bar {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+        }
+
+        .jb-filter-pill {
+          display: inline-flex;
+          align-items: center;
+          font-size: 0.75rem;
+          font-weight: 600;
+          padding: 0.2rem 0.6rem;
+          border-radius: 20px;
+          border: 1px solid;
+        }
+
+        /* ── jb table ── */
+        .jb-table {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+        .jb-thead {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.6rem 1rem;
+          background: #111;
+          border-bottom: 1px solid #1f1f1f;
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: #555;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+        .jb-row {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+          padding: 0.8rem 1rem;
+          border-bottom: 1px solid #141414;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .jb-row:last-child { border-bottom: none; }
+        .jb-row:hover { background: #111; }
+        .jb-row-title {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #fff;
+          line-height: 1.3;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* ── Jira list ── */
+        .jira-list {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .jira-list-header {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.65rem 1rem;
+          background: #111;
+          border-bottom: 1px solid #1f1f1f;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #555;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+
+        .jira-list-row {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 0.85rem 1rem;
+          border-bottom: 1px solid #141414;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+
+        .jira-list-row:last-child { border-bottom: none; }
+
+        .jira-list-row:hover { background: #111; }
+
+        .jira-row-id {
+          font-size: 0.72rem;
+          color: #555;
+          font-family: monospace;
+          flex-shrink: 0;
+        }
+
+        .jira-row-title {
+          color: #fff;
+          font-size: 0.88rem;
+          font-weight: 600;
+          line-height: 1.3;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* ── Jira Kanban (new) ── */
+        .jira-kanban-board {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 0.75rem;
+          align-items: flex-start;
+        }
+        @media (max-width: 900px) {
+          .jira-kanban-board { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 576px) {
+          .jira-kanban-board { grid-template-columns: 1fr; }
+        }
+
+        .jira-kanban-col {
+          background: #111;
+          border-radius: 8px;
+          overflow: hidden;
+          transition: opacity 0.2s;
+        }
+        .jira-col-dimmed { opacity: 0.45; }
+
+        .jira-kanban-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.65rem 0.85rem;
+          border-bottom: 1px solid #1a1a1a;
+          cursor: pointer;
+          user-select: none;
+        }
+        .jira-kanban-header:hover { background: #161616; }
+
+        .jira-kanban-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+        }
+
+        .jira-kanban-count {
+          background: #1f1f1f;
+          color: #888;
+          font-size: 0.7rem;
+          font-weight: 700;
+          min-width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0 0.3rem;
+        }
+
+        .jira-kanban-cards {
+          padding: 0.5rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+          min-height: 80px;
+        }
+
+        .jira-kanban-empty {
+          text-align: center;
+          padding: 1.5rem 0;
+          color: #333;
+          font-size: 0.75rem;
+        }
+
+        .jira-kanban-card {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-left-width: 3px;
+          border-radius: 6px;
+          padding: 0.7rem 0.8rem 0.65rem;
+          cursor: pointer;
+          transition: box-shadow 0.18s, background 0.18s;
+        }
+        .jira-kanban-card:hover {
+          background: #111;
+          box-shadow: 0 2px 14px rgba(0,0,0,0.5);
+        }
+
+        .jira-kanban-card-title {
+          font-size: 0.83rem;
+          font-weight: 500;
+          color: #ddd;
+          line-height: 1.45;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .jira-kanban-card-footer {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-top: 0.65rem;
+          padding-top: 0.5rem;
+          border-top: 1px solid #1a1a1a;
+          flex-wrap: wrap;
+        }
+
+        /* legacy — kept for action button */
+        .kanban-col { background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 12px; overflow: hidden; }
+        .kanban-col-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0.9rem; background: #111; border-bottom: 1px solid #1a1a1a; }
+        .kanban-col-name { font-size: 0.75rem; font-weight: 700; color: #ccc; letter-spacing: 0.5px; text-transform: uppercase; }
+        .kanban-col-count { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 20px; }
+        .kanban-col-body { padding: 0.6rem; display: flex; flex-direction: column; gap: 0.6rem; min-height: 120px; }
+        .kanban-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 0.5rem; color: #333; font-size: 0.78rem; text-align: center; }
+        .kanban-card { background: #111; border: 1px solid #222; border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s; }
+        .kanban-card:hover { border-color: #ff6b35; transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255,107,53,0.12); }
+        .kanban-card-title { font-size: 0.85rem; font-weight: 600; color: #fff; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 0.1rem; }
+
+        .kanban-action-btn {
+          display: block;
+          width: 100%;
+          margin-top: 0.65rem;
+          font-size: 0.74rem;
+          font-weight: 600;
+          padding: 0.36rem 0.5rem;
+          border-radius: 5px;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          text-align: center;
+        }
+
+        .kanban-action-btn:hover { opacity: 0.8; }
+
+        /* legacy reference kept */
+        .jira-board {
+          display: flex;
+          gap: 1rem;
+          overflow-x: auto;
+          padding-bottom: 1rem;
+          align-items: flex-start;
+        }
+
+        .jira-column {
+          min-width: 280px;
+          max-width: 300px;
+          flex-shrink: 0;
+          background: #0d0d0d;
+          border-radius: 12px;
+          padding: 0.75rem;
+        }
+
+        .jira-col-header {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .jira-col-dot {
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .jira-col-name {
+          color: #fff;
+          font-size: 0.82rem;
+          font-weight: 600;
+          flex: 1;
+          letter-spacing: 0.3px;
+        }
+
+        .jira-col-count {
+          background: rgba(255,107,53,0.15);
+          color: #ff6b35;
+          border: 1px solid rgba(255,107,53,0.3);
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 0.1rem 0.45rem;
+          border-radius: 20px;
+        }
+
+        .jira-ticket {
+          background: #111;
+          border: 1px solid #222;
+          border-left-width: 3px;
+          border-radius: 8px;
+          padding: 0.75rem;
+          margin-top: 0.6rem;
+          cursor: pointer;
+          transition: border-color 0.2s, transform 0.15s;
+        }
+
+        .jira-ticket:hover {
+          border-color: #ff6b35 !important;
+          transform: translateY(-1px);
+        }
+
+        .jira-ticket-id {
+          font-size: 0.68rem;
+          color: #555;
+          margin-bottom: 0.25rem;
+        }
+
+        .jira-ticket-title {
+          color: #fff;
+          font-size: 0.88rem;
+          font-weight: 700;
+          line-height: 1.4;
+          margin-bottom: 0.4rem;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .jira-ticket-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          font-size: 0.75rem;
+          color: #888;
+          margin-bottom: 0.2rem;
+        }
+
+        .jira-ticket-skills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.3rem;
+          margin: 0.4rem 0;
+        }
+
+        .jira-ticket-skill {
+          background: #1a1a1a;
+          border: 1px solid #2a2a2a;
+          color: #ccc;
+          font-size: 0.7rem;
+          padding: 0.15rem 0.5rem;
+          border-radius: 6px;
+        }
+
+        .jira-ticket-action {
+          display: block;
+          width: 100%;
+          margin-top: 0.6rem;
+          font-size: 0.78rem;
+          font-weight: 600;
+          padding: 0.35rem 0.5rem;
+          border-radius: 6px;
+          border-width: 1px;
+          border-style: solid;
+          cursor: pointer;
+          transition: opacity 0.2s;
+          text-align: center;
+        }
+
+        .jira-ticket-action:hover {
+          opacity: 0.8;
+        }
+
+        .jira-feedback {
+          font-size: 0.72rem;
+          color: #cc8888;
+          background: rgba(222,53,11,0.07);
+          border-left: 2px solid rgba(222,53,11,0.5);
+          padding: 0.3rem 0.55rem;
+          border-radius: 4px;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          line-height: 1.45;
+          font-style: italic;
         }
       `}</style>
     </>

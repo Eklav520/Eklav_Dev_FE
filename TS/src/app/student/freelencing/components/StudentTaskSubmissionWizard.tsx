@@ -1,11 +1,59 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Alert, Badge, Button, Col, Form, Modal, Row, Spinner } from 'react-bootstrap'
+import { Alert, Button, Form, Modal, Spinner } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new';
 import 'quill/dist/quill.snow.css';
+import {
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaCode,
+  FaFileAlt,
+  FaFileContract,
+  FaStar,
+  FaUsers,
+  FaChevronRight,
+} from 'react-icons/fa'
 
 type Attachment = {
   fileName?: string
   fileUrl?: string
+}
+
+type AiCriterion = {
+  criterion: string
+  met: boolean
+  score: number
+  maxScore: number
+  feedback: string
+}
+
+type AiAnnotation = {
+  issue: string
+  severity: 'critical' | 'major' | 'minor'
+  location: string
+  suggestion: string
+}
+
+type AiFacultyReport = {
+  technicalDepth: string
+  effortEstimate: string
+  overallAssessment: string
+  keyFindings: string[]
+  recommendations: string[]
+}
+
+type AiEvaluation = {
+  score: number | null
+  grade: string | null
+  summary: string
+  relevanceCheck?: { isRelevant: boolean; relevanceScore: number; reason: string }
+  criteriaEvaluation: AiCriterion[]
+  codeAnnotations?: AiAnnotation[]
+  facultyReport?: AiFacultyReport
+  strengths: string[]
+  improvements: string[]
+  evaluatedAt?: string
+  verifiedByAdmin?: boolean
+  adminFinalScore?: number | null
 }
 
 type SubmissionState = {
@@ -16,6 +64,7 @@ type SubmissionState = {
   status?: 'pending' | 'completed'
   adminReviewStatus?: 'pending' | 'approved' | 'rejected'
   adminFeedback?: string
+  aiEvaluation?: AiEvaluation | null
 }
 
 type EnrolledStudent = {
@@ -49,7 +98,6 @@ type Props = {
   onSubmitted: () => Promise<void> | void
 }
 
-// Quill toolbar configuration
 const QUILL_MODULES = {
   toolbar: [
     [{ header: [false, 2, 3, 4] }],
@@ -58,7 +106,7 @@ const QUILL_MODULES = {
     [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }],
     ['link', 'clean']
   ],
-};
+}
 
 const formatDate = (d?: string | null) => {
   if (!d) return '—'
@@ -66,6 +114,15 @@ const formatDate = (d?: string | null) => {
   return Number.isNaN(dt.getTime())
     ? d
     : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const getDaysLeft = (d?: string | null) => {
+  if (!d) return null
+  const diff = new Date(d).getTime() - Date.now()
+  if (diff < 0) return { label: 'Overdue', urgent: true }
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+  if (days === 0) return { label: 'Due today', urgent: true }
+  return { label: `${days}d left`, urgent: days <= 3 }
 }
 
 const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSubmitted }: Props) => {
@@ -99,67 +156,45 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
   }, [show, task?._id])
 
   useEffect(() => {
-    if (!submission) {
-      setLockedByRecentSubmit(false)
-      return
-    }
-
-    if (submission.adminReviewStatus === 'rejected') {
-      setLockedByRecentSubmit(false)
-      return
-    }
-
-    if (submission.status === 'completed') {
-      setLockedByRecentSubmit(true)
-    }
+    if (!submission) { setLockedByRecentSubmit(false); return }
+    if (submission.adminReviewStatus === 'rejected') { setLockedByRecentSubmit(false); return }
+    if (submission.status === 'completed') setLockedByRecentSubmit(true)
   }, [submission?.status, submission?.adminReviewStatus])
 
-  const adminLabel = useMemo(() => {
-    const status = submission?.adminReviewStatus || 'pending'
-    if (status === 'approved') return 'Approved'
-    if (status === 'rejected') return 'Rejected'
-    return 'Pending Review'
-  }, [submission?.adminReviewStatus])
+  const reviewStatus = submission?.adminReviewStatus || 'pending'
+  const submissionStatus = submission?.status || 'pending'
 
-  const statusClass = useMemo(() => {
-    const status = submission?.adminReviewStatus || 'pending'
-    if (status === 'approved') return 'success'
-    if (status === 'rejected') return 'danger'
-    return 'warning'
-  }, [submission?.adminReviewStatus])
+  const statusConfig = useMemo(() => {
+    if (!submission || submissionStatus !== 'completed') {
+      return { label: 'To Do', color: '#6b778c', bg: 'rgba(107,119,140,0.15)', border: 'rgba(107,119,140,0.3)' }
+    }
+    if (reviewStatus === 'approved') {
+      return { label: 'Approved', color: '#36b37e', bg: 'rgba(54,179,126,0.12)', border: 'rgba(54,179,126,0.35)' }
+    }
+    if (reviewStatus === 'rejected') {
+      return { label: 'Revision Needed', color: '#de350b', bg: 'rgba(222,53,11,0.12)', border: 'rgba(222,53,11,0.35)' }
+    }
+    return { label: 'In Review', color: '#0052cc', bg: 'rgba(0,82,204,0.12)', border: 'rgba(0,82,204,0.35)' }
+  }, [submission, submissionStatus, reviewStatus])
 
   const handleSubmitStep2 = async () => {
     if (!task?._id || !token) return
-    if (!canEditSubmission) {
-      setError('Submission is locked while waiting for admin review.')
-      return
-    }
-
-    setSubmitting(true)
-    setError('')
-    setSuccess('')
-
+    if (!canEditSubmission) { setError('Submission is locked while waiting for admin review.'); return }
+    setSubmitting(true); setError(''); setSuccess('')
     try {
       const payload = new FormData()
       payload.append('codeLink', codeLink || submission?.codeLink || '')
       payload.append('codeDescription', codeDescription || submission?.codeDescription || '')
       payload.append('replaceAttachments', String(replaceAttachments))
       files.forEach((f) => payload.append('attachments', f))
-
       const res = await fetch(`${baseURL}/api/student/freelancing/tasks/${task._id}/submission`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
         body: payload,
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data?.error || 'Failed to upload submission')
-      }
-
-      setSuccess('✅ Submitted successfully! Your work is now with admin for review.')
+      if (!res.ok) throw new Error(data?.error || 'Failed to upload submission')
+      setSuccess('Submitted successfully! Your work is now with admin for review.')
       setLockedByRecentSubmit(true)
       setActiveStep(2)
       await onSubmitted()
@@ -173,22 +208,14 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
   const handleAddFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files ? Array.from(e.target.files) : []
     if (selected.length === 0) return
-
     setFiles((prev) => {
       const merged = [...prev]
       selected.forEach((file) => {
-        const exists = merged.some(
-          (f) =>
-            f.name === file.name &&
-            f.size === file.size &&
-            f.lastModified === file.lastModified
-        )
+        const exists = merged.some(f => f.name === file.name && f.size === file.size && f.lastModified === file.lastModified)
         if (!exists) merged.push(file)
       })
       return merged
     })
-
-    // Reset input so selecting the same file again still triggers onChange
     e.target.value = ''
   }
 
@@ -196,365 +223,730 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
     setFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
+  const daysLeft = getDaysLeft(task?.deadline)
+
   return (
-    <Modal
-      show={show}
-      onHide={onHide}
-      fullscreen={true}
-      centered
-      className="student-task-wizard"
-    >
+    <Modal show={show} onHide={onHide} fullscreen={true} centered className="student-task-wizard">
+      {/* ── Header ── */}
       <Modal.Header closeButton>
-        <Modal.Title>
-          <span className="modal-icon">📋</span>
-          Task Submission Workflow
-        </Modal.Title>
+        <div className="wz-header-inner">
+          {/* Breadcrumb */}
+          <div className="wz-breadcrumb">
+            <span>Freelancing</span>
+            <FaChevronRight className="wz-breadcrumb-sep" />
+            <span>My Tasks</span>
+            <FaChevronRight className="wz-breadcrumb-sep" />
+            <span className="wz-breadcrumb-current">{task?.title || 'Task'}</span>
+          </div>
+
+          {/* Step indicator */}
+          <div className="wz-stepper">
+            <div className={`wz-step-item ${activeStep === 1 ? 'active' : 'done'}`}>
+              <div className="wz-step-circle">
+                {activeStep > 1 ? '✓' : '1'}
+              </div>
+              <span className="wz-step-label">Task Details</span>
+            </div>
+            <div className="wz-step-line" />
+            <div className={`wz-step-item ${activeStep === 2 ? 'active' : ''}`}>
+              <div className="wz-step-circle">2</div>
+              <span className="wz-step-label">Submit & Review</span>
+            </div>
+          </div>
+        </div>
       </Modal.Header>
 
-      <Modal.Body>
+      {/* ── Body ── */}
+      <Modal.Body className="wz-body">
         {!task ? (
-          <Alert variant="warning" className="error-alert">
-            <span className="alert-icon">⚠️</span>
-            Task not found.
-          </Alert>
+          <div style={{ padding: '2rem' }}>
+            <Alert variant="warning">Task not found.</Alert>
+          </div>
         ) : (
           <>
-            {/* Step Indicator */}
-            <div className="step-indicator">
-              <div className={`step ${activeStep === 1 ? 'active' : activeStep > 1 ? 'completed' : ''}`}>
-                <div className="step-circle">1</div>
-                <div className="step-label">Task Details</div>
-              </div>
-              <div className="step-line"></div>
-              <div className={`step ${activeStep === 2 ? 'active' : ''}`}>
-                <div className="step-circle">2</div>
-                <div className="step-label">Submit & Review</div>
-              </div>
-            </div>
-
             {/* Alerts */}
-            {error && (
-              <Alert variant="danger" className="error-alert">
-                <span className="alert-icon">❌</span>
-                {error}
-              </Alert>
-            )}
-            {success && (
-              <Alert variant="success" className="success-alert">
-                <span className="alert-icon">✅</span>
-                {success}
-              </Alert>
-            )}
-
-            {/* Step 1: Task Details */}
-            {activeStep === 1 && (
-              <div className="step-content">
-                <div className="task-header">
-                  <h3 className="task-title">{task.title}</h3>
-                  <Badge className={`status-badge status-${submission?.status || 'pending'}`}>
-                    {submission?.status === 'completed' ? 'Submitted' : 'Pending Submission'}
-                  </Badge>
-                </div>
-
-                <div className="info-grid">
-                  <div className="info-card">
-                    <span className="info-icon">💰</span>
-                    <div className="info-content">
-                      <label>Budget</label>
-                      <strong>{task.amount ? `₹${task.amount.toLocaleString()}` : '—'}</strong>
-                    </div>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-icon">📅</span>
-                    <div className="info-content">
-                      <label>Start Date</label>
-                      <strong>{formatDate(task.startDate)}</strong>
-                    </div>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-icon">⏰</span>
-                    <div className="info-content">
-                      <label>Deadline</label>
-                      <strong>{formatDate(task.deadline)}</strong>
-                    </div>
-                  </div>
-                  <div className="info-card">
-                    <span className="info-icon">👥</span>
-                    <div className="info-content">
-                      <label>Spots Left</label>
-                      <strong>{task.spotsLeft ?? '—'}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                {task.description && (
-                  <div className="detail-section">
-                    <h6 className="section-title">
-                      <span className="section-icon">📝</span>
-                      Description
-                    </h6>
-                    <div className="rich-content" dangerouslySetInnerHTML={{ __html: task.description }} />
+            {(error || success) && (
+              <div className="wz-alerts">
+                {error && (
+                  <div className="wz-alert wz-alert-error">
+                    <span>✕</span> {error}
                   </div>
                 )}
-
-                {task.highlights && (
-                  <div className="detail-section">
-                    <h6 className="section-title">
-                      <span className="section-icon">⭐</span>
-                      Key Highlights
-                    </h6>
-                    <div className="rich-content" dangerouslySetInnerHTML={{ __html: task.highlights }} />
+                {success && (
+                  <div className="wz-alert wz-alert-success">
+                    <span>✓</span> {success}
                   </div>
                 )}
-
-                {task.acceptanceCriteria && (
-                  <div className="detail-section">
-                    <h6 className="section-title">
-                      <span className="section-icon">✅</span>
-                      Acceptance Criteria
-                    </h6>
-                    <div className="rich-content" dangerouslySetInnerHTML={{ __html: task.acceptanceCriteria }} />
-                  </div>
-                )}
-
-                {task.terms && (
-                  <div className="detail-section">
-                    <h6 className="section-title">
-                      <span className="section-icon">⚖️</span>
-                      Terms & Conditions
-                    </h6>
-                    <div className="rich-content" dangerouslySetInnerHTML={{ __html: task.terms }} />
-                  </div>
-                )}
-
-                <div className="detail-section">
-                  <h6 className="section-title">
-                    <span className="section-icon">👨‍🎓</span>
-                    Enrolled Students ({task.enrolledStudentsDetails?.length || 0})
-                  </h6>
-                  {task.enrolledStudentsDetails && task.enrolledStudentsDetails.length > 0 ? (
-                    <div className="student-grid">
-                      {task.enrolledStudentsDetails.map((student) => (
-                        <div key={student.studentId} className="student-card">
-                          <div className="student-avatar">👤</div>
-                          <div className="student-info">
-                            <strong>{student.name || 'Student'}</strong>
-                            <small>{student.email || 'No email'}</small>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted">No enrolled students found.</p>
-                  )}
-                </div>
               </div>
             )}
 
-            {/* Step 2: Upload Work */}
-            {activeStep === 2 && (
-              <div className="step-content">
-                <h3 className="step-title">Submit Work & Track Review</h3>
-                <p className="step-description">Left: submit or update your work. Right: see live admin review status and feedback.</p>
+            {/* ── Step 1: Task Details ── */}
+            {activeStep === 1 && (
+              <div className="wz-step1">
+                {/* Left sidebar */}
+                <aside className="wz-sidebar">
+                  {/* Status */}
+                  <div
+                    className="wz-status-chip"
+                    style={{ background: statusConfig.bg, border: `1px solid ${statusConfig.border}`, color: statusConfig.color }}
+                  >
+                    <span className="wz-status-dot" style={{ background: statusConfig.color }} />
+                    {statusConfig.label}
+                  </div>
 
-                <div className="submit-review-grid">
-                  <div className="submit-left-column">
-                    <div className="submission-box">
-                      <div className="submission-box-title">Upload Files + Repository</div>
-                      <Form.Group className="form-group-modern mb-3">
-                        <Form.Label>Upload Files</Form.Label>
-                        <Form.Control
-                          type="file"
-                          multiple
-                          onChange={handleAddFiles}
-                          className="file-input-modern"
-                          accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.sql,.json"
-                          disabled={!canEditSubmission}
-                        />
-                        <Form.Text className="text-muted">
-                          Upload code zip/source files, screenshots, and docs (Max 10MB per file). You can select files multiple times.
-                        </Form.Text>
-                      </Form.Group>
+                  {/* Task title */}
+                  <h2 className="wz-sidebar-title">{task.title}</h2>
 
-                      {files.length > 0 && (
-                        <div className="file-list mt-2 mb-3">
-                          <h6>Files to upload ({files.length}):</h6>
-                          {files.map((file, idx) => (
-                            <div key={idx} className="file-item">
-                              <span className="file-icon">📎</span>
-                              <span className="file-name">{file.name}</span>
-                              <span className="file-size">({(file.size / 1024).toFixed(0)} KB)</span>
-                              <Button
-                                size="sm"
-                                variant="outline-danger"
-                                className="ms-auto py-0 px-2"
-                                onClick={() => handleRemoveSelectedFile(idx)}
-                                disabled={!canEditSubmission}
+                  {/* Metadata */}
+                  <div className="wz-meta-section">
+                    <div className="wz-meta-label">TASK INFO</div>
+                    <div className="wz-meta-rows">
+                      {task.amount ? (
+                        <div className="wz-meta-row">
+                          <span className="wz-meta-key">Budget</span>
+                          <span className="wz-meta-val wz-orange">₹{task.amount.toLocaleString()}</span>
+                        </div>
+                      ) : null}
+                      {task.startDate && (
+                        <div className="wz-meta-row">
+                          <span className="wz-meta-key">
+                            <FaCalendarAlt className="wz-meta-icon" /> Start
+                          </span>
+                          <span className="wz-meta-val">{formatDate(task.startDate)}</span>
+                        </div>
+                      )}
+                      {task.deadline && (
+                        <div className="wz-meta-row">
+                          <span className="wz-meta-key">
+                            <FaCalendarAlt className="wz-meta-icon" /> Deadline
+                          </span>
+                          <span className="wz-meta-val">
+                            {formatDate(task.deadline)}
+                            {daysLeft && (
+                              <span
+                                className="wz-days-left"
+                                style={{ color: daysLeft.urgent ? '#de350b' : '#888' }}
                               >
-                                Remove
-                              </Button>
+                                {daysLeft.label}
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
+                      {typeof task.spotsLeft !== 'undefined' && (
+                        <div className="wz-meta-row">
+                          <span className="wz-meta-key">
+                            <FaUsers className="wz-meta-icon" /> Spots Left
+                          </span>
+                          <span className="wz-meta-val">{task.spotsLeft}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Enrolled students */}
+                  {(task.enrolledStudentsDetails?.length ?? 0) > 0 && (
+                    <div className="wz-meta-section">
+                      <div className="wz-meta-label">
+                        ENROLLED TEAM&nbsp;
+                        <span className="wz-meta-count">{task.enrolledStudentsDetails!.length}</span>
+                      </div>
+                      <div className="wz-students">
+                        {task.enrolledStudentsDetails!.map((s) => (
+                          <div key={s.studentId} className="wz-student-row">
+                            <div className="wz-student-avatar">
+                              {(s.name || 'S')[0].toUpperCase()}
                             </div>
-                          ))}
+                            <div className="wz-student-info">
+                              <span className="wz-student-name">{s.name || 'Student'}</span>
+                              <span className="wz-student-email">{s.email}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Score card — shown when evaluation exists */}
+                  {submission?.aiEvaluation && submission.aiEvaluation.score !== null && (
+                    <div className="wz-score-card">
+                      <div className="wz-score-card-header">
+                        <span className="wz-score-card-label">✦ AI Score</span>
+                        {submission.aiEvaluation.verifiedByAdmin && (
+                          <span className="wz-score-card-verified">✓ Verified</span>
+                        )}
+                      </div>
+
+                      {/* Ring + value */}
+                      <div className="wz-score-card-body">
+                        {(() => {
+                          const displayScore = submission.aiEvaluation.adminFinalScore ?? submission.aiEvaluation.score ?? 0
+                          const color = displayScore >= 75 ? '#36b37e' : displayScore >= 50 ? '#ff9a5c' : '#de350b'
+                          return (
+                            <>
+                              <div style={{
+                                width: 64, height: 64, borderRadius: '50%', flexShrink: 0,
+                                background: `conic-gradient(${color} ${displayScore * 3.6}deg, #1e1e1e 0deg)`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <div style={{
+                                  width: 50, height: 50, borderRadius: '50%', background: '#0d0d0d',
+                                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                  <span style={{ fontSize: '1rem', fontWeight: 800, color, lineHeight: 1 }}>{displayScore}</span>
+                                  <span style={{ fontSize: '0.55rem', color: '#555', lineHeight: 1 }}>/100</span>
+                                </div>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
+                                  <span style={{ fontSize: '1.1rem', fontWeight: 800, color }}>{displayScore}/100</span>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, background: '#7c3aed22', color: '#a78bfa', border: '1px solid #7c3aed44', borderRadius: '4px', padding: '0.05rem 0.45rem' }}>
+                                    {submission.aiEvaluation.grade}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.68rem', color: '#555' }}>
+                                  {submission.aiEvaluation.adminFinalScore != null ? 'Admin Adjusted' : 'AI Evaluated'}
+                                </div>
+                                {/* Relevance indicator */}
+                                {submission.aiEvaluation.relevanceCheck && (
+                                  <div style={{ fontSize: '0.63rem', marginTop: '0.3rem', color: submission.aiEvaluation.relevanceCheck.isRelevant ? '#36b37e' : '#de350b' }}>
+                                    {submission.aiEvaluation.relevanceCheck.isRelevant ? '✓ Relevant' : '⚠ Relevance issue'}
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )
+                        })()}
+                      </div>
+
+                      {/* Mini summary */}
+                      {submission.aiEvaluation.summary && (
+                        <div style={{ fontSize: '0.68rem', color: '#888', lineHeight: 1.5, marginTop: '0.55rem', borderTop: '1px solid #1a1a1a', paddingTop: '0.5rem' }}>
+                          {submission.aiEvaluation.summary.length > 120
+                            ? submission.aiEvaluation.summary.slice(0, 120) + '…'
+                            : submission.aiEvaluation.summary}
                         </div>
                       )}
 
-                      <Form.Group className="form-group-modern mb-0">
-                        <Form.Label>Code Repository / Drive Link</Form.Label>
-                        <Form.Control
-                          type="url"
-                          value={codeLink}
-                          onChange={(e) => setCodeLink(e.target.value)}
-                          placeholder={submission?.codeLink || 'https://github.com/your-repo or https://drive.google.com/...'}
-                          className="form-control-lg"
-                          disabled={!canEditSubmission}
-                        />
-                        <Form.Text className="text-muted">
-                          Share the link to your code repository (GitHub, GitLab) or Google Drive folder
-                        </Form.Text>
-                      </Form.Group>
+                      <button
+                        onClick={() => setActiveStep(2)}
+                        style={{ width: '100%', marginTop: '0.6rem', background: 'none', border: '1px solid #2a2a2a', color: '#a78bfa', borderRadius: '6px', padding: '0.3rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        View Full Report →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Quick action */}
+                  <button
+                    className="wz-goto-submit"
+                    onClick={() => setActiveStep(2)}
+                  >
+                    {submission?.status === 'completed'
+                      ? submission?.adminReviewStatus === 'rejected'
+                        ? 'Resubmit Work →'
+                        : 'View Submission →'
+                      : 'Submit Work →'}
+                  </button>
+                </aside>
+
+                {/* Right content */}
+                <main className="wz-main-content">
+                  {!task.description && !task.highlights && !task.acceptanceCriteria && !task.terms && (
+                    <div className="wz-no-content">No additional task details provided.</div>
+                  )}
+
+                  {task.description && (
+                    <section className="wz-content-block">
+                      <div className="wz-content-heading">
+                        <FaFileAlt className="wz-ch-icon" />
+                        Description
+                      </div>
+                      <div className="wz-rich" dangerouslySetInnerHTML={{ __html: task.description }} />
+                    </section>
+                  )}
+
+                  {task.highlights && (
+                    <section className="wz-content-block">
+                      <div className="wz-content-heading">
+                        <FaStar className="wz-ch-icon" />
+                        Key Highlights
+                      </div>
+                      <div className="wz-rich" dangerouslySetInnerHTML={{ __html: task.highlights }} />
+                    </section>
+                  )}
+
+                  {task.acceptanceCriteria && (
+                    <section className="wz-content-block">
+                      <div className="wz-content-heading">
+                        <FaCheckCircle className="wz-ch-icon" />
+                        Acceptance Criteria
+                      </div>
+                      <div className="wz-rich" dangerouslySetInnerHTML={{ __html: task.acceptanceCriteria }} />
+                    </section>
+                  )}
+
+                  {task.terms && (
+                    <section className="wz-content-block">
+                      <div className="wz-content-heading">
+                        <FaFileContract className="wz-ch-icon" />
+                        Terms & Conditions
+                      </div>
+                      <div className="wz-rich" dangerouslySetInnerHTML={{ __html: task.terms }} />
+                    </section>
+                  )}
+                </main>
+              </div>
+            )}
+
+            {/* ── Step 2: Submit & Review ── */}
+            {activeStep === 2 && (
+              <div className="wz-step2">
+                <div className="wz-step2-grid">
+                  {/* Left: upload form */}
+                  <div className="wz-submit-col">
+                    <div className="wz-col-title">
+                      <FaCode className="me-2" style={{ color: '#ff6b35' }} />
+                      Your Submission
                     </div>
 
-                    <Form.Group className="form-group-modern">
-                      <Form.Label>Submission Notes</Form.Label>
-                      <div className="rich-editor">
+                    {/* Code link */}
+                    <div className="wz-field">
+                      <label className="wz-label">Repository / Drive Link</label>
+                      <input
+                        type="url"
+                        className="wz-input"
+                        value={codeLink}
+                        onChange={(e) => setCodeLink(e.target.value)}
+                        placeholder={submission?.codeLink || 'https://github.com/your-repo or Google Drive...'}
+                        disabled={!canEditSubmission}
+                      />
+                      <span className="wz-help">GitHub, GitLab, or Google Drive link to your code</span>
+                    </div>
+
+                    {/* File upload */}
+                    <div className="wz-field">
+                      <label className="wz-label">Upload Files</label>
+                      <div className="wz-file-drop">
+                        <input
+                          type="file"
+                          multiple
+                          onChange={handleAddFiles}
+                          className="wz-file-input"
+                          accept=".zip,.rar,.7z,.pdf,.doc,.docx,.png,.jpg,.jpeg,.js,.jsx,.ts,.tsx,.py,.java,.c,.cpp,.cs,.php,.rb,.go,.rs,.sql,.json"
+                          disabled={!canEditSubmission}
+                          id="wz-file-upload"
+                        />
+                        <label htmlFor="wz-file-upload" className="wz-file-label">
+                          <span className="wz-file-icon">↑</span>
+                          <span>Choose files or drag & drop</span>
+                          <span className="wz-file-hint">ZIP, PDF, images, source files · Max 10MB each</span>
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Staged files */}
+                    {files.length > 0 && (
+                      <div className="wz-file-list">
+                        <div className="wz-file-list-title">Files to upload ({files.length})</div>
+                        {files.map((file, idx) => (
+                          <div key={idx} className="wz-file-item">
+                            <span className="wz-file-name">📎 {file.name}</span>
+                            <span className="wz-file-size">{(file.size / 1024).toFixed(0)} KB</span>
+                            <button
+                              className="wz-file-remove"
+                              onClick={() => handleRemoveSelectedFile(idx)}
+                              disabled={!canEditSubmission}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Previous attachments */}
+                    {submission?.attachments && submission.attachments.length > 0 && (
+                      <div className="wz-prev-files">
+                        <div className="wz-prev-files-title">Previously Uploaded</div>
+                        {submission.attachments.map((a, i) => (
+                          <a key={i} href={a.fileUrl} target="_blank" rel="noreferrer" className="wz-attachment">
+                            📄 {a.fileName || `Attachment ${i + 1}`}
+                          </a>
+                        ))}
+                        <label className="wz-replace-check">
+                          <input
+                            type="checkbox"
+                            checked={replaceAttachments}
+                            onChange={(e) => setReplaceAttachments(e.target.checked)}
+                            disabled={!canEditSubmission}
+                            className="wz-checkbox"
+                          />
+                          Replace existing attachments with new upload
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    <div className="wz-field">
+                      <label className="wz-label">Submission Notes</label>
+                      <div className="wz-quill-wrap">
                         <ReactQuill
                           theme="snow"
                           value={codeDescription}
                           onChange={setCodeDescription}
-                          placeholder="Explain your implementation, approach, and any challenges faced..."
+                          placeholder="Describe your implementation, approach, and challenges..."
                           modules={QUILL_MODULES}
                           readOnly={!canEditSubmission}
                         />
                       </div>
-                    </Form.Group>
+                    </div>
 
-                    <Form.Check
-                      type="checkbox"
-                      id="replace-attachments"
-                      label="Replace existing attachments"
-                      checked={replaceAttachments}
-                      onChange={(e) => setReplaceAttachments(e.target.checked)}
-                      className="custom-checkbox"
-                      disabled={!canEditSubmission}
-                    />
-
-                    {submission?.attachments && submission.attachments.length > 0 && (
-                      <div className="existing-files">
-                        <h6>Previously Uploaded Files</h6>
-                        <div className="attachment-list">
-                          {submission.attachments.map((a, i) => (
-                            <a key={i} href={a.fileUrl} target="_blank" rel="noreferrer" className="attachment-link">
-                              <span className="attachment-icon">📄</span>
-                              {a.fileName || `Attachment ${i + 1}`}
-                            </a>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="action-buttons">
+                    {/* Submit action */}
+                    <div className="wz-submit-action">
                       {canEditSubmission ? (
-                        <Button
-                          className="btn-submit"
+                        <button
+                          className="wz-btn-submit"
                           onClick={handleSubmitStep2}
                           disabled={submitting}
                         >
                           {submitting ? (
-                            <>
-                              <Spinner animation="border" size="sm" className="me-2" />
-                              Submitting Work...
-                            </>
-                          ) : submission?.adminReviewStatus === 'rejected' ? (
-                            'Re-submit Work for Review'
+                            <><Spinner animation="border" size="sm" className="me-2" />Submitting...</>
+                          ) : reviewStatus === 'rejected' ? (
+                            'Re-submit for Review'
                           ) : (
-                            'Submit Work for Review'
+                            'Submit for Review'
                           )}
-                        </Button>
+                        </button>
                       ) : (
-                        <Alert variant="info" className="mb-0">
+                        <div className="wz-locked-notice">
                           {isSubmissionLocked
-                            ? 'Your work is already submitted and waiting for admin review. Editing/resubmission is locked until review is completed.'
-                            : `Editing is disabled for ${submission?.adminReviewStatus || 'current'} status. You can only view details.`}
-                        </Alert>
+                            ? '⏳ Submission locked — waiting for admin review.'
+                            : 'Editing disabled for current status.'}
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="submit-right-column">
-                    <div className="review-status-card">
-                      <div className="status-header">
-                        <Badge bg={statusClass} className="status-badge-large">
-                          {submission?.status === 'completed' ? adminLabel : 'Not Submitted'}
-                        </Badge>
-                        <div className="submission-status">
-                          Task Status: <strong>{submission?.status === 'completed' ? 'Submitted' : 'Pending Submission'}</strong>
-                        </div>
+                  {/* Right: review status */}
+                  <div className="wz-review-col">
+                    <div className="wz-col-title">Review Status</div>
+
+                    {/* Status card */}
+                    <div
+                      className="wz-review-card"
+                      style={{ borderLeftColor: statusConfig.color }}
+                    >
+                      <div className="wz-review-status-row">
+                        <span
+                          className="wz-review-badge"
+                          style={{ background: statusConfig.bg, color: statusConfig.color, border: `1px solid ${statusConfig.border}` }}
+                        >
+                          <span className="wz-status-dot" style={{ background: statusConfig.color }} />
+                          {statusConfig.label}
+                        </span>
+                        <span className="wz-review-sub">
+                          {submissionStatus === 'completed' ? 'Work submitted' : 'Not submitted yet'}
+                        </span>
                       </div>
 
-                      {!submission || submission.status !== 'completed' ? (
-                        <div className="review-pending">
-                          <div className="review-icon">📤</div>
-                          <div className="review-content">
-                            <h5>Submit your work to start admin review.</h5>
-                            <p>Once you submit, this panel will show Pending, Approved, or Rejected status with feedback.</p>
-                          </div>
+                      {!submission || submissionStatus !== 'completed' ? (
+                        <div className="wz-review-body">
+                          <div className="wz-review-icon">📤</div>
+                          <p className="wz-review-msg">Submit your work on the left to start the review process.</p>
                         </div>
-                      ) : submission.adminReviewStatus === 'approved' ? (
-                        <div className="review-approved">
-                          <div className="review-icon">🎉</div>
-                          <div className="review-content">
-                            <h5>Congratulations! Your submission has been approved.</h5>
-                            {submission.adminFeedback && (
-                              <div className="review-feedback">
-                                <strong>Admin Feedback:</strong>
-                                <p>{submission.adminFeedback}</p>
-                              </div>
-                            )}
-                          </div>
+                      ) : reviewStatus === 'approved' ? (
+                        <div className="wz-review-body">
+                          <div className="wz-review-icon">🎉</div>
+                          <p className="wz-review-msg" style={{ color: '#36b37e' }}>
+                            Congratulations! Your submission has been approved.
+                          </p>
+                          {submission.adminFeedback && (
+                            <div className="wz-feedback-block wz-feedback-approved">
+                              <div className="wz-feedback-label">Admin Feedback</div>
+                              <p>{submission.adminFeedback}</p>
+                            </div>
+                          )}
                         </div>
-                      ) : submission.adminReviewStatus === 'rejected' ? (
-                        <div className="review-rejected">
-                          <div className="review-icon">📝</div>
-                          <div className="review-content">
-                            <h5>Your submission needs updates.</h5>
-                            {submission.adminFeedback && (
-                              <div className="review-feedback">
-                                <strong>Admin Feedback:</strong>
-                                <p>{submission.adminFeedback}</p>
-                              </div>
-                            )}
-                          </div>
+                      ) : reviewStatus === 'rejected' ? (
+                        <div className="wz-review-body">
+                          <div className="wz-review-icon">📋</div>
+                          <p className="wz-review-msg" style={{ color: '#de350b' }}>
+                            Your submission needs revision. Please review the feedback below.
+                          </p>
+                          {submission.adminFeedback && (
+                            <div className="wz-feedback-block wz-feedback-revision">
+                              <div className="wz-feedback-label">Admin Feedback</div>
+                              <p>{submission.adminFeedback}</p>
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="review-pending">
-                          <div className="review-icon">⏳</div>
-                          <div className="review-content">
-                            <h5>Your submission is pending review.</h5>
-                            <p>The admin will review your work and provide feedback soon. Please check back later.</p>
-                            {submission.adminFeedback && (
-                              <div className="review-feedback">
-                                <strong>Admin Suggestions:</strong>
-                                <p>{submission.adminFeedback}</p>
-                              </div>
-                            )}
-                          </div>
+                        <div className="wz-review-body">
+                          <div className="wz-review-icon">⏳</div>
+                          <p className="wz-review-msg">
+                            Your submission is under review. The admin will provide feedback soon.
+                          </p>
+                          {submission.adminFeedback && (
+                            <div className="wz-feedback-block">
+                              <div className="wz-feedback-label">Admin Note</div>
+                              <p>{submission.adminFeedback}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
 
+                    {/* Last submission details */}
                     {submission?.codeLink && (
-                      <div className="submission-details">
-                        <h6>Your Last Submission</h6>
-                        <div className="detail-item">
-                          <strong>Code Link:</strong>
-                          <a href={submission.codeLink} target="_blank" rel="noreferrer">{submission.codeLink}</a>
+                      <div className="wz-last-sub">
+                        <div className="wz-last-sub-title">Your Last Submission</div>
+                        <div className="wz-last-sub-row">
+                          <span className="wz-last-sub-key">Code Link</span>
+                          <a href={submission.codeLink} target="_blank" rel="noreferrer" className="wz-last-sub-link">
+                            {submission.codeLink}
+                          </a>
                         </div>
                         {submission.codeDescription && (
-                          <div className="detail-item">
-                            <strong>Submission Notes:</strong>
-                            <div dangerouslySetInnerHTML={{ __html: submission.codeDescription }} />
+                          <div className="wz-last-sub-row">
+                            <span className="wz-last-sub-key">Submission Notes</span>
+                            <div
+                              className="wz-rich wz-rich-sm"
+                              dangerouslySetInnerHTML={{ __html: submission.codeDescription }}
+                            />
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* AI Evaluation Results */}
+                    {submission?.aiEvaluation && submission.aiEvaluation.score !== null && (
+                      <div className="wz-ai-eval">
+                        {/* Header */}
+                        <div className="wz-ai-eval-header">
+                          <span className="wz-ai-eval-title">✦ AI Evaluation Report</span>
+                          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                            {submission.aiEvaluation.evaluatedAt && (
+                              <span style={{ fontSize: '0.62rem', color: '#555' }}>
+                                {new Date(submission.aiEvaluation.evaluatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </span>
+                            )}
+                            {submission.aiEvaluation.verifiedByAdmin && (
+                              <span className="wz-ai-verified">✓ Admin Verified</span>
+                            )}
+                            {/* PDF export */}
+                            <button
+                              onClick={() => {
+                                const ai = submission.aiEvaluation!
+                                const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>AI Evaluation Report</title><style>
+                                  body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#111;line-height:1.6}
+                                  h1{color:#7c3aed;font-size:22px;border-bottom:2px solid #7c3aed;padding-bottom:8px}
+                                  h2{color:#444;font-size:15px;margin-top:22px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+                                  .score-box{background:#f4f4ff;border:2px solid #7c3aed;border-radius:12px;padding:16px 24px;display:flex;align-items:center;gap:20px;margin:16px 0}
+                                  .score-num{font-size:48px;font-weight:900;color:#7c3aed;line-height:1}
+                                  .grade{background:#7c3aed;color:#fff;font-size:18px;font-weight:700;padding:4px 14px;border-radius:6px}
+                                  .relevance{padding:10px 14px;border-radius:8px;margin:10px 0;font-size:13px}
+                                  .ok{background:#e8faf2;border-left:4px solid #36b37e;color:#1a6b44}
+                                  .warn{background:#fff5f5;border-left:4px solid #de350b;color:#a00}
+                                  .criterion{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:6px;margin-bottom:6px;border:1px solid #eee}
+                                  .met{background:#f0faf4;border-left:3px solid #36b37e}
+                                  .fail{background:#fff5f5;border-left:3px solid #de350b}
+                                  .ann{padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:13px}
+                                  .critical{background:#fff0f0;border-left:3px solid #c00}
+                                  .major{background:#fff8f0;border-left:3px solid #e67e22}
+                                  .minor{background:#f8f8f8;border-left:3px solid #888}
+                                  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;margin-right:6px;text-transform:uppercase}
+                                  .tag-critical{background:#c00;color:#fff}.tag-major{background:#e67e22;color:#fff}.tag-minor{background:#888;color:#fff}
+                                  .col2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+                                  ul{padding-left:20px;margin:6px 0}li{margin-bottom:4px;font-size:13px}
+                                  .faculty-box{background:#f9f9ff;border:1px solid #d0c4ff;border-radius:8px;padding:14px 18px;margin:10px 0}
+                                  .footer{margin-top:40px;padding-top:12px;border-top:1px solid #ddd;font-size:11px;color:#999}
+                                </style></head><body>
+                                  <h1>AI Evaluation Report</h1>
+                                  <div class="score-box">
+                                    <div class="score-num">${ai.adminFinalScore ?? ai.score ?? 0}</div>
+                                    <div>
+                                      <div style="font-size:13px;color:#555;margin-bottom:4px">out of 100 ${ai.adminFinalScore != null ? '(Admin Adjusted)' : '(AI Score)'}</div>
+                                      <span class="grade">${ai.grade ?? '—'}</span>
+                                      ${ai.verifiedByAdmin ? '<div style="color:#36b37e;font-weight:700;font-size:13px;margin-top:6px">✓ Verified by Admin</div>' : ''}
+                                    </div>
+                                  </div>
+                                  ${ai.relevanceCheck ? `<div class="relevance ${ai.relevanceCheck.isRelevant ? 'ok' : 'warn'}">
+                                    <strong>${ai.relevanceCheck.isRelevant ? '✓ Your submission is relevant to the task' : '⚠ Your submission does not match the task requirements'}</strong><br/>
+                                    Relevance Score: ${ai.relevanceCheck.relevanceScore}/100 — ${ai.relevanceCheck.reason}
+                                  </div>` : ''}
+                                  ${ai.summary ? `<p style="font-style:italic;color:#444;background:#f7f7f7;padding:10px 14px;border-radius:6px;border-left:3px solid #7c3aed">${ai.summary}</p>` : ''}
+                                  ${ai.facultyReport?.overallAssessment ? `<h2>Faculty Assessment</h2><div class="faculty-box">
+                                    <p>${ai.facultyReport.overallAssessment}</p>
+                                    <p><strong>Technical Depth:</strong> ${ai.facultyReport.technicalDepth} &nbsp; <strong>Effort Level:</strong> ${ai.facultyReport.effortEstimate}</p>
+                                    ${ai.facultyReport.keyFindings?.length ? `<strong>Key Findings:</strong><ul>${ai.facultyReport.keyFindings.map(f=>`<li>${f}</li>`).join('')}</ul>` : ''}
+                                    ${ai.facultyReport.recommendations?.length ? `<strong>Recommendations:</strong><ul>${ai.facultyReport.recommendations.map(r=>`<li>${r}</li>`).join('')}</ul>` : ''}
+                                  </div>` : ''}
+                                  ${ai.criteriaEvaluation?.length ? `<h2>Criteria Evaluation</h2>${ai.criteriaEvaluation.map(c=>`<div class="criterion ${c.met?'met':'fail'}"><span style="font-size:16px;color:${c.met?'#36b37e':'#de350b'}">${c.met?'✓':'✕'}</span><div style="flex:1"><strong>${c.criterion}</strong><p style="font-size:13px;color:#555;margin:2px 0">${c.feedback}</p></div><span style="font-weight:700;color:${c.met?'#36b37e':'#de350b'}">${c.score}/${c.maxScore}</span></div>`).join('')}` : ''}
+                                  ${ai.codeAnnotations?.length ? `<h2>Code Review Annotations</h2>${ai.codeAnnotations.map(a=>`<div class="ann ${a.severity}"><span class="tag tag-${a.severity}">${a.severity}</span><strong>${a.issue}</strong><br/><span style="color:#666;font-size:12px">📍 ${a.location}</span><br/><span style="color:#444;font-size:12px">→ ${a.suggestion}</span></div>`).join('')}` : ''}
+                                  <div class="col2">
+                                    ${ai.strengths?.length ? `<div><h2 style="color:#36b37e">Strengths</h2><ul>${ai.strengths.map(s=>`<li>${s}</li>`).join('')}</ul></div>` : ''}
+                                    ${ai.improvements?.length ? `<div><h2 style="color:#e67e22">Areas to Improve</h2><ul>${ai.improvements.map(s=>`<li>${s}</li>`).join('')}</ul></div>` : ''}
+                                  </div>
+                                  <div class="footer">Eklav AI Evaluation · ${new Date().toLocaleString('en-IN')}</div>
+                                </body></html>`
+                                const w = window.open('', '_blank')
+                                if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 500) }
+                              }}
+                              style={{ background: 'none', border: '1px solid #2a2a2a', color: '#888', borderRadius: '5px', padding: '0.15rem 0.5rem', fontSize: '0.65rem', cursor: 'pointer' }}
+                            >
+                              📄 PDF
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Relevance banner */}
+                        {submission.aiEvaluation.relevanceCheck && !submission.aiEvaluation.relevanceCheck.isRelevant && (
+                          <div style={{ background: '#de350b12', border: '1px solid #de350b44', borderLeft: '3px solid #de350b', borderRadius: '6px', padding: '0.5rem 0.7rem', marginBottom: '0.6rem', fontSize: '0.72rem', color: '#ff7070' }}>
+                            <strong>⚠ Your submission does not appear to match this task</strong>
+                            <div style={{ color: '#cc5555', marginTop: '0.2rem', fontSize: '0.68rem' }}>{submission.aiEvaluation.relevanceCheck.reason}</div>
+                          </div>
+                        )}
+                        {submission.aiEvaluation.relevanceCheck?.isRelevant && (
+                          <div style={{ background: '#36b37e0a', border: '1px solid #36b37e33', borderRadius: '6px', padding: '0.3rem 0.65rem', marginBottom: '0.55rem', fontSize: '0.68rem', color: '#36b37e' }}>
+                            ✓ Submission is relevant to task · {submission.aiEvaluation.relevanceCheck.relevanceScore}/100
+                          </div>
+                        )}
+
+                        {/* Score ring */}
+                        <div className="wz-ai-score-row">
+                          <div
+                            className="wz-ai-score-ring"
+                            style={{
+                              background: `conic-gradient(${
+                                (submission.aiEvaluation.adminFinalScore ?? submission.aiEvaluation.score)! >= 75 ? '#36b37e' :
+                                (submission.aiEvaluation.adminFinalScore ?? submission.aiEvaluation.score)! >= 50 ? '#ff9a5c' : '#de350b'
+                              } ${(submission.aiEvaluation.adminFinalScore ?? submission.aiEvaluation.score)! * 3.6}deg, #1a1a1a 0deg)`,
+                            }}
+                          >
+                            <div className="wz-ai-score-inner">
+                              <span className="wz-ai-score-num">
+                                {submission.aiEvaluation.adminFinalScore ?? submission.aiEvaluation.score}
+                              </span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="wz-ai-score-label">
+                              {submission.aiEvaluation.adminFinalScore != null
+                                ? `${submission.aiEvaluation.adminFinalScore}/100`
+                                : `${submission.aiEvaluation.score}/100`}
+                              <span className="wz-ai-grade">{submission.aiEvaluation.grade}</span>
+                            </div>
+                            <div className="wz-ai-score-sub">
+                              {submission.aiEvaluation.verifiedByAdmin ? 'Admin Verified Score' : 'AI Score'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Summary */}
+                        {submission.aiEvaluation.summary && (
+                          <p className="wz-ai-summary">{submission.aiEvaluation.summary}</p>
+                        )}
+
+                        {/* Faculty Report */}
+                        {submission.aiEvaluation.facultyReport?.overallAssessment && (
+                          <div style={{ background: '#0d0a1f', border: '1px solid #2d1f5a', borderRadius: '6px', padding: '0.75rem', marginBottom: '0.65rem' }}>
+                            <div style={{ fontSize: '0.63rem', fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.4rem' }}>Faculty Assessment</div>
+                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
+                              <span style={{ fontSize: '0.68rem', color: '#888' }}>Technical Depth: <strong style={{ color: '#a78bfa' }}>{submission.aiEvaluation.facultyReport.technicalDepth}</strong></span>
+                              <span style={{ fontSize: '0.68rem', color: '#888' }}>Effort: <strong style={{ color: '#a78bfa' }}>{submission.aiEvaluation.facultyReport.effortEstimate}</strong></span>
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#bbb', lineHeight: 1.6, marginBottom: '0.5rem' }}>{submission.aiEvaluation.facultyReport.overallAssessment}</div>
+                            {submission.aiEvaluation.facultyReport.keyFindings?.length > 0 && (
+                              <div style={{ marginBottom: '0.35rem' }}>
+                                <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Key Findings</div>
+                                {submission.aiEvaluation.facultyReport.keyFindings.map((f, i) => (
+                                  <div key={i} style={{ fontSize: '0.7rem', color: '#999', display: 'flex', gap: '0.3rem', marginBottom: '0.15rem' }}>
+                                    <span style={{ color: '#7c3aed', flexShrink: 0 }}>▸</span>{f}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {submission.aiEvaluation.facultyReport.recommendations?.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: '0.6rem', color: '#555', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.2rem' }}>Recommendations</div>
+                                {submission.aiEvaluation.facultyReport.recommendations.map((r, i) => (
+                                  <div key={i} style={{ fontSize: '0.7rem', color: '#999', display: 'flex', gap: '0.3rem', marginBottom: '0.15rem' }}>
+                                    <span style={{ color: '#ff9a5c', flexShrink: 0 }}>→</span>{r}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Criteria */}
+                        {submission.aiEvaluation.criteriaEvaluation?.length > 0 && (
+                          <div className="wz-ai-criteria">
+                            <div style={{ fontSize: '0.63rem', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>Criteria Evaluation</div>
+                            {submission.aiEvaluation.criteriaEvaluation.map((c, i) => (
+                              <div key={i} className="wz-ai-criterion" style={{ borderLeft: `2px solid ${c.met ? '#36b37e' : '#de350b'}` }}>
+                                <span className="wz-ai-criterion-icon" style={{ color: c.met ? '#36b37e' : '#de350b' }}>{c.met ? '✓' : '✕'}</span>
+                                <div className="wz-ai-criterion-text">
+                                  <span className="wz-ai-criterion-name">{c.criterion}</span>
+                                  <span className="wz-ai-criterion-fb">{c.feedback}</span>
+                                </div>
+                                <span className="wz-ai-criterion-score" style={{ color: c.met ? '#36b37e' : '#de350b' }}>{c.score}/{c.maxScore}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Code Annotations */}
+                        {submission.aiEvaluation.codeAnnotations && submission.aiEvaluation.codeAnnotations.length > 0 && (
+                          <div style={{ marginBottom: '0.65rem' }}>
+                            <div style={{ fontSize: '0.63rem', fontWeight: 700, color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '0.35rem' }}>Code Review</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                              {submission.aiEvaluation.codeAnnotations.map((a, i) => {
+                                const sevColor = a.severity === 'critical' ? '#de350b' : a.severity === 'major' ? '#ff9a5c' : '#888'
+                                return (
+                                  <div key={i} style={{ background: '#0a0a0a', borderRadius: '5px', padding: '0.45rem 0.6rem', borderLeft: `2px solid ${sevColor}` }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.15rem' }}>
+                                      <span style={{ fontSize: '0.58rem', fontWeight: 700, background: `${sevColor}22`, color: sevColor, borderRadius: '4px', padding: '0.05rem 0.35rem', textTransform: 'uppercase' }}>{a.severity}</span>
+                                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#ccc' }}>{a.issue}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.65rem', color: '#555', marginBottom: '0.1rem' }}>📍 {a.location}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#888' }}>→ {a.suggestion}</div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Strengths & Improvements */}
+                        {(submission.aiEvaluation.strengths?.length > 0 || submission.aiEvaluation.improvements?.length > 0) && (
+                          <div className="wz-ai-sw">
+                            {submission.aiEvaluation.strengths?.length > 0 && (
+                              <div>
+                                <div className="wz-ai-sw-title" style={{ color: '#36b37e' }}>Strengths</div>
+                                {submission.aiEvaluation.strengths.map((s, i) => (
+                                  <div key={i} className="wz-ai-sw-item"><span style={{ color: '#36b37e' }}>+</span> {s}</div>
+                                ))}
+                              </div>
+                            )}
+                            {submission.aiEvaluation.improvements?.length > 0 && (
+                              <div>
+                                <div className="wz-ai-sw-title" style={{ color: '#ff9a5c' }}>Areas to Improve</div>
+                                {submission.aiEvaluation.improvements.map((s, i) => (
+                                  <div key={i} className="wz-ai-sw-item"><span style={{ color: '#ff9a5c' }}>→</span> {s}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Awaiting evaluation notice */}
+                    {submission && submissionStatus === 'completed' && !submission.aiEvaluation && (
+                      <div className="wz-ai-pending">
+                        ✦ AI evaluation will appear here once the admin runs the evaluation on your submission.
                       </div>
                     )}
                   </div>
@@ -565,761 +957,1154 @@ const StudentTaskSubmissionWizard = ({ show, onHide, task, token, baseURL, onSub
         )}
       </Modal.Body>
 
-      <Modal.Footer>
-        <Button variant="outline-light" onClick={onHide}>
-          Close
-        </Button>
-        {activeStep > 1 && (
-          <Button
-            variant="outline-orange"
-            onClick={() => setActiveStep((activeStep - 1) as 1 | 2)}
-          >
-            ← Back
-          </Button>
-        )}
-        {activeStep < 2 && (
-          <Button
-            className="btn-primary-custom"
-            onClick={() => {
-              if (activeStep === 1) {
-                setActiveStep(2)
-                return
-              }
-
-              setActiveStep((activeStep + 1) as 1 | 2)
-            }}
-          >
-            Continue →
-          </Button>
-        )}
+      {/* ── Footer ── */}
+      <Modal.Footer className="wz-footer">
+        <button className="wz-btn-ghost" onClick={onHide}>Close</button>
+        <div className="wz-footer-right">
+          {activeStep > 1 && (
+            <button className="wz-btn-back" onClick={() => setActiveStep(1)}>
+              ← Back
+            </button>
+          )}
+          {activeStep < 2 && (
+            <button className="wz-btn-next" onClick={() => setActiveStep(2)}>
+              Continue →
+            </button>
+          )}
+        </div>
       </Modal.Footer>
 
       <style>{`
+        /* ── Wizard shell ── */
         .student-task-wizard .modal-content {
-          background: #000000;
+          background: #070707;
           border: none;
           border-radius: 0;
-          color: #ffffff;
+          color: #f0f0f0;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
         }
 
         .student-task-wizard .modal-header {
-          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
-          border-bottom: 2px solid #ff6b35;
-          padding: 1.5rem 2rem;
-        }
-
-        .student-task-wizard .modal-title {
-          color: #ff6b35;
-          font-size: 1.5rem;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .modal-icon {
-          font-size: 1.5rem;
-        }
-
-        .student-task-wizard .modal-body {
-          padding: 2rem;
-          overflow-y: auto;
-          max-height: calc(100vh - 200px);
-        }
-
-        .student-task-wizard .modal-footer {
-          border-top: 1px solid #333333;
-          padding: 1.5rem 2rem;
           background: #0a0a0a;
-          gap: 1rem;
+          border-bottom: 1px solid #1a1a1a;
+          padding: 1rem 1.5rem;
+          align-items: flex-start;
+          flex-shrink: 0;
         }
 
-        /* Step Indicator */
-        .step-indicator {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-bottom: 2rem;
-          padding: 1rem;
-          background: #0a0a0a;
-          border-radius: 16px;
-          border: 1px solid #222222;
+        .student-task-wizard .modal-header .btn-close {
+          filter: invert(1) brightness(0.55);
+          margin-top: 0.25rem;
         }
 
-        .step {
+        .wz-header-inner {
           display: flex;
           flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
+          gap: 0.7rem;
           flex: 1;
-          position: relative;
-          z-index: 1;
-        }
-
-        .step-circle {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: #1a1a1a;
-          border: 2px solid #333333;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-weight: 600;
-          color: #888888;
-          transition: all 0.3s ease;
-        }
-
-        .step.active .step-circle {
-          background: #ff6b35;
-          border-color: #ff6b35;
-          color: #ffffff;
-          box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
-        }
-
-        .step.completed .step-circle {
-          background: #28a745;
-          border-color: #28a745;
-          color: #ffffff;
-        }
-
-        .step-label {
-          font-size: 0.8rem;
-          color: #888888;
-          font-weight: 500;
-        }
-
-        .step.active .step-label {
-          color: #ff6b35;
-        }
-
-        .step-line {
-          flex: 1;
-          height: 2px;
-          background: #333333;
-          margin: 0 0.5rem;
-          margin-bottom: 1.5rem;
-        }
-
-        /* Alerts */
-        .error-alert, .success-alert {
-          background: rgba(220, 53, 69, 0.1);
-          border: 1px solid #dc3545;
-          border-radius: 12px;
-          color: #ffffff;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .success-alert {
-          background: rgba(40, 167, 69, 0.1);
-          border-color: #28a745;
-        }
-
-        .alert-icon {
-          font-size: 1.2rem;
-        }
-
-        /* Step Content */
-        .step-content {
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .task-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #333333;
-        }
-
-        .task-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #ff6b35;
-          margin: 0;
-        }
-
-        .status-badge {
-          padding: 0.5rem 1rem;
-          font-size: 0.85rem;
-          border-radius: 8px;
-        }
-
-        .status-badge.status-completed {
-          background: #28a745;
-        }
-
-        .status-badge.status-pending {
-          background: #ffc107;
-          color: #000;
-        }
-
-        /* Info Grid */
-        .info-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 1rem;
-          margin-bottom: 2rem;
-        }
-
-        .info-card {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 12px;
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          transition: all 0.3s ease;
-        }
-
-        .info-card:hover {
-          border-color: #ff6b35;
-          transform: translateY(-2px);
-        }
-
-        .info-icon {
-          font-size: 1.5rem;
-        }
-
-        .info-content {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .info-content label {
-          font-size: 0.75rem;
-          color: #888888;
-          margin: 0;
-        }
-
-        .info-content strong {
-          font-size: 1rem;
-          color: #ffffff;
-        }
-
-        /* Detail Sections */
-        .detail-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .section-title {
-          color: #ff6b35;
-          font-size: 1rem;
-          font-weight: 600;
-          margin-bottom: 0.75rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .section-icon {
-          font-size: 1rem;
-        }
-
-        .rich-content {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 10px;
-          padding: 1rem;
-          color: #e0e0e0;
-          line-height: 1.6;
-        }
-
-        /* Student Grid */
-        .student-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-          gap: 0.75rem;
-        }
-
-        .student-card {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 10px;
-          padding: 0.75rem;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          transition: all 0.3s ease;
-        }
-
-        .student-card:hover {
-          border-color: #ff6b35;
-        }
-
-        .student-avatar {
-          font-size: 1.5rem;
-        }
-
-        .student-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-
-        .student-info strong {
-          font-size: 0.9rem;
-          color: #ffffff;
-        }
-
-        .student-info small {
-          font-size: 0.75rem;
-          color: #ff9a5c;
-        }
-
-        /* Form Styles */
-        .step-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #ff6b35;
-          margin-bottom: 0.5rem;
-        }
-
-        .step-description {
-          color: #888888;
-          margin-bottom: 1.5rem;
-        }
-
-        .submit-review-grid {
-          display: grid;
-          grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-          gap: 1rem;
-          align-items: start;
-        }
-
-        .submit-left-column,
-        .submit-right-column {
           min-width: 0;
         }
 
-        .submission-box {
-          margin-bottom: 1rem;
-          padding: 1rem 1.1rem;
-          border-radius: 12px;
-          border: 1px solid rgba(255, 107, 53, 0.24);
-          background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(255, 107, 53, 0.03));
+        /* Breadcrumb */
+        .wz-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.74rem;
+          color: #555;
         }
 
-        .submission-box-title {
-          font-size: 0.9rem;
-          font-weight: 600;
-          color: #ffb08f;
-          margin-bottom: 0.65rem;
+        .wz-breadcrumb-sep {
+          font-size: 0.6rem;
+          color: #444;
         }
 
-        .form-group-modern {
-          margin-bottom: 1.5rem;
-        }
-
-        .form-group-modern .form-label {
-          color: #ffffff;
+        .wz-breadcrumb-current {
+          color: #ccc;
           font-weight: 500;
-          margin-bottom: 0.5rem;
-        }
-
-        .form-control-lg, .form-select {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          color: #ffffff;
-          border-radius: 10px;
-          padding: 0.75rem 1rem;
-        }
-
-        .form-control-lg:focus, .form-select:focus {
-          background: #0a0a0a;
-          border-color: #ff6b35;
-          color: #ffffff;
-          box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
-        }
-
-        .text-muted {
-          color: #888888 !important;
-          font-size: 0.8rem;
-          margin-top: 0.5rem;
-        }
-
-        /* Rich Editor */
-        .rich-editor {
-          background: #0a0a0a;
-          border-radius: 10px;
+          white-space: nowrap;
           overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 300px;
         }
 
-        .rich-editor .ql-toolbar {
-          background: #0a0a0a;
-          border-color: #333333;
+        /* Step indicator */
+        .wz-stepper {
+          display: flex;
+          align-items: center;
+          gap: 0;
         }
 
-        .rich-editor .ql-container {
-          min-height: 200px;
-          font-size: 0.95rem;
-        }
-
-        .rich-editor .ql-editor {
-          min-height: 180px;
-          color: #ffffff;
-        }
-
-        .rich-editor .ql-editor.ql-blank::before {
-          color: #666666;
-        }
-
-        .rich-editor .ql-stroke {
-          stroke: #ffffff;
-        }
-
-        .rich-editor .ql-fill {
-          fill: #ffffff;
-        }
-
-        .rich-editor .ql-picker {
-          color: #ffffff;
-        }
-
-        .rich-editor .ql-picker-options {
-          background: #0a0a0a;
-          border-color: #333333;
-        }
-
-        /* File Input */
-        .file-input-modern {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          color: #ffffff;
-          padding: 0.5rem;
-          border-radius: 10px;
-        }
-
-        .file-input-modern::-webkit-file-upload-button {
-          background: #ff6b35;
-          border: none;
-          color: #ffffff;
-          padding: 0.5rem 1rem;
-          border-radius: 6px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin-right: 1rem;
-        }
-
-        .file-input-modern::-webkit-file-upload-button:hover {
-          background: #ff9a5c;
-        }
-
-        /* File List */
-        .file-list, .existing-files {
-          margin: 1rem 0;
-          padding: 1rem;
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 10px;
-        }
-
-        .file-list h6, .existing-files h6 {
-          color: #ff6b35;
-          font-size: 0.9rem;
-          margin-bottom: 0.75rem;
-        }
-
-        .file-item {
+        .wz-step-item {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          padding: 0.5rem;
-          border-bottom: 1px solid #222222;
         }
 
-        .file-item:last-child {
-          border-bottom: none;
+        .wz-step-circle {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.7rem;
+          font-weight: 700;
+          background: #1a1a1a;
+          border: 1px solid #444;
+          color: #666;
+          flex-shrink: 0;
+          transition: all 0.2s;
         }
 
-        .file-icon {
-          font-size: 1rem;
+        .wz-step-item.active .wz-step-circle {
+          background: #ff6b35;
+          border-color: #ff6b35;
+          color: #fff;
+          box-shadow: 0 0 12px rgba(255,107,53,0.35);
         }
 
-        .file-name {
+        .wz-step-item.done .wz-step-circle {
+          background: #36b37e;
+          border-color: #36b37e;
+          color: #fff;
+        }
+
+        .wz-step-label {
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #555;
+          transition: color 0.2s;
+        }
+
+        .wz-step-item.active .wz-step-label { color: #ff6b35; }
+        .wz-step-item.done .wz-step-label { color: #36b37e; }
+
+        .wz-step-line {
+          width: 60px;
+          height: 1px;
+          background: #2a2a2a;
+          margin: 0 0.75rem;
+          flex-shrink: 0;
+        }
+
+        /* ── Body ── */
+        .wz-body {
           flex: 1;
-          color: #ffffff;
+          overflow: hidden;
+          padding: 0 !important;
+          display: flex;
+          flex-direction: column;
         }
 
-        .file-size {
-          color: #888888;
-          font-size: 0.8rem;
-        }
-
-        .attachment-list {
+        /* Alerts */
+        .wz-alerts {
+          padding: 0.75rem 1.5rem 0;
+          flex-shrink: 0;
           display: flex;
           flex-direction: column;
           gap: 0.5rem;
         }
 
-        .attachment-link {
+        .wz-alert {
           display: flex;
           align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem;
-          color: #ff9a5c;
-          text-decoration: none;
-          border-radius: 6px;
-          transition: all 0.3s ease;
+          gap: 0.6rem;
+          padding: 0.65rem 1rem;
+          border-radius: 8px;
+          font-size: 0.85rem;
+          font-weight: 500;
         }
 
-        .attachment-link:hover {
-          background: rgba(255, 107, 53, 0.1);
-          color: #ff6b35;
+        .wz-alert-error {
+          background: rgba(222,53,11,0.1);
+          border: 1px solid rgba(222,53,11,0.35);
+          color: #ff7760;
         }
 
-        .attachment-icon {
-          font-size: 1rem;
+        .wz-alert-success {
+          background: rgba(54,179,126,0.1);
+          border: 1px solid rgba(54,179,126,0.35);
+          color: #57d9a3;
         }
 
-        /* Checkbox */
-        .custom-checkbox {
-          margin: 1rem 0;
-          color: #ffffff;
+        /* ── Step 1 layout ── */
+        .wz-step1 {
+          flex: 1;
+          display: grid;
+          grid-template-columns: 320px 1fr;
+          overflow: hidden;
+          animation: wz-fadein 0.2s ease;
         }
 
-        .custom-checkbox .form-check-input {
-          background-color: #0a0a0a;
-          border-color: #333333;
-          width: 1.2rem;
-          height: 1.2rem;
-          cursor: pointer;
+        @keyframes wz-fadein {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
         }
 
-        .custom-checkbox .form-check-input:checked {
-          background-color: #ff6b35;
-          border-color: #ff6b35;
-        }
-
-        .custom-checkbox .form-check-label {
-          padding-left: 0.5rem;
-          cursor: pointer;
-        }
-
-        /* Review Status Card */
-        .review-status-card {
-          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
-          border: 1px solid #333333;
-          border-radius: 16px;
+        /* Sidebar */
+        .wz-sidebar {
+          background: #0a0a0a;
+          border-right: 1px solid #1a1a1a;
           padding: 1.5rem;
-          margin-bottom: 1.5rem;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 0;
         }
 
-        .status-header {
+        .wz-sidebar::-webkit-scrollbar { width: 4px; }
+        .wz-sidebar::-webkit-scrollbar-track { background: transparent; }
+        .wz-sidebar::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+
+        .wz-status-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          padding: 0.28rem 0.75rem;
+          border-radius: 999px;
+          width: fit-content;
+          margin-bottom: 0.85rem;
+        }
+
+        .wz-status-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          flex-shrink: 0;
+        }
+
+        .wz-sidebar-title {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #f0f0f0;
+          line-height: 1.4;
+          margin-bottom: 1.25rem;
+        }
+
+        .wz-meta-section {
+          margin-bottom: 1.25rem;
+          padding-bottom: 1.25rem;
+          border-bottom: 1px solid #141414;
+        }
+
+        .wz-meta-section:last-of-type {
+          border-bottom: none;
+        }
+
+        .wz-meta-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          letter-spacing: 0.8px;
+          color: #444;
+          text-transform: uppercase;
+          margin-bottom: 0.65rem;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .wz-meta-count {
+          background: #1a1a1a;
+          color: #666;
+          font-size: 0.62rem;
+          padding: 0 0.35rem;
+          border-radius: 10px;
+          letter-spacing: 0;
+        }
+
+        .wz-meta-rows {
+          display: flex;
+          flex-direction: column;
+          gap: 0.55rem;
+        }
+
+        .wz-meta-row {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #333333;
-        }
-
-        .status-badge-large {
-          font-size: 1rem;
-          padding: 0.5rem 1rem;
-          border-radius: 8px;
-        }
-
-        .submission-status {
-          color: #888888;
-          font-size: 0.9rem;
-        }
-
-        .review-approved, .review-rejected, .review-pending {
-          display: flex;
-          gap: 1.5rem;
           align-items: flex-start;
+          gap: 0.5rem;
         }
 
-        .review-icon {
-          font-size: 3rem;
+        .wz-meta-key {
+          font-size: 0.75rem;
+          color: #666;
+          display: flex;
+          align-items: center;
+          gap: 0.3rem;
+          flex-shrink: 0;
         }
 
-        .review-content h5 {
-          color: #ff6b35;
+        .wz-meta-icon {
+          font-size: 0.65rem;
+          color: #555;
+        }
+
+        .wz-meta-val {
+          font-size: 0.78rem;
+          color: #ccc;
+          font-weight: 500;
+          text-align: right;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 0.1rem;
+        }
+
+        .wz-orange { color: #ff6b35 !important; font-weight: 700 !important; }
+
+        .wz-days-left {
+          font-size: 0.68rem;
+          font-weight: 600;
+        }
+
+        /* Students */
+        .wz-students {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .wz-student-row {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+        }
+
+        .wz-student-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ff6b35, #ff9a5c);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #fff;
+          flex-shrink: 0;
+        }
+
+        .wz-student-info {
+          display: flex;
+          flex-direction: column;
+          gap: 0.05rem;
+          min-width: 0;
+        }
+
+        .wz-student-name {
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #ddd;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .wz-student-email {
+          font-size: 0.68rem;
+          color: #555;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        /* Quick action button */
+        /* AI Score card in sidebar */
+        .wz-score-card {
+          background: #0d0a1f;
+          border: 1px solid #2d1f5a;
+          border-radius: 10px;
+          padding: 0.85rem;
           margin-bottom: 0.75rem;
         }
 
-        .review-feedback {
-          margin-top: 1rem;
-          padding: 1rem;
-          background: rgba(255, 107, 53, 0.1);
-          border-radius: 10px;
+        .wz-score-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 0.65rem;
         }
 
-        .review-feedback strong {
+        .wz-score-card-label {
+          font-size: 0.65rem;
+          font-weight: 700;
+          color: #a78bfa;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .wz-score-card-verified {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: #36b37e;
+          background: #36b37e12;
+          border: 1px solid #36b37e44;
+          border-radius: 20px;
+          padding: 0.08rem 0.4rem;
+        }
+
+        .wz-score-card-body {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .wz-goto-submit {
+          margin-top: auto;
+          background: transparent;
+          border: 1px solid #ff6b35;
           color: #ff6b35;
-          display: block;
-          margin-bottom: 0.5rem;
+          border-radius: 8px;
+          padding: 0.6rem 1rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.18s;
+          text-align: center;
+          width: 100%;
         }
 
-        .review-feedback p {
-          margin: 0;
+        .wz-goto-submit:hover {
+          background: #ff6b35;
+          color: #fff;
+        }
+
+        /* Main content area */
+        .wz-main-content {
+          padding: 1.75rem 2rem;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .wz-main-content::-webkit-scrollbar { width: 5px; }
+        .wz-main-content::-webkit-scrollbar-track { background: transparent; }
+        .wz-main-content::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+
+        .wz-no-content {
+          color: #444;
+          font-size: 0.88rem;
+          padding: 2rem 0;
+          text-align: center;
+        }
+
+        .wz-content-block {
+          margin-bottom: 0.6rem;
+          padding-bottom: 0.6rem;
+          border-bottom: 1px solid #111;
+        }
+
+        .wz-content-block:last-child {
+          border-bottom: none;
+          margin-bottom: 0;
+          padding-bottom: 0;
+        }
+
+        .wz-rich > *:last-child { margin-bottom: 0 !important; }
+        .wz-rich ul:last-child, .wz-rich ol:last-child { margin-bottom: 0; }
+
+        .wz-content-heading {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.6px;
+          text-transform: uppercase;
+          color: #888;
+          margin-bottom: 0.85rem;
+          padding-left: 0.6rem;
+          border-left: 2px solid #ff6b35;
+        }
+
+        .wz-ch-icon {
+          color: #ff6b35;
+          font-size: 0.72rem;
+        }
+
+        .wz-rich {
+          font-size: 0.88rem;
+          color: #bbb;
+          line-height: 1.7;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+
+        .wz-rich p { margin-bottom: 0.5rem; }
+        .wz-rich ul, .wz-rich ol { padding-left: 1.4rem; }
+        .wz-rich li { margin-bottom: 0.25rem; }
+        .wz-rich strong { color: #e8e8e8; }
+        .wz-rich a { color: #ff6b35; }
+        .wz-rich h1, .wz-rich h2, .wz-rich h3 { color: #e0e0e0; margin-bottom: 0.5rem; }
+        .wz-rich pre, .wz-rich code { white-space: pre-wrap !important; word-break: break-word; }
+        .wz-rich img, .wz-rich video { max-width: 100%; height: auto; }
+
+        .wz-rich-sm { font-size: 0.8rem; }
+
+        /* ── Step 2 ── */
+        .wz-step2 {
+          flex: 1;
+          overflow-y: auto;
+          padding: 1.5rem 2rem;
+          animation: wz-fadein 0.2s ease;
+        }
+
+        .wz-step2::-webkit-scrollbar { width: 5px; }
+        .wz-step2::-webkit-scrollbar-track { background: transparent; }
+        .wz-step2::-webkit-scrollbar-thumb { background: #222; border-radius: 3px; }
+
+        .wz-step2-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+          gap: 1.5rem;
+          align-items: start;
+        }
+
+        .wz-col-title {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #888;
+          text-transform: uppercase;
+          letter-spacing: 0.6px;
+          margin-bottom: 1.1rem;
+          display: flex;
+          align-items: center;
+        }
+
+        /* Submit column */
+        .wz-submit-col, .wz-review-col {
+          display: flex;
+          flex-direction: column;
+          gap: 1rem;
+        }
+
+        .wz-field {
+          display: flex;
+          flex-direction: column;
+          gap: 0.4rem;
+        }
+
+        .wz-label {
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #aaa;
+        }
+
+        .wz-input {
+          background: #0d0d0d;
+          border: 1px solid #2a2a2a;
+          border-radius: 8px;
+          padding: 0.6rem 0.85rem;
+          color: #f0f0f0;
+          font-size: 0.85rem;
+          outline: none;
+          transition: border-color 0.18s;
+          width: 100%;
+        }
+
+        .wz-input:focus { border-color: #ff6b35; }
+        .wz-input:disabled { opacity: 0.5; cursor: not-allowed; }
+        .wz-input::placeholder { color: #444; }
+
+        .wz-help {
+          font-size: 0.72rem;
+          color: #555;
+        }
+
+        /* File drop zone */
+        .wz-file-drop {
+          position: relative;
+        }
+
+        .wz-file-input {
+          position: absolute;
+          width: 0;
+          height: 0;
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .wz-file-input:not(:disabled) + .wz-file-label {
+          cursor: pointer;
+        }
+
+        .wz-file-label {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+          padding: 1.25rem;
+          border: 1px dashed #2a2a2a;
+          border-radius: 8px;
+          background: #0d0d0d;
+          color: #666;
+          font-size: 0.8rem;
+          text-align: center;
+          transition: border-color 0.18s, background 0.18s;
+        }
+
+        .wz-file-label:hover {
+          border-color: #ff6b35;
+          background: rgba(255,107,53,0.05);
+          color: #ff6b35;
+        }
+
+        .wz-file-icon {
+          font-size: 1.5rem;
+          font-weight: 300;
+          color: #555;
+        }
+
+        .wz-file-hint {
+          font-size: 0.68rem;
+          color: #444;
+        }
+
+        /* File list */
+        .wz-file-list {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .wz-file-list-title {
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #666;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          padding: 0.5rem 0.85rem;
+          background: #111;
+          border-bottom: 1px solid #1f1f1f;
+        }
+
+        .wz-file-item {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.55rem 0.85rem;
+          border-bottom: 1px solid #141414;
+          font-size: 0.8rem;
+        }
+
+        .wz-file-item:last-child { border-bottom: none; }
+
+        .wz-file-name { flex: 1; color: #ccc; }
+        .wz-file-size { color: #555; font-size: 0.72rem; }
+
+        .wz-file-remove {
+          background: none;
+          border: none;
+          color: #444;
+          cursor: pointer;
+          font-size: 0.8rem;
+          padding: 0.1rem 0.3rem;
+          border-radius: 4px;
+          transition: color 0.15s, background 0.15s;
+        }
+
+        .wz-file-remove:hover { color: #de350b; background: rgba(222,53,11,0.1); }
+
+        /* Previous files */
+        .wz-prev-files {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 8px;
+          padding: 0.85rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+
+        .wz-prev-files-title {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #555;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          margin-bottom: 0.2rem;
+        }
+
+        .wz-attachment {
+          font-size: 0.8rem;
+          color: #888;
+          text-decoration: none;
+          padding: 0.3rem 0.5rem;
+          border-radius: 5px;
+          transition: color 0.15s, background 0.15s;
+        }
+
+        .wz-attachment:hover { color: #ff6b35; background: rgba(255,107,53,0.08); }
+
+        .wz-replace-check {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.75rem;
+          color: #666;
+          cursor: pointer;
+        }
+
+        .wz-checkbox {
+          accent-color: #ff6b35;
+          width: 14px;
+          height: 14px;
+        }
+
+        /* Quill */
+        .wz-quill-wrap {
+          background: #0d0d0d;
+          border-radius: 8px;
+          overflow: hidden;
+        }
+
+        .wz-quill-wrap .ql-toolbar {
+          background: #111;
+          border-color: #2a2a2a !important;
+        }
+
+        .wz-quill-wrap .ql-container {
+          border-color: #2a2a2a !important;
+          min-height: 160px;
+        }
+
+        .wz-quill-wrap .ql-editor {
+          min-height: 140px;
           color: #e0e0e0;
+          font-size: 0.88rem;
         }
 
-        /* Submission Details */
-        .submission-details {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 12px;
-          padding: 1.5rem;
+        .wz-quill-wrap .ql-editor.ql-blank::before { color: #555; }
+        .wz-quill-wrap .ql-stroke { stroke: #ccc !important; }
+        .wz-quill-wrap .ql-fill { fill: #ccc !important; }
+        .wz-quill-wrap .ql-picker { color: #ccc !important; }
+        .wz-quill-wrap .ql-picker-options { background: #111 !important; border-color: #333 !important; }
+
+        /* Submit action */
+        .wz-submit-action { display: flex; flex-direction: column; }
+
+        .wz-btn-submit {
+          background: linear-gradient(135deg, #ff6b35, #ff9a5c);
+          border: none;
+          color: #fff;
+          border-radius: 8px;
+          padding: 0.7rem 1.5rem;
+          font-size: 0.85rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
-        .submission-details h6 {
+        .wz-btn-submit:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(255,107,53,0.35);
+        }
+
+        .wz-btn-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .wz-locked-notice {
+          background: rgba(0,82,204,0.08);
+          border: 1px solid rgba(0,82,204,0.25);
+          color: #6699cc;
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          font-size: 0.8rem;
+          font-weight: 500;
+        }
+
+        /* Review column */
+        .wz-review-card {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-left: 3px solid #555;
+          border-radius: 8px;
+          padding: 1.1rem 1.2rem;
+        }
+
+        .wz-review-status-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 1rem;
+          padding-bottom: 0.85rem;
+          border-bottom: 1px solid #141414;
+        }
+
+        .wz-review-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          font-size: 0.72rem;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+          padding: 0.3rem 0.75rem;
+          border-radius: 999px;
+        }
+
+        .wz-review-sub {
+          font-size: 0.72rem;
+          color: #555;
+        }
+
+        .wz-review-body {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+
+        .wz-review-icon {
+          font-size: 1.75rem;
+          margin-bottom: 0.25rem;
+        }
+
+        .wz-review-msg {
+          font-size: 0.82rem;
+          color: #aaa;
+          margin: 0;
+          line-height: 1.55;
+        }
+
+        .wz-feedback-block {
+          width: 100%;
+          background: #111;
+          border: 1px solid #222;
+          border-radius: 6px;
+          padding: 0.75rem;
+          margin-top: 0.25rem;
+        }
+
+        .wz-feedback-approved { border-left: 3px solid #36b37e; }
+        .wz-feedback-revision { border-left: 3px solid #de350b; }
+
+        .wz-feedback-label {
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: #555;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          margin-bottom: 0.4rem;
+        }
+
+        .wz-feedback-block p {
+          font-size: 0.82rem;
+          color: #ccc;
+          margin: 0;
+          line-height: 1.5;
+        }
+
+        /* Last submission */
+        .wz-last-sub {
+          background: #0d0d0d;
+          border: 1px solid #1f1f1f;
+          border-radius: 8px;
+          padding: 1rem 1.1rem;
+        }
+
+        .wz-last-sub-title {
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: #555;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          margin-bottom: 0.75rem;
+        }
+
+        .wz-last-sub-row {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+          margin-bottom: 0.65rem;
+        }
+
+        .wz-last-sub-key {
+          font-size: 0.7rem;
+          color: #555;
+          font-weight: 600;
+        }
+
+        .wz-last-sub-link {
+          font-size: 0.78rem;
           color: #ff6b35;
-          margin-bottom: 1rem;
-        }
-
-        .detail-item {
-          margin-bottom: 1rem;
-        }
-
-        .detail-item strong {
-          display: block;
-          color: #888888;
-          margin-bottom: 0.5rem;
-        }
-
-        .detail-item a {
-          color: #ff9a5c;
           text-decoration: none;
           word-break: break-all;
         }
 
-        .detail-item a:hover {
-          text-decoration: underline;
-        }
+        .wz-last-sub-link:hover { text-decoration: underline; }
 
-        /* Buttons */
-        .btn-submit, .btn-primary-custom {
-          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
-          border: none;
-          color: #ffffff;
-          font-weight: 600;
-          padding: 0.75rem 2rem;
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
-
-        .btn-submit:hover:not(:disabled), .btn-primary-custom:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
-        }
-
-        .btn-outline-orange {
-          background: transparent;
-          border: 2px solid #ff6b35;
-          color: #ff6b35;
-          font-weight: 600;
-          padding: 0.75rem 1.5rem;
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
-
-        .btn-outline-orange:hover:not(:disabled) {
-          background: #ff6b35;
-          color: #ffffff;
-          transform: translateY(-2px);
-        }
-
-        .btn-outline-light {
-          border: 2px solid #555555;
-          color: #ffffff;
-          padding: 0.75rem 1.5rem;
-          border-radius: 10px;
-        }
-
-        .btn-outline-light:hover {
-          background: #333333;
-          border-color: #ff6b35;
-          color: #ffffff;
-        }
-
-        .action-buttons {
-          margin-top: 1.5rem;
-          text-align: right;
-        }
-
-        /* Scrollbar */
-        .student-task-wizard .modal-body::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .student-task-wizard .modal-body::-webkit-scrollbar-track {
+        /* ── Footer ── */
+        .student-task-wizard .modal-footer {
           background: #0a0a0a;
+          border-top: 1px solid #1a1a1a;
+          padding: 0.85rem 1.5rem;
+          flex-shrink: 0;
         }
 
-        .student-task-wizard .modal-body::-webkit-scrollbar-thumb {
-          background: #ff6b35;
+        .wz-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          width: 100%;
+        }
+
+        .wz-footer-right {
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+        }
+
+        .wz-btn-ghost {
+          background: none;
+          border: 1px solid #2a2a2a;
+          color: #666;
+          border-radius: 7px;
+          padding: 0.5rem 1.1rem;
+          font-size: 0.82rem;
+          cursor: pointer;
+          transition: border-color 0.18s, color 0.18s;
+        }
+
+        .wz-btn-ghost:hover { border-color: #555; color: #aaa; }
+
+        .wz-btn-back {
+          background: none;
+          border: 1px solid #ff6b35;
+          color: #ff6b35;
+          border-radius: 7px;
+          padding: 0.5rem 1.1rem;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.18s;
+        }
+
+        .wz-btn-back:hover { background: rgba(255,107,53,0.1); }
+
+        .wz-btn-next {
+          background: linear-gradient(135deg, #ff6b35, #ff9a5c);
+          border: none;
+          color: #fff;
+          border-radius: 7px;
+          padding: 0.5rem 1.4rem;
+          font-size: 0.82rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.18s;
+        }
+
+        .wz-btn-next:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 3px 12px rgba(255,107,53,0.35);
+        }
+
+        /* ── AI Evaluation (student view) ── */
+        .wz-ai-eval {
+          background: #0a0a0a;
+          border: 1px solid #2a1a4a;
+          border-radius: 8px;
+          padding: 1rem 1.1rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.75rem;
+        }
+
+        .wz-ai-eval-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .wz-ai-eval-title {
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          color: #a78bfa;
+        }
+
+        .wz-ai-verified {
+          font-size: 0.62rem;
+          font-weight: 700;
+          color: #36b37e;
+          background: #36b37e12;
+          border: 1px solid #36b37e44;
+          border-radius: 20px;
+          padding: 0.1rem 0.45rem;
+        }
+
+        .wz-ai-score-row {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .wz-ai-score-ring {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .wz-ai-score-inner {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: #0a0a0a;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .wz-ai-score-num {
+          font-size: 0.9rem;
+          font-weight: 800;
+          color: #fff;
+        }
+
+        .wz-ai-score-label {
+          font-size: 0.85rem;
+          font-weight: 800;
+          color: #fff;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .wz-ai-grade {
+          font-size: 0.72rem;
+          font-weight: 700;
+          background: #7c3aed22;
+          color: #a78bfa;
+          border: 1px solid #7c3aed44;
           border-radius: 4px;
+          padding: 0.05rem 0.4rem;
         }
 
-        /* Responsive */
+        .wz-ai-score-sub {
+          font-size: 0.68rem;
+          color: #666;
+          margin-top: 0.1rem;
+        }
+
+        .wz-ai-summary {
+          font-size: 0.75rem;
+          color: #aaa;
+          line-height: 1.55;
+          margin: 0;
+          background: #111;
+          border-left: 2px solid #7c3aed;
+          border-radius: 4px;
+          padding: 0.5rem 0.65rem;
+        }
+
+        .wz-ai-criteria {
+          display: flex;
+          flex-direction: column;
+          gap: 0.3rem;
+        }
+
+        .wz-ai-criterion {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.4rem;
+          background: #0d0d0d;
+          border-radius: 4px;
+          padding: 0.35rem 0.5rem;
+          border: 1px solid #1a1a1a;
+        }
+
+        .wz-ai-criterion-icon {
+          flex-shrink: 0;
+          font-size: 0.72rem;
+          margin-top: 0.05rem;
+        }
+
+        .wz-ai-criterion-text {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 0.05rem;
+          min-width: 0;
+        }
+
+        .wz-ai-criterion-name {
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #ccc;
+        }
+
+        .wz-ai-criterion-fb {
+          font-size: 0.66rem;
+          color: #666;
+        }
+
+        .wz-ai-criterion-score {
+          font-size: 0.68rem;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .wz-ai-sw {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0.65rem;
+        }
+
+        .wz-ai-sw-title {
+          font-size: 0.62rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          margin-bottom: 0.3rem;
+        }
+
+        .wz-ai-sw-item {
+          font-size: 0.7rem;
+          color: #aaa;
+          margin-bottom: 0.15rem;
+          line-height: 1.4;
+        }
+
+        .wz-ai-pending {
+          font-size: 0.72rem;
+          color: #555;
+          background: #0d0d0d;
+          border: 1px dashed #2a1a4a;
+          border-radius: 6px;
+          padding: 0.65rem 0.85rem;
+          font-style: italic;
+          line-height: 1.5;
+        }
+
+        /* ── Responsive ── */
         @media (max-width: 768px) {
-          .student-task-wizard .modal-header,
-          .student-task-wizard .modal-body,
-          .student-task-wizard .modal-footer {
-            padding: 1rem;
+          .wz-step1 { grid-template-columns: 1fr; }
+          .wz-sidebar {
+            border-right: none;
+            border-bottom: 1px solid #1a1a1a;
+            max-height: 300px;
           }
+          .wz-step2-grid { grid-template-columns: 1fr; }
+          .wz-step-line { width: 30px; margin: 0 0.4rem; }
+          .wz-breadcrumb-current { max-width: 160px; }
+        }
 
-          .step-indicator {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.5rem;
-          }
-
-          .step-line {
-            display: none;
-          }
-
-          .step {
-            flex-direction: row;
-            width: 100%;
-            justify-content: flex-start;
-            gap: 1rem;
-          }
-
-          .info-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .student-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .review-approved, .review-rejected, .review-pending {
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-          }
-
-          .status-header {
-            flex-direction: column;
-            gap: 0.5rem;
-            text-align: center;
-          }
-
-          .submit-review-grid {
-            grid-template-columns: 1fr;
-          }
+        @media (max-width: 480px) {
+          .wz-step-label { display: none; }
+          .wz-ai-sw { grid-template-columns: 1fr; }
         }
       `}</style>
     </Modal>
