@@ -336,6 +336,11 @@ const InstituteAdmin: React.FC = () => {
     )
   }
 
+  const ADMIN_LEGACY_KEY_MAP: Record<string, string> = {
+    'achievements': 'instituteAnnouncements',
+    'editProfile':  'profile',
+  }
+
   const openAdminNavConfig = async (inst: Institute) => {
     setAdminNavInstitute(inst)
     setAdminNavLoading(true)
@@ -344,8 +349,17 @@ const InstituteAdmin: React.FC = () => {
       const res = await axios.get(`${baseURL}/api/institute/nav-config/${inst._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
-      const sections = res.data?.adminNavSections
-      setAdminNavChecked(sections && sections.length > 0 ? sections : ALL_ADMIN_KEYS)
+      let sections: string[] = res.data?.adminNavSections
+      if (sections && sections.length > 0) {
+        // Normalize legacy keys
+        sections = sections.map(k => ADMIN_LEGACY_KEY_MAP[k] ?? k)
+        // Always include alwaysOn keys
+        const alwaysOnKeys = ADMIN_NAV_SECTION_DEFS.filter(s => s.alwaysOn).map(s => s.key)
+        alwaysOnKeys.forEach(k => { if (!sections.includes(k)) sections.push(k) })
+        setAdminNavChecked(sections)
+      } else {
+        setAdminNavChecked(ALL_ADMIN_KEYS)
+      }
     } catch {
       setAdminNavChecked(ALL_ADMIN_KEYS)
     } finally {

@@ -212,12 +212,23 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
     'instituteAnnouncements','facultyAdmin','profile',
   ])
 
+  // Backward compat: map old/wrong keys to correct menu item keys
+  const LEGACY_KEY_MAP: Record<string, string> = {
+    'achievements': 'instituteAnnouncements',
+    'editProfile':  'profile',
+  }
+
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
     const items = user?.role === 'facultyAdmin' ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS
     const all = items as unknown as MenuItemTypeLocal[]
     if (!allowedAdminKeys) return all
+    // Normalize saved keys (handle legacy key names)
+    const normalizedKeys = allowedAdminKeys.map(k => LEGACY_KEY_MAP[k] ?? k)
+    // Always include 'dashboard' and 'profile' even if missing from config
+    if (!normalizedKeys.includes('dashboard')) normalizedKeys.push('dashboard')
+    if (!normalizedKeys.includes('profile')) normalizedKeys.push('profile')
     return all.filter(item =>
-      !KNOWN_ADMIN_KEYS.has(item.key) || allowedAdminKeys.includes(item.key)
+      !KNOWN_ADMIN_KEYS.has(item.key) || normalizedKeys.includes(item.key)
     )
   }, [user?.role, allowedAdminKeys])
 
