@@ -295,23 +295,43 @@ const DailyExam: React.FC = () => {
 
       {/* ── Top Tabs ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #1e1e28', paddingBottom: 0 }}>
-        {(['today', 'calendar'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              background: 'none', border: 'none',
-              padding: '10px 20px',
-              fontWeight: 700, fontSize: 13,
-              cursor: 'pointer',
-              color: activeTab === tab ? '#ff7a00' : '#666',
-              borderBottom: activeTab === tab ? '2px solid #ff7a00' : '2px solid transparent',
-              transition: 'all 0.2s',
-            }}
-          >
-            {tab === 'today' ? "📅 Today's Exam" : '📊 Progress Calendar'}
-          </button>
-        ))}
+        {([
+          { key: 'today',    label: "Today's Exam",
+            icon: (active: boolean) => (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? '#ff7a00' : '#555'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            ),
+          },
+          { key: 'calendar', label: 'Progress Calendar',
+            icon: (active: boolean) => (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? '#ff7a00' : '#555'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            ),
+          },
+        ] as const).map(({ key, label, icon }) => {
+          const active = activeTab === key
+          return (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              style={{
+                background: 'none', border: 'none',
+                padding: '10px 20px',
+                fontWeight: 700, fontSize: 13,
+                cursor: 'pointer',
+                color: active ? '#ff7a00' : '#555',
+                borderBottom: active ? '2px solid #ff7a00' : '2px solid transparent',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', gap: 7,
+              }}
+            >
+              {icon(active)}
+              {label}
+            </button>
+          )
+        })}
       </div>
 
       {/* ════════════ TODAY TAB ════════════ */}
@@ -435,17 +455,44 @@ const DailyExam: React.FC = () => {
           {/* Stats row */}
           {calendarData?.stats && (
             <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              {[
-                { label: 'Total Attended', val: calendarData.stats.totalAttended, icon: '✅' },
-                { label: 'Current Streak', val: `${calendarData.stats.streak} days`, icon: '🔥' },
-                { label: 'Avg Score', val: `${calendarData.stats.avgScore}%`, icon: '📊' },
-              ].map(item => (
-                <div key={item.label} style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 12, padding: '14px 16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{item.icon}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: '#ff7a00' }}>{item.val}</div>
-                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 2 }}>{item.label}</div>
+              {/* Total Attended */}
+              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                  </svg>
                 </div>
-              ))}
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#22c55e', lineHeight: 1 }}>{calendarData.stats.totalAttended}</div>
+                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Total Attended</div>
+                </div>
+              </div>
+
+              {/* Current Streak */}
+              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#fb923c', lineHeight: 1 }}>{calendarData.stats.streak} <span style={{ fontSize: 13, fontWeight: 600 }}>days</span></div>
+                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Current Streak</div>
+                </div>
+              </div>
+
+              {/* Avg Score */}
+              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{calendarData.stats.avgScore}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span></div>
+                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Avg Score</div>
+                </div>
+              </div>
             </div>
           )}
 

@@ -6,9 +6,26 @@ import DailyExam from './components/DailyExam'
 
 type Tab = 'practice' | 'daily'
 
-const TABS: { key: Tab; icon: string; label: string; desc: string; accent: string }[] = [
-  { key: 'daily',    icon: '🗓️', label: 'Daily Exam',    desc: 'One exam per day · Tracked progress', accent: '#ff7a00' },
-  { key: 'practice', icon: '📚', label: 'Practice Quiz', desc: 'Topic-wise · Unlimited attempts',       accent: '#6366f1' },
+const DailyExamIcon = ({ color }: { color: string }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+    <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+    <line x1="3" y1="10" x2="21" y2="10"/>
+    <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/>
+  </svg>
+)
+
+const PracticeQuizIcon = ({ color }: { color: string }) => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+)
+
+const TABS: { key: Tab; Icon: React.FC<{ color: string }>; label: string; desc: string; accent: string }[] = [
+  { key: 'daily',    Icon: DailyExamIcon,    label: 'Daily Exam',    desc: 'One exam per day · Tracked progress', accent: '#ff7a00' },
+  { key: 'practice', Icon: PracticeQuizIcon, label: 'Practice Quiz', desc: 'Topic-wise · Unlimited attempts',       accent: '#6366f1' },
 ]
 
 const Aptitude = () => {
@@ -56,9 +73,8 @@ const Aptitude = () => {
                 background: active ? `${t.accent}22` : '#151520',
                 border: `1px solid ${active ? `${t.accent}44` : '#2a2a38'}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20,
               }}>
-                {t.icon}
+                <t.Icon color={active ? t.accent : '#444'} />
               </div>
 
               {/* Text */}
