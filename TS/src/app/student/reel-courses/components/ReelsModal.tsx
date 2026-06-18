@@ -151,29 +151,6 @@ export default function ReelsModal({
           overflow: "hidden",
         }}
       >
-        {/* CLOSE — only shown in player view; list view has its own inline X */}
-        {selectedIndex !== null && (
-          <button
-            onClick={onClose}
-            style={{
-              position: "absolute",
-              top: "10px",
-              left: "10px",
-              zIndex: 30,
-              width: "30px",
-              height: "30px",
-              borderRadius: "50%",
-              background: "rgba(0,0,0,0.55)",
-              border: "1.5px solid rgba(255,255,255,0.25)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <FaTimes size={12} />
-          </button>
-        )}
 
         {selectedIndex === null ? (
           <div
@@ -362,7 +339,7 @@ export default function ReelsModal({
                 height: 46,
                 display: "flex",
                 alignItems: "center",
-                paddingLeft: 46,   // leave room for the X button
+                paddingLeft: 10,
                 paddingRight: 10,
                 gap: 8,
                 zIndex: 30,

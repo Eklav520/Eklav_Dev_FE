@@ -1,4 +1,4 @@
-import { Card, Row, Col, ProgressBar } from 'react-bootstrap'
+import { Card, Row, Col } from 'react-bootstrap'
 import { Link } from "react-router-dom";
 
 type Props = {
@@ -65,15 +65,25 @@ const HeroSection = ({ student }: Props) => {
                   </span>
                 </div>
 
-                <ProgressBar
-                  now={student.completion}
+                <div
+                  className="mb-2 mb-sm-0"
                   style={{
                     height: '8px',
                     borderRadius: '20px',
                     background: 'rgba(255,255,255,0.3)',
+                    overflow: 'hidden',
                   }}
-                  className="mb-2 mb-sm-0"
-                />
+                >
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${student.completion}%`,
+                      background: '#ffffff',
+                      borderRadius: '20px',
+                      transition: 'none',
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Button - Full width on mobile */}
@@ -113,11 +123,6 @@ const HeroSection = ({ student }: Props) => {
       </Card.Body>
 
       <style>{`
-        .progress-bar {
-          background: #ffffff !important;
-          border-radius: 20px;
-        }
-        
         /* Custom responsive utilities */
         @media (min-width: 576px) {
           .w-sm-auto {

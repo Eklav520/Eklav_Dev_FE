@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Card, Col, Row, Spinner, Alert, Modal, Button, CardHeader, CardBody, Form, ProgressBar, ListGroup, Badge, Accordion } from 'react-bootstrap'
+import { Card, Col, Row, Spinner, Alert, Modal, Button, CardHeader, CardBody, Form, ListGroup, Badge, Accordion } from 'react-bootstrap'
 
 type QA = {
   _id?: string
@@ -433,11 +433,10 @@ const CategoryGrid: React.FC = () => {
           <Modal.Header closeButton className="bg-dark text-white border-secondary">
             <div className="w-100">
               <Modal.Title className="text-white">{quizTitle}</Modal.Title>
-              <ProgressBar
-                now={progress}
-                label={`${progress}%`}
-                className="mt-2 orange-progress"
-              />
+              <div className="mt-2" style={{ height: '8px', borderRadius: '20px', background: 'rgba(255,255,255,0.15)', overflow: 'hidden', position: 'relative' }}>
+                <div style={{ height: '100%', width: `${progress}%`, background: '#ff7a00', borderRadius: '20px', transition: 'none' }} />
+                <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 10, color: '#fff', fontWeight: 700, lineHeight: 1 }}>{progress}%</span>
+              </div>
             </div>
           </Modal.Header>
 
@@ -626,11 +625,9 @@ const CategoryGrid: React.FC = () => {
                             <span className="small text-secondary">Answered</span>
                             <span className="text-white fw-bold">{answeredCount}/{quizQuestions.length}</span>
                           </div>
-                          <ProgressBar
-                            now={(answeredCount / quizQuestions.length) * 100}
-                            className="orange-progress"
-                            style={{ height: '6px' }}
-                          />
+                          <div style={{ height: '6px', borderRadius: '20px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${(answeredCount / Math.max(1, quizQuestions.length)) * 100}%`, background: '#ff7a00', borderRadius: '20px', transition: 'none' }} />
+                          </div>
                         </div>
 
                         <div className="mt-auto">
@@ -758,10 +755,6 @@ const CategoryGrid: React.FC = () => {
             box-shadow: 0 4px 12px rgba(255, 122, 0, 0.3);
           }
 
-          
-          .orange-progress .progress-bar {
-            background: #ff7a00 !important;
-          }
           
           /* Category Card Styling */
           .category-card {
