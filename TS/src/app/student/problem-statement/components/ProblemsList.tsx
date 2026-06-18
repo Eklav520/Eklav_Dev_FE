@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ListGroup, Card, Form } from 'react-bootstrap'
-import { PersonFill, XCircleFill } from 'react-bootstrap-icons'
+import { PersonFill, XCircleFill, LockFill } from 'react-bootstrap-icons'
 import { Problem, fetchProblems } from './problems.data'
+
+const FREE_PROBLEMS_LIMIT = 5
 
 /* ---------------------------------------
    Difficulty Colors
@@ -27,11 +29,12 @@ type Props = {
   selectedId?: number
   completedIds: number[]
   onSelect: (p: Problem) => void
+  isPending?: boolean
 }
 
 const PAGE_SIZE = 20
 
-const ProblemsList = ({ problems, selectedId, completedIds, onSelect }: Props) => {
+const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending = false }: Props) => {
   /* -------------------- STATE -------------------- */
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -89,6 +92,21 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect }: Props) =
         </Card.Body>
       </Card>
 
+      {/* PENDING TRIAL BANNER */}
+      {isPending && (
+        <div style={{
+          background: 'rgba(255,122,0,0.08)', border: '1px solid rgba(255,122,0,0.3)',
+          borderRadius: '10px', padding: '10px 14px', marginBottom: '12px',
+          display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px',
+        }}>
+          <LockFill style={{ color: '#ff7a00', flexShrink: 0 }} />
+          <span>
+            <strong style={{ color: '#ff7a00' }}>Trial access:</strong>{' '}
+            You can attempt the first <strong>{FREE_PROBLEMS_LIMIT} programs</strong> for free. Enroll to unlock all problems.
+          </span>
+        </div>
+      )}
+
       {/* FILTER BAR */}
       <Card className="mb-3 border-secondary bg-dark">
         <Card.Body className="py-2">
@@ -139,51 +157,63 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect }: Props) =
           </ListGroup.Item>
         )}
 
-        {visibleProblems.map((p) => {
+        {visibleProblems.map((p, idx) => {
+          const globalIdx = start + idx
+          const isLocked = isPending && globalIdx >= FREE_PROBLEMS_LIMIT
           const isActive = p.id === selectedId
           const isCompleted = completedIds.includes(p.id)
 
           return (
             <ListGroup.Item
               key={p._id}
-              action
-              onClick={() => onSelect(p)}
+              action={!isLocked}
+              onClick={() => !isLocked && onSelect(p)}
               className="d-flex align-items-center gap-3"
               style={{
-                borderLeft: isActive
+                borderLeft: isLocked
+                  ? '4px solid transparent'
+                  : isActive
                   ? '4px solid #0d6efd'
                   : isCompleted
                   ? '4px solid #facc15'
                   : '4px solid transparent',
-                background: isCompleted
+                background: isLocked
+                  ? 'rgba(0,0,0,0.15)'
+                  : isCompleted
                   ? 'rgba(250,204,21,0.07)'
                   : isActive
                   ? 'rgba(13,110,253,0.08)'
                   : undefined,
+                opacity: isLocked ? 0.5 : 1,
+                cursor: isLocked ? 'not-allowed' : 'pointer',
               }}
             >
               {/* Title */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span
                   className="fw-medium text-truncate d-block"
-                  style={{ color: isCompleted ? '#facc15' : undefined }}
+                  style={{ color: isLocked ? '#666' : isCompleted ? '#facc15' : undefined }}
                 >
-                  {isCompleted && <span style={{ marginRight: 5 }}>✓</span>}
+                  {!isLocked && isCompleted && <span style={{ marginRight: 5 }}>✓</span>}
                   {p.id}. {p.title}
                 </span>
               </div>
 
-              {/* Difficulty */}
-              <div
-                className="d-flex align-items-center gap-1 small text-muted"
-                style={{ flexShrink: 0 }}
-              >
-                <span
-                  className={`rounded-circle bg-${difficultyColor[p.difficulty]}`}
-                  style={{ width: 6, height: 6 }}
-                />
-                {p.difficulty}
-              </div>
+              {/* Difficulty / Lock */}
+              {isLocked ? (
+                <LockFill size={12} style={{ color: '#555', flexShrink: 0 }} />
+              ) : (
+                <div
+                  className="d-flex align-items-center gap-1 small text-muted"
+                  style={{ flexShrink: 0 }}
+                >
+                  <span
+                    className={`rounded-circle bg-${difficultyColor[p.difficulty]}`}
+                    style={{ width: 6, height: 6 }}
+                  />
+                  {p.difficulty}
+                </div>
+              )}
             </ListGroup.Item>
           )
         })}

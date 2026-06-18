@@ -12,6 +12,7 @@ import TemplateGallery from './TemplateGallery'
 import { TemplateKey, templateList } from './templateList'
 import './resume-builder.css'
 import { Container } from 'react-bootstrap'
+import { useAuthContext } from '@/context/useAuthContext'
 
 export interface StepProps {
   data: ResumeData
@@ -23,6 +24,9 @@ export interface StepProps {
 const stepLabels = ['Header', 'Experience', 'Achievements', 'Education', 'Skills', 'Summary', 'Extras', 'Preview']
 
 const ResumeBuilder: React.FC = () => {
+  const { user } = useAuthContext()
+  const isPending = (user?.status || '').trim().toLowerCase() === 'pending'
+
   const [step, setStep] = useState(1)
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey | null>(null)
 
@@ -77,7 +81,7 @@ const ResumeBuilder: React.FC = () => {
   }
 
   if (!selectedTemplate) {
-    return <TemplateGallery onSelectTemplate={setSelectedTemplate} />
+    return <TemplateGallery onSelectTemplate={setSelectedTemplate} isPending={isPending} />
   }
 
   const SelectedTemplateComponent = selectedTemplate ? templateList[selectedTemplate].component : null

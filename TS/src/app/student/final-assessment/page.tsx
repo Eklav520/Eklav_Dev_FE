@@ -167,6 +167,7 @@ export default function StudentAssessmentController() {
   const { user } = useAuthContext()
   const token = user?.token
   const API_BASE = import.meta.env.VITE_API_BASE_URL
+  const isPending = (user?.status || '').trim().toLowerCase() === 'pending'
 
   const [loading, setLoading] = useState(true)
   const [assessments, setAssessments] = useState<Assessment[]>([])
@@ -560,6 +561,21 @@ export default function StudentAssessmentController() {
             <span className="sa-count-badge">{assessments.length} Available</span>
           </div>
 
+          {/* Pending trial banner */}
+          {isPending && (
+            <div style={{
+              background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
+              borderRadius: '12px', padding: '12px 18px', marginBottom: '20px',
+              display: 'flex', alignItems: 'center', gap: '12px', fontSize: '13.5px', color: '#ccc',
+            }}>
+              <LockIcon />
+              <span>
+                <strong style={{ color: '#ff6b35' }}>Enrollment required:</strong>{' '}
+                Final assessments are available only for enrolled students. Enroll to participate.
+              </span>
+            </div>
+          )}
+
           {/* Assessment list */}
           {assessments.length === 0 ? (
             <div className="sa-empty">
@@ -577,7 +593,7 @@ export default function StudentAssessmentController() {
                 const studentAttended = studentProgress && studentProgress.completedRounds.length > 0
                 const studentCompleted = studentProgress?.status === 'completed'
                 return (
-                  <div key={assessment._id} className="sa-card">
+                  <div key={assessment._id} className="sa-card" style={isPending ? { opacity: 0.6, pointerEvents: 'none' } : undefined}>
 
                     {/* ── Card top row: badges + title + actions ── */}
                     <div className="sa-card-top">
@@ -600,16 +616,41 @@ export default function StudentAssessmentController() {
                         )}
                       </div>
                       <div className="sa-card-actions">
-                        <button className="sa-btn-details" onClick={() => handleSelectAssessment(assessment)}>
-                          View Details
-                        </button>
-                        <button
-                          className={`sa-btn-start${(allEnded || studentCompleted) ? ' ended' : ''}`}
-                          disabled={allEnded || !!studentAttended}
-                          onClick={() => !allEnded && !studentAttended && handleSelectAssessment(assessment)}
-                        >
-                          {studentCompleted ? '✓ Assessment Completed' : studentAttended ? '✓ Already Attended' : allEnded ? '✓ Completed' : 'Start Assessment'}
-                        </button>
+                        {isPending ? (
+                          <>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '0.45rem 1rem', borderRadius: 8,
+                              border: '1px solid #2a2a2a', background: '#111',
+                              color: '#444', fontSize: '0.82rem', fontWeight: 600,
+                              cursor: 'not-allowed', userSelect: 'none',
+                            }}>
+                              <LockIcon /> View Details
+                            </span>
+                            <span style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 6,
+                              padding: '0.45rem 1.1rem', borderRadius: 8,
+                              border: '1px solid #2a2a2a', background: '#111',
+                              color: '#444', fontSize: '0.82rem', fontWeight: 600,
+                              cursor: 'not-allowed', userSelect: 'none',
+                            }}>
+                              <LockIcon /> Enroll to Start
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <button className="sa-btn-details" onClick={() => handleSelectAssessment(assessment)}>
+                              View Details
+                            </button>
+                            <button
+                              className={`sa-btn-start${(allEnded || studentCompleted) ? ' ended' : ''}`}
+                              disabled={allEnded || !!studentAttended}
+                              onClick={() => !allEnded && !studentAttended && handleSelectAssessment(assessment)}
+                            >
+                              {studentCompleted ? '✓ Assessment Completed' : studentAttended ? '✓ Already Attended' : allEnded ? '✓ Completed' : 'Start Assessment'}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
 

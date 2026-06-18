@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ReelsModal from "./components/ReelsModal";
 import { FaBookmark } from "react-icons/fa";
+import { BsLockFill } from "react-icons/bs";
 import axios from "axios";
 import { useAuthContext } from "@/context/useAuthContext";
 
@@ -15,6 +16,7 @@ export default function HomePage() {
   const { user } = useAuthContext();
   const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
+  const isPending = user?.status?.toLowerCase() === 'pending';
 
   const [sections, setSections] = useState<any[]>([]);
 
@@ -66,6 +68,8 @@ export default function HomePage() {
           (s) => s.courseName === activeCategory
         );
 
+  const freeSectionId = sections.find((s) => s.reelCount > 0)?._id;
+
   /* ================= OPEN ================= */
   const openReels = (id?: string) => {
     setSelectedReelId(id);
@@ -86,6 +90,28 @@ export default function HomePage() {
           Courses
         </h1>
       </div>
+
+      {/* PENDING TRIAL BANNER */}
+      {isPending && (
+        <div style={{
+          margin: "0 16px 4px",
+          background: "rgba(255,107,0,0.1)",
+          border: "1px solid rgba(255,107,0,0.35)",
+          borderRadius: "10px",
+          padding: "10px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          fontSize: "13px",
+          color: "#ccc",
+        }}>
+          <BsLockFill style={{ color: "#ff6b00", flexShrink: 0 }} />
+          <span>
+            <strong style={{ color: "#ff6b00" }}>Trial access:</strong>{" "}
+            You can watch reels from <strong>1 course</strong> for free. Enroll to unlock all courses.
+          </span>
+        </div>
+      )}
 
       {/* CATEGORY */}
       <div
@@ -166,108 +192,147 @@ export default function HomePage() {
               gap: "16px",
             }}
           >
-            {filteredSections.map((section) => (
-              <div
-                key={section._id}
-                style={{
-                  background: "#1a1a1a",
-                  borderRadius: "20px",
-                  border: "1px solid #333",
-                  cursor:
-                    section.reelCount > 0
-                      ? "pointer"
-                      : "default",
-                  opacity:
-                    section.reelCount > 0 ? 1 : 0.5,
-                }}
-                onClick={() =>
-                  section.reelCount > 0 &&
-                  openReels(section._id)
-                }
-              >
-                {/* PREVIEW */}
+            {filteredSections.map((section) => {
+              const isLocked = isPending && section._id !== freeSectionId;
+              const isClickable = section.reelCount > 0 && !isLocked;
+              return (
                 <div
+                  key={section._id}
                   style={{
-                    height: "140px",
-                    background: `linear-gradient(135deg, ${orange.primary}40, ${orange.primary}20)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    background: "#1a1a1a",
+                    borderRadius: "20px",
+                    border: `1px solid ${isLocked ? "#2a2a2a" : "#333"}`,
+                    cursor: isClickable ? "pointer" : "default",
+                    opacity: isLocked ? 0.55 : section.reelCount > 0 ? 1 : 0.5,
                     position: "relative",
                   }}
+                  onClick={() => isClickable && openReels(section._id)}
                 >
-                  <span
-                    style={{
+                  {/* LOCK BADGE */}
+                  {isLocked && (
+                    <div style={{
                       position: "absolute",
                       top: 10,
-                      left: 10,
-                      background: orange.primary,
-                      padding: "4px 10px",
-                      borderRadius: "16px",
-                      fontSize: "10px",
-                    }}
-                  >
-                    {section.reelCount} Reels
-                  </span>
-
-                  <span style={{ fontSize: "42px" }}>🎬</span>
-
-                  {section.reelCount === 0 && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        background: "rgba(0,0,0,0.8)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      Coming Soon
+                      right: 10,
+                      zIndex: 2,
+                      background: "rgba(0,0,0,0.6)",
+                      borderRadius: "50%",
+                      width: 28,
+                      height: 28,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}>
+                      <BsLockFill style={{ color: "#aaa", fontSize: 13 }} />
                     </div>
                   )}
-                </div>
 
-                {/* CONTENT */}
-                <div style={{ padding: "14px" }}>
-                  <div style={{ fontWeight: 600 }}>
-                    {section.courseName}
-                  </div>
-
+                  {/* PREVIEW */}
                   <div
                     style={{
-                      fontSize: "12px",
-                      color: "#aaa",
-                    }}
-                  >
-                    {section.shortDescription}
-                  </div>
-
-                  <div
-                    style={{
+                      height: "140px",
+                      background: isLocked
+                        ? "linear-gradient(135deg, #2a2a2a, #1a1a1a)"
+                        : `linear-gradient(135deg, ${orange.primary}40, ${orange.primary}20)`,
                       display: "flex",
-                      justifyContent: "space-between",
-                      marginTop: "8px",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      position: "relative",
+                      borderRadius: "20px 20px 0 0",
                     }}
                   >
                     <span
                       style={{
-                        fontSize: "11px",
-                        color: section.isActive
-                          ? "#00ff88"
-                          : "#ff4d4f",
+                        position: "absolute",
+                        top: 10,
+                        left: 10,
+                        background: isLocked ? "#444" : orange.primary,
+                        padding: "4px 10px",
+                        borderRadius: "16px",
+                        fontSize: "10px",
                       }}
                     >
-                      {section.isActive
-                        ? "Active"
-                        : "Inactive"}
+                      {section.reelCount} Reels
                     </span>
 
-                    <FaBookmark size={12} color="#888" />
+                    <span style={{ fontSize: "42px", filter: isLocked ? "grayscale(1)" : "none" }}>🎬</span>
+
+                    {section.reelCount === 0 && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "rgba(0,0,0,0.8)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        Coming Soon
+                      </div>
+                    )}
+
+                    {isLocked && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          background: "rgba(0,0,0,0.45)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: "20px 20px 0 0",
+                        }}
+                      >
+                        <BsLockFill style={{ color: "#888", fontSize: 28 }} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CONTENT */}
+                  <div style={{ padding: "14px" }}>
+                    <div style={{ fontWeight: 600, color: isLocked ? "#777" : "#fff" }}>
+                      {section.courseName}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#aaa",
+                      }}
+                    >
+                      {section.shortDescription}
+                    </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginTop: "8px",
+                      }}
+                    >
+                      {isLocked ? (
+                        <span style={{ fontSize: "11px", color: "#666", display: "flex", alignItems: "center", gap: 4 }}>
+                          <BsLockFill style={{ fontSize: 10 }} /> Enroll to unlock
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: "11px",
+                            color: section.isActive ? "#00ff88" : "#ff4d4f",
+                          }}
+                        >
+                          {section.isActive ? "Active" : "Inactive"}
+                        </span>
+                      )}
+
+                      {!isLocked && <FaBookmark size={12} color="#888" />}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

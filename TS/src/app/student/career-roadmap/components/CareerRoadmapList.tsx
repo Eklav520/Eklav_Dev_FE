@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Col, Row, Badge, Button, Form, InputGroup } from 'react-bootstrap'
-import { BsBookmark, BsSearch, BsArrowRight, BsGrid, BsPerson, BsLightbulb } from 'react-icons/bs'
+import { BsBookmark, BsSearch, BsArrowRight, BsGrid, BsPerson, BsLightbulb, BsLockFill } from 'react-icons/bs'
 import { careerRoadmaps, type CareerRoadmap } from '../data/roadmaps'
+import { useAuthContext } from '@/context/useAuthContext'
 
 const ROLE_ICONS: Record<string, string> = {
   // Role-Based
@@ -36,7 +37,7 @@ const ROLE_ICONS: Record<string, string> = {
   'vibe-coding': '🎵',
 }
 
-const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
+const RoadmapCard = ({ roadmap, isLocked = false }: { roadmap: CareerRoadmap; isLocked?: boolean }) => {
   const navigate = useNavigate()
 
   return (
@@ -45,25 +46,36 @@ const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
       style={{
         borderRadius: '12px',
         overflow: 'hidden',
-        cursor: 'pointer',
+        cursor: isLocked ? 'not-allowed' : 'pointer',
         transition: 'box-shadow 0.2s',
-        borderTop: `3px solid ${roadmap.color} !important`,
+        borderTop: `3px solid ${isLocked ? '#555' : roadmap.color} !important`,
+        opacity: isLocked ? 0.6 : 1,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)')}
+      onMouseEnter={(e) => { if (!isLocked) e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)' }}
       onMouseLeave={(e) => (e.currentTarget.style.boxShadow = 'none')}
-      onClick={() => navigate(`/student/career-roadmap/${roadmap.id}`)}
+      onClick={() => { if (!isLocked) navigate(`/student/career-roadmap/${roadmap.id}`) }}
     >
       {/* Color top bar */}
-      <div style={{ height: '4px', backgroundColor: roadmap.color }} />
+      <div style={{ height: '4px', backgroundColor: isLocked ? '#555' : roadmap.color }} />
+
+      {/* Lock overlay badge */}
+      {isLocked && (
+        <div style={{
+          position: 'absolute', top: 10, right: 10, zIndex: 2,
+          background: 'rgba(0,0,0,0.55)', borderRadius: '50%',
+          width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <BsLockFill style={{ color: '#aaa', fontSize: 13 }} />
+        </div>
+      )}
 
       <Card.Body className="p-3 d-flex flex-column">
         {/* Header row */}
         <div className="d-flex justify-content-between align-items-start mb-2">
           <div className="d-flex align-items-center gap-2">
-            {/* Icon */}
             <div
               className="d-flex align-items-center justify-content-center rounded-2"
-              style={{ width: 40, height: 40, backgroundColor: roadmap.color + '18', fontSize: 20 }}
+              style={{ width: 40, height: 40, backgroundColor: (isLocked ? '#555' : roadmap.color) + '18', fontSize: 20 }}
             >
               {ROLE_ICONS[roadmap.id] ?? '📌'}
             </div>
@@ -71,11 +83,14 @@ const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
           <div className="d-flex align-items-center gap-2">
             <Badge
               className="text-uppercase fw-semibold"
-              style={{ backgroundColor: roadmap.color, color: '#fff', fontSize: '10px', letterSpacing: '0.05em' }}
+              style={{
+                backgroundColor: isLocked ? '#555' : roadmap.color,
+                color: '#fff', fontSize: '10px', letterSpacing: '0.05em'
+              }}
             >
               {roadmap.type}
             </Badge>
-            <BsBookmark style={{ color: '#aaa', cursor: 'pointer', fontSize: 14 }} />
+            {!isLocked && <BsBookmark style={{ color: '#aaa', cursor: 'pointer', fontSize: 14 }} />}
           </div>
         </div>
 
@@ -97,19 +112,21 @@ const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
           </span>
           <Button
             size="sm"
+            disabled={isLocked}
             className="d-flex align-items-center gap-1 px-3"
             style={{
-              backgroundColor: roadmap.color,
-              borderColor: roadmap.color,
+              backgroundColor: isLocked ? '#444' : roadmap.color,
+              borderColor: isLocked ? '#444' : roadmap.color,
               fontSize: '12px',
               fontWeight: 600,
+              cursor: isLocked ? 'not-allowed' : 'pointer',
             }}
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/student/career-roadmap/${roadmap.id}`)
+              if (!isLocked) navigate(`/student/career-roadmap/${roadmap.id}`)
             }}
           >
-            Start <BsArrowRight />
+            {isLocked ? <><BsLockFill style={{ fontSize: 11 }} /> Locked</> : <>Start <BsArrowRight /></>}
           </Button>
         </div>
       </Card.Body>
@@ -118,6 +135,10 @@ const RoadmapCard = ({ roadmap }: { roadmap: CareerRoadmap }) => {
 }
 
 const CareerRoadmapList = () => {
+  const { user } = useAuthContext()
+  const isPending = user?.status?.toLowerCase() === 'pending'
+  const freeRoadmapId = careerRoadmaps[0]?.id
+
   const [search, setSearch] = useState('')
   const [activeType, setActiveType] = useState<'ALL' | 'ROLE' | 'SKILL'>('ALL')
 
@@ -156,6 +177,21 @@ const CareerRoadmapList = () => {
           />
         </InputGroup>
       </div>
+
+      {/* Pending-user notice */}
+      {isPending && (
+        <div style={{
+          background: 'rgba(255,122,0,0.08)', border: '1px solid rgba(255,122,0,0.3)',
+          borderRadius: '10px', padding: '10px 16px', marginBottom: '16px',
+          display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px',
+        }}>
+          <BsLockFill style={{ color: '#ff7a00', flexShrink: 0 }} />
+          <span>
+            <strong style={{ color: '#ff7a00' }}>Trial access:</strong>{' '}
+            You can explore <strong>1 roadmap</strong> for free. Enroll to unlock all roadmaps.
+          </span>
+        </div>
+      )}
 
       {/* Type Filter Tabs */}
       <div className="d-flex gap-2 mb-4 flex-wrap">
@@ -205,7 +241,7 @@ const CareerRoadmapList = () => {
           <Row className="g-3">
             {roleRoadmaps.map((roadmap) => (
               <Col key={roadmap.id} xs={12} sm={6} lg={4} xl={3}>
-                <RoadmapCard roadmap={roadmap} />
+                <RoadmapCard roadmap={roadmap} isLocked={isPending && roadmap.id !== freeRoadmapId} />
               </Col>
             ))}
           </Row>
@@ -224,7 +260,7 @@ const CareerRoadmapList = () => {
           <Row className="g-3">
             {skillRoadmaps.map((roadmap) => (
               <Col key={roadmap.id} xs={12} sm={6} lg={4} xl={3}>
-                <RoadmapCard roadmap={roadmap} />
+                <RoadmapCard roadmap={roadmap} isLocked={isPending && roadmap.id !== freeRoadmapId} />
               </Col>
             ))}
           </Row>

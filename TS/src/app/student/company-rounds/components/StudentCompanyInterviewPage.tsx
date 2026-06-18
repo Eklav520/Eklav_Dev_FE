@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Spinner, Alert, Badge, Card, Row, Col, Modal } from 'react-bootstrap'
 import {
   Building2, FileText, Code2, DollarSign, MapPin, ClipboardList,
-  BookOpen, Target, Clock, Pencil, Play, Trophy, LayoutList, UserCheck
+  BookOpen, Target, Clock, Pencil, Play, Trophy, LayoutList, UserCheck, Lock
 } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -159,19 +159,32 @@ const getPlainTextFromHtml = (html?: string) => {
 }
 
 // ================= COMPONENTS =================
-const CompanyCard: React.FC<{ company: Company; onClick: () => void; isLoading?: boolean }> = ({ company, onClick, isLoading }) => (
-  <Card className={`company-card ${isLoading ? 'company-card--loading' : ''}`}>
+const CompanyCard: React.FC<{ company: Company; onClick: () => void; isLoading?: boolean; isLocked?: boolean }> = ({ company, onClick, isLoading, isLocked }) => (
+  <Card
+    className={`company-card ${isLoading ? 'company-card--loading' : ''}`}
+    style={{ opacity: isLocked ? 0.55 : 1, position: 'relative', cursor: isLocked ? 'not-allowed' : undefined }}
+  >
+    {/* Lock overlay badge */}
+    {isLocked && (
+      <div style={{
+        position: 'absolute', top: 14, right: 14, zIndex: 2,
+        background: 'rgba(0,0,0,0.65)', borderRadius: '50%',
+        width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Lock size={14} color="#aaa" />
+      </div>
+    )}
     <Card.Body>
       <div className="company-header">
-        <div className="company-icon">
+        <div className="company-icon" style={{ background: isLocked ? 'linear-gradient(135deg, #444 0%, #555 100%)' : undefined }}>
           <span className="icon">{(company.companyName || '?').charAt(0)}</span>
         </div>
         <div className="company-info">
-          <h4 className="company-name">{company.companyName || 'Unknown Company'}</h4>
+          <h4 className="company-name" style={{ color: isLocked ? '#777' : undefined }}>{company.companyName || 'Unknown Company'}</h4>
           <div className="company-meta">
-            <span className="meta-badge role">{company.role || 'N/A'}</span>
-            <span className="meta-badge package"><DollarSign size={11} /> {company.package || 'N/A'}</span>
-            <span className="meta-badge location"><MapPin size={11} /> {company.location || 'N/A'}</span>
+            <span className="meta-badge role" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}>{company.role || 'N/A'}</span>
+            <span className="meta-badge package" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}><DollarSign size={11} /> {company.package || 'N/A'}</span>
+            <span className="meta-badge location" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}><MapPin size={11} /> {company.location || 'N/A'}</span>
           </div>
         </div>
       </div>
@@ -195,20 +208,34 @@ const CompanyCard: React.FC<{ company: Company; onClick: () => void; isLoading?:
             {(company.rounds || []).map((round, idx) => {
               const visuals = getRoundVisuals(round?.roundType)
               return (
-              <Badge key={idx} className="round-type-badge" style={{ background: visuals.colors.bg, color: visuals.colors.color }}>
+              <Badge key={idx} className="round-type-badge" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666', border: 'none' } : { background: visuals.colors.bg, color: visuals.colors.color }}>
                 {visuals.icon} {round?.roundName || 'Round'}
               </Badge>
               )
             })}
           </div>
         </div>
-        <Button className="view-details-btn" onClick={onClick} disabled={isLoading}>
-          {isLoading ? (
-            <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" /> Loading...</>
-          ) : (
-            'View Details →'
-          )}
-        </Button>
+        {isLocked ? (
+          <Button
+            variant="secondary"
+            disabled
+            style={{
+              background: '#1a1a1a', border: '1px solid #333', color: '#555',
+              cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 6,
+              padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.875rem',
+            }}
+          >
+            <Lock size={12} /> Enroll to unlock
+          </Button>
+        ) : (
+          <Button className="view-details-btn" onClick={onClick} disabled={isLoading}>
+            {isLoading ? (
+              <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" /> Loading...</>
+            ) : (
+              'View Details →'
+            )}
+          </Button>
+        )}
       </div>
     </Card.Body>
   </Card>
@@ -219,6 +246,8 @@ const StudentCompanyInterviewPage = () => {
   const { user } = useAuthContext()
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL
+  const isPending = user?.status?.toLowerCase() === 'pending'
+  const freeCompanyIdRef = useRef<string | null>(null)
 
   // State
   const [companies, setCompanies] = useState<Company[]>([])
@@ -350,9 +379,14 @@ const StudentCompanyInterviewPage = () => {
           throw new Error('Failed to fetch companies')
         }
 
-        setCompanies(data.data || [])
+        const fetched = data.data || []
+        setCompanies(fetched)
+        // Lock all but the first company ever fetched for trial users
+        if (!freeCompanyIdRef.current && fetched.length > 0) {
+          freeCompanyIdRef.current = fetched[0]._id
+        }
         setTotalPages(Math.max(1, data.pagination?.pages || 1))
-        setTotalCompanies(data.pagination?.total ?? (data.data || []).length)
+        setTotalCompanies(data.pagination?.total ?? fetched.length)
 
         if (data.pagination?.page && data.pagination.page !== currentPage) {
           setCurrentPage(data.pagination.page)
@@ -719,6 +753,21 @@ const StudentCompanyInterviewPage = () => {
           )}
         </div>
 
+        {/* Pending trial banner */}
+        {isPending && (
+          <div style={{
+            background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
+            borderRadius: '12px', padding: '10px 16px', marginBottom: '16px',
+            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#ccc',
+          }}>
+            <Lock size={14} color="#ff6b35" style={{ flexShrink: 0 }} />
+            <span>
+              <strong style={{ color: '#ff6b35' }}>Trial access:</strong>{' '}
+              You can explore <strong>1 company</strong> for free. Enroll to unlock all companies.
+            </span>
+          </div>
+        )}
+
         {/* Companies Grid */}
         {filteredCompanies.length === 0 ? (
           <div className="empty-state">
@@ -734,6 +783,7 @@ const StudentCompanyInterviewPage = () => {
                 company={company}
                 onClick={() => fetchCompanyDetails(company._id)}
                 isLoading={loadingCompanyId === company._id}
+                isLocked={isPending && company._id !== freeCompanyIdRef.current}
               />
             ))}
           </div>
@@ -746,6 +796,7 @@ const StudentCompanyInterviewPage = () => {
             </div>
             <div className="pagination-controls">
               <Button
+                variant="secondary"
                 className="pagination-btn"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1 || isFetching}
@@ -756,6 +807,7 @@ const StudentCompanyInterviewPage = () => {
               {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
                 <Button
                   key={pageNumber}
+                  variant="secondary"
                   className={`pagination-btn page-number-btn ${pageNumber === currentPage ? 'active' : ''}`}
                   onClick={() => setCurrentPage(pageNumber)}
                   disabled={isFetching}
@@ -765,6 +817,7 @@ const StudentCompanyInterviewPage = () => {
               ))}
 
               <Button
+                variant="secondary"
                 className="pagination-btn"
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={currentPage === totalPages || isFetching}

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Card, Button, Badge, Modal } from 'react-bootstrap'
 import {
   FaEye,
+  FaLock,
   FaMapMarkerAlt,
   FaBriefcase,
   FaMoneyBillAlt,
@@ -271,29 +272,39 @@ const JobCard: React.FC<Props> = ({ job, onViewDetails, canViewDetails = false }
                 </Badge>
               )}
 
-              <Button
-                style={{
-                  backgroundColor: 'transparent',
-                  borderColor: '#ff7a00',
-                  color: '#ff7a00'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#ff7a00'
-                  e.currentTarget.style.color = '#fff'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                  e.currentTarget.style.color = '#ff7a00'
-                }}
-                size="sm"
-                onClick={() => canViewDetails && onViewDetails(job)}
-                disabled={!canViewDetails}
-                title={!canViewDetails ? 'Available only for approved subscription' : 'View job details'}
-                className={styles.detailsButton}
-              >
-                <FaEye size={12} className="me-1" />
-                Details
-              </Button>
+              {canViewDetails ? (
+                <Button
+                  style={{ backgroundColor: 'transparent', borderColor: '#ff7a00', color: '#ff7a00' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ff7a00'
+                    e.currentTarget.style.color = '#fff'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#ff7a00'
+                  }}
+                  size="sm"
+                  onClick={() => onViewDetails(job)}
+                  className={styles.detailsButton}
+                >
+                  <FaEye size={12} className="me-1" />
+                  Details
+                </Button>
+              ) : (
+                <span
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                    padding: '0.25rem 0.75rem', borderRadius: 6,
+                    border: '1px solid #333', background: '#111',
+                    color: '#555', fontSize: '0.8rem', fontWeight: 600,
+                    cursor: 'not-allowed', userSelect: 'none',
+                  }}
+                  title="Available only for approved subscription"
+                >
+                  <FaLock size={11} />
+                  Locked
+                </span>
+              )}
             </div>
           </div>
         </div>

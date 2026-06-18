@@ -25,7 +25,8 @@ import {
   FaUsers,
   FaSearch,
   FaGlobeAsia,
-  FaBuilding
+  FaBuilding,
+  FaLock
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -62,6 +63,7 @@ const InterviewDetailsPageView = () => {
   const token = user?.token
   const normalizedUserStatus = (user?.status || '').trim().toLowerCase()
   const isSubscriptionApproved = normalizedUserStatus === 'approved'
+  const isPending = normalizedUserStatus === 'pending'
 
   const [activeTab, setActiveTab] = useState<'campus' | 'external'>('campus')
 
@@ -200,16 +202,52 @@ const InterviewDetailsPageView = () => {
             )}
           </button>
           <button
-            className={`job-tab-btn ${activeTab === 'external' ? 'active' : ''}`}
-            onClick={() => setActiveTab('external')}
+            className={`job-tab-btn ${activeTab === 'external' ? 'active' : ''} ${isPending ? 'locked' : ''}`}
+            onClick={() => !isPending && setActiveTab('external')}
+            style={isPending ? { cursor: 'not-allowed', opacity: 0.5 } : undefined}
+            title={isPending ? 'Enroll to unlock Browse All Jobs' : undefined}
           >
             <FaGlobeAsia className="me-2" />Browse All Jobs
-            <span className="job-tab-new">LIVE</span>
+            {isPending
+              ? <FaLock style={{ marginLeft: '0.4rem', fontSize: '0.7rem' }} />
+              : <span className="job-tab-new">LIVE</span>
+            }
           </button>
         </div>
 
         {activeTab === 'external' && (
-          <ExternalJobBoard />
+          isPending ? (
+            <div style={{
+              textAlign: 'center', padding: '4rem 2rem',
+              background: '#0a0a0a', border: '1px solid #1f1f1f',
+              borderRadius: '12px', marginTop: '1rem',
+            }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'rgba(255,122,0,0.1)', border: '1px solid rgba(255,122,0,0.25)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}>
+                <FaLock style={{ color: '#ff7a00', fontSize: '1.5rem' }} />
+              </div>
+              <h5 style={{ color: '#fff', marginBottom: '0.5rem' }}>Browse All Jobs is locked</h5>
+              <p style={{ color: '#8a8a8a', fontSize: '0.9rem', maxWidth: 380, margin: '0 auto 1.25rem' }}>
+                Live jobs from LinkedIn, Indeed & more are available for enrolled students.
+                Enroll to unlock this feature.
+              </p>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                background: 'rgba(255,122,0,0.08)', border: '1px solid rgba(255,122,0,0.3)',
+                borderRadius: '8px', padding: '0.6rem 1.2rem',
+                color: '#ff7a00', fontSize: '0.85rem', fontWeight: 600,
+              }}>
+                <FaLock style={{ fontSize: '0.75rem' }} />
+                Trial access — enroll to unlock
+              </div>
+            </div>
+          ) : (
+            <ExternalJobBoard />
+          )
         )}
 
         {activeTab === 'campus' && (

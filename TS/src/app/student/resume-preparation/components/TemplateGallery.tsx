@@ -3,6 +3,7 @@ import { templateList, TemplateKey } from './templateList';
 
 type TemplateGalleryProps = {
   onSelectTemplate: (id: TemplateKey) => void;
+  isPending?: boolean;
 };
 
 const ACCENTS: Record<TemplateKey, { bg: string; bar: string; badge: string }> = {
@@ -111,7 +112,7 @@ const MiniPreview: React.FC<{ id: TemplateKey }> = ({ id }) => {
   );
 };
 
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isPending = false }) => {
   const [hovered, setHovered] = useState<TemplateKey | null>(null);
 
   return (
@@ -122,50 +123,85 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate }) =
         <p style={{ color: '#888', fontSize: 14 }}>7 professionally designed layouts — pick one and start building</p>
       </div>
 
+      {/* Pending trial banner */}
+      {isPending && (
+        <div style={{
+          maxWidth: 900, margin: '0 auto 24px',
+          background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
+          borderRadius: 10, padding: '10px 16px',
+          display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#ccc',
+        }}>
+          <span style={{ color: '#ff6b35', fontSize: 15 }}>🔒</span>
+          <span>
+            <strong style={{ color: '#ff6b35' }}>Trial access:</strong>{' '}
+            You can use the <strong>Classic</strong> template for free. Enroll to unlock all templates.
+          </span>
+        </div>
+      )}
+
       {/* Grid */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, justifyContent: 'center', maxWidth: 900, margin: '0 auto' }}>
         {(Object.entries(templateList) as [TemplateKey, typeof templateList[TemplateKey]][]).map(([key, { label, description }]) => {
           const a = ACCENTS[key];
-          const isHov = hovered === key;
+          const isLocked = isPending && key !== 'classic';
+          const isHov = hovered === key && !isLocked;
           return (
             <div
               key={key}
               style={{
                 width: 250,
                 background: '#16161e',
-                border: `1.5px solid ${isHov ? a.badge : '#2a2a32'}`,
+                border: `1.5px solid ${isLocked ? '#222' : isHov ? a.badge : '#2a2a32'}`,
                 borderRadius: 14,
                 padding: '16px 16px 18px',
-                cursor: 'pointer',
+                cursor: isLocked ? 'not-allowed' : 'pointer',
                 transition: 'all 0.22s ease',
                 transform: isHov ? 'translateY(-5px)' : 'none',
                 boxShadow: isHov ? `0 12px 32px ${a.badge}30` : '0 2px 8px rgba(0,0,0,0.3)',
+                opacity: isLocked ? 0.5 : 1,
+                position: 'relative',
               }}
-              onMouseEnter={() => setHovered(key)}
+              onMouseEnter={() => !isLocked && setHovered(key)}
               onMouseLeave={() => setHovered(null)}
-              onClick={() => onSelectTemplate(key)}
+              onClick={() => !isLocked && onSelectTemplate(key)}
             >
+              {/* Lock badge */}
+              {isLocked && (
+                <div style={{
+                  position: 'absolute', top: 10, right: 10, zIndex: 2,
+                  background: 'rgba(0,0,0,0.6)', borderRadius: '50%',
+                  width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 12 }}>🔒</span>
+                </div>
+              )}
+
               {/* Mini preview */}
-              <div style={{ marginBottom: 12 }}>
+              <div style={{ marginBottom: 12, filter: isLocked ? 'grayscale(1)' : 'none' }}>
                 <MiniPreview id={key} />
               </div>
 
               {/* Label + badge */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f0f0' }}>{label}</span>
-                <span style={{ fontSize: 9.5, fontWeight: 700, background: `${a.badge}22`, color: a.badge, border: `1px solid ${a.badge}44`, borderRadius: 20, padding: '2px 8px' }}>TEMPLATE</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: isLocked ? '#555' : '#f0f0f0' }}>{label}</span>
+                <span style={{ fontSize: 9.5, fontWeight: 700, background: `${isLocked ? '#333' : a.badge}22`, color: isLocked ? '#555' : a.badge, border: `1px solid ${isLocked ? '#333' : a.badge}44`, borderRadius: 20, padding: '2px 8px' }}>
+                  {isLocked ? 'LOCKED' : 'TEMPLATE'}
+                </span>
               </div>
-              <p style={{ fontSize: 11, color: '#888', margin: '0 0 14px', lineHeight: 1.5 }}>{description}</p>
+              <p style={{ fontSize: 11, color: '#666', margin: '0 0 14px', lineHeight: 1.5 }}>{description}</p>
 
               <button
+                disabled={isLocked}
                 style={{
                   width: '100%', padding: '9px', borderRadius: 8, border: 'none',
-                  background: isHov ? a.badge : '#2a2a32',
-                  color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  background: isLocked ? '#222' : isHov ? a.badge : '#2a2a32',
+                  color: isLocked ? '#444' : '#fff',
+                  fontWeight: 700, fontSize: 13,
+                  cursor: isLocked ? 'not-allowed' : 'pointer',
                   transition: 'background 0.2s',
                 }}
               >
-                Use This Template
+                {isLocked ? '🔒 Enroll to unlock' : 'Use This Template'}
               </button>
             </div>
           );

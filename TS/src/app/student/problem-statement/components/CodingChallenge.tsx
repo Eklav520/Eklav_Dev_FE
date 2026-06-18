@@ -147,6 +147,7 @@ const ProblemStatement = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
+  const isPending = user?.status?.toLowerCase() === 'pending'
 
   const [problems, setProblems] = useState<Problem[]>([])
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null)
@@ -509,6 +510,7 @@ const ProblemStatement = () => {
             problems={problems}
             selectedId={selectedProblem?.id}
             completedIds={completedIds}
+            isPending={isPending}
             onSelect={(p) => {
               setSelectedProblem(p)
               setCode(DEFAULT_CODE[language])
