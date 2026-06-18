@@ -310,6 +310,9 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   const [submitted, setSubmitted] = useState(false)
   const [roundConfig, setRoundConfig] = useState<any>(null)
 
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
+  const draftKey = `coding_draft_${user?.id}_${eventId}`
+
   // Camera refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
@@ -506,6 +509,36 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
       setCode(codes[currentChallenge._id])
     }
   }, [currentChallenge, codes])
+
+  // Auto-save draft to localStorage whenever codes or question index changes
+  useEffect(() => {
+    if (submitted || challenges.length === 0) return
+    localStorage.setItem(draftKey, JSON.stringify({ codes, currentQuestionIndex, language }))
+  }, [codes, currentQuestionIndex, language])
+
+  // Restore draft after challenges load
+  useEffect(() => {
+    if (challenges.length === 0) return
+    const saved = localStorage.getItem(draftKey)
+    if (!saved) return
+    try {
+      const { codes: savedCodes, currentQuestionIndex: savedIndex, language: savedLang } = JSON.parse(saved)
+      if (savedCodes && Object.keys(savedCodes).length > 0) {
+        setCodes(savedCodes)
+        setLanguage(savedLang || 'javascript')
+        const idx = Math.min(savedIndex ?? 0, challenges.length - 1)
+        setCurrentQuestionIndex(idx)
+        const challengeId = challenges[idx]?._id
+        if (challengeId && savedCodes[challengeId]) {
+          setCode(savedCodes[challengeId])
+        }
+        setShowResumeBanner(true)
+        setTimeout(() => setShowResumeBanner(false), 4000)
+      }
+    } catch {
+      localStorage.removeItem(draftKey)
+    }
+  }, [challenges])
 
   // Save code when it changes
   const handleCodeChange = (value: string | undefined) => {
@@ -757,6 +790,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
         })
       })
 
+      localStorage.removeItem(draftKey)
       onSubmitted?.()
     } catch (err) {
       console.error('Submit error:', err)
@@ -825,7 +859,18 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#000', color: '#fff', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100vh', background: '#000', color: '#fff', overflow: 'hidden', position: 'relative' }}>
+      {/* Resume banner */}
+      {showResumeBanner && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#28a745', color: '#fff', textAlign: 'center',
+          padding: '10px 16px', fontSize: '14px', fontWeight: 600,
+          animation: 'fadeOut 0.5s ease 3.5s forwards'
+        }}>
+          ✅ Previous session restored — your code has been loaded
+        </div>
+      )}
       {/* ================= LEFT PANEL - QUESTION ================= */}
       <div style={{
         width: showQuestionPanel ? '35%' : '0px',
@@ -1241,6 +1286,9 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
+        }
+        @keyframes fadeOut {
+          to { opacity: 0; pointer-events: none; }
         }
       `}</style>
     </div>

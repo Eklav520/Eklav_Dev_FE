@@ -170,6 +170,7 @@ export default function StudentAssessmentController() {
 
   const [loading, setLoading] = useState(true)
   const [assessments, setAssessments] = useState<Assessment[]>([])
+  const [studentProgressMap, setStudentProgressMap] = useState<Record<string, { completedRounds: string[]; status: string }>>({})
   const [selectedAssessment, setSelectedAssessment] = useState<any>(null)
   const [rounds, setRounds] = useState<Round[]>([])
   const [activeRound, setActiveRound] = useState<RoundKey | null>(null)
@@ -185,8 +186,13 @@ export default function StudentAssessmentController() {
   const [studentResult, setStudentResult] = useState<StudentResult | null>(null)
 
   const submitRef = useRef<() => void>(() => {})
+  const mcqForceSubmitRef = useRef<() => void>(() => {})
+  const violationPendingRef = useRef(false)
   const onViolationCb = useCallback(() => setShowViolationAlert(true), [])
-  const onMaxReachedCb = useCallback(() => { setTimeout(() => submitRef.current(), 3000) }, [])
+  const onMaxReachedCb = useCallback(() => {
+    violationPendingRef.current = true
+    setTimeout(() => submitRef.current(), 3000)
+  }, [])
 
   const proctor = useProctorGuard(
     {
@@ -203,11 +209,23 @@ export default function StudentAssessmentController() {
   useEffect(() => {
     const fetchAssessments = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/assessment/admin/exams`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
+        const [assessRes, progressRes] = await Promise.all([
+          fetch(`${API_BASE}/api/assessment/admin/exams`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/api/assessment/my-progress`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ])
 
-        const data = await res.json()
+        const data = await assessRes.json()
+        const progressData = await progressRes.json()
+
+        if (progressData.success && Array.isArray(progressData.data)) {
+          const map: Record<string, { completedRounds: string[]; status: string }> = {}
+          progressData.data.forEach((p: any) => { map[p.examId] = p })
+          setStudentProgressMap(map)
+        }
 
         if (!data.success) {
           console.error("Failed to fetch assessments")
@@ -313,8 +331,10 @@ export default function StudentAssessmentController() {
 
           setSelectedAssessment(examData.exam)
           setRounds(formattedRounds)
-          setCompletedRounds([])
-          setExamStatus(computedStatus)
+          // Use cached progress map to restore completedRounds when current-exam doesn't match
+          const cached = studentProgressMap[assessment._id]
+          setCompletedRounds(cached?.completedRounds || [])
+          setExamStatus(cached?.status === 'completed' ? 'completed' : computedStatus)
         }
       }
 
@@ -326,6 +346,10 @@ export default function StudentAssessmentController() {
         const resultData = await resultRes.json()
         if (resultData.success) {
           setStudentResult(resultData)
+          // Sync completedRounds from result if not already set from current-exam
+          if (resultData.completedRounds?.length > 0) {
+            setCompletedRounds((prev) => prev.length > 0 ? prev : resultData.completedRounds)
+          }
         } else {
           setStudentResult(null)
         }
@@ -400,6 +424,8 @@ export default function StudentAssessmentController() {
   const handleRoundSubmit = async () => {
     proctor.disarm()
     proctor.reset()
+    const wasViolation = violationPendingRef.current
+    violationPendingRef.current = false
     try {
       const submitRes = await fetch(`${API_BASE}/api/assessment/complete-round`, {
         method: "POST",
@@ -410,6 +436,7 @@ export default function StudentAssessmentController() {
         body: JSON.stringify({
           examId: selectedAssessment._id,
           roundType: roundConfig?.type,
+          violationAutoSubmit: wasViolation,
         }),
       })
 
@@ -458,7 +485,9 @@ export default function StudentAssessmentController() {
     }
   }
 
-  submitRef.current = handleRoundSubmit
+  submitRef.current = (roundConfig?.type === 'mcq')
+    ? () => mcqForceSubmitRef.current()
+    : handleRoundSubmit
 
   const isRoundCompleted = (roundType: string) => completedRounds.includes(roundType)
 
@@ -544,6 +573,9 @@ export default function StudentAssessmentController() {
                 const rounds = assessment.rounds ?? []
                 const now = new Date()
                 const allEnded = rounds.length > 0 && rounds.every(r => r.endDateTime && new Date(r.endDateTime) < now)
+                const studentProgress = studentProgressMap[assessment._id]
+                const studentAttended = studentProgress && studentProgress.completedRounds.length > 0
+                const studentCompleted = studentProgress?.status === 'completed'
                 return (
                   <div key={assessment._id} className="sa-card">
 
@@ -553,8 +585,13 @@ export default function StudentAssessmentController() {
                         <div className="sa-badges">
                           <span className="sa-badge-type">📋 Assessment</span>
                           {assessment.published && <span className="sa-badge-published">● Published</span>}
-                          {assessment.activeRound && (
+                          {assessment.activeRound && !studentAttended && (
                             <span className="sa-badge-active">⚡ {assessment.activeRound.toUpperCase()} Live</span>
+                          )}
+                          {studentAttended && (
+                            <span style={{ background: 'rgba(40,167,69,0.15)', color: '#28a745', border: '1px solid rgba(40,167,69,0.3)', fontSize: '0.73rem', fontWeight: 600, padding: '0.28rem 0.65rem', borderRadius: '8px' }}>
+                              ✓ Attended
+                            </span>
                           )}
                         </div>
                         <h4 className="sa-card-title">{assessment.title}</h4>
@@ -567,11 +604,11 @@ export default function StudentAssessmentController() {
                           View Details
                         </button>
                         <button
-                          className={`sa-btn-start${allEnded ? ' ended' : ''}`}
-                          disabled={allEnded}
-                          onClick={() => !allEnded && handleSelectAssessment(assessment)}
+                          className={`sa-btn-start${(allEnded || studentCompleted) ? ' ended' : ''}`}
+                          disabled={allEnded || !!studentAttended}
+                          onClick={() => !allEnded && !studentAttended && handleSelectAssessment(assessment)}
                         >
-                          {allEnded ? '✓ Completed' : 'Start Assessment'}
+                          {studentCompleted ? '✓ Assessment Completed' : studentAttended ? '✓ Already Attended' : allEnded ? '✓ Completed' : 'Start Assessment'}
                         </button>
                       </div>
                     </div>
@@ -875,6 +912,7 @@ export default function StudentAssessmentController() {
             examId={selectedAssessment._id}
             duration={roundConfig.duration}
             onSubmit={handleRoundSubmit}
+            forceSubmitRef={mcqForceSubmitRef}
           />
         </div>
       )}

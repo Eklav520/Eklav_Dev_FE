@@ -77,6 +77,7 @@ const AdminResults: React.FC = () => {
   const itemsPerPage = 30;
   const [exams, setExams] = useState<{ id: string; title: string }[]>([]);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
+  const examsLoadedRef = React.useRef(false);
   const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
   const [answersLoading, setAnswersLoading] = useState(false);
   const [rescoring, setRescoring] = useState(false);
@@ -87,9 +88,10 @@ const AdminResults: React.FC = () => {
   const [liveStudentsError, setLiveStudentsError] = useState('');
 
   useEffect(() => {
-    fetchStats();
-    fetchResults();
-  }, []);
+    fetchStats(selectedExamId || undefined);
+    // fetchResults is NOT called here — the deps effect below handles the initial fetch
+    // to avoid a double unfiltered call (one from here + one from the deps effect on mount)
+  }, [selectedExamId]);
 
   // Poll for live students when modal is open
   useEffect(() => {
@@ -231,28 +233,35 @@ const AdminResults: React.FC = () => {
         const validResults = rawResults.filter(
           (r: Result) => r.student?.name !== 'N/A' && r.student?.email !== 'N/A'
         );
-        setResults(validResults);
+
+        // Client-side exam filter — backend may return cross-exam results
+        const examFiltered = selectedExamId
+          ? validResults.filter((r) => r.exam.id === selectedExamId)
+          : validResults;
+        setResults(examFiltered);
         setTotalPages(response.data.totalPages);
 
-        // Extract unique exams from results, sorted by latest
-        const uniqueExams = new Map<string, { id: string; title: string; createdAt?: string }>();
-        rawResults.forEach((result: Result) => {
-          if (result.exam?.id && !uniqueExams.has(result.exam.id)) {
-            uniqueExams.set(result.exam.id, {
-              id: result.exam.id,
-              title: result.exam.title,
-              createdAt: result.createdAt
-            });
+        // Build exam list only once (from the first unfiltered call).
+        // Subsequent filtered calls must NOT overwrite it or the dropdown loses all other options.
+        if (!examsLoadedRef.current) {
+          const uniqueExams = new Map<string, { id: string; title: string; createdAt?: string }>();
+          rawResults.forEach((result: Result) => {
+            if (result.exam?.id && !uniqueExams.has(result.exam.id)) {
+              uniqueExams.set(result.exam.id, {
+                id: result.exam.id,
+                title: result.exam.title,
+                createdAt: result.createdAt
+              });
+            }
+          });
+          const examList = Array.from(uniqueExams.values());
+          examList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          setExams(examList);
+          examsLoadedRef.current = true;
+          // Default to the latest exam
+          if (examList.length > 0) {
+            setSelectedExamId(examList[0].id);
           }
-        });
-        
-        const examList = Array.from(uniqueExams.values());
-        examList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        setExams(examList);
-
-        // Set selectedExamId to latest exam if not already set
-        if (!selectedExamId && examList.length > 0) {
-          setSelectedExamId(examList[0].id);
         }
       }
     } catch (err: any) {
@@ -263,9 +272,10 @@ const AdminResults: React.FC = () => {
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (examId?: string) => {
     try {
       const response = await axios.get(`${baseURL}/api/assessment/admin/results/stats/summary`, {
+        params: examId ? { examId } : {},
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success) {
@@ -289,7 +299,7 @@ const AdminResults: React.FC = () => {
       
       if (response.data.success) {
         await fetchResults();
-        await fetchStats();
+        await fetchStats(selectedExamId || undefined);
         setShowApproveModal(false);
         setSelectedResult(null);
         setApproveComments('');
@@ -318,7 +328,7 @@ const AdminResults: React.FC = () => {
       
       if (response.data.success) {
         await fetchResults();
-        await fetchStats();
+        await fetchStats(selectedExamId || undefined);
         setShowBulkApproveModal(false);
         setSelectedSubmissions([]);
         setApproveComments('');
@@ -801,7 +811,20 @@ const AdminResults: React.FC = () => {
                         <div className="student-avatar">
                           {result.student.name?.charAt(0) || '?'}
                         </div>
-                        <span className="student-name">{result.student.name || 'N/A'}</span>
+                        <div>
+                          <span className="student-name">{result.student.name || 'N/A'}</span>
+                          {result.roundResults?.some((r: any) => r.violationAutoSubmit) && (
+                            <span style={{
+                              display: 'inline-block', marginLeft: '6px',
+                              background: 'rgba(220,53,69,0.15)', color: '#dc3545',
+                              border: '1px solid rgba(220,53,69,0.4)',
+                              borderRadius: '5px', padding: '1px 6px',
+                              fontSize: '0.68rem', fontWeight: 700,
+                            }}>
+                              ⚠ Violation
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="email-cell">{result.student.email || 'N/A'}</td>
@@ -1006,7 +1029,53 @@ const AdminResults: React.FC = () => {
                 </div>
               </div>
 
-              {/* Student Answers */}
+              {/* Video Recordings — moved up, compact layout */}
+              {selectedResult.recordings && Object.keys(selectedResult.recordings).length > 0 && (
+                <div className="recordings-card">
+                  <h5 className="section-title">
+                    <FaVideo className="me-2" /> Session Recordings
+                  </h5>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                    {Object.entries(selectedResult.recordings).map(([round, recording]: [string, any]) => (
+                      recording?.videoUrl && (
+                        <div key={round} className="video-item">
+                          <div className="video-header">
+                            <span className="video-round">{round.toUpperCase()} Recording</span>
+                            <a href={recording.videoUrl} target="_blank" rel="noopener noreferrer" className="video-link">
+                              <FaExternalLinkAlt /> Open in new tab
+                            </a>
+                          </div>
+                          <video controls className="video-player">
+                            <source src={recording.videoUrl} type="video/webm" />
+                            <source src={recording.videoUrl} type="video/mp4" />
+                            Your browser does not support the video tag.
+                          </video>
+                        </div>
+                      )
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Overall Result */}
+              <div className="overall-card">
+                <h5 className="section-title">
+                  <FaTrophy className="me-2" /> Overall Result
+                </h5>
+                <div className={`overall-result ${selectedResult.resultStatus}`}>
+                  <div className="result-status">
+                    <strong>Status:</strong> {selectedResult.resultStatus?.toUpperCase()}
+                  </div>
+                  <div className="result-score">
+                    <strong>Total Score:</strong> {selectedResult.totalScore}
+                  </div>
+                  <div className="result-percentage">
+                    <strong>Percentage:</strong> {selectedResult.finalPercentage?.toFixed(1)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Answers — moved to bottom */}
               <div className="info-card" style={{ marginBottom: '20px' }}>
                 <h5 className="section-title">
                   <FaBookOpen className="me-2" /> Student Answers
@@ -1101,48 +1170,6 @@ const AdminResults: React.FC = () => {
                 )}
               </div>
 
-              {/* Video Recordings */}
-              {selectedResult.recordings && Object.keys(selectedResult.recordings).length > 0 && (
-                <div className="recordings-card">
-                  <h5 className="section-title">
-                    <FaVideo className="me-2" /> Session Recordings
-                  </h5>
-                  {Object.entries(selectedResult.recordings).map(([round, recording]: [string, any]) => (
-                    recording?.videoUrl && (
-                      <div key={round} className="video-item">
-                        <div className="video-header">
-                          <span className="video-round">{round.toUpperCase()} Recording</span>
-                          <a href={recording.videoUrl} target="_blank" rel="noopener noreferrer" className="video-link">
-                            <FaExternalLinkAlt /> Open in new tab
-                          </a>
-                        </div>
-                        <video controls className="video-player">
-                          <source src={recording.videoUrl} type="video/mp4" />
-                          Your browser does not support the video tag.
-                        </video>
-                      </div>
-                    )
-                  ))}
-                </div>
-              )}
-
-              {/* Overall Result */}
-              <div className="overall-card">
-                <h5 className="section-title">
-                  <FaTrophy className="me-2" /> Overall Result
-                </h5>
-                <div className={`overall-result ${selectedResult.resultStatus}`}>
-                  <div className="result-status">
-                    <strong>Status:</strong> {selectedResult.resultStatus?.toUpperCase()}
-                  </div>
-                  <div className="result-score">
-                    <strong>Total Score:</strong> {selectedResult.totalScore}
-                  </div>
-                  <div className="result-percentage">
-                    <strong>Percentage:</strong> {selectedResult.finalPercentage?.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
             </div>
           )}
         </Modal.Body>
@@ -1797,25 +1824,34 @@ const AdminResults: React.FC = () => {
         }
 
         .video-item {
-          margin-bottom: 16px;
+          background: #0d0d0d;
+          border: 1px solid #2c2c2c;
+          border-radius: 10px;
+          padding: 12px;
+          width: 320px;
+          flex-shrink: 0;
         }
 
         .video-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
 
         .video-round {
           font-weight: 600;
           color: #ff7a00;
+          font-size: 12px;
         }
 
         .video-link {
           color: #ff7a00;
           text-decoration: none;
-          font-size: 12px;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 4px;
         }
 
         .video-link:hover {
@@ -1824,8 +1860,11 @@ const AdminResults: React.FC = () => {
 
         .video-player {
           width: 100%;
-          border-radius: 8px;
-          background: #000000;
+          height: 200px;
+          border-radius: 6px;
+          background: #000;
+          object-fit: cover;
+          display: block;
         }
 
         .overall-result {

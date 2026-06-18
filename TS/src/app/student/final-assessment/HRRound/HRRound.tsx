@@ -82,6 +82,35 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
   const [startingInterview, setStartingInterview] = useState(false)
   const welcomePlayedRef = useRef(false)
 
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
+  const draftKey = `hr_draft_${user?.id}_${examId}`
+
+  // Auto-save draft whenever answers or position changes (only while questions are active)
+  useEffect(() => {
+    if (qs.length === 0) return
+    localStorage.setItem(draftKey, JSON.stringify({ qs, textAnswers, idx, selectedTopics }))
+  }, [textAnswers, idx])
+
+  // Restore draft on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey)
+    if (!saved) return
+    try {
+      const { qs: savedQs, textAnswers: savedAnswers, idx: savedIdx, selectedTopics: savedTopics } = JSON.parse(saved)
+      if (savedQs && savedQs.length > 0) {
+        setQs(savedQs)
+        setTextAnswers(savedAnswers || {})
+        setIdx(Math.min(savedIdx ?? 0, savedQs.length - 1))
+        if (savedTopics) setSelectedTopics(savedTopics)
+        startTimer()
+        setShowResumeBanner(true)
+        setTimeout(() => setShowResumeBanner(false), 4000)
+      }
+    } catch {
+      localStorage.removeItem(draftKey)
+    }
+  }, [])
+
   // ===== FETCH AVAILABLE TOPICS =====
   useEffect(() => {
     const fetchTopics = async () => {
@@ -479,6 +508,7 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
 
       const data = await res.json()
       if (data?.success) {
+        localStorage.removeItem(draftKey)
         stopCameraRecording()
         setOpen(false)
         onSubmitted?.()
@@ -649,6 +679,16 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
         </Modal.Header>
 
         <Modal.Body className="modal-body-custom">
+          {showResumeBanner && (
+            <div style={{
+              background: '#28a745', color: '#fff', textAlign: 'center',
+              padding: '10px 16px', fontSize: '14px', fontWeight: 600,
+              borderRadius: '6px', marginBottom: '12px',
+              animation: 'fadeOut 0.5s ease 3.5s forwards'
+            }}>
+              ✅ Previous session restored — your answers have been loaded
+            </div>
+          )}
           {loadErr && (
             <Alert variant="danger" className="alert-custom alert-danger">
               <FaExclamationTriangle className="alert-icon" />
@@ -1553,6 +1593,10 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        @keyframes fadeOut {
+          to { opacity: 0; pointer-events: none; }
         }
 
         @media (max-width: 1024px) {

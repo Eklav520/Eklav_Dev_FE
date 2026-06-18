@@ -6,6 +6,7 @@ type Props = {
   examId: string
   duration?: number
   onSubmit?: () => void
+  forceSubmitRef?: React.MutableRefObject<() => void>
 }
 
 type Option = {
@@ -21,7 +22,7 @@ type Question = {
   correctAnswer?: string
 }
 
-export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props) {
+export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
   const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -36,6 +37,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   const [submitted, setSubmitted] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
+
+  const draftKey = `exam_draft_${user?.id}_${examId}`
 
   // Camera recording refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -56,6 +60,30 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   useEffect(() => {
     answersRef.current = answers
   }, [answers])
+
+  // Auto-save draft to localStorage on every answer change
+  useEffect(() => {
+    if (submitted || Object.keys(answers).length === 0) return
+    localStorage.setItem(draftKey, JSON.stringify({ answers, current }))
+  }, [answers, current])
+
+  // Restore draft once questions are loaded
+  useEffect(() => {
+    if (questions.length === 0) return
+    const saved = localStorage.getItem(draftKey)
+    if (!saved) return
+    try {
+      const { answers: savedAnswers, current: savedCurrent } = JSON.parse(saved)
+      if (savedAnswers && Object.keys(savedAnswers).length > 0) {
+        setAnswers(savedAnswers)
+        setCurrent(Math.min(savedCurrent ?? 0, questions.length - 1))
+        setShowResumeBanner(true)
+        setTimeout(() => setShowResumeBanner(false), 4000)
+      }
+    } catch {
+      localStorage.removeItem(draftKey)
+    }
+  }, [questions])
 
   useEffect(() => {
     if (questions.length > 0 && !cameraStream) {
@@ -219,7 +247,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
   }
 
   // ================= SUBMIT =================
-  const handleSubmit = async (auto = false) => {
+  const handleSubmit = async (auto = false, isViolation = false) => {
     if (submitted || submittingRef.current) return
 
     submittingRef.current = true
@@ -338,6 +366,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
           sessionMediaUrl: recordingUrl,
           submittedAt: new Date(),
           autoSubmitted: auto,
+          violationAutoSubmit: isViolation,
         }),
       })
 
@@ -349,6 +378,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
 
       console.log("✅ Submit success")
 
+      localStorage.removeItem(draftKey)
       setSubmitted(true)
 
     } catch (err) {
@@ -363,6 +393,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
     onSubmit?.()
   }
 
+  if (forceSubmitRef) {
+    forceSubmitRef.current = () => handleSubmit(true, true)
+  }
 
   const formatTime = (t: number) => {
     const m = Math.floor(t / 60)
@@ -540,6 +573,25 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit }: Props)
             </h5>
             <div style={{ height: "2px", background: "#ff6b35", width: "60px" }}></div>
           </div>
+
+          {/* Resume banner */}
+          {showResumeBanner && (
+            <div style={{
+              background: 'rgba(40,167,69,0.15)',
+              border: '1px solid #28a745',
+              borderRadius: 8,
+              padding: '8px 14px',
+              marginBottom: 14,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: '0.85rem',
+              color: '#28a745',
+              fontWeight: 600,
+            }}>
+              ✅ Your previous answers have been restored — continue from where you left off.
+            </div>
+          )}
 
           {/* Question Card - Prominent and spacious */}
           <Card

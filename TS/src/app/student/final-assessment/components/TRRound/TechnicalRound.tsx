@@ -93,6 +93,37 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
   const [exampleAnswers, setExampleAnswers] = useState<Record<string, string>>({})
   const audioStreamRef = useRef<MediaStream | null>(null)
 
+  const [showResumeBanner, setShowResumeBanner] = useState(false)
+  const draftKey = `tr_draft_${user?.id}_${examId}`
+
+  // Auto-save draft whenever answers or position changes (only while questions are active)
+  useEffect(() => {
+    if (qs.length === 0) return
+    localStorage.setItem(draftKey, JSON.stringify({ qs, textAnswers, exampleAnswers, idx, generationMode, selectedTopic }))
+  }, [textAnswers, exampleAnswers, idx])
+
+  // Restore draft on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(draftKey)
+    if (!saved) return
+    try {
+      const { qs: savedQs, textAnswers: savedAnswers, exampleAnswers: savedExamples, idx: savedIdx, generationMode: savedMode, selectedTopic: savedTopic } = JSON.parse(saved)
+      if (savedQs && savedQs.length > 0) {
+        setQs(savedQs)
+        setTextAnswers(savedAnswers || {})
+        setExampleAnswers(savedExamples || {})
+        setIdx(Math.min(savedIdx ?? 0, savedQs.length - 1))
+        if (savedMode) setGenerationMode(savedMode)
+        if (savedTopic) setSelectedTopic(savedTopic)
+        startTimer()
+        setShowResumeBanner(true)
+        setTimeout(() => setShowResumeBanner(false), 4000)
+      }
+    } catch {
+      localStorage.removeItem(draftKey)
+    }
+  }, [])
+
   // ===== FETCH AVAILABLE TOPICS =====
   useEffect(() => {
     const fetchTopics = async () => {
@@ -523,6 +554,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
       })
       const data = await res.json()
       if (data?.success) {
+        localStorage.removeItem(draftKey)
         stopCameraRecording()
         setOpen(false)
         onSubmitted?.()
@@ -696,6 +728,16 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
         </Modal.Header>
 
         <Modal.Body className="modal-body-custom">
+          {showResumeBanner && (
+            <div style={{
+              background: '#28a745', color: '#fff', textAlign: 'center',
+              padding: '10px 16px', fontSize: '14px', fontWeight: 600,
+              borderRadius: '6px', marginBottom: '12px',
+              animation: 'fadeOut 0.5s ease 3.5s forwards'
+            }}>
+              ✅ Previous session restored — your answers have been loaded
+            </div>
+          )}
           {loadErr && (<Alert variant="danger" className="alert-custom alert-danger"><FaExclamationTriangle className="alert-icon" /><span>{loadErr}</span></Alert>)}
           {uiErr && (<Alert variant="warning" className="alert-custom alert-warning"><FaExclamationTriangle className="alert-icon" /><span>{uiErr}</span></Alert>)}
 
@@ -963,6 +1005,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
         .spinner-icon { animation: spin 1s linear infinite; margin-right: 0.5rem; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.1); } }
+        @keyframes fadeOut { to { opacity: 0; pointer-events: none; } }
         @media (max-width: 1024px) { .interview-grid { grid-template-columns: 1fr; } .interview-right { order: 2; } }
         @media (max-width: 768px) { .modal-header-custom { padding: 1rem; } .header-content-custom { flex-direction: column; text-align: center; } .modal-body-custom { padding: 1rem; } .mode-options { grid-template-columns: 1fr; } .upload-card { padding: 1.5rem; } .nav-controls-custom { flex-direction: column; } .nav-btn, .review-btn { width: 100%; justify-content: center; } .review-actions { flex-direction: column; } .back-btn, .final-submit-btn { width: 100%; justify-content: center; } }
         .modal-backdrop { z-index: 9999998 !important; }
