@@ -280,13 +280,9 @@ export function useProctorGuard(
       setIsFullscreen(active)
 
       if (!active && captureFullscreenExit && armedRef.current) {
-        if (escPressedRef.current) {
-          // ESC pressed — silently re-enter, no violation
-          // Delayed reset so the blur event (fired after fullscreenchange) also sees the flag
-          setTimeout(() => { escPressedRef.current = false }, 300)
-        } else {
-          raise('Exited fullscreen mode')
-        }
+        // Always count as violation — ESC or any other exit
+        setTimeout(() => { escPressedRef.current = false }, 300)
+        raise('Exited fullscreen mode')
         if (autoReenterFullscreen) {
           enterFullscreen()
         }

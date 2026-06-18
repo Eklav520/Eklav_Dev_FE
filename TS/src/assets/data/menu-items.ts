@@ -568,6 +568,13 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   },
  
   {
+    key: 'aptitudeAssessments',
+    label: 'Aptitude Assessments',
+    icon: BsCalculator,
+    url: '/institute/aptitude-assessments',
+    parentKey: 'instituteadmin',
+  },
+  {
     key: 'instituteAnnouncements',
     label: 'Achievements',
     icon: BsBellFill,

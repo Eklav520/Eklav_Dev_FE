@@ -124,6 +124,7 @@ const FreelancingPage = lazy(() => import('@/app/institute/freelencing/pages'))
 const FreelancingTaskListPage = lazy(() => import('@/app/institute/freelencing/task-list/page'))
 const InstituteCollegeLabsUpload = lazy(() => import('@/app/institute/college-labs-upload/page'))
 const InstitutePlacementDrives = lazy(() => import('@/app/institute/placement-drives/page'))
+const InstituteAptitudeAssessments = lazy(() => import('@/app/institute/aptitudeAssessments/page'))
 
 //Student
 const StudentFreelancing = lazy(() => import('@/app/student/freelencing/pages'))
@@ -781,6 +782,11 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     path: '/institute/announcements',
     name: 'Achievements',
     element: <AnnouncementsAdminPage />,
+  },
+  {
+    path: '/institute/aptitude-assessments',
+    name: 'Aptitude Assessments',
+    element: <InstituteAptitudeAssessments />,
   },
 
 ]
