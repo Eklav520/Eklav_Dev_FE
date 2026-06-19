@@ -44,7 +44,7 @@ const CourseMarquee = () => {
     fetch(`${baseURL}/courses/public/list`)
       .then(r => r.ok ? r.json() : [])
       .then((data: Course[]) => {
-        if (Array.isArray(data) && data.length > 0) setCourses(data)
+        if (Array.isArray(data)) setCourses(data.filter(c => c.image))
       })
       .catch(() => {})
   }, [])
