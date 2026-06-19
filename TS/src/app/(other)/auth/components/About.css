@@ -458,3 +458,97 @@
     --bs-gutter-y: 1rem;
   }
 }
+
+/* ── Course Marquee ── */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.course-marquee-wrap {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+.course-marquee-wrap::before,
+.course-marquee-wrap::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  z-index: 2;
+  pointer-events: none;
+}
+.course-marquee-wrap::before {
+  left: 0;
+  background: linear-gradient(to right, #141414 0%, transparent 100%);
+}
+.course-marquee-wrap::after {
+  right: 0;
+  background: linear-gradient(to left, #141414 0%, transparent 100%);
+}
+
+.course-marquee-track {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  animation: marquee-scroll 40s linear infinite;
+  width: max-content;
+}
+
+.course-marquee-wrap:hover .course-marquee-track {
+  animation-play-state: paused;
+}
+
+.course-marquee-card {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  width: 220px;
+  cursor: default;
+  transition: transform 0.2s;
+}
+
+.course-marquee-card:hover {
+  transform: translateY(-3px);
+}
+
+.course-marquee-img {
+  width: 220px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
+.course-marquee-placeholder {
+  width: 220px;
+  height: 140px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #ff7a00, #ff944d);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-weight: 700;
+  font-size: 2rem;
+}
+
+.course-marquee-title {
+  color: #e8e8e8;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin: 10px 4px 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

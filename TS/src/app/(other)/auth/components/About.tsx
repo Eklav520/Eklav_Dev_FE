@@ -1,13 +1,6 @@
-import React from "react";
+import { useEffect, useRef, useState } from "react";
 import { Container, Row, Col, Card } from "react-bootstrap";
-import {
-  FaChartLine,
-  FaInfinity,
-  FaAward,
-  FaArrowRight,
-  FaEnvelope,
-  FaBriefcase,
-} from "react-icons/fa";
+import { FaArrowRight, FaEnvelope } from "react-icons/fa";
 import { BsPatchCheckFill } from "react-icons/bs";
 import {
   TechCoursesIcon,
@@ -39,6 +32,57 @@ import avatar4 from "@/assets/images/avatar/04.jpg";
 type AboutProps = {
   onStartJourneyClick?: () => void;
 };
+
+type Course = { _id: string; title: string; image?: string }
+
+const CourseMarquee = () => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const [courses, setCourses] = useState<Course[]>([])
+  const trackRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    fetch(`${baseURL}/courses/public/list`)
+      .then(r => r.ok ? r.json() : [])
+      .then((data: Course[]) => {
+        if (Array.isArray(data) && data.length > 0) setCourses(data)
+      })
+      .catch(() => {})
+  }, [])
+
+  if (courses.length === 0) return null
+
+  // duplicate for seamless loop
+  const items = [...courses, ...courses]
+
+  return (
+    <div className="course-marquee-wrap">
+      <div className="course-marquee-track" ref={trackRef}>
+        {items.map((c, i) => {
+          const imgSrc = c.image?.startsWith('http')
+            ? c.image
+            : c.image ? `${baseURL}/uploads/${c.image}` : null
+          return (
+            <div className="course-marquee-card" key={`${c._id}-${i}`}>
+              {imgSrc ? (
+                <img
+                  src={imgSrc}
+                  alt={c.title}
+                  className="course-marquee-img"
+                  onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }}
+                />
+              ) : (
+                <div className="course-marquee-placeholder">
+                  {c.title.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <p className="course-marquee-title">{c.title}</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 const About = ({ onStartJourneyClick }: AboutProps) => {
   const navigate = useNavigate();
@@ -117,12 +161,6 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
     },
   ];
 
-  const stats = [
-    { icon: <FaInfinity />, value: "250+", label: "Courses" },
-    { icon: <FaAward />, value: "10K+", label: "Students" },
-    { icon: <FaChartLine />, value: "95%", label: "Success" },
-    { icon: <FaBriefcase />, value: "500+", label: "Placements" },
-  ];
 
   return (
     <div className="eklav-about">
@@ -274,20 +312,8 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 </li>
               </ul>
 
-              {/* Stats */}
-              <div className="stats-container">
-                <Row>
-                  {stats.map((stat, index) => (
-                    <Col xs={6} md={3} key={index} className="stat-col">
-                      <div className="stat-item">
-                        <div className="stat-icon">{stat.icon}</div>
-                        <h3 className="stat-value">{stat.value}</h3>
-                        <p className="stat-label">{stat.label}</p>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              </div>
+              {/* Course Marquee */}
+              <CourseMarquee />
             </Col>
 
             {/* ── Right: decorative image ── */}
