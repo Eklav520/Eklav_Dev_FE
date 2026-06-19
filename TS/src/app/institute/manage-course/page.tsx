@@ -879,7 +879,8 @@ const ManageCoursePage = () => {
 
         .mc-table-wrap {
           background: #1a1a1a; border: 1px solid #2a2a2a;
-          border-radius: 12px; overflow: hidden;
+          border-radius: 12px; overflow: visible;
+          position: relative;
         }
         .mc-table { width: 100%; border-collapse: collapse; }
         .mc-table thead tr { background: #141414; border-bottom: 2px solid #2a2a2a; }
@@ -924,6 +925,7 @@ const ManageCoursePage = () => {
           background: #1e1e1e !important; border: 1px solid #333 !important;
           border-radius: 10px !important; padding: 6px !important;
           min-width: 180px; box-shadow: 0 12px 32px rgba(0,0,0,0.5) !important;
+          z-index: 9999 !important;
         }
         .mc-dropdown-item {
           color: #ccc !important; font-size: 0.83rem !important;
