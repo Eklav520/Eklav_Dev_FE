@@ -84,6 +84,39 @@ const AverageRating = ({ courseRating }: { courseRating?: CourseRating }) => {
   )
 }
 
+// Circular Progress Component
+const CircularProgress = ({ percent }: { percent: number }) => {
+  const size = 60
+  const strokeWidth = 5
+  const r = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * r
+  const offset = circumference - (percent / 100) * circumference
+  const color = percent === 100 ? '#22c55e' : percent >= 50 ? '#3b82f6' : '#ff7a00'
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2a2a2a" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2} cy={size / 2} r={r} fill="none"
+          stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+        />
+        <text
+          x="50%" y="50%"
+          dominantBaseline="middle" textAnchor="middle"
+          style={{ transform: 'rotate(90deg)', transformOrigin: '50% 50%', fill: color, fontSize: '11px', fontWeight: 700 }}
+        >
+          {percent}%
+        </text>
+      </svg>
+    </div>
+  )
+}
+
 // CourseData Component
 const CourseData = ({
   completedLectures,
@@ -129,19 +162,7 @@ const CourseData = ({
 
       <td>{totalLectures}</td>
       <td>
-        <div className="mb-1">{progressPercent}%</div>
-        <div className="progress" style={{
-          width: `${progressPercent}%`,
-          backgroundColor: '#ff7a00', height: '8px'
-        }}>
-          <div
-            className={`progress-bar ${progressPercent === 100 ? 'bg-success' : progressPercent >= 50 ? 'bg-info' : 'bg-warning'}`}
-            role="progressbar"
-            style={{ width: `${progressPercent}%` }}
-            aria-valuenow={progressPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}></div>
-        </div>
+        <CircularProgress percent={progressPercent} />
       </td>
 
       <td style={{ color: '#ff7a00', fontWeight: 500 }}>
