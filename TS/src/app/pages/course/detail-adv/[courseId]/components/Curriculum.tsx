@@ -33,6 +33,7 @@ interface CaseStudy {
   inputExample: string;
   expectedOutput: string;
   boilerplate: string;
+  language?: string;
 }
 
 interface Video {
@@ -45,11 +46,31 @@ interface Video {
   caseStudy?: CaseStudy | null;
 }
 
+// Maps course language label → Judge0 language id string
+const LANG_MAP: Record<string, string> = {
+  java:       'java',
+  python:     'python',
+  javascript: 'javascript',
+  js:         'javascript',
+  c:          'c',
+  cpp:        'cpp',
+  'c++':      'cpp',
+  typescript: 'typescript',
+  ts:         'typescript',
+  csharp:     'csharp',
+  'c#':       'csharp',
+  go:         'go',
+  rust:       'rust',
+  php:        'php',
+  ruby:       'ruby',
+}
+
 interface CurriculumProps {
   videos: Video[];
   onSelectVideo: (video: Video, opts?: { force?: boolean }) => void;
   courseId: string;
   token?: string;
+  language?: string;
 }
 
 /* -----------------------------
@@ -60,7 +81,10 @@ export default function Curriculum({
   onSelectVideo,
   courseId,
   token,
+  language,
 }: CurriculumProps) {
+  const langStr = Array.isArray(language) ? String(language[0] ?? '') : String(language ?? '');
+  const courseLanguage = LANG_MAP[langStr.toLowerCase()] ?? 'java';
   const baseURL = import.meta.env.VITE_API_BASE_URL;
 
   const [showCaseModal, setShowCaseModal] = useState(false);
@@ -74,6 +98,7 @@ export default function Curriculum({
   const [isRunning, setIsRunning] = useState(false);
 
   const [caseStudyMap, setCaseStudyMap] = useState<Record<string, boolean>>({});
+  const [savedCodeMap, setSavedCodeMap] = useState<Record<string, string>>({});
 
   /* ----------------------------------------------- */
   useEffect(() => {
@@ -88,6 +113,7 @@ export default function Curriculum({
         if (res.ok) {
           const data = await res.json();
           setCaseStudyMap(data.caseStudyMap || {});
+          setSavedCodeMap(data.codeMap || {});
         }
       } catch (err) {
         console.error("Failed loading case-study map:", err);
@@ -100,7 +126,7 @@ export default function Curriculum({
   /* ----------------------------------------------- */
   const openCaseStudy = (cs: CaseStudy, videoId: string) => {
     setSelectedCaseStudy({ ...cs });
-    setUserCode(cs.boilerplate);
+    setUserCode(savedCodeMap[videoId] || cs.boilerplate);
     setOutput("");
     setIsPassed(false);
     setActiveVideoId(videoId);
@@ -110,29 +136,44 @@ export default function Curriculum({
   /* ----------------------------------------------- */
   const runCode = async () => {
     if (!selectedCaseStudy) return;
-    
     setIsRunning(true);
-    setOutput("");
-    
+    setOutput('');
+    setIsPassed(false);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const fn = new Function(
-        userCode + `; return solve("${selectedCaseStudy.inputExample}");`
-      );
-      const result = fn();
+      const res = await fetch(`${baseURL}/api/judge/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          language: selectedCaseStudy.language || courseLanguage,
+          code: userCode,
+          stdin: selectedCaseStudy.inputExample ?? '',
+        }),
+      });
 
-      const actualOutput = String(result).trim();
-      const expectedOutput = String(selectedCaseStudy.expectedOutput).trim();
-      const passed = actualOutput === expectedOutput;
+      if (!res.ok) throw new Error(`Execution service error: ${res.status}`);
 
-      setOutput(actualOutput);
+      const data = await res.json();
+      const stdout = (data.stdout ?? '').trim();
+      const stderr = (data.stderr ?? '').trim();
+
+      if (stderr) {
+        setOutput(`❌ ${stderr.includes('error:') ? 'Compilation' : 'Runtime'} Error:\n\n${stderr}`);
+        setIsPassed(false);
+        return;
+      }
+
+      const expected = (selectedCaseStudy.expectedOutput ?? '').trim();
+      const passed = stdout === expected;
       setIsPassed(passed);
-      
+
       if (passed) {
-        setOutput(prev => `✅ Test Passed!\n\nOutput:\n${prev}`);
+        setOutput(`✅ Test Passed!\n\nOutput:\n${stdout}`);
       } else {
-        setOutput(prev => `❌ Test Failed!\n\nExpected: ${expectedOutput}\nGot: ${prev}`);
+        setOutput(`❌ Test Failed!\n\nExpected:\n${expected}\n\nGot:\n${stdout || '(no output)'}`);
       }
     } catch (err: any) {
       setOutput(`❌ Error: ${err.message}`);
@@ -167,6 +208,7 @@ export default function Curriculum({
       });
 
       setCaseStudyMap((p) => ({ ...p, [activeVideoId]: true }));
+      setSavedCodeMap((p) => ({ ...p, [activeVideoId]: userCode }));
       alert("🎉 Congratulations! Case Study Completed Successfully!");
       setShowCaseModal(false);
     } catch (err) {
@@ -385,14 +427,16 @@ export default function Curriculum({
                 <div className="editor-title-section">
                   <FaCode size={14} />
                   <span className="editor-title">Code Editor</span>
+                  <span className="language-badge">
+                    {(selectedCaseStudy?.language || courseLanguage).toUpperCase()}
+                  </span>
                 </div>
-  
               </div>
               <div className="editor-wrapper">
-                <Editor 
-                  height="100%" 
-                  defaultLanguage="java" 
-                  value={userCode} 
+                <Editor
+                  height="100%"
+                  language={selectedCaseStudy?.language || courseLanguage}
+                  value={userCode}
                   onChange={(v) => setUserCode(v || "")} 
                   theme="vs-dark"
                   options={{
@@ -428,8 +472,8 @@ export default function Curriculum({
           >
             {isRunning ? 'Running...' : '▶ Run Code'}
           </Button>
-          <Button 
-            variant={isPassed ? "success" : "secondary"} 
+          <Button
+            variant={isPassed ? "success" : "secondary"}
             onClick={submitCaseStudy}
             disabled={!isPassed || isSubmitting}
             className="submit-btn"
@@ -831,7 +875,6 @@ export default function Curriculum({
 
         .output-section {
           border-radius: 12px;
-          overflow: hidden;
           border: 1px solid #1a1a1a;
         }
 
@@ -856,8 +899,6 @@ export default function Curriculum({
           font-family: monospace;
           white-space: pre-wrap;
           min-height: 120px;
-          max-height: 200px;
-          overflow-y: auto;
         }
 
         .output-content.success {

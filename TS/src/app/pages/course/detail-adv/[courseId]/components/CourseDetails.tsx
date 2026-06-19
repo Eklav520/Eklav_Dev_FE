@@ -400,6 +400,7 @@ const CourseDetails: React.FC<CourseDetailsProps> = ({ course, loading }) => {
                     courseId={course._id}
                     token={token}
                     onSelectVideo={handleSelectVideo}
+                    language={course?.language}
                   />
                 </CardBody>
               </Card>

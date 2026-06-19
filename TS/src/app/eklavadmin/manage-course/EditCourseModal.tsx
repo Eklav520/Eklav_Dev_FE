@@ -23,12 +23,27 @@ import { useState, useRef } from 'react'
 import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
 
+const CS_LANGUAGES = [
+  { value: 'java',       label: 'Java' },
+  { value: 'python',     label: 'Python 3' },
+  { value: 'javascript', label: 'JavaScript (Node.js)' },
+  { value: 'cpp',        label: 'C++' },
+  { value: 'c',          label: 'C' },
+  { value: 'csharp',     label: 'C#' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'go',         label: 'Go' },
+  { value: 'rust',       label: 'Rust' },
+  { value: 'php',        label: 'PHP' },
+  { value: 'ruby',       label: 'Ruby' },
+]
+
 interface CaseStudy {
   title?: string
   description?: string
   inputExample?: string
   expectedOutput?: string
   boilerplate?: string
+  language?: string
 }
 
 interface Video {
@@ -91,6 +106,7 @@ interface EditCourseModalProps {
   onAddFAQ: () => void
   onRemoveFAQ: (index: number) => void
   onUpdate: () => void
+  onSaveCaseStudy?: (videoIndex: number, draft: CaseStudy) => void
   isUpdating: boolean
   onVideoChange?: (index: number, field: keyof Video, value: string | CaseStudy | null) => void
   onAddVideo?: () => void
@@ -116,6 +132,7 @@ const EditCourseModal = ({
   onAddFAQ,
   onRemoveFAQ,
   onUpdate,
+  onSaveCaseStudy,
   isUpdating,
   onVideoChange,
   onAddVideo,
@@ -858,10 +875,24 @@ const EditCourseModal = ({
       </div>
       <Modal.Body className="ecm-body" style={{ padding: '1.5rem' }}>
         <Row className="g-3">
-          <Col md={12}>
+          <Col md={8}>
             <div className="ecm-field">
               <label className="ecm-label">Title <span className="text-danger">*</span></label>
               <input className="ecm-input" type="text" value={caseStudyModal.draft.title || ''} onChange={(e) => setCaseStudyModal(p => ({ ...p, draft: { ...p.draft, title: e.target.value } }))} placeholder="e.g., Fibonacci Sequence" />
+            </div>
+          </Col>
+          <Col md={4}>
+            <div className="ecm-field">
+              <label className="ecm-label">Language <span className="text-danger">*</span></label>
+              <select
+                className="ecm-input"
+                value={caseStudyModal.draft.language || 'java'}
+                onChange={(e) => setCaseStudyModal(p => ({ ...p, draft: { ...p.draft, language: e.target.value } }))}
+              >
+                {CS_LANGUAGES.map(l => (
+                  <option key={l.value} value={l.value}>{l.label}</option>
+                ))}
+              </select>
             </div>
           </Col>
           <Col md={12}>
@@ -892,8 +923,23 @@ const EditCourseModal = ({
       </Modal.Body>
       <div className="ecm-footer">
         <button className="ecm-btn-outline" onClick={() => setCaseStudyModal(p => ({ ...p, open: false }))}>Cancel</button>
-        <button className="ecm-btn-save" disabled={!caseStudyModal.draft.title?.trim()} onClick={() => { onVideoChange?.(caseStudyModal.videoIndex, 'caseStudy', caseStudyModal.draft); setCaseStudyModal(p => ({ ...p, open: false })) }}>
-          <FaCheckCircle size={12} className="me-1" /> Save Case Study
+        <button
+          className="ecm-btn-save"
+          disabled={!caseStudyModal.draft.title?.trim() || isUpdating}
+          onClick={() => {
+            const { videoIndex, draft } = caseStudyModal
+            setCaseStudyModal(p => ({ ...p, open: false }))
+            if (onSaveCaseStudy) {
+              onSaveCaseStudy(videoIndex, draft)
+            } else {
+              onVideoChange?.(videoIndex, 'caseStudy', draft)
+              onUpdate()
+            }
+          }}
+        >
+          {isUpdating
+            ? <><Spinner as="span" size="sm" animation="border" className="me-2" />Saving…</>
+            : <><FaCheckCircle size={12} className="me-1" />Save Case Study</>}
         </button>
       </div>
     </Modal>

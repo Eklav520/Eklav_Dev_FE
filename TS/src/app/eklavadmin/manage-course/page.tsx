@@ -34,6 +34,7 @@ interface CaseStudy {
   inputExample?: string
   expectedOutput?: string
   boilerplate?: string
+  language?: string
 }
 
 interface Video {
@@ -316,6 +317,66 @@ const ManageCoursePage = () => {
     } catch (err) {
       console.error('Update error:', err)
       alert(err instanceof Error ? err.message : 'An error occurred while updating.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
+  // Saves a single case study inline — avoids stale closure on handleUpdate
+  const handleSaveCaseStudy = async (videoIndex: number, caseStudy: CaseStudy) => {
+    if (!selectedCourse) return
+    const updatedVideos = selectedCourse.videos.map((v, i) =>
+      i === videoIndex ? { ...v, caseStudy } : v
+    )
+    const updatedCourse = { ...selectedCourse, videos: updatedVideos }
+    setSelectedCourse(updatedCourse)
+
+    setIsUpdating(true)
+    try {
+      const formData = new FormData()
+      const stringFields = [
+        'title', 'shortDescription', 'description', 'duration', 'totalLectures',
+        'previewVideo', 'visibility', 'courseType', 'courseStatus', 'status'
+      ] as const
+      stringFields.forEach(f => formData.append(f, String(updatedCourse[f] ?? '')))
+      formData.append('price', String(updatedCourse.price ?? ''))
+      formData.append('discountPrice', String(updatedCourse.discountPrice ?? ''))
+      formData.append('isFeatured', String(updatedCourse.isFeatured ?? false))
+      formData.append('enrolledStudents', String(updatedCourse.enrolledStudents ?? 0))
+      formData.append('rating', String(updatedCourse.rating ?? 0))
+      formData.append('category', JSON.stringify(
+        Array.isArray(updatedCourse.category) ? updatedCourse.category : [updatedCourse.category]
+      ))
+      formData.append('level', JSON.stringify(
+        Array.isArray(updatedCourse.level) ? updatedCourse.level : [updatedCourse.level || 'All level']
+      ))
+      formData.append('language', JSON.stringify(
+        Array.isArray(updatedCourse.language) ? updatedCourse.language : [updatedCourse.language || 'English']
+      ))
+      formData.append('features', JSON.stringify(updatedCourse.features || []))
+      formData.append('addFAQ', JSON.stringify(updatedCourse.addFAQ || []))
+      formData.append('quiz', JSON.stringify(updatedCourse.quiz || []))
+      formData.append('videoUrl', JSON.stringify(updatedCourse.videoUrl || []))
+      formData.append('existingVideos', JSON.stringify(updatedVideos))
+      if (imageFile) formData.append('image', imageFile)
+
+      const res = await fetch(`${baseURL}/courses/${updatedCourse._id}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setCourses(prev => prev.map(c =>
+          c._id === updatedCourse._id ? data.course || data : c
+        ))
+        alert('Case study saved!')
+      } else {
+        throw new Error(data.message || 'Save failed')
+      }
+    } catch (err) {
+      console.error('Save case study error:', err)
+      alert(err instanceof Error ? err.message : 'An error occurred while saving.')
     } finally {
       setIsUpdating(false)
     }
@@ -647,6 +708,7 @@ const ManageCoursePage = () => {
         onAddFAQ={addFAQ}
         onRemoveFAQ={removeFAQ}
         onUpdate={handleUpdate}
+        onSaveCaseStudy={handleSaveCaseStudy}
         isUpdating={isUpdating}
         onImageFileSelect={(file) => setImageFile(file)}
         onVideoChange={handleVideoChange}
