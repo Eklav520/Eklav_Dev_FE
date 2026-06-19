@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom'
 import axios from 'axios'
 import { Card, Button, Form, Modal, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH, FaEye, FaIdCard, FaCodeBranch, FaCalendarAlt, FaVenusMars, FaPhoneAlt } from 'react-icons/fa'
+import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH, FaEye, FaIdCard, FaCodeBranch, FaCalendarAlt, FaVenusMars, FaPhoneAlt, FaSave } from 'react-icons/fa'
 import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
 
 type Institute = {
@@ -147,6 +147,12 @@ const InstituteAdmin: React.FC = () => {
   const [studentTotal, setStudentTotal] = useState(0)
   const [studentTotalPages, setStudentTotalPages] = useState(1)
   const STUDENT_PAGE_SIZE = 20
+
+  // Edit student modal
+  const [editStudent, setEditStudent] = useState<any | null>(null)
+  const [editForm, setEditForm] = useState({ fullname: '', email: '', phoneNumber: '', rollNumber: '', gender: 'Male', branch: '', joiningYear: '' })
+  const [editSaving, setEditSaving] = useState(false)
+  const [studentDeleting, setStudentDeleting] = useState<string | null>(null)
 
   // Student nav config
   const [showNavModal, setShowNavModal] = useState(false)
@@ -456,6 +462,55 @@ const InstituteAdmin: React.FC = () => {
 
   const handleStudentPageChange = (page: number) => {
     if (studentsInstitute) fetchStudents(studentsInstitute, page, studentSearch)
+  }
+
+  const openEditStudent = (s: any) => {
+    setEditStudent(s)
+    setEditForm({
+      fullname: s.name || s.fullname || '',
+      email: s.email || '',
+      phoneNumber: s.phoneNumber || '',
+      rollNumber: s.rollNumber || '',
+      gender: s.gender || 'Male',
+      branch: s.branch || '',
+      joiningYear: s.joiningYear || '',
+    })
+  }
+
+  const handleEditSave = async () => {
+    if (!editStudent || !studentsInstitute) return
+    setEditSaving(true)
+    try {
+      await axios.put(
+        `${baseURL}/api/institute/updateStudent/${editStudent._id}?instituteId=${studentsInstitute._id}`,
+        editForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setEditStudent(null)
+      fetchStudents(studentsInstitute, studentPage, studentSearch)
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Update failed')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  const handleDeleteStudent = async (id: string, name: string) => {
+    if (!window.confirm(`Delete student "${name}"? This cannot be undone.`)) return
+    if (!studentsInstitute) return
+    setStudentDeleting(id)
+    try {
+      await axios.delete(
+        `${baseURL}/api/institute/deleteStudent/${id}?instituteId=${studentsInstitute._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      fetchStudents(studentsInstitute, studentPage, studentSearch)
+      setStudentCounts(prev => ({ ...prev, [studentsInstitute._id]: Math.max(0, (prev[studentsInstitute._id] ?? 1) - 1) }))
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Delete failed')
+    } finally {
+      setStudentDeleting(null)
+    }
   }
 
   const thStyle: React.CSSProperties = { padding: '10px 14px', color: '#555', fontWeight: 600, textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }
@@ -1059,6 +1114,7 @@ const InstituteAdmin: React.FC = () => {
                     <th style={thStyle}><FaPhoneAlt style={{ marginRight: 4 }} />Phone</th>
                     <th style={thStyle}>Status</th>
                     <th style={thStyle}>Joined</th>
+                    <th style={{ ...thStyle, textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1103,6 +1159,23 @@ const InstituteAdmin: React.FC = () => {
                           {s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </span>
                       </td>
+                      <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button
+                          onClick={() => openEditStudent(s)}
+                          title="Edit student"
+                          style={{ background: 'rgba(255,140,0,0.12)', border: '1px solid rgba(255,140,0,0.3)', color: '#ff8c00', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', marginRight: 6, fontSize: '0.75rem' }}
+                        >
+                          <FaEdit size={11} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStudent(s._id, s.name || s.fullname || s.email)}
+                          disabled={studentDeleting === s._id}
+                          title="Delete student"
+                          style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: '0.75rem' }}
+                        >
+                          {studentDeleting === s._id ? <FaSpinner size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <FaTrash size={11} />}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1135,6 +1208,101 @@ const InstituteAdmin: React.FC = () => {
             </div>
           )}
           <Button variant="secondary" onClick={() => setShowStudentsModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* ── Edit Student Modal ── */}
+      <Modal show={!!editStudent} onHide={() => setEditStudent(null)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2">
+              <FaEdit className="text-orange" />
+              <span>Edit Student — {editStudent?.name || editStudent?.fullname}</span>
+            </div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          <Row className="g-3">
+            <Col md={6}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Full Name</Form.Label>
+              <Form.Control
+                value={editForm.fullname}
+                onChange={e => setEditForm(p => ({ ...p, fullname: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+                placeholder="Full name"
+              />
+            </Col>
+            <Col md={6}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Email</Form.Label>
+              <Form.Control
+                type="email"
+                value={editForm.email}
+                onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+                placeholder="Email address"
+              />
+            </Col>
+            <Col md={6}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Roll Number</Form.Label>
+              <Form.Control
+                value={editForm.rollNumber}
+                onChange={e => setEditForm(p => ({ ...p, rollNumber: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+                placeholder="Roll number"
+              />
+            </Col>
+            <Col md={6}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Branch</Form.Label>
+              <Form.Control
+                value={editForm.branch}
+                onChange={e => setEditForm(p => ({ ...p, branch: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+                placeholder="Branch"
+              />
+            </Col>
+            <Col md={4}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Joining Year</Form.Label>
+              <Form.Select
+                value={editForm.joiningYear}
+                onChange={e => setEditForm(p => ({ ...p, joiningYear: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+              >
+                <option value="">Select year</option>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const yr = new Date().getFullYear() - i
+                  return <option key={yr} value={String(yr)}>{yr}</option>
+                })}
+              </Form.Select>
+            </Col>
+            <Col md={4}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Gender</Form.Label>
+              <Form.Select
+                value={editForm.gender}
+                onChange={e => setEditForm(p => ({ ...p, gender: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </Form.Select>
+            </Col>
+            <Col md={4}>
+              <Form.Label className="text-muted" style={{ fontSize: '0.8rem' }}>Phone Number</Form.Label>
+              <Form.Control
+                value={editForm.phoneNumber}
+                onChange={e => setEditForm(p => ({ ...p, phoneNumber: e.target.value }))}
+                className="bg-dark-lighter border-secondary text-white"
+                placeholder="+91XXXXXXXXXX"
+              />
+            </Col>
+          </Row>
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setEditStudent(null)}>Cancel</Button>
+          <Button onClick={handleEditSave} disabled={editSaving} style={{ background: '#ff8c00', border: 'none', fontWeight: 600, color: '#000', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {editSaving ? <FaSpinner className="spinning" /> : <FaSave size={13} />}
+            {editSaving ? 'Saving…' : 'Save Changes'}
+          </Button>
         </Modal.Footer>
       </Modal>
 

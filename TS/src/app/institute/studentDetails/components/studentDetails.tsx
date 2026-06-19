@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { Card, Button, Form, Table, Modal, Spinner, Alert, Pagination } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaUserGraduate, FaPlus, FaTrash, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload } from 'react-icons/fa'
+import { FaUserGraduate, FaPlus, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload } from 'react-icons/fa'
 import BulkUploadStudents from './BulkUploadStudents'
 
 type Student = {
@@ -134,26 +134,6 @@ const InstituteAdmin: React.FC = () => {
     }
   }
 
-  /* ============================
-     DELETE STUDENT
-  ============================ */
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this student?")) return
-
-    try {
-      await axios.delete(
-        `${baseURL}/api/institute/deleteStudent/${id}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      )
-      fetchStudents()
-    } catch (err) {
-      console.error(err)
-      alert("Delete failed")
-    }
-  }
-
   const totalStudents = students.length
   const instituteName = profile?.instituteName || profile?.collegeName || 'Not Assigned'
 
@@ -281,13 +261,12 @@ const InstituteAdmin: React.FC = () => {
                   <Table className="students-table" hover>
                     <thead>
                       <tr>
-                        <th style={{ width: '22%' }}>Student Name</th>
-                        <th style={{ width: '22%' }}>Email Address</th>
-                        <th style={{ width: '12%' }}>Roll Number</th>
-                        <th style={{ width: '12%' }}>Branch</th>
-                        <th style={{ width: '10%' }}>Joined Year</th>
+                        <th style={{ width: '25%' }}>Student Name</th>
+                        <th style={{ width: '25%' }}>Email Address</th>
+                        <th style={{ width: '14%' }}>Roll Number</th>
+                        <th style={{ width: '14%' }}>Branch</th>
+                        <th style={{ width: '12%' }}>Joined Year</th>
                         <th style={{ width: '10%' }}>Phone</th>
-                        <th style={{ width: '12%' }} className="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -327,16 +306,6 @@ const InstituteAdmin: React.FC = () => {
                               <FaPhone className="phone-icon" />
                               <span>{stu.phoneNumber || 'Not provided'}</span>
                             </div>
-                           </td>
-                          <td className="text-center">
-                            <Button
-                              size="sm"
-                              className="delete-student-btn"
-                              onClick={() => handleDelete(stu._id)}
-                            >
-                              <FaTrash />
-                              <span className="ms-1">Delete</span>
-                            </Button>
                            </td>
                          </tr>
                       ))}
