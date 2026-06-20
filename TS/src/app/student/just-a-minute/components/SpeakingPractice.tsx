@@ -556,6 +556,7 @@ const SpeakingPractice: React.FC = () => {
 
       formData.append('studentId', user?.id || '')
       formData.append('promptId', prompt?._id || '')
+      formData.append('promptText', prompt?.text || '')
       formData.append('transcript', transcriptText || '')
 
       const res = await fetch(`${baseURL}/speaking/submit`, {
@@ -843,9 +844,7 @@ const SpeakingPractice: React.FC = () => {
                       <div>
                         <div className="history-label">Best Score</div>
                         <div className="history-value highlight">
-                          {history.summary.bestScore != null
-                            ? (history.summary.bestScore <= 10 ? history.summary.bestScore * 10 : history.summary.bestScore)
-                            : '--'} / 100
+                          {history.summary.bestScore != null ? history.summary.bestScore : '--'} / 100
                         </div>
                       </div>
                     </div>
@@ -1022,11 +1021,11 @@ const SpeakingPractice: React.FC = () => {
               <>
                 <div className="score-display">
                   <h5>Your Score</h5>
-                  <div className="score-number">{feedback.score <= 10 ? feedback.score * 10 : feedback.score}/100</div>
-                  <div className="score-feedback">{getScoreFeedback(feedback.score <= 10 ? feedback.score * 10 : feedback.score)}</div>
+                  <div className="score-number">{feedback.score}/100</div>
+                  <div className="score-feedback">{getScoreFeedback(feedback.score)}</div>
                   <ProgressBar
-                    now={feedback.score <= 10 ? feedback.score * 10 : feedback.score}
-                    variant={getScoreVariant(feedback.score <= 10 ? feedback.score * 10 : feedback.score)}
+                    now={feedback.score}
+                    variant={getScoreVariant(feedback.score)}
                     className="score-progress"
                   />
                 </div>
