@@ -15,8 +15,15 @@ type Institute = {
   dbName?: string
   navSections?: string[] | null
   adminNavSections?: string[] | null
+  featureRules?: FeatureRule[]
   createdAt?: string
   updatedAt?: string
+}
+
+type FeatureRule = {
+  feature: string
+  denyYears: string[]
+  denyBranches: string[]
 }
 
 // All configurable student sidebar sections
@@ -51,6 +58,70 @@ const ADMIN_NAV_SECTION_DEFS = [
 
 const ALL_KEYS = NAV_SECTION_DEFS.map(s => s.key)
 const ALL_ADMIN_KEYS = ADMIN_NAV_SECTION_DEFS.map(s => s.key)
+
+// Full nav tree including subsections (for batch-specific config)
+const FULL_NAV_TREE = [
+  { key: 'dashboard',       label: 'Dashboard',             alwaysOn: true },
+  {
+    key: 'englishPractice', label: 'English Practice',
+    children: [
+      { key: 'speakingPractice', label: 'Speaking Practice' },
+      { key: 'justAMinute',      label: 'Just A Minute' },
+      { key: 'learningPractice', label: 'Learning Practice' },
+      { key: 'writingPractice',  label: 'Writing Practice' },
+    ]
+  },
+  { key: 'selfInterview',   label: 'Self Interview with AI' },
+  {
+    key: 'courses', label: 'Courses',
+    children: [
+      { key: 'careerRoadmap',     label: 'Career Roadmap' },
+      { key: 'availableCourses',  label: 'Available Courses' },
+      { key: 'enrolledCourses',   label: 'Enrolled Courses' },
+      { key: 'materials',         label: 'Materials' },
+      { key: 'onlineClasses',     label: 'Online Classes' },
+      { key: 'techBytes',         label: 'Tech Bytes' },
+    ]
+  },
+  {
+    key: 'preparation', label: 'Self Preparation',
+    children: [
+      { key: 'aptitude',   label: 'Aptitude Preparation' },
+      { key: 'coding',     label: 'Code Challenge' },
+      { key: 'byCompany',  label: 'By Company' },
+      { key: 'compiler',   label: 'Compiler' },
+    ]
+  },
+  {
+    key: 'freelancing', label: 'Internship Tasks',
+    children: [
+      { key: 'availableTasks', label: 'Available Tasks' },
+      { key: 'myTasks',        label: 'My Tasks' },
+    ]
+  },
+  {
+    key: 'myColleges', label: 'My Colleges',
+    children: [
+      { key: 'collegeLabs',      label: 'College Labs' },
+      { key: 'placementDetails', label: 'Placement Details' },
+    ]
+  },
+  {
+    key: 'activities', label: 'Jobs Search',
+    children: [
+      { key: 'interviewDetails', label: 'Job Posts' },
+      { key: 'resume',           label: 'Resume Preparation' },
+      { key: 'ATSchecker',       label: 'ATS Checker' },
+    ]
+  },
+  { key: 'assessment', label: 'Final Assessment' },
+  { key: 'profile',    label: 'Update Profile', alwaysOn: true },
+]
+
+const ALL_NAV_KEYS_WITH_SUBS = FULL_NAV_TREE.flatMap(s => [s.key, ...((s as any).children?.map((c: any) => c.key) || [])])
+
+const BRANCH_OPTIONS = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'MBA', 'MCA', 'Other']
+const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i))
 
 // Professional Pagination Component
 const InstitutePagination: React.FC<{
@@ -159,12 +230,20 @@ const InstituteAdmin: React.FC = () => {
   const [navInstitute, setNavInstitute] = useState<Institute | null>(null)
   const [navChecked, setNavChecked] = useState<string[]>(ALL_KEYS)
   const [navLoading, setNavLoading] = useState(false)
+  const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
+  const [selectedNavYear, setSelectedNavYear] = useState<string>('')
+  const [selectedNavBranch, setSelectedNavBranch] = useState<string>('')
 
   // Admin nav config
   const [showAdminNavModal, setShowAdminNavModal] = useState(false)
   const [adminNavInstitute, setAdminNavInstitute] = useState<Institute | null>(null)
   const [adminNavChecked, setAdminNavChecked] = useState<string[]>(ALL_ADMIN_KEYS)
   const [adminNavLoading, setAdminNavLoading] = useState(false)
+
+  // Feature rules (year/branch access control)
+  const [showFeatureRulesModal, setShowFeatureRulesModal] = useState(false)
+  const [featureRulesInstitute, setFeatureRulesInstitute] = useState<Institute | null>(null)
+  const [featureRules, setFeatureRules] = useState<FeatureRule[]>([])
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const institutesPerPage = 10
@@ -319,14 +398,18 @@ const InstituteAdmin: React.FC = () => {
     setNavInstitute(inst)
     setNavLoading(true)
     setShowNavModal(true)
+    setSelectedNavYear('')
+    setSelectedNavBranch('')
     try {
       const res = await axios.get(`${baseURL}/api/institute/nav-config/${inst._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       const sections = res.data?.navSections
       setNavChecked(sections && sections.length > 0 ? sections : ALL_KEYS)
+      setBatchNavRules(res.data?.batchNavRules || {})
     } catch {
       setNavChecked(ALL_KEYS)
+      setBatchNavRules({})
     } finally {
       setNavLoading(false)
     }
@@ -336,9 +419,10 @@ const InstituteAdmin: React.FC = () => {
     if (!navInstitute) return
     try {
       setNavLoading(true)
-      await axios.put(`${baseURL}/api/institute/nav-config/${navInstitute._id}`, { navSections: navChecked }, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      await axios.put(`${baseURL}/api/institute/nav-config/${navInstitute._id}`,
+        { navSections: navChecked, batchNavRules },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
       setSuccessMessage(`Navigation saved for ${navInstitute.name}`)
       setShowNavModal(false)
       fetchInstitutes()
@@ -351,13 +435,30 @@ const InstituteAdmin: React.FC = () => {
     }
   }
 
-  const toggleNavSection = (key: string) => {
-    const def = NAV_SECTION_DEFS.find(s => s.key === key)
-    if (def?.alwaysOn) return
-    setNavChecked(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    )
+  const batchKey = selectedNavYear && selectedNavBranch ? `${selectedNavYear}-${selectedNavBranch}` : ''
+
+  const getBatchChecked = (): string[] => {
+    if (!batchKey) return navChecked
+    return batchNavRules[batchKey] ?? ALL_NAV_KEYS_WITH_SUBS
   }
+
+  const toggleBatchItem = (key: string, alwaysOn?: boolean) => {
+    if (alwaysOn) return
+    if (!batchKey) {
+      // editing default sections
+      setNavChecked(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+      return
+    }
+    const current = getBatchChecked()
+    const next = current.includes(key) ? current.filter(k => k !== key) : [...current, key]
+    setBatchNavRules(prev => ({ ...prev, [batchKey]: next }))
+  }
+
+  const openFeatureRules = (inst: Institute) => {
+    setFeatureRulesInstitute(inst)
+    setShowFeatureRulesModal(true)
+  }
+
 
   const ADMIN_LEGACY_KEY_MAP: Record<string, string> = {
     'achievements': 'instituteAnnouncements',
@@ -727,6 +828,14 @@ const InstituteAdmin: React.FC = () => {
                           >
                             <FaClipboardList />
                           </Button>
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={() => openFeatureRules(inst)}
+                            title="Year/Branch Access Rules"
+                          >
+                            <FaKey />
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -953,88 +1062,270 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* ── Nav Config Modal ── */}
-      <Modal show={showNavModal} onHide={() => setShowNavModal(false)} centered size="lg" className="institute-modal">
-        <Modal.Header closeButton className="bg-dark border-secondary">
-          <Modal.Title className="text-white">
-            <div className="d-flex align-items-center gap-2">
-              <FaSlidersH className="text-info" />
-              <span>Configure Navigation — {navInstitute?.name}</span>
+      <Modal show={showNavModal} onHide={() => setShowNavModal(false)} centered size="xl" className="institute-modal nav-config-modal" backdropClassName="nav-config-backdrop" style={{ '--bs-modal-width': '88vw' } as React.CSSProperties}>
+        {/* Custom header */}
+        <div style={{ background: 'linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%)', borderBottom: '1px solid #2a2a2a', padding: '20px 28px', borderRadius: '12px 12px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: 'rgba(255,140,0,0.12)', border: '1px solid rgba(255,140,0,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <FaSlidersH size={18} color="#ff8c00" />
             </div>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="bg-dark">
-          {navLoading ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
-              <p className="text-muted mt-2" style={{ fontSize: '0.85rem' }}>Loading config…</p>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem', lineHeight: 1.2 }}>Configure Navigation</div>
+              <div style={{ color: '#ff8c00', fontSize: '0.78rem', fontWeight: 500, marginTop: 2 }}>{navInstitute?.name}</div>
             </div>
-          ) : (
-            <>
-              <p style={{ color: '#888', fontSize: '0.82rem', marginBottom: '1.25rem' }}>
-                Choose which sections appear in the student sidebar for <strong style={{ color: '#fff' }}>{navInstitute?.name}</strong>.
-                Sections marked <span style={{ color: '#22c55e' }}>Always On</span> cannot be hidden.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {NAV_SECTION_DEFS.map(sec => {
-                  const checked = navChecked.includes(sec.key)
-                  return (
-                    <div
-                      key={sec.key}
-                      onClick={() => toggleNavSection(sec.key)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        background: checked ? 'rgba(255,140,0,0.08)' : '#1a1a1a',
-                        border: `1px solid ${checked ? '#ff8c0055' : '#2a2a2a'}`,
-                        borderRadius: 10, padding: '12px 16px',
-                        cursor: sec.alwaysOn ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s',
-                        opacity: sec.alwaysOn ? 0.7 : 1,
-                      }}
+          </div>
+          <button onClick={() => setShowNavModal(false)} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: 4, fontSize: '1.1rem', lineHeight: 1, borderRadius: 6, transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#fff')} onMouseLeave={e => (e.currentTarget.style.color = '#666')}>✕</button>
+        </div>
+
+        <div style={{ background: '#0f0f0f', display: 'flex', flexDirection: 'column', height: '82vh', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+        {navLoading ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
+            <p className="text-muted mt-3" style={{ fontSize: '0.85rem' }}>Loading configuration…</p>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+            {/* ── LEFT PANEL: Batch selector ── */}
+            <div style={{ width: 280, flexShrink: 0, borderRight: '1px solid #1e1e1e', padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 0, background: '#0a0a0a', overflowY: 'auto' }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#555', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 12 }}>Target Audience</div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: '0.72rem', color: '#666', fontWeight: 600, marginBottom: 5, display: 'block' }}>Branch</label>
+                  <select
+                    value={selectedNavBranch}
+                    onChange={e => setSelectedNavBranch(e.target.value)}
+                    style={{ width: '100%', background: '#141414', border: `1px solid ${selectedNavBranch ? '#ff8c0055' : '#222'}`, color: selectedNavBranch ? '#fff' : '#666', borderRadius: 8, padding: '9px 12px', fontSize: '0.83rem', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="">All Branches</option>
+                    {BRANCH_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: '0.72rem', color: '#666', fontWeight: 600, marginBottom: 5, display: 'block' }}>Joining Year</label>
+                  <select
+                    value={selectedNavYear}
+                    onChange={e => setSelectedNavYear(e.target.value)}
+                    style={{ width: '100%', background: '#141414', border: `1px solid ${selectedNavYear ? '#ff8c0055' : '#222'}`, color: selectedNavYear ? '#fff' : '#666', borderRadius: 8, padding: '9px 12px', fontSize: '0.83rem', outline: 'none', cursor: 'pointer' }}
+                  >
+                    <option value="">All Years</option>
+                    {YEAR_OPTIONS.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+
+                {batchKey ? (
+                  <>
+                    <div style={{ background: 'rgba(255,140,0,0.08)', border: '1px solid rgba(255,140,0,0.2)', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                      <div style={{ fontSize: '0.68rem', color: '#ff8c00', fontWeight: 700, marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Configuring batch</div>
+                      <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>{selectedNavBranch}</div>
+                      <div style={{ color: '#aaa', fontSize: '0.75rem' }}>Joined {selectedNavYear}</div>
+                      {!batchNavRules[batchKey] && (
+                        <div style={{ marginTop: 6, fontSize: '0.68rem', color: '#666', fontStyle: 'italic' }}>Inheriting default config</div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => { setSelectedNavYear(''); setSelectedNavBranch('') }}
+                      style={{ width: '100%', background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: 7, padding: '7px', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#aaa' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#666' }}
                     >
-                      <div style={{
-                        width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                        border: `2px solid ${checked ? '#ff8c00' : '#444'}`,
-                        background: checked ? '#ff8c00' : 'transparent',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.15s',
-                      }}>
-                        {checked && <FaCheck size={10} color="#000" />}
-                      </div>
-                      <div>
-                        <div style={{ color: '#fff', fontSize: '0.85rem', fontWeight: 600 }}>{sec.label}</div>
-                        {sec.alwaysOn && (
-                          <div style={{ color: '#22c55e', fontSize: '0.68rem', marginTop: 2 }}>Always On</div>
+                      ✕ Clear Selection
+                    </button>
+                  </>
+                ) : (
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, padding: '10px 12px' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#444', lineHeight: 1.5 }}>
+                      Select branch + year to configure access for a specific student batch.
+                      Leave empty to edit the <strong style={{ color: '#555' }}>default</strong> for all students.
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div style={{ borderTop: '1px solid #1a1a1a', margin: '4px 0 16px' }} />
+
+              {/* Quick stats */}
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#555', letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: 10 }}>Summary</div>
+              {(() => {
+                const list = getBatchChecked()
+                const total = ALL_NAV_KEYS_WITH_SUBS.length
+                const enabled = list.length
+                const pct = Math.round((enabled / total) * 100)
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: '0.75rem', color: '#888' }}>Sections enabled</span>
+                      <span style={{ fontSize: '0.75rem', color: '#ff8c00', fontWeight: 700 }}>{enabled} / {total}</span>
+                    </div>
+                    <div style={{ background: '#1a1a1a', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 14 }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, #ff8c00, #ffb347)', borderRadius: 4, transition: 'width 0.3s' }} />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (batchKey) setBatchNavRules(prev => ({ ...prev, [batchKey]: [...ALL_NAV_KEYS_WITH_SUBS] }))
+                        else setNavChecked(ALL_KEYS)
+                      }}
+                      style={{ width: '100%', background: 'rgba(255,140,0,0.1)', border: '1px solid rgba(255,140,0,0.25)', color: '#ff8c00', borderRadius: 7, padding: '7px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', marginBottom: 6, transition: 'all 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,140,0,0.18)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,140,0,0.1)'}
+                    >
+                      Enable All
+                    </button>
+                    <button
+                      onClick={() => {
+                        const alwaysOnKeys = FULL_NAV_TREE.filter((s: any) => s.alwaysOn).map((s: any) => s.key)
+                        if (batchKey) setBatchNavRules(prev => ({ ...prev, [batchKey]: alwaysOnKeys }))
+                        else setNavChecked(alwaysOnKeys)
+                      }}
+                      style={{ width: '100%', background: 'transparent', border: '1px solid #2a2a2a', color: '#666', borderRadius: 7, padding: '7px', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#aaa' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#666' }}
+                    >
+                      Disable All
+                    </button>
+                  </>
+                )
+              })()}
+            </div>
+
+            {/* ── RIGHT PANEL: Section checklist ── */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+              <div style={{ marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>
+                    {batchKey ? `Access for ${selectedNavBranch} — ${selectedNavYear}` : 'Default Access (All Students)'}
+                  </div>
+                  <div style={{ color: '#555', fontSize: '0.75rem', marginTop: 2 }}>
+                    {batchKey ? 'Toggle sections and subsections for this batch' : 'This applies to all students without a specific batch rule'}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {FULL_NAV_TREE.map(sec => {
+                  const checkedList = getBatchChecked()
+                  const secChecked = checkedList.includes(sec.key)
+                  const children = (sec as any).children as { key: string; label: string }[] | undefined
+                  const hasChildren = !!(children?.length)
+                  const isBatchMode = !!batchKey
+                  const allChildrenChecked = hasChildren && children!.every(c => checkedList.includes(c.key))
+                  const someChildrenChecked = hasChildren && children!.some(c => checkedList.includes(c.key))
+
+                  return (
+                    <div key={sec.key} style={{
+                      background: secChecked ? 'rgba(255,140,0,0.05)' : '#111',
+                      border: `1px solid ${secChecked ? 'rgba(255,140,0,0.2)' : '#1e1e1e'}`,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      transition: 'all 0.2s',
+                    }}>
+                      {/* Section header */}
+                      <div
+                        onClick={() => toggleBatchItem(sec.key, sec.alwaysOn)}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px',
+                          cursor: sec.alwaysOn ? 'default' : 'pointer',
+                          userSelect: 'none',
+                        }}
+                      >
+                        {/* Checkbox */}
+                        <div style={{
+                          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                          border: `2px solid ${secChecked ? '#ff8c00' : '#333'}`,
+                          background: secChecked ? '#ff8c00' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          transition: 'all 0.15s',
+                        }}>
+                          {secChecked && <FaCheck size={9} color="#000" />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ color: secChecked ? '#fff' : '#888', fontSize: '0.85rem', fontWeight: 600, transition: 'color 0.15s' }}>{sec.label}</div>
+                          {sec.alwaysOn && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#22c55e' }} />
+                              <span style={{ color: '#22c55e', fontSize: '0.65rem', fontWeight: 600 }}>Always On</span>
+                            </div>
+                          )}
+                          {hasChildren && isBatchMode && secChecked && (
+                            <div style={{ color: '#555', fontSize: '0.65rem', marginTop: 2 }}>
+                              {allChildrenChecked ? 'All subsections enabled' : someChildrenChecked ? 'Some subsections enabled' : 'No subsections enabled'}
+                            </div>
+                          )}
+                        </div>
+                        {hasChildren && isBatchMode && (
+                          <div style={{ fontSize: '0.65rem', color: secChecked ? '#ff8c0088' : '#333', fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                            {children!.length} sub
+                          </div>
                         )}
                       </div>
+
+                      {/* Subsections */}
+                      {hasChildren && isBatchMode && secChecked && (
+                        <div style={{ borderTop: '1px solid rgba(255,140,0,0.1)', background: 'rgba(0,0,0,0.3)', padding: '8px 12px 10px' }}>
+                          {children!.map((child) => {
+                            const childChecked = checkedList.includes(child.key)
+                            return (
+                              <div
+                                key={child.key}
+                                onClick={() => toggleBatchItem(child.key)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 9,
+                                  padding: '6px 10px', marginBottom: 4, borderRadius: 7, cursor: 'pointer',
+                                  background: childChecked ? 'rgba(255,140,0,0.08)' : 'transparent',
+                                  border: `1px solid ${childChecked ? 'rgba(255,140,0,0.2)' : 'transparent'}`,
+                                  transition: 'all 0.15s',
+                                  userSelect: 'none',
+                                }}
+                              >
+                                <div style={{
+                                  width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                                  border: `1.5px solid ${childChecked ? '#ff8c00' : '#333'}`,
+                                  background: childChecked ? '#ff8c00' : 'transparent',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.15s',
+                                }}>
+                                  {childChecked && <FaCheck size={7} color="#000" />}
+                                </div>
+                                <span style={{ color: childChecked ? '#ddd' : '#555', fontSize: '0.78rem', fontWeight: 500, transition: 'color 0.15s' }}>
+                                  {child.label}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
               </div>
-              <div style={{ marginTop: '1rem', padding: '10px 14px', background: '#111', borderRadius: 8, border: '1px solid #222', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <FaInfoCircle size={12} color="#555" />
-                <span style={{ fontSize: '0.75rem', color: '#555' }}>
-                  {navChecked.length === ALL_KEYS.length
-                    ? 'All sections are enabled (default)'
-                    : `${navChecked.length} of ${ALL_KEYS.length} sections enabled`}
-                </span>
-                {navChecked.length < ALL_KEYS.length && (
-                  <button
-                    onClick={() => setNavChecked(ALL_KEYS)}
-                    style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ff8c00', fontSize: '0.75rem', cursor: 'pointer', padding: 0 }}
-                  >
-                    Enable All
-                  </button>
-                )}
-              </div>
-            </>
-          )}
-        </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
-          <Button variant="secondary" onClick={() => setShowNavModal(false)}>Cancel</Button>
-          <Button variant="orange" onClick={handleSaveNavConfig} disabled={navLoading} style={{ background: '#ff8c00', border: 'none', fontWeight: 600 }}>
-            {navLoading ? <FaSpinner className="spinning" /> : 'Save Navigation'}
-          </Button>
-        </Modal.Footer>
+            </div>
+          </div>
+        )}
+
+        {/* Footer — always pinned at bottom */}
+        <div style={{ flexShrink: 0, background: '#0a0a0a', borderTop: '1px solid #1e1e1e', padding: '14px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: '0.75rem', color: '#444', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FaInfoCircle size={11} />
+            {batchKey
+              ? `Saving will override the default config for ${selectedNavBranch} ${selectedNavYear} batch`
+              : 'Changes apply to all students without a specific batch rule'}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={() => setShowNavModal(false)} style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#888', borderRadius: 8, padding: '9px 20px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#444'; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a2a2a'; e.currentTarget.style.color = '#888' }}>
+              Cancel
+            </button>
+            <button onClick={handleSaveNavConfig} disabled={navLoading} style={{ background: navLoading ? '#333' : 'linear-gradient(135deg, #ff8c00, #e67e00)', border: 'none', color: navLoading ? '#666' : '#000', borderRadius: 8, padding: '9px 24px', fontSize: '0.85rem', fontWeight: 700, cursor: navLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}>
+              {navLoading ? <><FaSpinner className="spinning" /> Saving…</> : <><FaCheck size={12} /> Save Navigation</>}
+            </button>
+          </div>
+        </div>
+        </div>
       </Modal>
 
       {/* ── Students Modal ── */}
@@ -1391,9 +1682,42 @@ const InstituteAdmin: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
+      {/* ── Feature Rules Modal (retired — now part of Nav Config modal) ── */}
+      <Modal show={showFeatureRulesModal} onHide={() => setShowFeatureRulesModal(false)} size="sm" centered>
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white" style={{ fontSize: '1rem' }}>Access Rules Moved</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          <p style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: 0 }}>
+            Year/branch access control is now part of the <strong style={{ color: '#fff' }}>Configure Navigation</strong> modal.
+            Select a branch and joining year at the top of that modal to configure batch-specific section access.
+          </p>
+        </Modal.Body>
+        <Modal.Footer className="bg-dark border-secondary">
+          <Button variant="secondary" onClick={() => setShowFeatureRulesModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
       {/* Global Styles */}
       <style>{`
         .institute-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
+
+        /* ── Nav Config Modal ── */
+        .nav-config-modal .modal-content {
+          background: #0f0f0f !important;
+          border: 1px solid #2a2a2a !important;
+          border-radius: 14px !important;
+          overflow: hidden;
+          padding: 0 !important;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.75) !important;
+        }
+        .nav-config-backdrop.modal-backdrop,
+        .nav-config-backdrop.modal-backdrop.show {
+          opacity: 1 !important;
+          background-color: rgba(0, 0, 0, 0.45) !important;
+          backdrop-filter: blur(10px) !important;
+          -webkit-backdrop-filter: blur(10px) !important;
+        }
 
         /* ── Compact top bar ── */
         .ia-topbar {

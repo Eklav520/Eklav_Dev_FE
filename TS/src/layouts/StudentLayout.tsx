@@ -52,6 +52,8 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const isOrangeTheme = isHovering && isCollapsed
   const location = useLocation()
   const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
+  const [featureRules, setFeatureRules] = useState<{ feature: string; denyYears?: string[]; denyBranches?: string[] }[]>([])
+  const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
 
   const hostname = window.location.hostname
 
@@ -98,6 +100,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
       .then(d => {
         if (d.success && Array.isArray(d.navSections) && d.navSections.length > 0) {
           setAllowedNavKeys(d.navSections)
+        }
+        if (d.success && Array.isArray(d.featureRules)) {
+          setFeatureRules(d.featureRules)
+        }
+        if (d.success && d.batchNavRules && typeof d.batchNavRules === 'object') {
+          setBatchNavRules(d.batchNavRules)
         }
       })
       .catch(() => { })
@@ -302,6 +310,8 @@ const StudentLayout = ({ children }: ChildrenType) => {
               isCollapsed={!isSidebarExpanded}
               isMainDomain={isMainDomain}
               allowedNavKeys={allowedNavKeys}
+              featureRules={featureRules}
+              batchNavRules={batchNavRules}
             />
           </aside>
         )}
@@ -353,6 +363,8 @@ const StudentLayout = ({ children }: ChildrenType) => {
               onItemClick={toggleOffCanvasMenu}
               isMainDomain={isMainDomain}
               allowedNavKeys={allowedNavKeys}
+              featureRules={featureRules}
+              batchNavRules={batchNavRules}
             />
           </OffcanvasBody>
         </Offcanvas>
@@ -368,21 +380,41 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
 /* ================= VERTICAL MENU ================= */
 
+type FeatureRule = { feature: string; denyYears?: string[]; denyBranches?: string[] }
+
 const VerticalMenu = ({
   isCollapsed,
   onItemClick,
   isMainDomain,
   allowedNavKeys,
+  featureRules = [],
+  batchNavRules = {},
 }: {
   isCollapsed: boolean
   onItemClick?: () => void
   isMainDomain?: boolean
   allowedNavKeys?: string[] | null
+  featureRules?: FeatureRule[]
+  batchNavRules?: Record<string, string[]>
 }) => {
   const { pathname } = useLocation()
   const { user } = useAuthContext()
   const isApproved = user?.status === 'pending' || user?.status === 'approved'
   const alwaysEnabledKeys = ['dashboard', 'subscriptions']
+
+  const studentYear = String(user?.joiningYear || '')
+  const studentBranch = String(user?.branch || user?.department || '')
+  const studentBatchKey = studentYear && studentBranch ? `${studentYear}-${studentBranch}` : ''
+  const batchAllowed = studentBatchKey && batchNavRules[studentBatchKey] ? batchNavRules[studentBatchKey] : null
+
+  const isFeatureDenied = (featureKey: string): boolean => {
+    if (!featureRules.length) return false
+    const rule = featureRules.find(r => r.feature === featureKey)
+    if (!rule) return false
+    const yearDenied = rule.denyYears?.length ? rule.denyYears.includes(studentYear) : false
+    const branchDenied = rule.denyBranches?.length ? rule.denyBranches.includes(studentBranch) : false
+    return yearDenied || branchDenied
+  }
 
   const filteredMenu = useMemo(() => {
     let items = STUDENT_MENU_ITEMS
@@ -392,16 +424,35 @@ const VerticalMenu = ({
       items = items.filter(item => item.key !== "subscriptions")
     }
 
-    // Apply per-institute nav config (only on subdomain, only when config is set)
-    if (!isMainDomain && allowedNavKeys && allowedNavKeys.length > 0) {
-      items = items.filter(item => allowedNavKeys.includes(item.key))
+    // Apply batch-specific nav rules (year+branch config) — takes priority over generic navSections
+    if (!isMainDomain && batchAllowed) {
+      items = items
+        .filter(item => batchAllowed.includes(item.key))
+        .map(item => {
+          if (!item.children) return item
+          return { ...item, children: item.children.filter(child => batchAllowed.includes(child.key)) }
+        })
+        .filter(item => !item.children || item.children.length > 0)
+    } else {
+      // Apply per-institute nav config (default for all students)
+      if (!isMainDomain && allowedNavKeys && allowedNavKeys.length > 0) {
+        items = items.filter(item => allowedNavKeys.includes(item.key))
+      }
+
+      // Apply subsection feature rules (year/branch restrictions)
+      if (!isMainDomain && featureRules.length > 0) {
+        items = items.map(item => {
+          if (!item.children) return item
+          return { ...item, children: item.children.filter(child => !isFeatureDenied(child.key)) }
+        }).filter(item => !item.children || item.children.length > 0)
+      }
     }
 
     return items.map((item) => ({
       ...item,
       isDisabled: !isApproved && !alwaysEnabledKeys.includes(item.key),
     }))
-  }, [isApproved, isMainDomain, allowedNavKeys])
+  }, [isApproved, isMainDomain, allowedNavKeys, featureRules, batchAllowed])
 
   const tree = useMemo(() => filteredMenu, [filteredMenu])
 

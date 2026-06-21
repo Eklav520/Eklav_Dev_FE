@@ -13,6 +13,7 @@ export type UserType = {
 
   joiningYear?: string
   department?: string
+  branch?: string
   college?: string
 
   role: string
