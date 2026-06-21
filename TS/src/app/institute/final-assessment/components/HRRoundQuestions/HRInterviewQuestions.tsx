@@ -29,17 +29,19 @@ type UploadResult =
     }
   | null;
 
-export default function AdminHRQuestionsUpload(): JSX.Element {
+export default function AdminHRQuestionsUpload({ defaultExamId, readOnly }: { defaultExamId?: string; readOnly?: boolean } = {}): JSX.Element {
   const baseURL = import.meta.env.VITE_API_BASE_URL as string;
   const { user } = useAuthContext();
   const token = (user as any)?.token as string | undefined;
 
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [examId, setExamId] = useState("");
+  const [examId, setExamId] = useState(defaultExamId || "");
   const [exams, setExams] = useState<any[]>([]);
   const [selectedExamTitle, setSelectedExamTitle] = useState("");
   const [result, setResult] = useState<UploadResult>(null);
+
+  useEffect(() => { if (defaultExamId) setExamId(defaultExamId); }, [defaultExamId]);
 
   // Fetch exams on component mount
   useEffect(() => {
@@ -171,16 +173,15 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
           </div>
         </div>
 
-        {/* Exam Selection Section */}
+        {/* Exam Selection Section — hidden when pre-selected from parent */}
+        {!defaultExamId && (
         <div className="exam-section">
           <div className="exam-info">
             <FaBook className="exam-icon" />
             <span>Select Exam for HR Questions</span>
           </div>
           <Form.Group className="exam-select-group">
-            <Form.Label className="exam-label">
-              Choose Assessment
-            </Form.Label>
+            <Form.Label className="exam-label">Choose Assessment</Form.Label>
             <Form.Control
               as="select"
               value={examId}
@@ -189,9 +190,7 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
             >
               <option value="">-- Select Exam --</option>
               {exams.map((exam: any) => (
-                <option key={exam._id} value={exam._id}>
-                  {exam.title}
-                </option>
+                <option key={exam._id} value={exam._id}>{exam.title}</option>
               ))}
             </Form.Control>
             {selectedExamTitle && (
@@ -201,12 +200,11 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
               </div>
             )}
             {!examId && (
-              <small className="exam-warning">
-                ⚠ Please select an exam before uploading HR questions
-              </small>
+              <small className="exam-warning">⚠ Please select an exam before uploading HR questions</small>
             )}
           </Form.Group>
         </div>
+        )}
 
         {/* Template Download */}
         <div className="template-section">
@@ -257,11 +255,16 @@ export default function AdminHRQuestionsUpload(): JSX.Element {
         </div>
 
         {/* Upload Button */}
+        {readOnly && (
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #ef444430', borderRadius: 8, padding: '0.65rem 1rem', marginBottom: '1rem', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+            🔒 Exam is in progress — uploading is disabled.
+          </div>
+        )}
         <div className="upload-action">
-          <Button 
+          <Button
             className="upload-btn"
-            onClick={handleUpload} 
-            disabled={!file || !examId || loading}
+            onClick={handleUpload}
+            disabled={!file || !examId || loading || !!readOnly}
           >
             {loading ? (
               <>

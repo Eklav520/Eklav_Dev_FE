@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Modal, Button, Form, Alert } from "react-bootstrap";
 import { useAuthContext } from "@/context/useAuthContext";
+import AdminQuizUpload from "./QuizComponents/AdminQuizUpload";
+import AdminCreateProblem from "./CodeChallenegeComponents/CreateCodeChallenge";
+import InterviewQuestions from "./InterviewQuestions/InterviewQuestions";
+import HRInterviewQuestions from "./HRRoundQuestions/HRInterviewQuestions";
+import QuestionListModal from "./QuestionListModal";
 import {
     FaSave,
     FaSpinner,
@@ -18,7 +23,8 @@ import {
     FaEdit,
     FaEnvelope,
     FaInfoCircle,
-    FaExclamationTriangle
+    FaExclamationTriangle,
+    FaUpload
 } from "react-icons/fa";
 
 type RoundType = "mcq" | "coding" | "tr" | "hr";
@@ -36,6 +42,7 @@ interface RoundConfig {
 interface Props {
     examId?: string;
     setExamId?: (id: string) => void;
+    onSave?: (exam: any) => void;
 }
 
 const roundIcons = {
@@ -45,7 +52,7 @@ const roundIcons = {
     hr: { icon: FaUserTie, label: "HR Round", color: "#fd7e14", description: "HR interview" }
 };
 
-export default function AssessmentConfig({ examId, setExamId }: Props) {
+export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
     const { user } = useAuthContext();
 
     const [rounds, setRounds] = useState<RoundConfig[]>([
@@ -59,8 +66,17 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     const [loading, setLoading] = useState(false);
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
+    const [branch, setBranch] = useState<string[]>([]);
+    const [joiningYear, setJoiningYear] = useState<string[]>([]);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    const [uploadRound, setUploadRound] = useState<RoundType | null>(null);
+    const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
+    const [viewRound, setViewRound] = useState<{ type: 'mcq'|'tr'|'hr'; label: string } | null>(null);
+
+    const currentYear = new Date().getFullYear();
+    const JOINING_YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - i));
+    const BRANCHES = ['CSE', 'ECE', 'EEE', 'IT', 'Mechanical', 'Civil', 'Chemical', 'Aerospace', 'Biomedical'];
 
     // Notify modal state
     const [notifyExam, setNotifyExam]       = useState<any | null>(null)
@@ -95,10 +111,12 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
     const handleExamChange = (selectedExamId: string) => {
         setExamId?.(selectedExamId);
 
-        // Clear title and description when "Create New Exam" is selected
+        // Clear fields when "Create New Exam" is selected
         if (!selectedExamId) {
             setTitle("");
             setDescription("");
+            setBranch([]);
+            setJoiningYear([]);
             // Reset rounds to default state
             setRounds([
                 { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
@@ -134,6 +152,8 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                     const exam = data.exam;
                     setTitle(exam.title);
                     setDescription(exam.description || "");
+                    setBranch(Array.isArray(exam.branch) ? exam.branch : (exam.branch ? [exam.branch] : []));
+                    setJoiningYear(Array.isArray(exam.joiningYear) ? exam.joiningYear : (exam.joiningYear ? [exam.joiningYear] : []));
 
                     const updatedRounds = rounds.map((defaultRound) => {
                         const existing = exam.rounds.find(
@@ -164,6 +184,20 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
 
         fetchExamDetails();
     }, [examId]);
+
+    const fetchQuestionCounts = async () => {
+        if (!examId) return;
+        try {
+            const res = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam/${examId}/question-counts`,
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+            const data = await res.json();
+            if (data.success) setQuestionCounts(data.counts || {});
+        } catch {}
+    };
+
+    useEffect(() => { fetchQuestionCounts(); }, [examId]);
 
     /* ================= TOGGLE ROUND ================= */
     const toggleRound = (index: number) => {
@@ -355,6 +389,8 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                     title: title.trim(),
                     description: description.trim(),
                     rounds: payloadRounds,
+                    branch,
+                    joiningYear,
                 }),
             });
 
@@ -366,6 +402,11 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
 
                 if (!examId && data.examId) {
                     setExamId?.(data.examId);
+                }
+
+                // Notify parent with the saved exam so it can refresh round tabs immediately
+                if (data.exam) {
+                    onSave?.(data.exam);
                 }
 
                 const refreshRes = await fetch(
@@ -418,11 +459,6 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
 
             <div className="assessment-config-container">
                 <div className="config-card">
-                    <div className="config-header">
-                        <h5 className="config-title">Assessment Configuration</h5>
-                        <p className="config-subtitle">Configure your exam rounds, timing, and passing criteria</p>
-                    </div>
-
                     {/* Two Fields in One Row - Exam Selection & Title */}
                     <div className="form-row-group">
                         <div className="form-group-half">
@@ -481,6 +517,72 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                             <small className="form-hint">
                                 This description will display to students while they take the exam.
                             </small>
+                        </div>
+                    </div>
+
+                    {/* Target Batch */}
+                    <div className="form-row-group">
+                        <div className="form-group-half">
+                            <label className="form-label">
+                                <FaList className="label-icon" />
+                                Target Branch
+                                {branch.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,122,0,0.2)', color: '#ff7a00', borderRadius: 10, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700 }}>{branch.length} selected</span>}
+                            </label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0.6rem 0' }}>
+                                {BRANCHES.map(b => {
+                                    const active = branch.includes(b);
+                                    return (
+                                        <button
+                                            key={b}
+                                            type="button"
+                                            onClick={() => setBranch(active ? branch.filter(x => x !== b) : [...branch, b])}
+                                            style={{
+                                                background: active ? 'rgba(255,122,0,0.2)' : '#111',
+                                                color: active ? '#ff7a00' : '#888',
+                                                border: `1px solid ${active ? '#ff7a00' : '#2c2c2c'}`,
+                                                borderRadius: 20,
+                                                padding: '4px 14px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: active ? 700 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s',
+                                            }}
+                                        >{b}</button>
+                                    );
+                                })}
+                            </div>
+                            <small className="form-hint">Select none to show to all branches</small>
+                        </div>
+                        <div className="form-group-half">
+                            <label className="form-label">
+                                <FaCalendarAlt className="label-icon" />
+                                Target Joining Year
+                                {joiningYear.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(253,126,20,0.2)', color: '#fd7e14', borderRadius: 10, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700 }}>{joiningYear.length} selected</span>}
+                            </label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0.6rem 0' }}>
+                                {JOINING_YEARS.map(y => {
+                                    const active = joiningYear.includes(y);
+                                    return (
+                                        <button
+                                            key={y}
+                                            type="button"
+                                            onClick={() => setJoiningYear(active ? joiningYear.filter(x => x !== y) : [...joiningYear, y])}
+                                            style={{
+                                                background: active ? 'rgba(253,126,20,0.2)' : '#111',
+                                                color: active ? '#fd7e14' : '#888',
+                                                border: `1px solid ${active ? '#fd7e14' : '#2c2c2c'}`,
+                                                borderRadius: 20,
+                                                padding: '4px 14px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: active ? 700 : 400,
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s',
+                                            }}
+                                        >{y}</button>
+                                    );
+                                })}
+                            </div>
+                            <small className="form-hint">Select none to show to all batches</small>
                         </div>
                     </div>
 
@@ -589,6 +691,61 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                                                 </div>
                                             </div>
                                         )}
+
+                                        {/* Upload + View buttons */}
+                                        {round.enabled && (() => {
+                                            const count = questionCounts[round.roundType] ?? 0;
+                                            const isScheduled = !!(round.startDateTime && round.endDateTime);
+                                            const isStarted = isScheduled && new Date(round.startDateTime) <= new Date();
+                                            const isMCQTRHR = round.roundType === 'mcq' || round.roundType === 'tr' || round.roundType === 'hr';
+                                            return (
+                                                <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                                                    {!examId ? (
+                                                        <small style={{ color: '#555', fontSize: '0.78rem' }}>💾 Save the exam first</small>
+                                                    ) : !isScheduled ? (
+                                                        <small style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#666', fontSize: '0.78rem' }}>
+                                                            <span style={{ color: '#f59e0b' }}>📅</span>
+                                                            Set Start &amp; End dates above, then save to enable upload
+                                                        </small>
+                                                    ) : isStarted ? (
+                                                        <>
+                                                            <span style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: '0.78rem', padding: '4px 12px', borderRadius: 20, fontWeight: 600, border: '1px solid #ef444430' }}>
+                                                                🔒 Exam in Progress — Editing Locked
+                                                            </span>
+                                                            {count > 0 && (
+                                                                <button type="button"
+                                                                    onClick={() => isMCQTRHR
+                                                                        ? setViewRound({ type: round.roundType as 'mcq'|'tr'|'hr', label: roundInfo.label })
+                                                                        : setUploadRound(round.roundType)}
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', background: 'transparent', border: `1px solid ${roundInfo.color}55`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.82rem' }}>
+                                                                    👁 View Questions ({count})
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button type="button" onClick={() => setUploadRound(round.roundType)}
+                                                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 1.1rem', background: roundInfo.color, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontWeight: 600, fontSize: '0.83rem' }}>
+                                                                <FaUpload style={{ fontSize: '0.75rem' }} /> Upload Questions
+                                                            </button>
+                                                            {count > 0 && isMCQTRHR && (
+                                                                <button type="button"
+                                                                    onClick={() => setViewRound({ type: round.roundType as 'mcq'|'tr'|'hr', label: roundInfo.label })}
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.1rem', background: 'transparent', border: `1px solid ${roundInfo.color}`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.83rem' }}>
+                                                                    📋 View / Edit ({count})
+                                                                </button>
+                                                            )}
+                                                            {count > 0 && !isMCQTRHR && (
+                                                                <button type="button" onClick={() => setUploadRound(round.roundType)}
+                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.1rem', background: 'transparent', border: `1px solid ${roundInfo.color}`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.83rem' }}>
+                                                                    📋 View / Edit ({count})
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 );
                             })}
@@ -614,101 +771,6 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                             )}
                         </button>
                     </div>
-                     {/* ================= EXAM LIST TABLE ================= */}
-                    <div className="exam-list-container">
-                        <div className="exam-list-header">
-                            <div>
-                                <h6 className="exam-list-title">Existing Exams</h6>
-                                <p className="exam-list-subtitle">Manage existing exam configurations</p>
-                            </div>
-                            <span className="exam-count-badge">{examList.length} exam{examList.length !== 1 ? 's' : ''}</span>
-                        </div>
-
-                        {examList.length === 0 ? (
-                            <div className="no-exams">
-                                <FaInfoCircle className="no-exams-icon" />
-                                <span>No exams created yet. Create one above to get started.</span>
-                            </div>
-                        ) : (
-                            <div className="table-wrapper">
-                                <table className="exam-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 40 }}>#</th>
-                                            <th style={{ width: '28%' }}>Exam</th>
-                                            <th>Scheduled Rounds</th>
-                                            <th style={{ width: 200, textAlign: 'right' }}>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {examList.map((exam, index) => (
-                                            <tr key={exam._id} className={examId === exam._id ? "active-row" : ""}>
-                                                <td>
-                                                    <span className="row-num">{index + 1}</span>
-                                                </td>
-                                                <td>
-                                                    <div className="exam-info-cell">
-                                                        <div className="exam-title-row">
-                                                            <span className="exam-title-cell">{exam.title}</span>
-                                                            {examId === exam._id && (
-                                                                <span className="editing-badge">Editing</span>
-                                                            )}
-                                                        </div>
-                                                        {exam.description && (
-                                                            <span className="desc-cell">
-                                                                {exam.description.length > 60
-                                                                    ? exam.description.slice(0, 60) + '…'
-                                                                    : exam.description}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    {exam.rounds?.length > 0 ? (
-                                                        <div className="rounds-schedule">
-                                                            {exam.rounds.map((r: any) => {
-                                                                const info = roundIcons[r.roundType as RoundType]
-                                                                const fmtD = (dt: string) =>
-                                                                    new Date(dt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
-                                                                return (
-                                                                    <div key={r.roundType} className="round-schedule-row">
-                                                                        <span className={`round-badge ${r.roundType}`}>
-                                                                            {info?.label || r.roundType}
-                                                                        </span>
-                                                                        <span className="round-dates">
-                                                                            {r.startDateTime ? fmtD(r.startDateTime) : '—'}
-                                                                            <span className="date-sep">→</span>
-                                                                            {r.endDateTime ? fmtD(r.endDateTime) : '—'}
-                                                                        </span>
-                                                                    </div>
-                                                                )
-                                                            })}
-                                                        </div>
-                                                    ) : (
-                                                        <span style={{ color: '#444', fontSize: '0.8rem' }}>No rounds</span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <div className="action-btns">
-                                                        <button className="action-icon-btn edit-icon-btn" onClick={() => handleExamChange(exam._id)} title="Edit">
-                                                            <FaEdit />
-                                                        </button>
-                                                        <button className="action-icon-btn notify-icon-btn" onClick={() => openNotify(exam)} title="Notify Students">
-                                                            <FaEnvelope />
-                                                        </button>
-                                                        <button className="action-icon-btn delete-icon-btn" onClick={() => handleDeleteExam(exam._id)} disabled={loading} title="Delete">
-                                                            {loading ? <FaSpinner className="spinner-icon" /> : <FaTrash />}
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-
                 </div>
             </div>
 
@@ -1354,6 +1416,13 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                 flex-shrink: 0;
             }
 
+            .results-icon-btn {
+                background: rgba(23,162,184,0.12);
+                border-color: rgba(23,162,184,0.35);
+                color: #17a2b8;
+            }
+            .results-icon-btn:hover { background: rgba(23,162,184,0.24); }
+
             .edit-icon-btn {
                 background: rgba(255,107,53,0.12);
                 border-color: rgba(255,107,53,0.35);
@@ -1487,6 +1556,59 @@ export default function AssessmentConfig({ examId, setExamId }: Props) {
                     )}
                 </Modal.Footer>
             </Modal>
+
+            {/* Upload / Manage Questions Modal */}
+            <Modal
+                show={!!uploadRound}
+                onHide={() => { setUploadRound(null); fetchQuestionCounts(); }}
+                fullscreen
+                backdrop="static"
+            >
+                <Modal.Header
+                    closeButton
+                    style={{ background: '#0a0a0a', borderBottom: '1px solid #1f1f1f' }}
+                >
+                    <Modal.Title style={{ color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
+                        {uploadRound === 'mcq'    && '📋 MCQ Questions'}
+                        {uploadRound === 'coding' && '💻 Code Challenges'}
+                        {uploadRound === 'tr'     && '🎤 Technical Interview Questions'}
+                        {uploadRound === 'hr'     && '👥 HR Interview Questions'}
+                        {uploadRound && (() => {
+                            const activeRound = rounds.find(r => r.roundType === uploadRound);
+                            const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
+                            return isStarted ? <span style={{ marginLeft: 12, fontSize: '0.75rem', color: '#ef4444', background: 'rgba(239,68,68,0.12)', padding: '2px 10px', borderRadius: 20, border: '1px solid #ef444430' }}>🔒 View Only — Exam in Progress</span> : null;
+                        })()}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ background: '#000', padding: '1.5rem', overflowY: 'auto' }}>
+                    {uploadRound && examId && (() => {
+                        const activeRound = rounds.find(r => r.roundType === uploadRound);
+                        const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
+                        return (
+                            <>
+                                {uploadRound === 'mcq'    && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'coding' && <AdminCreateProblem defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'tr'     && <InterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'hr'     && <HRInterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                            </>
+                        );
+                    })()}
+                </Modal.Body>
+            </Modal>
+
+            {viewRound && (
+                <QuestionListModal
+                    show={!!viewRound}
+                    onHide={() => { setViewRound(null); fetchQuestionCounts(); }}
+                    examId={examId}
+                    roundType={viewRound.type}
+                    roundLabel={viewRound.label}
+                    readOnly={(() => {
+                        const r = rounds.find(x => x.roundType === viewRound.type);
+                        return r?.startDateTime ? new Date(r.startDateTime) <= new Date() : false;
+                    })()}
+                />
+            )}
         </>
     );
 }

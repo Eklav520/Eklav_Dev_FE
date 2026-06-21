@@ -18,17 +18,21 @@ import axios from 'axios'
 
 type IQProps = {
   apiBase?: 'tr' | 'hr';
+  defaultExamId?: string;
+  readOnly?: boolean;
 };
 
-const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) => {
+const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr', defaultExamId, readOnly }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
 
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [examId, setExamId] = useState("")
+  const [examId, setExamId] = useState(defaultExamId || "")
   const [exams, setExams] = useState<any[]>([])
+
+  useEffect(() => { if (defaultExamId) setExamId(defaultExamId); }, [defaultExamId]);
   const [selectedExamTitle, setSelectedExamTitle] = useState("")
   const [result, setResult] = useState<null | {
     success?: boolean
@@ -169,8 +173,10 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           </div>
         </div>
 
-        {/* Exam Selection Section */}
+        {/* Exam Selection Section — hidden when pre-selected from parent */}
         <div className="exam-section">
+          {!defaultExamId && (
+          <>
           <div className="exam-info">
             <FaBook className="exam-icon" />
             <span>Select Exam for Questions</span>
@@ -204,6 +210,8 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
               </small>
             )}
           </Form.Group>
+          </>
+          )}
         </div>
 
         {/* Template Download */}
@@ -255,11 +263,16 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
         </div>
 
         {/* Upload Button */}
+        {readOnly && (
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #ef444430', borderRadius: 8, padding: '0.65rem 1rem', marginBottom: '1rem', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+            🔒 Exam is in progress — uploading is disabled.
+          </div>
+        )}
         <div className="upload-action">
-          <Button 
+          <Button
             className="upload-btn"
-            onClick={handleUpload} 
-            disabled={!file || !examId || loading}
+            onClick={handleUpload}
+            disabled={!file || !examId || loading || !!readOnly}
           >
             {loading ? (
               <>

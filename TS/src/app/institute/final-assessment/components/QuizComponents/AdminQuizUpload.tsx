@@ -8,7 +8,7 @@ import { useAuthContext } from "@/context/useAuthContext";
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || "";
 
-const AdminFinalAssessmentUpload: React.FC = () => {
+const AdminFinalAssessmentUpload: React.FC<{ defaultExamId?: string; readOnly?: boolean }> = ({ defaultExamId, readOnly }) => {
   const { user } = useAuthContext()
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -17,8 +17,10 @@ const AdminFinalAssessmentUpload: React.FC = () => {
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [examId, setExamId] = useState("");
+  const [examId, setExamId] = useState(defaultExamId || "");
   const [exams, setExams] = useState([]);
+
+  useEffect(() => { if (defaultExamId) setExamId(defaultExamId); }, [defaultExamId]);
 
   useEffect(() => {
     const fetchExams = async () => {
@@ -149,28 +151,27 @@ const AdminFinalAssessmentUpload: React.FC = () => {
       <Card className="upload-card">
         <Card.Body className="card-body-custom">
 
-          {/* ================= EXAM SELECT ================= */}
-          <Form.Group className="mb-3">
-            <Form.Label>Select Exam</Form.Label>
-            <Form.Control
-              as="select"
-              value={examId}
-              onChange={(e) => setExamId(e.target.value)}
-            >
-              <option value="">-- Select Exam --</option>
-              {exams.map((exam: any) => (
-                <option key={exam._id} value={exam._id}>
-                  {exam.title}
-                </option>
-              ))}
-            </Form.Control>
-
-            {!examId && (
-              <small className="text-danger">
-                ⚠ Please select an exam before uploading
-              </small>
-            )}
-          </Form.Group>
+          {/* ================= EXAM SELECT (hidden when pre-selected) ================= */}
+          {!defaultExamId && (
+            <Form.Group className="mb-3">
+              <Form.Label>Select Exam</Form.Label>
+              <Form.Control
+                as="select"
+                value={examId}
+                onChange={(e) => setExamId(e.target.value)}
+              >
+                <option value="">-- Select Exam --</option>
+                {exams.map((exam: any) => (
+                  <option key={exam._id} value={exam._id}>
+                    {exam.title}
+                  </option>
+                ))}
+              </Form.Control>
+              {!examId && (
+                <small className="text-danger">⚠ Please select an exam before uploading</small>
+              )}
+            </Form.Group>
+          )}
 
           {/* ================= HEADER ================= */}
           <div className="upload-header">
@@ -240,11 +241,16 @@ const AdminFinalAssessmentUpload: React.FC = () => {
           </Form.Group>
 
           {/* ================= BUTTONS ================= */}
+          {readOnly && (
+            <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #ef444430', borderRadius: 8, padding: '0.65rem 1rem', marginBottom: '1rem', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+              🔒 Exam is in progress — uploading is disabled.
+            </div>
+          )}
           <div className="button-group">
             <Button
               variant="secondary"
               className="preview-btn"
-              disabled={!file || uploading}
+              disabled={!file || uploading || !!readOnly}
               onClick={handlePreview}
             >
               <FaEye className="me-2" />
@@ -254,7 +260,7 @@ const AdminFinalAssessmentUpload: React.FC = () => {
             <Button
               variant="primary"
               className="upload-btn"
-              disabled={!file || !examId || uploading}
+              disabled={!file || !examId || uploading || !!readOnly}
               onClick={handleUpload}
             >
               {uploading ? (

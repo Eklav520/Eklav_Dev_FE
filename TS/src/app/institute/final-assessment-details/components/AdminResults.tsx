@@ -51,7 +51,7 @@ interface LiveStudent {
   lastSeenAt?: string;
 }
 
-const AdminResults: React.FC = () => {
+const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean }> = ({ defaultExamId, hideHeader, hideExamSelector }) => {
   const { user } = useAuthContext();
   const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -258,9 +258,12 @@ const AdminResults: React.FC = () => {
           examList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
           setExams(examList);
           examsLoadedRef.current = true;
-          // Default to the latest exam
+          // Default to the provided exam or the latest
           if (examList.length > 0) {
-            setSelectedExamId(examList[0].id);
+            const preselect = defaultExamId && examList.find(e => e.id === defaultExamId)
+              ? defaultExamId
+              : examList[0].id;
+            setSelectedExamId(preselect);
           }
         }
       }
@@ -616,13 +619,15 @@ const AdminResults: React.FC = () => {
   return (
     <div className="admin-results-container">
       {/* Header */}
-      <div className="header-section">
-        <h1 className="page-title">
-          <FaGraduationCap className="title-icon" />
-          Assessment Results Dashboard
-        </h1>
-        <p className="page-subtitle">Monitor and manage student assessment submissions</p>
-      </div>
+      {!hideHeader && (
+        <div className="header-section">
+          <h1 className="page-title">
+            <FaGraduationCap className="title-icon" />
+            Assessment Results Dashboard
+          </h1>
+          <p className="page-subtitle">Monitor and manage student assessment submissions</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       {stats && (
@@ -672,21 +677,23 @@ const AdminResults: React.FC = () => {
       {/* Filters and Actions */}
       <div className="filters-bar">
         <div className="filters-group">
-          <select
-            value={selectedExamId}
-            onChange={(e) => {
-              setSelectedExamId(e.target.value);
-              setCurrentPage(1);
-            }}
-            style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
-          >
-            <option value="">-- Select an Exam --</option>
-            {exams.map((exam, idx) => (
-              <option key={exam.id} value={exam.id}>
-                {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
-              </option>
-            ))}
-          </select>
+          {!hideExamSelector && (
+            <select
+              value={selectedExamId}
+              onChange={(e) => {
+                setSelectedExamId(e.target.value);
+                setCurrentPage(1);
+              }}
+              style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
+            >
+              <option value="">-- Select an Exam --</option>
+              {exams.map((exam, idx) => (
+                <option key={exam.id} value={exam.id}>
+                  {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
+                </option>
+              ))}
+            </select>
+          )}
 
           {/* <button 
             className="live-btn"

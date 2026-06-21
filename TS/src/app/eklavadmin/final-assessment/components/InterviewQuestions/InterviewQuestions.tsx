@@ -18,17 +18,21 @@ import axios from 'axios'
 
 type IQProps = {
   apiBase?: 'tr' | 'hr';
+  defaultExamId?: string;
+  readOnly?: boolean;
 };
 
-const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) => {
+const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr', defaultExamId, readOnly }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
 
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
-  const [examId, setExamId] = useState("")
+  const [examId, setExamId] = useState(defaultExamId || "")
   const [exams, setExams] = useState<any[]>([])
+
+  useEffect(() => { if (defaultExamId) setExamId(defaultExamId); }, [defaultExamId]);
   const [selectedExamTitle, setSelectedExamTitle] = useState("")
   const [result, setResult] = useState<null | {
     success?: boolean
@@ -158,6 +162,11 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
   return (
     <div className="interview-upload-container">
       <div className="upload-wrapper">
+        {readOnly && (
+          <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid #ef444430', borderRadius: 8, padding: '0.65rem 1rem', marginBottom: '1rem', color: '#ef4444', fontSize: '0.85rem', fontWeight: 600 }}>
+            🔒 Exam is in progress — upload is disabled. You can view questions below.
+          </div>
+        )}
         {/* Header */}
         <div className="upload-header">
           <div className="header-icon-wrapper">
@@ -169,16 +178,15 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
           </div>
         </div>
 
-        {/* Exam Selection Section */}
+        {/* Exam Selection Section — hidden when pre-selected from parent */}
+        {!defaultExamId && (
         <div className="exam-section">
           <div className="exam-info">
             <FaBook className="exam-icon" />
             <span>Select Exam for Questions</span>
           </div>
           <Form.Group className="exam-select-group">
-            <Form.Label className="exam-label">
-              Choose Assessment
-            </Form.Label>
+            <Form.Label className="exam-label">Choose Assessment</Form.Label>
             <Form.Control
               as="select"
               value={examId}
@@ -187,9 +195,7 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
             >
               <option value="">-- Select Exam --</option>
               {exams.map((exam: any) => (
-                <option key={exam._id} value={exam._id}>
-                  {exam.title}
-                </option>
+                <option key={exam._id} value={exam._id}>{exam.title}</option>
               ))}
             </Form.Control>
             {selectedExamTitle && (
@@ -199,12 +205,11 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
               </div>
             )}
             {!examId && (
-              <small className="exam-warning">
-                ⚠ Please select an exam before uploading questions
-              </small>
+              <small className="exam-warning">⚠ Please select an exam before uploading questions</small>
             )}
           </Form.Group>
         </div>
+        )}
 
         {/* Template Download */}
         <div className="template-section">
@@ -256,10 +261,10 @@ const AdminInterviewQuestionsUpload: React.FC<IQProps> = ({ apiBase = 'tr' }) =>
 
         {/* Upload Button */}
         <div className="upload-action">
-          <Button 
+          <Button
             className="upload-btn"
-            onClick={handleUpload} 
-            disabled={!file || !examId || loading}
+            onClick={handleUpload}
+            disabled={!!readOnly || !file || !examId || loading}
           >
             {loading ? (
               <>
