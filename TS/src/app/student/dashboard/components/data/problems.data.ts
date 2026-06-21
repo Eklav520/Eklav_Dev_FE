@@ -17,8 +17,6 @@ const baseURL = import.meta.env.VITE_API_BASE_URL
 
 export const fetchProblems = async (): Promise<Problem[]> => {
   const token = localStorage.getItem('token')
-  console.log('Token from localStorage:', token)
-
   if (!token) {
     throw new Error('No authentication token found')
   }

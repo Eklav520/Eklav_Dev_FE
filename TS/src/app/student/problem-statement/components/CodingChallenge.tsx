@@ -176,12 +176,10 @@ const ProblemStatement = () => {
 
   useEffect(() => {
     if (!token) {
-      console.log("⏳ Waiting for token...")
       return
     }
 
     const loadProblems = async () => {
-      console.log("🚀 Calling fetchProblems with token:", token)
 
       setLoadingProblems(true)
 

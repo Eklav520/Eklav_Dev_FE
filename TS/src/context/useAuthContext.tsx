@@ -38,7 +38,11 @@ export function AuthProvider({ children }: ChildrenType) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!getSession())
 
   const saveSession = (user: UserType) => {
-    setCookie(authSessionKey, JSON.stringify(user))
+    setCookie(authSessionKey, JSON.stringify(user), {
+      sameSite: 'strict',
+      secure: window.location.protocol === 'https:',
+      path: '/',
+    })
     setUser(user)
     setIsAuthenticated(true)
   }
@@ -48,9 +52,11 @@ export function AuthProvider({ children }: ChildrenType) {
       if (!prev) return prev
 
       const updatedUser = { ...prev, ...data }
-
-      // update cookie
-      setCookie(authSessionKey, JSON.stringify(updatedUser))
+      setCookie(authSessionKey, JSON.stringify(updatedUser), {
+        sameSite: 'strict',
+        secure: window.location.protocol === 'https:',
+        path: '/',
+      })
 
       return updatedUser
     })
@@ -74,8 +80,6 @@ export function AuthProvider({ children }: ChildrenType) {
 
       const data = await res.json()
 
-      console.log("Profile API response:", data)
-
       // 🔥 Support both structures
       const freshProfile = data.user ?? data
 
@@ -84,9 +88,11 @@ export function AuthProvider({ children }: ChildrenType) {
         ...freshProfile,
       }
 
-      console.log("Updated user after merge:", updatedUser)
-
-      setCookie(authSessionKey, JSON.stringify(updatedUser))
+      setCookie(authSessionKey, JSON.stringify(updatedUser), {
+        sameSite: 'strict',
+        secure: window.location.protocol === 'https:',
+        path: '/',
+      })
       setUser(updatedUser)
 
     } catch (err) {

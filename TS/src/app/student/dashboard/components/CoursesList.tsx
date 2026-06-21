@@ -20,8 +20,6 @@ const CoursesList = () => {
   const { user } = useAuthContext()
   const token = user?.token
 
-  console.log("userssssss",user,token)
-
   useEffect(() => {
     const fetchCourses = async () => {
       try {

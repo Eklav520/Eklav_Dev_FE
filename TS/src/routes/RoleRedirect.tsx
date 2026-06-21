@@ -9,8 +9,6 @@ const RoleRedirect = () => {
     return <Navigate to="/auth/sign-in" replace />
   }
 
-  console.log("user.role:", user.role)
-
   // 👑 Platform Admin
   if (user.role === 'admin' || user.role === 'collegeAdmin') {
     return <Navigate to="/eklavadmin/dashboard" replace />

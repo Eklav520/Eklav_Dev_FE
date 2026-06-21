@@ -3,13 +3,13 @@ export function setupFetchInterceptor(removeSession: () => void) {
 
   window.fetch = async (input, init = {}) => {
     const token = localStorage.getItem('token');
-    console.log('Fetch interceptor - Token:', token);
-    console.log('Fetch interceptor - URL:', typeof input === 'string' ? input : input.url);
+    /* console.log('Fetch interceptor - Token:', token);
+    console.log('Fetch interceptor - URL:', typeof input === 'string' ? input : input.url); */
 
     const newHeaders = new Headers(init.headers || {});
     if (token) newHeaders.set('Authorization', `Bearer ${token}`);
 
-    console.log('Fetch interceptor - Headers set:', Array.from(newHeaders.entries()));
+    //console.log('Fetch interceptor - Headers set:', Array.from(newHeaders.entries()));
 
     const modifiedInit: RequestInit = {
       ...init,
