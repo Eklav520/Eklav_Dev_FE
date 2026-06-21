@@ -78,6 +78,8 @@ const SpeakingPractice: React.FC = () => {
   const [pendingAudioUri, setPendingAudioUri] = useState<string | null>(null)
   const finalTranscriptRef = useRef('')
   const sessionIdRef = useRef<string>('')
+  const isSubmittingRef = useRef(false)
+  const isStoppingRef = useRef(false)
 
   //const isMonthlyLimitReached: boolean = !!history && history.attemptsUsed >= history.monthlyLimit
 
@@ -216,6 +218,8 @@ const SpeakingPractice: React.FC = () => {
 
     // 🆕 NEW SESSION
     sessionIdRef.current = crypto.randomUUID()
+    isSubmittingRef.current = false
+    isStoppingRef.current = false
 
     // 🧹 clear stale refs
     finalTranscriptRef.current = ''
@@ -444,6 +448,9 @@ const SpeakingPractice: React.FC = () => {
   }
 
   const stopRecording = async () => {
+    if (isStoppingRef.current) return
+    isStoppingRef.current = true
+
     if (timerRef.current) clearInterval(timerRef.current)
 
     setRecording(false)
@@ -521,6 +528,9 @@ const SpeakingPractice: React.FC = () => {
 
 
   const submitAudioToBackend = async (audioData: Blob | string, transcriptText: string) => {
+
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
 
     // 🚨 HARD VALIDATION
     if (!prompt?._id) {
