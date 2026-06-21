@@ -16,12 +16,12 @@ const useTenant = () => {
       try {
         const domain = window.location.hostname;
 
-        console.log("🌍 Frontend Domain:", domain);
-        console.log("🌐 API Base URL:", baseURL);
+       /*  console.log("🌍 Frontend Domain:", domain);
+        console.log("🌐 API Base URL:", baseURL); */
 
         const url = `${baseURL}/api/institute/tenant-config`;
 
-        console.log("🚀 Calling API:", url);
+        /* console.log("🚀 Calling API:", url); */
 
         const res = await fetch(url, {
           headers: {
@@ -30,10 +30,10 @@ const useTenant = () => {
           },
         });
 
-        console.log("📡 Response Status:", res.status);
+        /* console.log("📡 Response Status:", res.status); */
 
         const text = await res.text(); // 🔥 read raw first
-        console.log("📦 Raw Response:", text);
+        /* console.log("📦 Raw Response:", text); */
 
         let data;
         try {
@@ -43,13 +43,13 @@ const useTenant = () => {
           return;
         }
 
-        console.log("✅ Parsed Data:", data);
+        /* console.log("✅ Parsed Data:", data); */
 
         if (data.success) {
-          console.log("🎯 Tenant Found:", data.tenant);
+          /* console.log("🎯 Tenant Found:", data.tenant); */
           setTenant(data.tenant);
         } else {
-          console.warn("⚠️ API returned success: false", data);
+          /* console.warn("⚠️ API returned success: false", data); */
         }
 
       } catch (err) {
