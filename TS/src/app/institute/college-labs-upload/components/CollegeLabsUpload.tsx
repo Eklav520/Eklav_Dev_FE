@@ -70,7 +70,9 @@ const CollegeLabsUpload = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [branch, setBranch] = useState('CSE')
-  const [year, setYear] = useState('3rd Year')
+  const currentYear = new Date().getFullYear()
+  const JOINING_YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - i))
+  const [year, setYear] = useState(String(currentYear - 2))
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const totalPrograms = useMemo(() => programs.length, [programs])
 
@@ -110,7 +112,7 @@ const CollegeLabsUpload = () => {
     const res = await fetch(`${baseURL}/api/institute/college-labs`, { headers: { Authorization: `Bearer ${token}` } })
     const data = await res.json()
     if (!res.ok || !data.success) throw new Error(data.message || 'Failed to fetch labs')
-    setPrograms(Array.isArray(data.data) ? data.data : [])
+    setPrograms(Array.isArray(data.data) ? data.data.map((p: any) => ({ ...p, id: p._id || p.id })) : [])
   }
 
   const handleBulkFile = async (file: File) => {
@@ -149,7 +151,29 @@ const CollegeLabsUpload = () => {
     const file = e.target.files?.[0]; if (file) handleBulkFile(file)
   }
 
-  const removeProgram = (id: string) => setPrograms(prev => prev.filter(p => p.id !== id))
+  const removeProgram = async (id: string) => {
+    if (!window.confirm('Delete this program permanently?')) return
+    // If it's a temp local ID (not yet saved), just filter from state
+    const isLocalOnly = id.includes('-') && !id.match(/^[a-f\d]{24}$/i)
+    if (isLocalOnly) {
+      setPrograms(prev => prev.filter(p => p.id !== id))
+      return
+    }
+    try {
+      const res = await fetch(`${baseURL}/api/institute/college-labs/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}))
+        setError(d.message || 'Failed to delete program')
+        return
+      }
+      setPrograms(prev => prev.filter(p => p.id !== id))
+    } catch {
+      setError('Failed to delete program')
+    }
+  }
   const clearAll = () => {
     setPrograms([]); setSelectedFileName(''); setSelectedFile(null)
     setMessage('Cleared current bulk list.')
@@ -292,9 +316,9 @@ const CollegeLabsUpload = () => {
               </select>
             </div>
             <div className="by-field">
-              <label className="by-label">Year</label>
+              <label className="by-label">Joining Year</label>
               <select className="by-select" value={year} onChange={e => setYear(e.target.value)}>
-                {['1st Year', '2nd Year', '3rd Year', '4th Year'].map(y => (
+                {JOINING_YEARS.map(y => (
                   <option key={y} value={y}>{y}</option>
                 ))}
               </select>

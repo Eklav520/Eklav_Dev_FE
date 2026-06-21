@@ -229,11 +229,13 @@ const StudentCollegeLabsPage = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
+  // Student's own branch & joining year (auto-filter)
+  const studentBranch = user?.branch || user?.department || ''
+  const studentYear = user?.joiningYear || ''
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState<string>('all')
-  const [branchFilter, setBranchFilter] = useState<string>('all')
-  const [yearFilter, setYearFilter] = useState<string>('all')
   
   // Modal state
   const [showModal, setShowModal] = useState(false)
@@ -315,49 +317,37 @@ const StudentCollegeLabsPage = () => {
     }
   }, [showModal])
 
-  // Filter labs
+  // Filter labs — auto-apply student's branch & joining year
   const filteredLabs = React.useMemo(() => {
     let filtered = labs
-    
+
+    // Auto-filter: only show labs matching this student's branch and joining year
+    if (studentBranch) {
+      filtered = filtered.filter(lab => !lab.branch || lab.branch === studentBranch)
+    }
+    if (studentYear) {
+      filtered = filtered.filter(lab => !lab.year || lab.year === studentYear)
+    }
+
     if (activeTab === 'available') {
       filtered = filtered.filter(lab => !completedPrograms.includes(lab._id))
     } else {
       filtered = filtered.filter(lab => completedPrograms.includes(lab._id))
     }
-    
+
     if (searchTerm) {
-      filtered = filtered.filter(lab => 
+      filtered = filtered.filter(lab =>
         lab.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lab.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
-    
+
     if (difficultyFilter !== 'all') {
       filtered = filtered.filter(lab => lab.difficulty === difficultyFilter)
     }
 
-    if (branchFilter !== 'all') {
-      filtered = filtered.filter(lab => lab.branch === branchFilter)
-    }
-
-    if (yearFilter !== 'all') {
-      filtered = filtered.filter(lab => lab.year === yearFilter)
-    }
-
     return filtered
-  }, [labs, completedPrograms, activeTab, searchTerm, difficultyFilter, branchFilter, yearFilter])
-
-  /* Derive unique branch + year options from loaded labs */
-  const branchOptions = React.useMemo(() => {
-    const set = new Set(labs.map(l => l.branch).filter(Boolean) as string[])
-    return Array.from(set).sort()
-  }, [labs])
-
-  const yearOptions = React.useMemo(() => {
-    const order = ['1st Year', '2nd Year', '3rd Year', '4th Year']
-    const set = new Set(labs.map(l => l.year).filter(Boolean) as string[])
-    return Array.from(set).sort((a, b) => order.indexOf(a) - order.indexOf(b))
-  }, [labs])
+  }, [labs, completedPrograms, activeTab, searchTerm, difficultyFilter, studentBranch, studentYear])
 
   const totalPages = Math.max(1, Math.ceil(filteredLabs.length / ITEMS_PER_PAGE))
 
@@ -368,7 +358,7 @@ const StudentCollegeLabsPage = () => {
 
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, searchTerm, difficultyFilter, branchFilter, yearFilter])
+  }, [activeTab, searchTerm, difficultyFilter])
 
   useEffect(() => {
     setCurrentPage((prev) => Math.min(prev, totalPages))
@@ -657,7 +647,7 @@ const StudentCollegeLabsPage = () => {
         {/* Filters Bar */}
         <div className="filters-bar mb-4">
           <Row className="g-3 align-items-center">
-            <Col md={4}>
+            <Col md={5}>
               <InputGroup>
                 <InputGroup.Text className="search-icon"><Search size={14} strokeWidth={2.2} /></InputGroup.Text>
                 <Form.Control
@@ -681,31 +671,23 @@ const StudentCollegeLabsPage = () => {
                 <option value="Advanced">Advanced</option>
               </Form.Select>
             </Col>
-            <Col md={2}>
-              <Form.Select
-                value={branchFilter}
-                onChange={(e) => setBranchFilter(e.target.value)}
-                className="filter-select"
-                disabled={branchOptions.length === 0}
-              >
-                <option value="all">All Branches</option>
-                {branchOptions.map(b => <option key={b} value={b}>{b}</option>)}
-              </Form.Select>
-            </Col>
-            <Col md={2}>
-              <Form.Select
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
-                className="filter-select"
-                disabled={yearOptions.length === 0}
-              >
-                <option value="all">All Years</option>
-                {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
-              </Form.Select>
+            <Col md={3}>
+              {/* Batch info chip */}
+              {(studentBranch || studentYear) ? (
+                <div className="batch-chip">
+                  <span className="batch-chip-label">Your Batch</span>
+                  {studentBranch && <span className="batch-chip-branch">{studentBranch}</span>}
+                  {studentYear && <span className="batch-chip-year">Joined {studentYear}</span>}
+                </div>
+              ) : (
+                <div className="batch-chip batch-chip-unknown">
+                  <span className="batch-chip-label">Batch not set — showing all</span>
+                </div>
+              )}
             </Col>
             <Col md={2}>
               <div className="stats-badge" style={{ flexDirection: 'column', gap: '0.3rem' }}>
-                <span className="stat-item"><span className="stat-icon"><BookOpen size={14} strokeWidth={2} /></span>Total: {labs.length}</span>
+                <span className="stat-item"><span className="stat-icon"><BookOpen size={14} strokeWidth={2} /></span>Total: {filteredLabs.length}</span>
                 <span className="stat-item"><span className="stat-icon"><CheckCircle2 size={14} strokeWidth={2} /></span>Done: {completedPrograms.length}</span>
               </div>
             </Col>
@@ -1087,6 +1069,49 @@ const StudentCollegeLabsPage = () => {
           display: inline-flex;
           align-items: center;
           color: #ff9a5c;
+        }
+
+        /* Batch chip */
+        .batch-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #0c1a2e;
+          border: 1px solid #1e3a5f;
+          border-radius: 10px;
+          padding: 0.45rem 0.85rem;
+          flex-wrap: wrap;
+        }
+
+        .batch-chip-unknown {
+          background: #1a1a1a;
+          border-color: #333;
+        }
+
+        .batch-chip-label {
+          font-size: 0.7rem;
+          color: #60a5fa;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .batch-chip-branch {
+          font-size: 0.78rem;
+          font-weight: 700;
+          color: #ffffff;
+          background: rgba(96, 165, 250, 0.18);
+          padding: 2px 8px;
+          border-radius: 6px;
+        }
+
+        .batch-chip-year {
+          font-size: 0.78rem;
+          color: #fb923c;
+          font-weight: 600;
+          background: rgba(251, 146, 60, 0.12);
+          padding: 2px 8px;
+          border-radius: 6px;
         }
 
         /* Tabs */
