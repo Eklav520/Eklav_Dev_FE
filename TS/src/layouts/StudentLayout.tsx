@@ -426,6 +426,11 @@ const VerticalMenu = ({
       items = items.filter(item => item.key !== "subscriptions")
     }
 
+    // Hide "My Colleges" section on main domain — it's institute-specific content
+    if (isMainDomain) {
+      items = items.filter(item => item.key !== "myColleges")
+    }
+
     // Apply batch-specific nav rules (year+branch config) — takes priority over generic navSections
     if (!isMainDomain && batchAllowed) {
       items = items
