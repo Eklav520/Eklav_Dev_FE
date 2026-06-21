@@ -41,7 +41,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [isCollapsed, setIsCollapsed] = useState(true)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
-  const { user } = useAuthContext()
+  const { user, refreshUser } = useAuthContext()
   const token = user?.token
 
   const [role, setRole] = useState('Guest')
@@ -78,6 +78,8 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
   useEffect(() => {
     if (!token) return
+    // Refresh user to ensure branch/joiningYear are in the cookie (login API doesn't return them)
+    refreshUser().catch(() => {})
     fetch(`${baseURL}/profile`, {
       headers: { Authorization: `Bearer ${token}` },
     })
