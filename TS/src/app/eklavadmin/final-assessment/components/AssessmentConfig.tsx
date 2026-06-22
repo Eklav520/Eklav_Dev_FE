@@ -5,6 +5,7 @@ import AdminQuizUpload from "./QuizComponents/AdminQuizUpload";
 import AdminCreateProblem from "./CodeChallenegeComponents/CreateCodeChallenge";
 import InterviewQuestions from "./InterviewQuestions/InterviewQuestions";
 import HRInterviewQuestions from "./HRRoundQuestions/HRInterviewQuestions";
+import EnglishRoundConfig from "./EnglishRoundComponents/EnglishRoundConfig";
 import QuestionListModal from "./QuestionListModal";
 import {
     FaSave,
@@ -18,6 +19,7 @@ import {
     FaCode,
     FaComments,
     FaUserTie,
+    FaLanguage,
     FaPlus,
     FaTrash,
     FaEdit,
@@ -26,7 +28,7 @@ import {
     FaUpload
 } from "react-icons/fa";
 
-type RoundType = "mcq" | "coding" | "tr" | "hr";
+type RoundType = "mcq" | "coding" | "tr" | "hr" | "english";
 
 interface RoundConfig {
     roundType: RoundType;
@@ -45,10 +47,11 @@ interface Props {
 }
 
 const roundIcons = {
-    mcq: { icon: FaList, label: "MCQ Quiz", color: "#ff7a00", description: "Multiple choice questions" },
-    coding: { icon: FaCode, label: "Code Challenge", color: "#28a745", description: "Programming problems" },
-    tr: { icon: FaComments, label: "Technical Round", color: "#17a2b8", description: "Technical interview" },
-    hr: { icon: FaUserTie, label: "HR Round", color: "#fd7e14", description: "HR interview" }
+    mcq:     { icon: FaList,     label: "MCQ Quiz",        color: "#ff7a00", description: "Multiple choice questions" },
+    coding:  { icon: FaCode,     label: "Code Challenge",  color: "#28a745", description: "Programming problems" },
+    tr:      { icon: FaComments, label: "Technical Round", color: "#17a2b8", description: "Technical interview" },
+    hr:      { icon: FaUserTie,  label: "HR Round",        color: "#fd7e14", description: "HR interview" },
+    english: { icon: FaLanguage, label: "English Exam",    color: "#a855f7", description: "English communication assessment" },
 };
 
 export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
@@ -58,7 +61,8 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
         { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
         { roundType: "coding", enabled: false, pickCount: 1, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
         { roundType: "tr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-        { roundType: "hr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+        { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+        { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
     ]);
 
     const [examList, setExamList] = useState<any[]>([]);
@@ -72,6 +76,8 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
     const [uploadRound, setUploadRound] = useState<RoundType | null>(null);
     const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
     const [viewRound, setViewRound] = useState<{ type: 'mcq'|'tr'|'hr'; label: string } | null>(null);
+    const [savedRoundTypes, setSavedRoundTypes] = useState<Set<string>>(new Set());
+    const [savingRound, setSavingRound] = useState<string | null>(null);
 
     const currentYear = new Date().getFullYear();
     const JOINING_YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - i));
@@ -108,12 +114,14 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
             setDescription("");
             setBranch([]);
             setJoiningYear([]);
+            setSavedRoundTypes(new Set());
             // Reset rounds to default state
             setRounds([
-                { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                { roundType: "coding", enabled: false, pickCount: 1, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                { roundType: "tr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                { roundType: "hr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                { roundType: "mcq",     enabled: false, pickCount: 10, timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                { roundType: "coding",  enabled: false, pickCount: 1,  timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                { roundType: "tr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
             ]);
         }
     };
@@ -167,6 +175,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                     });
 
                     setRounds(updatedRounds);
+                    setSavedRoundTypes(new Set(exam.rounds.map((r: any) => r.roundType)));
                 }
             } catch (err) {
                 console.error("Failed to fetch exam details", err);
@@ -228,10 +237,11 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                     setTitle("");
                     setDescription("");
                     setRounds([
-                        { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                        { roundType: "coding", enabled: false, pickCount: 1, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                        { roundType: "tr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-                        { roundType: "hr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "mcq",     enabled: false, pickCount: 10, timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "coding",  enabled: false, pickCount: 1,  timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "tr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
                     ]);
                 }
                 // Refresh list
@@ -344,6 +354,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
 
                 if (data.exam) {
                     onSave?.(data.exam);
+                    setSavedRoundTypes(new Set(data.exam.rounds.map((r: any) => r.roundType)));
                 }
 
                 const refreshRes = await fetch(
@@ -362,6 +373,64 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } finally {
             setSaving(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
+    };
+
+    const handleSaveRound = async (roundType: string) => {
+        const round = rounds.find(r => r.roundType === roundType);
+        if (!round) return;
+        if (!round.startDateTime || !round.endDateTime) {
+            setMessage({ type: 'error', text: 'Please set Start & End dates for this round before saving.' });
+            return;
+        }
+        if (!title.trim()) {
+            setMessage({ type: 'error', text: 'Please enter an exam title first.' });
+            return;
+        }
+        setSavingRound(roundType);
+        try {
+            const toISOString = (localDateTime: string) => new Date(localDateTime).toISOString();
+            const enabledRounds = rounds.filter(r => r.enabled && r.startDateTime && r.endDateTime);
+            const url = examId
+                ? `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam/${examId}`
+                : `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam`;
+            const method = examId ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+                body: JSON.stringify({
+                    title: title.trim(),
+                    description: description.trim(),
+                    rounds: enabledRounds.map(r => ({
+                        roundType: r.roundType,
+                        enabled: r.enabled,
+                        pickCount: r.pickCount,
+                        timeSeconds: r.timeSeconds,
+                        startDateTime: toISOString(r.startDateTime),
+                        endDateTime: toISOString(r.endDateTime),
+                        passPercentage: r.passPercentage,
+                    })),
+                    branch,
+                    joiningYear,
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (!examId && data.examId) setExamId?.(data.examId);
+                if (data.exam) {
+                    setSavedRoundTypes(new Set(data.exam.rounds.map((r: any) => r.roundType)));
+                    onSave?.(data.exam);
+                }
+                setMessage({ type: 'success', text: `✅ ${roundType.toUpperCase()} round saved! Upload is now enabled.` });
+            } else {
+                setMessage({ type: 'error', text: data.message || 'Failed to save round config.' });
+            }
+        } catch (err) {
+            console.error(err);
+            setMessage({ type: 'error', text: 'Something went wrong. Please try again.' });
+        } finally {
+            setSavingRound(null);
             setTimeout(() => setMessage(null), 5000);
         }
     };
@@ -626,19 +695,35 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                                         />
                                                     </div>
                                                 </div>
+                                                {/* Per-round Save Config button */}
+                                                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSaveRound(round.roundType)}
+                                                        disabled={savingRound === round.roundType}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1.1rem', background: savingRound === round.roundType ? '#333' : roundInfo.color, border: 'none', borderRadius: 8, cursor: savingRound === round.roundType ? 'not-allowed' : 'pointer', color: '#fff', fontWeight: 600, fontSize: '0.82rem', opacity: savingRound === round.roundType ? 0.7 : 1 }}
+                                                    >
+                                                        <FaSave style={{ fontSize: '0.75rem' }} />
+                                                        {savingRound === round.roundType ? 'Saving…' : 'Save Config'}
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 
-                                        {/* Upload + View buttons */}
+                                        {/* Upload + View buttons — only after round is saved to server */}
                                         {round.enabled && (() => {
                                             const count = questionCounts[round.roundType] ?? 0;
                                             const isScheduled = !!(round.startDateTime && round.endDateTime);
                                             const isStarted = isScheduled && new Date(round.startDateTime) <= new Date();
                                             const isMCQTRHR = round.roundType === 'mcq' || round.roundType === 'tr' || round.roundType === 'hr';
+                                            const isSaved = savedRoundTypes.has(round.roundType);
                                             return (
                                                 <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                                    {!examId ? (
-                                                        <small style={{ color: '#555', fontSize: '0.78rem' }}>💾 Save the exam first</small>
+                                                    {!isSaved ? (
+                                                        <small style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#666', fontSize: '0.78rem' }}>
+                                                            <span style={{ color: '#f59e0b' }}>💾</span>
+                                                            Set dates above and click <strong style={{ color: roundInfo.color }}>&nbsp;Save Config&nbsp;</strong> to enable upload
+                                                        </small>
                                                     ) : !isScheduled ? (
                                                         <small style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#666', fontSize: '0.78rem' }}>
                                                             <span style={{ color: '#f59e0b' }}>📅</span>
@@ -663,7 +748,8 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                                         <>
                                                             <button type="button" onClick={() => setUploadRound(round.roundType)}
                                                                 style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 1.1rem', background: roundInfo.color, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontWeight: 600, fontSize: '0.83rem' }}>
-                                                                <FaUpload style={{ fontSize: '0.75rem' }} /> Upload Questions
+                                                                <FaUpload style={{ fontSize: '0.75rem' }} />
+                                                                {round.roundType === 'english' ? 'Manage Sections' : 'Upload Questions'}
                                                             </button>
                                                             {count > 0 && isMCQTRHR && (
                                                                 <button type="button"
@@ -687,26 +773,6 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                 );
                             })}
                         </div>
-                    </div>
-                    {/* Submit Button */}
-                    <div className="form-actions">
-                        <button
-                            onClick={handleSubmit}
-                            disabled={saving}
-                            className="submit-btn"
-                        >
-                            {saving ? (
-                                <>
-                                    <FaSpinner className="spinner-icon" />
-                                    Saving Configuration...
-                                </>
-                            ) : (
-                                <>
-                                    <FaSave className="me-2" />
-                                    Save Assessment
-                                </>
-                            )}
-                        </button>
                     </div>
                 </div>
             </div>
@@ -1358,10 +1424,11 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
             >
                 <Modal.Header closeButton style={{ background: '#0a0a0a', borderBottom: '1px solid #1f1f1f' }}>
                     <Modal.Title style={{ color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
-                        {uploadRound === 'mcq'    && '📋 MCQ Questions'}
-                        {uploadRound === 'coding' && '💻 Code Challenges'}
-                        {uploadRound === 'tr'     && '🎤 Technical Interview Questions'}
-                        {uploadRound === 'hr'     && '👥 HR Interview Questions'}
+                        {uploadRound === 'mcq'     && '📋 MCQ Questions'}
+                        {uploadRound === 'coding'  && '💻 Code Challenges'}
+                        {uploadRound === 'tr'      && '🎤 Technical Interview Questions'}
+                        {uploadRound === 'hr'      && '👥 HR Interview Questions'}
+                        {uploadRound === 'english' && '🇬🇧 English Assessment'}
                         {uploadRound && (() => {
                             const activeRound = rounds.find(r => r.roundType === uploadRound);
                             const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
@@ -1375,10 +1442,11 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                         const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
                         return (
                             <>
-                                {uploadRound === 'mcq'    && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'coding' && <AdminCreateProblem defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'tr'     && <InterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'hr'     && <HRInterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'mcq'     && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'coding'  && <AdminCreateProblem defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'tr'      && <InterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'hr'      && <HRInterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                {uploadRound === 'english' && <EnglishRoundConfig defaultExamId={examId} readOnly={isStarted} />}
                             </>
                         );
                     })()}

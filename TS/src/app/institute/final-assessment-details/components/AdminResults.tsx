@@ -51,7 +51,7 @@ interface LiveStudent {
   lastSeenAt?: string;
 }
 
-const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean }> = ({ defaultExamId, hideHeader, hideExamSelector }) => {
+const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean; filterRoundType?: string }> = ({ defaultExamId, hideHeader, hideExamSelector, filterRoundType }) => {
   const { user } = useAuthContext();
   const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -70,7 +70,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [filters, setFilters] = useState({
     search: '',
     status: '',
-    roundType: ''
+    roundType: filterRoundType || ''
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -89,9 +89,13 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
 
   useEffect(() => {
     fetchStats(selectedExamId || undefined);
-    // fetchResults is NOT called here — the deps effect below handles the initial fetch
-    // to avoid a double unfiltered call (one from here + one from the deps effect on mount)
   }, [selectedExamId]);
+
+  useEffect(() => {
+    if (filterRoundType !== undefined) {
+      setFilters(f => ({ ...f, roundType: filterRoundType }));
+    }
+  }, [filterRoundType]);
 
   // Poll for live students when modal is open
   useEffect(() => {
@@ -359,15 +363,19 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     }
   };
 
+  const [englishAnswers, setEnglishAnswers] = useState<any[]>([]);
+
   const fetchDetailedAnswers = async (resultId: string) => {
     try {
       setAnswersLoading(true);
       setDetailedAnswers([]);
+      setEnglishAnswers([]);
       const res = await axios.get(`${baseURL}/api/assessment/admin/results/${resultId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data.success) {
         setDetailedAnswers(res.data.data?.detailedAnswers || []);
+        setEnglishAnswers(res.data.data?.englishAnswers || []);
       }
     } catch (err) {
       console.error('Failed to fetch detailed answers', err);
@@ -795,10 +803,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   </th>
                   <th>Student</th>
                   <th>Email</th>
-                  <th>Rounds</th>
-                  <th>Score</th>
-                  <th>Percentage</th>
-                  <th>Result</th>
+                  <th>Round Results</th>
                   <th>Approval</th>
                   <th>Actions</th>
                 </tr>
@@ -836,17 +841,31 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                     </td>
                     <td className="email-cell">{result.student.email || 'N/A'}</td>
                     <td>
-                      <div className="rounds-badges">
-                        {result.completedRounds?.map(round => (
-                          <span key={round} className="round-badge">{round.toUpperCase()}</span>
-                        ))}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {(result.roundResults || [])
+                          .filter((r: any) => !filterRoundType || r.roundType === filterRoundType)
+                          .map((r: any) => {
+                          const LABELS: Record<string, string> = { mcq: 'MCQ', coding: 'Code', tr: 'Tech', hr: 'HR', english: 'English' };
+                          const label = LABELS[r.roundType] || r.roundType?.toUpperCase();
+                          const passed = r.passed;
+                          return (
+                            <span key={r.roundType} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 9px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
+                              background: passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                              color: passed ? '#22c55e' : '#ef4444',
+                              border: `1px solid ${passed ? '#22c55e44' : '#ef444444'}`,
+                            }}>
+                              {passed ? '✓' : '✗'} {label}
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}>{r.percentage?.toFixed(0)}%</span>
+                            </span>
+                          );
+                        })}
+                        {(!result.roundResults || result.roundResults.length === 0) && (
+                          <span style={{ color: '#555', fontSize: '0.78rem' }}>—</span>
+                        )}
                       </div>
                     </td>
-                    <td className="score-cell">{result.totalScore || 0}</td>
-                    <td className={`percentage-cell ${getScoreColor(result.finalPercentage)}`}>
-                      {result.finalPercentage?.toFixed(1) || 0}%
-                    </td>
-                    <td>{getStatusBadge(result.resultStatus)}</td>
                     <td>{getApprovalBadge(result.approvalStatus)}</td>
                     <td>
                       <div className="action-buttons">
@@ -962,77 +981,37 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   <FaBookOpen className="me-2" /> Round Results
                 </h5>
                 <div className="rounds-grid">
-                  {selectedResult.mcqResult && (
-                    <div className="round-item mcq">
-                      <div className="round-icon">📝</div>
-                      <div className="round-details">
-                        <div className="round-name">MCQ Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.mcqResult.score}/{selectedResult.mcqResult.total}
+                  {(() => {
+                    const ROUND_META: Record<string, { label: string; icon: string; css: string }> = {
+                      mcq:     { label: 'MCQ Round',       icon: '📝', css: 'mcq' },
+                      coding:  { label: 'Coding Round',    icon: '⌨️', css: 'coding' },
+                      tr:      { label: 'Technical Round', icon: '💻', css: 'tr' },
+                      hr:      { label: 'HR Round',        icon: '👔', css: 'hr' },
+                      english: { label: 'English Round',   icon: '🇬🇧', css: 'english' },
+                    };
+                    const rounds: any[] = (selectedResult.roundResults || [])
+                      .filter((r: any) => !filterRoundType || r.roundType === filterRoundType);
+                    if (!rounds.length) return <p style={{ color: '#666', fontSize: '0.85rem' }}>No round results yet.</p>;
+                    return rounds.map((r: any) => {
+                      const meta = ROUND_META[r.roundType] || { label: r.roundType?.toUpperCase(), icon: '📋', css: 'mcq' };
+                      return (
+                        <div key={r.roundType} className={`round-item ${meta.css}`}>
+                          <div className="round-icon">{meta.icon}</div>
+                          <div className="round-details">
+                            <div className="round-name">{meta.label}</div>
+                            <div className="round-score">Score: {r.score}/{r.total}</div>
+                            <div className="round-percentage">{r.percentage?.toFixed(1)}%</div>
+                            <Badge bg={r.passed ? 'success' : 'danger'}>
+                              {r.passed ? 'Passed' : 'Failed'}
+                            </Badge>
+                            {r.violationAutoSubmit && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>⚠ Auto-submitted</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="round-percentage">
-                          {selectedResult.mcqResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.mcqResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.mcqResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.trResult && (
-                    <div className="round-item tr">
-                      <div className="round-icon">💻</div>
-                      <div className="round-details">
-                        <div className="round-name">Technical Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.trResult.score}/{selectedResult.trResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.trResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.trResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.trResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.hrResult && (
-                    <div className="round-item hr">
-                      <div className="round-icon">👔</div>
-                      <div className="round-details">
-                        <div className="round-name">HR Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.hrResult.score}/{selectedResult.hrResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.hrResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.hrResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.hrResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.codingResult && (
-                    <div className="round-item coding">
-                      <div className="round-icon">⌨️</div>
-                      <div className="round-details">
-                        <div className="round-name">Coding Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.codingResult.score}/{selectedResult.codingResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.codingResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.codingResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.codingResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -1043,7 +1022,9 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                     <FaVideo className="me-2" /> Session Recordings
                   </h5>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                    {Object.entries(selectedResult.recordings).map(([round, recording]: [string, any]) => (
+                    {Object.entries(selectedResult.recordings)
+                      .filter(([round]) => !filterRoundType || round === filterRoundType)
+                      .map(([round, recording]: [string, any]) => (
                       recording?.videoUrl && (
                         <div key={round} className="video-item">
                           <div className="video-header">
@@ -1064,26 +1045,8 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                 </div>
               )}
 
-              {/* Overall Result */}
-              <div className="overall-card">
-                <h5 className="section-title">
-                  <FaTrophy className="me-2" /> Overall Result
-                </h5>
-                <div className={`overall-result ${selectedResult.resultStatus}`}>
-                  <div className="result-status">
-                    <strong>Status:</strong> {selectedResult.resultStatus?.toUpperCase()}
-                  </div>
-                  <div className="result-score">
-                    <strong>Total Score:</strong> {selectedResult.totalScore}
-                  </div>
-                  <div className="result-percentage">
-                    <strong>Percentage:</strong> {selectedResult.finalPercentage?.toFixed(1)}%
-                  </div>
-                </div>
-              </div>
-
-              {/* Student Answers — moved to bottom */}
-              <div className="info-card" style={{ marginBottom: '20px' }}>
+              {/* Student Answers — MCQ */}
+              {(!filterRoundType || filterRoundType === 'mcq') && <div className="info-card" style={{ marginBottom: '20px' }}>
                 <h5 className="section-title">
                   <FaBookOpen className="me-2" /> Student Answers
                   {!answersLoading && detailedAnswers.length > 0 && (
@@ -1175,11 +1138,44 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                     })}
                   </div>
                 )}
-              </div>
+              </div>}
+
+              {/* English Round Answers */}
+              {(!filterRoundType || filterRoundType === 'english') && (() => {
+                const engResult = (selectedResult.roundResults || []).find((r: any) => r.roundType === 'english');
+                if (!engResult) return null;
+                return (
+                  <div className="info-card" style={{ marginBottom: '20px' }}>
+                    <h5 className="section-title">
+                      <span style={{ marginRight: 8 }}>🇬🇧</span> English Round Answers
+                      {englishAnswers.length > 0 && (
+                        <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#8a8a8a', fontWeight: 400 }}>
+                          {englishAnswers.filter((a: any) => a.isCorrect === true).length} / {englishAnswers.filter((a: any) => a.answerType === 'mcq').length} MCQ correct
+                        </span>
+                      )}
+                    </h5>
+                    {englishAnswers.length > 0 ? (
+                      <InstituteEnglishAnswersView answers={englishAnswers} />
+                    ) : (
+                      <div style={{ padding: '1.5rem', textAlign: 'center' }}>
+                        <p style={{ color: '#aaa', fontSize: '0.88rem', marginBottom: 10 }}>
+                          Detailed answer breakdown is not available for this submission.
+                        </p>
+                        <div style={{ display: 'inline-flex', gap: 16, background: '#1e1e1e', padding: '10px 20px', borderRadius: 10 }}>
+                          <span style={{ color: '#888', fontSize: '0.85rem' }}>Score: <strong style={{ color: '#fff' }}>{engResult.score}/{engResult.total}</strong></span>
+                          <span style={{ color: '#888', fontSize: '0.85rem' }}>Percentage: <strong style={{ color: engResult.passed ? '#22c55e' : '#ef4444' }}>{engResult.percentage?.toFixed(1)}%</strong></span>
+                          <span style={{ background: engResult.passed ? '#22c55e22' : '#ef444422', color: engResult.passed ? '#22c55e' : '#ef4444', padding: '2px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 700 }}>{engResult.passed ? 'Passed' : 'Failed'}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             </div>
           )}
         </Modal.Body>
+
         <Modal.Footer className="modal-footer-custom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '10px' }}>
             <Button
@@ -2134,6 +2130,88 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           }
         }
       `}</style>
+    </div>
+  );
+};
+
+const ENGLISH_SECTION_META: Record<string, { label: string; emoji: string; color: string }> = {
+  reading_comprehension: { label: 'Reading Comprehension', emoji: '📖', color: '#3b82f6' },
+  verbal_ability:        { label: 'Verbal Ability',        emoji: '🔤', color: '#8b5cf6' },
+  sentence_correction:   { label: 'Sentence Correction',   emoji: '✅', color: '#22c55e' },
+  error_detection:       { label: 'Error Detection',       emoji: '🔍', color: '#f59e0b' },
+  para_jumbles:          { label: 'Para Jumbles',          emoji: '🔀', color: '#ef4444' },
+  email_writing:         { label: 'Email Writing',         emoji: '✉️', color: '#06b6d4' },
+  essay_writing:         { label: 'Essay Writing',         emoji: '✍️', color: '#ec4899' },
+};
+
+const InstituteEnglishAnswersView: React.FC<{ answers: any[] }> = ({ answers }) => {
+  if (!answers.length) return null;
+  const grouped: Record<string, any[]> = {};
+  for (const a of answers) {
+    const s = a.section || 'unknown';
+    if (!grouped[s]) grouped[s] = [];
+    grouped[s].push(a);
+  }
+  const OPTIONS = ['A', 'B', 'C', 'D'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {Object.entries(grouped).map(([section, qs]) => {
+        const meta = ENGLISH_SECTION_META[section] || { label: section, emoji: '📄', color: '#888' };
+        const isMCQ = qs[0]?.answerType !== 'writing';
+        const correct = isMCQ ? qs.filter((q: any) => q.isCorrect).length : 0;
+        return (
+          <div key={section}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 12px', background: `${meta.color}10`, border: `1px solid ${meta.color}30`, borderRadius: 8 }}>
+              <span>{meta.emoji}</span>
+              <span style={{ fontWeight: 700, fontSize: '0.88rem', color: meta.color }}>{meta.label}</span>
+              {isMCQ && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#666' }}>{correct}/{qs.length} correct</span>}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {qs.map((ans: any, qi: number) => {
+                if (ans.answerType === 'writing') {
+                  return (
+                    <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${meta.color}25`, borderRadius: 8, padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: meta.color, marginBottom: 6 }}>{ans.questionText}</div>
+                      {ans.prompt && <div style={{ background: '#141414', borderRadius: 6, padding: '8px 10px', fontSize: '0.8rem', color: '#bbb', lineHeight: 1.6, marginBottom: 8 }}>{ans.prompt}</div>}
+                      {ans.writtenAnswer ? (
+                        <div style={{ background: '#111', border: `1px solid #2a2a2a`, borderRadius: 6, padding: '10px 12px', fontSize: '0.83rem', color: '#ddd', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                          {ans.writtenAnswer}
+                          <div style={{ marginTop: 6, fontSize: '0.68rem', color: '#555' }}>{ans.writtenAnswer.trim().split(/\s+/).length} words</div>
+                        </div>
+                      ) : <div style={{ color: '#555', fontSize: '0.78rem', fontStyle: 'italic' }}>No answer submitted</div>}
+                    </div>
+                  );
+                }
+                const borderColor = ans.isCorrect === true ? '#28a745' : ans.isCorrect === false ? '#dc3545' : '#2c2c2c';
+                return (
+                  <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${borderColor}`, borderRadius: 8, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <span style={{ color: '#555', fontSize: '12px', minWidth: 22 }}>Q{qi + 1}.</span>
+                      <span style={{ color: '#e0e0e0', fontSize: '13.5px', lineHeight: 1.55 }}>{ans.questionText}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '18px', color: ans.isCorrect === true ? '#28a745' : '#dc3545' }}>{ans.isCorrect === true ? '✓' : ans.isCorrect === false ? '✗' : ''}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 30 }}>
+                      {OPTIONS.map(opt => {
+                        const text = ans[`option${opt}`];
+                        if (!text) return null;
+                        const isSel = (ans.selectedOption || '').toUpperCase() === opt;
+                        const isCorr = (ans.correctAnswer || '').toUpperCase() === opt;
+                        return (
+                          <div key={opt} style={{ padding: '4px 10px', borderRadius: 5, fontSize: '12px', border: `1px solid ${isCorr ? '#28a745' : isSel ? '#dc3545' : '#252525'}`, background: isCorr ? 'rgba(40,167,69,0.08)' : isSel ? 'rgba(220,53,69,0.08)' : '#111', color: isCorr ? '#28a745' : isSel ? '#dc3545' : '#666' }}>
+                            {isSel && !isCorr ? '✗ ' : isCorr ? '✓ ' : ''}{opt}: {text}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {ans.explanation && <div style={{ marginTop: 6, paddingLeft: 30, fontSize: '11px', color: '#22c55e' }}>💡 {ans.explanation}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

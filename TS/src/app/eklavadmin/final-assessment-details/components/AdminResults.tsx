@@ -51,7 +51,7 @@ interface LiveStudent {
   lastSeenAt?: string;
 }
 
-const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean }> = ({ defaultExamId, hideHeader, hideExamSelector }) => {
+const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean; filterRoundType?: string }> = ({ defaultExamId, hideHeader, hideExamSelector, filterRoundType }) => {
   const { user } = useAuthContext();
   const token = user?.token;
   const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -70,7 +70,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [filters, setFilters] = useState({
     search: '',
     status: '',
-    roundType: ''
+    roundType: filterRoundType || ''
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -84,11 +84,21 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [liveStudentsLoading, setLiveStudentsLoading] = useState(false);
   const [liveStudentsError, setLiveStudentsError] = useState('');
 
+  // Detailed answers state
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
+  const [englishAnswers, setEnglishAnswers] = useState<any[]>([]);
+  const [detailTab, setDetailTab] = useState<'overview' | 'mcq' | 'english'>('overview');
+
   useEffect(() => {
     fetchStats(selectedExamId || undefined);
-    // fetchResults is NOT called here — the deps effect below handles the initial fetch
-    // to avoid a double unfiltered call (one from here + one from the deps effect on mount)
   }, [selectedExamId]);
+
+  useEffect(() => {
+    if (filterRoundType !== undefined) {
+      setFilters(f => ({ ...f, roundType: filterRoundType }));
+    }
+  }, [filterRoundType]);
 
   // Poll for live students when modal is open
   useEffect(() => {
@@ -626,10 +636,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   </th>
                   <th>Student</th>
                   <th>Email</th>
-                  <th>Rounds</th>
-                  <th>Score</th>
-                  <th>Percentage</th>
-                  <th>Result</th>
+                  <th>Round Results</th>
                   <th>Approval</th>
                   <th>Actions</th>
                 </tr>
@@ -667,25 +674,57 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                     </td>
                     <td className="email-cell">{result.student.email || 'N/A'}</td>
                     <td>
-                      <div className="rounds-badges">
-                        {result.completedRounds?.map(round => (
-                          <span key={round} className="round-badge">{round.toUpperCase()}</span>
-                        ))}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {(result.roundResults || [])
+                          .filter((r: any) => !filterRoundType || r.roundType === filterRoundType)
+                          .map((r: any) => {
+                          const LABELS: Record<string, string> = { mcq: 'MCQ', coding: 'Code', tr: 'Tech', hr: 'HR', english: 'English' };
+                          const label = LABELS[r.roundType] || r.roundType?.toUpperCase();
+                          const passed = r.passed;
+                          return (
+                            <span key={r.roundType} style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 4,
+                              padding: '3px 9px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
+                              background: passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                              color: passed ? '#22c55e' : '#ef4444',
+                              border: `1px solid ${passed ? '#22c55e44' : '#ef444444'}`,
+                            }}>
+                              {passed ? '✓' : '✗'} {label}
+                              <span style={{ fontWeight: 400, opacity: 0.8 }}>{r.percentage?.toFixed(0)}%</span>
+                            </span>
+                          );
+                        })}
+                        {(!result.roundResults || result.roundResults.length === 0) && (
+                          <span style={{ color: '#555', fontSize: '0.78rem' }}>—</span>
+                        )}
                       </div>
                     </td>
-                    <td className="score-cell">{result.totalScore || 0}</td>
-                    <td className={`percentage-cell ${getScoreColor(result.finalPercentage)}`}>
-                      {result.finalPercentage?.toFixed(1) || 0}%
-                    </td>
-                    <td>{getStatusBadge(result.resultStatus)}</td>
                     <td>{getApprovalBadge(result.approvalStatus)}</td>
                     <td>
                       <div className="action-buttons">
                         <button
                           className="view-btn"
-                          onClick={() => {
+                          onClick={async () => {
                             setSelectedResult(result);
+                            setDetailTab(
+                              filterRoundType === 'mcq' ? 'mcq'
+                              : filterRoundType === 'english' ? 'english'
+                              : 'overview'
+                            );
+                            setDetailedAnswers([]);
+                            setEnglishAnswers([]);
                             setShowDetailsModal(true);
+                            setDetailLoading(true);
+                            try {
+                              const r = await axios.get(`${baseURL}/api/assessment/admin/results/${result._id}`, {
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              if (r.data.success) {
+                                setDetailedAnswers(r.data.data.detailedAnswers || []);
+                                setEnglishAnswers(r.data.data.englishAnswers || []);
+                              }
+                            } catch { /* ignore */ }
+                            setDetailLoading(false);
                           }}
                         >
                           <FaEye /> View
@@ -761,6 +800,88 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
         <Modal.Body className="modal-body-custom">
           {selectedResult && (
             <div>
+              {/* ── Tab nav ── */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '1px solid #1f1f1f', paddingBottom: 12 }}>
+                {[
+                  ...(!filterRoundType ? [{ key: 'overview', label: '📊 Overview' }] : []),
+                  ...(detailedAnswers.length > 0 && (!filterRoundType || filterRoundType === 'mcq') ? [{ key: 'mcq', label: `📝 MCQ Answers (${detailedAnswers.length})` }] : []),
+                  ...(englishAnswers.length > 0 && (!filterRoundType || filterRoundType === 'english') ? [{ key: 'english', label: `🇬🇧 English Answers (${englishAnswers.length})` }] : []),
+                  ...(filterRoundType && filterRoundType !== 'mcq' && filterRoundType !== 'english' ? [{ key: 'overview', label: '📊 Overview' }] : []),
+                ].map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setDetailTab(t.key as any)}
+                    style={{
+                      padding: '6px 16px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
+                      background: detailTab === t.key ? '#ff6b35' : 'transparent',
+                      border: `1px solid ${detailTab === t.key ? '#ff6b35' : '#2a2a2a'}`,
+                      color: detailTab === t.key ? '#000' : '#888',
+                    }}
+                  >{t.label}</button>
+                ))}
+                {detailLoading && <span style={{ color: '#666', fontSize: '0.78rem', alignSelf: 'center' }}>Loading answers…</span>}
+              </div>
+
+              {/* ── MCQ Answers Tab ── */}
+              {detailTab === 'mcq' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {detailedAnswers.map((ans: any, i: number) => (
+                    <div key={i} style={{ background: '#0d0d0d', border: `1px solid ${ans.isCorrect === true ? '#22c55420' : ans.isCorrect === false ? '#ef444420' : '#1f1f1f'}`, borderLeft: `3px solid ${ans.isCorrect === true ? '#22c554' : ans.isCorrect === false ? '#ef4444' : '#444'}`, borderRadius: 10, padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10 }}>
+                        <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, color: '#666' }}>{i + 1}</span>
+                        <p style={{ margin: 0, fontSize: '0.88rem', color: '#e0e0e0', lineHeight: 1.6, fontWeight: 500 }}>{ans.questionText}</p>
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {(ans.options || []).map((opt: any) => {
+                          const key = opt.key || opt;
+                          const text = opt.text || opt;
+                          const isSelected = ans.selectedOption === key;
+                          const isCorrect = ans.correctAnswer === key;
+                          return (
+                            <span key={key} style={{ padding: '4px 12px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600, border: `1px solid ${isCorrect ? '#22c554' : isSelected ? '#ef4444' : '#252525'}`, background: isCorrect ? 'rgba(34,197,84,0.1)' : isSelected ? 'rgba(239,68,68,0.1)' : '#111', color: isCorrect ? '#22c554' : isSelected ? '#ef4444' : '#666' }}>
+                              {isSelected && !isCorrect && '✗ '}{isCorrect && '✓ '}{key}: {text}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {ans.isCorrect === null && <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 6 }}>Answer: {ans.selectedOption || '—'} (auto-correct unavailable)</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── English Answers Tab ── */}
+              {detailTab === 'english' && (
+                englishAnswers.length > 0 ? (
+                  <EnglishAnswersView answers={englishAnswers} />
+                ) : (
+                  (() => {
+                    const engResult = (selectedResult.roundResults || []).find((r: any) => r.roundType === 'english');
+                    return (
+                      <div style={{ padding: '2rem', textAlign: 'center' }}>
+                        {engResult ? (
+                          <>
+                            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🇬🇧</div>
+                            <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 8 }}>
+                              Detailed answer breakdown is not available for this submission.
+                            </p>
+                            <div style={{ display: 'inline-flex', gap: 16, marginTop: 8, background: '#1a1a1a', padding: '12px 24px', borderRadius: 10 }}>
+                              <span style={{ color: '#888', fontSize: '0.85rem' }}>Score: <strong style={{ color: '#fff' }}>{engResult.score}/{engResult.total}</strong></span>
+                              <span style={{ color: '#888', fontSize: '0.85rem' }}>Percentage: <strong style={{ color: engResult.passed ? '#22c55e' : '#ef4444' }}>{engResult.percentage?.toFixed(1)}%</strong></span>
+                              <span style={{ background: engResult.passed ? '#22c55e22' : '#ef444422', color: engResult.passed ? '#22c55e' : '#ef4444', padding: '2px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 700 }}>{engResult.passed ? 'Passed' : 'Failed'}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <p style={{ color: '#666', fontSize: '0.9rem' }}>No English round data found.</p>
+                        )}
+                      </div>
+                    );
+                  })()
+                )
+              )}
+
+              {/* ── Overview Tab ── */}
+              {detailTab === 'overview' && <>
               {/* Student Info Card */}
               <div className="info-card">
                 <h5 className="section-title">
@@ -792,95 +913,37 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   <FaBookOpen className="me-2" /> Round Results
                 </h5>
                 <div className="rounds-grid">
-                  {selectedResult.mcqResult && (
-                    <div className="round-item mcq">
-                      <div className="round-icon">📝</div>
-                      <div className="round-details">
-                        <div className="round-name">MCQ Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.mcqResult.score}/{selectedResult.mcqResult.total}
+                  {(() => {
+                    const ROUND_META: Record<string, { label: string; icon: string; css: string }> = {
+                      mcq:     { label: 'MCQ Round',       icon: '📝', css: 'mcq' },
+                      coding:  { label: 'Coding Round',    icon: '⌨️', css: 'coding' },
+                      tr:      { label: 'Technical Round', icon: '💻', css: 'tr' },
+                      hr:      { label: 'HR Round',        icon: '👔', css: 'hr' },
+                      english: { label: 'English Round',   icon: '🇬🇧', css: 'english' },
+                    };
+                    const rounds: any[] = (selectedResult.roundResults || [])
+                      .filter((r: any) => !filterRoundType || r.roundType === filterRoundType);
+                    if (!rounds.length) return <p style={{ color: '#666', fontSize: '0.85rem' }}>No round results yet.</p>;
+                    return rounds.map((r: any) => {
+                      const meta = ROUND_META[r.roundType] || { label: r.roundType?.toUpperCase(), icon: '📋', css: 'mcq' };
+                      return (
+                        <div key={r.roundType} className={`round-item ${meta.css}`}>
+                          <div className="round-icon">{meta.icon}</div>
+                          <div className="round-details">
+                            <div className="round-name">{meta.label}</div>
+                            <div className="round-score">Score: {r.score}/{r.total}</div>
+                            <div className="round-percentage">{r.percentage?.toFixed(1)}%</div>
+                            <Badge bg={r.passed ? 'success' : 'danger'}>
+                              {r.passed ? 'Passed' : 'Failed'}
+                            </Badge>
+                            {r.violationAutoSubmit && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>⚠ Auto-submitted</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="round-percentage">
-                          {selectedResult.mcqResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.mcqResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.mcqResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.trResult && (
-                    <div className="round-item tr">
-                      <div className="round-icon">💻</div>
-                      <div className="round-details">
-                        <div className="round-name">Technical Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.trResult.score}/{selectedResult.trResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.trResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.trResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.trResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.hrResult && (
-                    <div className="round-item hr">
-                      <div className="round-icon">👔</div>
-                      <div className="round-details">
-                        <div className="round-name">HR Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.hrResult.score}/{selectedResult.hrResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.hrResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.hrResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.hrResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {selectedResult.codingResult && (
-                    <div className="round-item coding">
-                      <div className="round-icon">⌨️</div>
-                      <div className="round-details">
-                        <div className="round-name">Coding Round</div>
-                        <div className="round-score">
-                          Score: {selectedResult.codingResult.score}/{selectedResult.codingResult.total}
-                        </div>
-                        <div className="round-percentage">
-                          {selectedResult.codingResult.percentage?.toFixed(1)}%
-                        </div>
-                        <Badge bg={selectedResult.codingResult.passed ? 'success' : 'danger'}>
-                          {selectedResult.codingResult.passed ? 'Passed' : 'Failed'}
-                        </Badge>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Overall Result */}
-              <div className="overall-card">
-                <h5 className="section-title">
-                  <FaTrophy className="me-2" /> Overall Result
-                </h5>
-                <div className={`overall-result ${selectedResult.resultStatus}`}>
-                  <div className="result-status">
-                    <strong>Status:</strong> {selectedResult.resultStatus?.toUpperCase()}
-                  </div>
-                  <div className="result-score">
-                    <strong>Total Score:</strong> {selectedResult.totalScore}
-                  </div>
-                  <div className="result-percentage">
-                    <strong>Percentage:</strong> {selectedResult.finalPercentage?.toFixed(1)}%
-                  </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -891,7 +954,9 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                     <FaVideo className="me-2" /> Session Recordings
                   </h5>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-                    {Object.entries(selectedResult.recordings).map(([round, recording]: [string, any]) => (
+                    {Object.entries(selectedResult.recordings)
+                      .filter(([round]) => !filterRoundType || round === filterRoundType)
+                      .map(([round, recording]: [string, any]) => (
                       recording?.videoUrl && (
                         <div key={round} className="video-item">
                           <div className="video-header">
@@ -911,6 +976,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   </div>
                 </div>
               )}
+              </> /* end overview tab */}
             </div>
           )}
         </Modal.Body>
@@ -1851,6 +1917,127 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           }
         }
       `}</style>
+    </div>
+  );
+};
+
+// ── English Answers View ─────────────────────────────────────────────────────
+
+const ENGLISH_SECTION_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
+  reading_comprehension: { label: 'Reading Comprehension', emoji: '📖', color: '#3b82f6' },
+  verbal_ability:        { label: 'Verbal Ability',        emoji: '🔤', color: '#8b5cf6' },
+  sentence_correction:   { label: 'Sentence Correction',   emoji: '✅', color: '#22c55e' },
+  error_detection:       { label: 'Error Detection',       emoji: '🔍', color: '#f59e0b' },
+  para_jumbles:          { label: 'Para Jumbles',          emoji: '🔀', color: '#ef4444' },
+  email_writing:         { label: 'Email Writing',         emoji: '✉️', color: '#06b6d4' },
+  essay_writing:         { label: 'Essay Writing',         emoji: '✍️', color: '#ec4899' },
+};
+
+const EnglishAnswersView: React.FC<{ answers: any[] }> = ({ answers }) => {
+  if (!answers.length) return <p style={{ color: '#555', textAlign: 'center', padding: '2rem' }}>No English answers found.</p>;
+
+  // Group by section
+  const grouped: Record<string, any[]> = {};
+  for (const a of answers) {
+    const s = a.section || 'unknown';
+    if (!grouped[s]) grouped[s] = [];
+    grouped[s].push(a);
+  }
+
+  const OPTIONS = ['A', 'B', 'C', 'D'];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {Object.entries(grouped).map(([section, qs]) => {
+        const meta = ENGLISH_SECTION_LABELS[section] || { label: section, emoji: '📄', color: '#888' };
+        const isMCQ = qs[0]?.answerType !== 'writing';
+        const correct = isMCQ ? qs.filter(q => q.isCorrect).length : 0;
+
+        return (
+          <div key={section}>
+            {/* Section header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '10px 14px', background: `${meta.color}10`, border: `1px solid ${meta.color}30`, borderRadius: 10 }}>
+              <span style={{ fontSize: '1.3rem' }}>{meta.emoji}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: meta.color }}>{meta.label}</div>
+                <div style={{ fontSize: '0.72rem', color: '#666' }}>{qs.length} question{qs.length > 1 ? 's' : ''}{isMCQ ? ` · ${correct}/${qs.length} correct` : ''}</div>
+              </div>
+              {isMCQ && (
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: correct === qs.length ? '#22c55e' : correct === 0 ? '#ef4444' : '#f59e0b' }}>{Math.round((correct / qs.length) * 100)}%</div>
+                  <div style={{ fontSize: '0.65rem', color: '#555' }}>accuracy</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {qs.map((ans: any, qi: number) => {
+                if (!isMCQ) {
+                  // Writing answer
+                  const wordCount = ans.writtenAnswer?.trim().split(/\s+/).length || 0;
+                  return (
+                    <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${ans.writtenAnswer ? meta.color + '30' : '#1f1f1f'}`, borderRadius: 10, padding: '14px 16px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: meta.color, marginBottom: 8 }}>{ans.questionText}</div>
+                      {ans.prompt && <div style={{ background: '#141414', borderRadius: 8, padding: '10px 12px', fontSize: '0.83rem', color: '#bbb', lineHeight: 1.65, marginBottom: 10 }}>{ans.prompt}</div>}
+                      {ans.evaluationCriteria?.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+                          {ans.evaluationCriteria.map((c: string) => (
+                            <span key={c} style={{ background: `${meta.color}15`, color: meta.color, border: `1px solid ${meta.color}30`, borderRadius: 4, fontSize: '0.65rem', fontWeight: 600, padding: '2px 7px' }}>{c}</span>
+                          ))}
+                        </div>
+                      )}
+                      {ans.writtenAnswer ? (
+                        <div style={{ background: '#111', border: `1px solid ${meta.color}25`, borderRadius: 8, padding: '12px 14px', fontSize: '0.85rem', color: '#ddd', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
+                          {ans.writtenAnswer}
+                          <div style={{ marginTop: 8, fontSize: '0.7rem', color: '#555' }}>{wordCount} words · {ans.marks} marks</div>
+                        </div>
+                      ) : (
+                        <div style={{ color: '#444', fontSize: '0.8rem', fontStyle: 'italic' }}>No answer submitted</div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // MCQ answer
+                const borderColor = ans.isCorrect === true ? '#22c554' : ans.isCorrect === false ? '#ef4444' : '#1f1f1f';
+                return (
+                  <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${borderColor}30`, borderLeft: `3px solid ${borderColor}`, borderRadius: 10, padding: '12px 16px' }}>
+                    {ans.passage && qi === 0 && (
+                      <div style={{ background: '#141414', border: `1px solid ${meta.color}20`, borderRadius: 8, padding: '10px 12px', fontSize: '0.82rem', color: '#bbb', lineHeight: 1.7, marginBottom: 12 }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Passage</div>
+                        {ans.passage}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: ans.isCorrect === true ? '#22c55420' : ans.isCorrect === false ? '#ef444420' : '#1a1a1a', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, color: borderColor }}>{qi + 1}</span>
+                      <p style={{ margin: 0, fontSize: '0.87rem', color: '#e0e0e0', lineHeight: 1.6 }}>{ans.questionText}</p>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                      {OPTIONS.map(opt => {
+                        const text = ans[`option${opt}`];
+                        if (!text) return null;
+                        const isSelected = (ans.selectedOption || '').toUpperCase() === opt;
+                        const isCorrectOpt = (ans.correctAnswer || '').toUpperCase() === opt;
+                        return (
+                          <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 7, background: isCorrectOpt ? 'rgba(34,197,84,0.08)' : isSelected ? 'rgba(239,68,68,0.08)' : '#111', border: `1px solid ${isCorrectOpt ? '#22c55440' : isSelected ? '#ef444440' : '#1f1f1f'}` }}>
+                            <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, background: isCorrectOpt ? '#22c554' : isSelected ? '#ef4444' : '#1a1a1a', color: (isCorrectOpt || isSelected) ? '#fff' : '#555' }}>{opt}</span>
+                            <span style={{ fontSize: '0.8rem', color: isCorrectOpt ? '#22c554' : isSelected ? '#ef4444' : '#888' }}>{isSelected && !isCorrectOpt ? '✗ ' : isCorrectOpt ? '✓ ' : ''}{text}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {ans.explanation && (
+                      <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(34,197,84,0.05)', border: '1px solid rgba(34,197,84,0.15)', borderRadius: 6, fontSize: '0.75rem', color: '#22c554' }}>
+                        💡 {ans.explanation}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

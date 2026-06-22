@@ -5,10 +5,11 @@ import StudentCodeChallengeComponent from "./components/codeChallenge/StudentCod
 import { useAuthContext } from "@/context/useAuthContext"
 import TechnicalRound from "./components/TRRound/TechnicalRound"
 import HRRound from "./HRRound/HRRound"
+import StudentEnglishRound from "./components/EnglishRound/StudentEnglishRound"
 import { useProctorGuard } from './helper/useProctorGuard'
 import ViolationAlert from './components/ViolationAlert'
 
-type RoundKey = "mcq" | "coding" | "tr" | "hr"
+type RoundKey = "mcq" | "coding" | "tr" | "hr" | "english"
 
 type Round = {
   roundType: RoundKey
@@ -95,6 +96,13 @@ const HRIcon = () => (
   </svg>
 )
 
+const EnglishIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="4" width="18" height="16" rx="2" stroke="#ff6b35" strokeWidth="1.5" fill="none" />
+    <path d="M7 9H17M7 12H14M7 15H11" stroke="#ff6b35" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 const ClockIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
@@ -155,11 +163,12 @@ const CheckIcon = () => (
 // Helper functions
 function getRoundIcon(type: string) {
   switch (type) {
-    case 'mcq': return <MCQIcon />
-    case 'coding': return <CodingIcon />
-    case 'tr': return <TechnicalIcon />
-    case 'hr': return <HRIcon />
-    default: return <AssessmentIcon />
+    case 'mcq':     return <MCQIcon />
+    case 'coding':  return <CodingIcon />
+    case 'tr':      return <TechnicalIcon />
+    case 'hr':      return <HRIcon />
+    case 'english': return <EnglishIcon />
+    default:        return <AssessmentIcon />
   }
 }
 
@@ -489,6 +498,8 @@ export default function StudentAssessmentController() {
   submitRef.current = (roundConfig?.type === 'mcq')
     ? () => mcqForceSubmitRef.current()
     : handleRoundSubmit
+  // English round: forceSubmitRef is passed directly to StudentEnglishRound via prop,
+  // so submitRef already points to handleRoundSubmit as fallback
 
   const isRoundCompleted = (roundType: string) => completedRounds.includes(roundType)
 
@@ -535,7 +546,7 @@ export default function StudentAssessmentController() {
   }
 
   const getRoundLabel = (type: RoundKey) => {
-    const map: Record<RoundKey, string> = { mcq: "MCQ Round", coding: "Coding Round", tr: "Technical Round", hr: "HR Round" }
+    const map: Record<RoundKey, string> = { mcq: "MCQ Round", coding: "Coding Round", tr: "Technical Round", hr: "HR Round", english: "English Round" }
     return map[type] || type.toUpperCase()
   }
 
@@ -588,25 +599,23 @@ export default function StudentAssessmentController() {
               {assessments.map((assessment) => {
                 const rounds = assessment.rounds ?? []
                 const now = new Date()
-                const allEnded = rounds.length > 0 && rounds.every(r => r.endDateTime && new Date(r.endDateTime) < now)
                 const studentProgress = studentProgressMap[assessment._id]
-                const studentAttended = studentProgress && studentProgress.completedRounds.length > 0
                 const studentCompleted = studentProgress?.status === 'completed'
                 return (
                   <div key={assessment._id} className="sa-card" style={isPending ? { opacity: 0.6, pointerEvents: 'none' } : undefined}>
 
-                    {/* ── Card top row: badges + title + actions ── */}
-                    <div className="sa-card-top">
+                    {/* ── Card top row: badges + title + View Details ── */}
+                    <div className="sa-card-top" style={{ paddingBottom: rounds.length > 0 ? '0.5rem' : undefined }}>
                       <div className="sa-card-meta">
                         <div className="sa-badges">
                           <span className="sa-badge-type">📋 Assessment</span>
                           {assessment.published && <span className="sa-badge-published">● Published</span>}
-                          {assessment.activeRound && !studentAttended && (
+                          {assessment.activeRound && (
                             <span className="sa-badge-active">⚡ {assessment.activeRound.toUpperCase()} Live</span>
                           )}
-                          {studentAttended && (
+                          {studentCompleted && (
                             <span style={{ background: 'rgba(40,167,69,0.15)', color: '#28a745', border: '1px solid rgba(40,167,69,0.3)', fontSize: '0.73rem', fontWeight: 600, padding: '0.28rem 0.65rem', borderRadius: '8px' }}>
-                              ✓ Attended
+                              ✓ All Rounds Completed
                             </span>
                           )}
                         </div>
@@ -615,72 +624,85 @@ export default function StudentAssessmentController() {
                           <p className="sa-card-desc">{assessment.description}</p>
                         )}
                       </div>
-                      <div className="sa-card-actions">
-                        {isPending ? (
-                          <>
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '0.45rem 1rem', borderRadius: 8,
-                              border: '1px solid #2a2a2a', background: '#111',
-                              color: '#444', fontSize: '0.82rem', fontWeight: 600,
-                              cursor: 'not-allowed', userSelect: 'none',
-                            }}>
-                              <LockIcon /> View Details
-                            </span>
-                            <span style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 6,
-                              padding: '0.45rem 1.1rem', borderRadius: 8,
-                              border: '1px solid #2a2a2a', background: '#111',
-                              color: '#444', fontSize: '0.82rem', fontWeight: 600,
-                              cursor: 'not-allowed', userSelect: 'none',
-                            }}>
-                              <LockIcon /> Enroll to Start
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <button className="sa-btn-details" onClick={() => handleSelectAssessment(assessment)}>
-                              View Details
-                            </button>
-                            <button
-                              className={`sa-btn-start${(allEnded || studentCompleted) ? ' ended' : ''}`}
-                              disabled={allEnded || !!studentAttended}
-                              onClick={() => !allEnded && !studentAttended && handleSelectAssessment(assessment)}
-                            >
-                              {studentCompleted ? '✓ Assessment Completed' : studentAttended ? '✓ Already Attended' : allEnded ? '✓ Completed' : 'Start Assessment'}
-                            </button>
-                          </>
-                        )}
-                      </div>
+                      {studentProgress && studentProgress.completedRounds.length > 0 && (
+                        <div className="sa-card-actions">
+                          <button
+                            className="sa-btn-details"
+                            onClick={() => handleSelectAssessment(assessment)}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      )}
                     </div>
 
-                    {/* ── Rounds: horizontal columns ── */}
+                    {/* ── Rounds: each with its own action button ── */}
                     {rounds.length > 0 && (
                       <>
                         <div className="sa-rounds-divider" />
                         <div className="sa-rounds-list">
                           {rounds.map((round, idx) => {
                             const rs = getRoundStatusFromDates(round)
+                            const roundDone = studentProgress?.completedRounds?.includes(round.roundType)
+                            const roundStart = round.startDateTime ? new Date(round.startDateTime) : null
+                            const roundEnd = round.endDateTime ? new Date(round.endDateTime) : null
+                            const isActive = roundStart && roundEnd && now >= roundStart && now <= roundEnd
+                            const isEnded = roundEnd && now > roundEnd
                             return (
-                              <div key={idx} className="sa-round-col" style={{ borderColor: rs.color + '33', background: rs.bg }}>
-                                <div className="sa-round-col-top">
-                                  <div className="sa-round-label">
-                                    <span className="sa-round-type-icon">{getRoundIcon(round.roundType)}</span>
-                                    <strong>{getRoundLabel(round.roundType)}</strong>
+                              <div key={idx} className="sa-round-col" style={{
+                                borderColor: roundDone ? '#22c55e44' : rs.color + '33',
+                                background: roundDone ? 'rgba(34,197,94,0.06)' : rs.bg,
+                                display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                              }}>
+                                <div>
+                                  <div className="sa-round-col-top">
+                                    <div className="sa-round-label">
+                                      <span className="sa-round-type-icon">{getRoundIcon(round.roundType)}</span>
+                                      <strong>{getRoundLabel(round.roundType)}</strong>
+                                    </div>
+                                    <span className="sa-round-status" style={{ color: roundDone ? '#22c55e' : rs.color }}>
+                                      ● {roundDone ? 'Completed' : rs.label}
+                                    </span>
                                   </div>
-                                  <span className="sa-round-status" style={{ color: rs.color }}>● {rs.label}</span>
+                                  <div className="sa-round-dates">
+                                    <CalendarIcon />
+                                    <span>{formatCardDate(round.startDateTime)}</span>
+                                    <span className="sa-arrow">→</span>
+                                    <span>{formatCardDate(round.endDateTime)}</span>
+                                  </div>
+                                  <div className="sa-round-meta">
+                                    <span className="sa-meta-chip">⏱ {formatDuration(round.timeSeconds)}</span>
+                                    <span className="sa-meta-chip">❓ {round.pickCount} Qs</span>
+                                    {round.passPercentage && <span className="sa-meta-chip">🎯 {round.passPercentage}% Pass</span>}
+                                    {round.pointsPerQuestion && <span className="sa-meta-chip">⭐ {round.pointsPerQuestion} pt/Q</span>}
+                                  </div>
                                 </div>
-                                <div className="sa-round-dates">
-                                  <CalendarIcon />
-                                  <span>{formatCardDate(round.startDateTime)}</span>
-                                  <span className="sa-arrow">→</span>
-                                  <span>{formatCardDate(round.endDateTime)}</span>
-                                </div>
-                                <div className="sa-round-meta">
-                                  <span className="sa-meta-chip">⏱ {formatDuration(round.timeSeconds)}</span>
-                                  <span className="sa-meta-chip">❓ {round.pickCount} Qs</span>
-                                  {round.passPercentage && <span className="sa-meta-chip">🎯 {round.passPercentage}% Pass</span>}
-                                  {round.pointsPerQuestion && <span className="sa-meta-chip">⭐ {round.pointsPerQuestion} pt/Q</span>}
+                                {/* Per-round action */}
+                                <div style={{ marginTop: '0.85rem' }}>
+                                  {isPending ? (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0.45rem', borderRadius: 8, border: '1px solid #2a2a2a', background: '#111', color: '#444', fontSize: '0.78rem', fontWeight: 600, cursor: 'not-allowed' }}>
+                                      <LockIcon /> Enroll to Start
+                                    </span>
+                                  ) : roundDone ? (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0.45rem', borderRadius: 8, background: 'rgba(34,197,94,0.12)', border: '1px solid #22c55e44', color: '#22c55e', fontSize: '0.78rem', fontWeight: 700 }}>
+                                      ✓ Assessment Complete
+                                    </span>
+                                  ) : isActive ? (
+                                    <button
+                                      onClick={() => handleSelectAssessment(assessment)}
+                                      style={{ width: '100%', padding: '0.45rem', borderRadius: 8, background: '#ff6b35', border: 'none', color: '#fff', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                    >
+                                      ▶ Start {getRoundLabel(round.roundType)}
+                                    </button>
+                                  ) : isEnded ? (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0.45rem', borderRadius: 8, background: 'rgba(220,53,69,0.10)', border: '1px solid #dc354544', color: '#dc3545', fontSize: '0.78rem', fontWeight: 600 }}>
+                                      ✗ Round Ended
+                                    </span>
+                                  ) : (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '0.45rem', borderRadius: 8, background: 'rgba(255,193,7,0.08)', border: '1px solid #ffc10744', color: '#ffc107', fontSize: '0.78rem', fontWeight: 600 }}>
+                                      ⏳ Upcoming
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             )
@@ -989,6 +1011,19 @@ export default function StudentAssessmentController() {
             examId={selectedAssessment._id}
             duration={roundConfig.duration}
             onSubmitted={handleRoundSubmit}
+          />
+        </div>
+      )}
+
+      {isRunning && roundConfig?.type === "english" && selectedAssessment && (
+        <div style={{ position: "fixed", inset: 0, background: "#000", zIndex: 9999999 }}>
+          <StudentEnglishRound
+            examId={selectedAssessment._id}
+            duration={roundConfig.duration}
+            onSubmit={handleRoundSubmit}
+            forceSubmitRef={submitRef}
+            disarmProctor={proctor.disarm}
+            armProctor={proctor.arm}
           />
         </div>
       )}
