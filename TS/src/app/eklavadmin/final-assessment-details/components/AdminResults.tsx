@@ -88,7 +88,9 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
   const [englishAnswers, setEnglishAnswers] = useState<any[]>([]);
-  const [detailTab, setDetailTab] = useState<'overview' | 'mcq' | 'english'>('overview');
+  const [codeSubmissions, setCodeSubmissions] = useState<any[]>([]);
+  const [aiEvaluating, setAiEvaluating] = useState<string | null>(null);
+  const [detailTab, setDetailTab] = useState<'overview' | 'mcq' | 'english' | 'coding'>('overview');
 
   useEffect(() => {
     fetchStats(selectedExamId || undefined);
@@ -713,6 +715,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                             );
                             setDetailedAnswers([]);
                             setEnglishAnswers([]);
+                            setCodeSubmissions([]);
                             setShowDetailsModal(true);
                             setDetailLoading(true);
                             try {
@@ -722,6 +725,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                               if (r.data.success) {
                                 setDetailedAnswers(r.data.data.detailedAnswers || []);
                                 setEnglishAnswers(r.data.data.englishAnswers || []);
+                                setCodeSubmissions(r.data.data.codeSubmissions || []);
                               }
                             } catch { /* ignore */ }
                             setDetailLoading(false);
@@ -803,10 +807,10 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
               {/* ── Tab nav ── */}
               <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '1px solid #1f1f1f', paddingBottom: 12 }}>
                 {[
-                  ...(!filterRoundType ? [{ key: 'overview', label: '📊 Overview' }] : []),
+                  ...(!filterRoundType || filterRoundType === 'coding' ? [{ key: 'overview', label: '📊 Overview' }] : []),
                   ...(detailedAnswers.length > 0 && (!filterRoundType || filterRoundType === 'mcq') ? [{ key: 'mcq', label: `📝 MCQ Answers (${detailedAnswers.length})` }] : []),
                   ...(englishAnswers.length > 0 && (!filterRoundType || filterRoundType === 'english') ? [{ key: 'english', label: `🇬🇧 English Answers (${englishAnswers.length})` }] : []),
-                  ...(filterRoundType && filterRoundType !== 'mcq' && filterRoundType !== 'english' ? [{ key: 'overview', label: '📊 Overview' }] : []),
+                  ...(filterRoundType && !['mcq', 'english', 'coding'].includes(filterRoundType) ? [{ key: 'overview', label: '📊 Overview' }] : []),
                 ].map(t => (
                   <button
                     key={t.key}
@@ -879,6 +883,141 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   })()
                 )
               )}
+
+              {/* ── Coding Tab (removed — code shown inline in Overview) ── */}
+              {false && codeSubmissions.map((sub: any) => (
+                    <div key={sub._id} style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
+                      {/* Header */}
+                      <div style={{ padding: '14px 18px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                        <div>
+                          <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+                            ⌨️ {sub.challengeId?.title || 'Code Challenge'}
+                          </span>
+                          <span style={{ marginLeft: 12, background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 600 }}>
+                            {sub.language?.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
+                            {sub.testsPassed}/{sub.testsTotal} tests passed
+                          </span>
+                          <span style={{ background: sub.testsPassed === sub.testsTotal ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#ef4444', border: `1px solid ${sub.testsPassed === sub.testsTotal ? '#22c55e44' : '#ef444444'}`, borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>
+                            {sub.testsPassed === sub.testsTotal ? '✓ Passed' : '✗ Failed'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Code block */}
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 1 }}>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(sub.code || '')}
+                            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', cursor: 'pointer' }}
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <pre style={{ margin: 0, padding: '16px 18px', overflowX: 'auto', fontSize: '0.8rem', lineHeight: 1.6, color: '#e2e8f0', background: '#080808', maxHeight: 320, overflowY: 'auto' }}>
+                          <code>{sub.code || '(no code submitted)'}</code>
+                        </pre>
+                      </div>
+
+                      {/* Test cases */}
+                      {sub.results?.length > 0 && (
+                        <div style={{ padding: '14px 18px', borderTop: '1px solid #1e1e1e' }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Test Cases</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {sub.results.map((t: any, i: number) => (
+                              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, padding: '8px 12px', borderRadius: 8, background: t.passed ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${t.passed ? '#22c55e22' : '#ef444422'}`, fontSize: '0.75rem' }}>
+                                <span style={{ color: '#888' }}>Input: <code style={{ color: '#ddd' }}>{t.input}</code></span>
+                                <span style={{ color: '#888' }}>Expected: <code style={{ color: '#ddd' }}>{t.expectedOutput}</code></span>
+                                <span style={{ color: '#888' }}>Got: <code style={{ color: t.passed ? '#22c55e' : '#ef4444' }}>{t.actualOutput || '—'}</code></span>
+                                <span style={{ fontWeight: 700, color: t.passed ? '#22c55e' : '#ef4444' }}>{t.passed ? '✓' : '✗'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI Evaluation section */}
+                      <div style={{ padding: '14px 18px', borderTop: '1px solid #1e1e1e' }}>
+                        {sub.aiEvaluation ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                              <span style={{ fontWeight: 700, color: '#a855f7', fontSize: '0.88rem' }}>🤖 AI Evaluation</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 20, padding: '2px 12px', fontSize: '0.78rem', fontWeight: 700 }}>
+                                  Score: {sub.aiEvaluation.score}/100
+                                </span>
+                                <span style={{
+                                  background: sub.aiEvaluation.rating === 'Excellent' ? 'rgba(34,197,94,0.12)' : sub.aiEvaluation.rating === 'Good' ? 'rgba(59,130,246,0.12)' : sub.aiEvaluation.rating === 'Fair' ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)',
+                                  color: sub.aiEvaluation.rating === 'Excellent' ? '#22c55e' : sub.aiEvaluation.rating === 'Good' ? '#3b82f6' : sub.aiEvaluation.rating === 'Fair' ? '#eab308' : '#ef4444',
+                                  borderRadius: 20, padding: '2px 12px', fontSize: '0.78rem', fontWeight: 700,
+                                }}>
+                                  {sub.aiEvaluation.rating}
+                                </span>
+                                <button
+                                  onClick={async () => {
+                                    setAiEvaluating(sub._id);
+                                    try {
+                                      const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                      if (r.data.success) {
+                                        setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s));
+                                      }
+                                    } catch { /* ignore */ }
+                                    setAiEvaluating(null);
+                                  }}
+                                  disabled={!!aiEvaluating}
+                                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', padding: '4px 12px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+                                >
+                                  🔄 Re-evaluate
+                                </button>
+                              </div>
+                            </div>
+                            <p style={{ color: '#ccc', fontSize: '0.83rem', lineHeight: 1.6, marginBottom: 12 }}>{sub.aiEvaluation.summary}</p>
+                            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                              {sub.aiEvaluation.codeQuality && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Quality: {sub.aiEvaluation.codeQuality}</span>}
+                              {sub.aiEvaluation.timeComplexity && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Time: {sub.aiEvaluation.timeComplexity}</span>}
+                              {sub.aiEvaluation.spaceComplexity && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Space: {sub.aiEvaluation.spaceComplexity}</span>}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                              <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid #22c55e22', borderRadius: 8, padding: '10px 14px' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22c55e', marginBottom: 6 }}>✓ Strengths</div>
+                                {(sub.aiEvaluation.strengths || []).map((s: string, i: number) => <div key={i} style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: 3 }}>• {s}</div>)}
+                              </div>
+                              <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid #ef444422', borderRadius: 8, padding: '10px 14px' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>↑ Improvements</div>
+                                {(sub.aiEvaluation.improvements || []).map((s: string, i: number) => <div key={i} style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: 3 }}>• {s}</div>)}
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 6, fontSize: '0.68rem', color: '#444' }}>
+                              Evaluated by {sub.aiEvaluation.model} · {sub.aiEvaluation.evaluatedAt ? new Date(sub.aiEvaluation.evaluatedAt).toLocaleString() : ''}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#555', fontSize: '0.83rem' }}>No AI evaluation yet</span>
+                            <button
+                              onClick={async () => {
+                                setAiEvaluating(sub._id);
+                                try {
+                                  const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
+                                  if (r.data.success) {
+                                    setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s));
+                                  }
+                                } catch { /* ignore */ }
+                                setAiEvaluating(null);
+                              }}
+                              disabled={!!aiEvaluating}
+                              style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', border: 'none', color: '#fff', padding: '8px 20px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: aiEvaluating ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: aiEvaluating ? 0.7 : 1 }}
+                            >
+                              {aiEvaluating === sub._id ? '⏳ Evaluating...' : '🤖 AI Evaluate Code'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
 
               {/* ── Overview Tab ── */}
               {detailTab === 'overview' && <>
@@ -974,6 +1113,115 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                       )
                     ))}
                   </div>
+                </div>
+              )}
+              {/* Code Submissions — always shown inline when coding round exists */}
+              {((!filterRoundType || filterRoundType === 'coding') && selectedResult.roundResults?.some((r: any) => r.roundType === 'coding')) && (
+                <div className="rounds-card">
+                  <h5 className="section-title">
+                    <span className="me-2">⌨️</span> Code Submission
+                  </h5>
+                  {detailLoading ? (
+                    <p style={{ color: '#666', padding: '1rem 0', fontSize: '0.85rem' }}>Loading code submission...</p>
+                  ) : codeSubmissions.length === 0 ? (
+                    <p style={{ color: '#555', padding: '1rem 0', fontSize: '0.85rem' }}>No code submission found for this student.</p>
+                  ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {codeSubmissions.map((sub: any) => (
+                      <div key={sub._id} style={{ background: '#080808', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
+                        {/* Header */}
+                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{sub.challengeId?.title || 'Code Challenge'}</span>
+                            <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem', fontWeight: 600 }}>{sub.language?.toUpperCase()}</span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#f97316', fontWeight: 700, fontSize: '0.82rem' }}>
+                              {sub.testsPassed}/{sub.testsTotal} tests passed
+                            </span>
+                            <span style={{ background: sub.testsPassed > 0 ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', color: sub.testsPassed > 0 ? '#f97316' : '#ef4444', border: `1px solid ${sub.testsPassed > 0 ? '#f9731644' : '#ef444444'}`, borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700 }}>
+                              {sub.testsPassed === sub.testsTotal && sub.testsTotal > 0 ? '✓ All Passed' : sub.testsPassed > 0 ? `${sub.testsPassed} Partial` : '✗ Failed'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Code block */}
+                        <div style={{ position: 'relative' }}>
+                          <div style={{ position: 'absolute', top: 8, right: 10, zIndex: 1, display: 'flex', gap: 6 }}>
+                            <span style={{ color: '#555', fontSize: '0.68rem', padding: '2px 8px', background: '#111', borderRadius: 4 }}>{sub.language}</span>
+                            <button onClick={() => navigator.clipboard.writeText(sub.code || '')} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', cursor: 'pointer' }}>Copy</button>
+                          </div>
+                          <pre style={{ margin: 0, padding: '14px 16px', overflowX: 'auto', fontSize: '0.78rem', lineHeight: 1.6, color: '#e2e8f0', background: '#050505', maxHeight: 280, overflowY: 'auto' }}>
+                            <code>{sub.code || '(no code submitted)'}</code>
+                          </pre>
+                        </div>
+
+                        {/* Test case results */}
+                        {sub.results?.length > 0 && (
+                          <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Test Cases</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                              {sub.results.map((t: any, i: number) => (
+                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, padding: '7px 12px', borderRadius: 7, background: t.passed ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${t.passed ? '#22c55e22' : '#ef444422'}`, fontSize: '0.73rem' }}>
+                                  <span style={{ color: '#666' }}>In: <code style={{ color: '#bbb' }}>{t.input?.replace(/\n/g, '↵')}</code></span>
+                                  <span style={{ color: '#666' }}>Expected: <code style={{ color: '#bbb' }}>{t.expectedOutput || '—'}</code></span>
+                                  <span style={{ color: '#666' }}>Got: <code style={{ color: t.passed ? '#22c55e' : '#ef4444' }}>{t.actualOutput || '—'}</code></span>
+                                  <span style={{ fontWeight: 700, color: t.passed ? '#22c55e' : '#ef4444', textAlign: 'right' }}>{t.passed ? '✓' : '✗'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Evaluation */}
+                        <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
+                          {sub.aiEvaluation ? (
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                                <span style={{ fontWeight: 700, color: '#a855f7', fontSize: '0.85rem' }}>🤖 AI Evaluation</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>Score: {sub.aiEvaluation.score}/100</span>
+                                  <span style={{ background: sub.aiEvaluation.rating === 'Excellent' ? 'rgba(34,197,94,0.12)' : sub.aiEvaluation.rating === 'Good' ? 'rgba(59,130,246,0.12)' : sub.aiEvaluation.rating === 'Fair' ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)', color: sub.aiEvaluation.rating === 'Excellent' ? '#22c55e' : sub.aiEvaluation.rating === 'Good' ? '#3b82f6' : sub.aiEvaluation.rating === 'Fair' ? '#eab308' : '#ef4444', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>{sub.aiEvaluation.rating}</span>
+                                  <button onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }} disabled={!!aiEvaluating} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
+                                    {aiEvaluating === sub._id ? '⏳' : '🔄'} Re-evaluate
+                                  </button>
+                                </div>
+                              </div>
+                              <p style={{ color: '#bbb', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 10 }}>{sub.aiEvaluation.summary}</p>
+                              <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                                {sub.aiEvaluation.codeQuality && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Quality: {sub.aiEvaluation.codeQuality}</span>}
+                                {sub.aiEvaluation.timeComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Time: {sub.aiEvaluation.timeComplexity}</span>}
+                                {sub.aiEvaluation.spaceComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Space: {sub.aiEvaluation.spaceComplexity}</span>}
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid #22c55e22', borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#22c55e', marginBottom: 5 }}>✓ Strengths</div>
+                                  {(sub.aiEvaluation.strengths || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
+                                </div>
+                                <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid #ef444422', borderRadius: 8, padding: '10px 12px' }}>
+                                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#ef4444', marginBottom: 5 }}>↑ Improvements</div>
+                                  {(sub.aiEvaluation.improvements || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
+                                </div>
+                              </div>
+                              <div style={{ marginTop: 6, fontSize: '0.67rem', color: '#444' }}>Evaluated by {sub.aiEvaluation.model} · {sub.aiEvaluation.evaluatedAt ? new Date(sub.aiEvaluation.evaluatedAt).toLocaleString() : ''}</div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ color: '#555', fontSize: '0.82rem' }}>No AI evaluation yet</span>
+                              <button
+                                onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }}
+                                disabled={!!aiEvaluating}
+                                style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', border: 'none', color: '#fff', padding: '8px 20px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: aiEvaluating ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: aiEvaluating ? 0.7 : 1 }}
+                              >
+                                {aiEvaluating === sub._id ? '⏳ Evaluating...' : '🤖 AI Evaluate Code'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  )}
                 </div>
               )}
               </> /* end overview tab */}
