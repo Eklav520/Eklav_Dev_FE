@@ -407,7 +407,10 @@ const DailyExam: React.FC = () => {
                     </div>
                   </div>
                 ) : todayData.error ? (
-                  <div style={{ color: '#ef4444', fontSize: 13, padding: '8px 0' }}>{todayData.error}</div>
+                  <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '12px 16px' }}>
+                    <div style={{ color: '#ef4444', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>⚠️ Questions not available</div>
+                    <div style={{ color: '#888', fontSize: 11, lineHeight: 1.6, wordBreak: 'break-word' }}>{todayData.error}</div>
+                  </div>
                 ) : (
                   <button
                     onClick={openQuiz}
@@ -545,22 +548,24 @@ const DailyExam: React.FC = () => {
                     {week.map((day, di) => {
                       if (!day) return <div key={di} style={{ padding: '10px 4px', minHeight: 60 }} />
                       const cs = getCategoryStyle(day.category)
-                      const dotColor = day.isToday
-                        ? (day.attended ? '#22c55e' : '#ff7a00')
-                        : day.attended ? '#22c55e'
-                        : day.isFuture ? 'transparent'
-                        : '#ef4444'
+                      // Two-state dot: green = attended, red = not attended (past only)
+                      const dotColor = day.isFuture
+                        ? 'transparent'
+                        : day.attended ? '#22c55e' : '#ef4444'
+                      const showDot = !day.isFuture
                       const dateNum = parseInt(day.date.split('-')[2])
                       return (
                         <div
                           key={di}
-                          title={day.attended ? `${day.category}: ${day.score}/${day.total}` : day.isFuture ? 'Upcoming' : day.isToday ? 'Today' : 'Missed'}
+                          title={day.attended ? `${day.category}: ${day.score}/${day.total}` : day.isFuture ? 'Upcoming' : day.isToday ? 'Today — not attempted' : 'Not attended'}
                           style={{
                             padding: '8px 6px', minHeight: 60,
                             background: day.isToday ? 'rgba(255,122,0,0.08)' : 'transparent',
                             borderLeft: di > 0 ? '1px solid #1a1a24' : 'none',
                             position: 'relative',
                             cursor: day.attended ? 'pointer' : 'default',
+                            outline: day.isToday ? '1.5px solid rgba(255,122,0,0.35)' : 'none',
+                            outlineOffset: '-1px',
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
@@ -568,12 +573,17 @@ const DailyExam: React.FC = () => {
                               fontSize: 12, fontWeight: day.isToday ? 800 : 600,
                               color: day.isToday ? '#ff7a00' : day.isFuture ? '#333' : '#888',
                             }}>{dateNum}</span>
-                            <span style={{
-                              width: 8, height: 8, borderRadius: '50%',
-                              background: dotColor,
-                              display: 'inline-block',
-                              border: day.isFuture && !day.isToday ? '1px solid #2a2a38' : 'none',
-                            }} />
+                            {showDot && (
+                              <span style={{
+                                width: 10, height: 10, borderRadius: '50%',
+                                background: dotColor,
+                                display: 'inline-block',
+                                flexShrink: 0,
+                                boxShadow: day.attended
+                                  ? '0 0 6px 2px rgba(34,197,94,0.6)'
+                                  : '0 0 6px 2px rgba(239,68,68,0.6)',
+                              }} />
+                            )}
                           </div>
                           <div style={{ fontSize: 8, color: day.isFuture ? '#2a2a38' : cs.badge, fontWeight: 700, marginBottom: 2, lineHeight: 1.2 }}>
                             {day.category.slice(0, 3).toUpperCase()}
@@ -592,15 +602,24 @@ const DailyExam: React.FC = () => {
               })()}
 
               {/* Legend */}
-              <div style={{ display: 'flex', gap: 16, padding: '10px 16px', borderTop: '1px solid #1a1a24', background: '#0a0a10' }}>
+              <div style={{ display: 'flex', gap: 20, padding: '10px 16px', borderTop: '1px solid #1a1a24', background: '#0a0a10' }}>
                 {[
                   { color: '#22c55e', label: 'Attended' },
-                  { color: '#ef4444', label: 'Missed' },
-                  { color: '#ff7a00', label: 'Today' },
-                  { color: '#2a2a38', label: 'Upcoming', border: true },
+                  { color: '#ef4444', label: 'Not Attended' },
+                  { isToday: true, label: 'Today' },
                 ].map(item => (
-                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, border: item.border ? '1px solid #2a2a38' : 'none', display: 'inline-block' }} />
+                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {item.isToday ? (
+                      <span style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(255,122,0,0.2)', border: '1.5px solid rgba(255,122,0,0.5)', display: 'inline-block' }} />
+                    ) : (
+                      <span style={{
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: (item as any).color, display: 'inline-block',
+                        boxShadow: (item as any).color === '#22c55e'
+                          ? '0 0 6px 2px rgba(34,197,94,0.6)'
+                          : '0 0 6px 2px rgba(239,68,68,0.6)',
+                      }} />
+                    )}
                     <span style={{ fontSize: 10, color: '#555' }}>{item.label}</span>
                   </div>
                 ))}
