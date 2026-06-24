@@ -361,6 +361,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
+    key: 'instituteStudents',
+    label: 'Manage Institute Students',
+    icon: HiOutlineUserGroup,
+    url: '/eklavadmin/manage-institute-students',
+    parentKey: 'eklavadmin',
+  },
+  {
     key: 'collegeDetails',
     label: 'Add College Details',
     icon: MdOutlineSchool,

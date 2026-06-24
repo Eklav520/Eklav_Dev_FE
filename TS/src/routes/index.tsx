@@ -108,6 +108,7 @@ const AdminReelsUpload = lazy(() => import('@/app/eklavadmin/adminReelsUpload/pa
 const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/pages'))
 const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
 const AddInstitute = lazy(() => import('@/app/eklavadmin/instituteDetails/pages'))
+const ManageInstituteStudents = lazy(() => import('@/app/eklavadmin/institute-details/page'))
 const AnnouncementsAdminPage = lazy(() => import('@/app/institute/announcements/page'))
 
 const FacultyAdminPage = lazy(() => import('@/app/institute/facultyAdmin/page'))
@@ -679,6 +680,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     path: '/eklavadmin/institute-details',
     name: 'Add Institute',
     element: <AddInstitute />,
+  },
+  {
+    path: '/eklavadmin/manage-institute-students',
+    name: 'Manage Institute Students',
+    element: <ManageInstituteStudents />,
   },
   {
     path: '/eklavadmin/admin-chatbox',

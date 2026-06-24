@@ -219,11 +219,28 @@ const InstituteAdmin: React.FC = () => {
   const [studentTotalPages, setStudentTotalPages] = useState(1)
   const STUDENT_PAGE_SIZE = 20
 
+  // Bulk delete selection
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+
   // Edit student modal
   const [editStudent, setEditStudent] = useState<any | null>(null)
   const [editForm, setEditForm] = useState({ fullname: '', email: '', phoneNumber: '', rollNumber: '', gender: 'Male', branch: '', joiningYear: '' })
   const [editSaving, setEditSaving] = useState(false)
   const [studentDeleting, setStudentDeleting] = useState<string | null>(null)
+
+  // Add Student modal
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false)
+  const [addStudentForm, setAddStudentForm] = useState({ fullname: '', email: '', phoneNumber: '', password: '', rollNumber: '', gender: 'Male', branch: '', joiningYear: '' })
+  const [addStudentSubmitting, setAddStudentSubmitting] = useState(false)
+  const [addStudentError, setAddStudentError] = useState('')
+
+  // Bulk Upload modal
+  const [showBulkModal, setShowBulkModal] = useState(false)
+  const [bulkData, setBulkData] = useState<any[]>([])
+  const [bulkUploading, setBulkUploading] = useState(false)
+  const [bulkResult, setBulkResult] = useState<any>(null)
+  const [bulkFileError, setBulkFileError] = useState('')
 
   // Student nav config
   const [showNavModal, setShowNavModal] = useState(false)
@@ -544,6 +561,99 @@ const InstituteAdmin: React.FC = () => {
     }
   }
 
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!studentsInstitute) return
+    setAddStudentSubmitting(true)
+    setAddStudentError('')
+    try {
+      await axios.post(
+        `${baseURL}/api/institute/${studentsInstitute._id}/createStudent`,
+        addStudentForm,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setShowAddStudentModal(false)
+      setAddStudentForm({ fullname: '', email: '', phoneNumber: '', password: '', rollNumber: '', gender: 'Male', branch: '', joiningYear: '' })
+      fetchStudents(studentsInstitute, studentPage, studentSearch)
+    } catch (err: any) {
+      setAddStudentError(err?.response?.data?.message || 'Failed to create student')
+    } finally {
+      setAddStudentSubmitting(false)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!studentsInstitute || !selectedStudents.length) return
+    if (!window.confirm(`Delete ${selectedStudents.length} selected student${selectedStudents.length > 1 ? 's' : ''}? This cannot be undone.`)) return
+    setBulkDeleting(true)
+    try {
+      await axios.post(
+        `${baseURL}/api/institute/${studentsInstitute._id}/bulkDeleteStudents`,
+        { studentIds: selectedStudents },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      setSelectedStudents([])
+      fetchStudents(studentsInstitute, studentPage, studentSearch)
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Bulk delete failed')
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
+  const handleBulkFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBulkFileError('')
+    setBulkResult(null)
+    import('xlsx').then(XLSX => {
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        try {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer)
+          const wb = XLSX.read(data, { type: 'array' })
+          const sheet = wb.Sheets[wb.SheetNames[0]]
+          const rows: any[] = XLSX.utils.sheet_to_json(sheet)
+          if (!rows.length) { setBulkFileError('File is empty'); return }
+          const required = ['name', 'email', 'password', 'rollnumber']
+          const headers = Object.keys(rows[0]).map(k => k.toLowerCase().trim())
+          const missing = required.filter(r => !headers.includes(r))
+          if (missing.length) { setBulkFileError(`Missing columns: ${missing.join(', ')}`); return }
+          const mapped = rows.map((row: any) => {
+            const norm: any = {}
+            Object.keys(row).forEach(k => { norm[k.toLowerCase().trim()] = row[k] })
+            return { name: norm.name, email: norm.email, password: String(norm.password), rollNumber: String(norm.rollnumber || ''), gender: norm.gender || 'Male', branch: norm.branch || '', phone: String(norm.phone || norm.phonenumber || ''), joiningYear: norm.joiningyear || norm.joiningYear || '' }
+          })
+          setBulkData(mapped)
+        } catch { setBulkFileError('Failed to parse file') }
+      }
+      reader.readAsArrayBuffer(file)
+    })
+  }
+
+  const handleBulkUpload = async () => {
+    if (!studentsInstitute || !bulkData.length) return
+    setBulkUploading(true)
+    try {
+      const r = await axios.post(`${baseURL}/api/institute/${studentsInstitute._id}/bulkUploadStudents`, { students: bulkData }, { headers: { Authorization: `Bearer ${token}` } })
+      setBulkResult(r.data)
+      fetchStudents(studentsInstitute, studentPage, studentSearch)
+    } catch (err: any) {
+      setBulkFileError(err?.response?.data?.message || 'Bulk upload failed')
+    } finally {
+      setBulkUploading(false)
+    }
+  }
+
+  const downloadTemplate = () => {
+    import('xlsx').then(XLSX => {
+      const ws = XLSX.utils.json_to_sheet([{ name: 'John Doe', email: 'john@example.com', password: 'Pass@123', rollnumber: 'CS001', gender: 'Male', branch: 'CSE', phone: '9876543210', joiningYear: '2024' }])
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Students')
+      XLSX.writeFile(wb, 'student_upload_template.xlsx')
+    })
+  }
+
   const openStudentsModal = (inst: Institute) => {
     setStudentsInstitute(inst)
     setStudentSearch('')
@@ -551,6 +661,7 @@ const InstituteAdmin: React.FC = () => {
     setStudentTotal(0)
     setStudentTotalPages(1)
     setStudentList([])
+    setSelectedStudents([])
     setShowStudentsModal(true)
     fetchStudents(inst, 1, '')
   }
@@ -558,6 +669,7 @@ const InstituteAdmin: React.FC = () => {
   const handleStudentSearch = (val: string) => {
     setStudentSearch(val)
     setStudentPage(1)
+    setSelectedStudents([])
     if (studentsInstitute) fetchStudents(studentsInstitute, 1, val)
   }
 
@@ -1343,15 +1455,31 @@ const InstituteAdmin: React.FC = () => {
       )}
       <Modal show={showStudentsModal} onHide={() => setShowStudentsModal(false)} centered size="xl" backdrop={false} className="institute-modal students-modal" style={{ zIndex: 1050 }}>
         <Modal.Header closeButton className="bg-dark border-secondary">
-          <Modal.Title className="text-white">
-            <div className="d-flex align-items-center gap-2">
-              <FaUserGraduate className="text-primary" />
-              <span>Students — {studentsInstitute?.name}</span>
-              {!studentsLoading && (
-                <span style={{ fontSize: '0.75rem', background: 'rgba(255,140,0,0.15)', color: '#ff8c00', border: '1px solid rgba(255,140,0,0.3)', borderRadius: 20, padding: '2px 10px', fontWeight: 600, marginLeft: 4 }}>
-                  {studentList.length} total
-                </span>
-              )}
+          <Modal.Title className="text-white" style={{ width: '100%' }}>
+            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div className="d-flex align-items-center gap-2">
+                <FaUserGraduate className="text-primary" />
+                <span>Students — {studentsInstitute?.name}</span>
+                {!studentsLoading && (
+                  <span style={{ fontSize: '0.75rem', background: 'rgba(255,140,0,0.15)', color: '#ff8c00', border: '1px solid rgba(255,140,0,0.3)', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>
+                    {studentTotal} total
+                  </span>
+                )}
+              </div>
+              <div className="d-flex gap-2" style={{ marginRight: 32 }}>
+                <button
+                  onClick={() => { setShowAddStudentModal(true); setAddStudentError('') }}
+                  style={{ background: 'linear-gradient(135deg, #ff6b35, #e55a2b)', border: 'none', color: '#fff', padding: '7px 14px', borderRadius: 7, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <FaPlus /> Add Student
+                </button>
+                <button
+                  onClick={() => { setShowBulkModal(true); setBulkData([]); setBulkResult(null); setBulkFileError('') }}
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: '#ccc', padding: '7px 14px', borderRadius: 7, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <FaUserPlus /> Bulk Upload
+                </button>
+              </div>
             </div>
           </Modal.Title>
         </Modal.Header>
@@ -1380,6 +1508,27 @@ const InstituteAdmin: React.FC = () => {
             </span>
           </div>
 
+          {/* Bulk delete bar */}
+          {selectedStudents.length > 0 && (
+            <div style={{ padding: '8px 20px', background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: '#ef4444', fontSize: '0.82rem', fontWeight: 700 }}>
+                {selectedStudents.length} student{selectedStudents.length > 1 ? 's' : ''} selected
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setSelectedStudents([])} style={{ background: 'none', border: '1px solid #333', color: '#888', padding: '5px 12px', borderRadius: 6, fontSize: '0.76rem', cursor: 'pointer' }}>
+                  Clear
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={bulkDeleting}
+                  style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', padding: '5px 14px', borderRadius: 6, fontSize: '0.76rem', fontWeight: 700, cursor: bulkDeleting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  {bulkDeleting ? <><Spinner animation="border" size="sm" /> Deleting...</> : <><FaTrash size={11} /> Delete Selected</>}
+                </button>
+              </div>
+            </div>
+          )}
+
           {studentsLoading ? (
             <div style={{ textAlign: 'center', padding: '3rem' }}>
               <Spinner animation="border" size="sm" style={{ color: '#ff8c00' }} />
@@ -1395,6 +1544,15 @@ const InstituteAdmin: React.FC = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', position: 'sticky', top: 0, zIndex: 1 }}>
+                    <th style={{ ...thStyle, width: 36 }}>
+                      <input
+                        type="checkbox"
+                        checked={studentList.length > 0 && selectedStudents.length === studentList.length}
+                        ref={el => { if (el) el.indeterminate = selectedStudents.length > 0 && selectedStudents.length < studentList.length }}
+                        onChange={e => setSelectedStudents(e.target.checked ? studentList.map(s => s._id) : [])}
+                        style={{ cursor: 'pointer', accentColor: '#ef4444', width: 15, height: 15 }}
+                      />
+                    </th>
                     <th style={thStyle}>#</th>
                     <th style={thStyle}>Name</th>
                     <th style={thStyle}>Email</th>
@@ -1410,10 +1568,19 @@ const InstituteAdmin: React.FC = () => {
                 </thead>
                 <tbody>
                   {studentList.map((s, i) => (
-                    <tr key={s._id} style={{ borderBottom: '1px solid #111', transition: 'background 0.15s' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#0f0f0f')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    <tr key={s._id}
+                      style={{ borderBottom: '1px solid #111', transition: 'background 0.15s', background: selectedStudents.includes(s._id) ? 'rgba(239,68,68,0.05)' : 'transparent' }}
+                      onMouseEnter={e => { if (!selectedStudents.includes(s._id)) e.currentTarget.style.background = '#0f0f0f' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = selectedStudents.includes(s._id) ? 'rgba(239,68,68,0.05)' : 'transparent' }}
                     >
+                      <td style={{ ...tdStyle, width: 36 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedStudents.includes(s._id)}
+                          onChange={e => setSelectedStudents(prev => e.target.checked ? [...prev, s._id] : prev.filter(id => id !== s._id))}
+                          style={{ cursor: 'pointer', accentColor: '#ef4444', width: 15, height: 15 }}
+                        />
+                      </td>
                       <td style={tdStyle}><span style={{ color: '#444', fontWeight: 600 }}>{(studentPage - 1) * STUDENT_PAGE_SIZE + i + 1}</span></td>
                       <td style={tdStyle}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1919,6 +2086,109 @@ const InstituteAdmin: React.FC = () => {
           box-shadow: 0 0 0 0.2rem rgba(255, 140, 0, 0.25);
         }
       `}</style>
+
+      {/* ── Add Student Modal ── */}
+      <Modal show={showAddStudentModal} onHide={() => setShowAddStudentModal(false)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2"><FaPlus /> Add Student — {studentsInstitute?.name}</div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          {addStudentError && <Alert variant="danger" style={{ fontSize: '0.82rem', marginBottom: 14 }}>{addStudentError}</Alert>}
+          <Form onSubmit={handleAddStudent}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              {([
+                { key: 'fullname', label: 'Full Name', type: 'text', placeholder: "Student's full name", req: true },
+                { key: 'email', label: 'Email', type: 'email', placeholder: 'student@example.com', req: true },
+                { key: 'password', label: 'Password', type: 'password', placeholder: 'Min 6 characters', req: true },
+                { key: 'phoneNumber', label: 'Phone Number', type: 'tel', placeholder: '10-digit number', req: false },
+                { key: 'rollNumber', label: 'Roll Number', type: 'text', placeholder: 'e.g. CS001', req: true },
+                { key: 'branch', label: 'Branch', type: 'text', placeholder: 'e.g. CSE, ECE', req: true },
+                { key: 'joiningYear', label: 'Joining Year', type: 'text', placeholder: 'e.g. 2024', req: false },
+              ] as const).map(({ key, label, type, placeholder, req }) => (
+                <Form.Group key={key}>
+                  <Form.Label style={{ fontSize: '0.76rem', color: '#888', fontWeight: 700 }}>{label}{req && <span style={{ color: '#ef4444', marginLeft: 3 }}>*</span>}</Form.Label>
+                  <Form.Control type={type} placeholder={placeholder} required={req} value={(addStudentForm as any)[key]}
+                    onChange={e => setAddStudentForm(f => ({ ...f, [key]: e.target.value }))}
+                    style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', color: '#fff', fontSize: '0.83rem' }} />
+                </Form.Group>
+              ))}
+              <Form.Group>
+                <Form.Label style={{ fontSize: '0.76rem', color: '#888', fontWeight: 700 }}>Gender</Form.Label>
+                <Form.Select value={addStudentForm.gender} onChange={e => setAddStudentForm(f => ({ ...f, gender: e.target.value }))}
+                  style={{ background: '#0d0d0d', border: '1px solid #2a2a2a', color: '#fff', fontSize: '0.83rem' }}>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </Form.Select>
+              </Form.Group>
+            </div>
+            <div className="d-flex justify-content-end gap-2 mt-3">
+              <Button variant="secondary" onClick={() => setShowAddStudentModal(false)}>Cancel</Button>
+              <Button type="submit" disabled={addStudentSubmitting} style={{ background: 'linear-gradient(135deg,#ff6b35,#e55a2b)', border: 'none' }}>
+                {addStudentSubmitting ? <><Spinner animation="border" size="sm" className="me-2" />Creating...</> : <><FaPlus className="me-2" />Create Student</>}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
+
+      {/* ── Bulk Upload Modal ── */}
+      <Modal show={showBulkModal} onHide={() => setShowBulkModal(false)} centered size="lg" className="institute-modal">
+        <Modal.Header closeButton className="bg-dark border-secondary">
+          <Modal.Title className="text-white">
+            <div className="d-flex align-items-center gap-2"><FaUserPlus /> Bulk Upload Students — {studentsInstitute?.name}</div>
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="bg-dark">
+          <div className="mb-3">
+            <button onClick={downloadTemplate} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#22c55e', padding: '6px 14px', borderRadius: 7, fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}>
+              ⬇ Download Template
+            </button>
+            <span style={{ color: '#555', fontSize: '0.76rem', marginLeft: 12 }}>Required: name, email, password, rollnumber, gender, branch, phone, joiningYear</span>
+          </div>
+          <label style={{ display: 'block', background: '#0d0d0d', border: '2px dashed #2a2a2a', borderRadius: 10, padding: '24px', textAlign: 'center', cursor: 'pointer', marginBottom: 12 }}>
+            <FaUserPlus style={{ fontSize: 28, color: '#444', marginBottom: 8 }} />
+            <p style={{ color: '#666', fontSize: '0.83rem', margin: 0 }}>Click to upload Excel/CSV file</p>
+            <input type="file" accept=".xlsx,.xls,.csv" onChange={handleBulkFile} style={{ display: 'none' }} />
+          </label>
+          {bulkFileError && <Alert variant="danger" style={{ fontSize: '0.82rem' }}>{bulkFileError}</Alert>}
+          {bulkData.length > 0 && !bulkResult && (
+            <div style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: 8, padding: 12, marginBottom: 12 }}>
+              <div style={{ color: '#22c55e', fontWeight: 700, fontSize: '0.85rem', marginBottom: 8 }}>✓ {bulkData.length} students parsed — preview (first 5)</div>
+              <div style={{ overflowX: 'auto', maxHeight: 180 }}>
+                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                  <thead><tr>{['Name','Email','Roll No','Branch','Gender'].map(h => <th key={h} style={{ padding: '4px 10px', color: '#666', textAlign: 'left', borderBottom: '1px solid #1e1e1e' }}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {bulkData.slice(0, 5).map((s, i) => <tr key={i}><td style={{ padding: '4px 10px', color: '#ddd' }}>{s.name}</td><td style={{ padding: '4px 10px', color: '#888' }}>{s.email}</td><td style={{ padding: '4px 10px', color: '#ff6b35' }}>{s.rollNumber}</td><td style={{ padding: '4px 10px', color: '#aaa' }}>{s.branch}</td><td style={{ padding: '4px 10px', color: '#aaa' }}>{s.gender}</td></tr>)}
+                    {bulkData.length > 5 && <tr><td colSpan={5} style={{ padding: '4px 10px', color: '#555', fontStyle: 'italic' }}>...and {bulkData.length - 5} more</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {bulkResult && (
+            <Alert variant={bulkResult.summary.failed > 0 ? 'warning' : 'success'} style={{ fontSize: '0.82rem' }}>
+              ✓ {bulkResult.summary.successful} created successfully
+              {bulkResult.summary.failed > 0 && ` · ✗ ${bulkResult.summary.failed} failed`}
+              {bulkResult.results.failed.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  {bulkResult.results.failed.map((f: any, i: number) => <div key={i} style={{ color: '#ef4444', fontSize: '0.76rem' }}>✗ {f.email} — {f.error}</div>)}
+                </div>
+              )}
+            </Alert>
+          )}
+          {!bulkResult && (
+            <div className="d-flex justify-content-end gap-2 mt-2">
+              <Button variant="secondary" onClick={() => setShowBulkModal(false)}>Cancel</Button>
+              <Button onClick={handleBulkUpload} disabled={!bulkData.length || bulkUploading} style={{ background: 'linear-gradient(135deg,#ff6b35,#e55a2b)', border: 'none', opacity: (!bulkData.length || bulkUploading) ? 0.6 : 1 }}>
+                {bulkUploading ? <><Spinner animation="border" size="sm" className="me-2" />Uploading...</> : <><FaUserPlus className="me-2" />Upload {bulkData.length > 0 ? `${bulkData.length} Students` : ''}</>}
+              </Button>
+            </div>
+          )}
+        </Modal.Body>
+      </Modal>
     </>
   )
 }

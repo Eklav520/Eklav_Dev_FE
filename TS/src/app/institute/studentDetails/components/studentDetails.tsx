@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import axios from 'axios'
 import { Card, Button, Form, Table, Modal, Spinner, Alert, Pagination } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaUserGraduate, FaPlus, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload } from 'react-icons/fa'
+import { FaUserGraduate, FaPlus, FaEnvelope, FaPhone, FaLock, FaUser, FaBuilding, FaSpinner, FaUniversity, FaUpload, FaSearch, FaFilter } from 'react-icons/fa'
 import BulkUploadStudents from './BulkUploadStudents'
 
 type Student = {
@@ -51,6 +51,9 @@ const InstituteAdmin: React.FC = () => {
   const [showBulkUpload, setShowBulkUpload] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterBranch, setFilterBranch] = useState('')
+  const [filterYear, setFilterYear] = useState('')
 
   /* ============================
      FETCH PROFILE (GET INSTITUTE)
@@ -135,12 +138,26 @@ const InstituteAdmin: React.FC = () => {
   }
 
   const totalStudents = students.length
-  const instituteName = profile?.instituteName || profile?.collegeName || 'Not Assigned'
 
-  const totalPages = Math.max(1, Math.ceil(totalStudents / rowsPerPage))
+  const allBranches = useMemo(() => [...new Set(students.map(s => s.branch).filter(Boolean))].sort(), [students])
+  const allYears = useMemo(() => [...new Set(students.map(s => s.joiningYear).filter(Boolean))].sort(), [students])
+
+  const filteredStudents = useMemo(() => students.filter(s => {
+    const q = searchQuery.toLowerCase()
+    const matchSearch = !q ||
+      (s.fullname || s.name || '').toLowerCase().includes(q) ||
+      s.email.toLowerCase().includes(q) ||
+      (s.rollNumber || '').toLowerCase().includes(q) ||
+      (s.branch || '').toLowerCase().includes(q)
+    const matchBranch = !filterBranch || s.branch === filterBranch
+    const matchYear = !filterYear || s.joiningYear === filterYear
+    return matchSearch && matchBranch && matchYear
+  }), [students, searchQuery, filterBranch, filterYear])
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / rowsPerPage))
   const currentStart = (currentPage - 1) * rowsPerPage
-  const currentEnd = Math.min(currentStart + rowsPerPage, totalStudents)
-  const paginatedStudents = students.slice(currentStart, currentEnd)
+  const currentEnd = Math.min(currentStart + rowsPerPage, filteredStudents.length)
+  const paginatedStudents = filteredStudents.slice(currentStart, currentEnd)
 
   const visiblePageNumbers = React.useMemo(() => {
     if (totalPages <= 5) {
@@ -186,53 +203,63 @@ const InstituteAdmin: React.FC = () => {
     <div className="institute-admin-container">
       <Card className="students-management-card">
         <Card.Header className="card-header-custom">
-          <div className="header-content">
-            <div className="header-left">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            {/* Title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               <FaUserGraduate className="header-icon" />
               <div>
-                <h4 className="header-title">Student Management</h4>
-                <p className="header-subtitle">Manage students enrolled in your institute</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h4 className="header-title" style={{ margin: 0 }}>Student Management</h4>
+                  <span style={{ background: 'rgba(255,122,0,0.15)', border: '1px solid rgba(255,122,0,0.35)', color: '#ff7a00', borderRadius: 20, padding: '2px 12px', fontSize: '0.78rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {totalStudents} Students
+                  </span>
+                </div>
+                <p className="header-subtitle" style={{ margin: 0 }}>Manage students enrolled in your institute</p>
               </div>
             </div>
-            <div className="button-group">
-              <Button className="add-student-btn" onClick={() => setShowModal(true)}>
-                <FaPlus className="me-2" />
-                Add Student
-              </Button>
-              <Button
-                className="bulk-upload-btn"
-                onClick={() => setShowBulkUpload(true)}
-              >
-                <FaUpload className="me-2" />
-                Bulk Upload
-              </Button>
+
+            {/* Search + Filters */}
+            <div style={{ display: 'flex', gap: 8, flex: 1, alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 180 }}>
+                <FaSearch style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '0.75rem', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }}
+                  placeholder="Search name, email, roll no..."
+                  style={{ width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 28px 7px 30px', color: '#ddd', fontSize: '0.8rem', outline: 'none' }}
+                />
+                {searchQuery && (
+                  <button onClick={() => { setSearchQuery(''); setCurrentPage(1) }} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#555', cursor: 'pointer', lineHeight: 1, fontSize: '0.8rem' }}>✕</button>
+                )}
+              </div>
+              <div style={{ position: 'relative' }}>
+                <FaFilter style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '0.7rem', pointerEvents: 'none' }} />
+                <select value={filterBranch} onChange={e => { setFilterBranch(e.target.value); setCurrentPage(1) }}
+                  style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 10px 7px 26px', color: filterBranch ? '#ddd' : '#555', fontSize: '0.8rem', outline: 'none', minWidth: 130, cursor: 'pointer' }}>
+                  <option value="">All Branches</option>
+                  {allBranches.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <FaFilter style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: '0.7rem', pointerEvents: 'none' }} />
+                <select value={filterYear} onChange={e => { setFilterYear(e.target.value); setCurrentPage(1) }}
+                  style={{ background: '#111', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 10px 7px 26px', color: filterYear ? '#ddd' : '#555', fontSize: '0.8rem', outline: 'none', minWidth: 120, cursor: 'pointer' }}>
+                  <option value="">All Years</option>
+                  {allYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+              {(searchQuery || filterBranch || filterYear) && (
+                <button onClick={() => { setSearchQuery(''); setFilterBranch(''); setFilterYear(''); setCurrentPage(1) }}
+                  style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', borderRadius: 8, padding: '7px 12px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Clear
+                </button>
+              )}
             </div>
           </div>
         </Card.Header>
 
         <Card.Body className="card-body-custom">
-          {/* Stats Summary */}
-          <div className="stats-summary">
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FaUserGraduate />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Total Students</span>
-                <span className="stat-value">{totalStudents}</span>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">
-                <FaUniversity />
-              </div>
-              <div className="stat-info">
-                <span className="stat-label">Institute Name</span>
-                <span className="stat-value">{instituteName}</span>
-              </div>
-            </div>
-          </div>
-
           {/* Loading & Error States */}
           {loading && (
             <div className="loading-container">
@@ -250,11 +277,11 @@ const InstituteAdmin: React.FC = () => {
           {/* Students Table */}
           {!loading && !error && (
             <div className="table-wrapper">
-              {students.length === 0 ? (
+              {filteredStudents.length === 0 ? (
                 <div className="empty-state">
                   <FaUserGraduate className="empty-icon" />
-                  <h5>No students found</h5>
-                  <p>Click the "Add Student" button to enroll your first student</p>
+                  <h5>{students.length === 0 ? 'No students found' : 'No students match your search'}</h5>
+                  <p>{students.length === 0 ? 'Students can be added by the admin' : 'Try adjusting your search or filters'}</p>
                 </div>
               ) : (
                 <div className="table-responsive">
