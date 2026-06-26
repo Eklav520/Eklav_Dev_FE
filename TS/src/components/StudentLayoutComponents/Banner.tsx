@@ -343,7 +343,6 @@ const Banner = ({ toggleOffCanvas }: BannerProps) => {
         /* Platinum Bar */
         .platinum-bar {
           background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-          border-bottom: 3px solid #ff7a00;
         }
 
         .tier-icon.platinum {

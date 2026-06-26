@@ -18,324 +18,124 @@ const Footer = () => {
     <footer className="footer-section w-100">
       <style>{`
         .footer-section {
-          background: linear-gradient(135deg, #1a1d23 0%, #0f1114 100%);
-          padding: 60px 0 30px;
+          background: #030308;
+          padding: 72px 0 28px;
           position: relative;
           z-index: 2;
-          border-top: 1px solid rgba(255, 152, 0, 0.1);
+          border-top: 1px solid rgba(255,122,0,0.12);
           width: 100%;
-          margin-top: 0;
+          overflow: hidden;
         }
-
-        /* Main CTA Section */
-        .cta-section {
-          text-align: center;
-          margin-bottom: 50px;
-          padding-bottom: 40px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        .footer-section::before {
+          content:'';
+          position:absolute;inset:0;
+          background:
+            radial-gradient(ellipse at 20% 0%,rgba(255,122,0,0.06) 0%,transparent 50%),
+            radial-gradient(ellipse at 80% 100%,rgba(0,212,255,0.04) 0%,transparent 50%);
+          pointer-events:none;z-index:0;
         }
-
-        .cta-title {
-          font-size: 36px;
-          font-weight: 700;
-          margin-bottom: 15px;
-          background: linear-gradient(135deg, #fff 0%, #f97316 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-
-        .cta-description {
-          color: #9aa4b2;
-          font-size: 16px;
-          max-width: 700px;
-          margin: 0 auto 25px;
-          line-height: 1.6;
-        }
-
-        .cta-button {
-          display: inline-block;
-          padding: 12px 32px;
-          background: linear-gradient(135deg, #f97316, #ea580c);
-          color: white;
-          text-decoration: none;
-          border-radius: 30px;
-          font-weight: 600;
-          font-size: 16px;
-          margin-bottom: 30px;
-          transition: all 0.3s ease;
-          border: none;
-          cursor: pointer;
-        }
-
-        .cta-button:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 25px rgba(255, 152, 0, 0.3);
-          color: white;
-        }
-
-        .app-buttons {
-          display: flex;
-          justify-content: center;
-          gap: 15px;
-          flex-wrap: wrap;
-        }
-
-        .app-button {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 10px 20px;
-          border-radius: 30px;
-          color: white;
-          text-decoration: none;
-          transition: all 0.3s ease;
-          border: 1px solid rgba(255, 152, 0, 0.2);
-        }
-
-        .app-button:hover {
-          background: rgba(255, 152, 0, 0.2);
-          transform: translateY(-2px);
-          color: white;
-          border-color: #f97316;
-        }
-
-        .app-button svg {
-          font-size: 20px;
-          color: #f97316;
+        .footer-hex {
+          position:absolute;inset:0;
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 0L56 16v48L28 80 0 64V16Z' fill='none' stroke='rgba(255,122,0,0.03)' stroke-width='0.5'/%3E%3C/svg%3E");
+          background-size:56px 100px;z-index:0;pointer-events:none;
         }
 
         /* Footer Links */
-        .footer-links {
-          margin-bottom: 40px;
-        }
-
-        .footer-links > .footer-column {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-        }
-
-        .footer-column {
-          margin-bottom: 30px;
-        }
-
+        .footer-links { margin-bottom: 48px; position:relative;z-index:1; }
+        .footer-links > .footer-column { display:flex;flex-direction:column;align-items:flex-start; }
+        .footer-column { margin-bottom: 28px; }
         .footer-column-title {
-          color: white;
-          font-size: 18px;
-          font-weight: 600;
+          color: #fff;
+          font-size: 0.85rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          text-transform: uppercase;
           margin-bottom: 20px;
           position: relative;
-          padding-bottom: 10px;
+          padding-bottom: 12px;
         }
-
         .footer-column-title::after {
           content: '';
           position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 30px;
-          height: 2px;
-          background: #f97316;
+          bottom: 0; left: 0;
+          width: 28px; height: 2px;
+          background: linear-gradient(90deg,#ff7a00,transparent);
+          border-radius:2px;
         }
-
-        .footer-links-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .footer-links-list li {
-          margin-bottom: 12px;
-        }
-
+        .footer-links-list { list-style:none;padding:0;margin:0; }
+        .footer-links-list li { margin-bottom: 10px; }
         .footer-links-list a {
-          color: #9aa4b2;
+          color: #4a5568;
           text-decoration: none;
-          transition: all 0.3s ease;
-          font-size: 14px;
+          transition: all 0.25s ease;
+          font-size: 0.85rem;
+          display:inline-flex;align-items:center;gap:6px;
         }
-
-        .footer-links-list a:hover {
-          color: #f97316;
-          padding-left: 5px;
+        .footer-links-list a::before {
+          content:'›';color:#ff7a00;opacity:0;transition:opacity 0.25s ease,transform 0.25s ease;
+          transform:translateX(-4px);
         }
+        .footer-links-list a:hover { color:#ff7a00;padding-left:4px; }
+        .footer-links-list a:hover::before { opacity:1;transform:translateX(0); }
 
         /* Contact Info */
-        .contact-info {
-          color: #9aa4b2;
-          font-size: 14px;
-          line-height: 1.8;
-        }
+        .contact-info { color:#4a5568;font-size:0.85rem;line-height:2; }
+        .contact-info a { color:#ff7a00;text-decoration:none; }
+        .contact-info a:hover { text-decoration:underline; }
+        .made-with { display:flex;align-items:center;gap:5px;color:#4a5568;font-size:0.82rem;margin-top:4px; }
+        .made-with svg { color:#ff7a00;animation:ft-heartbeat 1.5s ease infinite; }
+        @keyframes ft-heartbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
 
-        .contact-info a {
-          color: #f97316;
-          text-decoration: none;
-        }
-
-        .contact-info a:hover {
-          text-decoration: underline;
-        }
-
-        .made-with {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          color: #9aa4b2;
-          font-size: 14px;
-        }
-
-        .made-with svg {
-          color: #f97316;
-          animation: heartbeat 1.5s ease infinite;
-        }
-
-        @keyframes heartbeat {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.1); }
+        /* Divider */
+        .footer-divider {
+          height:1px;
+          background:linear-gradient(90deg,transparent,rgba(255,122,0,0.2),rgba(0,212,255,0.15),transparent);
+          margin-bottom:32px;position:relative;z-index:1;
         }
 
         /* Footer Bottom */
-        .footer-bottom {
-          margin-top: 40px;
-          padding-top: 30px;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .footer-logo {
-          transition: transform 0.3s ease;
-        }
-
-        .footer-logo:hover {
-          transform: translateY(-2px);
-        }
-
-        .copyright-text {
-          color: #9aa4b2;
-          font-size: 14px;
-        }
-
-        .copyright-text .highlight {
-          color: #f97316;
-          font-weight: 500;
-        }
+        .footer-bottom { position:relative;z-index:1; }
+        .footer-logo { transition:transform 0.3s ease; }
+        .footer-logo:hover { transform:translateY(-2px); }
+        .copyright-text { color:#2d3748;font-size:0.8rem; }
+        .copyright-text .highlight { color:#ff7a00;font-weight:600; }
 
         /* Social Icons */
-        .social-list {
-          display: flex;
-          justify-content: flex-end;
-          gap: 15px;
-          margin: 0;
-          padding: 0;
-        }
-
-        .social-item {
-          list-style: none;
-        }
-
+        .social-list { display:flex;justify-content:flex-end;gap:10px;margin:0;padding:0; }
+        .social-item { list-style:none; }
         .social-link {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.05);
-          color: #fff;
-          font-size: 18px;
-          transition: all 0.3s ease;
-          border: 1px solid rgba(255, 152, 0, 0.1);
+          display:flex;align-items:center;justify-content:center;
+          width:38px;height:38px;border-radius:50%;
+          background:rgba(255,255,255,0.03);color:#4a5568;font-size:16px;
+          transition:all 0.3s ease;
+          border:1px solid rgba(255,255,255,0.06);
         }
-
         .social-link:hover {
-          background: #f97316;
-          transform: translateY(-3px);
-          color: #1a1d23;
-          border-color: transparent;
-          box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+          background:linear-gradient(135deg,#ff7a00,#ffb347);
+          transform:translateY(-3px);color:#fff;border-color:transparent;
+          box-shadow:0 6px 20px rgba(255,122,0,0.35);
         }
 
-        /* Tenant Logo Text Styles */
-        .tenant-logo-text {
-          font-size: 20px;
-          font-weight: 800;
-          display: flex;
-          align-items: center;
-          letter-spacing: 0.5px;
-        }
-
-        .tenant-logo-primary {
-          margin-right: 2px;
-        }
-
-        .tenant-logo-secondary {
-          color: #ffffff;
-        }
+        /* Tenant Logo Text */
+        .tenant-logo-text { font-size:20px;font-weight:800;display:flex;align-items:center;letter-spacing:0.5px; }
+        .tenant-logo-primary { margin-right:2px; }
+        .tenant-logo-secondary { color:#ffffff; }
 
         /* Responsive */
-        @media (max-width: 768px) {
-          .cta-title {
-            font-size: 28px;
-          }
-
-          .cta-description {
-            font-size: 14px;
-            padding: 0 20px;
-          }
-
-          .app-buttons {
-            flex-direction: column;
-            align-items: center;
-          }
-
-          .app-button {
-            width: 200px;
-          }
-
-          .footer-column {
-            text-align: center;
-          }
-
-          .footer-column-title::after {
-            left: 50%;
-            transform: translateX(-50%);
-          }
-
-          .social-list {
-            justify-content: center;
-            margin-top: 20px;
-          }
-
-          .footer-logo {
-            text-align: center;
-            margin-bottom: 15px;
-          }
-
-          .copyright-text {
-            text-align: center;
-            margin-bottom: 15px;
-          }
-
-          .made-with {
-            justify-content: center;
-          }
+        @media(max-width:768px){
+          .footer-column { text-align:center; }
+          .footer-column-title::after { left:50%;transform:translateX(-50%); }
+          .footer-links > .footer-column { align-items:center; }
+          .social-list { justify-content:center;margin-top:20px; }
+          .footer-logo,.copyright-text { text-align:center;margin-bottom:12px; }
+          .made-with { justify-content:center; }
         }
-
-        @media (max-width: 576px) {
-          .footer-section {
-            padding: 40px 0 20px;
-          }
-
-          .cta-button {
-            padding: 10px 25px;
-            font-size: 14px;
-          }
-          
-          .tenant-logo-text {
-            font-size: 18px;
-          }
+        @media(max-width:576px){
+          .footer-section{padding:48px 0 20px}
+          .tenant-logo-text{font-size:18px}
         }
       `}</style>
+      <div className="footer-hex" />
 
       <Container>
         {/* CTA Section */}
@@ -433,6 +233,9 @@ const Footer = () => {
             </ul>
           </Col>
         </Row>
+
+        {/* Divider */}
+        <div className="footer-divider" />
 
         {/* Footer Bottom */}
         <Row className="footer-bottom align-items-center">

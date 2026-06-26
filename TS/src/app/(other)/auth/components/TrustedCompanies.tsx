@@ -69,466 +69,225 @@ const TrustedCompanies = () => {
   };
 
   return (
-    <section 
-      ref={sectionRef} 
-      className="trusted-section position-relative overflow-hidden"
+    <section
+      ref={sectionRef}
+      className="tc-section position-relative overflow-hidden"
       onMouseMove={handleMouseMove}
     >
       <style>{`
-
-      .trusted-section {
-        background: linear-gradient(135deg, #1e2228 0%, #121417 100%);
-        padding: 100px 0;
-        color: white;
-        overflow: hidden;
-        position: relative;
-        isolation: isolate;
-      }
-
-      /* Animated gradient background */
-      .trusted-section::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at ${mousePosition.x}% ${mousePosition.y}%, rgba(255,152,0,0.05) 0%, transparent 50%),
-                    radial-gradient(circle at ${100 - mousePosition.x}% ${100 - mousePosition.y}%, rgba(255,152,0,0.03) 0%, transparent 50%);
-        pointer-events: none;
-        z-index: 1;
-        transition: background 0.1s ease;
-      }
-
-      /* Floating particles */
-      .particle {
-        position: absolute;
-        width: 2px;
-        height: 2px;
-        background: rgba(255, 152, 0, 0.2);
-        border-radius: 50%;
-        pointer-events: none;
-        z-index: 1;
-        animation: floatParticle 15s infinite linear;
-      }
-
-      @keyframes floatParticle {
-        from { transform: translateY(100vh) rotate(0deg); }
-        to { transform: translateY(-100vh) rotate(360deg); }
-      }
-
-      /* Glowing orb effect */
-      .glow-orb {
-        position: absolute;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(255,152,0,0.1) 0%, transparent 70%);
-        border-radius: 50%;
-        filter: blur(50px);
-        animation: orbFloat 20s ease-in-out infinite;
-        z-index: 1;
-      }
-
-      @keyframes orbFloat {
-        0%, 100% { transform: translate(0, 0) scale(1); }
-        25% { transform: translate(5%, 5%) scale(1.1); }
-        50% { transform: translate(-5%, 10%) scale(0.9); }
-        75% { transform: translate(10%, -5%) scale(1.05); }
-      }
-
-      .trusted-badge {
-        display: inline-block;
-        background: rgba(255, 152, 0, 0.1);
-        color: #ff9800;
-        padding: 10px 24px;
-        border-radius: 50px;
-        font-size: 14px;
-        font-weight: 600;
-        letter-spacing: 1px;
-        margin-bottom: 25px;
-        border: 1px solid rgba(255, 152, 0, 0.2);
-        backdrop-filter: blur(5px);
-        position: relative;
-        z-index: 2;
-        opacity: 0;
-        transform: translateY(30px);
-        animation: fadeInUp 0.8s ease-out forwards;
-      }
-
-      .trusted-title {
-        font-size: 48px;
-        font-weight: 700;
-        margin-bottom: 20px;
-        position: relative;
-        z-index: 2;
-        opacity: 0;
-        transform: translateY(30px);
-        animation: fadeInUp 0.8s ease-out 0.2s forwards;
-      }
-
-      .trusted-highlight {
-        background: linear-gradient(90deg, #ff9800, #ffb74d);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        position: relative;
-        display: inline-block;
-      }
-
-      .trusted-highlight::after {
-        content: '';
-        position: absolute;
-        bottom: -5px;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: linear-gradient(90deg, #ff9800, #ffb74d);
-        transform: scaleX(0);
-        transform-origin: left;
-        animation: slideIn 0.6s ease-out 0.5s forwards;
-      }
-
-      .trusted-subtitle {
-        color: #9aa4b2;
-        max-width: 800px;
-        margin-bottom: 60px;
-        font-size: 18px;
-        line-height: 1.7;
-        position: relative;
-        z-index: 2;
-        opacity: 0;
-        transform: translateY(30px);
-        animation: fadeInUp 0.8s ease-out 0.3s forwards;
-      }
-
-      @keyframes fadeInUp {
-        to {
-          opacity: 1;
-          transform: translateY(0);
+        .tc-section {
+          background: #060610;
+          padding: 110px 0 100px;
+          color: white;
+          position: relative;
+          isolation: isolate;
+          border-top: 1px solid rgba(168,85,247,0.08);
+          border-bottom: 1px solid rgba(0,212,255,0.08);
         }
-      }
+        .tc-section::before {
+          content:'';
+          position:absolute; inset:0;
+          background:
+            radial-gradient(ellipse at ${mousePosition.x}% ${mousePosition.y}%,rgba(168,85,247,0.07) 0%,transparent 55%),
+            radial-gradient(ellipse at ${100-mousePosition.x}% ${100-mousePosition.y}%,rgba(0,212,255,0.05) 0%,transparent 55%);
+          pointer-events:none; z-index:0; transition:background 0.15s ease;
+        }
+        .tc-hex {
+          position:absolute; inset:0;
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 0L56 16v48L28 80 0 64V16Z' fill='none' stroke='rgba(168,85,247,0.04)' stroke-width='0.5'/%3E%3C/svg%3E");
+          background-size:56px 100px; z-index:0; pointer-events:none;
+        }
+        @keyframes tc-fadein { to{opacity:1;transform:translateY(0)} }
+        @keyframes tc-scroll { from{transform:translateX(0)} to{transform:translateX(-50%)} }
 
-      @keyframes slideIn {
-        to { transform: scaleX(1); }
-      }
-
-      /* ---------------- LOGO MARQUEE ---------------- */
-
-      .logo-marquee {
-        position: relative;
-        overflow: hidden;
-        padding: 20px 0;
-        z-index: 2;
-        opacity: 0;
-        transform: translateY(30px);
-        animation: fadeInUp 0.8s ease-out 0.4s forwards;
-      }
-
-      .logo-track {
-        display: flex;
-        gap: 60px;
-        width: max-content;
-        animation: scrollLogos 35s linear infinite;
-        will-change: transform;
-      }
-
-      .logo-marquee:hover .logo-track {
-        animation-play-state: paused;
-      }
-
-      @keyframes scrollLogos {
-        from { transform: translateX(0); }
-        to { transform: translateX(-50%); }
-      }
-
-      /* Uniform Logo Box */
-      .logo-item {
-        width: 160px;
-        height: 90px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(30, 34, 40, 0.5);
-        border-radius: 12px;
-        border: 1px solid rgba(255, 152, 0, 0.05);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-      }
-
-      /* Shine effect */
-      .logo-item::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          90deg,
-          transparent,
-          rgba(255, 152, 0, 0.1),
-          transparent
-        );
-        transition: left 0.5s ease;
-        z-index: 2;
-      }
-
-      .logo-item:hover::before {
-        left: 100%;
-      }
-
-      /* Image styling - FIXED: Colored by default, enhanced on hover */
-      .logo-item img {
-        max-height: 50px;
-        max-width: 120px;
-        object-fit: contain;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        z-index: 1;
-        
-        /* REMOVED grayscale - logos are colored by default */
-        filter: none;
-        opacity: 0.9;
-      }
-
-      /* Enhanced effect on hover - brighter, larger, with glow */
-      .logo-item:hover img {
-        opacity: 1;
-        transform: scale(1.15);
-        filter: drop-shadow(0 0 8px rgba(255, 152, 0, 0.5));
-      }
-
-      .logo-item:hover {
-        background: rgba(40, 45, 55, 0.8);
-        border-color: rgba(255, 152, 0, 0.4);
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 15px 30px rgba(255, 152, 0, 0.2);
-      }
-
-      /* Edge fade effect - enhanced */
-      .logo-marquee::before,
-      .logo-marquee::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        width: 200px;
-        height: 100%;
-        z-index: 3;
-        pointer-events: none;
-      }
-
-      .logo-marquee::before {
-        left: 0;
-        background: linear-gradient(to right, #1e2228 0%, transparent 100%);
-      }
-
-      .logo-marquee::after {
-        right: 0;
-        background: linear-gradient(to left, #1e2228 0%, transparent 100%);
-      }
-
-      /* Stats counter */
-      .stats-row {
-        display: flex;
-        justify-content: center;
-        gap: 60px;
-        margin-top: 80px;
-        position: relative;
-        z-index: 2;
-        opacity: 0;
-        transform: translateY(30px);
-        animation: fadeInUp 0.8s ease-out 0.6s forwards;
-      }
-
-      .stat-item {
-        text-align: center;
-        padding: 20px 30px;
-        background: rgba(30, 34, 40, 0.5);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 152, 0, 0.1);
-        backdrop-filter: blur(5px);
-        transition: all 0.3s ease;
-      }
-
-      .stat-item:hover {
-        transform: translateY(-5px);
-        border-color: rgba(255, 152, 0, 0.3);
-        box-shadow: 0 10px 30px rgba(255, 152, 0, 0.1);
-      }
-
-      .stat-number {
-        font-size: 36px;
-        font-weight: 700;
-        background: linear-gradient(135deg, #ff9800, #ffb74d);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 5px;
-      }
-
-      .stat-label {
-        color: #9aa4b2;
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-      }
-
-      /* Trust indicators */
-      .trust-badges {
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        margin-top: 40px;
-        flex-wrap: wrap;
-      }
-
-      .trust-badge-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #9aa4b2;
-        font-size: 14px;
-      }
-
-      .trust-badge-item i {
-        color: #ff9800;
-        font-size: 18px;
-      }
-
-      /* Responsive */
-      @media (max-width: 768px) {
-        .trusted-title {
-          font-size: 32px;
+        .tc-badge {
+          display:inline-flex; align-items:center; gap:8px;
+          background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.3);
+          color:#a855f7; padding:6px 18px; border-radius:50px;
+          font-size:0.7rem; font-weight:700; letter-spacing:0.1em;
+          text-transform:uppercase; margin-bottom:24px;
+          position:relative; z-index:2;
+          opacity:0; transform:translateY(20px);
+          animation:tc-fadein 0.7s ease-out 0.1s forwards;
+        }
+        .tc-badge-dot {
+          width:6px;height:6px;border-radius:50%;background:#a855f7;
+          box-shadow:0 0 8px #a855f7; animation:hmt-blink 1.5s ease-in-out infinite;
+        }
+        .tc-title {
+          font-size:clamp(2rem,4vw,3rem); font-weight:800; line-height:1.2;
+          text-align:left; margin-bottom:16px; position:relative; z-index:2;
+          opacity:0; transform:translateY(20px);
+          animation:tc-fadein 0.7s ease-out 0.2s forwards;
+        }
+        .tc-title-grad {
+          background:linear-gradient(90deg,#ff7a00,#ffb347);
+          -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+        }
+        .tc-subtitle {
+          color:#6b7a99; font-size:0.95rem; line-height:1.7; margin-bottom:52px;
+          max-width:580px; position:relative; z-index:2;
+          opacity:0; transform:translateY(20px);
+          animation:tc-fadein 0.7s ease-out 0.3s forwards;
         }
 
-        .trusted-subtitle {
-          font-size: 16px;
-          padding: 0 20px;
+        /* Logo marquee */
+        .tc-marquee-wrap {
+          position:relative; overflow:hidden; padding:12px 0; z-index:2;
+          opacity:0; transform:translateY(20px);
+          animation:tc-fadein 0.7s ease-out 0.45s forwards;
+        }
+        .tc-marquee-wrap::before,.tc-marquee-wrap::after {
+          content:''; position:absolute; top:0; width:200px; height:100%;
+          z-index:3; pointer-events:none;
+        }
+        .tc-marquee-wrap::before { left:0; background:linear-gradient(to right,#060610,transparent); }
+        .tc-marquee-wrap::after  { right:0; background:linear-gradient(to left,#060610,transparent); }
+        .tc-track {
+          display:flex; gap:20px; width:max-content;
+          animation:tc-scroll 40s linear infinite; will-change:transform;
+        }
+        .tc-marquee-wrap:hover .tc-track { animation-play-state:paused; }
+        .tc-logo-card {
+          width:150px; height:80px; display:flex; align-items:center; justify-content:center;
+          background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+          border-radius:14px; position:relative; overflow:hidden;
+          transition:all 0.4s ease; flex-shrink:0;
+        }
+        .tc-logo-card::before {
+          content:''; position:absolute; inset:0;
+          background:linear-gradient(135deg,rgba(168,85,247,0.06),transparent,rgba(0,212,255,0.06));
+          opacity:0; transition:opacity 0.4s ease;
+        }
+        .tc-logo-card:hover::before { opacity:1; }
+        .tc-logo-card:hover {
+          border-color:rgba(168,85,247,0.4);
+          box-shadow:0 0 20px rgba(168,85,247,0.15);
+          transform:translateY(-4px);
+        }
+        .tc-logo-card img {
+          max-height:45px; max-width:110px; object-fit:contain;
+          filter:brightness(0.85) saturate(0.7);
+          transition:all 0.4s ease; position:relative; z-index:1;
+        }
+        .tc-logo-card:hover img {
+          filter:brightness(1.1) saturate(1.2);
+          transform:scale(1.1);
         }
 
-        .logo-item {
-          width: 130px;
-          height: 70px;
+        /* Trust pills */
+        .tc-trust-row {
+          display:flex; justify-content:center; gap:16px; flex-wrap:wrap;
+          margin-top:44px; position:relative; z-index:2;
+          opacity:0; transform:translateY(20px);
+          animation:tc-fadein 0.7s ease-out 0.6s forwards;
+        }
+        .tc-trust-pill {
+          display:flex; align-items:center; gap:8px;
+          padding:8px 20px; border-radius:40px;
+          background:rgba(255,255,255,0.03);
+          border:1px solid rgba(255,255,255,0.07);
+          color:#6b7a99; font-size:0.78rem; font-weight:600;
+          backdrop-filter:blur(6px);
+        }
+        .tc-trust-pill i { color:#ff7a00; font-size:14px; }
+
+        /* Stats */
+        .tc-stats {
+          display:grid; grid-template-columns:repeat(4,1fr); gap:16px;
+          margin-top:64px; position:relative; z-index:2;
+          opacity:0; transform:translateY(20px);
+        }
+        .tc-stats.vis { animation:tc-fadein 0.7s ease-out 0.75s forwards; }
+        .tc-stat {
+          text-align:center; padding:24px 16px;
+          background:rgba(255,255,255,0.025);
+          border:1px solid rgba(255,255,255,0.07);
+          border-radius:16px; backdrop-filter:blur(8px);
+          position:relative; overflow:hidden;
+          transition:transform 0.3s ease, border-color 0.3s ease;
+        }
+        .tc-stat:hover { transform:translateY(-5px); }
+        .tc-stat-bar { position:absolute;top:0;left:0;right:0;height:2px;border-radius:16px 16px 0 0; }
+        .tc-stat-num {
+          font-size:2rem; font-weight:900; line-height:1; margin-bottom:6px;
+        }
+        .tc-stat-lbl {
+          font-size:0.65rem; color:#4a5568; text-transform:uppercase;
+          letter-spacing:0.1em; font-weight:700;
         }
 
-        .logo-item img {
-          max-height: 35px;
-          max-width: 100px;
+        @media(max-width:768px){
+          .tc-title{text-align:center}
+          .tc-subtitle{margin:0 auto 40px; text-align:center}
+          .tc-badge{margin:0 auto 24px}
+          .tc-stats{grid-template-columns:repeat(2,1fr)}
+          .tc-logo-card{width:120px;height:65px}
+          .tc-logo-card img{max-height:35px;max-width:90px}
+          .tc-marquee-wrap::before,.tc-marquee-wrap::after{width:60px}
         }
-
-        .stats-row {
-          gap: 20px;
-          flex-wrap: wrap;
+        @media(prefers-reduced-motion:reduce){
+          .tc-track{animation:none}
+          .tc-badge,.tc-title,.tc-subtitle,.tc-marquee-wrap,.tc-trust-row,.tc-stats{animation:none;opacity:1;transform:none}
         }
-
-        .stat-item {
-          padding: 15px 20px;
-          min-width: 120px;
-        }
-
-        .logo-marquee::before,
-        .logo-marquee::after {
-          width: 80px;
-        }
-      }
-
-      /* Reduced motion */
-      @media (prefers-reduced-motion: reduce) {
-        .logo-track,
-        .particle,
-        .glow-orb,
-        .trusted-section::before {
-          animation: none;
-        }
-      }
       `}</style>
 
-      {/* Floating particles */}
-      {isVisible && [...Array(20)].map((_, i) => (
-        <div
-          key={i}
-          className="particle"
-          style={{
-            left: `${Math.random() * 100}%`,
-            animationDelay: `${Math.random() * 10}s`,
-            animationDuration: `${10 + Math.random() * 15}s`,
-          }}
-        />
-      ))}
-
-      {/* Glowing orbs */}
-      <div className="glow-orb" style={{ top: '10%', left: '5%' }} />
-      <div className="glow-orb" style={{ bottom: '10%', right: '5%', width: '400px', height: '400px' }} />
+      <div className="tc-hex" />
 
       <Container className="position-relative" style={{ zIndex: 2 }}>
-        <div className="trusted-badge">
-          <i className="bi bi-building me-2"></i>
+        <div className="tc-badge">
+          <span className="tc-badge-dot" />
           TOP COMPANIES WHERE OUR STUDENTS WORK
         </div>
 
-        <h2 className="trusted-title">
+        <h2 className="tc-title">
           Trusted By Leading{" "}
-          <span className="trusted-highlight">Companies</span>
+          <span className="tc-title-grad">Companies</span>
         </h2>
 
-        <p className="trusted-subtitle">
-          Our students have gone on to build careers at some of the world's
-          most renowned organizations. Their success is proof that the skills
-          you gain here open doors to top opportunities across the industry.
+        <p className="tc-subtitle">
+          Our students have built careers at some of the world's most renowned
+          organizations — proof that the skills you gain here open doors to top
+          opportunities across the industry.
         </p>
 
-        {/* Moving Logos */}
-        <div className="logo-marquee">
-          <div className="logo-track">
+        <div className="tc-marquee-wrap">
+          <div className="tc-track">
             {[...logos, ...logos].map((logo, i) => (
-              <div 
-                key={i} 
-                className="logo-item"
-              >
-                <img 
-                  src={logo} 
-                  alt="company logo"
-                  loading="lazy"
-                />
+              <div key={i} className="tc-logo-card">
+                <img src={logo} alt="company logo" loading="lazy" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* Trust indicators */}
-        <div className="trust-badges">
-          <div className="trust-badge-item">
-            <i className="bi bi-shield-check"></i>
-            <span>Verified Placements</span>
-          </div>
-          <div className="trust-badge-item">
-            <i className="bi bi-star-fill"></i>
-            <span>4.8/5 Rating</span>
-          </div>
-          <div className="trust-badge-item">
-            <i className="bi bi-people-fill"></i>
-            <span>5000+ Hired</span>
-          </div>
-          <div className="trust-badge-item">
-            <i className="bi bi-building"></i>
-            <span>100+ Partners</span>
-          </div>
+        <div className="tc-trust-row">
+          {[
+            { icon: "bi-shield-check", label: "Verified Placements" },
+            { icon: "bi-star-fill",    label: "4.8/5 Rating" },
+            { icon: "bi-people-fill",  label: "5000+ Hired" },
+            { icon: "bi-building",     label: "100+ Partners" },
+          ].map(({ icon, label }) => (
+            <div key={label} className="tc-trust-pill">
+              <i className={`bi ${icon}`} />
+              {label}
+            </div>
+          ))}
         </div>
 
-        {/* Stats Row */}
-        <div className="stats-row">
-          <div className="stat-item">
-            <div className="stat-number">95%</div>
-            <div className="stat-label">Placement Rate</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">50+</div>
-            <div className="stat-label">Hiring Partners</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">15LPA</div>
-            <div className="stat-label">Avg. Package</div>
-          </div>
-          <div className="stat-item">
-            <div className="stat-number">24/7</div>
-            <div className="stat-label">Support</div>
-          </div>
+        <div className={`tc-stats${isVisible ? " vis" : ""}`}>
+          {[
+            { num: "95%",   lbl: "Placement Rate", color: "#ff7a00", border: "rgba(255,122,0,0.4)" },
+            { num: "50+",   lbl: "Hiring Partners", color: "#00d4ff", border: "rgba(0,212,255,0.4)" },
+            { num: "15LPA", lbl: "Avg. Package",    color: "#a855f7", border: "rgba(168,85,247,0.4)" },
+            { num: "24/7",  lbl: "Support",         color: "#22d3ee", border: "rgba(34,211,238,0.4)" },
+          ].map(({ num, lbl, color, border }) => (
+            <div key={lbl} className="tc-stat" style={{ borderColor: border, boxShadow: `0 8px 28px ${color}14` }}>
+              <div className="tc-stat-bar" style={{ background: `linear-gradient(90deg,${color},transparent)` }} />
+              <div className="tc-stat-num" style={{ background: `linear-gradient(135deg,${color},#fff)`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{num}</div>
+              <div className="tc-stat-lbl">{lbl}</div>
+            </div>
+          ))}
         </div>
       </Container>
     </section>

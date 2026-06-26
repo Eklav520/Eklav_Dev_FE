@@ -237,7 +237,9 @@ const VideoShowcase: FC<{ tenantName: string }> = ({ tenantName }) => {
 
   return (
     <section className="video-showcase w-100">
+      <div className="vs-hex" />
       <div className="video-showcase-header">
+        <div className="vs-badge"><span className="vs-badge-dot" />PLATFORM IN ACTION</div>
         <h2>See {tenantName} in Action</h2>
         <p>
           Explore how {tenantName} helps students through these featured videos
@@ -386,7 +388,7 @@ const GlobalStyles = memo(() => (
 
       .auth-wrapper {
         min-height: 100vh;
-        background: linear-gradient(135deg, #1e2228 0%, #121417 100%);
+        background: #060610;
         color: white;
         position: relative;
         overflow-x: hidden;
@@ -441,10 +443,7 @@ const GlobalStyles = memo(() => (
       }
 
       .fixed-navigation.scrolled {
-        background: rgba(30, 34, 40, 0.95);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        background: transparent;
       }
 
       /* Content offset */
@@ -465,286 +464,171 @@ const GlobalStyles = memo(() => (
         flex-direction: column;
       }
 
-      /* Video Showcase Styles */
+      /* ── Video Showcase ── */
       .video-showcase {
         width: 100%;
-        padding: 40px 0;
+        padding: 110px 0 100px;
         position: relative;
         z-index: 2;
+        background: #060610;
+        border-top: 1px solid rgba(255,122,0,0.08);
+        border-bottom: 1px solid rgba(0,212,255,0.08);
       }
-
+      .video-showcase::before {
+        content:'';
+        position:absolute;inset:0;
+        background:
+          radial-gradient(ellipse at 10% 40%,rgba(255,122,0,0.06) 0%,transparent 55%),
+          radial-gradient(ellipse at 90% 60%,rgba(0,212,255,0.05) 0%,transparent 55%);
+        pointer-events:none;z-index:0;
+      }
+      .vs-hex {
+        position:absolute;inset:0;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='100'%3E%3Cpath d='M28 0L56 16v48L28 80 0 64V16Z' fill='none' stroke='rgba(255,122,0,0.03)' stroke-width='0.5'/%3E%3C/svg%3E");
+        background-size:56px 100px;z-index:0;pointer-events:none;
+      }
       .video-showcase-header {
         text-align: center;
-        margin-bottom: 40px;
+        margin-bottom: 48px;
+        position:relative;z-index:2;
       }
-
+      .vs-badge {
+        display:inline-flex;align-items:center;gap:8px;
+        background:rgba(255,122,0,0.1);border:1px solid rgba(255,122,0,0.3);
+        color:#ff7a00;padding:6px 18px;border-radius:50px;
+        font-size:0.7rem;font-weight:700;letter-spacing:0.1em;
+        text-transform:uppercase;margin-bottom:20px;
+      }
+      .vs-badge-dot {
+        width:6px;height:6px;border-radius:50%;background:#ff7a00;
+        box-shadow:0 0 8px #ff7a00;animation:vs-blink 1.5s ease-in-out infinite;
+      }
+      @keyframes vs-blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
       .video-showcase-header h2 {
-        font-size: 2.5rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #fff 0%, #ff9800 100%);
+        font-size: clamp(1.8rem,3.5vw,2.8rem);
+        font-weight: 800;
+        background: linear-gradient(135deg, #fff 30%, #ff7a00 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        margin-bottom: 16px;
+        margin-bottom: 14px;
       }
-
       .video-showcase-header p {
-        font-size: 1.1rem;
-        color: rgba(255, 255, 255, 0.8);
-        max-width: 600px;
+        font-size: 0.95rem;
+        color: #6b7a99;
+        max-width: 560px;
         margin: 0 auto;
+        line-height: 1.7;
       }
-
       /* Category Filters */
       .category-filters {
         display: flex;
         justify-content: center;
-        gap: 12px;
+        gap: 10px;
         margin-bottom: 40px;
         flex-wrap: wrap;
+        position:relative;z-index:2;
       }
-
       .category-btn {
-        padding: 8px 24px;
-        border: 2px solid rgba(255, 152, 0, 0.3);
-        background: transparent;
-        color: rgba(255, 255, 255, 0.7);
-        border-radius: 30px;
-        font-size: 0.95rem;
-        font-weight: 500;
+        padding: 7px 22px;
+        border: 1px solid rgba(255,122,0,0.25);
+        background: rgba(255,122,0,0.06);
+        color: #6b7a99;
+        border-radius: 40px;
+        font-size: 0.8rem;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.3s ease;
+        backdrop-filter:blur(4px);
       }
-
       .category-btn:hover {
-        border-color: #ff9800;
-        color: #fff;
+        border-color: #ff7a00;
+        color: #ff7a00;
+        background:rgba(255,122,0,0.1);
         transform: translateY(-2px);
+        box-shadow:0 4px 16px rgba(255,122,0,0.15);
       }
-
       .category-btn.active {
-        background: #ff9800;
-        border-color: #ff9800;
+        background: linear-gradient(135deg,#ff7a00,#ffb347);
+        border-color: transparent;
         color: #fff;
-        box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
+        box-shadow: 0 6px 20px rgba(255,122,0,0.35);
       }
-
       /* Video Carousel */
       .video-carousel {
         position: relative;
         width: 100%;
-        max-width: 900px;
-        margin: 0 auto 30px;
+        max-width: 860px;
+        margin: 0 auto 28px;
       }
-
-      .video-wrapper {
-        width: 100%;
-        padding: 0 15px;
-      }
-
+      .video-wrapper { width: 100%; padding: 0 12px; }
       .video-container {
         position: relative;
         border-radius: 20px;
         overflow: hidden;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 0 0 1px rgba(255,122,0,0.15), 0 24px 60px rgba(0,0,0,0.7);
         background: #000;
       }
-
       .video-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background 0.3s ease;
+        position: absolute;inset: 0;
+        background: rgba(0,0,0,0.35);
+        display: flex;align-items: center;justify-content: center;
+        cursor: pointer;transition: background 0.3s ease;backdrop-filter:blur(2px);
       }
-
-      .video-overlay:hover {
-        background: rgba(0, 0, 0, 0.5);
-      }
-
-      .play-button {
-        animation: pulse 2s infinite;
-      }
-
-      @keyframes pulse {
-        0% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.1);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-
-      .video-content {
-        text-align: center;
-        margin-top: 20px;
-      }
-
-      .video-title {
-        font-size: 1.5rem;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 8px;
-      }
-
-      .video-description {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 1rem;
-        line-height: 1.6;
-        max-width: 600px;
-        margin: 0 auto 12px;
-      }
-
-      .video-meta {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 20px;
-        flex-wrap: wrap;
-      }
-
+      .video-overlay:hover { background: rgba(0,0,0,0.5); }
+      .play-button { animation: vs-pulse 2s ease-in-out infinite; }
+      @keyframes vs-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+      .video-content { text-align: center;margin-top: 24px;position:relative;z-index:2; }
+      .video-title { font-size: 1.35rem;font-weight: 700;color: #fff;margin-bottom: 8px; }
+      .video-description { color: #6b7a99;font-size: 0.9rem;line-height: 1.6;max-width: 560px;margin: 0 auto 12px; }
+      .video-meta { display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap; }
       .video-category {
-        padding: 4px 12px;
-        background: rgba(255, 152, 0, 0.2);
-        color: #ff9800;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 500;
+        padding:4px 14px;background:rgba(255,122,0,0.12);color:#ff7a00;
+        border-radius:20px;font-size:0.78rem;font-weight:600;border:1px solid rgba(255,122,0,0.25);
       }
-
-      .video-stats {
-        display: flex;
-        gap: 16px;
-        color: #9aa4b2;
-        font-size: 0.9rem;
-      }
-
-      .video-stats span {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
+      .video-stats { display:flex;gap:14px;color:#4a5568;font-size:0.82rem; }
+      .video-stats span { display:flex;align-items:center;gap:4px; }
       /* Carousel Controls */
-      .carousel-control-prev,
-      .carousel-control-next {
-        width: 48px;
-        height: 48px;
-        background: rgba(255, 152, 0, 0.2);
-        border-radius: 50%;
-        top: 40%;
-        transform: translateY(-50%);
-        opacity: 0.8;
-        backdrop-filter: blur(5px);
-        border: 1px solid rgba(255, 152, 0, 0.3);
-        transition: all 0.3s ease;
+      .carousel-control-prev,.carousel-control-next {
+        width:44px;height:44px;background:rgba(255,122,0,0.12);border-radius:50%;
+        top:40%;transform:translateY(-50%);opacity:0.9;backdrop-filter:blur(8px);
+        border:1px solid rgba(255,122,0,0.3);transition:all 0.3s ease;
       }
-
-      .carousel-control-prev {
-        left: -60px;
+      .carousel-control-prev { left:-56px; }
+      .carousel-control-next { right:-56px; }
+      .carousel-control-prev:hover,.carousel-control-next:hover {
+        background:rgba(255,122,0,0.3);box-shadow:0 0 16px rgba(255,122,0,0.3);
+        opacity:1;transform:translateY(-50%) scale(1.1);
       }
-
-      .carousel-control-next {
-        right: -60px;
-      }
-
-      .carousel-control-prev:hover,
-      .carousel-control-next:hover {
-        background: rgba(255, 152, 0, 0.4);
-        opacity: 1;
-        transform: translateY(-50%) scale(1.1);
-      }
-
-      .carousel-indicators {
-        margin-bottom: -30px;
-      }
-
+      .carousel-indicators { margin-bottom:-28px; }
       .carousel-indicators [data-bs-target] {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: #9aa4b2;
-        border: none;
-        margin: 0 6px;
-        transition: all 0.3s ease;
+        width:8px;height:8px;border-radius:50%;
+        background-color:rgba(255,255,255,0.2);border:none;margin:0 5px;transition:all 0.3s ease;
       }
-
-      .carousel-indicators .active {
-        background-color: #ff9800;
-        transform: scale(1.3);
-      }
-
+      .carousel-indicators .active { background-color:#ff7a00;transform:scale(1.4);box-shadow:0 0 8px #ff7a00; }
       /* Video Thumbnails */
       .video-thumbnails {
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-        margin-top: 50px;
-        flex-wrap: wrap;
-        padding: 0 15px;
+        display:flex;justify-content:center;gap:12px;margin-top:50px;
+        flex-wrap:wrap;padding:0 12px;position:relative;z-index:2;
       }
-
       .video-thumb {
-        width: 120px;
-        height: 68px;
-        border-radius: 8px;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-        border: 2px solid transparent;
-        transition: all 0.3s ease;
-        background-size: cover;
-        background-position: center;
-        background-color: #2a2f38;
+        width:120px;height:68px;border-radius:10px;cursor:pointer;position:relative;
+        overflow:hidden;border:1px solid rgba(255,255,255,0.08);transition:all 0.3s ease;
+        background-size:cover;background-position:center;background-color:#0d0d1a;
       }
-
       .video-thumb.active {
-        border-color: #ff9800;
-        transform: translateY(-4px) scale(1.05);
-        box-shadow: 0 10px 20px rgba(255, 152, 0, 0.3);
+        border-color:#ff7a00;transform:translateY(-4px) scale(1.05);
+        box-shadow:0 8px 24px rgba(255,122,0,0.35);
       }
-
       .thumb-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(to top, rgba(0,0,0,0.7), rgba(0,0,0,0.3));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0.8;
-        transition: opacity 0.3s ease;
+        position:absolute;inset:0;
+        background:linear-gradient(to top,rgba(0,0,0,0.75),rgba(0,0,0,0.25));
+        display:flex;align-items:center;justify-content:center;opacity:0.8;transition:opacity 0.3s ease;
       }
-
-      .video-thumb:hover .thumb-overlay {
-        opacity: 1;
-      }
-
-      .thumb-overlay i {
-        color: #ff9800;
-        font-size: 24px;
-        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-      }
-
+      .video-thumb:hover .thumb-overlay { opacity:1; }
+      .thumb-overlay i { color:#ff7a00;font-size:22px;filter:drop-shadow(0 0 6px #ff7a00); }
       .thumb-duration {
-        position: absolute;
-        bottom: 4px;
-        right: 4px;
-        background: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        font-size: 10px;
-        padding: 2px 4px;
-        border-radius: 4px;
+        position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.85);
+        color:#ccc;font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;
       }
 
       /* Hero Moving Topics */
@@ -1092,8 +976,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <About onStartJourneyClick={() => handleOpen("signin")} />
 
           {/* Main Row - Full height */}
-          <Row className="g-0 mx-0 min-vh-100">
-            {/* Left Section - Branding & Media */}
+          {/* <Row className="g-0 mx-0 min-vh-100">
             <Col
               xs={12}
               lg={12}
@@ -1101,7 +984,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
             >
               <VideoShowcase tenantName={tenantName} />
             </Col>
-          </Row>
+          </Row> */}
 
           {/* Footer Components - Full width */}
           <div className="w-100">
