@@ -280,24 +280,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                   </div>
                 </div>
 
-                {/* Bottom bar: students + HUD */}
-                <div className="holo-bottom-bar">
-                  <div className="holo-avatars-row">
-                    {students.map((s, i) => <img key={i} src={s} alt="" className="holo-avatar" />)}
-                    <div className="holo-avatar holo-avatar-count">1K+</div>
-                    <span className="holo-live-label"><span className="live-dot" />Daily New Students</span>
-                  </div>
-                  <div className="holo-hud-tags">
-                    <span className="holo-hud-tag">◉ EKALAVYA v2.0</span>
-                    <span className="holo-hud-tag" style={{ color: "#00d4ff" }}>◉ MATRIX ACTIVE</span>
-                  </div>
-                </div>
 
-                {/* Corner brackets */}
-                <div className="holo-corner holo-tl" />
-                <div className="holo-corner holo-tr" />
-                <div className="holo-corner holo-bl" />
-                <div className="holo-corner holo-br" />
               </div>
             </Col>
           </Row>
