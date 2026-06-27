@@ -144,6 +144,34 @@ const CourseMarquee = () => {
   );
 };
 
+/* ── Typewriter ── */
+const TypewriterText = ({ text }: { text: string }) => {
+  const [displayed, setDisplayed] = useState('');
+  const [phase, setPhase] = useState<'typing' | 'hold' | 'erasing' | 'wait'>('typing');
+
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout>;
+    if (phase === 'typing') {
+      if (displayed.length < text.length) {
+        t = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), 110);
+      } else {
+        t = setTimeout(() => setPhase('hold'), 2200);
+      }
+    } else if (phase === 'hold') {
+      t = setTimeout(() => setPhase('erasing'), 0);
+    } else if (phase === 'erasing') {
+      if (displayed.length > 0) {
+        t = setTimeout(() => setDisplayed(text.slice(0, displayed.length - 1)), 70);
+      } else {
+        t = setTimeout(() => setPhase('typing'), 600);
+      }
+    }
+    return () => clearTimeout(t);
+  }, [displayed, phase, text]);
+
+  return <>{displayed}<span className="tw-cursor">|</span></>;
+};
+
 /* ── Main About ── */
 const About = ({ onStartJourneyClick }: AboutProps) => {
   const navigate = useNavigate();
@@ -193,7 +221,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
               <h1 className="neo-title">
                 About{" "}
                 <span className="neo-gradient-text">
-                  {first2}{rest}
+                  <TypewriterText text={normalized} />
                 </span>
               </h1>
 
