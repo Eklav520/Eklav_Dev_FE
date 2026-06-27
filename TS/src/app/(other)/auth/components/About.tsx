@@ -183,7 +183,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
           <Row className="align-items-center g-4">
 
             {/* Left: Text */}
-            <Col lg={4} xl={4} className="neo-hero-left">
+            <Col lg={5} xl={5} className="neo-hero-left">
               <div className="neo-badge">
                 <span className="neo-badge-dot" />
                 Next-Gen E-Learning Platform
@@ -232,7 +232,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
             </Col>
 
             {/* Right: Holographic Universe */}
-            <Col lg={8} xl={8} className="neo-hero-right">
+            <Col lg={7} xl={7} className="neo-hero-right">
               <div className="holo-display">
 
                 {/* Hex grid background */}
@@ -241,13 +241,13 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 {/* Radial glow backdrop */}
                 <div className="holo-radial-glow" />
 
-                {/* Universe elliptical orbit SVG lines — viewBox matches 960×560 px design space */}
+                {/* Solar system orbit SVG lines — all tilt=-10°, same plane perspective */}
                 <svg className="universe-svg" viewBox="0 0 960 560" xmlns="http://www.w3.org/2000/svg">
-                  <ellipse cx="480" cy="246" rx="154" ry="62"  transform="rotate(20,  480, 246)" fill="none" stroke="rgba(255,122,0,0.32)"  strokeWidth="1" strokeDasharray="5,3"/>
-                  <ellipse cx="480" cy="246" rx="246" ry="108" transform="rotate(-12, 480, 246)" fill="none" stroke="rgba(0,212,255,0.24)"  strokeWidth="1"/>
-                  <ellipse cx="480" cy="246" rx="332" ry="152" transform="rotate(25,  480, 246)" fill="none" stroke="rgba(168,85,247,0.2)"  strokeWidth="1" strokeDasharray="7,4"/>
-                  <ellipse cx="480" cy="246" rx="400" ry="175" transform="rotate(-18, 480, 246)" fill="none" stroke="rgba(34,211,238,0.16)" strokeWidth="1"/>
-                  <ellipse cx="480" cy="246" rx="453" ry="200" transform="rotate(8,   480, 246)" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="3,6"/>
+                  <ellipse cx="480" cy="246" rx="150" ry="70"  transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(255,180,0,0.45)"   strokeWidth="1.2"/>
+                  <ellipse cx="480" cy="246" rx="235" ry="110" transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(255,122,0,0.35)"   strokeWidth="1"/>
+                  <ellipse cx="480" cy="246" rx="320" ry="150" transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(0,212,255,0.28)"   strokeWidth="1" strokeDasharray="6,4"/>
+                  <ellipse cx="480" cy="246" rx="400" ry="188" transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(168,85,247,0.22)"  strokeWidth="1"/>
+                  <ellipse cx="480" cy="246" rx="445" ry="210" transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" strokeDasharray="3,7"/>
                 </svg>
 
                 {/* Orbit 1 */}

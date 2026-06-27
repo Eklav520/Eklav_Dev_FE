@@ -85,10 +85,10 @@
 /* ══ HERO SECTION ══ */
 .neo-hero {
   position: relative;
-  min-height: auto;
+  min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 32px 0 40px;
+  padding: 0;
   background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(168,85,247,0.08) 0%, transparent 60%),
               radial-gradient(ellipse 50% 40% at 90% 50%, rgba(0,212,255,0.06) 0%, transparent 50%),
               radial-gradient(ellipse 40% 50% at 10% 60%, rgba(255,122,0,0.06) 0%, transparent 50%),
@@ -275,70 +275,70 @@
 @keyframes atm-spin-r  { from{transform:rotate(0deg)}  to{transform:rotate(-360deg)} }
 @keyframes live-blink  { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-/* Elliptical planet orbit keyframes — sized for 960 px wide display */
-/* Orbit 1: rx=154 ry=62 tilt=20° */
+/* Solar-system orbit keyframes — all tilt=-10° same plane, 960px display */
+/* Orbit 1: rx=150 ry=70 tilt=-10° */
 @keyframes univ-o1 {
-  0%   {transform:translate(calc(-50% + 144.7px),calc(-50% + 52.7px))}
-  8.3% {transform:translate(calc(-50% + 114.8px),calc(-50% + 74.7px))}
-  16.7%{transform:translate(calc(-50% + 54.0px), calc(-50% + 76.8px))}
-  25%  {transform:translate(calc(-50% - 21.2px), calc(-50% + 58.3px))}
-  33.3%{transform:translate(calc(-50% - 90.8px), calc(-50% + 24.2px))}
-  41.7%{transform:translate(calc(-50% - 136.0px),calc(-50% - 16.5px))}
-  50%  {transform:translate(calc(-50% - 144.7px),calc(-50% - 52.7px))}
-  58.3%{transform:translate(calc(-50% - 114.8px),calc(-50% - 74.7px))}
-  66.7%{transform:translate(calc(-50% - 54.0px), calc(-50% - 76.8px))}
-  75%  {transform:translate(calc(-50% + 21.2px), calc(-50% - 58.3px))}
-  83.3%{transform:translate(calc(-50% + 90.8px), calc(-50% - 24.2px))}
-  91.7%{transform:translate(calc(-50% + 136.0px),calc(-50% + 16.5px))}
-  100% {transform:translate(calc(-50% + 144.7px),calc(-50% + 52.7px))}
+  0%   {transform:translate(calc(-50% + 147.7px),calc(-50% - 26.0px))}
+  8.3% {transform:translate(calc(-50% + 134.0px),calc(-50% + 12.0px))}
+  16.7%{transform:translate(calc(-50% + 84.5px), calc(-50% + 46.7px))}
+  25%  {transform:translate(calc(-50% + 12.2px), calc(-50% + 68.9px))}
+  33.3%{transform:translate(calc(-50% - 63.3px), calc(-50% + 72.7px))}
+  41.7%{transform:translate(calc(-50% - 121.8px),calc(-50% + 57.0px))}
+  50%  {transform:translate(calc(-50% - 147.7px),calc(-50% + 26.0px))}
+  58.3%{transform:translate(calc(-50% - 134.0px),calc(-50% - 12.0px))}
+  66.7%{transform:translate(calc(-50% - 84.5px), calc(-50% - 46.7px))}
+  75%  {transform:translate(calc(-50% - 12.2px), calc(-50% - 68.9px))}
+  83.3%{transform:translate(calc(-50% + 63.3px), calc(-50% - 72.7px))}
+  91.7%{transform:translate(calc(-50% + 121.8px),calc(-50% - 57.0px))}
+  100% {transform:translate(calc(-50% + 147.7px),calc(-50% - 26.0px))}
 }
-/* Orbit 2: rx=246 ry=108 tilt=-12° */
+/* Orbit 2: rx=235 ry=110 tilt=-10° */
 @keyframes univ-o2 {
-  0%   {transform:translate(calc(-50% + 240.6px),calc(-50% - 51.1px))}
-  8.3% {transform:translate(calc(-50% + 219.6px),calc(-50% + 8.5px))}
-  16.7%{transform:translate(calc(-50% + 139.7px),calc(-50% + 66.0px))}
-  25%  {transform:translate(calc(-50% + 22.5px), calc(-50% + 105.6px))}
-  33.3%{transform:translate(calc(-50% - 100.9px),calc(-50% + 117.2px))}
-  41.7%{transform:translate(calc(-50% - 197.2px),calc(-50% + 97.1px))}
-  50%  {transform:translate(calc(-50% - 240.6px),calc(-50% + 51.1px))}
-  58.3%{transform:translate(calc(-50% - 219.6px),calc(-50% - 8.5px))}
-  66.7%{transform:translate(calc(-50% - 139.7px),calc(-50% - 66.0px))}
-  75%  {transform:translate(calc(-50% - 22.5px), calc(-50% - 105.6px))}
-  83.3%{transform:translate(calc(-50% + 100.9px),calc(-50% - 117.2px))}
-  91.7%{transform:translate(calc(-50% + 197.2px),calc(-50% - 97.1px))}
-  100% {transform:translate(calc(-50% + 240.6px),calc(-50% - 51.1px))}
+  0%   {transform:translate(calc(-50% + 231.4px),calc(-50% - 40.8px))}
+  8.3% {transform:translate(calc(-50% + 210.0px),calc(-50% + 18.9px))}
+  16.7%{transform:translate(calc(-50% + 132.2px),calc(-50% + 73.4px))}
+  25%  {transform:translate(calc(-50% + 19.1px), calc(-50% + 108.3px))}
+  33.3%{transform:translate(calc(-50% - 99.2px), calc(-50% + 114.2px))}
+  41.7%{transform:translate(calc(-50% - 190.8px),calc(-50% + 89.5px))}
+  50%  {transform:translate(calc(-50% - 231.4px),calc(-50% + 40.8px))}
+  58.3%{transform:translate(calc(-50% - 210.0px),calc(-50% - 18.9px))}
+  66.7%{transform:translate(calc(-50% - 132.2px),calc(-50% - 73.4px))}
+  75%  {transform:translate(calc(-50% - 19.1px), calc(-50% - 108.3px))}
+  83.3%{transform:translate(calc(-50% + 99.2px), calc(-50% - 114.2px))}
+  91.7%{transform:translate(calc(-50% + 190.8px),calc(-50% - 89.5px))}
+  100% {transform:translate(calc(-50% + 231.4px),calc(-50% - 40.8px))}
 }
-/* Orbit 3: rx=332 ry=152 tilt=25° */
+/* Orbit 3: rx=320 ry=150 tilt=-10° */
 @keyframes univ-o3 {
-  0%   {transform:translate(calc(-50% + 300.9px),calc(-50% + 140.3px))}
-  8.3% {transform:translate(calc(-50% + 228.4px),calc(-50% + 190.4px))}
-  16.7%{transform:translate(calc(-50% + 94.7px), calc(-50% + 189.4px))}
-  25%  {transform:translate(calc(-50% - 64.2px), calc(-50% + 137.8px))}
-  33.3%{transform:translate(calc(-50% - 206.1px),calc(-50% + 49.2px))}
-  41.7%{transform:translate(calc(-50% - 292.6px),calc(-50% - 52.6px))}
-  50%  {transform:translate(calc(-50% - 300.9px),calc(-50% - 140.3px))}
-  58.3%{transform:translate(calc(-50% - 228.4px),calc(-50% - 190.4px))}
-  66.7%{transform:translate(calc(-50% - 94.7px), calc(-50% - 189.4px))}
-  75%  {transform:translate(calc(-50% + 64.2px), calc(-50% - 137.8px))}
-  83.3%{transform:translate(calc(-50% + 206.1px),calc(-50% - 49.2px))}
-  91.7%{transform:translate(calc(-50% + 292.6px),calc(-50% + 52.6px))}
-  100% {transform:translate(calc(-50% + 300.9px),calc(-50% + 140.3px))}
+  0%   {transform:translate(calc(-50% + 315.1px),calc(-50% - 55.6px))}
+  8.3% {transform:translate(calc(-50% + 285.9px),calc(-50% + 25.7px))}
+  16.7%{transform:translate(calc(-50% + 180.1px),calc(-50% + 100.1px))}
+  25%  {transform:translate(calc(-50% + 26.0px), calc(-50% + 147.7px))}
+  33.3%{transform:translate(calc(-50% - 135.1px),calc(-50% + 155.7px))}
+  41.7%{transform:translate(calc(-50% - 259.9px),calc(-50% + 122.1px))}
+  50%  {transform:translate(calc(-50% - 315.1px),calc(-50% + 55.6px))}
+  58.3%{transform:translate(calc(-50% - 285.9px),calc(-50% - 25.7px))}
+  66.7%{transform:translate(calc(-50% - 180.1px),calc(-50% - 100.1px))}
+  75%  {transform:translate(calc(-50% - 26.0px), calc(-50% - 147.7px))}
+  83.3%{transform:translate(calc(-50% + 135.1px),calc(-50% - 155.7px))}
+  91.7%{transform:translate(calc(-50% + 259.9px),calc(-50% - 122.1px))}
+  100% {transform:translate(calc(-50% + 315.1px),calc(-50% - 55.6px))}
 }
-/* Orbit 4: rx=400 ry=175 tilt=-18° */
+/* Orbit 4: rx=400 ry=188 tilt=-10° */
 @keyframes univ-o4 {
-  0%   {transform:translate(calc(-50% + 380.4px),calc(-50% - 123.6px))}
-  8.3% {transform:translate(calc(-50% + 356.5px),calc(-50% - 23.9px))}
-  16.7%{transform:translate(calc(-50% + 237.0px),calc(-50% + 82.4px))}
-  25%  {transform:translate(calc(-50% + 54.1px), calc(-50% + 166.4px))}
-  33.3%{transform:translate(calc(-50% - 143.4px),calc(-50% + 206.0px))}
-  41.7%{transform:translate(calc(-50% - 302.5px),calc(-50% + 190.3px))}
-  50%  {transform:translate(calc(-50% - 380.4px),calc(-50% + 123.6px))}
-  58.3%{transform:translate(calc(-50% - 356.5px),calc(-50% + 23.9px))}
-  66.7%{transform:translate(calc(-50% - 237.0px),calc(-50% - 82.4px))}
-  75%  {transform:translate(calc(-50% - 54.1px), calc(-50% - 166.4px))}
-  83.3%{transform:translate(calc(-50% + 143.4px),calc(-50% - 206.0px))}
-  91.7%{transform:translate(calc(-50% + 302.5px),calc(-50% - 190.3px))}
-  100% {transform:translate(calc(-50% + 380.4px),calc(-50% - 123.6px))}
+  0%   {transform:translate(calc(-50% + 393.9px),calc(-50% - 69.4px))}
+  8.3% {transform:translate(calc(-50% + 357.4px),calc(-50% + 32.5px))}
+  16.7%{transform:translate(calc(-50% + 225.2px),calc(-50% + 125.6px))}
+  25%  {transform:translate(calc(-50% + 32.6px), calc(-50% + 185.1px))}
+  33.3%{transform:translate(calc(-50% - 168.8px),calc(-50% + 195.0px))}
+  41.7%{transform:translate(calc(-50% - 324.8px),calc(-50% + 152.7px))}
+  50%  {transform:translate(calc(-50% - 393.9px),calc(-50% + 69.4px))}
+  58.3%{transform:translate(calc(-50% - 357.4px),calc(-50% - 32.5px))}
+  66.7%{transform:translate(calc(-50% - 225.2px),calc(-50% - 125.6px))}
+  75%  {transform:translate(calc(-50% - 32.6px), calc(-50% - 185.1px))}
+  83.3%{transform:translate(calc(-50% + 168.8px),calc(-50% - 195.0px))}
+  91.7%{transform:translate(calc(-50% + 324.8px),calc(-50% - 152.7px))}
+  100% {transform:translate(calc(-50% + 393.9px),calc(-50% - 69.4px))}
 }
 
 /* ── Display panel ── */
@@ -347,7 +347,7 @@
   width: 100%;
   max-width: 960px;
   margin: 0 auto;
-  height: 560px;
+  height: 500px;
   border-radius: 20px;
   background: #060610;
   border: 1px solid rgba(0,212,255,0.15);
@@ -365,14 +365,22 @@
   z-index: 0;
 }
 
-/* Radial glow */
+/* Radial glow — full-display sun illumination */
 .holo-radial-glow {
   position: absolute;
-  top: 44%; left: 50%;
-  transform: translate(-50%,-50%);
-  width: 680px; height: 680px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255,122,0,0.1) 0%, rgba(168,85,247,0.04) 45%, transparent 70%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse 70% 80% at 50% 44%,
+      rgba(255,190,0,0.75)  0%,
+      rgba(255,140,0,0.62) 10%,
+      rgba(255,100,0,0.48) 22%,
+      rgba(220,65,0,0.32)  38%,
+      rgba(150,30,0,0.16)  55%,
+      rgba(80,10,0,0.06)   68%,
+      transparent          80%);
   pointer-events: none;
   z-index: 0;
 }
@@ -460,23 +468,27 @@
   gap: 10px;
   z-index: 3;
 }
-.orb-atm { position:absolute; border-radius:50%; pointer-events:none; }
-.orb-atm-1 { width:200px; height:200px; border:1px solid rgba(255,122,0,0.12); background:radial-gradient(ellipse at center,rgba(255,122,0,0.07) 0%,transparent 70%); animation:orb-breathe 3s ease-in-out infinite; }
-.orb-atm-2 { width:155px; height:155px; border:1px solid rgba(255,122,0,0.2); background:radial-gradient(ellipse at 40% 35%,rgba(255,122,0,0.12),transparent 70%); animation:atm-spin 18s linear infinite; }
-.orb-atm-3 { width:120px; height:120px; border:1px solid rgba(255,200,100,0.3); background:radial-gradient(ellipse at 60% 60%,rgba(255,160,50,0.15),transparent 70%); animation:atm-spin-r 10s linear infinite; }
+.orb-atm { display:none; }
 .orb-core {
   position:relative; width:116px; height:116px; border-radius:50%;
-  background:radial-gradient(ellipse at 35% 30%,#1e0800,#050008);
-  border:2px solid rgba(255,140,30,0.6);
+  background:radial-gradient(ellipse at 38% 32%, #fff5c0 0%, #ffcc00 15%, #ff8800 40%, #ff4400 68%, #dd2200 100%);
+  border:2px solid rgba(255,180,60,0.8);
+  box-shadow:
+    0 0 50px  rgba(255,160,0,1),
+    0 0 100px rgba(255,120,0,0.85),
+    0 0 180px rgba(255,80,0,0.6),
+    0 0 280px rgba(220,50,0,0.35),
+    0 0 400px rgba(180,20,0,0.15),
+    inset 0 0 30px rgba(255,220,80,0.4);
   display:flex; align-items:center; justify-content:center;
   z-index:1;
-  box-shadow:0 0 24px rgba(255,122,0,0.45),inset 0 0 24px rgba(255,122,0,0.1);
   overflow:hidden;
 }
 .orb-logo {
   width: 78px;
   height: auto;
   object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0,0,0,0.8)) drop-shadow(0 2px 4px rgba(0,0,0,0.9));
   filter: drop-shadow(0 0 6px rgba(255,122,0,0.5));
   position: relative;
   z-index: 1;
@@ -759,7 +771,7 @@
   .neo-features-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 992px) {
-  .neo-hero { padding: 80px 0 50px; min-height: auto; }
+  .neo-hero { padding: 60px 0 40px; min-height: 100vh; }
   .neo-features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
