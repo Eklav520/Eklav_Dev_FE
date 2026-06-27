@@ -23,6 +23,7 @@
 @keyframes fFade   { 0%,100%{opacity:.15} 50%{opacity:1} }
 @keyframes fBar    { 0%,100%{transform:scaleY(.35)} 50%{transform:scaleY(1)} }
 @keyframes fCheckLoop { 0%{stroke-dashoffset:26} 35%{stroke-dashoffset:0} 70%{stroke-dashoffset:0} 100%{stroke-dashoffset:26} }
+@keyframes fScan { 0%,100%{transform:translateY(-8px);opacity:0} 30%{opacity:.7} 50%{transform:translateY(8px);opacity:.7} 80%{opacity:0} }
 
 /* ── New keyframes ── */
 @keyframes float-slow {
@@ -395,46 +396,119 @@
 }
 
 /* ── Planet capsules (feature icons on elliptical orbits) ── */
+/* ══════════════════════════════
+   GLASSY PLANET SYSTEM
+══════════════════════════════ */
 .univ-planet {
   position: absolute;
   top: 44%;
   left: 50%;
+  border-radius: 50%;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
-  padding: 5px 7px 4px;
-  border-radius: 10px;
-  backdrop-filter: blur(16px);
-  border: 1px solid;
-  min-width: 46px;
+  justify-content: center;
   pointer-events: none;
   z-index: 3;
-}
-.univ-planet svg { width: 15px; height: 15px; flex-shrink: 0; }
-.sat-label {
-  font-size: 0.38rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  line-height: 1;
-  opacity: 0.85;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
-/* Planet color themes */
-.si-orange { background:rgba(255,122,0,0.13);  border-color:rgba(255,122,0,0.45);  color:#ff7a00; box-shadow:0 0 16px rgba(255,122,0,0.35),inset 0 0 10px rgba(255,122,0,0.08); }
-.si-cyan   { background:rgba(0,212,255,0.11);  border-color:rgba(0,212,255,0.42);  color:#00d4ff; box-shadow:0 0 16px rgba(0,212,255,0.3),inset 0 0 10px rgba(0,212,255,0.07); }
-.si-purple { background:rgba(168,85,247,0.13); border-color:rgba(168,85,247,0.42); color:#a855f7; box-shadow:0 0 16px rgba(168,85,247,0.32),inset 0 0 10px rgba(168,85,247,0.08); }
-.si-teal   { background:rgba(34,211,238,0.11); border-color:rgba(34,211,238,0.38); color:#22d3ee; box-shadow:0 0 16px rgba(34,211,238,0.28),inset 0 0 10px rgba(34,211,238,0.07); }
-.si-green  { background:rgba(16,185,129,0.12); border-color:rgba(16,185,129,0.42); color:#10b981; box-shadow:0 0 16px rgba(16,185,129,0.3),inset 0 0 10px rgba(16,185,129,0.07); }
-.si-yellow { background:rgba(245,158,11,0.12); border-color:rgba(245,158,11,0.42); color:#f59e0b; box-shadow:0 0 16px rgba(245,158,11,0.32),inset 0 0 10px rgba(245,158,11,0.08); }
-.si-pink   { background:rgba(236,72,153,0.12); border-color:rgba(236,72,153,0.42); color:#ec4899; box-shadow:0 0 16px rgba(236,72,153,0.3),inset 0 0 10px rgba(236,72,153,0.07); }
-.si-indigo { background:rgba(129,140,248,0.12);border-color:rgba(129,140,248,0.4); color:#818cf8; box-shadow:0 0 16px rgba(129,140,248,0.3),inset 0 0 10px rgba(129,140,248,0.07); }
-.si-red    { background:rgba(244,63,94,0.12);  border-color:rgba(244,63,94,0.42);  color:#f43f5e; box-shadow:0 0 16px rgba(244,63,94,0.3),inset 0 0 10px rgba(244,63,94,0.07); }
-.si-lime   { background:rgba(132,204,22,0.11); border-color:rgba(132,204,22,0.4);  color:#84cc16; box-shadow:0 0 16px rgba(132,204,22,0.28),inset 0 0 10px rgba(132,204,22,0.07); }
-.si-amber  { background:rgba(251,146,60,0.12); border-color:rgba(251,146,60,0.42); color:#fb923c; box-shadow:0 0 16px rgba(251,146,60,0.3),inset 0 0 10px rgba(251,146,60,0.07); }
-.si-sky    { background:rgba(56,189,248,0.11); border-color:rgba(56,189,248,0.4);  color:#38bdf8; box-shadow:0 0 16px rgba(56,189,248,0.28),inset 0 0 10px rgba(56,189,248,0.07); }
+/* Glass crescent highlight — top-left refraction */
+.univ-planet::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 48% 36% at 24% 18%, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0.15) 40%, transparent 68%),
+    radial-gradient(ellipse 20% 14% at 78% 82%, rgba(255,255,255,0.1) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* Icon */
+.univ-planet svg {
+  width: 42%;
+  height: 42%;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+  filter: drop-shadow(0 0 3px rgba(0,0,0,0.7));
+}
+
+/* Label */
+.sat-label {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.35rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(220,235,255,0.85);
+  text-shadow: 0 0 8px rgba(0,0,0,1);
+  z-index: 5;
+}
+
+/* Planet sizes */
+.psz-sm { width: 34px;  height: 34px; }
+.psz-md { width: 46px;  height: 46px; }
+.psz-lg { width: 58px;  height: 58px; }
+
+/* ── Rings ── */
+.planet-saturn::before {
+  content: '';
+  position: absolute;
+  width: 220%; height: 100%;
+  border-radius: 50%;
+  border: 2px solid rgba(60,220,110,0.32);
+  box-shadow: 0 0 8px rgba(60,220,110,0.18);
+  top: 0; left: 50%;
+  transform: translateX(-50%) scaleY(0.18) rotate(-10deg);
+  pointer-events: none; z-index: -1;
+}
+.planet-ringed::before {
+  content: '';
+  position: absolute;
+  width: 190%; height: 100%;
+  border-radius: 50%;
+  border: 1.5px solid rgba(251,180,60,0.28);
+  box-shadow: 0 0 6px rgba(251,180,60,0.16);
+  top: 0; left: 50%;
+  transform: translateX(-50%) scaleY(0.2) rotate(15deg);
+  pointer-events: none; z-index: -1;
+}
+
+/* ═══════════════════════════════════════
+   GLASSY ATOMIC GRADIENTS
+   Layers (back→front):
+   1. Deep glowing nucleus (bright core)
+   2. Atomic shell rings (lighter bands)
+   3. Translucent glass skin (fades at edge)
+   4. Shadow side (inset dark)
+   ::after handles glass highlight
+═══════════════════════════════════════ */
+
+/* ══════════════════════════════════════
+   TRUE GLASSY PLANET COLORS
+   Formula: nearly-transparent fill +
+   bright colored border + inner+outer glow
+   → looks like a lit glass orb in space
+══════════════════════════════════════ */
+.si-orange { background:rgba(255,100,0,0.08);  border:1.5px solid rgba(255,120,0,0.55);  color:#ff7a00; box-shadow:0 0 22px rgba(255,100,0,0.5), 0 0 50px rgba(255,70,0,0.16), inset 0 0 18px rgba(255,120,0,0.14); }
+.si-lime   { background:rgba(120,220,0,0.08);  border:1.5px solid rgba(140,230,0,0.5);   color:#84cc16; box-shadow:0 0 22px rgba(120,220,0,0.45),0 0 50px rgba(80,180,0,0.14),  inset 0 0 18px rgba(140,230,0,0.12); }
+.si-cyan   { background:rgba(0,180,230,0.08);  border:1.5px solid rgba(0,210,255,0.52);  color:#00d4ff; box-shadow:0 0 22px rgba(0,180,240,0.5), 0 0 50px rgba(0,140,210,0.16), inset 0 0 18px rgba(0,210,255,0.14); }
+.si-pink   { background:rgba(220,30,130,0.08); border:1.5px solid rgba(240,50,160,0.52); color:#ec4899; box-shadow:0 0 22px rgba(220,40,150,0.48),0 0 50px rgba(180,20,110,0.15),inset 0 0 18px rgba(240,60,170,0.13); }
+.si-yellow { background:rgba(220,160,0,0.08);  border:1.5px solid rgba(245,190,0,0.52);  color:#f59e0b; box-shadow:0 0 22px rgba(220,170,0,0.48),0 0 50px rgba(180,130,0,0.15),  inset 0 0 18px rgba(245,200,0,0.13); }
+.si-purple { background:rgba(130,30,230,0.09); border:1.5px solid rgba(168,85,247,0.55); color:#a855f7; box-shadow:0 0 22px rgba(150,40,240,0.5), 0 0 50px rgba(110,20,200,0.16), inset 0 0 18px rgba(180,80,255,0.14); }
+.si-red    { background:rgba(210,15,0,0.08);   border:1.5px solid rgba(240,40,20,0.52);  color:#f43f5e; box-shadow:0 0 22px rgba(220,20,0,0.48),  0 0 50px rgba(170,10,0,0.15),  inset 0 0 18px rgba(255,50,20,0.13); }
+.si-sky    { background:rgba(30,140,220,0.08); border:1.5px solid rgba(56,189,248,0.52); color:#38bdf8; box-shadow:0 0 22px rgba(40,160,230,0.48),0 0 50px rgba(20,120,200,0.15), inset 0 0 18px rgba(80,200,255,0.13); }
+.si-teal   { background:rgba(0,180,160,0.08);  border:1.5px solid rgba(0,210,190,0.52);  color:#22d3ee; box-shadow:0 0 22px rgba(0,200,180,0.48),  0 0 50px rgba(0,160,150,0.15), inset 0 0 18px rgba(0,230,210,0.13); }
+.si-indigo { background:rgba(60,80,220,0.08);  border:1.5px solid rgba(100,120,248,0.52);color:#818cf8; box-shadow:0 0 22px rgba(80,100,230,0.48), 0 0 50px rgba(50,70,200,0.15),  inset 0 0 18px rgba(120,150,255,0.13); }
+.si-green  { background:rgba(10,180,55,0.08);  border:1.5px solid rgba(20,210,70,0.52);  color:#10b981; box-shadow:0 0 22px rgba(20,200,70,0.48),  0 0 50px rgba(10,160,50,0.15),  inset 0 0 18px rgba(40,230,90,0.13); }
+.si-amber  { background:rgba(200,110,0,0.08);  border:1.5px solid rgba(230,140,0,0.52);  color:#fb923c; box-shadow:0 0 22px rgba(210,130,0,0.48),  0 0 50px rgba(170,90,0,0.15),   inset 0 0 18px rgba(255,160,30,0.13); }
 
 /* Per-orbit animation assignment */
 .p-o1 { animation: univ-o1 9s  linear infinite; }
@@ -487,10 +561,12 @@
   width: 78px;
   height: auto;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(0,0,0,0.8)) drop-shadow(0 2px 4px rgba(0,0,0,0.9));
-  filter: drop-shadow(0 0 6px rgba(255,122,0,0.5));
+  /* strong dark shadow so logo pops on any background */
+  filter: drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 6px rgba(0,0,0,1));
   position: relative;
   z-index: 1;
+  /* shift towards the darker bottom-right side of the sun */
+  transform: translate(10px, 8px);
 }
 .orb-tagline { font-size:0.58rem; color:rgba(255,200,120,0.55); letter-spacing:0.1em; text-transform:uppercase; white-space:nowrap; margin:0; position:relative; z-index:1; }
 
@@ -581,6 +657,7 @@
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

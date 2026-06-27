@@ -174,6 +174,37 @@ export const JobVacanciesIcon = () => (
   </svg>
 );
 
+// ATS Checker — resume document with animated scan line
+export const ATSCheckerIcon = () => (
+  <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+    <path d="M8 4h14l8 8v24H8z" stroke={C} strokeWidth="2" {...base} />
+    <path d="M22 4v8h8" stroke={C} strokeWidth="2" {...base} />
+    <line x1="13" y1="17" x2="25" y2="17" stroke={C} strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="13" y1="21" x2="22" y2="21" stroke={C} strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="13" y1="25" x2="25" y2="25" stroke={C} strokeWidth="1.8" strokeLinecap="round" />
+    {/* animated scan line */}
+    <line x1="6" y1="19" x2="32" y2="19" stroke={C} strokeWidth="1.2" strokeLinecap="round"
+      strokeOpacity="0.6"
+      style={{ animation: "fScan 2s ease-in-out infinite" }} />
+    <circle cx="30" cy="30" r="5" stroke={C} strokeWidth="2" {...base} />
+    <path d="M34 34l3 3" stroke={C} strokeWidth="2" strokeLinecap="round" />
+    <path d="M28 30l2 2 3-3" stroke={C} strokeWidth="1.8" {...base} />
+  </svg>
+);
+
+// AI Mock Interview — video call window with AI brain wave
+export const AIMockInterviewIcon = () => (
+  <svg width="38" height="38" viewBox="0 0 38 38" fill="none">
+    <rect x="2" y="8" width="24" height="18" rx="3" stroke={C} strokeWidth="2" {...base} />
+    <path d="M26 14l10-5v16l-10-5" stroke={C} strokeWidth="2" {...base} />
+    <circle cx="9" cy="14" r="3" stroke={C} strokeWidth="1.8" {...base} />
+    <path d="M4 26c0-4 2-6 5-6s5 2 5 6" stroke={C} strokeWidth="1.8" {...base} fill="none" />
+    {/* AI wave */}
+    <path d="M16 18q1-3 2-3t2 3 2-3 2 3" stroke={C} strokeWidth="1.8" strokeLinecap="round" fill="none"
+      style={{ animation: "fFade 1.4s ease-in-out infinite" }} />
+  </svg>
+);
+
 // 12 — Calendar with animated checkmark loop
 export const AssessmentIcon = () => (
   <svg width="38" height="38" viewBox="0 0 38 38" fill="none">

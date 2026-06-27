@@ -3,9 +3,10 @@ import { Container, Row, Col } from "react-bootstrap";
 import { FaArrowRight } from "react-icons/fa";
 import logoLight from "@/assets/images/logo_white.png";
 import {
-  TechCoursesIcon, StudyMaterialIcon, OnlineClassesIcon, ChittiRoboIcon,
-  EmailPracticeIcon, JamIcon, VirtualInterviewIcon, AptitudeIcon,
+  TechCoursesIcon, StudyMaterialIcon, ATSCheckerIcon, ChittiRoboIcon,
+  EmailPracticeIcon, JamIcon, AIMockInterviewIcon, AptitudeIcon,
   CodeAIIcon, ResumeIcon, JobVacanciesIcon, AssessmentIcon,
+  OnlineClassesIcon, VirtualInterviewIcon,
 } from "./FeatureIcons";
 import { useNavigate } from "react-router-dom";
 import "./About.css";
@@ -250,25 +251,25 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                   <ellipse cx="480" cy="246" rx="445" ry="210" transform="rotate(-10, 480, 246)" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1" strokeDasharray="3,7"/>
                 </svg>
 
-                {/* Orbit 1 */}
-                <div className="univ-planet p-o1 p-o1-1 si-orange"><TechCoursesIcon /><span className="sat-label">Courses</span></div>
-                <div className="univ-planet p-o1 p-o1-2 si-lime"><CodeAIIcon /><span className="sat-label">Code AI</span></div>
+                {/* Orbit 1 — small inner planets */}
+                <div className="univ-planet p-o1 p-o1-1 si-orange psz-sm"><TechCoursesIcon /><span className="sat-label">Courses</span></div>
+                <div className="univ-planet p-o1 p-o1-2 si-lime   psz-sm"><CodeAIIcon /><span className="sat-label">Code AI</span></div>
 
-                {/* Orbit 2 */}
-                <div className="univ-planet p-o2 p-o2-1 si-cyan"><OnlineClassesIcon /><span className="sat-label">Live Class</span></div>
-                <div className="univ-planet p-o2 p-o2-2 si-pink"><VirtualInterviewIcon /><span className="sat-label">Interview</span></div>
-                <div className="univ-planet p-o2 p-o2-3 si-yellow"><AssessmentIcon /><span className="sat-label">Assessment</span></div>
+                {/* Orbit 2 — medium planets */}
+                <div className="univ-planet p-o2 p-o2-1 si-cyan   psz-md"><ATSCheckerIcon /><span className="sat-label">ATS Checker</span></div>
+                <div className="univ-planet p-o2 p-o2-2 si-pink   psz-sm"><AIMockInterviewIcon /><span className="sat-label">AI Mock Interview</span></div>
+                <div className="univ-planet p-o2 p-o2-3 si-yellow psz-md"><AssessmentIcon /><span className="sat-label">Assessment</span></div>
 
-                {/* Orbit 3 */}
-                <div className="univ-planet p-o3 p-o3-1 si-purple"><StudyMaterialIcon /><span className="sat-label">Study</span></div>
-                <div className="univ-planet p-o3 p-o3-2 si-red"><EmailPracticeIcon /><span className="sat-label">Email</span></div>
-                <div className="univ-planet p-o3 p-o3-3 si-sky"><JamIcon /><span className="sat-label">JAM</span></div>
+                {/* Orbit 3 — larger planets */}
+                <div className="univ-planet p-o3 p-o3-1 si-purple psz-lg"><StudyMaterialIcon /><span className="sat-label">Material</span></div>
+                <div className="univ-planet p-o3 p-o3-2 si-red    psz-sm"><EmailPracticeIcon /><span className="sat-label">Email</span></div>
+                <div className="univ-planet p-o3 p-o3-3 si-sky    psz-md"><JamIcon /><span className="sat-label">JAM</span></div>
 
-                {/* Orbit 4 */}
-                <div className="univ-planet p-o4 p-o4-1 si-teal"><ChittiRoboIcon /><span className="sat-label">Chitti AI</span></div>
-                <div className="univ-planet p-o4 p-o4-2 si-indigo"><ResumeIcon /><span className="sat-label">Resume</span></div>
-                <div className="univ-planet p-o4 p-o4-3 si-green"><JobVacanciesIcon /><span className="sat-label">Jobs</span></div>
-                <div className="univ-planet p-o4 p-o4-4 si-amber"><AptitudeIcon /><span className="sat-label">Aptitude</span></div>
+                {/* Orbit 4 — outer largest planets, Jobs gets Saturn ring */}
+                <div className="univ-planet p-o4 p-o4-1 si-teal   psz-lg"><ChittiRoboIcon /><span className="sat-label">Chitti AI</span></div>
+                <div className="univ-planet p-o4 p-o4-2 si-indigo psz-sm"><ResumeIcon /><span className="sat-label">Resume</span></div>
+                <div className="univ-planet p-o4 p-o4-3 si-green  psz-lg planet-saturn"><JobVacanciesIcon /><span className="sat-label">Jobs</span></div>
+                <div className="univ-planet p-o4 p-o4-4 si-amber  psz-md planet-ringed"><AptitudeIcon /><span className="sat-label">Aptitude</span></div>
 
                 {/* Central orb */}
                 <div className="orb-center">
