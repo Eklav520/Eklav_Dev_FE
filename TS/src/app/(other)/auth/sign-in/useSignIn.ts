@@ -59,6 +59,10 @@ const redirectUser = (role: string) => {
       navigate('/student/dashboard', { replace: true })
       break
 
+    case 'facultyadmin':
+      navigate('/faculty-admin/dashboard', { replace: true })
+      break
+
     default:
       navigate('/auth/sign-in', { replace: true })
   }

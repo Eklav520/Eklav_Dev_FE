@@ -3,7 +3,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import PageMetaData from '@/components/PageMetaData'
 import ReactApexChart from 'react-apexcharts'
 import { Col, Modal, Row } from 'react-bootstrap'
-import { FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList } from 'react-icons/fa'
+import { FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt } from 'react-icons/fa'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
 import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
@@ -14,6 +14,7 @@ import AIInterviewWidget from '@/components/dashboard/AIInterviewWidget'
 import AIInterviewFull from '@/components/dashboard/AIInterviewFull'
 import AssessmentWidget from '@/components/dashboard/AssessmentWidget'
 import AssessmentFull from '@/components/dashboard/AssessmentFull'
+import StudentReports from '@/components/dashboard/StudentReports'
 
 /* ─── Types ──────────────────────────────────────────────── */
 interface FacultyAdmin {
@@ -1124,6 +1125,7 @@ const FACULTY_TABS = [
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
+  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
 ] as const
 
 type FacultyTabKey   = (typeof FACULTY_TABS)[number]['key']
@@ -1500,6 +1502,10 @@ function FacultyAdminDashboard({ user: _user }: { user: any; baseURL: string }) 
                   </div>
                 </Col>
               </Row>
+            )}
+
+            {activeTab === 'student-reports' && (
+              <StudentReports apiBase={API_BASE} />
             )}
 
           </div>
