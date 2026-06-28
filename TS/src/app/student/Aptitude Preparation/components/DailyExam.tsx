@@ -589,7 +589,12 @@ const DailyExam: React.FC = () => {
                             {day.category.slice(0, 3).toUpperCase()}
                           </div>
                           {day.attended && day.score !== null && (
-                            <div style={{ fontSize: 9, color: '#22c55e', fontWeight: 700 }}>{day.score}/{day.total}</div>
+                            <div style={{
+                              position: 'absolute', inset: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 11, color: '#ffffff', fontWeight: 800, letterSpacing: '0.02em',
+                              pointerEvents: 'none',
+                            }}>{day.score}/{day.total}</div>
                           )}
                           {day.isToday && !day.attended && (
                             <div style={{ fontSize: 8, color: '#ff7a00', animation: 'da-pulse 1.5s ease infinite' }}>TODAY</div>

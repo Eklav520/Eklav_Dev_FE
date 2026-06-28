@@ -35,73 +35,70 @@ const Aptitude = () => {
     <>
       <PageMetaData title="Aptitude Preparation" />
 
-      {/* ── Page header ── */}
-      <div style={{ marginBottom: 28 }}>
-        <h4 style={{ color: '#f0f0f0', fontWeight: 800, fontSize: 22, margin: 0, marginBottom: 4 }}>
-          Aptitude Preparation
-        </h4>
-        <p style={{ color: '#555', fontSize: 13, margin: 0 }}>
-          Sharpen your aptitude skills with daily exams and topic-wise practice quizzes.
-        </p>
-      </div>
+      {/* ── Page header + tab cards side by side ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
+        {/* Left: title */}
+        <div>
+          <h4 style={{ color: '#f0f0f0', fontWeight: 800, fontSize: 22, margin: 0, marginBottom: 4 }}>
+            Aptitude Preparation
+          </h4>
+          <p style={{ color: '#555', fontSize: 13, margin: 0 }}>
+            Sharpen your aptitude skills with daily exams and topic-wise practice quizzes.
+          </p>
+        </div>
 
-      {/* ── Tab cards ── */}
-      <div style={{ display: 'flex', gap: 14, marginBottom: 28, flexWrap: 'wrap' }}>
-        {TABS.map(t => {
-          const active = tab === t.key
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                flex: '1 1 200px', minWidth: 180, maxWidth: 280,
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '16px 20px',
-                background: active ? `${t.accent}12` : '#0e0e16',
-                border: `1.5px solid ${active ? t.accent : '#1e1e28'}`,
-                borderRadius: 14,
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                textAlign: 'left',
-                boxShadow: active ? `0 4px 20px ${t.accent}20` : 'none',
-                outline: 'none',
-              }}
-            >
-              {/* Icon box */}
-              <div style={{
-                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                background: active ? `${t.accent}22` : '#151520',
-                border: `1px solid ${active ? `${t.accent}44` : '#2a2a38'}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <t.Icon color={active ? t.accent : '#444'} />
-              </div>
-
-              {/* Text */}
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: active ? '#f0f0f0' : '#888', marginBottom: 3 }}>
-                  {t.label}
-                </div>
-                <div style={{ fontSize: 11, color: active ? `${t.accent}cc` : '#444', lineHeight: 1.4 }}>
-                  {t.desc}
-                </div>
-              </div>
-
-              {/* Active indicator dot */}
-              {active && (
+        {/* Right: tab selector */}
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+          {TABS.map(t => {
+            const active = tab === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 16px',
+                  background: active ? `${t.accent}12` : '#0e0e16',
+                  border: `1.5px solid ${active ? t.accent : '#1e1e28'}`,
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'left',
+                  boxShadow: active ? `0 4px 20px ${t.accent}20` : 'none',
+                  outline: 'none',
+                }}
+              >
                 <div style={{
-                  marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%',
-                  background: t.accent, flexShrink: 0,
-                  boxShadow: `0 0 8px ${t.accent}`,
-                }} />
-              )}
-            </button>
-          )
-        })}
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  background: active ? `${t.accent}22` : '#151520',
+                  border: `1px solid ${active ? `${t.accent}44` : '#2a2a38'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <t.Icon color={active ? t.accent : '#444'} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: active ? '#f0f0f0' : '#888', marginBottom: 2 }}>
+                    {t.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: active ? `${t.accent}cc` : '#444', lineHeight: 1.3 }}>
+                    {t.desc}
+                  </div>
+                </div>
+                {active && (
+                  <div style={{
+                    marginLeft: 6, width: 7, height: 7, borderRadius: '50%',
+                    background: t.accent, flexShrink: 0,
+                    boxShadow: `0 0 8px ${t.accent}`,
+                  }} />
+                )}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Divider with label ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ height: 1, flex: 1, background: '#1e1e28' }} />
         <span style={{ fontSize: 11, color: '#333', textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 700 }}>
           {TABS.find(t => t.key === tab)?.label}
