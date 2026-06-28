@@ -7,7 +7,6 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useActivityTracker } from '@/hooks/useActivityTracker'
 import IdleWarningModal from '@/components/IdleWarningModal'
-import logoWhite from '@/assets/images/logo_white.png'
 
 import '@/assets/scss/style.scss'
 
@@ -15,84 +14,117 @@ if (import.meta.env.MODE === 'development') {
   console.log('development')
 }
 
+const SPLASH_LETTERS = [
+  { char: 'E', delay: 0.0,  orange: true  },
+  { char: 'K', delay: 0.18, orange: true  },
+  { char: 'L', delay: 0.36, orange: false },
+  { char: 'A', delay: 0.54, orange: false },
+  { char: 'V', delay: 0.72, orange: false },
+]
+
 function SplashScreen({ onDone }: { onDone: () => void }) {
-  const [phase, setPhase] = useState<'in' | 'hold' | 'out'>('in')
+  const [out, setOut] = useState(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('hold'), 600)
-    const t2 = setTimeout(() => setPhase('out'), 2400)
-    const t3 = setTimeout(() => onDone(), 3000)
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+    const t1 = setTimeout(() => setOut(true), 3200)
+    const t2 = setTimeout(() => onDone(), 3800)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [onDone])
 
   return (
     <>
       <style>{`
-        @keyframes sp-logo-in {
-          0%   { opacity: 0; transform: translateY(16px) scale(0.9); }
-          100% { opacity: 1; transform: translateY(0)   scale(1); }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap');
+
+        @keyframes sp-jump {
+          0%   { transform: translateY(-300px) scaleX(1)    scaleY(1);
+                 opacity: 0; animation-timing-function: ease-in; }
+          5%   { opacity: 1; }
+          28%  { transform: translateY(0)      scaleX(1.4)  scaleY(0.62);
+                 animation-timing-function: ease-out; }
+          40%  { transform: translateY(-100px) scaleX(0.86) scaleY(1.14);
+                 animation-timing-function: ease-in; }
+          54%  { transform: translateY(0)      scaleX(1.2)  scaleY(0.82);
+                 animation-timing-function: ease-out; }
+          63%  { transform: translateY(-40px)  scaleX(0.93) scaleY(1.07);
+                 animation-timing-function: ease-in; }
+          73%  { transform: translateY(0)      scaleX(1.09) scaleY(0.92);
+                 animation-timing-function: ease-out; }
+          80%  { transform: translateY(-14px)  scaleX(0.97) scaleY(1.03);
+                 animation-timing-function: ease-in; }
+          88%  { transform: translateY(0)      scaleX(1.03) scaleY(0.97); }
+          94%  { transform: translateY(-4px); }
+          100% { transform: translateY(0)      scaleX(1)    scaleY(1);    opacity: 1; }
         }
-        @keyframes sp-tag-in {
-          0%   { opacity: 0; letter-spacing: 6px; }
-          100% { opacity: 1; letter-spacing: 3.5px; }
+
+        @keyframes sp-line {
+          0%   { width: 0; opacity: 0; }
+          100% { width: 160px; opacity: 1; }
         }
-        @keyframes sp-fade-out {
+        @keyframes sp-tag {
+          0%   { opacity: 0; letter-spacing: 10px; }
+          100% { opacity: 1; letter-spacing: 5px; }
+        }
+        @keyframes sp-out {
           0%   { opacity: 1; }
-          100% { opacity: 0; pointer-events: none; }
+          100% { opacity: 0; }
         }
-        @keyframes sp-dot-blink {
-          0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
-          40%            { opacity: 1;    transform: scale(1.1); }
-        }
+
         .sp-wrap {
           position: fixed; inset: 0; z-index: 99999;
-          background: #050505;
+          background: #04040e;
           display: flex; flex-direction: column;
-          align-items: center; justify-content: center; gap: 1.4rem;
+          align-items: center; justify-content: center;
         }
-        .sp-wrap.sp-out {
-          animation: sp-fade-out 0.65s ease forwards;
-        }
-        .sp-logo {
-          width: 320px;
+        .sp-wrap.sp-out { animation: sp-out 0.6s ease forwards; }
+
+        .sp-letters { display: flex; align-items: baseline; gap: 0.05em; }
+
+        .sp-letter {
+          font-size: clamp(42px, 7vw, 70px);
+          font-weight: 900;
+          font-family: 'Orbitron', sans-serif;
+          display: inline-block;
           opacity: 0;
-          animation: sp-logo-in 0.7s cubic-bezier(0.22,1,0.36,1) 0.15s forwards;
+          animation: sp-jump 1.1s linear both;
         }
-        .sp-divider {
-          width: 120px; height: 1px;
-          background: linear-gradient(90deg, transparent, #2a2a2a, transparent);
-          opacity: 0;
-          animation: sp-logo-in 0.5s ease 0.6s forwards;
+        .sp-letter.sp-orange {
+          color: #ff6b00;
+          text-shadow: 0 0 36px rgba(255,107,0,0.55), 0 0 80px rgba(255,107,0,0.18);
+        }
+        .sp-letter.sp-white { color: #ffffff; }
+
+        .sp-line {
+          height: 1px; width: 0; margin-top: 16px;
+          background: linear-gradient(90deg, transparent, rgba(255,107,0,0.65), transparent);
+          animation: sp-line 0.5s ease 1.55s forwards;
         }
         .sp-tagline {
-          font-family: sans-serif;
-          font-size: 1rem;
-          color: #666;
-          letter-spacing: 5px;
+          font-size: 0.58rem;
+          font-family: 'Orbitron', sans-serif;
+          color: rgba(255,255,255,0.32);
+          text-transform: uppercase;
+          letter-spacing: 10px;
+          margin-top: 12px;
           opacity: 0;
-          animation: sp-tag-in 0.7s ease 0.75s forwards;
+          animation: sp-tag 0.65s ease 1.75s forwards;
         }
-        .sp-dots {
-          display: flex; gap: 6px; margin-top: 2.5rem;
-          opacity: 0;
-          animation: sp-logo-in 0.4s ease 1s forwards;
-        }
-        .sp-dot {
-          width: 5px; height: 5px; border-radius: 50%; background: #333;
-          animation: sp-dot-blink 1.2s ease-in-out infinite;
-        }
-        .sp-dot:nth-child(2) { animation-delay: 0.2s; }
-        .sp-dot:nth-child(3) { animation-delay: 0.4s; }
       `}</style>
-      <div className={`sp-wrap${phase === 'out' ? ' sp-out' : ''}`}>
-        <img src={logoWhite} alt="Eklav" className="sp-logo" />
-        <div className="sp-divider" />
-        <span className="sp-tagline" style={{ marginLeft: '-18px' }}>Learn &nbsp;·&nbsp; Grow &nbsp;·&nbsp; Succeed</span>
-        <div className="sp-dots">
-          <div className="sp-dot" />
-          <div className="sp-dot" />
-          <div className="sp-dot" />
+
+      <div className={`sp-wrap${out ? ' sp-out' : ''}`}>
+        <div className="sp-letters">
+          {SPLASH_LETTERS.map(({ char, delay, orange }) => (
+            <span
+              key={char}
+              className={`sp-letter ${orange ? 'sp-orange' : 'sp-white'}`}
+              style={{ animationDelay: `${delay}s` }}
+            >
+              {char}
+            </span>
+          ))}
         </div>
+        <div className="sp-line" />
+        <div className="sp-tagline">Learn &nbsp;·&nbsp; Grow &nbsp;·&nbsp; Succeed</div>
       </div>
     </>
   )
