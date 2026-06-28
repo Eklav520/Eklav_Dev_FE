@@ -183,6 +183,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
   const rest = normalized.slice(2);
   const isCoreDataLabs = tenant?.name === "coredatalabs" || window?.location?.hostname === "coredatalabs.eklav.in";
   const students = [avatar1, avatar2, avatar3, avatar4];
+  const [featIdx, setFeatIdx] = useState(0);
 
   const features = [
     { icon: <TechCoursesIcon />, title: "Top Tech Courses", description: "Unlimited access to premium tech courses curated by industry experts.", color: "#ff7a00" },
@@ -198,6 +199,11 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
     { icon: <JobVacanciesIcon />, title: "Job Vacancies", description: "Access exclusive job opportunities and placement drives.", color: "#a855f7" },
     { icon: <AssessmentIcon />, title: "Assessment Every Month Like Industry Based", description: "Take monthly industry-standard assessments to track your progress.", color: "#22d3ee" },
   ];
+
+  useEffect(() => {
+    const t = setInterval(() => setFeatIdx(i => (i + 1) % features.length), 2800);
+    return () => clearInterval(t);
+  }, [features.length]);
 
   return (
     <div className="futuristic-about">
@@ -332,15 +338,36 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
             </p>
           </div>
 
-          <div className="neo-features-grid">
-            {features.map((f, i) => (
-              <div className="glass-card" key={i} style={{ "--card-color": f.color } as React.CSSProperties}>
-                <div className="glass-card-glow" />
-                <div className="glass-card-icon">{f.icon}</div>
-                <h3 className="glass-card-title">{f.title}</h3>
-                <p className="glass-card-desc">{f.description}</p>
-              </div>
-            ))}
+          <div className="cfl-scene">
+            <div className="cfl-track">
+              {([-2, -1, 0, 1, 2] as const).map((offset) => {
+                const idx = ((featIdx + offset) % features.length + features.length) % features.length;
+                const f = features[idx];
+                const pos = offset < 0 ? `cfl-n${Math.abs(offset)}` : `cfl-${offset}`;
+                return (
+                  <div
+                    key={offset}
+                    className={`cfl-card ${pos}`}
+                    style={{ "--card-color": f.color } as React.CSSProperties}
+                    onClick={() => setFeatIdx(idx)}
+                  >
+                    <div className="cfl-card-top-line" />
+                    <div className="glass-card-icon" style={{ color: f.color }}>{f.icon}</div>
+                    <h3 className="glass-card-title">{f.title}</h3>
+                    <p className="glass-card-desc">{f.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button className="feat-nav feat-nav-prev" onClick={() => setFeatIdx(i => (i - 1 + features.length) % features.length)}>&#8249;</button>
+            <button className="feat-nav feat-nav-next" onClick={() => setFeatIdx(i => (i + 1) % features.length)}>&#8250;</button>
+
+            <div className="feat-dots">
+              {features.map((_, i) => (
+                <button key={i} className={`feat-dot${i === featIdx ? " active" : ""}`} onClick={() => setFeatIdx(i)} />
+              ))}
+            </div>
           </div>
         </Container>
       </section>
