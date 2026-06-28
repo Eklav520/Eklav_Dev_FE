@@ -1,7 +1,8 @@
 import logo from '@/assets/images/logo_black.png'
 import logoLight from '@/assets/images/logo_white.png'
 import { Link } from 'react-router-dom'
-import useTenant from '@/utils/tenant'   // ✅ ADD
+import useTenant from '@/utils/tenant'
+import { useLayoutContext } from '@/context/useLayoutContext'
 
 interface Tenant {
   name?: string
@@ -14,13 +15,16 @@ interface LogoBoxProps {
   width?: number
   role?: string | { role?: string }
   tenant?: Tenant | null
+  alwaysDark?: boolean  // force white logo — use when nav background is always dark
 }
 
-const LogoBox = ({ height, width, role, tenant: tenantProp }: LogoBoxProps) => {
+const LogoBox = ({ height, width, role, tenant: tenantProp, alwaysDark = false }: LogoBoxProps) => {
 
-  // ✅ AUTO FETCH TENANT (fallback if not passed)
   const tenantContext = useTenant()
   const tenant = tenantProp || tenantContext
+
+  const { theme } = useLayoutContext()
+  const isDark = alwaysDark || theme === 'dark'
 
   // 🔹 Normalize role
   const normalizedRole =
@@ -69,27 +73,18 @@ const LogoBox = ({ height, width, role, tenant: tenantProp }: LogoBoxProps) => {
       to={getDashboardLink()}
     >
 
-      {/* ✅ DEFAULT EKLAV */}
+      {/* DEFAULT EKLAV — pick logo by current theme */}
       {isDefaultEklav && (
-        <>
-          <img
-            height={height}
-            width={width}
-            className="light-mode-item navbar-brand-item w-auto"
-            src={logo}
-            alt="Eklav"
-          />
-          <img
-            height={height}
-            width={width}
-            className="dark-mode-item navbar-brand-item w-auto"
-            src={logoLight}
-            alt="Eklav"
-          />
-        </>
+        <img
+          height={height}
+          width={width}
+          className="navbar-brand-item w-auto"
+          src={isDark ? logoLight : logo}
+          alt="Eklav"
+        />
       )}
 
-      {/* ✅ TENANT LOGO */}
+      {/* TENANT CUSTOM LOGO */}
       {!isDefaultEklav && tenantLogo && (
         <img
           height={height}
@@ -100,7 +95,7 @@ const LogoBox = ({ height, width, role, tenant: tenantProp }: LogoBoxProps) => {
         />
       )}
 
-      {/* ✅ FALLBACK TEXT LOGO */}
+      {/* TENANT TEXT FALLBACK — color adapts to theme */}
       {!isDefaultEklav && !tenantLogo && (
         <span
           style={{
@@ -112,16 +107,10 @@ const LogoBox = ({ height, width, role, tenant: tenantProp }: LogoBoxProps) => {
             whiteSpace: "nowrap"
           }}
         >
-          {/* First 2 letters */}
           <span style={{ color: themeColor, marginRight: "2px" }}>
             {firstPart}
           </span>
-
-          {/* Remaining letters */}
-          <span className="light-mode-item" style={{ color: "#000" }}>
-            {restPart}
-          </span>
-          <span className="dark-mode-item" style={{ color: "#fff" }}>
+          <span style={{ color: isDark ? "#fff" : "#000" }}>
             {restPart}
           </span>
         </span>

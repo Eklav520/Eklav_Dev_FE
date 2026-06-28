@@ -137,8 +137,8 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         className="d-flex align-items-center justify-content-between px-4 px-xl-5"
         style={{ height: 60 }}
       >
-        {/* Logo */}
-        <LogoBox height={34} tenant={tenant} />
+        {/* Logo — auth nav is always dark so force white logo */}
+        <LogoBox height={34} tenant={tenant} alwaysDark />
 
         {/* Actions */}
         <div className="d-flex align-items-center gap-3">
