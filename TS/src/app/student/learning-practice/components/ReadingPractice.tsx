@@ -51,6 +51,7 @@ const ReadingPractice: React.FC = () => {
   const [submittedData, setSubmittedData] = useState<any>(null)
   const [history, setHistory] = useState<ReadingHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
+  const [selectedTopic, setSelectedTopic] = useState<string>('')
   const maxAllowedAttempts = isTrialUser
   ? TRIAL_LIMIT
   : history?.monthlyLimit ?? 0
@@ -88,7 +89,8 @@ const ReadingPractice: React.FC = () => {
     setSubmittedData(null)
 
     try {
-      const res = await fetch(`${baseURL}/learning/reading/prompt`, {
+      const topicParam = selectedTopic ? `?topic=${encodeURIComponent(selectedTopic)}` : ''
+      const res = await fetch(`${baseURL}/learning/reading/prompt${topicParam}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (res.status === 429) {
@@ -184,6 +186,45 @@ const ReadingPractice: React.FC = () => {
             <p className="description">
               Sharpen your comprehension skills with AI-powered reading passages and interactive quizzes designed to improve your reading abilities.
             </p>
+
+            {/* Topic Selection */}
+            <div className="topic-section">
+              <p className="topic-label">Choose a Topic <span className="topic-optional">(optional)</span></p>
+              <div className="topic-grid">
+                {[
+                  { label: '🌐 Technology',      value: 'Technology' },
+                  { label: '🔬 Science',         value: 'Science' },
+                  { label: '📜 History',         value: 'History' },
+                  { label: '⚽ Sports',          value: 'Sports' },
+                  { label: '💼 Business',        value: 'Business' },
+                  { label: '🌿 Nature',          value: 'Nature' },
+                  { label: '✈️ Travel',          value: 'Travel' },
+                  { label: '❤️ Health',          value: 'Health' },
+                  { label: '🎨 Culture',         value: 'Culture' },
+                  { label: '📰 Current Events',  value: 'Current Events' },
+                  { label: '🏛️ Politics',        value: 'Politics' },
+                  { label: '💰 Economics',       value: 'Economics' },
+                  { label: '🧠 Psychology',      value: 'Psychology' },
+                  { label: '🚀 Space',           value: 'Space Exploration' },
+                  { label: '🌍 Environment',     value: 'Environment' },
+                  { label: '🎓 Education',       value: 'Education' },
+                  { label: '🤖 Artificial Intelligence', value: 'Artificial Intelligence' },
+                  { label: '⚖️ Law & Justice',  value: 'Law and Justice' },
+                  { label: '🍽️ Food & Cuisine', value: 'Food and Cuisine' },
+                  { label: '🎭 Arts & Literature', value: 'Arts and Literature' },
+                ].map(t => (
+                  <button
+                    key={t.value}
+                    className={`topic-chip${selectedTopic === t.value ? ' topic-chip-active' : ''}`}
+                    onClick={() => setSelectedTopic(prev => prev === t.value ? '' : t.value)}
+                    type="button"
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <Button
               size="lg"
               className="start-button"
@@ -237,6 +278,11 @@ const ReadingPractice: React.FC = () => {
         <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
           <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
             <FaBookOpen style={{ marginRight: 8 }} /> Reading Practice
+            {selectedTopic && (
+              <span style={{ fontSize: '0.75rem', fontWeight: 500, background: 'rgba(255,255,255,0.25)', padding: '2px 10px', borderRadius: 12, marginLeft: 8 }}>
+                {selectedTopic}
+              </span>
+            )}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '2rem 1.5rem' }}>
@@ -460,7 +506,7 @@ const ReadingPractice: React.FC = () => {
           border-radius: 20px;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
           text-align: center;
-          max-width: 500px;
+          max-width: 680px;
           width: 100%;
         }
 
@@ -1144,6 +1190,51 @@ const ReadingPractice: React.FC = () => {
           }
         }
         
+        /* Topic Selection */
+        .topic-section {
+          margin-bottom: 1.5rem;
+          text-align: left;
+        }
+        .topic-label {
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #4a5568;
+          margin-bottom: 0.6rem;
+        }
+        .topic-optional {
+          font-weight: 400;
+          color: #a0aec0;
+          font-size: 0.78rem;
+        }
+        .topic-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .topic-chip {
+          padding: 5px 13px;
+          border-radius: 20px;
+          border: 1.5px solid #e2e8f0;
+          background: #f7fafc;
+          color: #4a5568;
+          font-size: 0.78rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.18s ease;
+          white-space: nowrap;
+        }
+        .topic-chip:hover {
+          border-color: #ff7a00;
+          color: #ff7a00;
+          background: #fff4e6;
+        }
+        .topic-chip-active {
+          border-color: #ff7a00 !important;
+          background: #ff7a00 !important;
+          color: #fff !important;
+          box-shadow: 0 3px 10px rgba(255,122,0,0.3);
+        }
+
         .trial-badge-modern {
         background: rgba(255, 122, 0, 0.15);
         color: #ff7a00;

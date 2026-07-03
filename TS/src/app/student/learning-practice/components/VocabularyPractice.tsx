@@ -1,6 +1,6 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Card, Container, Button, Spinner, Form, ProgressBar, Badge, Modal } from "react-bootstrap"
-import { FaBookReader, FaPlay, FaArrowRight, FaArrowLeft, FaCheckCircle } from "react-icons/fa"
+import { FaBookReader, FaPlay, FaArrowRight, FaArrowLeft, FaCheckCircle, FaCalendarCheck } from "react-icons/fa"
 import { useAuthContext } from "@/context/useAuthContext"
 
 interface Word {
@@ -29,30 +29,55 @@ const VocabularyPractice: React.FC = () => {
   const [answers, setAnswers] = useState<{ [id: string]: string }>({})
   const [feedback, setFeedback] = useState<Feedback[] | null>(null)
   const [loading, setLoading] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(true)
+  const [todayScore, setTodayScore] = useState<{ score: number; total: number } | null>(null)
 
   // pagination states
   const [currentPage, setCurrentPage] = useState(0)
   const wordsPerPage = 4
 
   const startIndex = currentPage * wordsPerPage
-  const endIndex = startIndex + wordsPerPage
-  const currentWords = words.slice(startIndex, endIndex)
+  const currentWords = words.slice(startIndex, startIndex + wordsPerPage)
   const totalPages = Math.ceil(words.length / wordsPerPage)
 
-  // 🟢 Start and fetch AI vocab words
+  // On mount — check if student already did today's exam
+  useEffect(() => {
+    const checkStatus = async () => {
+      if (!token || !baseURL) { setStatusLoading(false); return }
+      try {
+        const res = await fetch(`${baseURL}/learning/vocab/today/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        if (data.words?.length) setWords(data.words)
+        if (data.completed && data.attempt) {
+          setTodayScore({ score: data.attempt.score, total: data.attempt.total })
+          setFeedback(data.attempt.feedback)
+        }
+      } catch (err) {
+        console.error("Error checking vocab status", err)
+      } finally {
+        setStatusLoading(false)
+      }
+    }
+    checkStatus()
+  }, [token, baseURL])
+
   const startVocabulary = async () => {
     setStarted(true)
     setLoading(true)
-    setFeedback(null)
     setAnswers({})
     setCurrentPage(0)
 
     try {
-      const res = await fetch(`${baseURL}/learning/vocab/daily`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      setWords(data)
+      // words already loaded from status check, but fetch fresh if empty
+      if (!words.length) {
+        const res = await fetch(`${baseURL}/learning/vocab/daily`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        setWords(data)
+      }
     } catch (err) {
       console.error("Error fetching vocabulary:", err)
     } finally {
@@ -80,6 +105,7 @@ const VocabularyPractice: React.FC = () => {
       })
       const data = await res.json()
       setFeedback(data.feedback)
+      setTodayScore({ score: data.score, total: data.total })
     } catch (err) {
       console.error("Quiz submit failed:", err)
     } finally {
@@ -87,28 +113,60 @@ const VocabularyPractice: React.FC = () => {
     }
   }
 
-  const score = feedback ? feedback.filter((f) => f.isCorrect).length : 0
-  const scorePercentage = words.length > 0 ? (score / words.length) * 100 : 0
+  const score = todayScore?.score ?? (feedback ? feedback.filter((f) => f.isCorrect).length : 0)
+  const total = todayScore?.total ?? words.length
+  const scorePercentage = total > 0 ? (score / total) * 100 : 0
+  const alreadyDoneToday = !!todayScore && !started
+
+  if (statusLoading) {
+    return (
+      <Container fluid className="vocabulary-practice-container">
+        <div className="start-screen text-center">
+          <Spinner animation="border" style={{ color: '#ff7a00' }} />
+          <p style={{ marginTop: 12, color: '#888' }}>Loading today's vocabulary...</p>
+        </div>
+      </Container>
+    )
+  }
 
   return (
     <Container fluid className="vocabulary-practice-container">
       <div className="start-screen text-center">
           <div className="start-card">
             <div className="icon-wrapper">
-              <FaBookReader className="main-icon" />
+              {alreadyDoneToday
+                ? <FaCalendarCheck className="main-icon" style={{ color: '#22c55e' }} />
+                : <FaBookReader className="main-icon" />
+              }
             </div>
             <h2>Vocabulary Practice</h2>
-            <p className="description">
-              Improve your vocabulary every day! Generate today's AI-powered word list 
-              with meanings, examples, and interactive quizzes to expand your English vocabulary.
-            </p>
-            <Button
-              size="lg"
-              className="start-button"
-              onClick={startVocabulary}
-            >
-              <FaPlay className="me-2" /> Start Practice
-            </Button>
+
+            {alreadyDoneToday ? (
+              <>
+                <div className="done-score-badge">
+                  <span className="done-score">{score}/{total}</span>
+                  <span className="done-pct">{Math.round(scorePercentage)}%</span>
+                </div>
+                <p className="description" style={{ color: '#22c55e', fontWeight: 600 }}>
+                  ✅ You've completed today's vocabulary exam!
+                </p>
+                <p className="description" style={{ fontSize: '0.9rem', marginTop: -10 }}>
+                  Come back tomorrow for 10 new words.
+                </p>
+                <Button size="lg" className="start-button" onClick={() => setStarted(true)}>
+                  📖 Review Today's Words & Result
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="description">
+                  Improve your vocabulary every day! Learn today's 10 AI-powered words and test yourself with a quiz.
+                </p>
+                <Button size="lg" className="start-button" onClick={startVocabulary}>
+                  <FaPlay className="me-2" /> Start Today's Exam
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -315,9 +373,9 @@ const VocabularyPractice: React.FC = () => {
                   </div>
 
                   <div className="action-buttons">
-                    <Button variant="outline-primary" onClick={startVocabulary}>
-                      Practice New Words
-                    </Button>
+                    <p style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>
+                      🗓️ Come back tomorrow for 10 new words!
+                    </p>
                   </div>
                 </Card.Body>
               </Card>
@@ -916,6 +974,21 @@ const VocabularyPractice: React.FC = () => {
             align-self: flex-end;
           }
         }
+
+        .done-score-badge {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin: 0 auto 1rem;
+          width: 100px; height: 100px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #22c55e, #16a34a);
+          color: white;
+          justify-content: center;
+          box-shadow: 0 8px 24px rgba(34,197,94,0.35);
+        }
+        .done-score { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+        .done-pct   { font-size: 0.8rem; opacity: 0.9; }
 
         .start-button {
         background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%) !important;
