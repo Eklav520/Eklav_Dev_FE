@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Col, Row, Spinner } from 'react-bootstrap'
 import {
-  FaBookOpen, FaCheckCircle, FaDownload, FaSearch, FaTimesCircle, FaUserGraduate,
+  FaBookOpen, FaCheckCircle, FaDownload, FaSearch, FaTimesCircle, FaUserGraduate, FaChartBar, FaUsers,
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import ReactApexChart from 'react-apexcharts'
@@ -68,11 +68,10 @@ const S = {
     letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: '0.75rem',
   },
   tab: (active: boolean): React.CSSProperties => ({
-    background: active ? '#ff6b00' : 'transparent',
-    border: `1px solid ${active ? '#ff6b00' : '#2a2a2a'}`,
-    color: active ? '#fff' : '#666',
-    borderRadius: 8, padding: '5px 18px', fontSize: '0.82rem',
-    fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+    position: 'relative', background: 'none', border: 'none',
+    padding: '0.65rem 1.25rem 0.85rem', cursor: 'pointer',
+    fontSize: '0.85rem', fontWeight: active ? 700 : 500,
+    color: active ? '#fff' : '#555', transition: 'color 0.15s',
   }),
   th: {
     background: '#111', color: '#555', fontSize: '0.68rem', fontWeight: 600,
@@ -311,10 +310,16 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
       </Row>
 
       {/* ── Tabs ────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-        {(['courses', 'students', 'chart'] as const).map((t) => (
-          <button key={t} style={S.tab(tab === t)} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginBottom: '1.5rem' }}>
+        {([
+          { key: 'courses',  label: 'Courses',  icon: FaBookOpen },
+          { key: 'students', label: 'Students', icon: FaUsers },
+          { key: 'chart',    label: 'Chart',    icon: FaChartBar },
+        ] as const).map(({ key: t, label, icon: Icon }) => (
+          <button key={t} style={{ ...S.tab(tab === t), display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setTab(t)}>
+            <Icon size={13} color={tab === t ? '#ff6b00' : '#3a3a3a'} />
+            {label}
+            {tab === t && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: '#ff6b00', borderRadius: 2 }} />}
           </button>
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Spinner } from 'react-bootstrap'
-import { FaRobot, FaMicrophone, FaFileAlt, FaSearch, FaDownload } from 'react-icons/fa'
+import { FaRobot, FaMicrophone, FaFileAlt, FaSearch, FaDownload, FaChartBar, FaUsers } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 import * as XLSX from 'xlsx'
 
@@ -231,16 +231,15 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
   return (
     <div>
       {/* ── Tabs ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem' }}>
-        {(['overview', 'students'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{
-            background: tab === t ? '#ff6b00' : 'transparent',
-            border: `1px solid ${tab === t ? '#ff6b00' : '#2a2a2a'}`,
-            color: tab === t ? '#fff' : '#666',
-            borderRadius: 8, padding: '5px 18px', fontSize: '0.82rem',
-            fontWeight: 600, cursor: 'pointer',
-          }}>
-            {t === 'overview' ? 'Overview' : 'Students'}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginBottom: '1.5rem' }}>
+        {([
+          { key: 'overview', label: 'Overview', icon: FaChartBar },
+          { key: 'students', label: 'Students', icon: FaUsers },
+        ] as const).map(({ key: t, label, icon: Icon }) => (
+          <button key={t} onClick={() => setTab(t)} style={{ position: 'relative', background: 'none', border: 'none', padding: '0.65rem 1.25rem 0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: tab === t ? 700 : 500, color: tab === t ? '#fff' : '#555', transition: 'color 0.15s' }}>
+            <Icon size={13} color={tab === t ? '#ff6b00' : '#3a3a3a'} />
+            {label}
+            {tab === t && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: '#ff6b00', borderRadius: 2 }} />}
           </button>
         ))}
       </div>

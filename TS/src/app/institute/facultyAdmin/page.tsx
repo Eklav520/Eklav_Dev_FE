@@ -1398,17 +1398,14 @@ function FacultyAdminDashboard({ user: _user }: { user: any; baseURL: string }) 
           </div>
 
           {/* Tab bar */}
-          <div style={DS.tabStrip}>
+          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginTop: '1.75rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
             {FACULTY_TABS.map(({ key, label, icon: Icon, color }) => {
               const active = activeTab === key
               return (
-                <button key={key} style={DS.tabBtn(active)} onClick={() => setActiveTab(key)}>
-                  {active
-                    ? <div style={DS.tabDot(color)} />
-                    : <Icon size={13} color="#3a3a3a" />
-                  }
+                <button key={key} onClick={() => setActiveTab(key)} style={{ position: 'relative', background: 'none', border: 'none', padding: '0.65rem 1.25rem 0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', fontWeight: active ? 700 : 500, color: active ? '#fff' : '#555', transition: 'color 0.15s', whiteSpace: 'nowrap' }}>
+                  <Icon size={13} color={active ? color : '#3a3a3a'} />
                   {label}
-                  {active && <div style={DS.tabIndicator(color)} />}
+                  {active && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: color, borderRadius: 2 }} />}
                 </button>
               )
             })}
