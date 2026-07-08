@@ -34,6 +34,11 @@ const RoleRedirect = () => {
     return <Navigate to="/student/dashboard" replace />
   }
 
+  // 💼 HR Admin
+  if (user.role === 'hrAdmin') {
+    return <Navigate to="/hr/dashboard" replace />
+  }
+
   // 🚨 Unknown role fallback
   return <Navigate to="/auth/sign-in" replace />
 }

@@ -6,6 +6,7 @@ import {
   EklavAdminRoutes,
   InstituteAdminRoutes,
   facultyAdminRoutes,
+  hrRoutes,
   shopRoutes,
   studentRoutes,
   tutorRoutes
@@ -18,6 +19,7 @@ import StudentLayout from '@/layouts/StudentLayout'
 import OtherLayout from '@/layouts/OtherLayout'
 import TutorLayout from '@/layouts/TutorLayout'
 import InstituteAdminLayout from '@/layouts/InstituteAdminLayout'
+import HRLayout from '@/layouts/HRLayout'
 
 import { useAuthContext } from '@/context/useAuthContext'
 import ProtectedRoute from './ProtectedRoute'
@@ -144,6 +146,21 @@ const AppRouter = (props: RouteProps) => {
               <StudentLayout {...props}>
                 {route.element}
               </StudentLayout>
+            </ProtectedRoute>
+          }
+        />
+      ))}
+
+      {/* HR Routes */}
+      {(hrRoutes || []).map((route, idx) => (
+        <Route
+          key={idx + route.name}
+          path={route.path}
+          element={
+            <ProtectedRoute allowedRoles={['hrAdmin']}>
+              <HRLayout {...props}>
+                {route.element}
+              </HRLayout>
             </ProtectedRoute>
           }
         />

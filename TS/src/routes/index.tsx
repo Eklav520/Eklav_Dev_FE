@@ -109,6 +109,7 @@ const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/p
 const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
 const AddInstitute = lazy(() => import('@/app/eklavadmin/instituteDetails/pages'))
 const ManageInstituteStudents = lazy(() => import('@/app/eklavadmin/institute-details/page'))
+const HRDetailsPage = lazy(() => import('@/app/eklavadmin/hr-details/page'))
 const AnnouncementsAdminPage = lazy(() => import('@/app/institute/announcements/page'))
 
 const FacultyAdminPage = lazy(() => import('@/app/institute/facultyAdmin/page'))
@@ -687,6 +688,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     element: <ManageInstituteStudents />,
   },
   {
+    path: '/eklavadmin/hr-details',
+    name: 'HR Management',
+    element: <HRDetailsPage />,
+  },
+  {
     path: '/eklavadmin/admin-chatbox',
     name: 'Admin Chatbox',
     element: <AdminChatbox />,
@@ -1084,6 +1090,15 @@ export const adminRoutes: RoutesProps[] = [
     name: 'Not Found',
     element: <NotFound />,
   },
+]
+
+// ── HR Routes ──────────────────────────────────────────────
+const HRDashboard = lazy(() => import('@/app/hr/dashboard/page'))
+const HRJobsPage  = lazy(() => import('@/app/hr/jobs/page'))
+
+export const hrRoutes: RoutesProps[] = [
+  { path: '/hr/dashboard', name: 'HR Dashboard', element: <HRDashboard /> },
+  { path: '/hr/jobs',      name: 'HR Jobs',      element: <HRJobsPage /> },
 ]
 
 export const appRoutes = [...initialRoutes, ...demosRoutes, ...otherRoutes, ...pagesRoutes, ...helpRoutes,]

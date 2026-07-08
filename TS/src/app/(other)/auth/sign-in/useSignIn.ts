@@ -63,6 +63,10 @@ const redirectUser = (role: string) => {
       navigate('/faculty-admin/dashboard', { replace: true })
       break
 
+    case 'hradmin':
+      navigate('/hr/dashboard', { replace: true })
+      break
+
     default:
       navigate('/auth/sign-in', { replace: true })
   }

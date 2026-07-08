@@ -1,25 +1,35 @@
-import { lazy, Suspense, useMemo, useState, useEffect } from 'react'
-import { Col, Collapse, Container, Offcanvas, OffcanvasBody, OffcanvasHeader, OffcanvasTitle, Row } from 'react-bootstrap'
+import React, { lazy, Suspense, useMemo, useState, useEffect } from 'react'
+import { Collapse } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
-import clsx from 'clsx'
 import type { IconType } from 'react-icons'
 
 import { STUDENT_MENU_ITEMS } from '@/assets/data/menu-items'
 import Preloader from '@/components/Preloader'
 import { useAuthContext } from '@/context/useAuthContext'
-import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
+import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
 import { ChildrenType } from '@/types/component-props'
-import { FiLayers, FiChevronRight, FiMenu } from 'react-icons/fi'
-import './studentLayout.css'
+import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell } from 'react-icons/fi'
+import { FaCrown } from 'react-icons/fa'
+import logoWhite from '@/assets/images/logo_white.png'
 
-// lazy parts
-const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
-const Footer = lazy(() => import('@/components/StudentLayoutComponents/Footer'))
-const TopNavigationBar = lazy(() => import('@/components/StudentLayoutComponents/TopNavigationBar'))
+const ordinal = (n: number) => {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
 const ChatBox = lazy(() => import('@/layouts/ChatBox'))
-import TrialWelcomeModal from './TrialWelcomeModal'
-import { getRemainingTrialDays } from '@/utils/trialUtils'
+
+// ── Theme constants (matches HRLayout pattern, orange accent) ──────────────
+const SIDEBAR_BG     = '#0d1117'
+const SIDEBAR_ACTIVE = 'rgba(255,122,0,0.15)'
+const SIDEBAR_HOVER  = '#162440'
+const SIDEBAR_TEXT   = '#c8d6e8'
+const SIDEBAR_ACTIVE_TEXT = '#ffffff'
+const ACCENT         = '#ff7a00'
+const TOP_NAV_BG     = '#ffffff'
+const MAIN_BG        = '#f1f5f9'
 
 type MenuItemTypeLocal = {
   key: string
@@ -35,63 +45,53 @@ type MenuItemTypeLocal = {
 const StudentLayout = ({ children }: ChildrenType) => {
   const { width } = useViewPort()
   const isDesktop = width >= 1200
-  const { isTrue: isOffCanvasMenuOpen, toggle: toggleOffCanvasMenu } = useToggle()
-
-  // Manual collapse state - controlled by user click
-  const [isCollapsed, setIsCollapsed] = useState(true)
-
-  const baseURL = import.meta.env.VITE_API_BASE_URL
-  const { user, refreshUser } = useAuthContext()
-  const token = user?.token
-
-  const [role, setRole] = useState('Guest')
-  const [showTrialModal, setShowTrialModal] = useState(false)
-  const [userName, setUserName] = useState('Student')
-  const [isHovering, setIsHovering] = useState(false)
-  const isSidebarExpanded = !isCollapsed || isHovering
-  const isOrangeTheme = isHovering && isCollapsed
+  const { user, removeSession } = useAuthContext()
   const location = useLocation()
+
+  const { profile } = useProfile()
+
+  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isHovering, setIsHovering] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
   const [featureRules, setFeatureRules] = useState<{ feature: string; denyYears?: string[]; denyBranches?: string[] }[]>([])
   const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
 
+  const baseURL = import.meta.env.VITE_API_BASE_URL
   const hostname = window.location.hostname
+  const isMainDomain = hostname === 'eklav.in' || hostname === 'www.eklav.in'
 
-  // extract subdomain (coredatalabs from coredatalabs.eklav.in)
-  const subdomain = hostname.split(".")[0]
+  const userName = profile?.fullName || profile?.name || 'Student'
+  const userBatch = profile?.batch || ''
+  const userJoiningYear = profile?.joiningYear || ''
+  const userStatus = profile?.status || 'approved'
+  const userProfileImage = profile?.profileImage || ''
 
-  // main domain check
-  const isMainDomain = hostname === "eklav.in" || hostname === "www.eklav.in"
+  const isSidebarExpanded = !isCollapsed || isHovering
+  const sidebarWidth = isSidebarExpanded ? '260px' : '72px'
+  const initials = userName.slice(0, 2).toUpperCase()
+  const isPending = userStatus === 'pending'
 
+  const profileSubtitle = (() => {
+    if (!userJoiningYear) return 'Student'
+    const yearNum = new Date().getFullYear() - parseInt(userJoiningYear, 10) + 1
+    const clampedYear = Math.max(1, Math.min(yearNum, 4))
+    const batch = userBatch ? ` ${userBatch},` : ''
+    return `B.Tech${batch} ${ordinal(clampedYear)} Year`
+  })()
+
+  // Force light background
   useEffect(() => {
-    const daysLeft = getRemainingTrialDays()
-    if (daysLeft >= 0) {
-      setShowTrialModal(true)
+    const prev = document.body.style.background
+    document.body.style.background = MAIN_BG
+    document.body.style.backgroundColor = MAIN_BG
+    document.documentElement.style.background = MAIN_BG
+    return () => {
+      document.body.style.background = prev
+      document.body.style.backgroundColor = prev
     }
   }, [])
 
-  useEffect(() => {
-    if (isOffCanvasMenuOpen) {
-      toggleOffCanvasMenu()
-    }
-  }, [location.pathname])
-
-  useEffect(() => {
-    if (!token) return
-    // Refresh user to ensure branch/joiningYear are in the cookie (login API doesn't return them)
-    refreshUser().catch(() => {})
-    fetch(`${baseURL}/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then((profile) => {
-        setRole(profile.role)
-        setUserName(profile.name || profile.fullName || 'Student')
-      })
-      .catch(() => { })
-  }, [token, baseURL])
-
-  // Fetch per-institute nav config on subdomains
   useEffect(() => {
     if (isMainDomain) return
     fetch(`${baseURL}/api/institute/nav-config-by-domain`, {
@@ -100,287 +100,276 @@ const StudentLayout = ({ children }: ChildrenType) => {
     })
       .then(r => r.json())
       .then(d => {
-        if (d.success && Array.isArray(d.navSections) && d.navSections.length > 0) {
-          setAllowedNavKeys(d.navSections)
-        }
-        if (d.success && Array.isArray(d.featureRules)) {
-          setFeatureRules(d.featureRules)
-        }
-        if (d.success && d.batchNavRules && typeof d.batchNavRules === 'object') {
-          setBatchNavRules(d.batchNavRules)
-        }
+        if (d.success && Array.isArray(d.navSections) && d.navSections.length > 0) setAllowedNavKeys(d.navSections)
+        if (d.success && Array.isArray(d.featureRules)) setFeatureRules(d.featureRules)
+        if (d.success && d.batchNavRules && typeof d.batchNavRules === 'object') setBatchNavRules(d.batchNavRules)
       })
-      .catch(() => { })
+      .catch(() => {})
   }, [isMainDomain, hostname, baseURL])
 
-  // Toggle sidebar collapse
-  const toggleSidebar = () => {
-    setIsCollapsed(prev => !prev)
-    setIsHovering(false)
-  }
+  // Close mobile on route change
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
-  // Calculate sidebar width based on collapse state
-  const sidebarWidth = isSidebarExpanded ? '280px' : '80px'
+  const toggleSidebar = () => { setIsCollapsed(p => !p); setIsHovering(false) }
+
+  const isActive = (url?: string) => !!url && location.pathname.startsWith(url)
+
+  // Current page label from menu
+  const currentPageLabel = useMemo(() => {
+    const flat = (items: MenuItemTypeLocal[]): MenuItemTypeLocal[] =>
+      items.flatMap(i => [i, ...(i.children ? flat(i.children) : [])])
+    const match = flat(STUDENT_MENU_ITEMS as MenuItemTypeLocal[]).find(i => i.url && location.pathname.startsWith(i.url))
+    return match?.label || 'Dashboard'
+  }, [location.pathname])
+
+  const SidebarContent = ({ expanded }: { expanded: boolean }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{`
+        .sl-nav-scroll::-webkit-scrollbar { display: none; }
+        .sl-nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
+
+      {/* Logo / hamburger header */}
+      <div style={{
+        height: 64,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: expanded ? 'space-between' : 'center',
+        padding: expanded ? '0 14px 0 16px' : '0',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        flexShrink: 0,
+      }}>
+        {expanded ? (
+          <>
+            <Link to="/student/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, overflow: 'hidden' }}>
+              <img src={logoWhite} alt="Eklav" style={{ height: 32, objectFit: 'contain', flexShrink: 0 }} />
+            </Link>
+            {isDesktop && (
+              <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 6, borderRadius: 6, flexShrink: 0 }}>
+                <FiMenu size={17} />
+              </button>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <img src={logoWhite} alt="Eklav" style={{ height: 22, objectFit: 'contain' }} />
+            <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
+              <FiMenu size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Portal badge */}
+      {expanded && (
+        <div style={{ padding: '10px 16px 6px', flexShrink: 0 }}>
+          <div style={{ background: `${ACCENT}20`, borderRadius: 6, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT }} />
+            <span style={{ fontSize: '0.7rem', color: ACCENT, fontWeight: 600, letterSpacing: 0.5 }}>STUDENT PORTAL</span>
+          </div>
+        </div>
+      )}
+
+      {/* Nav items */}
+      <nav className="sl-nav-scroll" style={{
+        flex: 1, overflowY: 'auto', overflowX: 'hidden',
+        display: 'flex', flexDirection: 'column',
+      }}>
+        <VerticalMenu
+          isCollapsed={!expanded}
+          isMainDomain={isMainDomain}
+          allowedNavKeys={allowedNavKeys}
+          featureRules={featureRules}
+          batchNavRules={batchNavRules}
+        />
+      </nav>
+
+      {/* Upgrade to Premium — only for pending/unsubscribed users */}
+      {isPending && expanded && (
+        <div style={{
+          margin: '0 12px 10px',
+          background: 'linear-gradient(135deg, #1a0a00, #2a1200)',
+          border: `1px solid ${ACCENT}44`,
+          borderRadius: 12,
+          padding: '14px 14px 12px',
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}>
+            <FaCrown size={16} color={ACCENT} />
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff' }}>Upgrade to Premium</span>
+          </div>
+          <p style={{ fontSize: '0.72rem', color: SIDEBAR_TEXT, margin: '0 0 10px', lineHeight: 1.4 }}>
+            Unlock all premium courses, mock interviews and more.
+          </p>
+          <Link to="/student/subscriptions" style={{
+            display: 'block', textAlign: 'center',
+            background: ACCENT, color: '#fff',
+            borderRadius: 8, padding: '7px 0',
+            fontSize: '0.78rem', fontWeight: 700,
+            textDecoration: 'none',
+          }}>
+            Upgrade Now
+          </Link>
+        </div>
+      )}
+
+      {/* Upgrade crown icon in collapsed mode */}
+      {isPending && !expanded && (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, flexShrink: 0 }}>
+          <Link to="/student/subscriptions" title="Upgrade to Premium" style={{
+            width: 36, height: 36, borderRadius: 8,
+            background: `${ACCENT}22`, border: `1px solid ${ACCENT}44`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <FaCrown size={17} color={ACCENT} />
+          </Link>
+        </div>
+      )}
+
+      {/* User footer */}
+      <div style={{
+        padding: expanded ? '12px 16px' : '10px 0',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex', alignItems: 'center',
+        justifyContent: expanded ? 'flex-start' : 'center',
+        gap: 10, flexShrink: 0,
+      }}>
+        <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
+          {/* Initials always as base — shows if image fails or is absent */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            borderRadius: '50%',
+            background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontWeight: 700, fontSize: '0.8rem',
+          }}>
+            {initials}
+          </div>
+          {userProfileImage && (
+            <img
+              src={`${import.meta.env.VITE_API_BASE_URL}${userProfileImage}`}
+              alt={userName}
+              style={{ position: 'absolute', inset: 0, width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${ACCENT}66` }}
+              onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+            />
+          )}
+        </div>
+        {expanded && (
+          <>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+              <div style={{ fontSize: '0.68rem', color: SIDEBAR_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
+            </div>
+            <button onClick={() => removeSession()} title="Logout" style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4 }}>
+              <FiLogOut size={15} />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
 
   return (
-    <>
-      {/* FIXED TOP NAVBAR */}
-      <Suspense>
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1030,
-          backgroundColor: '#000000', // Changed to black
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-          height: '70px',
-          borderBottom: '6px solid #ff7a00' // Added orange border
-        }}>
-          <TopNavigationBar
-            role={role}
-            onToggleMenu={toggleOffCanvasMenu}
-            onToggleSidebar={toggleSidebar}
-          />
-        </div>
-      </Suspense>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: MAIN_BG, backgroundColor: MAIN_BG }}>
 
-      {/* MAIN LAYOUT WITH FIXED SIDEBAR */}
-      <div style={{
-        display: 'flex',
-        height: '100vh',
-        overflow: 'hidden',
-        paddingTop: '70px',
-        backgroundColor: '#000000' // Added black background
-      }}>
-        {/* FIXED DESKTOP SIDEBAR */}
-        {isDesktop && (
-          <aside
-            onMouseEnter={() => {
-              if (isCollapsed) setIsHovering(true)
-            }}
-            onMouseLeave={() => {
-              if (isCollapsed) setIsHovering(false)
-            }}
-            style={{
-              position: 'fixed',
-              top: '70px',
-              left: 0,
-              bottom: 0,
-              width: sidebarWidth,
-              zIndex: 1020,
-              backgroundColor: isOrangeTheme ? '#0a0a0a' : '#000000', // Changed to black/dark gray
-              borderRight: isOrangeTheme
-                ? '1px solid #ff7a00' // Orange border
-                : '1px solid #1f1f1f', // Dark gray border
-              boxShadow: isOrangeTheme
-                ? '2px 0 12px rgba(255, 122, 0, 0.2)'
-                : 'none',
-              color: '#fff',
-              transition: 'width 0.25s ease',
-              overflowY: 'auto',
-              overflowX: 'hidden',
-            }}
-          >
-            {/* ===== Sidebar Header ===== */}
-            <div
-              style={{
-                padding: '16px',
-                borderBottom: '1px solid #1f1f1f', // Dark gray border
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              {isSidebarExpanded ? (
-                <>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '8px',
-                        background: isOrangeTheme
-                          ? 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)' // Orange gradient
-                          : 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)', // Always orange
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#000000',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                      }}
-                    >
-                      {userName?.charAt(0) || 'S'}
-                    </div>
-                    <div>
-                      <div
-                        style={{
-                          fontSize: '12px',
-                          color: '#8a8a8a', // Light gray
-                          fontWeight: '400',
-                        }}
-                      >
-                        Welcome,
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '15px',
-                          fontWeight: '600',
-                          color: '#ffffff',
-                          lineHeight: '1.3',
-                        }}
-                      >
-                        {userName || 'Student'}
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={toggleSidebar}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#8a8a8a',
-                      cursor: 'pointer',
-                      padding: '6px',
-                      borderRadius: '6px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = isCollapsed
-                        ? '#1f1f1f'
-                        : 'rgba(255, 122, 0, 0.15)';
-                      e.currentTarget.style.color = '#ff7a00';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'transparent';
-                      e.currentTarget.style.color = '#8a8a8a';
-                    }}
-                  >
-                    <FiMenu size={16} />
-                  </button>
-                </>
-              ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    width: '100%',
-                    gap: '8px',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #ff7a00 0%, #ff944d 100%)', // Orange gradient
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#000000',
-                      fontWeight: '600',
-                      fontSize: '16px',
-                    }}
-                  >
-                    {userName?.charAt(0) || 'S'}
-                  </div>
-                  <button
-                    onClick={toggleSidebar}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#8a8a8a',
-                      cursor: 'pointer',
-                      padding: '4px',
-                    }}
-                  >
-                    <FiMenu size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
+      {/* Desktop sidebar */}
+      {isDesktop && (
+        <aside
+          onMouseEnter={() => { if (isCollapsed) setIsHovering(true) }}
+          onMouseLeave={() => { if (isCollapsed) setIsHovering(false) }}
+          style={{
+            position: 'fixed', top: 0, left: 0, bottom: 0,
+            width: sidebarWidth,
+            background: SIDEBAR_BG,
+            zIndex: 1020,
+            transition: 'width 0.22s ease',
+            overflow: 'hidden',
+          }}
+        >
+          <SidebarContent expanded={isSidebarExpanded} />
+        </aside>
+      )}
 
-            {/* ===== Menu Items ===== */}
-            <VerticalMenu
-              isCollapsed={!isSidebarExpanded}
-              isMainDomain={isMainDomain}
-              allowedNavKeys={allowedNavKeys}
-              featureRules={featureRules}
-              batchNavRules={batchNavRules}
-            />
+      {/* Mobile overlay */}
+      {!isDesktop && mobileOpen && (
+        <>
+          <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1019 }} />
+          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 260, background: SIDEBAR_BG, zIndex: 1020 }}>
+            <SidebarContent expanded={true} />
           </aside>
-        )}
+        </>
+      )}
 
-        {/* MAIN CONTENT - Scrollable area */}
-        <main style={{
-          flex: 1,
-          marginLeft: isDesktop ? sidebarWidth : 0,
-          transition: 'margin-left 0.3s ease',
-          overflowY: 'auto',
-          height: '100%',
-          backgroundColor: '#000000' // Added black background
+      {/* Main area */}
+      <div style={{
+        marginLeft: isDesktop ? sidebarWidth : 0,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'margin-left 0.22s ease',
+        background: MAIN_BG,
+      }}>
+        {/* Sticky top navbar */}
+        <header style={{
+          height: 64,
+          background: TOP_NAV_BG,
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          gap: 16,
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}>
-          <div style={{ padding: '24px' }}>
-            <Suspense fallback={<Preloader />}>
-              <div className="main-content-wrapper" style={{ marginTop: '20px' }}>
-                {children}
-              </div>
-            </Suspense>
+          {!isDesktop && (
+            <button onClick={() => setMobileOpen(p => !p)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#334155' }}>
+              <FiMenu size={20} />
+            </button>
+          )}
+
+          {/* Page title */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>Student Portal</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{currentPageLabel}</div>
           </div>
+
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}>
+              <FiBell size={16} />
+            </button>
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff', fontWeight: 700, fontSize: '0.78rem',
+            }}>
+              {initials}
+            </div>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: 20, background: MAIN_BG }}>
+          <Suspense fallback={<Preloader />}>
+            {children}
+          </Suspense>
         </main>
       </div>
 
-      {/* MOBILE OFFCANVAS */}
-      {!isDesktop && (
-        <Offcanvas
-          show={isOffCanvasMenuOpen}
-          placement="start"
-          onHide={toggleOffCanvasMenu}
-          backdrop
-          scroll={false}
-          restoreFocus={false}
-          className="custom-mobile-drawer"
-        >
-          <OffcanvasBody className="p-0">
-            <div style={{
-              padding: "16px",
-              borderBottom: "1px solid #1f1f1f",
-              background: '#000000'
-            }}>
-              <div style={{ fontSize: "13px", color: "#ff7a00" }}>Welcome</div>
-              <div style={{ fontSize: "16px", fontWeight: "600", color: '#ffffff' }}>
-                {userName}
-              </div>
-            </div>
-
-            <VerticalMenu
-              isCollapsed={false}
-              onItemClick={toggleOffCanvasMenu}
-              isMainDomain={isMainDomain}
-              allowedNavKeys={allowedNavKeys}
-              featureRules={featureRules}
-              batchNavRules={batchNavRules}
-            />
-          </OffcanvasBody>
-        </Offcanvas>
-      )}
-
-      {/* CHAT BOX */}
+      {/* Chat */}
       <Suspense fallback={null}>
         <ChatBox position="bottom-right" />
       </Suspense>
-    </>
+    </div>
   )
 }
 
-/* ================= VERTICAL MENU ================= */
+/* ═══════════════════ VERTICAL MENU ═══════════════════ */
 
 type FeatureRule = { feature: string; denyYears?: string[]; denyBranches?: string[] }
 
@@ -409,156 +398,102 @@ const VerticalMenu = ({
   const studentBatchKey = studentYear && studentBranch ? `${studentYear}-${studentBranch}` : ''
   const batchAllowed = studentBatchKey && batchNavRules[studentBatchKey] ? batchNavRules[studentBatchKey] : null
 
-  const isFeatureDenied = (featureKey: string): boolean => {
+  const isFeatureDenied = (key: string): boolean => {
     if (!featureRules.length) return false
-    const rule = featureRules.find(r => r.feature === featureKey)
+    const rule = featureRules.find(r => r.feature === key)
     if (!rule) return false
-    const yearDenied = rule.denyYears?.length ? rule.denyYears.includes(studentYear) : false
-    const branchDenied = rule.denyBranches?.length ? rule.denyBranches.includes(studentBranch) : false
-    return yearDenied || branchDenied
+    return (rule.denyYears?.includes(studentYear) || false) || (rule.denyBranches?.includes(studentBranch) || false)
   }
 
   const filteredMenu = useMemo(() => {
-    let items = STUDENT_MENU_ITEMS
-
-    // Hide subscription for subdomains
-    if (!isMainDomain) {
-      items = items.filter(item => item.key !== "subscriptions")
-    }
-
-    // Hide "My Colleges" section on main domain — it's institute-specific content
-    if (isMainDomain) {
-      items = items.filter(item => item.key !== "myColleges")
-    }
-
-    // Apply batch-specific nav rules (year+branch config) — takes priority over generic navSections
+    let items = STUDENT_MENU_ITEMS as MenuItemTypeLocal[]
+    if (!isMainDomain) items = items.filter(i => i.key !== 'subscriptions')
+    if (isMainDomain) items = items.filter(i => i.key !== 'myColleges')
     if (!isMainDomain && batchAllowed) {
       items = items
-        .filter(item => batchAllowed.includes(item.key))
-        .map(item => {
-          if (!item.children) return item
-          return { ...item, children: item.children.filter(child => batchAllowed.includes(child.key)) }
-        })
-        .filter(item => !item.children || item.children.length > 0)
+        .filter(i => batchAllowed.includes(i.key))
+        .map(i => i.children ? { ...i, children: i.children.filter(c => batchAllowed.includes(c.key)) } : i)
+        .filter(i => !i.children || i.children.length > 0)
     } else {
-      // Apply per-institute nav config (default for all students)
-      if (!isMainDomain && allowedNavKeys && allowedNavKeys.length > 0) {
-        items = items.filter(item => allowedNavKeys.includes(item.key))
-      }
-
-      // Apply subsection feature rules (year/branch restrictions)
-      if (!isMainDomain && featureRules.length > 0) {
-        items = items.map(item => {
-          if (!item.children) return item
-          return { ...item, children: item.children.filter(child => !isFeatureDenied(child.key)) }
-        }).filter(item => !item.children || item.children.length > 0)
+      if (!isMainDomain && allowedNavKeys?.length) items = items.filter(i => allowedNavKeys.includes(i.key))
+      if (!isMainDomain && featureRules.length) {
+        items = items
+          .map(i => i.children ? { ...i, children: i.children.filter(c => !isFeatureDenied(c.key)) } : i)
+          .filter(i => !i.children || i.children.length > 0)
       }
     }
-
-    return items.map((item) => ({
-      ...item,
-      isDisabled: !isApproved && !alwaysEnabledKeys.includes(item.key),
-    }))
+    return items.map(i => ({ ...i, isDisabled: !isApproved && !alwaysEnabledKeys.includes(i.key) }))
   }, [isApproved, isMainDomain, allowedNavKeys, featureRules, batchAllowed])
-
-  const tree = useMemo(() => filteredMenu, [filteredMenu])
 
   const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const newOpen: Record<string, boolean> = {}
     const walk = (nodes: MenuItemTypeLocal[], parents: string[] = []) => {
-      nodes.forEach((n) => {
-        if (n.url === pathname) parents.forEach((p) => (newOpen[p] = true))
+      nodes.forEach(n => {
+        if (n.url === pathname) parents.forEach(p => (newOpen[p] = true))
         if (n.children) walk(n.children, [...parents, n.key])
       })
     }
-    walk(tree)
-    setOpenKeys((s) => ({ ...s, ...newOpen }))
-  }, [pathname, tree])
+    walk(filteredMenu)
+    setOpenKeys(s => ({ ...s, ...newOpen }))
+  }, [pathname, filteredMenu])
 
   const toggle = (key: string) =>
-    setOpenKeys((prev) => ({
+    setOpenKeys(prev => ({
       ...Object.keys(prev).reduce((a, k) => ({ ...a, [k]: false }), {}),
       [key]: !prev[key],
     }))
 
-  const renderNode = (node: MenuItemTypeLocal) => {
-    const Icon = node.icon || (node.children?.length ? FiLayers : null)
+  const iconSize = isCollapsed ? 19 : 16
+  const itemPad = isCollapsed ? '11px 0' : '9px 16px'
+  const itemMargin = isCollapsed ? '2px auto' : '2px 8px'
+
+  const renderNode = (node: MenuItemTypeLocal): React.ReactNode => {
+    const Icon = node.icon || (node.children?.length ? FiLayers : null) as IconType | null
     const hasChildren = !!node.children?.length
     const open = !!openKeys[node.key]
+    const active = node.url ? pathname.startsWith(node.url) : false
 
     if (node.isTitle) {
-      return isCollapsed ? (
-        <div key={node.key} style={{
-          padding: '12px 16px 8px',
-          fontSize: '0.75rem',
-          fontWeight: '600',
-          color: '#ff7a00', // Changed to orange
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
+      return isCollapsed ? null : (
+        <div key={node.key} style={{ padding: '12px 16px 4px', fontSize: '0.68rem', fontWeight: 600, color: `${ACCENT}99`, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {node.label}
         </div>
-      ) : null
+      )
     }
 
     if (hasChildren) {
       return (
-        <div key={node.key}>
+        <div key={node.key} style={isCollapsed ? { width: '100%' } : {}}>
           <button
             type="button"
             onClick={() => toggle(node.key)}
             style={{
-              width: '100%',
-              padding: isCollapsed ? '12px 0' : '10px 16px',
-              display: 'flex',
-              alignItems: 'center',
+              width: isCollapsed ? 44 : '100%', padding: itemPad, margin: itemMargin,
+              display: 'flex', alignItems: 'center',
               justifyContent: isCollapsed ? 'center' : 'space-between',
-              background: 'transparent',
+              background: active ? SIDEBAR_ACTIVE : 'transparent',
               border: 'none',
-              color: pathname.startsWith(node.url || '#') ? '#ff7a00' : '#e5e5e5', // Orange for active
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              borderRadius: '6px',
-              marginBottom: '2px'
+              color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+              cursor: 'pointer', transition: 'all 0.15s',
+              borderRadius: 8, fontSize: '0.85rem', fontWeight: active ? 600 : 400,
             }}
-            onMouseEnter={(e) => {
-              if (!pathname.startsWith(node.url || '#')) {
-                e.currentTarget.style.background = isCollapsed
-                  ? '#1f1f1f'
-                  : 'rgba(255, 122, 0, 0.15)'
-                e.currentTarget.style.color = '#ff7a00'
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!pathname.startsWith(node.url || '#')) {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.color = '#e5e5e5'
-              }
-            }}
+            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? '0' : '12px' }}>
-              {Icon && <Icon size={18} />}
-              {!isCollapsed && <span style={{ fontSize: '14px' }}>{node.label}</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? 0 : 10 }}>
+              {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
+              {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label}</span>}
             </div>
-
             {!isCollapsed && (
-              <FiChevronRight
-                size={14}
-                style={{
-                  transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
-                  transition: 'transform 0.2s',
-                  color: '#ff7a00' // Orange chevron
-                }}
-              />
+              <FiChevronRight size={13} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', color: ACCENT, flexShrink: 0 }} />
             )}
           </button>
-
           {!isCollapsed && (
             <Collapse in={open}>
-              <div style={{ marginLeft: '32px', marginTop: '2px' }}>
-                {node.children!.map((c) => renderNode(c))}
+              <div style={{ marginLeft: 28, marginTop: 2 }}>
+                {node.children!.map(c => renderNode(c))}
               </div>
             </Collapse>
           )}
@@ -566,63 +501,49 @@ const VerticalMenu = ({
       )
     }
 
-    const isActive = pathname === node.url
-
     return (
       <Link
         key={node.key}
         to={node.url || '#'}
-        className="menu-item"
-        onClick={() => {
-          if (onItemClick) onItemClick()
-        }}
+        onClick={onItemClick}
         style={{
-          display: 'flex',
-          alignItems: 'center',
+          display: 'flex', alignItems: 'center',
           justifyContent: isCollapsed ? 'center' : 'flex-start',
-          padding: isCollapsed ? '12px 0' : '10px 16px',
-          gap: isCollapsed ? '0' : '12px',
-          textDecoration: 'none',
-          color: isActive ? '#ff7a00' : '#e5e5e5', // Orange for active
-          background: isActive ? 'rgba(255, 122, 0, 0.15)' : 'transparent', // Orange background for active
-          borderRadius: '6px',
-          transition: 'all 0.2s',
-          marginBottom: '2px',
-          fontSize: '14px'
+          padding: itemPad, margin: itemMargin,
+          width: isCollapsed ? 44 : undefined,
+          gap: isCollapsed ? 0 : 10,
+          textDecoration: 'none', borderRadius: 8,
+          background: active ? SIDEBAR_ACTIVE : 'transparent',
+          color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+          fontSize: '0.85rem', fontWeight: active ? 600 : 400,
+          transition: 'background 0.15s, color 0.15s',
+          position: 'relative', whiteSpace: 'nowrap', overflow: 'hidden',
         }}
-        onMouseEnter={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = isCollapsed
-              ? '#1f1f1f'
-              : 'rgba(255, 122, 0, 0.15)'
-            e.currentTarget.style.color = '#ff7a00'
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isActive) {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#e5e5e5'
-          }
-        }}
+        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+        onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
-        {Icon && <Icon size={18} />}
+        {active && (
+          <div style={{ position: 'absolute', left: 0, top: '20%', width: 3, height: '60%', background: ACCENT, borderRadius: '0 3px 3px 0' }} />
+        )}
+        {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
         {!isCollapsed && node.label}
       </Link>
     )
   }
 
   return (
-    <div style={{ padding: '12px' }}>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: isCollapsed ? '8px' : '2px'
-      }}>
-        {tree.map((n) => renderNode(n))}
-      </div>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-evenly',
+      alignItems: isCollapsed ? 'center' : 'stretch',
+      flex: 1,
+      padding: isCollapsed ? '4px 0' : '2px 0',
+      width: '100%',
+    }}>
+      {filteredMenu.map(n => renderNode(n))}
     </div>
   )
 }
 
 export default StudentLayout
-

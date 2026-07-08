@@ -158,8 +158,8 @@ const CareerRoadmapList = () => {
       {/* Header */}
       <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
         <div>
-          <h4 className="fw-bold mb-1">Career Roadmaps</h4>
-          <p className="text-muted mb-0" style={{ fontSize: '14px' }}>
+          <h4 className="fw-bold mb-1" style={{ color: '#0f172a' }}>Career Roadmaps</h4>
+          <p className="mb-0" style={{ fontSize: '14px', color: '#475569' }}>
             Choose your career path and follow a structured learning journey
           </p>
         </div>
@@ -224,7 +224,7 @@ const CareerRoadmapList = () => {
       </div>
 
       {filtered.length === 0 && (
-        <div className="text-center py-5 text-muted">
+        <div className="text-center py-5" style={{ color: '#64748b' }}>
           <p>No roadmaps found matching "<strong>{search}</strong>"</p>
         </div>
       )}
@@ -233,10 +233,10 @@ const CareerRoadmapList = () => {
       {roleRoadmaps.length > 0 && (
         <div className="mb-5">
           <div className="d-flex align-items-center gap-2 mb-3">
-            <BsPerson size={18} className="text-muted" />
-            <h5 className="fw-bold mb-0">Role-Based Roadmaps</h5>
+            <BsPerson size={18} style={{ color: '#64748b' }} />
+            <h5 className="fw-bold mb-0" style={{ color: '#0f172a' }}>Role-Based Roadmaps</h5>
             <Badge bg="secondary" style={{ fontSize: '11px' }}>{roleRoadmaps.length}</Badge>
-            <span className="text-muted" style={{ fontSize: '13px' }}>· Master the full toolkit for a specific role</span>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>· Master the full toolkit for a specific role</span>
           </div>
           <Row className="g-3">
             {roleRoadmaps.map((roadmap) => (
@@ -252,10 +252,10 @@ const CareerRoadmapList = () => {
       {skillRoadmaps.length > 0 && (
         <div className="mb-4">
           <div className="d-flex align-items-center gap-2 mb-3">
-            <BsLightbulb size={18} className="text-muted" />
-            <h5 className="fw-bold mb-0">Skill-Based Roadmaps</h5>
+            <BsLightbulb size={18} style={{ color: '#64748b' }} />
+            <h5 className="fw-bold mb-0" style={{ color: '#0f172a' }}>Skill-Based Roadmaps</h5>
             <Badge bg="secondary" style={{ fontSize: '11px' }}>{skillRoadmaps.length}</Badge>
-            <span className="text-muted" style={{ fontSize: '13px' }}>· Deep dive into a specific technology or skill</span>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>· Deep dive into a specific technology or skill</span>
           </div>
           <Row className="g-3">
             {skillRoadmaps.map((roadmap) => (

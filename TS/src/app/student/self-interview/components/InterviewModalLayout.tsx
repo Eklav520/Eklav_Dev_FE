@@ -162,12 +162,13 @@ const InterviewModalLayout = () => {
               <FaDesktop className="text-white" size={20} />
             </div>
 
-            <h2 className="fw-bold mb-0">
+            <h2 className="fw-bold mb-0" style={{ color: '#0f172a' }}>
               AI Interview Practice
             </h2>
           </div>
 
           <Badge
+            bg=""
             className="text-white px-3 py-2"
             style={{
               backgroundColor: '#ff7a00',
@@ -181,8 +182,8 @@ const InterviewModalLayout = () => {
 
         {/* Description */}
         <p
-          className="text-muted mt-3 mb-0"
-          style={{ maxWidth: 1300 }}
+          className="mt-3 mb-0"
+          style={{ maxWidth: 1300, color: '#475569' }}
         >
           Choose between topic-based technical interviews or resume-based simulations tailored to your background. Experience real-time AI feedback in a structured and immersive environment.
         </p>
@@ -221,7 +222,7 @@ const InterviewModalLayout = () => {
                     <FaLaptopCode className="text-white" size={18} />
                   </div>
 
-                  <h5 className="fw-semibold mb-0">
+                  <h5 className="fw-semibold mb-0" style={{ color: '#ffffff' }}>
                     Topic-Based Interview
                   </h5>
                 </div>
@@ -240,7 +241,7 @@ const InterviewModalLayout = () => {
 
               </div>
 
-              <p className="text-muted small mt-3 mb-0">
+              <p className="small mt-3 mb-0" style={{ color: '#94a3b8' }}>
                 Practice interviews on React, JavaScript, Node.js and more.
               </p>
             </div>
@@ -282,7 +283,7 @@ const InterviewModalLayout = () => {
                     <FaFileAlt className="text-white" size={18} />
                   </div>
 
-                  <h5 className="fw-semibold mb-0">
+                  <h5 className="fw-semibold mb-0" style={{ color: '#ffffff' }}>
                     Resume-Based Interview
                   </h5>
                 </div>
@@ -299,7 +300,7 @@ const InterviewModalLayout = () => {
                 </Badge>
               </div>
 
-              <p className="text-muted small mt-3 mb-0">
+              <p className="small mt-3 mb-0" style={{ color: '#94a3b8' }}>
                 Upload your resume and get personalized interview questions.
               </p>
             </div>
@@ -314,8 +315,8 @@ const InterviewModalLayout = () => {
       {/* ================= How it works ================= */}
       <Row className="mt-5 pt-4">
         <Col xs={12} className="text-center mb-4">
-          <h3 className="fw-bold mb-2">How It Works</h3>
-          <p className="text-muted mb-0" style={{ maxWidth: 600, margin: '0 auto' }}>
+          <h3 className="fw-bold mb-2" style={{ color: '#0f172a' }}>How It Works</h3>
+          <p className="mb-0" style={{ maxWidth: 600, margin: '0 auto', color: '#475569' }}>
             A simple 3-step process to simulate real interview experience and
             receive AI-powered feedback.
           </p>
@@ -363,11 +364,11 @@ const InterviewModalLayout = () => {
                       {index + 1}
                     </div>
 
-                    <h5 className="fw-semibold mb-2">
+                    <h5 className="fw-semibold mb-2" style={{ color: '#ffffff' }}>
                       {step.title}
                     </h5>
 
-                    <p className="text-muted mb-0 small">
+                    <p className="mb-0 small" style={{ color: '#94a3b8' }}>
                       {step.desc}
                     </p>
 

@@ -382,6 +382,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
+    key: 'hrDetails',
+    label: 'HR Management',
+    icon: BsBriefcase,
+    url: '/eklavadmin/hr-details',
+    parentKey: 'eklavadmin',
+  },
+  {
     key: 'adminreels',
     label: 'Admin Reels Upload',
     icon: FaVideo,
@@ -1609,6 +1616,21 @@ export const MEGA_MENU_ITEMS: MegaMenuType = {
     },
   ],
 }
+
+export const HR_MENU_ITEMS: MenuItemType[] = [
+  { key: 'hr-dashboard',       label: 'Dashboard',          icon: BsSpeedometer2,        url: '/hr/dashboard',          parentKey: 'hr' },
+  { key: 'hr-jobs',            label: 'Jobs',               icon: BsBriefcase,            url: '/hr/jobs',               parentKey: 'hr' },
+  { key: 'hr-candidates',      label: 'Candidates',         icon: BsPeople,               url: '/hr/candidates',         parentKey: 'hr' },
+  { key: 'hr-pipeline',        label: 'Pipeline',           icon: BsChevronDoubleRight,   url: '/hr/pipeline',           parentKey: 'hr' },
+  { key: 'hr-interviews',      label: 'Interviews',         icon: BsCameraVideo,          url: '/hr/interviews',         parentKey: 'hr' },
+  { key: 'hr-assessments',     label: 'Assessments',        icon: MdOutlineAssessment,    url: '/hr/assessments',        parentKey: 'hr' },
+  { key: 'hr-reports',         label: 'Reports & Analytics',icon: BsGraphUp,              url: '/hr/reports',            parentKey: 'hr' },
+  { key: 'hr-communication',   label: 'Communication',      icon: BsChatDots,             url: '/hr/communication',      parentKey: 'hr' },
+  { key: 'hr-offer-onboarding',label: 'Offer & Onboarding', icon: MdOutlineLocalOffer,    url: '/hr/offer-onboarding',   parentKey: 'hr' },
+  { key: 'hr-company-profile', label: 'Company Profile',    icon: BsInfoSquareFill,       url: '/hr/company-profile',    parentKey: 'hr' },
+  { key: 'hr-team',            label: 'Team Members',       icon: HiOutlineUserGroup,     url: '/hr/team',               parentKey: 'hr' },
+  { key: 'hr-settings',        label: 'Settings',           icon: BsGear,                 url: '/hr/settings',           parentKey: 'hr' },
+]
 
 export const ADMIN_MENU_ITEMS: MenuItemType[] = [
   {
