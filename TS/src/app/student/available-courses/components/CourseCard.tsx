@@ -1,7 +1,7 @@
 import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
 import { useEffect, useMemo, useState } from 'react'
-import { Badge, Button, Card, CardBody, CardTitle, Modal, Tab, Tabs, ProgressBar, CardHeader, Row, Col, Spinner, Toast, ToastContainer } from 'react-bootstrap'
+import { Button, Modal, Spinner, Toast, ToastContainer } from 'react-bootstrap'
 import {
   FaHeart,
   FaRegClock,
@@ -12,7 +12,6 @@ import {
   FaTable,
   FaInfoCircle,
   FaPlay,
-  FaLanguage,
   FaChartBar,
   FaChartLine,
   FaListUl,
@@ -56,12 +55,25 @@ type CourseType = {
   courseStatus?: 'active' | 'comingsoon'
 }
 
-const CourseCard = ({ course }: { course: CourseType }) => {
+const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketInsight, hideCard }: {
+  course: CourseType
+  open?: boolean
+  openMarketInsight?: boolean
+  onClose?: () => void
+  onCloseMarketInsight?: () => void
+  hideCard?: boolean
+}) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { isTrue: isWishlisted, toggle } = useToggle()
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([])
   const [showDetails, setShowDetails] = useState(false)
   const [showMarketInsight, setShowMarketInsight] = useState(false)
+
+  useEffect(() => { if (open !== undefined) setShowDetails(open) }, [open])
+  useEffect(() => { if (openMarketInsight !== undefined) setShowMarketInsight(openMarketInsight) }, [openMarketInsight])
+
+  const handleCloseDetails = () => { setShowDetails(false); setMiniInsight(null); setShowInlineVideo(false); onClose?.() }
+  const handleCloseMarketInsight = () => { setShowMarketInsight(false); onCloseMarketInsight?.() }
   const { user } = useAuthContext()
   const token = user?.token
   const [showPreview, setShowPreview] = useState(false)
@@ -74,6 +86,27 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   const isComingSoon = courseStatus === 'coming-soon'
   const [enrolling, setEnrolling] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Curriculum' | 'Instructor' | 'Reviews' | 'Q&A'>('Curriculum')
+  const [showInlineVideo, setShowInlineVideo] = useState(false)
+  const [miniInsight, setMiniInsight] = useState<{ jobs?: string; salary?: string; companies?: string[]; status?: string } | null>(null)
+
+  useEffect(() => {
+    if (!showDetails || !token || miniInsight) return
+    const courseId = course._id
+    fetch(`${baseURL}/courses/${courseId}/market-insight`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => {
+        if (d.marketScope || d.companiesUsing) {
+          setMiniInsight({
+            jobs: d.jobRoles?.length ? `${d.jobRoles.length * 200}+` : '2,400+',
+            salary: d.salaryEntry && d.salaryMid ? `₹${d.salaryEntry}–${d.salaryMid}` : '₹6–12 LPA',
+            companies: d.companiesUsing?.slice(0, 5) ?? [],
+            status: d.marketStatus ?? '',
+          })
+        }
+      })
+      .catch(() => {})
+  }, [showDetails, token, course._id])
 
   const canEnroll =
     courseType === 'free'
@@ -283,7 +316,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
   return (
     <>
       {/* ═══════════════════ CARD ═══════════════════ */}
-      <div className="cc2-card h-100 d-flex flex-column">
+      {!hideCard && <div className="cc2-card h-100 d-flex flex-column">
 
         {/* ── Thumbnail ── */}
         <div className="cc2-thumb-wrap">
@@ -422,316 +455,435 @@ const CourseCard = ({ course }: { course: CourseType }) => {
           </div>
 
         </div>
-      </div>
+      </div>}
 
-      {/* MODAL */}
-      <Modal show={!isComingSoon && showDetails} onHide={() => setShowDetails(false)} size="xl" fullscreen scrollable className="cc-modal-fullscreen">
-        {/* Floating Close Button */}
-        <button type="button" className="cc-close-btn" onClick={() => setShowDetails(false)} aria-label="Close">
-          ×
-        </button>
+      {/* ═══ VIEW DETAILS MODAL — Marketplace 3-Panel Layout ═══ */}
+      <Modal show={!isComingSoon && showDetails} onHide={handleCloseDetails} fullscreen backdrop="static" keyboard={false} animation={false} className="cd-modal">
+        <Modal.Body className="p-0" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9', overflow: 'hidden' }}>
 
-        <Modal.Body className="p-0">
-          <ToastContainer
-            position="top-end"
-            className="p-3"
-            style={{ position: 'fixed', zIndex: 99999 }}
-          >
-            <Toast
-              bg="success"
-              show={showSuccess}
-              onClose={() => setShowSuccess(false)}
-              delay={3000}
-              autohide
-            >
-              <Toast.Body className="text-white d-flex align-items-center gap-2">
-                <FaCheck /> Successfully Enrolled
-              </Toast.Body>
+          {/* Toast */}
+          <ToastContainer position="top-end" className="p-3" style={{ position: 'fixed', zIndex: 99999 }}>
+            <Toast bg="success" show={showSuccess} onClose={() => setShowSuccess(false)} delay={3000} autohide>
+              <Toast.Body className="text-white d-flex align-items-center gap-2"><FaCheck /> Successfully Enrolled</Toast.Body>
             </Toast>
           </ToastContainer>
-          <div className="cc-modal-wrapper">
-            {/* HERO */}
-            <div className={`cc-hero ${showHero ? '' : 'no-img'}`}>
-              {showHero && (
-                <img
-                  src={
-                    image
-                      ? image.includes('s3.') || image.startsWith('http')
-                        ? image
-                        : `https://eklav-videos.s3.eu-north-1.amazonaws.com/images/${image}`
-                      : `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(title || 'Course')}`
-                  }
-                  onError={() => setHeroOk(false)}
-                  alt="Course banner"
-                  className="cc-hero-img"
-                />
-              )}
 
-              <div className="cc-hero-overlay" />
-
-              <div className="cc-hero-inner container-xxl">
-                {categories.length > 0 && (
-                  <div className="d-flex align-items-center gap-2 mb-2 flex-wrap">
-                    {categories.slice(0, 3).map((c, i) => (
-                      <span key={i} className="badge rounded-pill cc-chip">
-                        {clean(c)}
-                      </span>
-                    ))}
-                    {categories.length > 3 && <span className="badge rounded-pill cc-chip">+{categories.length - 3}</span>}
-                  </div>
-                )}
-
-                {/* Glassy header title block */}
-                <div className="cc-glass-block">
-                  <h1 className="cc-title mb-1">{title}</h1>
-                  <p className="mb-2 cc-subtitle">{shortDescription || 'No description available.'}</p>
-
-                  <div className="d-flex flex-wrap gap-3 small fw-semibold text-white-75 align-items-center">
-                    <div>
-                      <FaRegClock className="me-1" /> {duration || 'N/A'}
-                    </div>
-                    <div>
-                      <FaTable className="me-1" /> {totalLectures || videos.length || 0} lectures
-                    </div>
-
-                    {averageRating > 0 ? (
-                      <div className="d-inline-flex align-items-center">{renderStarRating(averageRating, true, 14)}</div>
-                    ) : (
-                      <div className="text-white-75">No ratings yet</div>
-                    )}
-
-                    {price && (
-                      <div>
-                        {hasValidDiscount ? (
-                          <>
-                            <span className="text-decoration-line-through opacity-75 me-2">
-                              ₹{formatRupee(rawPrice)}
-                            </span>
-                            <span className="text-success">
-                              ₹{formatRupee(effectivePrice)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-success">₹{formatRupee(rawPrice)}</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {previewUrl && (
-                    <Button
-                      size="sm"
-                      variant="light"
-                      className="fw-semibold d-inline-flex align-items-center gap-2 mt-2"
-                      onClick={() => setShowPreview(true)}>
-                      <FaPlay /> Preview
-                    </Button>
+          {/* ── TOP BAR ── */}
+          <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', height: 50, flexShrink: 0 }}>
+            {/* Breadcrumb — same fixed width as left panel so tabs always align with center panel */}
+            <div style={{ width: 380, minWidth: 380, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.73rem', color: '#94a3b8', borderRight: '1px solid #e2e8f0', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
+              <span style={{ whiteSpace: 'nowrap' }}>Home</span>
+              <span>›</span>
+              <span style={{ whiteSpace: 'nowrap' }}>All Courses</span>
+              <span>›</span>
+              <span style={{ color: '#0f172a', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {categories[0] ? clean(categories[0]) : 'Course'}
+              </span>
+            </div>
+            {/* Tabs — equal width + dividers */}
+            <div style={{ display: 'flex', height: '100%' }}>
+              {(['Overview', 'Curriculum', 'Instructor', 'Reviews', 'Q&A'] as const).map((tab, idx, arr) => (
+                <div key={tab} style={{ display: 'flex', alignItems: 'stretch', height: '100%' }}>
+                  <button onClick={() => setActiveTab(tab)} style={{
+                    background: 'transparent', border: 'none',
+                    borderBottom: activeTab === tab ? '2.5px solid #ff7a00' : '2.5px solid transparent',
+                    color: activeTab === tab ? '#ff7a00' : '#64748b',
+                    fontWeight: activeTab === tab ? 700 : 500,
+                    fontSize: '0.84rem', width: 120, textAlign: 'center', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap', height: '100%',
+                    transition: 'color 0.15s, border-color 0.15s',
+                  }}>
+                    {tab}{tab === 'Reviews' && totalRatings > 0 ? ` (${totalRatings > 999 ? `${(totalRatings / 1000).toFixed(1)}K` : totalRatings})` : ''}
+                  </button>
+                  {idx < arr.length - 1 && (
+                    <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'center', height: 16, flexShrink: 0 }} />
                   )}
                 </div>
+              ))}
+            </div>
+            {/* Spacer */}
+            <div style={{ flex: 1 }} />
+            {/* Close */}
+            <button onClick={handleCloseDetails} style={{
+              background: 'rgba(0,0,0,0.07)', border: 'none', borderRadius: '50%', width: 30, height: 30,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+              color: '#475569', fontSize: '1.15rem', flexShrink: 0, marginRight: 16,
+            }} aria-label="Close">×</button>
+          </div>
+
+          {/* ── 3-PANEL BODY ── */}
+          <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+
+            {/* ── LEFT PANEL — same width as breadcrumb (380px) ── */}
+            <div style={{ width: 380, minWidth: 380, maxWidth: 380, background: '#fff', borderRight: '1px solid #e2e8f0', overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }} className="cd-panel-scroll">
+
+              {/* Thumbnail / Inline Video Player */}
+              <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', width: '100%', height: 180, flexShrink: 0 }}>
+                {showInlineVideo && previewUrl ? (
+                  /* ── Inline video player ── */
+                  previewUrl.includes('youtube') || previewUrl.includes('youtu.be') ? (
+                    <iframe
+                      src={previewUrl.replace('watch?v=', 'embed/') + '?autoplay=1'}
+                      title="Course Preview"
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                    />
+                  ) : (
+                    <video
+                      src={previewUrl}
+                      controls
+                      autoPlay
+                      style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
+                    />
+                  )
+                ) : (
+                  /* ── Thumbnail with play overlay ── */
+                  <>
+                    <img
+                      src={imgSrc}
+                      onError={(e) => { const t = e.currentTarget; t.onerror = null; t.src = fallbackSrc }}
+                      alt={title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                    />
+                    {/* Play button — only when preview exists */}
+                    {previewUrl ? (
+                      <div
+                        onClick={() => setShowInlineVideo(true)}
+                        style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.28)', cursor: 'pointer' }}>
+                        <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'rgba(255,122,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 18px rgba(255,122,0,0.45)' }}>
+                          <FaPlay color="#fff" size={16} style={{ marginLeft: 2 }} />
+                        </div>
+                        <span style={{ position: 'absolute', bottom: 6, right: 8, fontSize: '0.6rem', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+                          Preview available
+                        </span>
+                      </div>
+                    ) : (
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.15)' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}>No preview available</span>
+                      </div>
+                    )}
+                    {/* Type badge top-left */}
+                    {(badge?.text || courseType) && (
+                      <span style={{
+                        position: 'absolute', top: 8, left: 8,
+                        background: badge?.text ? '#f59e0b' : courseType === 'paid' ? '#ff7a00' : '#16a34a',
+                        color: '#fff', fontSize: '0.65rem', fontWeight: 700, padding: '3px 9px',
+                        borderRadius: 20, letterSpacing: '0.3px',
+                      }}>
+                        {badge?.text || (courseType === 'paid' ? 'Premium' : 'Free')}
+                      </span>
+                    )}
+                  </>
+                )}
+                {/* Stop video button */}
+                {showInlineVideo && (
+                  <button
+                    onClick={() => setShowInlineVideo(false)}
+                    style={{ position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 24, height: 24, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', zIndex: 10 }}
+                  >×</button>
+                )}
+              </div>
+
+              {/* Title */}
+              <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem', lineHeight: 1.4, margin: 0 }}>{title}</h6>
+
+              {/* Short description */}
+              {shortDescription && (
+                <p style={{ fontSize: '0.77rem', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+                  {shortDescription.replace(/<[^>]*>/g, '').slice(0, 130)}{shortDescription.replace(/<[^>]*>/g, '').length > 130 ? '…' : ''}
+                </p>
+              )}
+
+              {/* Rating + enrolled */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {averageRating > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {renderStarRating(averageRating, false, 13)}
+                    <span style={{ fontWeight: 700, fontSize: '0.86rem', color: '#f59e0b' }}>{averageRating.toFixed(1)}</span>
+                    <span style={{ color: '#64748b', fontSize: '0.74rem' }}>({totalRatings > 999 ? `${(totalRatings / 1000).toFixed(1)}K` : totalRatings} Reviews)</span>
+                  </div>
+                )}
+                {totalRatings > 0 && (
+                  <div style={{ fontSize: '0.73rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <FaBriefcase size={10} color="#94a3b8" />
+                    Enrolled by {(totalRatings * 7).toLocaleString('en-IN')} students
+                  </div>
+                )}
+              </div>
+
+              {/* Badges */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {level && (
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, background: 'rgba(255,122,0,0.08)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.25)', borderRadius: 20, padding: '3px 10px' }}>
+                    {clean(level)}
+                  </span>
+                )}
+                <span style={{ fontSize: '0.67rem', fontWeight: 700, background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 20, padding: '3px 10px' }}>
+                  Certificate
+                </span>
+                {badge?.text && (
+                  <span style={{ fontSize: '0.67rem', fontWeight: 700, background: 'rgba(234,179,8,0.1)', color: '#b45309', border: '1px solid rgba(234,179,8,0.3)', borderRadius: 20, padding: '3px 10px' }}>
+                    {badge.text}
+                  </span>
+                )}
+              </div>
+
+              {/* Price */}
+              {hasOriginalPrice && (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: effectivePrice === 0 ? '#16a34a' : '#0f172a' }}>
+                    {effectivePrice === 0 ? 'Free' : `₹${formatRupee(effectivePrice)}`}
+                  </span>
+                  {hasValidDiscount && <span style={{ fontSize: '0.82rem', color: '#94a3b8', textDecoration: 'line-through' }}>₹{formatRupee(rawPrice)}</span>}
+                </div>
+              )}
+
+              {/* Enroll CTA */}
+              {enrolledCourseIds.includes(_id) ? (
+                <div style={{ background: 'rgba(255,122,0,0.06)', border: '1.5px solid rgba(255,122,0,0.35)', borderRadius: 10, padding: '11px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#ff7a00', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FaCheck size={11} color="#fff" />
+                    </div>
+                    <div>
+                      <div style={{ color: '#ff7a00', fontWeight: 700, fontSize: '0.88rem', lineHeight: 1.2 }}>Already Enrolled</div>
+                      <div style={{ color: '#94a3b8', fontSize: '0.7rem', marginTop: 2 }}>You are enrolled in this course</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleEnroll(_id)}
+                  disabled={!canEnroll || enrolling}
+                  style={{
+                    background: canEnroll ? '#ff7a00' : '#e2e8f0', border: 'none', borderRadius: 10,
+                    color: canEnroll ? '#fff' : '#94a3b8', fontWeight: 700, fontSize: '0.9rem',
+                    padding: '12px', cursor: canEnroll ? 'pointer' : 'not-allowed',
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    boxShadow: canEnroll ? '0 4px 16px rgba(255,122,0,0.32)' : 'none',
+                    transition: 'all 0.15s',
+                  }}>
+                  {enrolling ? <><Spinner animation="border" size="sm" /> Enrolling...</> :
+                    !canEnroll && courseType === 'paid' && isPending ? 'Premium Required' : 'Enroll Now'}
+                </button>
+              )}
+
+              {/* Wishlist + Share */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={toggle} style={{ flex: 1, background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontSize: '0.76rem', fontWeight: 600, padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  {isWishlisted ? <FaHeart color="#ef4444" size={12} /> : <FaRegHeart size={12} />} Add to Wishlist
+                </button>
+                <button style={{ flex: 0, background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontSize: '0.76rem', fontWeight: 600, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                  <FaCode size={11} /> Share
+                </button>
+              </div>
+
+              {/* Market Insight mini box */}
+              <div style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1a1040 100%)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: 12, padding: '14px 14px 12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    <FaChartLine size={13} color="#818cf8" />
+                    <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: '0.82rem' }}>Market Insight</span>
+                  </div>
+                  {(miniInsight?.status || true) && (
+                    <span style={{ background: 'rgba(34,197,94,0.2)', border: '1px solid rgba(34,197,94,0.4)', borderRadius: 20, color: '#4ade80', fontSize: '0.62rem', fontWeight: 700, padding: '2px 8px' }}>
+                      {miniInsight?.status || 'In Demand'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                  <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                      <FaBriefcase size={9} color="#818cf8" />
+                      <span style={{ color: '#6b7280', fontSize: '0.62rem', fontWeight: 600 }}>Jobs Available</span>
+                    </div>
+                    <div style={{ color: '#ff7a00', fontWeight: 800, fontSize: '1rem' }}>{miniInsight?.jobs || '2,400+'}</div>
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 8, padding: '8px 10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                      <FaChartLine size={9} color="#22c55e" />
+                      <span style={{ color: '#6b7280', fontSize: '0.62rem', fontWeight: 600 }}>Average Salary</span>
+                    </div>
+                    <div style={{ color: '#4ade80', fontWeight: 800, fontSize: '0.82rem' }}>{miniInsight?.salary || '₹6–12 LPA'}</div>
+                  </div>
+                </div>
+                {/* Top Hiring Companies */}
+                {(miniInsight?.companies?.length ?? 0) > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ color: '#6b7280', fontSize: '0.62rem', fontWeight: 600, marginBottom: 6 }}>TOP HIRING COMPANIES</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                      {miniInsight!.companies!.map((c, i) => {
+                        const colors = ['#4f46e5','#0891b2','#059669','#b45309','#be185d']
+                        return (
+                          <span key={c} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '3px 8px', color: '#d1d5db', fontSize: '0.7rem', fontWeight: 500 }}>
+                            <span style={{ width: 14, height: 14, borderRadius: '50%', background: colors[i % colors.length], display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.5rem', fontWeight: 800, flexShrink: 0 }}>{c.charAt(0)}</span>
+                            {c}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setShowMarketInsight(true)}
+                  style={{ width: '100%', background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.76rem', padding: '9px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  <FaChartLine size={11} /> View Detailed Market Insight →
+                </button>
               </div>
             </div>
 
-            {/* Sticky Tabs */}
-            <div className="cc-tabs-wrap">
-              <div className="cc-content">
-                <Tabs defaultActiveKey="overview" className="cc-tabs">
-                  {/* Overview tab */}
-                  <Tab
-                    eventKey="overview"
-                    title={
-                      <span className="d-flex align-items-center gap-2">
-                        <FaInfoCircle size={14} /> Overview
-                      </span>
-                    }>
-                    <div className="cc-section container-xxl">
-                      <div className="row g-4">
-                        {/* Left */}
-                        <div className="col-lg-3">
-                          <div className="cc-card p-3">
-                            <h6 className="mb-3">Course Information</h6>
-                            <div className="d-grid gap-2 small">
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="text-secondary d-flex align-items-center gap-2">
-                                  <FaRegClock className="text-primary" /> Duration
-                                </span>
-                                <span className="fw-semibold">{duration || 'N/A'}</span>
-                              </div>
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="text-secondary d-flex align-items-center gap-2">
-                                  <FaTable className="text-success" /> Lectures
-                                </span>
-                                <span className="fw-semibold">{totalLectures || videos.length || 0}</span>
-                              </div>
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="text-secondary d-flex align-items-center gap-2">
-                                  <FaChartBar className="text-info" /> Level
-                                </span>
-                                <span className="fw-semibold">{clean(level) || 'All Levels'}</span>
-                              </div>
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="text-secondary d-flex align-items-center gap-2">
-                                  <FaLanguage className="text-warning" /> Language
-                                </span>
-                                <span className="fw-semibold">{clean(language) || 'English'}</span>
-                              </div>
+            {/* ── CENTER PANEL ── */}
+            <div style={{ flex: 1, overflowY: 'auto', minWidth: 0, display: 'flex', flexDirection: 'column' }} className="cd-panel-scroll">
+              <div style={{ flex: 1, padding: '24px 28px' }}>
 
-                              {/* Rating in Course Information */}
-                              <div className="d-flex align-items-center justify-content-between">
-                                <span className="text-secondary d-flex align-items-center gap-2">
-                                  <FaStar className="text-warning" /> Rating
-                                </span>
-                                <span className="fw-semibold">
-                                  {averageRating > 0 ? (
-                                    <span className="d-flex align-items-center gap-1">
-                                      {averageRating.toFixed(1)}
-                                      <FaStar className="text-warning small" />
-                                      <span className="text-muted small">({totalRatings})</span>
-                                    </span>
-                                  ) : (
-                                    'No ratings'
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-
-                            {price && (
-                              <div className="mt-3 pt-3 border-top d-flex align-items-center justify-content-between">
-                                <span className="text-secondary">Price</span>
-                                <span className="fw-bold">
-                                  {hasValidDiscount ? (
-                                    <>
-                                      <span className="text-success me-2">₹{formatRupee(effectivePrice)}</span>
-                                      <span className="text-muted text-decoration-line-through ">₹{formatRupee(rawPrice)}</span>
-                                    </>
-                                  ) : (
-                                    <span className="text-success">₹{formatRupee(rawPrice)}</span>
-                                  )}
-                                </span>
-                              </div>
-                            )}
-
-                            <Button
-                              style={{
-                                backgroundColor: canEnroll ? '#ff7a00' : '#ccc',
-                                borderColor: canEnroll ? '#ff7a00' : '#ccc',
-                                color: '#fff',
-                              }}
-                              className="w-100 mt-3 d-flex justify-content-center align-items-center gap-2"
-                              onClick={() => handleEnroll(_id)}
-                              disabled={
-                                enrolledCourseIds.includes(_id) ||
-                                !canEnroll ||
-                                enrolling
-                              }
-                            >
-                              {enrolling ? (
-                                <>
-                                  <Spinner animation="border" size="sm" />
-                                  Enrolling...
-                                </>
-                              ) : enrolledCourseIds.includes(_id) ? (
-                                'Already Enrolled'
-                              ) : !canEnroll && courseType === 'paid' && isPending ? (
-                                'Premium Required'
-                              ) : (
-                                'Enroll Now'
-                              )}
-                            </Button>
-                          </div>
-                          {courseFeatures.length > 0 && (
-                            <Card className="mt-4 cc-card key-features">
-                              <CardHeader className="bg-transparent border-0 pb-0">
-                                <h6 className="mb-0 d-flex align-items-center gap-2">✨ Key Features</h6>
-                              </CardHeader>
-
-                              <CardBody className="pt-3">
-                                <ul className="list-unstyled mb-0">
-                                  {courseFeatures.map((feature, i) => (
-                                    <li key={i} className="d-flex align-items-start gap-3 mb-2 feature-item">
-                                      <span className="feature-icon">
-                                        <FaCheck />
-                                      </span>
-                                      <span className="feature-text">{feature}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </CardBody>
-                            </Card>
-                          )}
-                        </div>
-
-                        {/* Right */}
-                        <div className="col-lg-9">
-                          <div className="cc-card p-4">
-                            <h5 className="mb-3">About this course</h5>
-                            <div className="cc-desc">
-                              {description ? (
-                                <div dangerouslySetInnerHTML={{ __html: cleanDescription }} />
-                              ) : (
-                                <p className="text-muted">{shortDescription || 'No description available.'}</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Tab>
-
-                  {/* Curriculum Tab */}
-                  <Tab
-                    eventKey="curriculum"
-                    title={
-                      <span className="d-flex align-items-center gap-2">
-                        <FaPlay size={14} /> Curriculum ({videos.length})
-                      </span>
-                    }>
-                    <div className="cc-section container-xxl">
-                      {videos.length > 0 ? (
-                        <div className="cc-card p-0 overflow-hidden">
-                          <div className="list-group list-group-flush">
-                            {videos.map((video, index) => (
-                              <div
-                                key={getVideoId(video, index)}
-                                className="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                <div className="d-flex align-items-center gap-3">
-                                  <span className="badge rounded-pill bg-secondary">{index + 1}</span>
-                                  <div>
-                                    <h6 className="mb-1">Module {index + 1}</h6>
-                                    <p className="mb-0 text-muted small">{video.description || 'Video module'}</p>
-                                  </div>
-                                </div>
-
-                                <div className="d-flex align-items-center gap-3">
-                                  {typeof video.progress === 'number' && (
-                                    <div style={{ minWidth: 160 }}>
-                                      <ProgressBar
-                                        now={video.progress}
-                                        style={{
-                                          backgroundColor: '#2a2a2a',
-                                        }}
-                                        variant=""
-                                        className="orange-progress"
-                                        label={`${video.progress}%`} />
-                                    </div>
-                                  )}
-                                  <span className="badge rounded-pill bg-dark-subtle text-body d-inline-flex align-items-center gap-1 px-3 py-2">
-                                    <IoLockClosedOutline /> Locked
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                {/* Overview tab */}
+                {activeTab === 'Overview' && (
+                  <div>
+                    <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>About this course</h5>
+                    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '20px 24px', color: '#334155', lineHeight: 1.8, fontSize: '0.87rem' }}>
+                      {description ? (
+                        <div dangerouslySetInnerHTML={{ __html: cleanDescription }} />
                       ) : (
-                        <div className="text-center py-5 text-muted">
-                          <FaPlay size={48} className="mb-2" />
-                          <p>No modules available yet.</p>
-                        </div>
+                        <p style={{ color: '#64748b', margin: 0 }}>{shortDescription || 'No description available.'}</p>
                       )}
                     </div>
-                  </Tab>
-                </Tabs>
+                  </div>
+                )}
+
+                {/* Curriculum tab — flat list, no accordion */}
+                {activeTab === 'Curriculum' && (
+                  <div>
+                    <div style={{ marginBottom: 16 }}>
+                      <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Course Curriculum</h5>
+                      <p style={{ color: '#64748b', fontSize: '0.79rem', margin: 0 }}>
+                        {videos.length} {videos.length === 1 ? 'Lecture' : 'Lectures'}{duration ? ` • ${duration} Total Length` : ''}
+                      </p>
+                    </div>
+
+                    {videos.length > 0 ? (
+                      <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                        {videos.map((video, index) => {
+                          const label = video.description || `Lecture ${index + 1}`
+                          return (
+                            <div
+                              key={getVideoId(video, index)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 14,
+                                padding: '13px 18px',
+                                borderBottom: index < videos.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                background: '#fff',
+                              }}
+                            >
+                              {/* Play icon */}
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <FaPlay size={9} color="#94a3b8" style={{ marginLeft: 1 }} />
+                              </div>
+                              {/* Label */}
+                              <span style={{ flex: 1, fontSize: '0.84rem', fontWeight: 500, color: '#1e293b', minWidth: 0 }}>
+                                {index + 1}. {label}
+                              </span>
+                              {/* Progress or lock */}
+                              {typeof video.progress === 'number' && video.progress > 0 ? (
+                                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>{video.progress}%</span>
+                              ) : (
+                                <IoLockClosedOutline size={13} color="#cbd5e1" style={{ flexShrink: 0 }} />
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
+                        <FaPlay size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                        <p style={{ margin: 0 }}>No curriculum available yet.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Other tabs placeholder */}
+                {(activeTab === 'Instructor' || activeTab === 'Reviews' || activeTab === 'Q&A') && (
+                  <div style={{ textAlign: 'center', padding: '64px 0', color: '#94a3b8' }}>
+                    <div style={{ fontSize: 40, marginBottom: 12 }}>{activeTab === 'Instructor' ? '👨‍🏫' : activeTab === 'Reviews' ? '⭐' : '💬'}</div>
+                    <p style={{ fontWeight: 600, color: '#475569', marginBottom: 4 }}>{activeTab}</p>
+                    <p style={{ fontSize: '0.82rem', margin: 0 }}>Coming soon</p>
+                  </div>
+                )}
               </div>
+
+              {/* Bottom trust strip */}
+              <div style={{ flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, padding: '14px 24px' }}>
+                {[
+                  { icon: '🛡️', title: '30-Day Money Back Guarantee', sub: 'No Questions Asked' },
+                  { icon: '♾️', title: 'Lifetime Access', sub: 'Learn at your own pace' },
+                  { icon: '👥', title: 'Trusted by 50,000+ Students', sub: '4.7/5 Average Rating' },
+                ].map((item, i) => (
+                  <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', borderRight: i < 2 ? '1px solid #e2e8f0' : 'none' }}>
+                    <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{item.icon}</span>
+                    <div>
+                      <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#0f172a' }}>{item.title}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.sub}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── RIGHT PANEL ── */}
+            <div style={{ width: 310, minWidth: 310, maxWidth: 310, background: '#fff', borderLeft: '1px solid #e2e8f0', overflowY: 'auto', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }} className="cd-panel-scroll">
+
+              {/* This Course Includes */}
+              <div>
+                <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>This Course Includes</h6>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {([
+                    { icon: '▶', text: `${duration || '—'} Hr on-demand video`, color: '#ff7a00' },
+                    { icon: '≡', text: `${totalLectures || videos.length || 0} Lectures`, color: '#ff7a00' },
+                    { icon: '⏱', text: 'Full Lifetime Access', color: '#ff7a00' },
+                    { icon: '📱', text: 'Access on Mobile & TV', color: '#ff7a00' },
+                    { icon: '✓', text: 'Certificate of Completion', color: '#ff7a00' },
+                  ] as { icon: string; text: string; color: string }[]).map(({ icon, text, color }, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ width: 22, height: 22, borderRadius: 6, background: `rgba(255,122,0,0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color, flexShrink: 0, fontWeight: 700 }}>{icon}</span>
+                      <span style={{ fontSize: '0.78rem', color: '#334155' }}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Course Details */}
+              <div>
+                <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>Course Details</h6>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                  {[
+                    { label: 'Level', value: clean(level) || 'All Levels' },
+                    { label: 'Duration', value: duration || 'N/A' },
+                    { label: 'Language', value: clean(language) || 'English' },
+                    { label: 'Certificate', value: 'Yes' },
+                    ...(hasOriginalPrice ? [{ label: 'Price', value: effectivePrice === 0 ? 'Free' : `₹${formatRupee(effectivePrice)}` }] : []),
+                  ].map(({ label, value }) => (
+                    <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{label}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0f172a', textAlign: 'right' }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* What you'll learn */}
+              {courseFeatures.length > 0 && (
+                <div>
+                  <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>What you'll learn</h6>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {courseFeatures.map((feature, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                        <FaCheck size={10} color="#16a34a" style={{ flexShrink: 0, marginTop: 3 }} />
+                        <span style={{ fontSize: '0.77rem', color: '#334155', lineHeight: 1.5 }}>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </Modal.Body>
@@ -743,7 +895,12 @@ const CourseCard = ({ course }: { course: CourseType }) => {
         </Modal.Header>
 
         <Modal.Body className="p-0 bg-black">
-          {previewUrl?.includes('youtube') || previewUrl?.includes('youtu.be') ? (
+          {!previewUrl ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300, color: '#94a3b8', gap: 12 }}>
+              <FaPlay size={40} style={{ opacity: 0.3 }} />
+              <p style={{ margin: 0, fontSize: '0.9rem' }}>No preview video available for this course.</p>
+            </div>
+          ) : previewUrl.includes('youtube') || previewUrl.includes('youtu.be') ? (
             <div className="ratio ratio-16x9">
               <iframe src={previewUrl.replace('watch?v=', 'embed/')} title="Course Preview" allow="autoplay; encrypted-media" allowFullScreen />
             </div>
@@ -754,205 +911,15 @@ const CourseCard = ({ course }: { course: CourseType }) => {
       </Modal>
 
       <style>{`
+/* ── Detail modal fullscreen ── */
+.cd-modal .modal-dialog { margin: 0; width: 100vw; max-width: 100vw; height: 100vh; }
+.cd-modal .modal-content { width: 100vw; height: 100vh; border-radius: 0; border: none; overflow: hidden; }
+.cd-modal .modal-body { padding: 0; overflow: hidden; }
 
-/* ============== Floating Close Button ============== */
-.cc-close-btn {
-  position: fixed;            /* ✅ KEY FIX */
-  top: 16px;
-  right: 16px;
-  z-index: 1090;              /* higher than modal (1055) */
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,.35);
-  background: rgba(0,0,0,.6);
-  color: #fff;
-  font-size: 1.3rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(8px);
-}
+/* ── Hide scrollbars on all panels but keep scroll functional ── */
+.cd-panel-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+.cd-panel-scroll::-webkit-scrollbar { display: none; }
 
-.cc-close-btn:hover {
-  background: rgba(0,0,0,.65);
-  transform: scale(1.05);
-}
-
-/* ============== Modal (FIXED SCROLLING) ============== */
-.cc-modal-fullscreen {
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
-  margin: 0;
-}
-
-.cc-modal-fullscreen .modal-content {
-  height: 100%;
-  border-radius: 16px;
-  overflow: visible; 
-}
-.cc-modal-fullscreen .modal-body {
-  overflow-y: auto;
-  padding: 0;
-}
-
-/* ============== Modal Wrapper ============== */
-.cc-modal-wrapper{ 
-  display: flex; 
-  flex-direction: column; 
-  min-height: 0;
-  height: 100%;
-}
-
-/* ============== Hero ============== */
-.cc-hero{ 
-  position:relative; 
-  aspect-ratio:16/6; 
-  min-height:280px; 
-  max-height:320px; 
-  overflow:hidden; 
-  flex: 0 0 auto;
-}
-.cc-hero-img{ 
-  position:absolute; 
-  inset:0; 
-  width:100%; 
-  height:100%; 
-  object-fit:cover; 
-  transform:scale(1.02); 
-  filter:brightness(.75) saturate(105%); 
-}
-.cc-hero.no-img{
-  background:
-    radial-gradient(1200px 600px at 20% 0%, rgba(255,255,255,.06), rgba(255,255,255,0) 60%),
-    linear-gradient(180deg, #15171b 0%, #0f1115 100%);
-}
-.cc-hero-overlay{ 
-  position:absolute; 
-  inset:0; 
-  background:linear-gradient(180deg, rgba(0,0,0,.15) 0%, rgba(0,0,0,.55) 70%, rgba(0,0,0,.85) 100%); 
-  pointer-events:none; 
-}
-.cc-hero-inner{ 
-  position:relative; 
-  z-index:2; 
-  height:100%; 
-  display:flex; 
-  flex-direction:column; 
-  justify-content:center; 
-  padding:1.5rem 1rem; 
-  max-width:1000px; 
-}
-
-/* Glassy header title block */
-.cc-glass-block{
-  display:flex; 
-  flex-direction:column; 
-  gap:.35rem;
-  background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 12px 40px rgba(0,0,0,.35);
-  backdrop-filter:blur(12px) saturate(125%);
-  -webkit-backdrop-filter:blur(12px) saturate(125%);
-  border-radius:16px; 
-  padding:1rem 1rem;
-}
-
-/* Chips */
-.cc-chip{
-  background:rgba(255,255,255,.10)!important; 
-  color:#fff;
-  border:1px solid rgba(255,255,255,.22);
-  backdrop-filter:blur(8px) saturate(150%);
-  font-size:0.75rem; 
-  padding:0.3rem 0.6rem;
-}
-
-/* Titles */
-.cc-title{ 
-  font-size:clamp(1.5rem,2.5vw,2.2rem); 
-  color:#fff;
-  font-weight:700; 
-  letter-spacing:.2px; 
-  line-height:1.2; 
-}
-.cc-subtitle{ 
-  color:rgba(255,255,255,.85); 
-  margin:0; 
-  font-size:0.95rem; 
-}
-
-/* ============== Tabs (sticky) ============== */
-.cc-tabs-wrap{ 
-  position:sticky; 
-  top:0; 
-  z-index:5; 
-  background:linear-gradient(180deg,rgba(18,18,20,1),rgba(18,18,20,.96)); 
-  border-bottom:1px solid rgba(255,255,255,.06); 
-  flex: 0 0 auto;
-}
-.cc-tabs-wrap .container-xxl{ padding-left:1rem; padding-right:1rem; }
-.cc-tabs.nav-tabs{ border-bottom:none; display:flex; gap:0.5rem; align-items:center; padding:.25rem 0; }
-.cc-tabs .nav-link{ color:#cbd5e1; font-weight:600; border:none; padding:.5rem .7rem; border-bottom:2px solid transparent; font-size:0.9rem; }
-.cc-tabs .nav-link:hover{ color:#fff; }
-.cc-tabs .nav-link.active{ color:#fff; background:transparent; border-bottom-color:#3b82f6; }
-
-/* ============== Sections & Cards ============== */
-.cc-section{ 
-  padding:1rem 0 2rem 0; 
-  flex: 1 1 auto; 
-  min-height: 0;
-  overflow-y: auto;
-}
-.cc-card{ 
- background-color: #0f0f0f;
-  border: 1px solid rgba(255, 122, 0, 0.15);
-  border-radius:14px; 
-}
-.cc-desc p{ margin-bottom:.8rem; color:#e5e7eb; }
-.cc-desc ul{ padding-left:1rem; }
-
-/* Curriculum rows */
-.cc-card .list-group-item{ 
-  background:transparent; 
-  border-color:rgba(255,255,255,.08); 
-  padding:1rem 1.25rem; 
-  display:flex; 
-  align-items:center; 
-}
-.cc-card .list-group-item .badge.rounded-pill.bg-secondary{ 
-  width:28px; 
-  height:28px; 
-  display:inline-flex; 
-  align-items:center; 
-  justify-content:center; 
-  font-weight:700; 
-}
-.badge.bg-dark-subtle.text-body{ 
-  background:rgba(255,255,255,.06)!important; 
-  border:1px solid rgba(255,255,255,.12); 
-  color:#e5e7eb!important; 
-  padding:.35rem .65rem; 
-  border-radius:999px; 
-  font-weight:600; 
-}
-
-/* ═══ Modal utility classes (kept for the detail modal) ═══ */
-.modal-fullscreen { padding-right: 0 !important; }
-.cc-content { max-width:1200px; margin:0 auto; padding-left:1rem; padding-right:1rem; }
-.orange-progress .progress-bar { background-color:#ff7a00 !important; }
-.cc-card { background-color:#0f0f0f; border:1px solid rgba(255,122,0,0.15); border-radius:14px; }
-.cc-card.key-features { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:14px; }
-.cc-card.key-features h6 { font-weight:700; letter-spacing:0.6px; text-transform:uppercase; color:#e5e7eb; }
-.cc-desc p { margin-bottom:.8rem; color:#e5e7eb; }
-.cc-desc ul { padding-left:1rem; }
-.cc-card .list-group-item { background:transparent; border-color:rgba(255,255,255,.08); padding:1rem 1.25rem; display:flex; align-items:center; }
-.badge.bg-dark-subtle.text-body { background:rgba(255,255,255,.06)!important; border:1px solid rgba(255,255,255,.12); color:#e5e7eb!important; padding:.35rem .65rem; border-radius:999px; font-weight:600; }
-.feature-item { padding:0.45rem 0.6rem; border-radius:10px; transition:all 0.2s ease; }
-.feature-item:hover { background:rgba(0,255,128,0.06); transform:translateY(-1px); }
-.feature-icon { width:28px; height:28px; min-width:28px; border-radius:50%; background:rgba(0,255,128,0.15); display:flex; align-items:center; justify-content:center; color:#22c55e; font-size:0.8rem; margin-top:2px; }
-.feature-text { color:#f1f5f9; font-size:0.9rem; line-height:1.4; }
 @media (max-width: 768px) {
   .cc2-thumb-wrap { height: 150px; }
 }
@@ -1213,7 +1180,7 @@ const CourseCard = ({ course }: { course: CourseType }) => {
         courseId={_id}
         courseTitle={title}
         show={showMarketInsight}
-        onHide={() => setShowMarketInsight(false)}
+        onHide={handleCloseMarketInsight}
       />
 
     </>

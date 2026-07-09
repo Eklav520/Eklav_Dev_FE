@@ -9,7 +9,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import useViewPort from '@/hooks/useViewPort'
 import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
 import { ChildrenType } from '@/types/component-props'
-import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell } from 'react-icons/fi'
+import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import logoWhite from '@/assets/images/logo_white.png'
 
@@ -53,6 +53,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
   const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
   const [featureRules, setFeatureRules] = useState<{ feature: string; denyYears?: string[]; denyBranches?: string[] }[]>([])
   const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
@@ -342,13 +343,78 @@ const StudentLayout = ({ children }: ChildrenType) => {
             <button style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}>
               <FiBell size={16} />
             </button>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: '0.78rem',
-            }}>
-              {initials}
+
+            {/* User pill + dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setUserDropdownOpen(p => !p)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 10px 5px 5px', borderRadius: 40, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', userSelect: 'none' }}
+              >
+                {/* Avatar */}
+                <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
+                  <div style={{
+                    position: 'absolute', inset: 0, borderRadius: '50%',
+                    background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontWeight: 700, fontSize: '0.75rem',
+                  }}>
+                    {initials}
+                  </div>
+                  {userProfileImage && (
+                    <img
+                      src={`${import.meta.env.VITE_API_BASE_URL}${userProfileImage}`}
+                      alt={userName}
+                      style={{ position: 'absolute', inset: 0, width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  )}
+                </div>
+                {/* Name + subtitle */}
+                <div style={{ lineHeight: 1.3 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{userName}</div>
+                  <div style={{ fontSize: '0.65rem', color: '#64748b', whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
+                </div>
+                <FiChevronDown size={14} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: userDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+              </div>
+
+              {/* Dropdown menu */}
+              {userDropdownOpen && (
+                <>
+                  {/* Click-outside backdrop */}
+                  <div onClick={() => setUserDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                    minWidth: 180, background: '#fff',
+                    border: '1px solid #e2e8f0', borderRadius: 10,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
+                    zIndex: 200, overflow: 'hidden',
+                  }}>
+                    {/* User info header */}
+                    <div style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{userName}</div>
+                      <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 2 }}>{profileSubtitle}</div>
+                    </div>
+
+                    {/* Menu items */}
+                    <div style={{ padding: '4px 0' }}>
+                      <button
+                        onClick={() => { setUserDropdownOpen(false); removeSession() }}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '9px 14px', background: 'none', border: 'none',
+                          color: '#ef4444', fontSize: '0.82rem', fontWeight: 600,
+                          cursor: 'pointer', textAlign: 'left',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                      >
+                        <FiLogOut size={14} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

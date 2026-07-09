@@ -643,7 +643,7 @@ const StudentDashboardUpdated: React.FC = () => {
                 { key: 'WRITING',       label: 'Writing',       icon: <FiEdit3 size={15} /> },
                 { key: 'LISTENING',     label: 'Listening',     icon: <FiHeadphones size={15} /> },
                 { key: 'READING',       label: 'Reading',       icon: <FiBook size={15} /> },
-                { key: 'JUST_A_MINUTE', label: 'Just A Minute', icon: <MdOutlineTimer size={16} /> },
+                { key: 'JUST_A_MINUTE', label: 'Speaking Practice', icon: <MdOutlineTimer size={16} /> },
               ]
               const trendMeta = (trend: string) => {
                 if (trend === 'IMPROVED') return { label: '↑ Improved',      color: GREEN }

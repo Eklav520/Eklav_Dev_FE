@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import mermaid from 'mermaid'
 import { useAuthContext } from '@/context/useAuthContext'
+import './ProblemStatement.css'
 
 /* ── Types ─────────────────────────────────────────────── */
 interface Message {
@@ -59,7 +60,7 @@ const renderMermaid = async (code: string): Promise<string> => {
 const S = {
   root: {
     display: 'flex', flexDirection: 'column' as const,
-    height: '100%', background: '#0f0f0f', color: '#e5e7eb',
+    height: '100%', overflow: 'hidden' as const, background: '#0f0f0f', color: '#e5e7eb',
   },
   subTabBar: {
     display: 'flex', borderBottom: '1px solid #1e1e1e', flexShrink: 0,
@@ -72,7 +73,7 @@ const S = {
   }),
   /* Chat */
   messages: {
-    flex: 1, overflowY: 'auto' as const, padding: '12px 14px', display: 'flex',
+    flex: 1, overflowY: 'auto' as const, scrollbarWidth: 'none' as const, padding: '12px 14px', display: 'flex',
     flexDirection: 'column' as const, gap: 10,
   },
   bubble: (role: 'user' | 'assistant'): React.CSSProperties => ({
@@ -118,7 +119,7 @@ const S = {
   }),
   /* Flowchart */
   flowchartWrap: {
-    flex: 1, overflowY: 'auto' as const, padding: 16,
+    flex: 1, overflowY: 'auto' as const, scrollbarWidth: 'none' as const, padding: 16,
     display: 'flex', flexDirection: 'column' as const, gap: 12,
   },
   genBtn: {
@@ -127,8 +128,7 @@ const S = {
     fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' as const,
   },
   svgWrap: {
-    background: '#111', border: '1px solid #222', borderRadius: 10,
-    padding: 16, overflowX: 'auto' as const,
+    width: '100%',
   },
   empty: {
     flex: 1, display: 'flex', flexDirection: 'column' as const,
@@ -327,21 +327,7 @@ export default function AIGuidePanel({ problem, problemTitle, language, getCode 
 
       {/* ── FLOWCHART ── */}
       {subTab === 'flowchart' && (
-        <div style={S.flowchartWrap}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#d1d5db' }}>Algorithm Flowchart</div>
-              <div style={{ fontSize: '0.7rem', color: '#555', marginTop: 2 }}>
-                Shows the logical approach — not the code solution
-              </div>
-            </div>
-            <button style={S.genBtn} onClick={generateFlowchart} disabled={flowLoading}>
-              {flowLoading
-                ? <><span className="spinner-border spinner-border-sm me-1" style={{ width: 12, height: 12, borderWidth: 2 }} />Generating…</>
-                : '↻ Regenerate'}
-            </button>
-          </div>
-
+        <div style={S.flowchartWrap} className="coding-left-scroll">
           {flowLoading && (
             <div style={S.empty}>
               <span className="spinner-border" style={{ width: 28, height: 28, borderWidth: 3, color: '#ff7a00' }} />

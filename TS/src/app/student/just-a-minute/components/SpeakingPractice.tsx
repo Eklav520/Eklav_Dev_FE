@@ -790,7 +790,7 @@ const SpeakingPractice: React.FC = () => {
             <div className="welcome-icon">🎤</div>
 
             <h2 className="welcome-title d-flex align-items-center justify-content-center gap-2">
-              Speaking Practice
+              Just A Minute
               {status === 'pending' && (
                 <span className="trial-badge-modern">
                   Trial 

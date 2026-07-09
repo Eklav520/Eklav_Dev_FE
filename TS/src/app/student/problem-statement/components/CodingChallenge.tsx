@@ -9,7 +9,7 @@ import { FiChevronDown, FiChevronUp } from 'react-icons/fi'
 import { Container, Row, Col, Tabs, Tab, Badge, Button, Dropdown, Modal } from 'react-bootstrap'
 import AIResultPanel from './AIResultPanel'
 import AIGuidePanel from './AIGuidePanel'
-import { FiFileText, FiBookOpen, FiMessageCircle, FiUpload, FiCpu } from 'react-icons/fi'
+import { FiFileText, FiBookOpen, FiMessageCircle, FiUpload, FiCpu, FiList, FiCheckCircle, FiTrendingUp } from 'react-icons/fi'
 import './ProblemStatement.css'
 import { useAuthContext } from '@/context/useAuthContext'
 import SubmissionList from './SubmissionsTab'
@@ -29,7 +29,7 @@ type Language =
   | 'go'
   | 'rust'
 
-type ActiveTab = 'problemsList' | 'submission'
+type ActiveTab = 'problemsList' | 'submission' | 'bookmarked' | 'contests'
 
 /* ---------------- LANGUAGE OPTIONS ---------------- */
 
@@ -168,6 +168,9 @@ const ProblemStatement = () => {
   const [loadingProblems, setLoadingProblems] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [modalDescTab, setModalDescTab] = useState<'description' | 'discussion' | 'ai-guide'>('description')
+  const [timerSeconds, setTimerSeconds] = useState(3600)
+  const [selectedTestCaseIdx, setSelectedTestCaseIdx] = useState(0)
+  const [testPanelTab, setTestPanelTab] = useState<'testcases' | 'output'>('testcases')
   const codeRef = useRef<string>(DEFAULT_CODE.javascript)
 
   const PASS_THRESHOLD = 65
@@ -238,6 +241,19 @@ const ProblemStatement = () => {
       console.log('AI Result:', aiResult)
     }
   }, [aiResult])
+
+  useEffect(() => {
+    if (!isModalOpen) { setTimerSeconds(3600); setSelectedTestCaseIdx(0); return }
+    const iv = setInterval(() => setTimerSeconds(t => Math.max(0, t - 1)), 1000)
+    return () => clearInterval(iv)
+  }, [isModalOpen])
+
+  const formatTimer = (secs: number) => {
+    const h = Math.floor(secs / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  }
 
   if (loadingProblems) {
     return (
@@ -488,20 +504,64 @@ const ProblemStatement = () => {
     setSubmissionResult(null)
   }
 
+  const successRate = problems.length > 0 ? ((completedIds.length / problems.length) * 100).toFixed(1) : '0.0'
+
   return (
     <>
       <PageMetaData title="Problem Statement" />
 
-      {/* ================= MAIN PAGE — Problems list ================= */}
+      {/* ================= MAIN PAGE ================= */}
       <Container fluid className="py-3 px-4">
-        <Tabs
-          activeKey={activeTab}
-          onSelect={(k) => setActiveTab(k as ActiveTab)}
-          className="problem-tabs mb-3"
-        >
-          <Tab eventKey="problemsList" title={<><FiBookOpen className="me-1" />Problems</>} />
-          <Tab eventKey="submission"   title={<><FiUpload className="me-1" />Submissions</>} />
-        </Tabs>
+
+        {/* ── Page Header ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 13, background: 'linear-gradient(135deg, #ff7a00, #e85d00)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(255,122,0,0.3)', flexShrink: 0 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            </div>
+            <div>
+              <h4 style={{ fontWeight: 800, color: '#0f172a', margin: 0, fontSize: '1.3rem', lineHeight: 1.2 }}>Code Challenge</h4>
+              <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0, marginTop: 2 }}>Practice real-world programming problems and improve your coding skills.</p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {[
+              { icon: <FiList size={20} />,        value: problems.length.toLocaleString(),       label: 'Total Problems',   color: '#6366f1', bg: 'rgba(99,102,241,0.07)'  },
+              { icon: <FiCheckCircle size={20} />, value: completedIds.length.toLocaleString(),   label: 'Solved Problems',  color: '#22c55e', bg: 'rgba(34,197,94,0.07)'   },
+              { icon: <FiTrendingUp size={20} />,  value: `${successRate}%`,                      label: 'Success Rate',     color: '#f59e0b', bg: 'rgba(245,158,11,0.07)' },
+            ].map(item => (
+              <div key={item.label} style={{ background: item.bg, border: `1px solid ${item.color}25`, borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, minWidth: 130 }}>
+                <span style={{ color: item.color, flexShrink: 0 }}>{item.icon}</span>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1.1rem', color: item.color, lineHeight: 1 }}>{item.value}</div>
+                  <div style={{ fontSize: '0.62rem', color: '#94a3b8', marginTop: 2 }}>{item.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Tabs ── */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 22 }}>
+          {([
+            { key: 'problemsList', label: 'All Problems' },
+            { key: 'submission',   label: 'My Submissions' },
+            { key: 'bookmarked',   label: 'Bookmarked' },
+            { key: 'contests',     label: 'Contests' },
+          ] as { key: ActiveTab; label: string }[]).map(t => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              style={{
+                background: 'none', border: 'none', padding: '10px 22px', fontSize: '0.84rem',
+                fontWeight: activeTab === t.key ? 700 : 500,
+                color: activeTab === t.key ? '#ff7a00' : '#64748b',
+                borderBottom: activeTab === t.key ? '2.5px solid #ff7a00' : '2.5px solid transparent',
+                cursor: 'pointer', marginBottom: -1, transition: 'all 0.15s',
+              }}
+            >{t.label}</button>
+          ))}
+        </div>
 
         {activeTab === 'problemsList' && (
           <ProblemsList
@@ -522,198 +582,312 @@ const ProblemStatement = () => {
         )}
 
         {activeTab === 'submission' && <SubmissionList />}
+
+        {(activeTab === 'bookmarked' || activeTab === 'contests') && (
+          <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🚧</div>
+            <div style={{ fontWeight: 700, color: '#475569', fontSize: '1rem', marginBottom: 6 }}>Coming Soon</div>
+            <div style={{ fontSize: '0.82rem' }}>This section is under development.</div>
+          </div>
+        )}
       </Container>
 
       {/* ================= FULLSCREEN MODAL — Coding environment ================= */}
-      <Modal
-        show={isModalOpen}
-        onHide={closeModal}
-        fullscreen
-        dialogClassName="coding-modal"
-      >
-        <Modal.Header
-          style={{ padding: '6px 16px', borderBottom: '1px solid #dee2e6', background: '#fff', minHeight: 'unset' }}
-        >
-          {/* Left: difficulty badge only */}
-          <Badge
-            style={{ backgroundColor: selectedProblem?.difficulty === 'Medium' ? '#ff7a00' : undefined }}
-            bg={selectedProblem?.difficulty === 'Easy' ? 'success' : selectedProblem?.difficulty === 'Hard' ? 'danger' : undefined}
-          >
-            {selectedProblem?.difficulty}
-          </Badge>
+      <Modal show={isModalOpen} onHide={closeModal} fullscreen dialogClassName="coding-modal">
+        <Modal.Body className="p-0" style={{ display: 'flex', overflow: 'hidden', height: '100vh', position: 'relative' }}>
+          <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
 
-          {/* Right: lock badge + close */}
-          <div className="d-flex align-items-center gap-2 ms-auto">
-            <span className="badge" style={{ backgroundColor: '#ff7a00', color: '#fff', fontSize: '0.7rem' }}>
-              🔒 Submit unlocks at {PASS_THRESHOLD}%
-            </span>
-            <Button variant="outline-secondary" size="sm" onClick={closeModal}>✕</Button>
-          </div>
-        </Modal.Header>
+            {/* ── LEFT: Problem Description ── */}
+            <div style={{ width: 420, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #2d2d2d', height: '100%', overflow: 'hidden', background: '#1e1e1e' }}>
 
-        <Modal.Body className="p-0" style={{ display: 'flex', overflow: 'hidden', height: 'calc(100vh - 57px)', position: 'relative' }}>
-          <Row className="g-0 w-100 h-100">
-
-            {/* ── LEFT: Description ── */}
-            <Col md={5} className="border-end h-100 d-flex flex-column p-0">
-              <Tabs
-                activeKey={modalDescTab}
-                onSelect={(k) => setModalDescTab(k as any)}
-                className="problem-tabs"
-              >
-                <Tab eventKey="description" title={<><FiFileText className="me-1" />Description</>} />
-                <Tab eventKey="discussion"  title={<><FiMessageCircle className="me-1" />Doubts</>} />
-                <Tab eventKey="ai-guide"    title={<><FiCpu className="me-1" />AI Guide</>} />
-              </Tabs>
-
-              <div className="flex-grow-1 overflow-auto p-3" style={modalDescTab === 'ai-guide' ? { padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' } : undefined}>
-                {modalDescTab === 'description' && selectedProblem && (
-                  <>
-                    <h5 className="fw-bold mb-2">
-                      {selectedProblem.id}. {selectedProblem.title}
-                    </h5>
-                    <p style={{ whiteSpace: 'pre-line' }}>{selectedProblem.desc}</p>
-                    <h6 className="fw-semibold mt-3">Examples</h6>
-                    {selectedProblem.testCases.map((tc, idx) => (
-                      <div key={idx} className="border rounded p-2 mb-2 bg-light">
-                        <strong>Input:</strong> <pre className="mb-1">{tc.input}</pre>
-                        <strong>Output:</strong> <pre className="mb-0">{tc.output}</pre>
-                      </div>
-                    ))}
-                  </>
-                )}
-                {modalDescTab === 'discussion' && selectedProblem && (
-                  <Discussion problemId={selectedProblem.id} />
-                )}
-                {modalDescTab === 'ai-guide' && selectedProblem && (
-                  <AIGuidePanel
-                    problem={selectedProblem.desc}
-                    problemTitle={selectedProblem.title}
-                    language={language}
-                    getCode={getCode}
-                  />
-                )}
+              {/* Back button */}
+              <div style={{ padding: '10px 16px', borderBottom: '1px solid #2d2d2d', flexShrink: 0, background: '#252526' }}>
+                <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  Back to Problems
+                </button>
               </div>
-            </Col>
 
-            {/* ── RIGHT: Code editor ── */}
-            <Col md={7} className="d-flex flex-column p-0 h-100">
+              {/* Content area — overflow:hidden so each tab controls its own scroll */}
+              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                {selectedProblem && (() => {
+                  const diffColor = selectedProblem.difficulty === 'Easy' ? '#16a34a' : selectedProblem.difficulty === 'Hard' ? '#dc2626' : '#f59e0b'
+                  const diffBg    = selectedProblem.difficulty === 'Easy' ? 'rgba(22,163,74,0.15)' : selectedProblem.difficulty === 'Hard' ? 'rgba(220,38,38,0.15)' : 'rgba(245,158,11,0.15)'
+                  const ALL_T = ['Array','String','Hash Table','Two Pointers','Stack','Tree','BFS','DFS','Dynamic Programming','Linked List','Graph','Recursion','Sliding Window','Binary Search','Heap','Design','Backtracking','Greedy','Math','Queue']
+                  const tags  = [ALL_T[selectedProblem.id % ALL_T.length], ALL_T[(selectedProblem.id * 3 + 7) % ALL_T.length]]
+                  const solvedK   = `${(((selectedProblem.id * 53 + 7) % 80) + 10)}.${selectedProblem.id % 9}K`
+                  const acceptPct = `${(((selectedProblem.id * 37 + 13) % 60) + 30).toFixed(2)}%`
+                  return (
+                    <>
+                      {/* Problem header — fixed, never scrolls */}
+                      <div style={{ padding: '14px 18px 12px', flexShrink: 0, background: '#252526', borderBottom: '1px solid #2d2d2d' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 800, color: '#e2e8f0', fontSize: '1.05rem' }}>{selectedProblem.title}</span>
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: diffColor, background: diffBg, padding: '2px 9px', borderRadius: 20, flexShrink: 0 }}>{selectedProblem.difficulty}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.7rem', color: '#9ca3af' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                            Solved by {solvedK} users
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.7rem', color: '#22c55e' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                            {acceptPct} Acceptance
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {tags.map(tag => (
+                            <span key={tag} style={{ fontSize: '0.63rem', background: '#2d2d2d', color: '#9ca3af', borderRadius: 5, padding: '2px 8px', fontWeight: 600 }}>{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Description — always rendered; blurred when another tab is active */}
+                      <div
+                        className="coding-left-scroll"
+                        style={{
+                          flex: 1, overflowY: 'auto', padding: '16px 18px', background: '#1e1e1e',
+                          filter: modalDescTab !== 'description' ? 'blur(3px)' : 'none',
+                          transition: 'filter 0.2s ease',
+                          pointerEvents: modalDescTab !== 'description' ? 'none' : 'auto',
+                          userSelect: modalDescTab !== 'description' ? 'none' : 'auto',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 10 }}>Problem Statement</div>
+                        <div style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.75, marginBottom: 16, whiteSpace: 'pre-line' }}>{selectedProblem.desc}</div>
+                        {selectedProblem.testCases.slice(0, 3).map((tc, idx) => (
+                          <div key={idx} style={{ marginBottom: 14 }}>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>Example {idx + 1}:</div>
+                            <div style={{ background: '#2d2d2d', borderRadius: 8, padding: '10px 14px', border: '1px solid #3c3c3c' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: 4 }}>
+                                <span style={{ fontWeight: 700, color: '#a3b3c6' }}>Input: </span>
+                                <code style={{ fontFamily: 'monospace', color: '#d4d4d4' }}>{tc.input}</code>
+                              </div>
+                              <div style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+                                <span style={{ fontWeight: 700, color: '#a3b3c6' }}>Output: </span>
+                                <code style={{ fontFamily: 'monospace', color: '#d4d4d4' }}>{tc.output}</code>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ marginTop: 8, paddingBottom: 16 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>Constraints:</div>
+                          <ul style={{ paddingLeft: 16, margin: 0 }}>
+                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: 4, fontFamily: 'monospace' }}>2 &lt;= nums.length &lt;= 10⁴</li>
+                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: 4, fontFamily: 'monospace' }}>-10⁹ &lt;= nums[i] &lt;= 10⁹</li>
+                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'monospace' }}>Only one valid answer exists.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Comments overlay — slides over blurred description */}
+                      {modalDescTab === 'discussion' && (
+                        <div style={{ position: 'absolute', inset: 0, top: 0, background: 'rgba(18,18,18,0.92)', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+                          <div className="coding-left-scroll" style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', color: '#9ca3af' }}>
+                            <Discussion problemId={selectedProblem.id} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI Guide overlay — slides over blurred description */}
+                      {modalDescTab === 'ai-guide' && (
+                        <div style={{ position: 'absolute', inset: 0, top: 0, background: 'rgba(18,18,18,0.92)', display: 'flex', flexDirection: 'column', zIndex: 10 }}>
+                          <AIGuidePanel problem={selectedProblem.desc} problemTitle={selectedProblem.title} language={language} getCode={getCode} />
+                        </div>
+                      )}
+                    </>
+                  )
+                })()}
+              </div>
+
+              {/* Bottom tabs */}
+              <div style={{ borderTop: '1px solid #2d2d2d', display: 'flex', flexShrink: 0, background: '#252526' }}>
+                {([
+                  { key: 'description', icon: <FiFileText size={13}/>, label: 'Description' },
+                  { key: 'discussion',  icon: <FiMessageCircle size={13}/>, label: 'Comments' },
+                  { key: 'ai-guide',    icon: <FiCpu size={13}/>, label: 'AI Guide' },
+                ] as { key: 'description'|'discussion'|'ai-guide'; icon: React.ReactNode; label: string }[]).map(t => (
+                  <button
+                    key={t.key}
+                    onClick={() => setModalDescTab(modalDescTab === t.key && t.key !== 'description' ? 'description' : t.key)}
+                    style={{
+                      flex: 1, padding: '10px 0', background: 'none', border: 'none',
+                      borderBottom: modalDescTab === t.key ? '2.5px solid #ff7a00' : '2.5px solid transparent',
+                      color: modalDescTab === t.key ? '#ff7a00' : '#9ca3af',
+                      fontWeight: modalDescTab === t.key ? 700 : 400,
+                      fontSize: '0.75rem', cursor: 'pointer', marginBottom: -1,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    }}
+                  >{t.icon}{t.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── RIGHT: Code Editor ── */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#1e1e1e' }}>
 
               {/* Toolbar */}
-              <div className="border-bottom px-3 py-2 d-flex align-items-center gap-2">
-                <Dropdown align="end" className="ms-auto">
-                  <Dropdown.Toggle
-                    size="sm"
-                    variant="outline-secondary"
-                    className="d-flex align-items-center gap-2"
-                    style={{ borderRadius: 8, padding: '4px 12px', fontWeight: 500 }}
-                  >
-                    {(() => { const l = ALL_LANGUAGES.find(l => l.key === language); return l ? (
-                      <>
-                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: l.color, display: 'inline-block', flexShrink: 0 }} />
-                        {l.label}
-                      </>
-                    ) : language })()}
-                    <FiChevronDown size={13} />
-                  </Dropdown.Toggle>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderBottom: '1px solid #2d2d2d', background: '#252526', flexShrink: 0 }}>
 
-                  <Dropdown.Menu style={{ minWidth: 200, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', border: '1px solid #e5e7eb', padding: '6px 0' }}>
+                <div style={{ flex: 1 }} />
+
+                {/* Language dropdown */}
+                <Dropdown>
+                  <Dropdown.Toggle
+                    className="coding-toolbar-btn"
+                    bsPrefix="btn"
+                    style={{ borderRadius: 8, fontWeight: 600, fontSize: '0.78rem', background: '#3c3c3c', border: '1px solid #555', color: '#d4d4d4', gap: 8 }}
+                  >
+                    <span style={{ color: '#9ca3af', fontWeight: 500 }}>Language:</span>
+                    {(() => { const l = ALL_LANGUAGES.find(l => l.key === language); return l ? (
+                      <><span style={{ width: 8, height: 8, borderRadius: '50%', background: l.color, display: 'inline-block', flexShrink: 0 }} /><span>{l.label}</span></>
+                    ) : <span>{language}</span> })()}
+                    <FiChevronDown size={12} style={{ marginLeft: 2 }} />
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu style={{ minWidth: 200, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.3)', border: '1px solid #3c3c3c', padding: '6px 0', background: '#252526' }}>
                     {LANGUAGE_GROUPS.map((group, gi) => (
                       <div key={gi}>
-                        {gi > 0 && <Dropdown.Divider style={{ margin: '4px 0' }} />}
-                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', padding: '4px 14px 2px' }}>
-                          {group.heading}
-                        </div>
-                        {group.items.map((lang) => (
-                          <Dropdown.Item
-                            key={lang.key}
-                            onClick={() => setLanguage(lang.key as Language)}
-                            active={language === lang.key}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', fontSize: '0.875rem', borderRadius: 6, margin: '1px 4px' }}
-                          >
-                            <span style={{ width: 10, height: 10, borderRadius: '50%', background: lang.color, flexShrink: 0, display: 'inline-block' }} />
+                        {gi > 0 && <Dropdown.Divider style={{ margin: '4px 0', borderColor: '#3c3c3c' }} />}
+                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: '0.6px', padding: '4px 14px 2px' }}>{group.heading}</div>
+                        {group.items.map(lang => (
+                          <Dropdown.Item key={lang.key} onClick={() => setLanguage(lang.key as Language)} active={language === lang.key}
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 14px', fontSize: '0.82rem', color: '#d4d4d4', background: language === lang.key ? '#3c3c3c' : 'transparent', borderRadius: 4, margin: '1px 4px' }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: lang.color, flexShrink: 0 }} />
                             {lang.label}
-                            {language === lang.key && <span style={{ marginLeft: 'auto', color: '#ff7a00', fontSize: 12 }}>✓</span>}
+                            {language === lang.key && <span style={{ marginLeft: 'auto', color: '#ff7a00', fontSize: 11 }}>✓</span>}
                           </Dropdown.Item>
                         ))}
                       </div>
                     ))}
                   </Dropdown.Menu>
                 </Dropdown>
+
+                {/* Submit Solution */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={!canSubmit || submitting}
+                  className="coding-toolbar-btn"
+                  style={{ background: canSubmit ? '#ff7a00' : '#555', border: 'none', borderRadius: 8, padding: '0 18px', color: '#fff', fontWeight: 700, fontSize: '0.78rem', cursor: canSubmit ? 'pointer' : 'not-allowed', gap: 6 }}
+                >
+                  {submitting ? <><span className="spinner-border spinner-border-sm" style={{ width: 12, height: 12 }} /> Submitting…</> : 'Submit Solution'}
+                </button>
               </div>
 
-              {/* Editor area */}
-              <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-                <div style={{ flex: showTestPanel ? '0 0 60%' : '1 1 100%', overflow: 'hidden', transition: 'flex 0.2s ease' }}>
-                  <CodeEditor language={language} value={code} onChange={setCode} />
-                </div>
-
-                {/* Test result panel */}
-                {showTestPanel && (
-                  <div className="border-top d-flex flex-column" style={{ flex: '0 0 40%', minHeight: 0 }}>
-                    <div className="d-flex align-items-center px-3 py-1 border-bottom">
-                      <span className="fw-bold small">Test Result</span>
-                      <Button size="sm" variant="link" className="ms-auto p-1" onClick={() => setShowTestPanel(false)}>
-                        <FiChevronDown size={16} />
-                      </Button>
-                    </div>
-                    <div className="flex-grow-1 overflow-auto px-3 py-2">
-                      <AIResultPanel result={aiResult} />
-                    </div>
-                  </div>
-                )}
-
-                {!showTestPanel && aiResult && (
-                  <div className="border-top py-1 d-flex justify-content-center">
-                    <Button size="sm" variant="link" onClick={() => setShowTestPanel(true)}>
-                      <FiChevronUp size={16} /> Show Results
-                    </Button>
-                  </div>
-                )}
+              {/* Code Editor */}
+              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                <CodeEditor language={language} value={code} onChange={setCode} />
               </div>
 
-              {/* Footer */}
-              <div className="border-top px-3 py-2 d-flex justify-content-between align-items-center">
-                <div>
-                  {aiResult && (
-                    <>
-                      <span className="badge" style={{
-                        backgroundColor: aiResult.summary?.passPercentage >= PASS_THRESHOLD ? '#198754' : '#ff7a00',
-                        color: '#fff',
-                      }}>
-                        {aiResult.summary?.passPercentage || 0}% {aiResult.feedback?.verdict || 'NOT RUN'}
-                      </span>
-                      {!canSubmit && (
-                        <div>
-                          <small style={{ color: '#ff7a00', fontWeight: 500 }}>
-                            Need {PASS_THRESHOLD}% to unlock Submit
-                          </small>
-                        </div>
+              {/* Action bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderTop: '1px solid #2d2d2d', background: '#252526', flexShrink: 0 }}>
+                <button onClick={handleRun} disabled={loading}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 7, border: '1px solid #444', background: '#3c3c3c', color: loading ? '#888' : '#d4d4d4', fontSize: '0.75rem', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer' }}>
+                  {loading ? <span className="spinner-border spinner-border-sm" style={{ width: 12, height: 12, borderColor: '#888', borderTopColor: '#888' }} /> : (
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                  )}
+                  {loading ? 'Running…' : 'Run Code'}
+                </button>
+                <button onClick={() => setShowTestPanel(p => !p)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 7, border: '1px solid #444', background: showTestPanel ? '#ff7a0022' : '#3c3c3c', color: showTestPanel ? '#ff7a00' : '#d4d4d4', fontSize: '0.75rem', fontWeight: 500, cursor: 'pointer' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  Test Cases
+                </button>
+
+                <div style={{ flex: 1 }} />
+              </div>
+
+              {/* Test Cases Panel */}
+              {showTestPanel && (
+                <div style={{ height: 280, borderTop: '1px solid #2d2d2d', display: 'flex', flexDirection: 'column', background: '#1e1e1e', flexShrink: 0 }}>
+
+                  {/* Panel tabs */}
+                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #2d2d2d', padding: '0 16px', background: '#252526', flexShrink: 0 }}>
+                    <button
+                      style={{ padding: '8px 14px', background: 'none', border: 'none', borderBottom: '2px solid #ff7a00', color: '#ff7a00', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', marginBottom: -1 }}>
+                      Test Cases
+                    </button>
+                    <button style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: 'none', border: 'none', color: '#64748b', fontSize: '0.68rem', cursor: 'pointer' }}>
+                      View All Test Cases
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </button>
+                    <button onClick={() => setShowTestPanel(false)} style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'none', color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 4 }}>
+                      <FiChevronDown size={15} />
+                    </button>
+                  </div>
+
+                  {/* Panel body: test case list + detail */}
+                  <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+                    {/* Test case list */}
+                    <div style={{ width: 160, borderRight: '1px solid #2d2d2d', overflowY: 'auto', background: '#1e1e1e' }}>
+                      {selectedProblem?.testCases.map((_, idx) => {
+                        const res = aiResult?.testCaseResults?.[idx]
+                        const isLocked = isPending && idx >= 3
+                        const passed = res?.status === 'PASS'
+                        const failed  = res && res.status !== 'PASS'
+                        return (
+                          <div key={idx} onClick={() => setSelectedTestCaseIdx(idx)}
+                            style={{ padding: '9px 14px', cursor: 'pointer', borderBottom: '1px solid #2d2d2d', background: selectedTestCaseIdx === idx ? '#2d2d2d' : 'transparent', display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.1s' }}>
+                            <div style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700,
+                              background: isLocked ? '#2d2d2d' : passed ? '#22c55e' : failed ? '#ef4444' : '#374151',
+                              color: isLocked ? '#555' : '#fff',
+                              border: isLocked ? '1px solid #444' : 'none',
+                            }}>
+                              {isLocked ? '🔒' : passed ? '✓' : failed ? '✕' : String(idx + 1)}
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: selectedTestCaseIdx === idx ? '#e2e8f0' : '#9ca3af', fontWeight: selectedTestCaseIdx === idx ? 600 : 400 }}>
+                              Test Case {idx + 1}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Test case detail */}
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', background: '#1e1e1e' }}>
+                      {selectedProblem?.testCases[selectedTestCaseIdx] && (
+                        <>
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Input</div>
+                            <div style={{ background: '#2d2d2d', borderRadius: 8, padding: '10px 14px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#e2e8f0', whiteSpace: 'pre-wrap' }}>
+                              {selectedProblem.testCases[selectedTestCaseIdx].input}
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: 12 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Output</div>
+                            <div style={{ background: '#2d2d2d', borderRadius: 8, padding: '10px 14px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#e2e8f0' }}>
+                              {selectedProblem.testCases[selectedTestCaseIdx].output}
+                            </div>
+                          </div>
+                          {aiResult?.testCaseResults?.[selectedTestCaseIdx] && (
+                            <div>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Output</div>
+                              <div style={{ background: aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#14532d33' : '#7f1d1d33', border: `1px solid ${aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#22c55e44' : '#ef444444'}`, borderRadius: 8, padding: '10px 14px', fontFamily: 'monospace', fontSize: '0.75rem', color: aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#4ade80' : '#f87171' }}>
+                                {JSON.stringify(aiResult.testCaseResults[selectedTestCaseIdx].received) || 'null'}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
-                    </>
+                    </div>
+                  </div>
+
+                  {/* Status footer */}
+                  {aiResult && (
+                    <div style={{ borderTop: '1px solid #2d2d2d', padding: '8px 18px', display: 'flex', alignItems: 'center', gap: 28, background: '#252526', flexShrink: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.72rem', color: '#22c55e', fontWeight: 600 }}>
+                        <span style={{ width: 14, height: 14, borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', color: '#fff', fontWeight: 900 }}>✓</span>
+                        Passed: {aiResult.summary?.passed}/{aiResult.summary?.totalTestCases} test cases
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>Runtime: {aiResult.runtime || '—'}</span>
+                      <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>Memory: {aiResult.memory || '—'}</span>
+                    </div>
                   )}
                 </div>
+              )}
 
-                <div className="d-flex gap-2">
-                  <Button variant="secondary" size="sm" onClick={handleRun} disabled={loading || submitting}>
-                    {loading
-                      ? <><span className="spinner-border spinner-border-sm me-1" />Running…</>
-                      : 'Run'}
-                  </Button>
-                  <Button
-                    size="sm"
-                    style={{ backgroundColor: canSubmit ? '#ff7a00' : '#ffc999', border: 'none' }}
-                    disabled={!canSubmit || submitting}
-                    onClick={handleSubmit}
-                  >
-                    {submitting
-                      ? <><span className="spinner-border spinner-border-sm me-1" />Submitting…</>
-                      : 'Submit'}
-                  </Button>
-                </div>
-              </div>
-            </Col>
-          </Row>
+            </div>
+          </div>
           {/* ── Submission success overlay ── */}
           {submissionResult && (
             <div style={{

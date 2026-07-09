@@ -283,356 +283,457 @@ const DailyExam: React.FC = () => {
   const catStyle = getCategoryStyle(todayData?.category || '')
   const timerWarning = timeLeft <= 60
 
+  // ─── Derived data ────────────────────────────────────────────────────────────
+  const stats = calendarData?.stats
+  const bestScore = calendarData
+    ? Math.max(0, ...calendarData.days.filter(d => d.attended && d.score != null && d.total).map(d => Math.round((d.score! / d.total!) * 100)))
+    : 0
+
+  const ROTATION_ORDER = ['Aptitude', 'Reasoning', 'Technical', 'Puzzle'] as const
+  const todayCatIdx = ROTATION_ORDER.indexOf((todayData?.category ?? '') as any)
+  const upcomingRotation = todayCatIdx >= 0
+    ? [1, 2, 3, 4].map((offset, i) => ({
+        label: i === 0 ? 'Tomorrow' : i === 1 ? 'Day After Tomorrow' : `In ${i + 1} Days`,
+        cat: ROTATION_ORDER[(todayCatIdx + offset) % ROTATION_ORDER.length],
+      }))
+    : []
+
+  const CAT_THEME: Record<string, { bg: string; color: string; icon: string; desc: string }> = {
+    Aptitude:  { bg: '#fef3c7', color: '#d97706', icon: '🧮', desc: 'Quantitative ability and DI questions' },
+    Reasoning: { bg: '#dcfce7', color: '#16a34a', icon: '🧩', desc: 'Logic, puzzles, seating arrangement & more' },
+    Technical: { bg: '#dbeafe', color: '#2563eb', icon: '💻', desc: 'Programming, DBMS, OS, Computer Networks' },
+    Puzzle:    { bg: '#fee2e2', color: '#dc2626', icon: '🔮', desc: 'Puzzles, patterns, series & more' },
+  }
+
+  const CATEGORY_DESC: Record<string, string> = {
+    Aptitude:  'Quantitative ability questions on numbers, ratios, percentages, profit & loss and more.',
+    Reasoning: 'Logical reasoning, syllogisms, blood relations, seating arrangement & more.',
+    Technical: 'Programming, DBMS, OS, Computer Networks and core CS concepts.',
+    Puzzle:    'Puzzles, patterns, number series & more.',
+  }
+
+  function getCellStyle(day: CalendarDay): { bg: string; pctColor: string; scoreColor: string } {
+    if (day.isFuture) return { bg: '#ffffff', pctColor: '#cbd5e1', scoreColor: '#cbd5e1' }
+    if (!day.attended) return { bg: '#f8fafc', pctColor: '#94a3b8', scoreColor: '#94a3b8' }
+    const pct = day.score != null && day.total ? (day.score / day.total) * 100 : 0
+    if (pct >= 60) return { bg: '#f0fdf4', pctColor: '#16a34a', scoreColor: '#16a34a' }
+    if (pct >= 30) return { bg: '#fefce8', pctColor: '#ca8a04', scoreColor: '#ca8a04' }
+    return { bg: '#fff1f2', pctColor: '#dc2626', scoreColor: '#dc2626' }
+  }
+
+  const today = new Date()
+  const weekLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Today']
+  const weeklyScores = Array.from({ length: 7 }, (_, i) => {
+    if (i === 6) {
+      const d = calendarData?.days.find(day => day.isToday)
+      return d?.attended && d.score != null && d.total ? Math.round((d.score / d.total) * 100) : 0
+    }
+    const dt = new Date(today)
+    dt.setDate(today.getDate() - 6 + i)
+    const iso = dt.toISOString().split('T')[0]
+    const d = calendarData?.days.find(day => day.date === iso)
+    return d?.attended && d.score != null && d.total ? Math.round((d.score / d.total) * 100) : 0
+  })
+
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ color: '#f0f0f0', minHeight: 400 }}>
+    <div style={{ color: '#0f172a' }}>
       <style>{`
-        @keyframes da-spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+        @keyframes da-spin  { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
         @keyframes da-pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
         .da-opt-btn { transition: all 0.15s ease; }
         .da-opt-btn:hover { background: rgba(255,122,0,0.12) !important; border-color: #ff7a00 !important; }
       `}</style>
 
-      {/* ── Top Tabs ── */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #1e1e28', paddingBottom: 0 }}>
-        {([
-          { key: 'today',    label: "Today's Exam",
-            icon: (active: boolean) => (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? '#ff7a00' : '#555'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            ),
-          },
-          { key: 'calendar', label: 'Progress Calendar',
-            icon: (active: boolean) => (
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={active ? '#ff7a00' : '#555'} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-              </svg>
-            ),
-          },
-        ] as const).map(({ key, label, icon }) => {
-          const active = activeTab === key
-          return (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={{
-                background: 'none', border: 'none',
-                padding: '10px 20px',
-                fontWeight: 700, fontSize: 13,
-                cursor: 'pointer',
-                color: active ? '#ff7a00' : '#555',
-                borderBottom: active ? '2px solid #ff7a00' : '2px solid transparent',
-                transition: 'all 0.2s',
-                display: 'flex', alignItems: 'center', gap: 7,
-              }}
-            >
-              {icon(active)}
-              {label}
-            </button>
-          )
-        })}
+      {/* ── Top stat bar ── */}
+      <div style={{ display: 'flex', gap: 14, marginBottom: 22, alignItems: 'stretch' }}>
+        {/* How it works */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.78rem' }}>How it works?</div>
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>One category every day on rotation</div>
+          </div>
+        </div>
+        {/* Tests Attempted */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', lineHeight: 1 }}>{stats?.totalAttended ?? 0}</div>
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Tests Attempted</div>
+          </div>
+        </div>
+        {/* Average Score */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', lineHeight: 1 }}>{stats?.avgScore ?? 0}%</div>
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Average Score</div>
+          </div>
+        </div>
+        {/* Best Score */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(251,191,36,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', lineHeight: 1 }}>{bestScore}%</div>
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Best Score</div>
+          </div>
+        </div>
+        {/* Day Streak */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: 'rgba(249,115,22,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', lineHeight: 1 }}>{stats?.streak ?? 0}</div>
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Day Streak</div>
+          </div>
+        </div>
       </div>
 
-      {/* ════════════ TODAY TAB ════════════ */}
-      {activeTab === 'today' && (
-        <div>
-          {loadingToday ? (
-            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 60 }}>
-              <div style={{ width: 36, height: 36, border: '3px solid rgba(255,122,0,0.2)', borderTop: '3px solid #ff7a00', borderRadius: '50%', animation: 'da-spin 1s linear infinite' }} />
+      {/* ── Main 2-column layout ── */}
+      <div style={{ display: 'flex', gap: 20, alignItems: 'stretch', marginBottom: 20 }}>
+
+        {/* ── LEFT: Today's exam + Upcoming rotation ── */}
+        <div style={{ width: 440, flexShrink: 0 }}>
+
+          {/* Today's Exam card */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Today's Exam</div>
+              <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Category rotates daily</div>
             </div>
-          ) : !todayData ? (
-            <p style={{ color: '#666', textAlign: 'center', paddingTop: 40 }}>Failed to load today's exam.</p>
-          ) : (
-            <div style={{ maxWidth: 640, margin: '0 auto' }}>
 
-              {/* Category hero card */}
-              <div style={{
-                background: catStyle.bg, border: `1.5px solid ${catStyle.border}`,
-                borderRadius: 16, padding: '28px 28px 24px', marginBottom: 20,
-                position: 'relative', overflow: 'hidden',
-              }}>
-                <div style={{ position: 'absolute', top: -20, right: -20, fontSize: 80, opacity: 0.07, userSelect: 'none' }}>
-                  {CATEGORY_ICONS[todayData.category] ?? '📝'}
+            <div style={{ padding: '16px 18px' }}>
+              {loadingToday ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '30px 0' }}>
+                  <div style={{ width: 28, height: 28, border: '3px solid rgba(99,102,241,0.2)', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'da-spin 1s linear infinite' }} />
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                  <span style={{ fontSize: 28 }}>{CATEGORY_ICONS[todayData.category] ?? '📝'}</span>
-                  <div>
-                    <div style={{ fontSize: 11, color: '#888', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Today's Category</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>{todayData.category}</div>
-                  </div>
-                  <div style={{ marginLeft: 'auto' }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                      background: `${catStyle.badge}22`, color: catStyle.badge, border: `1px solid ${catStyle.badge}44`,
-                    }}>
-                      {new Date(todayData.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+              ) : !todayData ? (
+                <p style={{ color: '#94a3b8', textAlign: 'center', fontSize: '0.8rem', margin: '20px 0' }}>Failed to load today's exam.</p>
+              ) : (
+                <>
+                  {/* Category badge row */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: CAT_THEME[todayData.category]?.bg ?? 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                        {CATEGORY_ICONS[todayData.category] ?? '📝'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem' }}>{todayData.category}</div>
+                        <div style={{ fontSize: '0.62rem', color: '#94a3b8', marginTop: 1 }}>
+                          {new Date(todayData.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}
+                        </div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.2)' }}>
+                      Today's Category
                     </span>
                   </div>
-                </div>
 
-                <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-                  {[
-                    { label: 'Questions', val: todayData.totalQuestions },
-                    { label: 'Duration', val: '15 min' },
-                    { label: 'Status', val: todayData.alreadyAttempted ? '✅ Done' : '⏳ Pending' },
-                  ].map(item => (
-                    <div key={item.label} style={{ background: 'rgba(0,0,0,0.25)', borderRadius: 10, padding: '8px 14px', flex: 1, textAlign: 'center' }}>
-                      <div style={{ fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>{item.label}</div>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>{item.val}</div>
+                  {/* Description */}
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', lineHeight: 1.5, marginBottom: 14 }}>
+                    {CATEGORY_DESC[todayData.category] ?? 'Practice questions for today\'s daily exam.'}
+                  </div>
+
+                  {/* Exam stats */}
+                  <div style={{ display: 'flex', background: '#1a1760', borderRadius: 10, padding: '11px 4px', marginBottom: 14 }}>
+                    {[
+                      { label: 'Questions', val: todayData.totalQuestions },
+                      { label: 'Duration', val: '30 Min' },
+                      { label: 'Total Marks', val: todayData.totalQuestions * 1 },
+                      { label: 'For Correct', val: '+1' },
+                    ].map((item) => (
+                      <div key={item.label} style={{ flex: 1, textAlign: 'center' }}>
+                        <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '0.88rem', lineHeight: 1.1 }}>{item.val}</div>
+                        <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.5)', marginTop: 3, lineHeight: 1.2 }}>{item.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Action */}
+                  {todayData.alreadyAttempted && todayData.attempt ? (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700, marginBottom: 4 }}>✅ Completed Today!</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#16a34a', lineHeight: 1 }}>
+                          {todayData.attempt.score}<span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>/{todayData.attempt.total}</span>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: 6, borderRadius: 20, background: '#dcfce7', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.round((todayData.attempt.score / todayData.attempt.total) * 100)}%`, background: '#16a34a', borderRadius: 20 }} />
+                          </div>
+                          <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 3 }}>
+                            {Math.round((todayData.attempt.score / todayData.attempt.total) * 100)}% accuracy
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : todayData.error ? (
+                    <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: 10, padding: '10px 14px', fontSize: '0.72rem', color: '#dc2626' }}>
+                      ⚠️ {todayData.error}
+                    </div>
+                  ) : (
+                    <button onClick={openQuiz} style={{
+                      width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      Start Exam
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Upcoming Rotation */}
+          {upcomingRotation.length > 0 && (
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
+              <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Upcoming Rotation</div>
+              </div>
+              <div style={{ padding: '8px 0' }}>
+                {upcomingRotation.map(({ label, cat }) => {
+                  const theme = CAT_THEME[cat]
+                  return (
+                    <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 18px', borderBottom: '1px solid #f8fafc' }}>
+                      <div style={{ width: 40, height: 40, borderRadius: 10, background: theme?.bg ?? '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                        {CATEGORY_ICONS[cat] ?? theme?.icon ?? '📝'}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem' }}>{cat}</div>
+                        <div style={{ fontSize: '0.62rem', color: '#94a3b8', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{theme?.desc}</div>
+                      </div>
+                      <div style={{
+                        fontSize: '0.6rem', fontWeight: 700,
+                        color: theme?.color ?? '#64748b',
+                        background: theme?.bg ?? '#f1f5f9',
+                        padding: '4px 10px', borderRadius: 20, flexShrink: 0, whiteSpace: 'nowrap',
+                        border: `1px solid ${theme?.color ?? '#e2e8f0'}33`,
+                      }}>
+                        {label}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div style={{ padding: '10px 18px' }}>
+                  <button style={{ background: 'none', border: 'none', color: '#6366f1', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}>
+                    View Rotation Schedule
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT: Progress Calendar ── */}
+        <div style={{ flex: 1, minWidth: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+          {/* Calendar header */}
+          <div style={{ padding: '14px 18px 12px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem' }}>Your Progress Calendar</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => setCalendarMonth(p => { const m = p.month === 1 ? 12 : p.month - 1; const y = p.month === 1 ? p.year - 1 : p.year; return { year: y, month: m } })}
+                style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>‹</button>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', minWidth: 80, textAlign: 'center' }}>{monthName(calendarMonth.month)} {calendarMonth.year}</span>
+              <button onClick={() => setCalendarMonth(p => { const m = p.month === 12 ? 1 : p.month + 1; const y = p.month === 12 ? p.year + 1 : p.year; return { year: y, month: m } })}
+                style={{ width: 28, height: 28, borderRadius: 7, border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', fontSize: 14 }}>›</button>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 16, padding: '7px 18px', borderBottom: '1px solid #f1f5f9', flexWrap: 'nowrap', alignItems: 'center' }}>
+            {[
+              { color: '#16a34a', bg: '#f0fdf4', label: 'Attempted (≥60%)' },
+              { color: '#ca8a04', bg: '#fefce8', label: 'Attempted (<60%)' },
+              { color: '#dc2626', bg: '#fff1f2', label: 'Attempted (Poor)' },
+              { color: '#94a3b8', bg: '#f8fafc', label: 'Absent' },
+            ].map(item => (
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                <div style={{ width: 11, height: 11, borderRadius: 2, background: item.bg, border: `1.5px solid ${item.color}`, flexShrink: 0 }} />
+                <span style={{ fontSize: '0.62rem', color: '#475569', whiteSpace: 'nowrap' }}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Unified calendar grid — day names + cells in one grid, single gap colour, no double borders */}
+          <div style={{ flex: 1, overflow: 'hidden', padding: '10px 16px 16px' }}>
+          {loadingCalendar ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+              <div style={{ width: 24, height: 24, border: '3px solid rgba(99,102,241,0.2)', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'da-spin 1s linear infinite' }} />
+            </div>
+          ) : calendarData ? (
+            (() => {
+              const firstDay = new Date(calendarMonth.year, calendarMonth.month - 1, 1).getDay()
+              const prevMonthLast = new Date(calendarMonth.year, calendarMonth.month - 1, 0).getDate()
+              const daysInMonth = calendarData.days.length
+              const cells: (CalendarDay | null)[] = Array(firstDay).fill(null).concat(calendarData.days)
+              while (cells.length % 7 !== 0) cells.push(null)
+              const numWeeks = cells.length / 7
+              return (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gridTemplateRows: `32px repeat(${numWeeks}, 80px)`,
+                  gap: 6,
+                  background: '#f1f5f9',
+                  border: '6px solid #f1f5f9',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                }}>
+                  {/* Day name header row */}
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                    <div key={d} style={{ background: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: '#9ca3af', letterSpacing: '0.05em' }}>
+                      {d}
                     </div>
                   ))}
-                </div>
-
-                {todayData.alreadyAttempted && todayData.attempt ? (
-                  <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: 12, padding: '16px 20px' }}>
-                    <div style={{ fontSize: 12, color: '#888', marginBottom: 8 }}>Today's Result</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                      <div style={{ fontSize: 36, fontWeight: 900, color: catStyle.badge }}>
-                        {todayData.attempt.score}
-                        <span style={{ fontSize: 16, color: '#666', fontWeight: 400 }}>/{todayData.attempt.total}</span>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ height: 8, borderRadius: 20, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.round((todayData.attempt.score / todayData.attempt.total) * 100)}%`, background: catStyle.badge, borderRadius: 20, transition: 'none' }} />
+                  {/* Calendar day cells */}
+                  {cells.map((day, ci) => {
+                    if (!day) {
+                      const outDate = ci < firstDay
+                        ? prevMonthLast - firstDay + ci + 1
+                        : ci - firstDay - daysInMonth + 1
+                      return (
+                        <div key={`n${ci}`} style={{ background: '#fff', borderRadius: 6, padding: '8px 10px' }}>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db' }}>{outDate}</span>
                         </div>
-                        <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-                          {Math.round((todayData.attempt.score / todayData.attempt.total) * 100)}% correct
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 11, color: '#555', marginTop: 8 }}>
-                      Come back tomorrow for the next exam!
-                    </div>
-                  </div>
-                ) : todayData.error ? (
-                  <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, padding: '12px 16px' }}>
-                    <div style={{ color: '#ef4444', fontSize: 13, fontWeight: 700, marginBottom: 6 }}>⚠️ Questions not available</div>
-                    <div style={{ color: '#888', fontSize: 11, lineHeight: 1.6, wordBreak: 'break-word' }}>{todayData.error}</div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={openQuiz}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                      background: `linear-gradient(135deg, #ff7a00, #ff9a3c)`,
-                      color: '#fff', fontWeight: 800, fontSize: 16, cursor: 'pointer',
-                      boxShadow: '0 6px 20px rgba(255,122,0,0.35)',
-                    }}
-                  >
-                    Start Today's Exam →
-                  </button>
-                )}
-              </div>
-
-              {/* Rotation legend */}
-              <div style={{ background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 12, padding: '14px 18px' }}>
-                <div style={{ fontSize: 11, color: '#555', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.8 }}>Daily Rotation</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {(['Aptitude', 'Reasoning', 'Technical', 'Puzzle'] as const).map(cat => {
-                    const s = getCategoryStyle(cat)
-                    const isToday = cat === todayData.category
+                      )
+                    }
+                    const dateNum = parseInt(day.date.split('-')[2])
+                    const cs = getCellStyle(day)
+                    const pct = day.attended && day.score != null && day.total ? Math.round((day.score / day.total) * 100) : null
                     return (
-                      <span key={cat} style={{
-                        fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-                        background: isToday ? `${s.badge}22` : 'rgba(255,255,255,0.04)',
-                        color: isToday ? s.badge : '#555',
-                        border: isToday ? `1.5px solid ${s.badge}55` : '1.5px solid #1e1e28',
+                      <div key={`d${ci}`} style={{
+                        padding: '7px 9px',
+                        background: day.isToday ? '#ede9fe' : cs.bg,
+                        borderRadius: 6,
+                        outline: day.isToday ? '2px solid #7c3aed' : 'none',
+                        outlineOffset: '-2px',
+                        cursor: day.attended ? 'pointer' : 'default',
+                        overflow: 'hidden',
                       }}>
-                        {CATEGORY_ICONS[cat]} {cat}
-                      </span>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: day.isToday ? '#7c3aed' : day.isFuture ? '#d1d5db' : '#374151', lineHeight: 1, marginBottom: 5 }}>
+                          {dateNum}
+                        </div>
+                        {pct != null ? (
+                          <>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: cs.pctColor, lineHeight: 1 }}>{pct}%</div>
+                            <div style={{ fontSize: '0.62rem', color: cs.scoreColor, marginTop: 3, lineHeight: 1 }}>{day.score}/{day.total}</div>
+                          </>
+                        ) : day.isToday ? (
+                          <>
+                            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed', lineHeight: 1 }}>Today</div>
+                            {day.category && <div style={{ fontSize: '0.6rem', color: '#7c3aed', marginTop: 3, lineHeight: 1 }}>{day.category}</div>}
+                          </>
+                        ) : !day.isFuture ? (
+                          <div style={{ fontSize: '0.62rem', color: '#94a3b8', lineHeight: 1 }}>Absent</div>
+                        ) : null}
+                      </div>
                     )
                   })}
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ════════════ CALENDAR TAB ════════════ */}
-      {activeTab === 'calendar' && (
-        <div style={{ maxWidth: 680, margin: '0 auto' }}>
-
-          {/* Stats row */}
-          {calendarData?.stats && (
-            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
-              {/* Total Attended */}
-              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: '#22c55e', lineHeight: 1 }}>{calendarData.stats.totalAttended}</div>
-                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Total Attended</div>
-                </div>
-              </div>
-
-              {/* Current Streak */}
-              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: '#fb923c', lineHeight: 1 }}>{calendarData.stats.streak} <span style={{ fontSize: 13, fontWeight: 600 }}>days</span></div>
-                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Current Streak</div>
-                </div>
-              </div>
-
-              {/* Avg Score */}
-              <div style={{ flex: 1, background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 12, background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-                  </svg>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: '#6366f1', lineHeight: 1 }}>{calendarData.stats.avgScore}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span></div>
-                  <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginTop: 4 }}>Avg Score</div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Month navigator */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <button
-              onClick={() => setCalendarMonth(p => {
-                const m = p.month === 1 ? 12 : p.month - 1
-                const y = p.month === 1 ? p.year - 1 : p.year
-                return { year: y, month: m }
-              })}
-              style={{ background: '#1a1a24', border: '1px solid #2a2a38', borderRadius: 8, color: '#aaa', padding: '6px 14px', cursor: 'pointer', fontSize: 16 }}
-            >‹</button>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#f0f0f0' }}>
-              {monthName(calendarMonth.month)} {calendarMonth.year}
-            </span>
-            <button
-              onClick={() => setCalendarMonth(p => {
-                const m = p.month === 12 ? 1 : p.month + 1
-                const y = p.month === 12 ? p.year + 1 : p.year
-                return { year: y, month: m }
-              })}
-              style={{ background: '#1a1a24', border: '1px solid #2a2a38', borderRadius: 8, color: '#aaa', padding: '6px 14px', cursor: 'pointer', fontSize: 16 }}
-            >›</button>
-          </div>
-
-          {loadingCalendar ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-              <div style={{ width: 28, height: 28, border: '3px solid rgba(255,122,0,0.2)', borderTop: '3px solid #ff7a00', borderRadius: '50%', animation: 'da-spin 1s linear infinite' }} />
-            </div>
-          ) : calendarData ? (
-            <div style={{ background: '#0e0e14', border: '1px solid #1e1e28', borderRadius: 14, overflow: 'hidden' }}>
-              {/* Day headers */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#0a0a10', borderBottom: '1px solid #1a1a24' }}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                  <div key={d} style={{ textAlign: 'center', padding: '8px 4px', fontSize: 10, fontWeight: 700, color: '#444', textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>
-                ))}
-              </div>
-
-              {/* Calendar grid */}
-              {(() => {
-                const firstDay = new Date(calendarMonth.year, calendarMonth.month - 1, 1).getDay()
-                const cells: (CalendarDay | null)[] = Array(firstDay).fill(null).concat(calendarData.days)
-                while (cells.length % 7 !== 0) cells.push(null)
-                const weeks = []
-                for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
-
-                return weeks.map((week, wi) => (
-                  <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: wi < weeks.length - 1 ? '1px solid #1a1a24' : 'none' }}>
-                    {week.map((day, di) => {
-                      if (!day) return <div key={di} style={{ padding: '10px 4px', minHeight: 60 }} />
-                      const cs = getCategoryStyle(day.category)
-                      // Two-state dot: green = attended, red = not attended (past only)
-                      const dotColor = day.isFuture
-                        ? 'transparent'
-                        : day.attended ? '#22c55e' : '#ef4444'
-                      const showDot = !day.isFuture
-                      const dateNum = parseInt(day.date.split('-')[2])
-                      return (
-                        <div
-                          key={di}
-                          title={day.attended ? `${day.category}: ${day.score}/${day.total}` : day.isFuture ? 'Upcoming' : day.isToday ? 'Today — not attempted' : 'Not attended'}
-                          style={{
-                            padding: '8px 6px', minHeight: 60,
-                            background: day.isToday ? 'rgba(255,122,0,0.08)' : 'transparent',
-                            borderLeft: di > 0 ? '1px solid #1a1a24' : 'none',
-                            position: 'relative',
-                            cursor: day.attended ? 'pointer' : 'default',
-                            outline: day.isToday ? '1.5px solid rgba(255,122,0,0.35)' : 'none',
-                            outlineOffset: '-1px',
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                            <span style={{
-                              fontSize: 12, fontWeight: day.isToday ? 800 : 600,
-                              color: day.isToday ? '#ff7a00' : day.isFuture ? '#333' : '#888',
-                            }}>{dateNum}</span>
-                            {showDot && (
-                              <span style={{
-                                width: 10, height: 10, borderRadius: '50%',
-                                background: dotColor,
-                                display: 'inline-block',
-                                flexShrink: 0,
-                                boxShadow: day.attended
-                                  ? '0 0 6px 2px rgba(34,197,94,0.6)'
-                                  : '0 0 6px 2px rgba(239,68,68,0.6)',
-                              }} />
-                            )}
-                          </div>
-                          <div style={{ fontSize: 8, color: day.isFuture ? '#2a2a38' : cs.badge, fontWeight: 700, marginBottom: 2, lineHeight: 1.2 }}>
-                            {day.category.slice(0, 3).toUpperCase()}
-                          </div>
-                          {day.attended && day.score !== null && (
-                            <div style={{
-                              position: 'absolute', inset: 0,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: 11, color: '#ffffff', fontWeight: 800, letterSpacing: '0.02em',
-                              pointerEvents: 'none',
-                            }}>{day.score}/{day.total}</div>
-                          )}
-                          {day.isToday && !day.attended && (
-                            <div style={{ fontSize: 8, color: '#ff7a00', animation: 'da-pulse 1.5s ease infinite' }}>TODAY</div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                ))
-              })()}
-
-              {/* Legend */}
-              <div style={{ display: 'flex', gap: 20, padding: '10px 16px', borderTop: '1px solid #1a1a24', background: '#0a0a10' }}>
-                {[
-                  { color: '#22c55e', label: 'Attended' },
-                  { color: '#ef4444', label: 'Not Attended' },
-                  { isToday: true, label: 'Today' },
-                ].map(item => (
-                  <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {item.isToday ? (
-                      <span style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(255,122,0,0.2)', border: '1.5px solid rgba(255,122,0,0.5)', display: 'inline-block' }} />
-                    ) : (
-                      <span style={{
-                        width: 10, height: 10, borderRadius: '50%',
-                        background: (item as any).color, display: 'inline-block',
-                        boxShadow: (item as any).color === '#22c55e'
-                          ? '0 0 6px 2px rgba(34,197,94,0.6)'
-                          : '0 0 6px 2px rgba(239,68,68,0.6)',
-                      }} />
-                    )}
-                    <span style={{ fontSize: 10, color: '#555' }}>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              )
+            })()
           ) : null}
+          </div>
         </div>
-      )}
+      </div>
+
+      {/* ── Bottom info section ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16 }}>
+
+        {/* Why Daily Practice */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.82rem' }}>Why Daily Practice?</div>
+          </div>
+          <div style={{ fontSize: '0.7rem', color: '#64748b', lineHeight: 1.5, marginBottom: 10 }}>Consistent practice improves accuracy, speed and confidence.</div>
+          {['Build consistency', 'Track progress', 'Improve every day'].map(t => (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontSize: '0.72rem', color: '#475569' }}>{t}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Tips to Score Better */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.82rem' }}>Tips to Score Better</div>
+          </div>
+          {['Attempt daily tests', 'Analyze your mistakes', 'Focus on weak areas', 'Stay consistent'].map(t => (
+            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span style={{ fontSize: '0.72rem', color: '#475569' }}>{t}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Performance This Week */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            </div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.82rem' }}>Performance This Week</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 72 }}>
+            {weeklyScores.map((score, i) => {
+              const h = Math.max(4, (score / 100) * 60)
+              const isToday = i === 6
+              return (
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                  {score > 0 && <div style={{ fontSize: '0.52rem', fontWeight: 700, color: isToday ? '#6366f1' : '#94a3b8' }}>{score}%</div>}
+                  <div style={{ width: '100%', height: h, borderRadius: 4, background: isToday ? '#6366f1' : score >= 60 ? '#22c55e' : score > 0 ? '#fbbf24' : '#f1f5f9', transition: 'height 0.3s' }} />
+                  <div style={{ fontSize: '0.52rem', color: '#94a3b8', fontWeight: 600 }}>{weekLabels[i]}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Overall Progress */}
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: 150 }}>
+          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.82rem', marginBottom: 12 }}>Overall Progress</div>
+          {(() => {
+            const avg = stats?.avgScore ?? 0
+            const r = 36, sw = 7, circ = 2 * Math.PI * r, dash = (avg / 100) * circ
+            return (
+              <div style={{ position: 'relative', width: 90, height: 90 }}>
+                <svg width={90} height={90} viewBox="0 0 90 90">
+                  <circle cx={45} cy={45} r={r} fill="none" stroke="#f1f5f9" strokeWidth={sw} />
+                  <circle cx={45} cy={45} r={r} fill="none" stroke="#6366f1" strokeWidth={sw}
+                    strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+                    transform="rotate(-90 45 45)" style={{ transition: 'stroke-dasharray 0.5s ease' }} />
+                </svg>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ fontSize: '1rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{avg}%</div>
+                  <div style={{ fontSize: '0.5rem', color: '#94a3b8', marginTop: 2, textAlign: 'center', lineHeight: 1.3 }}>Average Score</div>
+                </div>
+              </div>
+            )
+          })()}
+          <div style={{ fontSize: '0.62rem', color: '#64748b', marginTop: 10, textAlign: 'center', lineHeight: 1.4 }}>Keep it up! You are doing great.</div>
+        </div>
+      </div>
 
       {/* ════════════ QUIZ — portalled to document.body so it's above all parent stacking contexts ════════════ */}
       {quizOpen && todayData && createPortal(

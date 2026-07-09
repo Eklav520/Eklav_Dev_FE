@@ -1,664 +1,555 @@
 import React, { useEffect, useState } from 'react'
-import ChoicesFormInput from '@/components/form/ChoicesFormInput'
 import PageMetaData from '@/components/PageMetaData'
-import { Button, Card, CardBody, CardHeader, Col, Row } from 'react-bootstrap'
-import { BsPlayCircle } from 'react-icons/bs'
-import { FaAngleLeft, FaAngleRight, FaSearch, FaStar, FaRegStar, FaUsers } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import {
+  FaPlay, FaStar, FaRegStar, FaStarHalfAlt, FaCheck,
+  FaBookOpen, FaTrophy, FaClock,
+  FaThLarge, FaList, FaSearch,
+} from 'react-icons/fa'
+import { BsCheckCircleFill, BsLightningFill } from 'react-icons/bs'
 
-type CourseRating = {
-  averageRating: number
-  totalRatings: number
-}
+// ─── Types ──────────────────────────────────────────────────────────────────
 
 type EnrolledCourse = {
+  _id: string
   name: string
   image: string
   totalLectures: number
-  completedLectures: number
-  _id: string
+  completedLectures: number   // percentage 0–100
   userRating?: number
-  courseRating?: CourseRating
+  courseRating?: { averageRating: number; totalRatings: number }
+  shortDescription?: string
+  level?: string
+  courseType?: string
+  duration?: string
+  badge?: string
+  category?: string[]
+  enrolledAt?: string
+  lastAccessedAt?: string
+  hoursWatched?: number
+  hoursTotal?: number
+  hoursRemaining?: number
 }
 
-type CourseType = {
-  _id: string
-  completedLectures: number
-  image: string
-  name: string
-  totalLectures: number
-  userRating?: number
-  courseRating?: CourseRating
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const cleanLevel = (v?: string) => {
+  if (!v) return ''
+  try { const p = JSON.parse(v); return Array.isArray(p) ? p[0] : String(p) } catch { return v }
 }
 
-// Rating Component
-type RatingProps = {
-  rating: number
-  onRatingChange?: (rating: number) => void
-  readonly?: boolean
-  size?: number
-  showNumber?: boolean
+const formatDuration = (duration?: string, progress = 0) => {
+  if (!duration) return null
+  const totalHrs = parseFloat(String(duration).replace(/[^0-9.]/g, '')) || 0
+  if (!totalHrs) return null
+  const doneHrs = totalHrs * (progress / 100)
+  const dH = Math.floor(doneHrs)
+  const dM = Math.round((doneHrs - dH) * 60)
+  return { done: `${dH}h${dM > 0 ? ` ${dM}m` : ''}`, total: `${totalHrs}h` }
 }
 
-const Rating = ({ rating, onRatingChange, readonly = false, size = 16, showNumber = false }: RatingProps) => {
-  const handleRatingClick = (newRating: number) => {
-    if (!readonly && onRatingChange) {
-      onRatingChange(newRating)
-    }
-  }
+const relativeDate = (iso?: string) => {
+  if (!iso) return null
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
+  if (diff === 0) return 'Today'
+  if (diff === 1) return 'Yesterday'
+  if (diff < 7) return `${diff} days ago`
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
+// ─── Stars ──────────────────────────────────────────────────────────────────
+
+const Stars = ({ rating, count }: { rating: number; count: number }) => {
+  const full = Math.floor(rating)
+  const half = rating % 1 >= 0.5
+  const empty = 5 - full - (half ? 1 : 0)
   return (
-    <div className="d-flex align-items-center">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <span
-          key={star}
-          onClick={() => handleRatingClick(star)}
-          style={{
-            cursor: readonly ? 'default' : 'pointer',
-            fontSize: `${size}px`,
-            color: '#ffc107',
-          }}
-          className={!readonly ? 'hover-scale' : ''}>
-          {star <= rating ? <FaStar /> : <FaRegStar />}
-        </span>
-      ))}
-      {showNumber && rating > 0 && <span className="ms-2 text-muted small">({rating.toFixed(1)})</span>}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      {Array(full).fill(0).map((_, i) => <FaStar key={`f${i}`} size={12} color="#f59e0b" />)}
+      {half && <FaStarHalfAlt size={12} color="#f59e0b" />}
+      {Array(empty).fill(0).map((_, i) => <FaRegStar key={`e${i}`} size={12} color="#f59e0b" />)}
+      {count > 0 && <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: 4 }}>({count >= 1000 ? `${(count / 1000).toFixed(1)}K` : count})</span>}
     </div>
   )
 }
 
-// Average Rating Display Component
-const AverageRating = ({ courseRating }: { courseRating?: CourseRating }) => {
-  if (!courseRating || courseRating.totalRatings === 0) {
-    return <div className="text-muted small">No ratings yet</div>
+// ─── Stat Card ──────────────────────────────────────────────────────────────
+
+const StatCard = ({ icon, value, label, sub, iconBg }: {
+  icon: React.ReactNode; value: string; label: string; sub: string; iconBg: string
+}) => (
+  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div style={{ width: 46, height: 46, borderRadius: 12, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {icon}
+    </div>
+    <div>
+      <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#0f172a', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#0f172a', lineHeight: 1.4 }}>{label}</div>
+      <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{sub}</div>
+    </div>
+  </div>
+)
+
+// ─── Course Row ─────────────────────────────────────────────────────────────
+
+const CourseRow = ({ course }: { course: EnrolledCourse }) => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const pct = Math.round(course.completedLectures)
+  const isCompleted = pct >= 100
+  const hasStarted = pct > 0
+  const level = cleanLevel(course.level)
+  const lastAccessed = relativeDate(course.lastAccessedAt)
+
+  // Hours display — prefer API-computed values, fall back to local calc
+  const hoursTotal = course.hoursTotal ?? 0
+  const hoursWatched = course.hoursWatched ?? 0
+  const showHours = hoursTotal > 0
+  const fmtHrs = (h: number) => {
+    const wH = Math.floor(h); const wM = Math.round((h - wH) * 60)
+    return `${wH}h${wM > 0 ? ` ${wM}m` : ''}`
   }
 
-  return (
-    <div className="d-flex align-items-center">
-      <Rating rating={courseRating.averageRating} readonly size={12} showNumber />
-      <div className="ms-2 d-flex align-items-center text-muted small">
-        <FaUsers className="me-1" size={10} />
-        <span>({courseRating.totalRatings})</span>
-      </div>
-    </div>
-  )
-}
+  const imgSrc = course.image?.startsWith('http')
+    ? course.image
+    : `${baseURL}/uploads/${course.image}`
 
-// Circular Progress Component
-const CircularProgress = ({ percent }: { percent: number }) => {
-  const size = 60
-  const strokeWidth = 5
-  const r = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * r
-  const offset = circumference - (percent / 100) * circumference
-  const color = percent === 100 ? '#22c55e' : percent >= 50 ? '#3b82f6' : '#ff7a00'
+  const progressColor = isCompleted ? '#16a34a' : '#ff7a00'
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2a2a2a" strokeWidth={strokeWidth} />
-        <circle
-          cx={size / 2} cy={size / 2} r={r} fill="none"
-          stroke={color} strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'box-shadow 0.15s' }}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+
+      {/* Thumbnail */}
+      <div style={{ width: 140, minWidth: 140, height: 95, borderRadius: 10, overflow: 'hidden', background: '#1e293b', flexShrink: 0, position: 'relative' }}>
+        <img
+          src={imgSrc}
+          alt={course.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(course.name)}` }}
         />
-        <text
-          x="50%" y="50%"
-          dominantBaseline="middle" textAnchor="middle"
-          style={{ transform: 'rotate(90deg)', transformOrigin: '50% 50%', fill: color, fontSize: '11px', fontWeight: 700 }}
-        >
-          {percent}%
-        </text>
-      </svg>
-    </div>
-  )
-}
-
-// CourseData Component
-const CourseData = ({
-  completedLectures,
-  image,
-  name,
-  totalLectures,
-  _id,
-  userRating,
-  courseRating,
-  onRateCourse,
-}: CourseType & { onRateCourse: (course: CourseType) => void }) => {
-  let status = 'Not Started'
-  if (completedLectures > 0 && completedLectures < 99) status = 'In Progress'
-  else if (completedLectures === 100) status = 'Completed'
-
-  const progressPercent = Math.round(completedLectures)
-
-  return (
-    <tr>
-      <td>
-        <div className="d-flex align-items-center">
-          <div className="w-100px">
-            <img
-              src={image}
-              alt="course image"
-              className="rounded"
-              style={{ width: '60px', height: 'auto', borderRadius: '4px' }}
-              onError={(e) => {
-                e.currentTarget.onerror = null
-                e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name || 'User')}`
-              }}
-            />
-          </div>
-          <div className="mb-0 ms-2">
-            <h6>
-              <a href="#">{name}</a>
-            </h6>
-            {/* Display average rating below course name */}
-            <AverageRating courseRating={courseRating} />
-          </div>
-        </div>
-      </td>
-
-      <td>{totalLectures}</td>
-      <td>
-        <CircularProgress percent={progressPercent} />
-      </td>
-
-      <td style={{ color: '#ff7a00', fontWeight: 500 }}>
-        {status}
-      </td>
-
-
-      {/* Your Rating Column */}
-      <td>
-        {userRating && userRating > 0 ? (
-          <div className="d-flex align-items-center">
-            <Rating rating={userRating} readonly size={14} />
-            <span className="ms-2 text-muted small">({userRating}.0)</span>
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              className="ms-2"
-              onClick={() => onRateCourse({ _id, name, image, totalLectures, completedLectures, userRating, courseRating })}>
-              Edit
-            </Button>
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            style={{
-              borderColor: '#ff7a00',
-              color: '#ff7a00',
-              backgroundColor: 'transparent'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#ff7a00'
-              e.currentTarget.style.color = '#fff'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent'
-              e.currentTarget.style.color = '#ff7a00'
-            }}
-            onClick={() => onRateCourse({ _id, name, image, totalLectures, completedLectures, userRating, courseRating })}>
-            Rate Course
-          </Button>
+        {course.badge && (
+          <span style={{ position: 'absolute', top: 6, left: 6, background: '#ff7a00', color: '#fff', fontSize: '0.58rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4 }}>
+            {course.badge}
+          </span>
         )}
-      </td>
+      </div>
 
-      <td>
-        <a href={`/pages/course/detail-adv/${_id}`} target="_blank" rel="noopener noreferrer">
-          <Button
-            size="sm"
-            style={{
-              backgroundColor: '#ff7a00',
-              borderColor: '#ff7a00',
-              color: '#fff'
-            }}
-            className="me-1 mb-1 mb-md-0 icons-center">
-            <BsPlayCircle className="me-1" /> Play
-          </Button>
-        </a>
-      </td>
-    </tr>
-  )
-}
-
-// Rating Modal Component
-const RatingModal = ({
-  show,
-  course,
-  onClose,
-  onSubmit,
-}: {
-  show: boolean
-  course: CourseType | null
-  onClose: () => void
-  onSubmit: (courseId: string, rating: number, feedback: string) => void
-}) => {
-  const [currentRating, setCurrentRating] = useState(0)
-  const [feedback, setFeedback] = useState('')
-
-  // Reset form when course changes or modal opens
-  useEffect(() => {
-    if (course) {
-      setCurrentRating(course.userRating || 0)
-      setFeedback('')
-    }
-  }, [course])
-
-  const handleSubmit = () => {
-    if (course && currentRating > 0) {
-      onSubmit(course._id, currentRating, feedback)
-      onClose()
-    }
-  }
-
-  if (!show || !course) return null
-
-  return (
-    <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex={-1}>
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">Rate this Course</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          <div className="modal-body">
-            <div className="text-center mb-3">
-              <h6>{course.name}</h6>
-
-              {/* Show current average rating if available */}
-              {course.courseRating && course.courseRating.totalRatings > 0 && (
-                <div className="mb-3 p-2 bg-light rounded">
-                  <div className="small text-muted">Current Course Rating</div>
-                  <div className="d-flex align-items-center justify-content-center">
-                    <Rating rating={course.courseRating.averageRating} readonly size={18} showNumber />
-                    <span className="ms-2 small text-muted">
-                      ({course.courseRating.totalRatings} rating{course.courseRating.totalRatings !== 1 ? 's' : ''})
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <p>How would you rate this course?</p>
-              <Rating rating={currentRating} onRatingChange={setCurrentRating} size={24} />
-              {currentRating > 0 && (
-                <p className="mt-2 text-muted">
-                  You selected: {currentRating} star{currentRating !== 1 ? 's' : ''}
-                </p>
-              )}
-            </div>
-
-            <div className="mt-3">
-              <label htmlFor="feedback" className="form-label">
-                Optional Feedback <span className="text-muted">(max 500 characters)</span>
-              </label>
-              <textarea
-                id="feedback"
-                className="form-control"
-                rows={3}
-                placeholder="Share your experience with this course..."
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                maxLength={500}
-              />
-              <div className="form-text text-end">{feedback.length}/500 characters</div>
-            </div>
-          </div>
-          <div className="modal-footer">
-            <Button variant="secondary" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleSubmit} disabled={currentRating === 0}>
-              {currentRating > 0 ? 'Update Rating' : 'Submit Rating'}
-            </Button>
-          </div>
+      {/* Course Info — flex:1 fills all remaining space */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.93rem', margin: '0 0 4px', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+          {course.name}
+        </h6>
+        {course.shortDescription && (
+          <p style={{ fontSize: '0.73rem', color: '#64748b', margin: '0 0 8px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+            {course.shortDescription.replace(/<[^>]*>/g, '')}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 7 }}>
+          {level && (
+            <span style={{ fontSize: '0.67rem', fontWeight: 600, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.25)', borderRadius: 20, padding: '2px 9px' }}>
+              {level}
+            </span>
+          )}
+          <span style={{ fontSize: '0.67rem', fontWeight: 600, background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 20, padding: '2px 9px' }}>
+            Certificate
+          </span>
         </div>
+        {(course.courseRating?.totalRatings ?? 0) > 0 && (
+          <Stars rating={course.courseRating!.averageRating} count={course.courseRating!.totalRatings} />
+        )}
+      </div>
+
+      {/* Divider */}
+      <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0 }} />
+
+      {/* Progress — fixed width */}
+      <div style={{ width: 210, minWidth: 210, flexShrink: 0 }}>
+        <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Progress</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: showHours ? 2 : 4 }}>
+          <span style={{ fontSize: '1.6rem', fontWeight: 800, color: progressColor, lineHeight: 1 }}>{pct}%</span>
+        </div>
+        {showHours && (
+          <div style={{ fontSize: '0.71rem', color: '#64748b', marginBottom: 5 }}>
+            {fmtHrs(hoursWatched)} / {fmtHrs(hoursTotal)}
+          </div>
+        )}
+        {!showHours && (
+          <div style={{ fontSize: '0.71rem', color: '#64748b', marginBottom: 5 }}>{course.totalLectures} lectures total</div>
+        )}
+        {/* Progress bar */}
+        <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: progressColor, borderRadius: 99, transition: 'width 0.4s ease' }} />
+        </div>
+        {lastAccessed && (
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Last accessed: <strong style={{ color: '#64748b' }}>{lastAccessed}</strong></div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0 }} />
+
+      {/* Actions — single button only */}
+      <div style={{ flexShrink: 0, minWidth: 170 }}>
+        {isCompleted ? (
+          <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+            <button style={{ background: '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
+              <FaCheck size={11} /> Completed
+            </button>
+          </a>
+        ) : (
+          <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+            <button style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', boxShadow: '0 4px 14px rgba(255,122,0,0.28)' }}>
+              <FaPlay size={10} /> {hasStarted ? 'Continue Learning' : 'Start Learning'}
+            </button>
+          </a>
+        )}
       </div>
     </div>
   )
 }
+
+
+// ─── Course Grid Card ────────────────────────────────────────────────────────
+
+const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const pct = Math.round(course.completedLectures)
+  const isCompleted = pct >= 100
+  const hasStarted = pct > 0
+  const level = cleanLevel(course.level)
+  const lastAccessed = relativeDate(course.lastAccessedAt)
+  const hoursTotal = course.hoursTotal ?? 0
+  const hoursWatched = course.hoursWatched ?? 0
+  const showHours = hoursTotal > 0
+  const fmtHrs = (h: number) => {
+    const wH = Math.floor(h); const wM = Math.round((h - wH) * 60)
+    return `${wH}h${wM > 0 ? ` ${wM}m` : ''}`
+  }
+  const imgSrc = course.image?.startsWith('http')
+    ? course.image
+    : `${baseURL}/uploads/${course.image}`
+  const progressColor = isCompleted ? '#16a34a' : '#ff7a00'
+
+  return (
+    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.15s' }}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+
+      {/* Thumbnail */}
+      <div style={{ width: '100%', height: 160, position: 'relative', background: '#1e293b', flexShrink: 0 }}>
+        <img src={imgSrc} alt={course.name}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          onError={(e) => { e.currentTarget.src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(course.name)}` }} />
+        {course.badge && (
+          <span style={{ position: 'absolute', top: 8, left: 8, background: '#ff7a00', color: '#fff', fontSize: '0.58rem', fontWeight: 700, padding: '2px 7px', borderRadius: 4 }}>
+            {course.badge}
+          </span>
+        )}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, background: '#f1f5f9' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: progressColor, transition: 'width 0.4s ease' }} />
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}>
+        <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', margin: 0, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+          {course.name}
+        </h6>
+
+        {/* Badges */}
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          {level && (
+            <span style={{ fontSize: '0.63rem', fontWeight: 600, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.25)', borderRadius: 20, padding: '2px 8px' }}>
+              {level}
+            </span>
+          )}
+          <span style={{ fontSize: '0.63rem', fontWeight: 600, background: 'rgba(34,197,94,0.08)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 20, padding: '2px 8px' }}>
+            Certificate
+          </span>
+        </div>
+
+        {(course.courseRating?.totalRatings ?? 0) > 0 && (
+          <Stars rating={course.courseRating!.averageRating} count={course.courseRating!.totalRatings} />
+        )}
+
+        {/* Progress info */}
+        <div style={{ marginTop: 'auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Progress</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', color: progressColor }}>{pct}%</span>
+          </div>
+          <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+            <div style={{ height: '100%', width: `${pct}%`, background: progressColor, borderRadius: 99 }} />
+          </div>
+          {showHours ? (
+            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{fmtHrs(hoursWatched)} / {fmtHrs(hoursTotal)}</div>
+          ) : (
+            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{course.totalLectures} lectures</div>
+          )}
+          {lastAccessed && (
+            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 3 }}>Last: <strong style={{ color: '#64748b' }}>{lastAccessed}</strong></div>
+          )}
+        </div>
+
+        {/* Button */}
+        <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', marginTop: 4 }}>
+          <button style={{ background: isCompleted ? '#16a34a' : '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.78rem', padding: '9px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
+            {isCompleted ? <><FaCheck size={10} /> Completed</> : <><FaPlay size={9} /> {hasStarted ? 'Continue' : 'Start Learning'}</>}
+          </button>
+        </a>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
 
 const CourseListPage = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
-  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [ratingModal, setRatingModal] = useState<{
-    show: boolean
-    course: CourseType | null
-  }>({
-    show: false,
-    course: null,
-  })
-
-  const itemsPerPage = 5
-
   const { user } = useAuthContext()
   const token = user?.token
 
-  const filteredCourses = enrolledCourses.filter((course) => course.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'all' | 'inprogress' | 'completed' | 'wishlist'>('all')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [sortBy, setSortBy] = useState('Recent Access')
+  const [searchTerm, setSearchTerm] = useState('')
 
-  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage)
-  const currentCourses = filteredCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  const inProgressCourses = enrolledCourses.filter(c => c.completedLectures > 0 && c.completedLectures < 100)
+  const completedCourses = enrolledCourses.filter(c => c.completedLectures >= 100)
 
-  // Handle opening rating modal
-  const handleRateCourse = (course: CourseType) => {
-    setRatingModal({
-      show: true,
-      course,
-    })
-  }
+  const filteredCourses = enrolledCourses.filter(c => {
+    const matchSearch = !searchTerm || c.name.toLowerCase().includes(searchTerm.toLowerCase())
+    if (activeTab === 'inprogress') return matchSearch && c.completedLectures > 0 && c.completedLectures < 100
+    if (activeTab === 'completed') return matchSearch && c.completedLectures >= 100
+    return matchSearch
+  })
 
-  // Handle closing rating modal
-  const handleCloseRatingModal = () => {
-    setRatingModal({
-      show: false,
-      course: null,
-    })
-  }
-
-  // Handle rating submission
-  const handleRatingSubmit = async (courseId: string, rating: number, feedback: string) => {
-    try {
-      const response = await fetch(`${baseURL}/courses/${courseId}/rate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          rating: rating,
-          feedback: feedback,
-        }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-
-        // Refresh the course data to get updated average ratings
-        await fetchEnrolledCourses()
-
-        console.log('Rating submitted successfully')
-      } else {
-        const error = await response.json()
-        console.error('Failed to submit rating:', error.message)
-        alert(`Failed to submit rating: ${error.message}`)
-      }
-    } catch (error) {
-      console.error('Error submitting rating:', error)
-      alert('Error submitting rating. Please try again.')
-    }
-  }
+  // Compute total learning hours
+  const totalLearningHrs = enrolledCourses.reduce((acc, c) => {
+    const totalHrs = parseFloat(String(c.duration || '0').replace(/[^0-9.]/g, '')) || 0
+    return acc + totalHrs * (c.completedLectures / 100)
+  }, 0)
+  const totalH = Math.floor(totalLearningHrs)
+  const totalM = Math.round((totalLearningHrs - totalH) * 60)
 
   const fetchEnrolledCourses = async () => {
     try {
       const [enrollRes, ratingsRes] = await Promise.all([
-        fetch(`${baseURL}/enrollments/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${baseURL}/courses/ratings/my-ratings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        fetch(`${baseURL}/enrollments/me`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${baseURL}/courses/ratings/my-ratings`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
-
       if (!enrollRes.ok) throw new Error('Failed to fetch enrollments')
-      if (!ratingsRes.ok) throw new Error('Failed to fetch ratings')
-
       const enrolledData = await enrollRes.json()
-      const ratingsData = await ratingsRes.json()
+      const ratingsData = ratingsRes.ok ? await ratingsRes.json() : []
 
-      console.log('📊 Raw API Response:', enrolledData) // Debug log
-
-      // Create a quick lookup for user's own ratings
       const ratingsMap: Record<string, number> = {}
-      ratingsData.forEach((rating: any) => {
-        ratingsMap[rating.courseId] = rating.rating
-      })
+      ratingsData.forEach((r: any) => { ratingsMap[r.courseId] = r.rating })
 
-      // ✅ Use backend-provided courseProgress (already percentage)
-      const formatted = enrolledData
-        .filter((enroll: any) => enroll.courseId)
-        .map((enroll: any) => {
-          const courseId = enroll.courseId._id
-          const totalLectures = Number(enroll.courseId.totalLectures || 0)
-
-          // ✅ Use the courseProgress from backend which is already calculated correctly
-          const courseProgress = Number(enroll.courseProgress || 0)
-          const userRating = ratingsMap[courseId]
-
-          const courseImage = enroll.courseId.image?.startsWith('http') ? enroll.courseId.image : `${baseURL}/uploads/${enroll.courseId.image}`
-
-          console.log(`🎯 Course: ${enroll.courseId.title}, Progress: ${courseProgress}%`) // Debug log
-
+      const formatted: EnrolledCourse[] = enrolledData
+        .filter((e: any) => e.courseId)
+        .map((e: any) => {
+          const c = e.courseId
+          const courseId = c._id
+          const courseImage = c.image?.startsWith('http') ? c.image : `${baseURL}/uploads/${c.image}`
           return {
             _id: courseId,
-            name: enroll.courseId.title,
+            name: c.title || c.name || 'Untitled',
             image: courseImage,
-            totalLectures,
-            completedLectures: courseProgress, // Use the backend-calculated progress
-            userRating,
-            courseRating: enroll.courseRating || {
-              averageRating: 0,
-              totalRatings: 0,
-            },
+            totalLectures: Number(c.totalLectures || 0),
+            completedLectures: Number(e.courseProgress || 0),
+            userRating: ratingsMap[courseId],
+            courseRating: e.courseRating || { averageRating: c.averageRating || 0, totalRatings: c.totalRatings || 0 },
+            shortDescription: c.shortDescription || '',
+            level: c.level || '',
+            courseType: c.courseType || 'free',
+            duration: c.duration || '',
+            badge: c.badge?.text || c.isFeatured === 'true' ? 'Bestseller' : '',
+            category: Array.isArray(c.category) ? c.category : [],
+            enrolledAt: e.createdAt || e.enrolledAt || '',
+            lastAccessedAt: e.lastAccessedAt || '',
+            hoursWatched: e.hoursWatched ?? 0,
+            hoursTotal: e.hoursTotal ?? 0,
+            hoursRemaining: e.hoursRemaining ?? 0,
           }
         })
 
-      console.log('📝 Formatted Courses:', formatted) // Debug log
       setEnrolledCourses(formatted)
-    } catch (error) {
-      console.error('Failed to fetch data:', error)
-      setError('Failed to fetch data. Please try again later.')
+    } catch (err) {
+      setError('Failed to load courses. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (token) {
-      fetchEnrolledCourses()
-    }
-  }, [token, baseURL])
+  useEffect(() => { if (token) fetchEnrolledCourses() }, [token])
 
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
-        <div className="text-center">
-          <div
-            className="spinner-border"
-            role="status"
-            style={{
-              width: '3rem',
-              height: '3rem',
-              color: '#ff7a00'
-            }}
-          >
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-3 text-muted">Loading enrolled courses...</p>
-        </div>
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="spinner-border" role="status" style={{ width: 48, height: 48, color: '#ff7a00' }} />
+        <p style={{ marginTop: 16, color: '#64748b' }}>Loading your courses...</p>
       </div>
-    )
-  }
-  if (error) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '60vh' }}>
-        <div className="text-center">
-          <div
-            className="mb-3"
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: '50%',
-              background: 'rgba(220, 53, 69, 0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-            }}
-          >
-            <span style={{ fontSize: 36, color: '#dc3545' }}>⚠</span>
-          </div>
+    </div>
+  )
 
-          <h5 className="text-danger mb-2">Something went wrong</h5>
-          <p className="text-muted">{error}</p>
-
-          <Button
-            style={{
-              backgroundColor: '#ff7a00',
-              borderColor: '#ff7a00',
-            }}
-            onClick={() => fetchEnrolledCourses()}
-          >
-            Try Again
-          </Button>
-        </div>
+  if (error) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center' }}>
+      <div>
+        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <h5 style={{ color: '#dc3545' }}>Something went wrong</h5>
+        <p style={{ color: '#64748b' }}>{error}</p>
+        <button onClick={fetchEnrolledCourses} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '10px 24px', cursor: 'pointer' }}>Try Again</button>
       </div>
-    )
-  }
+    </div>
+  )
+
+  const tabs = [
+    { key: 'all', label: `All Courses (${enrolledCourses.length})` },
+    { key: 'inprogress', label: `In Progress (${inProgressCourses.length})` },
+    { key: 'completed', label: `Completed (${completedCourses.length})` },
+    { key: 'wishlist', label: 'Wishlist (0)' },
+  ] as const
 
   return (
     <>
-      <PageMetaData title="Course List Student" />
+      <PageMetaData title="My Enrolled Courses" />
 
-      {/* Rating Modal */}
-      <RatingModal show={ratingModal.show} course={ratingModal.course} onClose={handleCloseRatingModal} onSubmit={handleRatingSubmit} />
+      <div style={{ padding: '4px 0 24px' }}>
 
-      <Card className="bg-transparent border rounded-3">
-        <CardHeader className="bg-transparent border-bottom">
-          <Row className="align-items-center">
-            <Col md={6}>
-              <h3 className="mb-0">Enrolled Courses</h3>
-            </Col>
-            <Col md={6}>
-              <form
-                className="rounded position-relative"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                }}>
-                <input
-                  className="form-control pe-5 bg-transparent"
-                  type="search"
-                  placeholder="Search"
-                  aria-label="Search"
-                  value={searchTerm}
-                  onChange={(e) => {
-                    setSearchTerm(e.target.value)
-                    setCurrentPage(1)
-                  }}
-                />
-                <button
-                  className="bg-transparent p-2 position-absolute top-50 end-0 translate-middle-y border-0 text-primary-hover text-reset"
-                  type="submit">
-                  <FaSearch className="fs-6" style={{ color: '#ff7a00' }} />
-                </button>
-              </form>
-            </Col>
-          </Row>
-        </CardHeader>
-        <CardBody>
-          {enrolledCourses.length === 0 ? (
-            <div className="d-flex flex-column align-items-center justify-content-center py-5 text-center">
-              <div
-                className="d-flex align-items-center justify-content-center mb-3"
+        {/* ── Header ── */}
+        <div style={{ marginBottom: 20 }}>
+          <h4 style={{ fontWeight: 800, color: '#0f172a', margin: 0 }}>My Enrolled Courses</h4>
+          <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0' }}>Continue your learning journey</p>
+        </div>
+
+        {/* ── Tabs + Controls ── */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+          {/* Filter tabs */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {tabs.map(tab => (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: '50%',
-                  background: 'rgba(255,255,255,0.08)',
+                  border: activeTab === tab.key ? 'none' : '1.5px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: '7px 16px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  background: activeTab === tab.key ? '#ff7a00' : '#fff',
+                  color: activeTab === tab.key ? '#fff' : '#475569',
+                  transition: 'all 0.15s',
                 }}>
-                <BsPlayCircle size={36} className="text-primary" />
-              </div>
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-              <h5 className="mb-2">No enrolled courses yet</h5>
-              <p className="text-muted mb-4" style={{ maxWidth: 420 }}>
-                You haven’t enrolled in any courses. Start learning by exploring our available courses.
-              </p>
-
-              <Button variant="primary" onClick={() => (window.location.href = '/student/available-courses')}>
-                Browse Courses
-              </Button>
+          {/* Right controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Search */}
+            <div style={{ position: 'relative' }}>
+              <FaSearch size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Search courses..."
+                style={{ border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '7px 12px 7px 30px', fontSize: '0.8rem', color: '#334155', background: '#fff', outline: 'none', width: 200 }}
+              />
             </div>
-          ) : (
-            <>
-              {/* ✅ Existing Table UI */}
-              <div className="table-responsive border-0">
-                <table className="table table-dark-gray align-middle p-4 mb-0 table-hover">
-                  <thead>
-                    <tr>
-                      <th className="border-0 rounded-start">Course Title</th>
-                      <th className="border-0">Total Lectures</th>
-                      <th className="border-0">Total Progress</th>
-                      <th className="border-0">Status</th>
-                      <th className="border-0">Your Rating</th>
-                      <th className="border-0 rounded-end">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentCourses.map((item, idx) => (
-                      <CourseData key={idx} {...item} onRateCourse={handleRateCourse} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {/* View toggle */}
+            <div style={{ display: 'flex', border: '1.5px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+              {([['grid', <FaThLarge size={13} />], ['list', <FaList size={13} />]] as [string, React.ReactNode][]).map(([mode, icon]) => (
+                <button key={mode} onClick={() => setViewMode(mode as any)}
+                  style={{ padding: '7px 11px', border: 'none', background: viewMode === mode ? '#ff7a00' : '#fff', color: viewMode === mode ? '#fff' : '#94a3b8', cursor: 'pointer' }}>
+                  {icon}
+                </button>
+              ))}
+            </div>
+            {/* Sort */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#475569' }}>
+              <span style={{ fontWeight: 600 }}>Sort by:</span>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+                style={{ border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '6px 28px 6px 10px', fontSize: '0.8rem', color: '#334155', background: '#fff', cursor: 'pointer', outline: 'none', appearance: 'none' }}>
+                {['Recent Access', 'Newest', 'Progress', 'Alphabetical'].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
 
-              {/* Pagination */}
-              <div className="d-sm-flex justify-content-sm-between align-items-sm-center mt-4">
-                <p className="mb-0 text-center text-sm-start">Showing {filteredCourses.length} entries</p>
+        {/* ── Stats Row ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
+          <StatCard
+            icon={<FaBookOpen size={20} color="#ff7a00" />}
+            value={String(enrolledCourses.length)}
+            label="Enrolled Courses"
+            sub="Keep learning!"
+            iconBg="rgba(255,122,0,0.1)"
+          />
+          <StatCard
+            icon={<BsLightningFill size={20} color="#ff7a00" />}
+            value={String(inProgressCourses.length)}
+            label="In Progress"
+            sub="Keep it up!"
+            iconBg="rgba(255,122,0,0.1)"
+          />
+          <StatCard
+            icon={<BsCheckCircleFill size={20} color="#7c3aed" />}
+            value={String(completedCourses.length)}
+            label="Completed"
+            sub="Great job!"
+            iconBg="rgba(124,58,237,0.1)"
+          />
+          <StatCard
+            icon={<FaClock size={20} color="#ff7a00" />}
+            value={totalH > 0 ? `${totalH}h ${totalM}m` : '—'}
+            label="Total Learning Time"
+            sub="This Month"
+            iconBg="rgba(255,122,0,0.1)"
+          />
+          <StatCard
+            icon={<FaTrophy size={20} color="#eab308" />}
+            value="—"
+            label="Your Rank"
+            sub="Keep going!"
+            iconBg="rgba(234,179,8,0.1)"
+          />
+        </div>
 
-                <nav>
-                  <nav>
-                    <ul className="pagination pagination-sm pagination-primary-soft mb-0">
-
-                      <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link bg-dark text-white border-0"
-                          onClick={() => setCurrentPage(currentPage - 1)}
-                        >
-                          <FaAngleLeft />
-                        </button>
-                      </li>
-
-                      {[...Array(totalPages)].map((_, idx) => (
-                        <li
-                          key={idx}
-                          className={`page-item ${currentPage === idx + 1 ? 'active' : ''}`}
-                        >
-                          <button
-                            className="page-link border-0"
-                            style={{
-                              backgroundColor: currentPage === idx + 1 ? '#ff7a00' : '#1c1c1c',
-                              color: currentPage === idx + 1 ? '#fff' : '#fff'
-                            }}
-                            onClick={() => setCurrentPage(idx + 1)}
-                          >
-                            {idx + 1}
-                          </button>
-                        </li>
-                      ))}
-
-                      <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                        <button
-                          className="page-link bg-dark text-white border-0"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                        >
-                          <FaAngleRight />
-                        </button>
-                      </li>
-
-                    </ul>
-                  </nav>
-
-                </nav>
-              </div>
-            </>
-          )}
-        </CardBody>
-      </Card>
+        {/* ── Course List ── */}
+        {filteredCourses.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '64px 0', color: '#94a3b8' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
+            <h5 style={{ color: '#475569', marginBottom: 8 }}>
+              {searchTerm ? 'No courses match your search' : activeTab === 'wishlist' ? 'Your wishlist is empty' : 'No courses here yet'}
+            </h5>
+            <p style={{ fontSize: '0.85rem' }}>
+              {activeTab === 'all' ? "You haven't enrolled in any courses yet." : ''}
+            </p>
+            {activeTab === 'all' && (
+              <button onClick={() => (window.location.href = '/student/available-courses')}
+                style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '10px 24px', cursor: 'pointer', marginTop: 8 }}>
+                Browse Courses
+              </button>
+            )}
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+            {filteredCourses.map(course => (
+              <CourseGridCard key={course._id} course={course} />
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {filteredCourses.map(course => (
+              <CourseRow key={course._id} course={course} />
+            ))}
+          </div>
+        )}
+      </div>
     </>
   )
 }

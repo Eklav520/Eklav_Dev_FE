@@ -46,9 +46,6 @@ const Discussion = ({ problemId }: { problemId: number }) => {
 
   return (
     <>
-      {/* Header */}
-      <h6 className="fw-semibold mb-2">💬 Discussion ({total})</h6>
-
       {/* Comment box */}
       <CommentBox problemId={problemId} onSuccess={fetchDiscussions} />
 

@@ -1,17 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Spinner, Alert, Badge, Card, Row, Col, Modal } from 'react-bootstrap'
-import {
-  Building2, FileText, Code2, DollarSign, MapPin, ClipboardList,
-  BookOpen, Target, Clock, Pencil, Play, Trophy, LayoutList, UserCheck, Lock
-} from 'lucide-react'
+import { Spinner, Modal } from 'react-bootstrap'
+import { Clock, Code2, Trophy, Lock } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { useAuthContext } from '@/context/useAuthContext'
 import CodingChallenge from './CodingChallenge'
 import MCQQuiz from './MCQQuiz'
 import HRInterviewPractice from './HRInterviewPractice'
 import TRInterviewPractice from './TRInterviewPractice'
+import { FiSearch, FiChevronRight, FiBookmark, FiTool, FiTarget, FiTrendingUp, FiClock, FiAward } from 'react-icons/fi'
 
-// ================= TYPES =================
+// ─── TYPES ───────────────────────────────────────────────────────────────────
 type Question = {
   _id: string
   question?: string
@@ -52,18 +50,10 @@ type Company = {
 type CompaniesResponse = {
   success: boolean
   data: Company[]
-  pagination?: {
-    total: number
-    page: number
-    limit: number
-    pages: number
-  }
+  pagination?: { total: number; page: number; limit: number; pages: number }
 }
 
-type CompanyDetailResponse = {
-  success: boolean
-  data: Company
-}
+type CompanyDetailResponse = { success: boolean; data: Company }
 
 type PerQuestionFeedback = {
   qid?: string
@@ -84,164 +74,111 @@ type RoundResult = {
   roundType: string
 }
 
-type RecentAttempt = {
-  score: number
-  roundType: string
-  attemptedAt: string
-}
+type RecentAttempt = { score: number; roundType: string; attemptedAt: string }
 
-// ================= CONSTANTS =================
-// All rounds now use orange color
-const ROUND_TYPE_COLORS = {
-  MCQ: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
-  CODING: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
-  HR: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' },
-  TR: { bg: 'rgba(255, 107, 53, 0.15)', color: '#ff6b35', border: '#ff6b35' }
-}
-
+// ─── CONSTANTS & HELPERS ─────────────────────────────────────────────────────
 const QUIZ_QUESTION_LIMIT = 30
 const COMPANY_PAGE_LIMIT = 10
 
-const getVisiblePages = (currentPage: number, totalPages: number, maxVisible = 5) => {
-  if (totalPages <= maxVisible) {
-    return Array.from({ length: totalPages }, (_, index) => index + 1)
-  }
+const AVATAR_COLORS: [string, string][] = [
+  ['#4F46E5', '#EEF2FF'], ['#0891B2', '#ECFEFF'], ['#16A34A', '#F0FDF4'],
+  ['#DC2626', '#FEF2F2'], ['#D97706', '#FFFBEB'], ['#7C3AED', '#F5F3FF'],
+  ['#DB2777', '#FDF2F8'], ['#0D9488', '#F0FDFA'],
+]
 
-  const half = Math.floor(maxVisible / 2)
-  let start = Math.max(1, currentPage - half)
-  let end = Math.min(totalPages, start + maxVisible - 1)
+const avatarColor = (name: string): [string, string] =>
+  AVATAR_COLORS[(name || 'A').charCodeAt(0) % AVATAR_COLORS.length]
 
-  if (end - start + 1 < maxVisible) {
-    start = Math.max(1, end - maxVisible + 1)
-  }
+const initials = (name: string) =>
+  name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
 
-  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+const timeAgo = (dateStr: string) => {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const h = Math.floor(diff / 3_600_000)
+  if (h < 24) return `${h}h ago`
+  const d = Math.floor(h / 24)
+  if (d < 30) return `${d}d ago`
+  return `${Math.floor(d / 30)}mo ago`
 }
 
-const getRoundVisuals = (roundType?: string) => {
-  // All round types use orange color consistently
-  const icon = <FileText size={13} />
-
-  return {
-    icon,
-    colors: ROUND_TYPE_COLORS.MCQ,
-  }
+const getDifficulty = (company: Company) => {
+  const n = company.rounds?.length ?? company.roundsCount ?? 0
+  if (n >= 4) return { label: 'Hard',   color: '#dc2626', bg: 'rgba(220,38,38,0.08)'  }
+  if (n >= 3) return { label: 'Medium', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' }
+  return              { label: 'Easy',  color: '#16a34a', bg: 'rgba(22,163,74,0.08)'  }
 }
 
-const getRandomQuestions = (questions: Question[], limit: number) => {
-  const shuffled = [...questions]
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1))
-    const current = shuffled[index]
-    shuffled[index] = shuffled[randomIndex]
-    shuffled[randomIndex] = current
-  }
-
-  return shuffled.slice(0, Math.min(limit, shuffled.length))
-}
+const ROUND_ICONS: Record<string, string> = { MCQ: '📝', CODING: '💻', HR: '👔', TR: '🔧' }
+const ROUND_COLORS = ['#ff7a00', '#0891b2', '#d97706', '#7c3aed']
 
 const getSanitizedHtml = (html?: string) => DOMPurify.sanitize(html || '')
 
-const getPlainTextFromHtml = (html?: string) => {
-  const sanitized = getSanitizedHtml(html)
-
-  if (!sanitized) {
-    return ''
-  }
-
-  if (typeof window === 'undefined') {
-    return sanitized.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-  }
-
-  const parsed = new DOMParser().parseFromString(sanitized, 'text/html')
-  return (parsed.body.textContent || '').replace(/\s+/g, ' ').trim()
+const getPlainText = (html?: string) => {
+  const s = getSanitizedHtml(html)
+  if (!s) return ''
+  if (typeof window === 'undefined') return s.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const el = new DOMParser().parseFromString(s, 'text/html')
+  return (el.body.textContent || '').replace(/\s+/g, ' ').trim()
 }
 
-// ================= COMPONENTS =================
-const CompanyCard: React.FC<{ company: Company; onClick: () => void; isLoading?: boolean; isLocked?: boolean }> = ({ company, onClick, isLoading, isLocked }) => (
-  <Card
-    className={`company-card ${isLoading ? 'company-card--loading' : ''}`}
-    style={{ opacity: isLocked ? 0.55 : 1, position: 'relative', cursor: isLocked ? 'not-allowed' : undefined }}
-  >
-    {/* Lock overlay badge */}
-    {isLocked && (
-      <div style={{
-        position: 'absolute', top: 14, right: 14, zIndex: 2,
-        background: 'rgba(0,0,0,0.65)', borderRadius: '50%',
-        width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Lock size={14} color="#aaa" />
-      </div>
-    )}
-    <Card.Body>
-      <div className="company-header">
-        <div className="company-icon" style={{ background: isLocked ? 'linear-gradient(135deg, #444 0%, #555 100%)' : undefined }}>
-          <span className="icon">{(company.companyName || '?').charAt(0)}</span>
-        </div>
-        <div className="company-info">
-          <h4 className="company-name" style={{ color: isLocked ? '#777' : undefined }}>{company.companyName || 'Unknown Company'}</h4>
-          <div className="company-meta">
-            <span className="meta-badge role" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}>{company.role || 'N/A'}</span>
-            <span className="meta-badge package" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}><DollarSign size={11} /> {company.package || 'N/A'}</span>
-            <span className="meta-badge location" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666' } : undefined}><MapPin size={11} /> {company.location || 'N/A'}</span>
-          </div>
-        </div>
-      </div>
-      <p className="company-description">
-        {(() => {
-          const plainDescription = getPlainTextFromHtml(company.description)
+const getRandomQuestions = (questions: Question[], limit: number) => {
+  const s = [...questions]
+  for (let i = s.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [s[i], s[j]] = [s[j], s[i]]
+  }
+  return s.slice(0, Math.min(limit, s.length))
+}
 
-          if (!plainDescription) {
-            return 'No description available'
-          }
+const getVisiblePages = (cur: number, total: number, max = 5) => {
+  if (total <= max) return Array.from({ length: total }, (_, i) => i + 1)
+  const half = Math.floor(max / 2)
+  let start = Math.max(1, cur - half)
+  let end = Math.min(total, start + max - 1)
+  if (end - start + 1 < max) start = Math.max(1, end - max + 1)
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+}
 
-          return plainDescription.length > 120
-            ? `${plainDescription.substring(0, 120)}...`
-            : plainDescription
-        })()}
-      </p>
-      <div className="company-footer">
-        <div className="rounds-info">
-          <span className="rounds-count"><ClipboardList size={12} /> {company.roundsCount ?? company.rounds?.length ?? 0} Rounds</span>
-          <div className="round-types">
-            {(company.rounds || []).map((round, idx) => {
-              const visuals = getRoundVisuals(round?.roundType)
-              return (
-              <Badge key={idx} className="round-type-badge" style={isLocked ? { background: 'rgba(100,100,100,0.15)', color: '#666', border: 'none' } : { background: visuals.colors.bg, color: visuals.colors.color }}>
-                {visuals.icon} {round?.roundName || 'Round'}
-              </Badge>
-              )
-            })}
-          </div>
-        </div>
-        {isLocked ? (
-          <Button
-            variant="secondary"
-            disabled
-            style={{
-              background: '#1a1a1a', border: '1px solid #333', color: '#555',
-              cursor: 'not-allowed', display: 'flex', alignItems: 'center', gap: 6,
-              padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.875rem',
-            }}
-          >
-            <Lock size={12} /> Enroll to unlock
-          </Button>
-        ) : (
-          <Button className="view-details-btn" onClick={onClick} disabled={isLoading}>
-            {isLoading ? (
-              <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" /> Loading...</>
-            ) : (
-              'View Details →'
-            )}
-          </Button>
-        )}
-      </div>
-    </Card.Body>
-  </Card>
+// ─── TINY SUB-COMPONENTS ─────────────────────────────────────────────────────
+const InfoBox = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 120 }}>
+    <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+    <div>
+      <div style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{label}</div>
+      <div style={{ fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, marginTop: 1 }}>{value}</div>
+    </div>
+  </div>
 )
 
-// ================= MAIN COMPONENT =================
+const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+    <div style={{ width: 28, height: 28, borderRadius: 7, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {icon}
+    </div>
+    <div>
+      <div style={{ fontSize: '0.6rem', color: '#94a3b8', lineHeight: 1, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: '0.75rem', color: '#0f172a', fontWeight: 700, lineHeight: 1 }}>{value}</div>
+    </div>
+  </div>
+)
+
+// ─── UNDER CONSTRUCTION ───────────────────────────────────────────────────────
+const UnderConstruction = () => (
+  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '80px 24px' }}>
+    <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 18 }}>
+      <FiTool size={34} color="#ff7a00" />
+    </div>
+    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.2rem', marginBottom: 6 }}>Under Construction</div>
+    <div style={{ fontSize: '0.82rem', color: '#64748b', maxWidth: 340, textAlign: 'center', lineHeight: 1.6 }}>
+      This section is currently being built. Check back soon!
+    </div>
+    <div style={{ marginTop: 20, background: 'rgba(255,122,0,0.06)', border: '1px solid rgba(255,122,0,0.2)', borderRadius: 10, padding: '8px 20px' }}>
+      <span style={{ fontSize: '0.75rem', color: '#ff7a00', fontWeight: 600 }}>Coming Soon</span>
+    </div>
+  </div>
+)
+
+// ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 const StudentCompanyInterviewPage = () => {
   const { user } = useAuthContext()
   const token = user?.token
@@ -249,7 +186,7 @@ const StudentCompanyInterviewPage = () => {
   const isPending = user?.status?.toLowerCase() === 'pending'
   const freeCompanyIdRef = useRef<string | null>(null)
 
-  // State
+  // Data
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
@@ -261,136 +198,48 @@ const StudentCompanyInterviewPage = () => {
   const [totalCompanies, setTotalCompanies] = useState(0)
   const [searchInput, setSearchInput] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [companyFilter, setCompanyFilter] = useState('')
-  
-  // Modal states
-  const [showCompanyModal, setShowCompanyModal] = useState(false)
+  const [loadingCompanyId, setLoadingCompanyId] = useState<string | null>(null)
+
+  // Tabs
+  const [activeMainTab, setActiveMainTab] = useState<'all' | 'myInterviews' | 'bookmarked' | 'recommended'>('all')
+  const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'rounds' | 'previousAttempts'>('overview')
+
+  // Round modal
   const [showRoundModal, setShowRoundModal] = useState(false)
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [activeMode, setActiveMode] = useState<'preview' | 'quiz' | 'coding' | 'interview' | 'result'>('preview')
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({})
-  
-  // MCQ state
-  const [mcqAnswers, setMcqAnswers] = useState<Record<string, any>>({})
-  const [mcqSubmitted, setMcqSubmitted] = useState(false)
-  const [mcqScore, setMcqScore] = useState(0)
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([])
-  
-  // Coding state
-  const [codingCodes, setCodingCodes] = useState<Record<string, string>>({})
-  const [codingResults, setCodingResults] = useState<Record<string, any>>({})
-  const [isRunning, setIsRunning] = useState(false)
-  
-  // Timer state
-  const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [roundActive, setRoundActive] = useState(false)
-
-  // Attempt / score state
+  const [selectedCodingQuestionId, setSelectedCodingQuestionId] = useState<string | null>(null)
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [recentAttempts, setRecentAttempts] = useState<Record<string, RecentAttempt>>({})
 
-  // Coding — which specific problem the student chose to practice
-  const [selectedCodingQuestionId, setSelectedCodingQuestionId] = useState<string | null>(null)
-
-  // Which company card is currently loading details
-  const [loadingCompanyId, setLoadingCompanyId] = useState<string | null>(null)
-
-  const companyFilterOptions = useMemo(() => {
-    const names = companies
-      .map((company) => (company.companyName || '').trim())
-      .filter(Boolean)
-
-    return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b))
-  }, [companies])
-
-  const filteredCompanies = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase()
-    const selectedCompanyName = companyFilter.trim().toLowerCase()
-
-    return companies.filter((company) => {
-      const matchesCompany = !selectedCompanyName || (company.companyName || '').toLowerCase() === selectedCompanyName
-
-      if (!matchesCompany) {
-        return false
-      }
-
-      if (!query) {
-        return true
-      }
-
-      const haystack = [
-        company.companyName,
-        company.role,
-        company.location,
-        getPlainTextFromHtml(company.description),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return haystack.includes(query)
-    })
-  }, [companies, searchQuery, companyFilter])
-
+  // Debounce search
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
-      setSearchQuery(searchInput)
-    }, 350)
-
-    return () => clearTimeout(debounceTimer)
+    const t = setTimeout(() => setSearchQuery(searchInput), 350)
+    return () => clearTimeout(t)
   }, [searchInput])
 
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, companyFilter])
+  useEffect(() => { setCurrentPage(1) }, [searchQuery])
 
   // Fetch companies
   useEffect(() => {
     const fetchCompanies = async () => {
       if (!token) return
       try {
-        if (hasLoadedOnce) {
-          setIsFetching(true)
-        } else {
-          setLoading(true)
-        }
+        hasLoadedOnce ? setIsFetching(true) : setLoading(true)
         setError(null)
-
-        const query = new URLSearchParams({
-          page: String(currentPage),
-          limit: String(COMPANY_PAGE_LIMIT),
-        })
-
-        if (searchQuery.trim()) {
-          query.append('search', searchQuery.trim())
-        }
-
-        if (companyFilter.trim()) {
-          query.append('companyName', companyFilter.trim())
-        }
-
-        const res = await fetch(`${baseURL}/api/company-interview?${query.toString()}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
+        const q = new URLSearchParams({ page: String(currentPage), limit: String(COMPANY_PAGE_LIMIT) })
+        if (searchQuery.trim()) q.append('search', searchQuery.trim())
+        const res = await fetch(`${baseURL}/api/company-interview?${q}`, { headers: { Authorization: `Bearer ${token}` } })
         const data: CompaniesResponse = await res.json()
-        if (!res.ok || !data.success) {
-          throw new Error('Failed to fetch companies')
-        }
-
+        if (!res.ok || !data.success) throw new Error('Failed to fetch companies')
         const fetched = data.data || []
         setCompanies(fetched)
-        // Lock all but the first company ever fetched for trial users
-        if (!freeCompanyIdRef.current && fetched.length > 0) {
-          freeCompanyIdRef.current = fetched[0]._id
-        }
+        if (!freeCompanyIdRef.current && fetched.length > 0) freeCompanyIdRef.current = fetched[0]._id
         setTotalPages(Math.max(1, data.pagination?.pages || 1))
         setTotalCompanies(data.pagination?.total ?? fetched.length)
-
-        if (data.pagination?.page && data.pagination.page !== currentPage) {
-          setCurrentPage(data.pagination.page)
-        }
       } catch (err: any) {
         setError(err.message || 'Failed to load companies')
       } finally {
@@ -399,50 +248,43 @@ const StudentCompanyInterviewPage = () => {
         setHasLoadedOnce(true)
       }
     }
-    
     fetchCompanies()
-  }, [token, baseURL, currentPage, searchQuery, companyFilter])
+  }, [token, baseURL, currentPage, searchQuery])
+
+  const filteredCompanies = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return companies
+    return companies.filter(c =>
+      [c.companyName, c.role, c.location, getPlainText(c.description)]
+        .filter(Boolean).join(' ').toLowerCase().includes(q)
+    )
+  }, [companies, searchQuery])
 
   const fetchRecentAttempts = async (companyId: string) => {
     if (!token) return
     try {
-      const res = await fetch(
-        `${baseURL}/api/company-interview-attempt/student?companyInterviewId=${companyId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const res = await fetch(`${baseURL}/api/company-interview-attempt/student?companyInterviewId=${companyId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       const data = await res.json()
       if (data.success && Array.isArray(data.data)) {
         const map: Record<string, RecentAttempt> = {}
-        data.data.forEach((attempt: any) => {
-          map[String(attempt.roundId)] = {
-            score: attempt.score,
-            roundType: attempt.roundType,
-            attemptedAt: attempt.attemptedAt,
-          }
-        })
+        data.data.forEach((a: any) => { map[String(a.roundId)] = { score: a.score, roundType: a.roundType, attemptedAt: a.attemptedAt } })
         setRecentAttempts(map)
       }
-    } catch {
-      // non-critical — ignore
-    }
+    } catch { /* non-critical */ }
   }
 
-  // Fetch company details
   const fetchCompanyDetails = async (companyId: string) => {
     if (loadingCompanyId) return
     setLoadingCompanyId(companyId)
+    setRecentAttempts({})
+    setActiveDetailTab('overview')
     try {
-      const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
+      const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, { headers: { Authorization: `Bearer ${token}` } })
       const data: CompanyDetailResponse = await res.json()
-      if (!res.ok || !data.success) {
-        throw new Error('Failed to fetch company details')
-      }
-
+      if (!res.ok || !data.success) throw new Error('Failed to fetch company details')
       setSelectedCompany(data.data)
-      setShowCompanyModal(true)
       fetchRecentAttempts(companyId)
     } catch (err: any) {
       setError(err.message || 'Failed to load company details')
@@ -454,172 +296,16 @@ const StudentCompanyInterviewPage = () => {
   const handleCloseRoundModal = () => {
     setShowRoundModal(false)
     setActiveMode('preview')
-    setTimeLeft(null)
-    setRoundActive(false)
     setQuizQuestions([])
     setRoundResult(null)
     setIsAnalyzing(false)
     setSelectedCodingQuestionId(null)
-    try {
-      window.speechSynthesis?.cancel()
-    } catch {
-      // ignore speech synthesis cleanup failures
-    }
-  }
-
-  const downloadResultPDF = () => {
-    if (!roundResult || !selectedRound || !selectedCompany) return
-
-    const passColor = '#22c55e'
-    const failColor = '#ef4444'
-    const isPassed = roundResult.score >= 60
-    const scoreColor = isPassed ? passColor : failColor
-    const date = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
-
-    const questionsHTML = roundResult.perQuestionFeedback.map((item, idx) => {
-      const isMCQCorrect = roundResult.roundType === 'MCQ' && item.rating === 5
-      const isMCQWrong = roundResult.roundType === 'MCQ' && item.rating === 0
-      const answerColor = isMCQCorrect ? passColor : isMCQWrong ? failColor : '#d1d5db'
-      const stars = '★'.repeat(item.rating) + '☆'.repeat(Math.max(0, 5 - item.rating))
-
-      const expectedLabel = roundResult.roundType === 'MCQ' ? 'Correct Answer' : roundResult.roundType === 'CODING' ? 'Problem Description' : 'Suggested Answer'
-      return `
-        <div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;page-break-inside:avoid;">
-          <div style="font-weight:600;color:#111;margin-bottom:8px;">Q${idx + 1}. ${item.questionText}</div>
-          <div style="background:#f9fafb;border-radius:6px;padding:10px;margin-bottom:8px;">
-            <div style="font-size:11px;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">Your Answer</div>
-            <div style="color:${answerColor};font-size:13px;white-space:pre-wrap;">${item.textAnswer || 'Not answered'}</div>
-          </div>
-          ${item.expectedAnswer ? `
-          <div style="background:#f5f3ff;border:1px solid #d8b4fe;border-radius:6px;padding:10px;margin-bottom:8px;">
-            <div style="font-size:11px;color:#7c3aed;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${expectedLabel}</div>
-            <div style="color:#5b21b6;font-size:13px;white-space:pre-wrap;">${item.expectedAnswer}</div>
-          </div>` : ''}
-          ${roundResult.roundType !== 'MCQ' ? `<div style="color:#f59e0b;font-size:16px;margin-bottom:4px;">${stars} <span style="font-size:11px;color:#6b7280;">${item.rating}/5</span></div>` : ''}
-          <div style="font-size:12px;color:#374151;margin-top:4px;"><strong>Feedback:</strong> ${item.feedback}</div>
-        </div>`
-    }).join('')
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
-      <title>${selectedCompany.companyName} - ${selectedRound.roundName} Result</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#111;margin:0;padding:32px;max-width:760px;margin:auto;}
-        @media print{body{padding:16px;}}
-      </style>
-    </head><body>
-      <div style="border-bottom:3px solid #ff6b35;padding-bottom:16px;margin-bottom:24px;">
-        <h1 style="color:#ff6b35;margin:0;font-size:22px;">Interview Practice Report</h1>
-        <div style="color:#6b7280;font-size:13px;margin-top:4px;">${date}</div>
-      </div>
-      <table style="width:100%;margin-bottom:20px;border-collapse:collapse;">
-        <tr><td style="padding:4px 0;color:#6b7280;width:120px;">Company</td><td style="font-weight:600;">${selectedCompany.companyName}</td></tr>
-        <tr><td style="padding:4px 0;color:#6b7280;">Role</td><td>${selectedCompany.role || '—'}</td></tr>
-        <tr><td style="padding:4px 0;color:#6b7280;">Round</td><td>${selectedRound.roundName} (${roundResult.roundType})</td></tr>
-      </table>
-      <div style="display:flex;align-items:center;gap:24px;background:#f9fafb;border-radius:12px;padding:18px;margin-bottom:24px;">
-        <div style="text-align:center;min-width:90px;">
-          <div style="font-size:40px;font-weight:800;color:${scoreColor};">${roundResult.score}%</div>
-          <div style="font-size:12px;color:#6b7280;">Score</div>
-        </div>
-        <div>
-          <div style="font-weight:700;color:${scoreColor};margin-bottom:4px;">${isPassed ? '✓ Good Performance' : '✗ Needs More Practice'}</div>
-          ${roundResult.roundType === 'MCQ' ? `<div style="font-size:13px;color:#374151;">${roundResult.correctAnswers}/${roundResult.totalQuestions} correct</div>` : ''}
-          ${roundResult.avgRating > 0 ? `<div style="font-size:13px;color:#374151;">Avg Rating: ${roundResult.avgRating.toFixed(1)}/5</div>` : ''}
-          <div style="font-size:13px;color:#374151;margin-top:6px;">${roundResult.aiFeedback}</div>
-        </div>
-      </div>
-      ${roundResult.perQuestionFeedback.length > 0 ? `<h3 style="color:#111;margin-bottom:14px;">Question-wise Breakdown</h3>${questionsHTML}` : ''}
-    </body></html>`
-
-    const win = window.open('', '_blank', 'width=900,height=700')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.onload = () => win.print()
-  }
-
-  const handleReattempt = () => {
-    setRoundResult(null)
-    setIsAnalyzing(false)
-    setSelectedCodingQuestionId(null)
-    handleTakeQuiz()
-  }
-
-  const handleStartCodingQuestion = (questionId: string) => {
-    setSelectedCodingQuestionId(questionId)
-    setActiveMode('coding')
-  }
-
-  const handleAttemptComplete = async (answers: any) => {
-    if (!selectedRound || !selectedCompany) return
-
-    setActiveMode('result')
-    setIsAnalyzing(true)
-    setRoundResult(null)
-
-    let payload: any = {
-      companyInterviewId: selectedCompany._id,
-      roundId: selectedRound._id,
-      roundType: selectedRound.roundType,
-      answers: selectedRound.roundType === 'MCQ' ? answers.answers : answers,
-    }
-
-    try {
-      const res = await fetch(`${baseURL}/api/company-interview-attempt/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save attempt')
-
-      setRoundResult(data.data)
-      // Refresh recent attempts badge
-      setRecentAttempts(prev => ({
-        ...prev,
-        [selectedRound._id]: {
-          score: data.data.score,
-          roundType: selectedRound.roundType,
-          attemptedAt: new Date().toISOString(),
-        },
-      }))
-    } catch {
-      // Fallback: show client-side score for MCQ if server fails
-      if (selectedRound.roundType === 'MCQ' && answers.score != null) {
-        setRoundResult({
-          score: answers.score,
-          totalQuestions: answers.totalQuestions || 0,
-          correctAnswers: answers.correctAnswers || 0,
-          avgRating: 0,
-          aiFeedback: answers.score >= 70 ? 'Good job! You passed.' : 'Keep practicing and try again.',
-          perQuestionFeedback: [],
-          roundType: 'MCQ',
-        })
-      } else {
-        setRoundResult({
-          score: 0,
-          totalQuestions: 0,
-          correctAnswers: 0,
-          avgRating: 0,
-          aiFeedback: 'Could not analyze performance. Please try again.',
-          perQuestionFeedback: [],
-          roundType: selectedRound.roundType,
-        })
-      }
-    } finally {
-      setIsAnalyzing(false)
-    }
+    try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
   }
 
   const handleStartRound = (round: Round) => {
     setSelectedRound(round)
     setActiveMode('preview')
-    setRoundActive(false)
-    setTimeLeft(null)
     setExpandedAnswers({})
     setQuizQuestions([])
     setShowRoundModal(true)
@@ -632,333 +318,538 @@ const StudentCompanyInterviewPage = () => {
       setActiveMode('quiz')
     } else if (selectedRound.roundType === 'CODING') {
       setActiveMode('coding')
-    } else if (selectedRound.roundType === 'HR' || selectedRound.roundType === 'TR') {
-      setActiveMode('interview')
     } else {
-      setActiveMode('preview')
+      setActiveMode('interview')
     }
   }
 
-  const toggleAnswer = (questionId: string) => {
-    setExpandedAnswers(prev => ({ ...prev, [questionId]: !prev[questionId] }))
+  const handleAttemptComplete = async (answers: any) => {
+    if (!selectedRound || !selectedCompany) return
+    setActiveMode('result')
+    setIsAnalyzing(true)
+    setRoundResult(null)
+    try {
+      const res = await fetch(`${baseURL}/api/company-interview-attempt/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          companyInterviewId: selectedCompany._id,
+          roundId: selectedRound._id,
+          roundType: selectedRound.roundType,
+          answers: selectedRound.roundType === 'MCQ' ? answers.answers : answers,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save attempt')
+      setRoundResult(data.data)
+      setRecentAttempts(prev => ({
+        ...prev,
+        [selectedRound._id]: { score: data.data.score, roundType: selectedRound.roundType, attemptedAt: new Date().toISOString() },
+      }))
+    } catch {
+      if (selectedRound.roundType === 'MCQ' && answers.score != null) {
+        setRoundResult({ score: answers.score, totalQuestions: answers.totalQuestions || 0, correctAnswers: answers.correctAnswers || 0, avgRating: 0, aiFeedback: answers.score >= 70 ? 'Good job!' : 'Keep practicing.', perQuestionFeedback: [], roundType: 'MCQ' })
+      } else {
+        setRoundResult({ score: 0, totalQuestions: 0, correctAnswers: 0, avgRating: 0, aiFeedback: 'Could not analyze. Try again.', perQuestionFeedback: [], roundType: selectedRound.roundType })
+      }
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
-  const formatExplanation = (text?: string) => {
-    if (!text) return 'Explanation not available.'
-    return text
-      .replace(/\.\s+/g, '.\n')
-      .replace(/\s-\s+/g, '\n- ')
-  }
+  const handleReattempt = () => { setRoundResult(null); setIsAnalyzing(false); setSelectedCodingQuestionId(null); handleTakeQuiz() }
+  const toggleAnswer = (id: string) => setExpandedAnswers(prev => ({ ...prev, [id]: !prev[id] }))
+  const formatExplanation = (text?: string) => (text || 'Explanation not available.').replace(/\.\s+/g, '.\n').replace(/\s-\s+/g, '\n- ')
 
-  if (loading) {
-    return (
-      <div
-        className="loading-container"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '0.65rem',
-          minHeight: '100vh',
-          width: '100%',
-          background: '#000000',
-          textAlign: 'center',
-        }}
-      >
-        <Spinner animation="border" variant="warning" />
-        <p>Loading companies...</p>
+  const downloadResultPDF = () => {
+    if (!roundResult || !selectedRound || !selectedCompany) return
+    const isPassed = roundResult.score >= 60
+    const scoreColor = isPassed ? '#22c55e' : '#ef4444'
+    const date = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+    const questionsHTML = roundResult.perQuestionFeedback.map((item, idx) => {
+      const isMCQCorrect = roundResult.roundType === 'MCQ' && item.rating === 5
+      const isMCQWrong = roundResult.roundType === 'MCQ' && item.rating === 0
+      const answerColor = isMCQCorrect ? '#22c55e' : isMCQWrong ? '#ef4444' : '#d1d5db'
+      const stars = '★'.repeat(item.rating) + '☆'.repeat(Math.max(0, 5 - item.rating))
+      return `<div style="border:1px solid #e5e7eb;border-radius:10px;padding:16px;margin-bottom:14px;">
+        <div style="font-weight:600;margin-bottom:8px;">Q${idx + 1}. ${item.questionText}</div>
+        <div style="background:#f9fafb;border-radius:6px;padding:10px;margin-bottom:8px;">
+          <div style="font-size:11px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Your Answer</div>
+          <div style="color:${answerColor};font-size:13px;">${item.textAnswer || 'Not answered'}</div>
+        </div>
+        ${item.expectedAnswer ? `<div style="background:#f5f3ff;border:1px solid #d8b4fe;border-radius:6px;padding:10px;margin-bottom:8px;"><div style="font-size:11px;color:#7c3aed;margin-bottom:4px;">Expected</div><div style="color:#5b21b6;font-size:13px;">${item.expectedAnswer}</div></div>` : ''}
+        ${roundResult.roundType !== 'MCQ' ? `<div style="color:#f59e0b;font-size:16px;">${stars} <span style="font-size:11px;color:#6b7280;">${item.rating}/5</span></div>` : ''}
+        <div style="font-size:12px;color:#374151;margin-top:4px;"><strong>Feedback:</strong> ${item.feedback}</div>
+      </div>`
+    }).join('')
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Result</title><style>body{font-family:Arial,sans-serif;color:#111;margin:auto;padding:32px;max-width:760px;}</style></head><body>
+      <div style="border-bottom:3px solid #ff6b35;padding-bottom:16px;margin-bottom:24px;"><h1 style="color:#ff6b35;margin:0;">Interview Practice Report</h1><div style="color:#6b7280;font-size:13px;">${date}</div></div>
+      <table style="width:100%;margin-bottom:20px;border-collapse:collapse;">
+        <tr><td style="padding:4px 0;color:#6b7280;width:120px;">Company</td><td style="font-weight:600;">${selectedCompany.companyName}</td></tr>
+        <tr><td style="padding:4px 0;color:#6b7280;">Round</td><td>${selectedRound.roundName}</td></tr>
+      </table>
+      <div style="display:flex;gap:24px;background:#f9fafb;border-radius:12px;padding:18px;margin-bottom:24px;">
+        <div style="text-align:center;min-width:90px;"><div style="font-size:40px;font-weight:800;color:${scoreColor};">${roundResult.score}%</div><div style="font-size:12px;color:#6b7280;">Score</div></div>
+        <div><div style="font-weight:700;color:${scoreColor};">${isPassed ? '✓ Good Performance' : '✗ Needs More Practice'}</div><div style="font-size:13px;color:#374151;margin-top:6px;">${roundResult.aiFeedback}</div></div>
       </div>
-    )
+      ${questionsHTML}
+    </body></html>`
+    const win = window.open('', '_blank', 'width=900,height=700')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.onload = () => win.print()
   }
 
-  if (error) {
-    return (
-      <div
-        className="error-container"
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          gap: '0.65rem',
-          minHeight: '100vh',
-          width: '100%',
-          background: '#000000',
-          textAlign: 'center',
-        }}
-      >
-        <Alert variant="danger">{error}</Alert>
-      </div>
-    )
-  }
+  // ── Loading ──
+  if (loading) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f1f5f9', gap: 12 }}>
+      <Spinner animation="border" style={{ color: '#ff7a00' }} />
+      <p style={{ color: '#64748b', margin: 0, fontSize: '0.85rem' }}>Loading companies…</p>
+    </div>
+  )
 
+  if (error) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f1f5f9', gap: 12 }}>
+      <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '16px 24px', color: '#dc2626', fontSize: '0.85rem' }}>{error}</div>
+    </div>
+  )
+
+  // ── PROGRESS helpers ──
+  const totalRounds = selectedCompany?.rounds?.length ?? 0
+  const attemptedRounds = Object.keys(recentAttempts).length
+  const overallProgress = totalRounds > 0 ? Math.round((attemptedRounds / totalRounds) * 100) : 0
+  const avgScore = Object.values(recentAttempts).length > 0
+    ? Math.round(Object.values(recentAttempts).reduce((s, a) => s + a.score, 0) / Object.values(recentAttempts).length)
+    : 0
+  const bestEntry = Object.entries(recentAttempts).sort(([, a], [, b]) => b.score - a.score)[0]
+  const bestRoundName = bestEntry ? selectedCompany?.rounds?.find(r => r._id === bestEntry[0])?.roundName : null
+  const lastAttempt = Object.values(recentAttempts).sort((a, b) => new Date(b.attemptedAt).getTime() - new Date(a.attemptedAt).getTime())[0]
+
+  const ringRadius = 40
+  const ringCirc = 2 * Math.PI * ringRadius
+  const ringOffset = ringCirc - (overallProgress / 100) * ringCirc
+
+  // ── RENDER ──
   return (
-    <div className="company-interview-container">
-      <div className="container-fluid px-4 py-4">
-        {/* Header */}
-        <div className="header-section mb-4">
-          <h1 className="page-title">
-            <span className="title-icon"><Building2 size={28} /></span>
-            Company Interviews
-          </h1>
-          <p className="page-subtitle">
-            Explore top companies, practice interview rounds, and crack your dream job
-          </p>
-        </div>
+    <>
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f1f5f9', overflow: 'hidden' }}>
 
-        <div className="list-filters mb-4">
-          <div className="filter-control-group">
-            <label className="filter-label" htmlFor="company-filter">Company</label>
-            <select
-              id="company-filter"
-              className="filter-select"
-              value={companyFilter}
-              onChange={(event) => setCompanyFilter(event.target.value)}
-            >
-              <option value="">All Companies</option>
-              {companyFilterOptions.map((name) => (
-                <option key={name} value={name}>{name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-control-group search-group">
-            <label className="filter-label" htmlFor="company-search">Search</label>
-            <input
-              id="company-search"
-              className="filter-input"
-              type="text"
-              placeholder="Search company, role, location..."
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-          </div>
-
-          {(searchQuery || companyFilter) && (
-            <Button className="clear-filter-btn" onClick={() => {
-              setSearchInput('')
-              setSearchQuery('')
-              setCompanyFilter('')
-            }}>
-              Clear
-            </Button>
-          )}
-
-          {isFetching && (
-            <div className="filter-loading-indicator">
-              <Spinner animation="border" size="sm" variant="warning" />
-              <span>Updating...</span>
+        {/* ── Page Header ── */}
+        <div style={{
+          background: '#fff', borderBottom: '1px solid #e2e8f0',
+          padding: '14px 24px', display: 'flex', alignItems: 'flex-start',
+          justifyContent: 'space-between', gap: 20, flexShrink: 0,
+        }}>
+          <div>
+            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem', lineHeight: 1 }}>
+              Company Mock Interviews
             </div>
-          )}
-        </div>
-
-        {/* Pending trial banner */}
-        {isPending && (
+            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>
+              Practice company-specific interview rounds and improve your selection chances.
+            </div>
+          </div>
           <div style={{
-            background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.3)',
-            borderRadius: '12px', padding: '10px 16px', marginBottom: '16px',
-            display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#ccc',
+            background: 'rgba(255,122,0,0.05)', border: '1px solid rgba(255,122,0,0.18)',
+            borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 10,
+            maxWidth: 300, flexShrink: 0,
           }}>
-            <Lock size={14} color="#ff6b35" style={{ flexShrink: 0 }} />
-            <span>
-              <strong style={{ color: '#ff6b35' }}>Trial access:</strong>{' '}
-              You can explore <strong>1 company</strong> for free. Enroll to unlock all companies.
-            </span>
-          </div>
-        )}
-
-        {/* Companies Grid */}
-        {filteredCompanies.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon"><Building2 size={48} /></div>
-            <p>{companies.length === 0 ? 'No companies available' : 'No matching companies found'}</p>
-            <small>{companies.length === 0 ? 'Check back later for new opportunities' : 'Try changing your search or filter'}</small>
-          </div>
-        ) : (
-          <div className="companies-grid">
-            {filteredCompanies.map((company) => (
-              <CompanyCard
-                key={company._id}
-                company={company}
-                onClick={() => fetchCompanyDetails(company._id)}
-                isLoading={loadingCompanyId === company._id}
-                isLocked={isPending && company._id !== freeCompanyIdRef.current}
-              />
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="pagination-wrapper">
-            <div className="pagination-info">
-              Page {currentPage} of {totalPages} • Total {totalCompanies} companies
-            </div>
-            <div className="pagination-controls">
-              <Button
-                variant="secondary"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1 || isFetching}
-              >
-                Previous
-              </Button>
-
-              {getVisiblePages(currentPage, totalPages).map((pageNumber) => (
-                <Button
-                  key={pageNumber}
-                  variant="secondary"
-                  className={`pagination-btn page-number-btn ${pageNumber === currentPage ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pageNumber)}
-                  disabled={isFetching}
-                >
-                  {pageNumber}
-                </Button>
-              ))}
-
-              <Button
-                variant="secondary"
-                className="pagination-btn"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages || isFetching}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Company Details Modal */}
-      <Modal show={showCompanyModal} onHide={() => setShowCompanyModal(false)} fullscreen className="company-modal">
-        <Modal.Header closeButton className="modal-header-custom">
-          <div className="modal-title-wrapper">
-            <div className="company-icon-large">
-              <span>{selectedCompany?.companyName.charAt(0)}</span>
-            </div>
+            <span style={{ fontSize: '1.1rem' }}>💡</span>
             <div>
-              <Modal.Title>{selectedCompany?.companyName}</Modal.Title>
-              <div className="company-subtitle">
-                <span>{selectedCompany?.role}</span>
-                <span>•</span>
-                <span><DollarSign size={12} /> {selectedCompany?.package}</span>
-                <span>•</span>
-                <span><MapPin size={12} /> {selectedCompany?.location}</span>
+              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Level Up Your Interview Skills 🚀</div>
+              <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2, lineHeight: 1.5 }}>
+                Practice company based mock interviews and track your performance.
               </div>
             </div>
           </div>
-        </Modal.Header>
-        <Modal.Body className="modal-body-custom">
-          <div className="split-layout">
-            {/* Left Side - Company Details */}
-            <div className="split-left">
-              <div className="content-section">
-                <h6 className="section-title">
-                  <span className="title-icon"><BookOpen size={15} /></span>
-                  About Company
-                </h6>
-                <div
-                  className="section-content rich-text-content"
-                  dangerouslySetInnerHTML={{
-                    __html: getSanitizedHtml(selectedCompany?.description || '<p>No description available</p>'),
-                  }}
-                />
-              </div>
+        </div>
 
-              <div className="content-section">
-                <h6 className="section-title">
-                  <span className="title-icon"><LayoutList size={15} /></span>
-                  Interview Rounds ({selectedCompany?.roundsCount})
-                </h6>
-                <div className="rounds-table-wrapper">
-                  <table className="rounds-table">
-                    <thead>
-                      <tr>
-                        <th>Round</th>
-                        <th>Type</th>
-                        <th>Name</th>
-                        <th>Duration</th>
-                        <th>Questions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedCompany?.rounds.map((round, idx) => {
-                        const visuals = getRoundVisuals(round?.roundType)
-                        return (
-                          <tr key={round._id}>
-                            <td>{`Round ${idx + 1}`}</td>
-                            <td>
-                              <span className="round-type-pill" style={{ background: visuals.colors.bg, color: visuals.colors.color, border: `1px solid ${visuals.colors.border}` }}>
-                                <span className="pill-icon">{visuals.icon}</span>
-                                <span className="pill-text">{round.roundType}</span>
-                              </span>
-                            </td>
-                            <td>{round.roundName}</td>
-                            <td>{round.duration} mins</td>
-                            <td>{round.questionCount}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+        {/* ── Main Tabs (hidden — under construction) ── */}
+        {/* <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0 24px', display: 'flex', flexShrink: 0 }}>
+          {(['all', 'myInterviews', 'bookmarked', 'recommended'] as const).map(key => {
+            const LABELS = { all: 'All Companies', myInterviews: 'My Interviews', bookmarked: 'Bookmarked', recommended: 'Recommended' }
+            const active = activeMainTab === key
+            return (
+              <button key={key} onClick={() => setActiveMainTab(key)} style={{ background: 'none', border: 'none', borderBottom: `2.5px solid ${active ? '#ff7a00' : 'transparent'}`, color: active ? '#ff7a00' : '#64748b', fontWeight: active ? 700 : 500, fontSize: '0.82rem', padding: '12px 16px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {LABELS[key]}
+              </button>
+            )
+          })}
+        </div> */}
+
+        {activeMainTab !== 'all' ? <UnderConstruction /> : (
+
+          /* ── 3-Column Layout ── */
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+            {/* ── LEFT: Company Sidebar ── */}
+            <div style={{ width: 310, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+              {/* Sidebar header */}
+              <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 10 }}>All Companies</div>
+                <div style={{ position: 'relative' }}>
+                  <FiSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    placeholder="Search company"
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                    style={{ width: '100%', height: 32, paddingLeft: 28, paddingRight: 10, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Right Side - Available Rounds */}
-            <div className="split-right">
-              <h6 className="section-title">
-                <span className="title-icon"><Target size={15} /></span>
-                Available Rounds
-              </h6>
-              <div className="rounds-list">
-                {selectedCompany?.rounds.map((round) => {
-                  const visuals = getRoundVisuals(round?.roundType)
+              {/* Company list */}
+              <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                {isFetching && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0' }}>
+                    <Spinner animation="border" size="sm" style={{ color: '#ff7a00' }} />
+                  </div>
+                )}
+                {isPending && (
+                  <div style={{ background: 'rgba(255,122,0,0.06)', borderBottom: '1px solid rgba(255,122,0,0.15)', padding: '8px 12px', display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.68rem', color: '#64748b' }}>
+                    <Lock size={11} color="#ff7a00" />
+                    <span><strong style={{ color: '#ff7a00' }}>Trial:</strong> 1 company free</span>
+                  </div>
+                )}
+                {filteredCompanies.map(company => {
+                  const isSelected = selectedCompany?._id === company._id
+                  const isLocked = isPending && company._id !== freeCompanyIdRef.current
+                  const isLoading = loadingCompanyId === company._id
+                  const diff = getDifficulty(company)
+                  const [fg, bg] = avatarColor(company.companyName)
+                  const count = company.rounds?.length ?? company.roundsCount ?? 0
                   return (
-                  <Card key={round._id} className="round-card">
-                    <Card.Body>
-                      <div className="round-card-header">
-                        <div className="round-icon" style={{ background: visuals.colors.bg }}>
-                          <span>{visuals.icon}</span>
-                        </div>
-                        <div className="round-info">
-                          <h5 className="round-name">{round.roundName}</h5>
-                          <div className="round-stats">
-                            <span><Clock size={11} /> {round.duration} mins</span>
-                            <span><FileText size={11} /> {round.questionCount} questions</span>
-                          </div>
-                        </div>
-                        {recentAttempts[round._id] && (
-                          <div className={`recent-score-badge ${recentAttempts[round._id].score >= 60 ? 'pass' : 'fail'}`}>
-                            <Trophy size={10} />
-                            {recentAttempts[round._id].score}%
-                          </div>
-                        )}
+                    <div
+                      key={company._id}
+                      onClick={() => !isLocked && !isLoading && fetchCompanyDetails(company._id)}
+                      style={{
+                        padding: '11px 14px', borderBottom: '1px solid #f8fafc',
+                        background: isSelected ? 'rgba(255,122,0,0.04)' : '#fff',
+                        borderLeft: `3px solid ${isSelected ? '#ff7a00' : 'transparent'}`,
+                        cursor: isLocked ? 'not-allowed' : 'pointer',
+                        opacity: isLocked ? 0.45 : 1,
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}
+                      onMouseEnter={e => { if (!isLocked && !isSelected) e.currentTarget.style.background = '#fafafa' }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#fff' }}
+                    >
+                      {/* Avatar */}
+                      <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: fg }}>
+                        {isLoading ? <Spinner animation="border" size="sm" style={{ color: fg, width: 14, height: 14 }} /> : initials(company.companyName)}
                       </div>
-                      <Button
-                        className="start-round-btn"
-                        style={{ background: visuals.colors.color }}
-                        onClick={() => handleStartRound(round)}
-                      >
-                        {recentAttempts[round._id] ? 'Reattempt →' : 'View Round →'}
-                      </Button>
-                    </Card.Body>
-                  </Card>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {company.companyName}
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 1 }}>{count} Interviews</div>
+                      </div>
+                      {/* Difficulty + chevron */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        {isLocked
+                          ? <Lock size={11} color="#94a3b8" />
+                          : <span style={{ fontSize: '0.58rem', fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: diff.bg, color: diff.color }}>{diff.label}</span>
+                        }
+                        <FiChevronRight size={12} color="#cbd5e1" />
+                      </div>
+                    </div>
                   )
                 })}
+                {filteredCompanies.length === 0 && !isFetching && (
+                  <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No companies found</div>
+                )}
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div style={{ padding: '8px 14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                    style={{ background: currentPage === 1 ? '#f1f5f9' : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === 1 ? '#cbd5e1' : '#fff', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>‹</button>
+                  <span style={{ fontSize: '0.65rem', color: '#ff7a00', fontWeight: 600 }}>{currentPage} / {totalPages} • {totalCompanies} total</span>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                    style={{ background: currentPage === totalPages ? '#f1f5f9' : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === totalPages ? '#cbd5e1' : '#fff', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>›</button>
+                </div>
+              )}
+            </div>
+
+            {/* ── CENTER: Company Detail ── */}
+            <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
+              {!selectedCompany ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
+                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: '2rem' }}>🏢</div>
+                  <div style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Select a company</div>
+                  <div style={{ fontSize: '0.78rem', marginTop: 4, color: '#94a3b8' }}>Choose from the left panel to view details</div>
+                </div>
+              ) : (
+                <div style={{ padding: '20px 24px' }}>
+                  {/* Company Header Card */}
+                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+                      {/* Logo */}
+                      {(() => {
+                        const [fg, bg] = avatarColor(selectedCompany.companyName)
+                        return (
+                          <div style={{ width: 52, height: 52, borderRadius: 12, flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800, color: fg }}>
+                            {initials(selectedCompany.companyName)}
+                          </div>
+                        )
+                      })()}
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>
+                          {selectedCompany.companyName} Mock Interview
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                          Practice {selectedCompany.companyName} interview rounds based on latest pattern and syllabus
+                        </div>
+                        <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: '0.68rem', color: '#94a3b8', flexWrap: 'wrap' }}>
+                          <span>{selectedCompany.rounds?.length ?? 0} Interviews</span>
+                          <span>•</span>
+                          <span>45k+ Students Practiced</span>
+                          <span>•</span>
+                          <span>Updated {timeAgo(selectedCompany.updatedAt)}</span>
+                        </div>
+                      </div>
+                      {/* Actions */}
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
+                        <button style={{ width: 36, height: 36, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <FiBookmark size={15} color="#94a3b8" />
+                        </button>
+                        <button
+                          onClick={() => selectedCompany.rounds?.[0] && handleStartRound(selectedCompany.rounds[0])}
+                          style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', padding: '9px 18px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Start Interview
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detail Tabs */}
+                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
+                    {/* Tab bar */}
+                    <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 20px', display: 'flex' }}>
+                      {[
+                        { key: 'overview', label: 'Overview' },
+                        { key: 'rounds', label: `Rounds (${selectedCompany.rounds?.length ?? 0})` },
+                        { key: 'previousAttempts', label: 'Previous Attempts' },
+                      ].map(t => {
+                        const active = activeDetailTab === t.key
+                        return (
+                          <button key={t.key} onClick={() => setActiveDetailTab(t.key as any)} style={{
+                            background: 'none', border: 'none',
+                            borderBottom: `2px solid ${active ? '#ff7a00' : 'transparent'}`,
+                            color: active ? '#ff7a00' : '#64748b',
+                            fontWeight: active ? 700 : 500,
+                            fontSize: '0.8rem', padding: '12px 16px',
+                            cursor: 'pointer', whiteSpace: 'nowrap',
+                          }}>{t.label}</button>
+                        )
+                      })}
+                    </div>
+
+                    {/* Tab content */}
+                    <div style={{ padding: '20px', overflowX: 'hidden', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+
+                      {/* ── Overview ── */}
+                      {activeDetailTab === 'overview' && (
+                        <>
+                          {/* About */}
+                          <div style={{ marginBottom: 22 }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 10 }}>
+                              About {selectedCompany.companyName} Interview
+                            </div>
+                            <div
+                              className="ci-rich-content"
+                              style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}
+                              dangerouslySetInnerHTML={{ __html: getSanitizedHtml(selectedCompany.description) }}
+                            />
+                          </div>
+
+                          {/* Info row */}
+                          <div style={{ display: 'flex', gap: 24, marginBottom: 22, flexWrap: 'wrap', padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                            <InfoBox icon="🎓" label="Eligibility" value={selectedCompany.role || 'All'} />
+                            <InfoBox icon="💼" label="Experience" value="Fresher" />
+                            <InfoBox icon="💻" label="Interview Type" value="Online" />
+                            <InfoBox icon="⏱" label="Duration" value={`${selectedCompany.rounds?.reduce((s, r) => s + r.duration, 0) ?? 0} mins`} />
+                          </div>
+
+                          {/* Rounds Included */}
+                          <div style={{ marginBottom: 22 }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 12 }}>Rounds Included</div>
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                              {selectedCompany.rounds?.map((round, idx) => {
+                                const color = ROUND_COLORS[idx % ROUND_COLORS.length]
+                                return (
+                                  <div key={round._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px', background: '#fff', minWidth: 130, flex: '1 1 130px', maxWidth: 180 }}>
+                                    <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}18`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color, fontSize: '0.8rem', marginBottom: 8 }}>
+                                      {idx + 1}
+                                    </div>
+                                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', marginBottom: 4 }}>{round.roundName}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                                      <Clock size={10} /> {round.duration} min
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Preparation Resources */}
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 12 }}>Preparation Resources</div>
+                            {[
+                              { title: `${selectedCompany.companyName} Interview Experience`, desc: 'Read experiences from selected students', count: '120+' },
+                              { title: `${selectedCompany.companyName} Previous Year Questions`, desc: 'Download and practice PYQs', count: '80+' },
+                              { title: `${selectedCompany.companyName} Syllabus & Pattern`, desc: 'Detailed syllabus and interview pattern', count: null },
+                            ].map((res, idx, arr) => (
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0 }}>📄</div>
+                                  <div>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{res.title}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>{res.desc}</div>
+                                  </div>
+                                </div>
+                                {res.count && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>{res.count} ›</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* ── Rounds tab ── */}
+                      {activeDetailTab === 'rounds' && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                          {selectedCompany.rounds?.map((round, idx) => {
+                            const attempt = recentAttempts[round._id]
+                            return (
+                              <div key={round._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: '#fff' }}>
+                                <div style={{ width: 44, height: 44, borderRadius: 10, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
+                                  {ROUND_ICONS[round.roundType] || '📋'}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>{round.roundName}</div>
+                                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>{round.questionCount} Questions • {round.duration} mins</div>
+                                </div>
+                                {attempt && (
+                                  <span style={{ background: attempt.score >= 60 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: attempt.score >= 60 ? '#16a34a' : '#dc2626', borderRadius: 20, padding: '2px 10px', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                    Last: {attempt.score}%
+                                  </span>
+                                )}
+                                <button onClick={() => handleStartRound(round)} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', padding: '7px 14px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  {attempt ? 'Reattempt' : 'Start'}
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* ── Previous Attempts ── */}
+                      {activeDetailTab === 'previousAttempts' && (
+                        Object.keys(recentAttempts).length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                            <Trophy size={36} style={{ marginBottom: 10, opacity: 0.3 }} />
+                            <div style={{ fontSize: '0.82rem' }}>No attempts yet. Start practicing!</div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {Object.entries(recentAttempts).map(([roundId, attempt]) => {
+                              const round = selectedCompany.rounds?.find(r => r._id === roundId)
+                              return (
+                                <div key={roundId} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.82rem' }}>{round?.roundName || 'Round'}</div>
+                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>{new Date(attempt.attemptedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                  </div>
+                                  <span style={{ background: attempt.score >= 60 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: attempt.score >= 60 ? '#16a34a' : '#dc2626', borderRadius: 20, padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700 }}>
+                                    {attempt.score}%
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: Progress Panel ── */}
+            <div className="ci-scroll" style={{ width: 270, flexShrink: 0, borderLeft: '1px solid #e2e8f0', background: '#fff', overflowY: 'auto', padding: '18px 16px' }}>
+              {!selectedCompany ? (
+                <div style={{ color: '#94a3b8', fontSize: '0.78rem', textAlign: 'center', paddingTop: 40 }}>
+                  Select a company to view progress
+                </div>
+              ) : (
+                <>
+                  {/* Your Progress */}
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: 14 }}>Your Progress</div>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                      {/* Circular progress */}
+                      <svg width="90" height="90" style={{ flexShrink: 0 }}>
+                        <circle cx="45" cy="45" r={ringRadius} fill="none" stroke="#f1f5f9" strokeWidth="7" />
+                        <circle cx="45" cy="45" r={ringRadius} fill="none" stroke="#ff7a00" strokeWidth="7"
+                          strokeDasharray={ringCirc} strokeDashoffset={ringOffset}
+                          strokeLinecap="round" transform="rotate(-90 45 45)" />
+                        <text x="45" y="41" textAnchor="middle" fontSize="13" fontWeight="800" fill="#0f172a">{overallProgress}%</text>
+                        <text x="45" y="54" textAnchor="middle" fontSize="7" fill="#94a3b8">Progress</text>
+                      </svg>
+                      {/* Stats */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                        <StatRow icon={<FiTarget size={13} color="#ff7a00" />} label="Interviews Attempted" value={`${attemptedRounds} / ${totalRounds}`} />
+                        <StatRow icon={<FiTrendingUp size={13} color="#ff7a00" />} label="Avg. Score" value={`${avgScore}%`} />
+                        {bestRoundName && <StatRow icon={<FiAward size={13} color="#ff7a00" />} label="Best Round" value={bestRoundName} />}
+                        {lastAttempt && <StatRow icon={<FiClock size={13} color="#ff7a00" />} label="Last Attempt" value={timeAgo(lastAttempt.attemptedAt)} />}
+                      </div>
+                    </div>
+                    <button style={{ width: '100%', background: 'rgba(255,122,0,0.05)', border: '1px solid rgba(255,122,0,0.2)', borderRadius: 8, color: '#ff7a00', padding: '8px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+                      View Detailed Report
+                    </button>
+                  </div>
+
+                  {/* Prepare by Round */}
+                  <div>
+                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: 12 }}>Prepare by Round</div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {selectedCompany.rounds?.map((round, idx) => (
+                        <div key={round._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                          <div style={{ width: 34, height: 34, borderRadius: 8, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
+                            {ROUND_ICONS[round.roundType] || '📋'}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{round.roundName}</div>
+                            <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: 1 }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'} • {round.duration} min</div>
+                          </div>
+                          <button
+                            onClick={() => handleStartRound(round)}
+                            style={{ background: '#ff7a00', border: 'none', borderRadius: 6, color: '#fff', padding: '5px 10px', fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                          >
+                            Start Practice
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
-        </Modal.Body>
-      </Modal>
+        )}
+      </div>
 
-      {/* Round Modal */}
+      {/* ── Round Modal (fullscreen — quiz / coding / HR / TR / result) ── */}
       <Modal show={showRoundModal} onHide={handleCloseRoundModal} fullscreen className="round-modal" backdrop="static" keyboard={false}>
         {activeMode === 'preview' && (
           <>
             <Modal.Header className="round-modal-header" closeButton>
               <div className="round-modal-title">
-                <span className="round-icon">{selectedRound && getRoundVisuals(selectedRound.roundType).icon}</span>
                 <div>
                   <h4>{selectedRound?.roundName} Round</h4>
                   <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
@@ -966,11 +857,9 @@ const StudentCompanyInterviewPage = () => {
               </div>
               <div className="round-modal-actions">
                 {selectedRound?.roundType !== 'CODING' && (
-                  <Button className="header-quiz-btn" onClick={handleTakeQuiz}>
-                    {selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR'
-                      ? 'Start Practice'
-                      : 'Take Quiz'}
-                  </Button>
+                  <button className="header-quiz-btn" onClick={handleTakeQuiz}>
+                    {selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR' ? 'Start Practice' : 'Take Quiz'}
+                  </button>
                 )}
               </div>
             </Modal.Header>
@@ -981,27 +870,25 @@ const StudentCompanyInterviewPage = () => {
                     <div key={q._id} className="mcq-question">
                       <div className="question-header">
                         <span className="question-number">Q{idx + 1}</span>
-                        <Badge className="question-type">MCQ</Badge>
+                        <span className="question-type">MCQ</span>
                       </div>
                       <h5 className="question-text">{q.question}</h5>
                       <div className="options-list">
-                        {(q.options || []).map((option, optIdx) => (
-                          <div key={optIdx} className="option-item static">
-                            <span className="option-label">{String.fromCharCode(65 + optIdx)}.</span>
-                            <span className="option-text">{String(option)}</span>
+                        {(q.options || []).map((opt, oi) => (
+                          <div key={oi} className="option-item static">
+                            <span className="option-label">{String.fromCharCode(65 + oi)}.</span>
+                            <span className="option-text">{String(opt)}</span>
                           </div>
                         ))}
                       </div>
-                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                      <button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
                         {expandedAnswers[q._id] ? 'Hide Answer & Explanation' : 'Show Answer & Explanation'}
-                      </Button>
+                      </button>
                       {expandedAnswers[q._id] && (
                         <div className="answer-panel">
                           <p><strong>Answer:</strong> {q.correctAnswer ?? 'Not provided'}</p>
                           <p><strong>Explanation:</strong></p>
-                          <div className="answer-text multi-line-text">
-                            {formatExplanation(q.explanation)}
-                          </div>
+                          <div className="answer-text multi-line-text">{formatExplanation(q.explanation)}</div>
                         </div>
                       )}
                     </div>
@@ -1011,19 +898,13 @@ const StudentCompanyInterviewPage = () => {
                     <div key={q._id} className="coding-question">
                       <div className="question-header">
                         <span className="question-number">Q{idx + 1}</span>
-                        <Badge className="question-type coding">CODING</Badge>
+                        <span className="question-type coding">CODING</span>
                       </div>
                       <h5 className="question-title">{q.title}</h5>
                       <p className="question-description">{q.description}</p>
                       <div className="sample-io">
-                        <div className="sample-input">
-                          <span className="label">Sample Input:</span>
-                          <code>{q.input || 'N/A'}</code>
-                        </div>
-                        <div className="sample-output">
-                          <span className="label">Expected Output:</span>
-                          <code>{q.output ?? 'N/A'}</code>
-                        </div>
+                        <div className="sample-input"><span className="label">Sample Input:</span><code>{q.input || 'N/A'}</code></div>
+                        <div className="sample-output"><span className="label">Expected Output:</span><code>{q.output ?? 'N/A'}</code></div>
                       </div>
                       <div className="coding-question-footer">
                         {recentAttempts[selectedRound._id] && (
@@ -1031,54 +912,26 @@ const StudentCompanyInterviewPage = () => {
                             <Trophy size={10} /> Last: {recentAttempts[selectedRound._id].score}%
                           </span>
                         )}
-                        <Button
-                          className="coding-start-btn"
-                          onClick={() => handleStartCodingQuestion(q._id)}
-                        >
+                        <button className="coding-start-btn" onClick={() => { setSelectedCodingQuestionId(q._id); setActiveMode('coding') }}>
                           <Code2 size={14} /> Start Challenge
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}
 
-                  {selectedRound?.roundType === 'HR' && selectedRound.questions.map((q, idx) => (
+                  {(selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR') && selectedRound.questions.map((q, idx) => (
                     <div key={q._id} className="mcq-question">
                       <div className="question-header">
                         <span className="question-number">Q{idx + 1}</span>
-                        <Badge className="question-type hr">HR</Badge>
+                        <span className={`question-type ${selectedRound.roundType.toLowerCase()}`}>{selectedRound.roundType}</span>
                       </div>
-                      <h5 className="question-text">{q.question}</h5>
-                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
+                      <h5 className="question-text">{q.question || q.title || 'Interview Question'}</h5>
+                      <button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
                         {expandedAnswers[q._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
-                      </Button>
+                      </button>
                       {expandedAnswers[q._id] && (
                         <div className="answer-panel">
-                          <p><strong>Suggested Answer:</strong> {q.expectedAnswer || 'Not provided'}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {selectedRound?.roundType === 'TR' && selectedRound.questions.map((q, idx) => (
-                    <div key={q._id} className="mcq-question">
-                      <div className="question-header">
-                        <span className="question-number">Q{idx + 1}</span>
-                        <Badge className="question-type tr">TR</Badge>
-                      </div>
-                      <h5 className="question-text">{q.question || q.title || 'Technical Interview Question'}</h5>
-                      {(q.description || q.input || q.output) && (
-                        <div className="answer-panel" style={{ marginTop: '0.5rem' }}>
-                          {q.description && <p><strong>Context:</strong> {q.description}</p>}
-                          {q.input && <p><strong>Input:</strong> {q.input}</p>}
-                          {q.output != null && <p><strong>Expected:</strong> {String(q.output)}</p>}
-                        </div>
-                      )}
-                      <Button variant="outline-secondary" className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
-                        {expandedAnswers[q._id] ? 'Hide Suggested Direction' : 'Show Suggested Direction'}
-                      </Button>
-                      {expandedAnswers[q._id] && (
-                        <div className="answer-panel">
-                          <p><strong>Suggested Direction:</strong> {q.expectedAnswer || q.explanation || 'Not provided'}</p>
+                          <p><strong>Suggested:</strong> {q.expectedAnswer || q.explanation || 'Not provided'}</p>
                         </div>
                       )}
                     </div>
@@ -1091,48 +944,22 @@ const StudentCompanyInterviewPage = () => {
 
         {activeMode === 'quiz' && selectedRound && (
           <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <MCQQuiz
-              round={selectedRound}
-              companyName={selectedCompany?.companyName || ''}
-              role={selectedCompany?.role || ''}
-              quizQuestions={quizQuestions}
-              onClose={handleCloseRoundModal}
-              onAttemptComplete={handleAttemptComplete}
-            />
+            <MCQQuiz round={selectedRound} companyName={selectedCompany?.companyName || ''} role={selectedCompany?.role || ''} quizQuestions={quizQuestions} onClose={handleCloseRoundModal} onAttemptComplete={handleAttemptComplete} />
           </Modal.Body>
         )}
 
         {activeMode === 'coding' && selectedRound && (
           <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <CodingChallenge
-              round={selectedRound}
-              companyName={selectedCompany?.companyName || ''}
-              role={selectedCompany?.role || ''}
-              onClose={handleCloseRoundModal}
-              onAttemptComplete={handleAttemptComplete}
-              selectedQuestionId={selectedCodingQuestionId ?? undefined}
-            />
+            <CodingChallenge round={selectedRound} companyName={selectedCompany?.companyName || ''} role={selectedCompany?.role || ''} onClose={handleCloseRoundModal} onAttemptComplete={handleAttemptComplete} selectedQuestionId={selectedCodingQuestionId ?? undefined} />
           </Modal.Body>
         )}
 
         {activeMode === 'interview' && selectedRound && (
           <Modal.Body style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100vh' }}>
             {selectedRound.roundType === 'HR' ? (
-              <HRInterviewPractice
-                round={selectedRound}
-                companyName={selectedCompany?.companyName || ''}
-                role={selectedCompany?.role || ''}
-                onClose={handleCloseRoundModal}
-                onAttemptComplete={handleAttemptComplete}
-              />
+              <HRInterviewPractice round={selectedRound} companyName={selectedCompany?.companyName || ''} role={selectedCompany?.role || ''} onClose={handleCloseRoundModal} onAttemptComplete={handleAttemptComplete} />
             ) : (
-              <TRInterviewPractice
-                round={selectedRound}
-                companyName={selectedCompany?.companyName || ''}
-                role={selectedCompany?.role || ''}
-                onClose={handleCloseRoundModal}
-                onAttemptComplete={handleAttemptComplete}
-              />
+              <TRInterviewPractice round={selectedRound} companyName={selectedCompany?.companyName || ''} role={selectedCompany?.role || ''} onClose={handleCloseRoundModal} onAttemptComplete={handleAttemptComplete} />
             )}
           </Modal.Body>
         )}
@@ -1153,27 +980,19 @@ const StudentCompanyInterviewPage = () => {
                     <h4>{selectedRound?.roundName} — Result</h4>
                     <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
                   </div>
-
                   <div className={`result-score-ring ${roundResult.score >= 60 ? 'pass' : 'fail'}`}>
                     <span className="result-score-num">{roundResult.score}%</span>
                     <span className="result-score-label">
-                      {roundResult.roundType === 'MCQ'
-                        ? `${roundResult.correctAnswers}/${roundResult.totalQuestions} correct`
-                        : roundResult.avgRating > 0
-                          ? `Avg Rating ${roundResult.avgRating.toFixed(1)}/5`
-                          : 'Score'}
+                      {roundResult.roundType === 'MCQ' ? `${roundResult.correctAnswers}/${roundResult.totalQuestions} correct` : roundResult.avgRating > 0 ? `Avg Rating ${roundResult.avgRating.toFixed(1)}/5` : 'Score'}
                     </span>
                   </div>
-
                   <div className={`result-status-badge ${roundResult.score >= 60 ? 'pass' : 'fail'}`}>
                     {roundResult.score >= 60 ? '✓ Good Performance' : '✗ Needs More Practice'}
                   </div>
-
                   <div className="result-feedback-card">
                     <h6>AI Feedback</h6>
                     <p>{roundResult.aiFeedback}</p>
                   </div>
-
                   {roundResult.perQuestionFeedback.length > 0 && (
                     <div className="result-breakdown">
                       <h6>Question Breakdown</h6>
@@ -1190,9 +1009,7 @@ const StudentCompanyInterviewPage = () => {
                             </div>
                             {item.expectedAnswer && (
                               <div className="result-q-expected">
-                                <span className="result-q-answer-label">
-                                  {roundResult.roundType === 'MCQ' ? 'Correct Answer' : roundResult.roundType === 'CODING' ? 'Problem Description' : 'Suggested Answer'}
-                                </span>
+                                <span className="result-q-answer-label">{roundResult.roundType === 'MCQ' ? 'Correct Answer' : 'Suggested Answer'}</span>
                                 <span className="result-q-expected-text">{item.expectedAnswer}</span>
                               </div>
                             )}
@@ -1208,17 +1025,10 @@ const StudentCompanyInterviewPage = () => {
                       })}
                     </div>
                   )}
-
                   <div className="result-actions">
-                    <Button variant="secondary" className="result-reattempt-btn" onClick={handleReattempt}>
-                      Reattempt
-                    </Button>
-                    <Button variant="secondary" className="result-reattempt-btn" onClick={downloadResultPDF}>
-                      Download PDF
-                    </Button>
-                    <Button className="header-quiz-btn" onClick={handleCloseRoundModal}>
-                      Done
-                    </Button>
+                    <button className="result-reattempt-btn" onClick={handleReattempt}>Reattempt</button>
+                    <button className="result-reattempt-btn" onClick={downloadResultPDF}>Download PDF</button>
+                    <button className="header-quiz-btn" onClick={handleCloseRoundModal}>Done</button>
                   </div>
                 </>
               ) : null}
@@ -1228,1272 +1038,91 @@ const StudentCompanyInterviewPage = () => {
       </Modal>
 
       <style>{`
-      /* remove margin */
-        .main-content-wrapper {
-          margin-top: 0 !important;
-        }
-
-        /* 🔥 TARGET INLINE STYLE PARENT */
-        div[style*="padding: 24px"] {
-          padding: 0 !important;
-        }
-        .company-card {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-        .company-card .card-body {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-        .assessment-modal .modal-content {
-          background: #000;
-          border-radius: 0;
-          height: 100vh;
-        }
-        .company-interview-container {
-          background: #000000;
-          min-height: 100vh;
-          color: #ffffff;
-        }
-
-        /* Header */
-        .header-section {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .page-title {
-          font-size: 1.6rem;
-          font-weight: 700;
-          color: #ff6b35;
-          margin-bottom: 0.5rem;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.75rem;
-        }
-
-        .page-subtitle {
-          color: #888888;
-          font-size: 0.9rem;
-        }
-
-        /* Loading & Empty States */
-        .loading-container, .error-container {
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-          align-items: center;
-          gap: 0.65rem;
-          min-height: 100vh;
-          width: 100%;
-          background: #000000;
-          text-align: center;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem;
-        }
-
-        .empty-icon {
-          font-size: 3rem;
-          margin-bottom: 1rem;
-          opacity: 0.5;
-        }
-
-        /* Companies Grid */
-        .companies-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-          gap: 1.5rem;
-        }
-
-        .list-filters {
-          display: flex;
-          align-items: flex-end;
-          gap: 0.85rem;
-          flex-wrap: wrap;
-          padding: 0.85rem;
-          border: 1px solid #2a2a2a;
-          border-radius: 12px;
-          background: #0b0b0b;
-        }
-
-        .filter-control-group {
-          display: flex;
-          flex-direction: column;
-          gap: 0.35rem;
-          min-width: 180px;
-        }
-
-        .filter-control-group.search-group {
-          flex: 1;
-          min-width: 240px;
-        }
-
-        .filter-label {
-          font-size: 0.7rem;
-          color: #a0a0a0;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          font-weight: 700;
-        }
-
-        .filter-select,
-        .filter-input {
-          width: 100%;
-          border-radius: 8px;
-          border: 1px solid #333333;
-          background: #101010;
-          color: #efefef;
-          padding: 0.46rem 0.7rem;
-          font-size: 0.82rem;
-        }
-
-        .filter-select:focus,
-        .filter-input:focus {
-          outline: none;
-          border-color: #ff6b35;
-          box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.28);
-        }
-
-        .clear-filter-btn {
-          border: 1px solid #444;
-          background: #141414;
-          color: #d8d8d8;
-          border-radius: 8px;
-          font-size: 0.8rem;
-          padding: 0.42rem 0.8rem;
-        }
-
-        .clear-filter-btn:hover {
-          border-color: #ff6b35;
-          color: #ff6b35;
-          background: #1a1a1a;
-        }
-
-        .filter-loading-indicator {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          color: #ffbe9f;
-          font-size: 0.75rem;
-          margin-left: auto;
-          padding: 0.35rem 0.5rem;
-        }
-
-        .pagination-wrapper {
-          margin-top: 1.5rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 1rem;
-          flex-wrap: wrap;
-        }
-
-        .pagination-info {
-          color: #9a9a9a;
-          font-size: 0.82rem;
-        }
-
-        .pagination-controls {
-          display: flex;
-          align-items: center;
-          gap: 0.45rem;
-          flex-wrap: wrap;
-        }
-
-        .pagination-btn {
-          background: #111111;
-          border: 1px solid #2d2d2d;
-          color: #e2e2e2;
-          border-radius: 8px;
-          padding: 0.38rem 0.75rem;
-          font-size: 0.78rem;
-        }
-
-        .pagination-btn:hover:not(:disabled) {
-          border-color: #ff6b35;
-          color: #ff6b35;
-          background: #151515;
-        }
-
-        .pagination-btn.page-number-btn.active {
-          background: #ff6b35;
-          border-color: #ff6b35;
-          color: #ffffff;
-        }
-
-        .pagination-btn:disabled {
-          opacity: 0.55;
-          cursor: not-allowed;
-        }
-
-        .company-card {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 20px;
-          transition: all 0.3s ease;
-          cursor: pointer;
-        }
-
-        .company-card:hover {
-          transform: translateY(-4px);
-          border-color: #ff6b35;
-          box-shadow: 0 8px 24px rgba(255, 107, 53, 0.15);
-        }
-
-        .company-header {
-          display: flex;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .company-icon {
-          width: 60px;
-          height: 60px;
-          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
-          border-radius: 16px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .company-icon .icon {
-          font-size: 28px;
-          font-weight: 700;
-          color: #ffffff;
-        }
-
-        .company-info {
-          flex: 1;
-        }
-
-        .company-name {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #ffffff;
-          margin-bottom: 0.5rem;
-        }
-
-        .company-meta {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 0.5rem;
-          align-items: center;
-        }
-
-        .meta-badge {
-          font-size: 0.7rem;
-          padding: 0.25rem 0.6rem;
-          border-radius: 20px;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.3rem;
-          line-height: 1;
-          white-space: nowrap;
-        }
-
-        .meta-badge svg {
-          width: 11px;
-          height: 11px;
-          flex-shrink: 0;
-        }
-
-        .meta-badge.role {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-        }
-
-        .meta-badge.package {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-        }
-
-        .meta-badge.location {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-        }
-
-        .company-description {
-          color: #b0b0b0;
-          font-size: 0.85rem;
-          line-height: 1.5;
-          margin-bottom: 1rem;
-        }
-
-        .company-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-top: 1rem;
-          border-top: 1px solid #222222;
-          margin-top: auto; 
-        }
-
-        .rounds-info {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .rounds-count {
-          font-size: 0.75rem;
-          color: #888888;
-        }
-
-        .round-types {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .round-type-badge {
-          background: #ff6b35 !important;
-          color: #ffffff !important;
-          font-size: 0.7rem;
-          padding: 0.25rem 0.6rem;
-          border: none !important;
-        }
-
-        .view-details-btn {
-          background: transparent;
-          border: 1px solid #ff6b35;
-          color: #ff6b35;
-          padding: 0.5rem 1rem;
-          border-radius: 10px;
-          transition: all 0.3s ease;
-        }
-
-        .view-details-btn:hover {
-          background: #ff6b35;
-          color: #ffffff;
-        }
-
-        /* Modal Styles */
-        .company-modal .modal-content {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 20px;
-        }
-
-        .modal-header-custom {
-          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
-          border-bottom: 2px solid #ff6b35;
-          padding: 1rem 1.25rem;
-        }
-
-        .modal-title-wrapper {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .company-icon-large {
-          width: 56px;
-          height: 56px;
-          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
-          border-radius: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .company-icon-large span {
-          font-size: 24px;
-          font-weight: 700;
-          color: #ffffff;
-        }
-
-        .company-subtitle {
-          display: flex;
-          gap: 0.5rem;
-          color: #888888;
-          font-size: 0.85rem;
-          margin-top: 0.25rem;
-        }
-
-        .modal-body-custom {
-          padding: 0;
-          overflow-y: auto;
-          overflow-x: hidden;
-        }
-
-        /* Split Layout in Modal */
-        .split-layout {
-          display: flex;
-          min-height: 500px;
-          align-items: flex-start;
-        }
-
-      .split-layout {
-          display: flex;
-          gap: 16px;
-          height: calc(100vh - 120px); /* 🔥 important */
-        }
-
-        /* LEFT SIDE */
-        .split-left {
-          width: 60%;
-          overflow-y: auto;
-          padding: 1.5rem;
-          border-right: 1px solid #333333;
-        }
-
-        /* RIGHT SIDE */
-        .split-right {
-          width: 40%;
-          min-width: 380px; /* 🔥 CRITICAL FIX */
-          overflow-y: auto;
-          padding: 1.5rem;
-          background: #050505;
-
-          position: sticky;
-          top: 0;
-        }
-        .content-section {
-          margin-bottom: 1.5rem;
-        }
-
-        .round-card {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .round-card .card-body {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-
-        .start-round-btn {
-          margin-top: auto; /* 🔥 keeps button always visible */
-        }
-
-        .split-right {
-          flex-shrink: 0;  /* 🔥 THIS FIXES YOUR ISSUE */
-        }
-        
-        .split-left {
-          width: 60%;
-          overflow-y: auto;
-          overflow-x: hidden;   /* 🔥 FIX horizontal scroll */
-          padding: 1.5rem;
-          border-right: 1px solid #333333;
-
-          word-wrap: break-word;     /* 🔥 force text wrap */
-          overflow-wrap: break-word; /* 🔥 modern support */
-        }
-
-        .section-title {
-          color: #ff6b35;
-          font-size: 0.9rem;
-          font-weight: 600;
-          margin-bottom: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .section-content {
-          color: #d0d0d0;
-          font-size: 0.85rem;
-          line-height: 1.6;
-        }
-
-        .rich-text-content p,
-        .rich-text-content ul,
-        .rich-text-content ol,
-        .rich-text-content h1,
-        .rich-text-content h2,
-        .rich-text-content h3,
-        .rich-text-content h4,
-        .rich-text-content h5,
-        .rich-text-content h6 {
-          margin: 0 0 0.75rem;
-        }
-
-        .rich-text-content ul,
-        .rich-text-content ol {
-          padding-left: 1.25rem;
-        }
-
-        .rich-text-content li {
-          margin-bottom: 0.35rem;
-        }
-
-        .rich-text-content a {
-          color: #ff9a5c;
-          text-decoration: underline;
-        }
-
-        .rich-text-content strong {
-          color: #ffffff;
-        }
-
-        /* Rounds Table */
-        .rounds-table-wrapper {
-          border: 1px solid #222222;
-          border-radius: 14px;
-           width: 100%;
-          overflow-x: auto;
-          background: #090909;
-        }
-
-        .rounds-table {
-          width: 100%;
-          table-layout: fixed; 
-          border-collapse: collapse;
-        }
-
-        .rounds-table th {
-          background: #111111;
-          color: #ff6b35;
-          font-size: 0.78rem;
-          font-weight: 700;
-          letter-spacing: 0.03em;
-          text-align: left;
-          padding: 0.85rem 1rem;
-          border-bottom: 1px solid #222222;
-        }
-
-        .rounds-table td {
-          color: #d6d6d6;
-          font-size: 0.84rem;
-          padding: 0.85rem 1rem;
-          border-bottom: 1px solid #1d1d1d;
-          vertical-align: middle;
-        }
-
-        .rounds-table tbody tr:last-child td {
-          border-bottom: none;
-        }
-
-        .rounds-table tbody tr:hover {
-          background: rgba(255, 107, 53, 0.04);
-        }
-
-        .round-type-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-          padding: 0.3rem 0.75rem;
-          border-radius: 20px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-        }
-
-        .pill-icon {
-          font-size: 0.85rem;
-          line-height: 1;
-        }
-
-        .pill-text {
-          line-height: 1;
-        }
-
-        /* Rounds List */
-        .rounds-list {
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-
-        .round-card {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 16px;
-          transition: all 0.3s ease;
-        }
-
-        .round-card:hover {
-          border-color: #ff6b35;
-        }
-
-        .round-card-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 1rem;
-        }
-
-        .round-icon {
-          width: 50px;
-          height: 50px;
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-        }
-
-        .round-info {
-          flex: 1;
-        }
-
-        .round-name {
-          font-size: 1rem;
-          font-weight: 600;
-          color: #ffffff;
-          margin-bottom: 0.25rem;
-        }
-
-        .round-stats {
-          display: flex;
-          gap: 1rem;
-          font-size: 0.7rem;
-          color: #888888;
-        }
-
-        .start-round-btn {
-          width: 100%;
-          border: none;
-          padding: 0.6rem;
-          border-radius: 10px;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-
-        .start-round-btn:hover {
-          transform: translateY(-2px);
-          filter: brightness(1.1);
-        }
-
-        /* Recent score badge on round card */
-        .recent-score-badge {
-          display: flex;
-          align-items: center;
-          gap: 3px;
-          font-size: 0.72rem;
-          font-weight: 700;
-          padding: 0.25rem 0.5rem;
-          border-radius: 20px;
-          white-space: nowrap;
-        }
-
-        .recent-score-badge.pass {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
-          border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .recent-score-badge.fail {
-          background: rgba(239, 68, 68, 0.12);
-          color: #ef4444;
-          border: 1px solid rgba(239, 68, 68, 0.25);
-        }
-
-        /* Result screen */
-        .round-result-screen {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 2rem 1.5rem;
-          gap: 1.2rem;
-          max-width: 680px;
-          margin: 0 auto;
-          width: 100%;
-        }
-
-        .result-analyzing {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 1rem;
-          min-height: 60vh;
-          text-align: center;
-        }
-
-        .result-analyzing-text {
-          color: #f3f3f3;
-          font-size: 1rem;
-          margin: 0;
-        }
-
-        .result-analyzing-sub {
-          color: #888;
-          font-size: 0.82rem;
-        }
-
-        .result-header {
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.3rem;
-        }
-
-        .result-header h4 {
-          color: #ff6b35;
-          margin: 0;
-          font-size: 1.15rem;
-        }
-
-        .result-header p {
-          color: #888;
-          font-size: 0.83rem;
-          margin: 0;
-        }
-
-        .result-score-ring {
-          width: 140px;
-          height: 140px;
-          border-radius: 50%;
-          border: 5px solid;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 0.15rem;
-        }
-
-        .result-score-ring.pass { border-color: #22c55e; }
-        .result-score-ring.fail { border-color: #ef4444; }
-
-        .result-score-num {
-          font-size: 2.2rem;
-          font-weight: 800;
-          color: #f3f3f3;
-          line-height: 1;
-        }
-
-        .result-score-label {
-          font-size: 0.72rem;
-          color: #9ca3af;
-          text-align: center;
-          padding: 0 0.5rem;
-        }
-
-        .result-status-badge {
-          font-size: 0.88rem;
-          font-weight: 700;
-          padding: 0.4rem 1.2rem;
-          border-radius: 20px;
-        }
-
-        .result-status-badge.pass {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
-          border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .result-status-badge.fail {
-          background: rgba(239, 68, 68, 0.12);
-          color: #ef4444;
-          border: 1px solid rgba(239, 68, 68, 0.25);
-        }
-
-        .result-feedback-card {
-          background: #0d0d0d;
-          border: 1px solid #232323;
-          border-radius: 14px;
-          padding: 1rem 1.2rem;
-          width: 100%;
-        }
-
-        .result-feedback-card h6 {
-          color: #ff6b35;
-          font-size: 0.82rem;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 0.5rem;
-        }
-
-        .result-feedback-card p {
-          color: #d1d5db;
-          font-size: 0.9rem;
-          margin: 0;
-          line-height: 1.55;
-        }
-
-        .result-breakdown {
-          background: #0d0d0d;
-          border: 1px solid #232323;
-          border-radius: 14px;
-          padding: 1rem 1.2rem;
-          width: 100%;
-        }
-
-        .result-breakdown h6 {
-          color: #ff6b35;
-          font-size: 0.82rem;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 0.8rem;
-        }
-
-        .result-q-item {
-          border-top: 1px solid #1e1e1e;
-          padding: 0.7rem 0;
-        }
-
+        /* Constrain rich HTML content from overflowing */
+        .ci-rich-content * { max-width: 100% !important; word-break: break-word; overflow-wrap: break-word; box-sizing: border-box; }
+        .ci-rich-content img, .ci-rich-content table { max-width: 100% !important; }
+        .ci-rich-content pre, .ci-rich-content code { white-space: pre-wrap; word-break: break-all; }
+
+        /* Thin scrollbars on all scrollable panels */
+        .ci-scroll { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }
+        .ci-scroll::-webkit-scrollbar { width: 3px; }
+        .ci-scroll::-webkit-scrollbar-track { background: transparent; }
+        .ci-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+        .ci-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+
+        .round-modal .modal-content { background: #0a0a0a; border-radius: 0; height: 100vh; }
+        .round-modal-header { background: #0a0a0a; border-bottom: 2px solid #ff6b35; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; padding-right: 4.5rem; position: relative; }
+        .round-modal-header .btn-close { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); filter: invert(1); }
+        .round-modal-title { display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0; }
+        .round-modal-title h4 { margin: 0; color: #ff6b35; font-size: 1.05rem; }
+        .round-modal-title p { margin: 0; font-size: 0.75rem; color: #888; }
+        .round-modal-actions { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; flex: 0 0 auto; }
+        .header-quiz-btn { background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%); border: none; padding: 0.45rem 0.95rem; font-size: 0.82rem; font-weight: 600; border-radius: 8px; color: #fff; cursor: pointer; }
+        .round-modal-body { padding: 1.5rem; flex: 1 1 auto; min-height: 0; overflow-y: auto; color: #eee; }
+        .round-modal-body::-webkit-scrollbar { width: 4px; } .round-modal-body::-webkit-scrollbar-thumb { background: #ff6b35; border-radius: 4px; }
+        .questions-container { display: flex; flex-direction: column; gap: 1.5rem; }
+        .mcq-question, .coding-question { background: #0d0d0d; border: 1px solid #222; border-radius: 14px; padding: 1.25rem; }
+        .question-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .question-number { font-size: 0.8rem; color: #ff6b35; font-weight: 600; }
+        .question-type { background: rgba(255,107,53,0.15); color: #ff6b35; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+        .question-text { font-size: 1rem; color: #fff; margin-bottom: 1rem; }
+        .question-title { font-size: 1rem; color: #ff6b35; margin-bottom: 0.5rem; }
+        .question-description { font-size: 0.85rem; color: #b0b0b0; margin-bottom: 1rem; }
+        .options-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .option-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; background: #0a0a0a; border: 1px solid #333; border-radius: 10px; }
+        .option-item.static { cursor: default; }
+        .option-label { min-width: 20px; color: #ff6b35; font-weight: 700; }
+        .option-text { color: #e0e0e0; font-size: 0.9rem; }
+        .sample-io { display: flex; gap: 1rem; margin: 1rem 0; padding: 0.75rem; background: #0a0a0a; border-radius: 10px; }
+        .sample-input, .sample-output { flex: 1; }
+        .sample-io .label { display: block; font-size: 0.7rem; color: #888; margin-bottom: 0.25rem; }
+        .sample-io code { display: block; background: #050505; padding: 0.5rem; border-radius: 6px; font-size: 0.8rem; color: #fbbf24; }
+        .coding-question-footer { display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid #1e1e1e; }
+        .coding-start-btn { display: flex; align-items: center; gap: 0.4rem; background: #ff6b35; border: none; border-radius: 8px; color: #fff; font-size: 0.85rem; font-weight: 600; padding: 0.45rem 1.1rem; cursor: pointer; }
+        .show-answer-btn { margin-top: 0.75rem; width: 100%; text-align: left; background: transparent; border: 1px solid #2e2e2e; color: #e0e0e0; padding: 0.65rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+        .answer-panel { margin-top: 0.75rem; padding: 0.85rem; border: 1px solid #2e2e2e; border-radius: 10px; background: #090909; }
+        .answer-panel p { margin: 0.25rem 0; color: #ccc; font-size: 0.85rem; }
+        .answer-text { white-space: pre-line; color: #ccc; font-size: 0.85rem; margin-top: 0.35rem; line-height: 1.6; }
+        .recent-score-badge { display: flex; align-items: center; gap: 3px; font-size: 0.72rem; font-weight: 700; padding: 0.25rem 0.5rem; border-radius: 20px; }
+        .recent-score-badge.pass { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .recent-score-badge.fail { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .round-result-screen { display: flex; flex-direction: column; align-items: center; padding: 2rem 1.5rem; gap: 1.2rem; max-width: 680px; margin: 0 auto; width: 100%; }
+        .result-analyzing { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; min-height: 60vh; text-align: center; }
+        .result-analyzing-text { color: #f3f3f3; font-size: 1rem; margin: 0; }
+        .result-analyzing-sub { color: #888; font-size: 0.82rem; }
+        .result-header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+        .result-header h4 { color: #ff6b35; margin: 0; font-size: 1.15rem; }
+        .result-header p { color: #888; font-size: 0.83rem; margin: 0; }
+        .result-score-ring { width: 130px; height: 130px; border-radius: 50%; border: 5px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.15rem; }
+        .result-score-ring.pass { border-color: #22c55e; } .result-score-ring.fail { border-color: #ef4444; }
+        .result-score-num { font-size: 2.2rem; font-weight: 800; color: #f3f3f3; line-height: 1; }
+        .result-score-label { font-size: 0.72rem; color: #9ca3af; text-align: center; padding: 0 0.5rem; }
+        .result-status-badge { font-size: 0.88rem; font-weight: 700; padding: 0.4rem 1.2rem; border-radius: 20px; }
+        .result-status-badge.pass { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); }
+        .result-status-badge.fail { background: rgba(239,68,68,0.12); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .result-feedback-card { background: #0d0d0d; border: 1px solid #232323; border-radius: 14px; padding: 1rem 1.2rem; width: 100%; }
+        .result-feedback-card h6 { color: #ff6b35; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+        .result-feedback-card p { color: #d1d5db; font-size: 0.9rem; margin: 0; line-height: 1.55; }
+        .result-breakdown { background: #0d0d0d; border: 1px solid #232323; border-radius: 14px; padding: 1rem 1.2rem; width: 100%; }
+        .result-breakdown h6 { color: #ff6b35; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.8rem; }
+        .result-q-item { border-top: 1px solid #1e1e1e; padding: 0.7rem 0; }
         .result-q-item:first-of-type { border-top: none; padding-top: 0; }
-
-        .result-q-title {
-          font-size: 0.85rem;
-          color: #e5e7eb;
-          margin-bottom: 0.3rem;
-          font-weight: 500;
-        }
-
-        .result-q-stars {
-          color: #f59e0b;
-          font-size: 1rem;
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          margin-bottom: 0.25rem;
-        }
-
-        .result-q-rating-num {
-          font-size: 0.72rem;
-          color: #9ca3af;
-        }
-
-        .result-q-answer {
-          background: #111;
-          border: 1px solid #2a2a2a;
-          border-radius: 8px;
-          padding: 0.55rem 0.8rem;
-          margin: 0.35rem 0;
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-        }
-
+        .result-q-title { font-size: 0.85rem; color: #e5e7eb; margin-bottom: 0.3rem; font-weight: 500; }
+        .result-q-answer { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.55rem 0.8rem; margin: 0.35rem 0; display: flex; flex-direction: column; gap: 0.2rem; }
         .result-q-answer.correct { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.06); }
-        .result-q-answer.wrong   { border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.06); }
-
-        .result-q-answer-label {
-          font-size: 0.68rem;
-          text-transform: uppercase;
-          letter-spacing: .05em;
-          color: #6b7280;
-          font-weight: 600;
-        }
-
-        .result-q-answer-text {
-          font-size: 0.85rem;
-          color: #e5e7eb;
-          white-space: pre-wrap;
-          line-height: 1.45;
-        }
-
-        .result-q-expected {
-          background: #111;
-          border: 1px solid rgba(168, 85, 247, 0.3);
-          border-radius: 8px;
-          padding: 0.55rem 0.8rem;
-          margin: 0.35rem 0;
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-        }
-
-        .result-q-expected-text {
-          font-size: 0.85rem;
-          color: #c084fc;
-          white-space: pre-wrap;
-          line-height: 1.45;
-        }
-
-        .result-q-feedback {
-          font-size: 0.8rem;
-          color: #9ca3af;
-          line-height: 1.45;
-        }
-
-        .result-actions {
-          display: flex;
-          gap: 0.8rem;
-          width: 100%;
-          justify-content: center;
-          padding-top: 0.5rem;
-        }
-
-        .result-reattempt-btn {
-          border: 1px solid #444;
-          background: #141414;
-          color: #d8d8d8;
-          border-radius: 8px;
-          font-size: 0.88rem;
-          padding: 0.5rem 1.4rem;
-        }
-
-        .result-reattempt-btn:hover {
-          border-color: #ff6b35;
-          color: #ff6b35;
-          background: #1a1a1a;
-        }
-
-        /* Round Modal */
-        .round-modal .modal-content {
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 20px;
-          height: 100vh;
-        }
-
-        .round-modal-header {
-          position: relative;
-          background: linear-gradient(135deg, #0a0a0a 0%, #111111 100%);
-          border-bottom: 2px solid #ff6b35;
-          padding: 0.75rem 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex: 0 0 auto;
-          padding-right: 4.5rem;
-        }
-
-        .round-modal-header .btn-close {
-          position: absolute;
-          right: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          margin: 0;
-          width: 2rem;
-          height: 2rem;
-          opacity: 0.85;
-          filter: invert(1);
-        }
-
-        .round-modal-header .btn-close:hover {
-          opacity: 1;
-        }
-
-        .round-modal-title {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          flex: 1;
-          min-width: 0;
-        }
-
-        .round-modal-title .round-icon {
-          font-size: 2rem;
-        }
-
-        .round-modal-title h4 {
-          margin: 0;
-          color: #ff6b35;
-          font-size: 1.1rem;
-        }
-
-        .round-modal-title p {
-          margin: 0;
-          font-size: 0.75rem;
-          color: #888888;
-        }
-
-        .round-modal-actions {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          margin-left: auto;
-          flex: 0 0 auto;
-        }
-
-        .header-quiz-btn {
-          background: linear-gradient(135deg, #ff6b35 0%, #ff9a5c 100%);
-          border: none;
-          padding: 0.45rem 0.95rem;
-          font-size: 0.82rem;
-          font-weight: 600;
-          line-height: 1.2;
-          white-space: nowrap;
-          color: #ffffff;
-        }
-
-        .header-quiz-btn:hover {
-          opacity: 0.9;
-        }
-
-        .round-modal-body {
-          padding: 1.5rem;
-          flex: 1 1 auto;
-          min-height: 0;
-          max-height: none;
-          overflow-y: auto;
-        }
-
-        /* MCQ Styles */
-        .questions-container {
-          display: flex;
-          flex-direction: column;
-          gap: 1.5rem;
-        }
-
-        .mcq-question, .coding-question {
-          background: #0d0d0d;
-          border: 1px solid #222222;
-          border-radius: 16px;
-          padding: 1.25rem;
-        }
-
-        .coding-question-footer {
-          display: flex;
-          align-items: center;
-          justify-content: flex-end;
-          gap: 0.75rem;
-          margin-top: 1rem;
-          padding-top: 0.9rem;
-          border-top: 1px solid #1e1e1e;
-        }
-
-        .coding-start-btn {
-          display: flex;
-          align-items: center;
-          gap: 0.4rem;
-          background: #ff6b35;
-          border: none;
-          border-radius: 8px;
-          color: #fff;
-          font-size: 0.85rem;
-          font-weight: 600;
-          padding: 0.45rem 1.1rem;
-          transition: filter 0.18s;
-        }
-
-        .coding-start-btn:hover {
-          filter: brightness(1.12);
-          background: #ff6b35;
-        }
-
-        .question-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1rem;
-        }
-
-        .question-number {
-          font-size: 0.8rem;
-          color: #ff6b35;
-          font-weight: 600;
-        }
-
-        .question-type {
-          background: rgba(255, 107, 53, 0.15) !important;
-          color: #ff6b35 !important;
-          padding: 0.25rem 0.75rem !important;
-        }
-
-        .question-type.coding {
-          background: rgba(255, 107, 53, 0.15) !important;
-          color: #ff6b35 !important;
-        }
-
-        .question-type.hr {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-        }
-
-        .question-type.tr {
-          background: rgba(255, 107, 53, 0.15);
-          color: #ff6b35;
-        }
-
-        .question-text {
-          font-size: 1rem;
-          color: #ffffff;
-          margin-bottom: 1rem;
-        }
-
-        .question-title {
-          font-size: 1rem;
-          color: #ff6b35;
-          margin-bottom: 0.5rem;
-        }
-
-        .question-description {
-          font-size: 0.85rem;
-          color: #b0b0b0;
-          margin-bottom: 1rem;
-        }
-
-        .options-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .option-item {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.6rem 1rem;
-          background: #0a0a0a;
-          border: 1px solid #333333;
-          border-radius: 10px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .option-item:hover {
-          border-color: #ff6b35;
-        }
-
-        .option-item.selected {
-          border-color: #ff6b35;
-          background: rgba(255, 107, 53, 0.05);
-        }
-
-        .option-item.static {
-          cursor: default;
-        }
-
-        .option-item.static:hover {
-          border-color: #333333;
-        }
-
-        .option-label {
-          min-width: 20px;
-          color: #ff6b35;
-          font-weight: 700;
-        }
-
-        .option-text {
-          color: #e0e0e0;
-          font-size: 0.9rem;
-        }
-
-        /* Sample IO */
-        .sample-io {
-          display: flex;
-          gap: 1rem;
-          margin: 1rem 0;
-          padding: 0.75rem;
-          background: #0a0a0a;
-          border-radius: 10px;
-        }
-
-        .sample-input, .sample-output {
-          flex: 1;
-        }
-
-        .sample-io .label {
-          display: block;
-          font-size: 0.7rem;
-          color: #888888;
-          margin-bottom: 0.25rem;
-        }
-
-        .sample-io code {
-          display: block;
-          background: #050505;
-          padding: 0.5rem;
-          border-radius: 6px;
-          font-size: 0.8rem;
-          color: #fbbf24;
-        }
-
-        .show-answer-btn {
-          margin-top: 0.75rem;
-          width: 100%;
-          text-align: left;
-          background: transparent !important;
-          border: 1px solid #2e2e2e !important;
-          color: #e0e0e0 !important;
-          padding: 0.65rem 0.8rem;
-          border-radius: 8px;
-        }
-
-        .show-answer-btn:hover {
-          border-color: #ff6b35;
-          color: #ffffff;
-        }
-
-        .answer-panel {
-          margin-top: 0.75rem;
-          padding: 0.85rem;
-          border: 1px solid #2e2e2e;
-          border-radius: 10px;
-          background: #090909;
-        }
-
-        .answer-panel p {
-          margin: 0.25rem 0;
-          color: #cccccc;
-          font-size: 0.85rem;
-        }
-
-        .answer-text {
-          white-space: pre-line;
-          color: #cccccc;
-          font-size: 0.85rem;
-          margin-top: 0.35rem;
-          line-height: 1.6;
-        }
-
-        /* Scrollbar */
-        .round-modal-body::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .round-modal-body::-webkit-scrollbar-track {
-          background: #1a1a25;
-        }
-
-        .round-modal-body::-webkit-scrollbar-thumb {
-          background: #ff6b35;
-          border-radius: 3px;
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-          .split-layout {
-            flex-direction: column;
-          }
-          
-          .split-left {
-            border-right: none;
-            border-bottom: 1px solid #333333;
-          }
-
-          .split-right {
-            position: static;
-            max-height: none;
-          }
-          
-          .companies-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .filter-control-group,
-          .filter-control-group.search-group {
-            min-width: 100%;
-            flex: 1 1 100%;
-          }
-
-          .filter-loading-indicator {
-            margin-left: 0;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .round-modal-header {
-            flex-direction: column;
-            gap: 1rem;
-          }
-
-          .round-modal-actions {
-            margin-right: 0;
-            width: 100%;
-            justify-content: space-between;
-          }
-          
-          .sample-io {
-            flex-direction: column;
-          }
-        }
+        .result-q-answer.wrong { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.06); }
+        .result-q-answer-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; font-weight: 600; }
+        .result-q-answer-text { font-size: 0.85rem; color: #e5e7eb; white-space: pre-wrap; line-height: 1.45; }
+        .result-q-expected { background: #111; border: 1px solid rgba(168,85,247,0.3); border-radius: 8px; padding: 0.55rem 0.8rem; margin: 0.35rem 0; display: flex; flex-direction: column; gap: 0.2rem; }
+        .result-q-expected-text { font-size: 0.85rem; color: #c084fc; white-space: pre-wrap; line-height: 1.45; }
+        .result-q-stars { color: #f59e0b; font-size: 1rem; display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
+        .result-q-rating-num { font-size: 0.72rem; color: #9ca3af; }
+        .result-q-feedback { font-size: 0.8rem; color: #9ca3af; line-height: 1.45; }
+        .result-actions { display: flex; gap: 0.8rem; width: 100%; justify-content: center; padding-top: 0.5rem; }
+        .result-reattempt-btn { border: 1px solid #444; background: #141414; color: #d8d8d8; border-radius: 8px; font-size: 0.88rem; padding: 0.5rem 1.4rem; cursor: pointer; }
+        .result-reattempt-btn:hover { border-color: #ff6b35; color: #ff6b35; }
       `}</style>
-    </div>
+    </>
   )
 }
 

@@ -13,7 +13,7 @@ const skills: {
     { key: 'WRITING', label: 'Writing', icon: '✍️', color: '#10B981' },
     { key: 'READING', label: 'Reading', icon: '📖', color: '#8B5CF6' },
     { key: 'LISTENING', label: 'Listening', icon: '👂', color: '#F59E0B' },
-    { key: 'JUST_A_MINUTE', label: 'Just a Minute', icon: '📝', color: '#EF4444' },
+    { key: 'JUST_A_MINUTE', label: 'Speaking Practice', icon: '📝', color: '#EF4444' },
   ]
 
 const EnglishSkills = () => {

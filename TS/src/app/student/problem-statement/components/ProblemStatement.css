@@ -100,6 +100,36 @@
   background: #1f2328;
 }
 
+/* Hide scrollbar on coding modal left panel */
+.coding-left-scroll::-webkit-scrollbar {
+  display: none;
+}
+.coding-left-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Scale flowchart SVG to fit container */
+.coding-left-scroll svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Toolbar buttons — force consistent height */
+.coding-toolbar-btn {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  padding: 0 14px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  line-height: 1 !important;
+  box-sizing: border-box !important;
+}
+.coding-toolbar-btn::after {
+  display: none !important;
+}
+
 /* Examples box */
 .example-box {
   background: #2a2f36;
