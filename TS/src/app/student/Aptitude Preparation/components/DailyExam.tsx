@@ -424,7 +424,7 @@ const DailyExam: React.FC = () => {
                   {/* Category badge row */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: 12, background: CAT_THEME[todayData.category]?.bg ?? 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(108,99,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>
                         {CATEGORY_ICONS[todayData.category] ?? '📝'}
                       </div>
                       <div>
@@ -434,7 +434,7 @@ const DailyExam: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', border: '1px solid rgba(255,122,0,0.2)' }}>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: '#f0eeff', color: '#6c63ff', border: '1px solid rgba(108,99,255,0.2)' }}>
                       Today's Category
                     </span>
                   </div>
@@ -449,12 +449,12 @@ const DailyExam: React.FC = () => {
                     {[
                       { label: 'Questions', val: todayData.totalQuestions },
                       { label: 'Duration', val: '30 Min' },
-                      { label: 'Total Marks', val: todayData.totalQuestions * 1 },
+                      { label: 'Total Marks', val: todayData.totalQuestions },
                       { label: 'For Correct', val: '+1' },
                     ].map((item) => (
-                      <div key={item.label} style={{ flex: 1, textAlign: 'center' }}>
+                      <div key={item.label} style={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.07)', paddingRight: 2 }}>
                         <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '0.88rem', lineHeight: 1.1 }}>{item.val}</div>
-                        <div style={{ fontSize: '0.58rem', color: 'rgba(255,255,255,0.5)', marginTop: 3, lineHeight: 1.2 }}>{item.label}</div>
+                        <div style={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.5)', marginTop: 3, lineHeight: 1.2 }}>{item.label}</div>
                       </div>
                     ))}
                   </div>

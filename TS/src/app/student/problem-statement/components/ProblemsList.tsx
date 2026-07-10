@@ -120,7 +120,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
     <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start', background: '#f8fafc', borderRadius: 16, padding: '20px 20px 20px 20px', margin: '0 -8px' }}>
 
       {/* ── LEFT: FILTER SIDEBAR ── */}
-      <div style={{ width: 230, flexShrink: 0, paddingRight: 18 }}>
+      <div style={{ width: 270, flexShrink: 0, paddingRight: 18 }}>
         <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
 
           {/* Filter by Level */}
@@ -141,21 +141,6 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>{count.toLocaleString()}</span>
               </div>
             ))}
-          </div>
-
-          <div style={{ height: 1, background: '#edf2f7' }} />
-
-          {/* Filter by Topic */}
-          <div style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: 10 }}>Filter by Topic</div>
-            <select style={{ width: '100%', height: 36, border: '1px solid #e2e8f0', borderRadius: 8, padding: '0 10px', fontSize: '0.8rem', color: '#475569', background: '#f8fafc', outline: 'none', cursor: 'pointer' }}>
-              <option>All Topics</option>
-              <option>Array</option>
-              <option>String</option>
-              <option>Tree</option>
-              <option>Dynamic Programming</option>
-              <option>Graph</option>
-            </select>
           </div>
 
           <div style={{ height: 1, background: '#edf2f7' }} />
@@ -248,7 +233,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
           </div>
 
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 80px 95px 75px 110px 110px', padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) 80px 95px 75px 110px 110px', padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
             <div />
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Problem</div>
             <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Level</div>
@@ -283,7 +268,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
               <div
                 key={p._id}
                 style={{
-                  display: 'grid', gridTemplateColumns: '32px 1fr 80px 95px 75px 110px 110px',
+                  display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) 80px 95px 75px 110px 110px',
                   padding: '10px 16px', borderBottom: '1px solid #f1f5f9', alignItems: 'center',
                   background: isActive ? 'rgba(255,122,0,0.03)' : '#fff',
                   opacity: isLocked ? 0.4 : 1,
@@ -430,87 +415,6 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
         </div>
       </div>
 
-      {/* ── RIGHT: MY SUBMISSIONS MINI PANEL ── */}
-      <div style={{ width: 290, flexShrink: 0, paddingLeft: 18 }}>
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
-
-          {/* Header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px', borderBottom: '1px solid #edf2f7' }}>
-            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>My Submissions</span>
-            <span style={{ fontSize: '0.72rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All</span>
-          </div>
-
-          {loadingSubs ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: 28 }}>
-              <div style={{ width: 20, height: 20, border: '2.5px solid rgba(255,122,0,0.2)', borderTop: '2.5px solid #ff7a00', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-            </div>
-          ) : recentSubs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '0.78rem' }}>
-              <svg style={{ margin: '0 auto 10px', display: 'block', color: '#e2e8f0' }} width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-              No submissions yet
-            </div>
-          ) : (
-            <div style={{ padding: '10px 16px 4px' }}>
-              {recentSubs.map((s, idx) => {
-                const v = VERDICT[s.verdict] ?? VERDICT.REJECTED
-                const isLast = idx === recentSubs.length - 1
-                return (
-                  <div key={s._id} style={{ display: 'flex', gap: 10, paddingBottom: isLast ? 8 : 0 }}>
-                    {/* Timeline left */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                      <div style={{
-                        width: 24, height: 24, borderRadius: '50%', background: v.iconBg,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.7rem', color: '#fff', fontWeight: 700, flexShrink: 0,
-                      }}>
-                        {v.icon}
-                      </div>
-                      {!isLast && <div style={{ width: 1.5, flex: 1, minHeight: 12, background: '#e2e8f0', margin: '3px 0' }} />}
-                    </div>
-
-                    {/* Content */}
-                    <div style={{ flex: 1, minWidth: 0, paddingBottom: isLast ? 0 : 12 }}>
-                      {/* Title + badges */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, flexWrap: 'wrap', marginBottom: 3 }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a', flex: '0 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                          {s.problemTitle}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 4 }}>
-                        <span style={{ fontSize: '0.58rem', fontWeight: 700, color: v.color, background: v.bg, borderRadius: 5, padding: '1px 6px', whiteSpace: 'nowrap' }}>
-                          {v.label}
-                        </span>
-                      </div>
-                      {/* Language + date */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: LANG_COLOR[s.language] ?? '#888', display: 'inline-block', flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.6rem', color: '#64748b', textTransform: 'capitalize' }}>{s.language}</span>
-                        <span style={{ fontSize: '0.6rem', color: '#cbd5e1' }}>·</span>
-                        <span style={{ fontSize: '0.6rem', color: '#94a3b8' }}>{fmtDate(s.createdAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* View All button */}
-          {!loadingSubs && recentSubs.length > 0 && (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid #edf2f7' }}>
-              <button style={{
-                width: '100%', padding: '9px 0', border: 'none', borderRadius: 8,
-                background: '#ff7a00', color: '#fff', fontSize: '0.78rem', fontWeight: 700,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
-                View All Submissions
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              </button>
-            </div>
-          )}
-
-        </div>
-      </div>
 
     </div>
   )

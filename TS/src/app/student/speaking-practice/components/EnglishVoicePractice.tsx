@@ -618,19 +618,31 @@ const EnglishVoicePractice: React.FC = () => {
                     <div className="stats-group">
                       {history && history.highestScore !== null && (
                         <div className="stat-item">
-                          <small className="stat-label">Best Score</small>
+                          <small className="stat-label">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 3 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            Best Score
+                          </small>
                           <strong className="best-score-value">{history.highestScore}</strong>
                         </div>
                       )}
                       <div className="stat-item">
-                        <small className="stat-label">Time</small>
-                        <strong className="stat-value">{formatTime(timeLeft)}</strong>
+                        <small className="stat-label">
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 3 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          Time Left
+                        </small>
+                        <strong className="stat-value" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }}>{formatTime(timeLeft)}</strong>
                       </div>
-                      <div className="mic-status" title={micWarning === 'muted' ? 'Microphone muted' : micWarning === 'low' ? 'Mic volume very low' : ''}>
+                      <div className="mic-status" title={micWarning === 'muted' ? 'Microphone muted' : micWarning === 'low' ? 'Mic volume very low' : 'Microphone active'}>
                         {micWarning ? (
                           <FaMicrophoneSlash size={18} style={{ color: '#ef4444', animation: 'pulse 1.2s infinite' }} />
                         ) : (
-                          <span className={`mic-icon ${isListening ? 'listening' : ''}`}>🎤</span>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                            className={`mic-svg-icon ${isListening ? 'listening' : ''}`}>
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                          </svg>
                         )}
                       </div>
                     </div>
@@ -988,6 +1000,21 @@ const EnglishVoicePractice: React.FC = () => {
           color: #000000 !important;
           opacity: 1;
           animation: pulse 1.5s infinite;
+        }
+
+        .mic-svg-icon {
+          color: rgba(0,0,0,0.6);
+          transition: color 0.2s, transform 0.2s;
+        }
+
+        .mic-svg-icon.listening {
+          color: #000000;
+          animation: micPulse 1.2s ease-in-out infinite;
+        }
+
+        @keyframes micPulse {
+          0%, 100% { transform: scale(1);    opacity: 1; }
+          50%       { transform: scale(1.15); opacity: 0.8; }
         }
 
         .action-buttons-group {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+﻿import React, { useEffect, useRef, useState } from 'react'
 import { Button, Card, Container, Row, Col, Spinner, Badge, ProgressBar, Alert, Modal, Form } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import { FaMicrophone, FaStop, FaStar, FaLightbulb, FaCheckCircle, FaRedo, FaPlay, FaExclamationTriangle, FaMobileAlt, FaKeyboard, FaArrowLeft } from 'react-icons/fa'
@@ -76,6 +76,11 @@ const SpeakingPractice: React.FC = () => {
   const [isWebView, setIsWebView] = useState(false)
   const [showManualInput, setShowManualInput] = useState(false)
   const [pendingAudioUri, setPendingAudioUri] = useState<string | null>(null)
+  const [selectedAttempt, setSelectedAttempt] = useState<JamHistory['attempts'][0] | null>(null)
+  const [preloadedPrompt, setPreloadedPrompt] = useState<Prompt | null>(null)
+  const [loadingPreloadedPrompt, setLoadingPreloadedPrompt] = useState(false)
+  const [activeTab, setActiveTab] = useState('your-answer')
+  const [attemptsPage, setAttemptsPage] = useState(1)
   const finalTranscriptRef = useRef('')
   const sessionIdRef = useRef<string>('')
   const isSubmittingRef = useRef(false)
@@ -132,7 +137,7 @@ const SpeakingPractice: React.FC = () => {
 
     if (!currentSession) return
 
-    // ❌ stale callback → ignore
+    // âŒ stale callback â†' ignore
     if (currentSession !== sessionIdRef.current) {
       console.warn('Stale native audio ignored')
       return
@@ -178,6 +183,7 @@ const SpeakingPractice: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchJamHistory()
+      preloadPrompt()
     }
 
     return () => {
@@ -209,32 +215,54 @@ const SpeakingPractice: React.FC = () => {
     }
   }
 
-  // ⭐ Fetch speaking topic
+  // â­ Fetch speaking topic (for recording session)
   const fetchPrompt = async () => {
     const res = await fetch(`${baseURL}/speaking/prompt`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     const data = await res.json()
 
-    // 🆕 NEW SESSION
     sessionIdRef.current = crypto.randomUUID()
     isSubmittingRef.current = false
     isStoppingRef.current = false
-
-    // 🧹 clear stale refs
     finalTranscriptRef.current = ''
     audioChunks.current = []
 
     setPrompt(data)
   }
 
+  // Pre-load a topic for display on the start screen
+  const preloadPrompt = async () => {
+    if (!token) return
+    try {
+      setLoadingPreloadedPrompt(true)
+      const res = await fetch(`${baseURL}/speaking/prompt`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setPreloadedPrompt(data)
+    } catch (err) {
+      console.error('preloadPrompt error', err)
+    } finally {
+      setLoadingPreloadedPrompt(false)
+    }
+  }
 
-  // ⭐ User clicks Start → Load topic only
+  // â­ User clicks Start Speaking â€" use preloaded prompt if available
   const beginPractice = async () => {
     setShowPrompt(true)
-    setLoadingPrompt(true)
-    await fetchPrompt()
-    setLoadingPrompt(false)
+    if (preloadedPrompt) {
+      sessionIdRef.current = crypto.randomUUID()
+      isSubmittingRef.current = false
+      isStoppingRef.current = false
+      finalTranscriptRef.current = ''
+      audioChunks.current = []
+      setPrompt(preloadedPrompt)
+    } else {
+      setLoadingPrompt(true)
+      await fetchPrompt()
+      setLoadingPrompt(false)
+    }
   }
 
   const fetchSampleAnswer = async (question: string) => {
@@ -288,7 +316,7 @@ const SpeakingPractice: React.FC = () => {
 
     if (prompt) fetchSampleAnswer(prompt.text)
 
-    // 🔴 WEBVIEW MODE: Use native recording
+    // ðŸ"´ WEBVIEW MODE: Use native recording
     if (isWebView) {
       console.log('Using native recording via WebView')
 
@@ -320,7 +348,7 @@ const SpeakingPractice: React.FC = () => {
       return
     }
 
-    // 🔵 BROWSER MODE: Use Web APIs
+    // ðŸ"µ BROWSER MODE: Use Web APIs
     try {
       // Request microphone permissions
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -455,7 +483,7 @@ const SpeakingPractice: React.FC = () => {
 
     setRecording(false)
 
-    // 🔴 WEBVIEW MODE: Stop native recording
+    // ðŸ"´ WEBVIEW MODE: Stop native recording
     if (isWebView) {
       console.log('Stopping native recording via WebView')
 
@@ -478,7 +506,7 @@ const SpeakingPractice: React.FC = () => {
       return
     }
 
-    // 🔵 BROWSER MODE: Stop web recording
+    // ðŸ"µ BROWSER MODE: Stop web recording
     // Stop speech recognition
     if (recognitionRef.current) {
       try {
@@ -492,11 +520,11 @@ const SpeakingPractice: React.FC = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       return new Promise<void>((resolve) => {
         mediaRecorderRef.current!.onstop = () => {
-          // ⏳ Allow speech recognition to flush final transcript
+          // â³ Allow speech recognition to flush final transcript
           setTimeout(async () => {
             await processAudioRecording()
             resolve()
-          }, 500) // 300–500ms is ideal
+          }, 500) // 300â€"500ms is ideal
         }
         mediaRecorderRef.current!.stop()
 
@@ -517,7 +545,7 @@ const SpeakingPractice: React.FC = () => {
     const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm'
     const audioBlob = new Blob(audioChunks.current, { type: mimeType })
 
-    // ❌ If session changed → DO NOTHING
+    // âŒ If session changed â†' DO NOTHING
     if (currentSession !== sessionIdRef.current) {
       console.warn('Stale recording ignored')
       return
@@ -532,7 +560,7 @@ const SpeakingPractice: React.FC = () => {
     if (isSubmittingRef.current) return
     isSubmittingRef.current = true
 
-    // 🚨 HARD VALIDATION
+    // ðŸš¨ HARD VALIDATION
     if (!prompt?._id) {
       setRecordingError('Speaking topic missing. Please retry.')
       return
@@ -544,7 +572,7 @@ const SpeakingPractice: React.FC = () => {
     }
 
     if (!transcriptText?.trim()) {
-      // ⛔ DO NOT AUTO SUBMIT
+      // â›" DO NOT AUTO SUBMIT
       setShowManualInput(true)
       setLoading(false)
       return
@@ -622,7 +650,7 @@ const SpeakingPractice: React.FC = () => {
   const resetPractice = async () => {
     stopAllMedia()
 
-    // ❌ invalidate previous session immediately
+    // âŒ invalidate previous session immediately
     sessionIdRef.current = ''
 
     setTranscript('')
@@ -633,6 +661,7 @@ const SpeakingPractice: React.FC = () => {
     setRecordingError('')
     setShowManualInput(false)
     setPendingAudioUri(null)
+    setActiveTab('your-answer')
 
     setLoadingPrompt(true)
     setPrompt(null)
@@ -673,6 +702,22 @@ const SpeakingPractice: React.FC = () => {
 
   const getScoreFeedback = (score: number) =>
     score >= 90 ? 'Excellent!' : score >= 80 ? 'Very Good!' : score >= 70 ? 'Good!' : score >= 60 ? 'Fair' : 'Needs Improvement'
+
+  const getAttemptFeedback = (score: number): string => {
+    if (score >= 80) return 'Excellent fluency and clear expression!'
+    if (score >= 60) return 'Good fluency and clear expression.'
+    if (score >= 40) return 'Try to improve your vocabulary and confidence.'
+    return 'Keep practicing to improve your overall performance.'
+  }
+
+  const formatAttemptDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    const day = d.getDate()
+    const month = d.toLocaleString('en-US', { month: 'short' })
+    const year = d.getFullYear()
+    const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+    return { date: `${day} ${month} ${year}`, time }
+  }
 
   const closeMobileHelp = () => {
     setShowMobileHelp(false)
@@ -728,12 +773,12 @@ const SpeakingPractice: React.FC = () => {
           <div className="mobile-tips">
             <h6>For best recording experience on mobile:</h6>
             <ul>
-              <li>📱 <strong>Use Chrome or Firefox on Android</strong></li>
-              <li>🍏 <strong>Use Safari on iOS</strong></li>
-              <li>🎤 <strong>Hold phone close to mouth</strong> (10-15 cm)</li>
-              <li>🔇 <strong>Find a quiet environment</strong></li>
-              <li>📶 <strong>Ensure stable internet connection</strong></li>
-              <li>✅ <strong>Allow microphone permissions</strong> when prompted</li>
+              <li>ðŸ"± <strong>Use Chrome or Firefox on Android</strong></li>
+              <li>ðŸ <strong>Use Safari on iOS</strong></li>
+              <li>ðŸŽ¤ <strong>Hold phone close to mouth</strong> (10-15 cm)</li>
+              <li>ðŸ"‡ <strong>Find a quiet environment</strong></li>
+              <li>ðŸ"¶ <strong>Ensure stable internet connection</strong></li>
+              <li>âœ… <strong>Allow microphone permissions</strong> when prompted</li>
             </ul>
             {isWebView && (
               <Alert variant="info" className="mt-2">
@@ -783,339 +828,858 @@ const SpeakingPractice: React.FC = () => {
         </Modal.Footer>
       </Modal>
 
-      {/* ⭐ START SCREEN */}
+      {/* â­ START SCREEN */}
       {!showPrompt && (
-        <div className="start-screen-container">
-          <Card className="start-screen-card">
-            <div className="welcome-icon">🎤</div>
+        <div style={{ padding: '0 0 24px' }}>
+          <Row className="g-4 align-items-stretch" style={{ marginBottom: 20 }}>
 
-            <h2 className="welcome-title d-flex align-items-center justify-content-center gap-2">
-              Just A Minute
-              {status === 'pending' && (
-                <span className="trial-badge-modern">
-                  Trial 
-                </span>
-              )}
-            </h2>
+            {/* â•â• LEFT COLUMN â•â• */}
+            <Col lg={7} className="d-flex">
 
-            <p className="welcome-description">
-              Test your speaking skills with AI-powered evaluation.
-              {isWebView ? (
-                <span className="mobile-note">
-                  <br />
-                  <small className="text-info">
-                    <FaMobileAlt /> Using mobile app recording
-                  </small>
-                </span>
-              ) : isMobile ? (
-                <span className="mobile-note">
-                  <br />
-                  <small className="text-muted">
-                    <FaMobileAlt /> Mobile browser recording
-                  </small>
-                </span>
-              ) : null}
-            </p>
+              {/* Hero header card */}
+              <div style={{ position: 'relative' as const, background: 'linear-gradient(120deg,#eceaff 0%,#e8d8ff 50%,#fde8ff 100%)', borderRadius: 24, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(108,99,255,0.12)', width: '100%' }}>
+                {/* Watermark decorative circles */}
+                <div style={{ position: 'absolute' as const, top: -40, right: 110, width: 160, height: 160, borderRadius: '50%', background: 'rgba(108,99,255,0.08)', pointerEvents: 'none' as const }} />
+                <div style={{ position: 'absolute' as const, top: 20, right: 60, width: 100, height: 100, borderRadius: '50%', background: 'rgba(108,99,255,0.06)', pointerEvents: 'none' as const }} />
+                <div style={{ position: 'absolute' as const, bottom: -30, right: 140, width: 120, height: 120, borderRadius: '50%', background: 'rgba(180,120,255,0.07)', pointerEvents: 'none' as const }} />
+                <div style={{ position: 'absolute' as const, bottom: -20, left: -20, width: 90, height: 90, borderRadius: '50%', background: 'rgba(108,99,255,0.05)', pointerEvents: 'none' as const }} />
 
-            <Button
-              className="start-button"
-              onClick={beginPractice}
-              disabled={isLimitReached}>
-              <FaPlay className="me-2" /> Start Speaking Practice
-            </Button>
-
-            {isLimitReached && (
-              <div className="trial-limit-box-modern">
-                🔒 {status === 'pending'
-                  ? 'Upgrade to unlock unlimited speaking practice.'
-                  : 'Monthly limit reached. Try again next month.'}
-              </div>
-            )}
-
-            {history && (
-              <Card className="history-card-modern">
-                <Card.Body>
-                  <div className="history-grid">
-
-                    <div className="history-box">
-                      <div className="history-icon">🕒</div>
-                      <div>
-                        <div className="history-label">
-                          {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
-                        </div>
-                        <div className="history-value">
-                          {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="history-box">
-                      <div className="history-icon">⭐</div>
-                      <div>
-                        <div className="history-label">Best Score</div>
-                        <div className="history-value highlight">
-                          {history.summary.bestScore != null ? history.summary.bestScore : '--'} / 100
-                        </div>
-                      </div>
-                    </div>
-
+                <div style={{ flex: 1, position: 'relative' as const, zIndex: 1 }}>
+                  <h2 style={{ fontWeight: 800, fontSize: '1.75rem', color: '#1a1a2e', marginBottom: 8, letterSpacing: '-0.3px' }}>
+                    Just A Minute
+                    {status === 'pending' && <span style={{ fontSize: '0.68rem', fontWeight: 700, background: 'rgba(255,122,0,0.15)', color: '#ff7a00', padding: '3px 10px', borderRadius: 20, border: '1px solid rgba(255,122,0,0.35)', marginLeft: 10, verticalAlign: 'middle', letterSpacing: 0 }}>Trial</span>}
+                  </h2>
+                  <p style={{ color: '#5a5a7a', fontSize: '0.88rem', marginBottom: 20, lineHeight: 1.65, fontWeight: 400 }}>
+                    Speak on the given topic for just 60 seconds.<br />Organize your thoughts and express your ideas clearly!
+                  </p>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' as const }}>
+                    {[
+                      { label: '60 Seconds', icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><circle cx="12" cy="12" r="10" stroke="#6c63ff" strokeWidth="2"/><polyline points="12,6 12,12 16,14" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg>, bg: 'rgba(255,255,255,0.75)', text: '#6c63ff', border: 'rgba(108,99,255,0.2)' },
+                      { label: 'AI Evaluation', icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2" stroke="#ff7a00" strokeWidth="2"/><path d="M8 21h8M12 17v4" stroke="#ff7a00" strokeWidth="2" strokeLinecap="round"/></svg>, bg: 'rgba(255,255,255,0.75)', text: '#ff7a00', border: 'rgba(255,122,0,0.2)' },
+                      { label: 'Detailed Feedback', icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg>, bg: 'rgba(255,255,255,0.75)', text: '#16a34a', border: 'rgba(22,163,74,0.2)' },
+                    ].map(b => (
+                      <span key={b.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: b.bg, color: b.text, fontSize: '0.78rem', fontWeight: 600, padding: '5px 14px', borderRadius: 20, border: `1px solid ${b.border}`, backdropFilter: 'blur(4px)' }}>
+                        {b.icon}{b.label}
+                      </span>
+                    ))}
                   </div>
-                </Card.Body>
-              </Card>
-            )}
-
-          </Card>
-        </div>
-      )}
-
-      {/* ⭐ SPINNER WHILE LOADING TOPIC */}
-      {showPrompt && loadingPrompt && (
-        <div className="loading-screen">
-          <Spinner animation="border" variant="primary" />
-          <p className="loading-text">Loading your speaking topic...</p>
-        </div>
-      )}
-
-      {/* ⭐ MAIN UI */}
-      {showPrompt && !loadingPrompt && prompt && (
-        <Card className="main-practice-card">
-          <div className="practice-header">
-            <div className="d-flex align-items-center gap-3">
-              <button
-                className="back-btn"
-                onClick={() => { if (!recording) { stopAllMedia(); setShowPrompt(false); setFeedback(null); setTranscript(''); setSampleAnswer(''); setRecordingTime(0); setRecordingError('') } }}
-                disabled={recording}
-                title="Back to Home"
-              >
-                <FaArrowLeft size={13} /> Back
-              </button>
-              <h4 className="practice-title mb-0">
-                <FaMicrophone /> Speaking Challenge
-              </h4>
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              {isWebView && (
-                <Badge bg="info" className="app-badge">
-                  App Mode
-                </Badge>
-              )}
-              <Badge bg={recording ? 'danger' : 'success'} className="status-badge">
-                {recording ? 'Recording...' : 'Ready'}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="practice-content">
-            <div className="topic-section">
-              <div className="topic-card">
-                <div className="topic-card-header">
-                  <h5 className="topic-title mb-0">🎯 Your Topic</h5>
-                  <button
-                    className="another-topic-btn"
-                    onClick={fetchAnotherTopic}
-                    disabled={recording || loadingNewTopic}
-                    title="Get a different topic"
-                  >
-                    {loadingNewTopic
-                      ? <Spinner animation="border" size="sm" style={{ width: 12, height: 12, borderWidth: 2 }} />
-                      : <FaRedo size={11} />
-                    }
-                    <span>{loadingNewTopic ? 'Loading...' : 'Another Topic'}</span>
-                  </button>
                 </div>
-                <p className="topic-text mt-3 mb-0">
-                  {loadingNewTopic ? <span className="topic-loading-text">Generating a new topic for you…</span> : prompt.text}
-                </p>
+
+                {/* Mic graphic */}
+                <div style={{ flexShrink: 0, position: 'relative' as const, zIndex: 1 }}>
+                  <svg viewBox="0 0 110 140" width="110" height="140" fill="none">
+                    <defs>
+                      <linearGradient id="micGrad" x1="30" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#a393f5"/>
+                        <stop offset="1" stopColor="#5c4fcf"/>
+                      </linearGradient>
+                      <linearGradient id="micShine" x1="38" y1="14" x2="55" y2="50" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="rgba(255,255,255,0.45)"/>
+                        <stop offset="1" stopColor="rgba(255,255,255,0)"/>
+                      </linearGradient>
+                      <filter id="micShadow" x="-30%" y="-10%" width="160%" height="140%">
+                        <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#6c63ff" floodOpacity="0.35"/>
+                      </filter>
+                    </defs>
+                    {/* Glow ring */}
+                    <ellipse cx="55" cy="132" rx="28" ry="6" fill="rgba(108,99,255,0.18)"/>
+                    {/* Mic body */}
+                    <rect x="32" y="10" width="46" height="72" rx="23" fill="url(#micGrad)" filter="url(#micShadow)"/>
+                    {/* Shine */}
+                    <rect x="38" y="14" width="14" height="36" rx="7" fill="url(#micShine)"/>
+                    {/* Grille lines */}
+                    <line x1="42" y1="30" x2="68" y2="30" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="40" y1="38" x2="70" y2="38" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="40" y1="46" x2="70" y2="46" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="42" y1="54" x2="68" y2="54" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round"/>
+                    {/* Stand arc */}
+                    <path d="M22 60c0 18.2 14.8 33 33 33s33-14.8 33-33" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                    {/* Stand pole */}
+                    <line x1="55" y1="93" x2="55" y2="114" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                    {/* Base */}
+                    <line x1="38" y1="114" x2="72" y2="114" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                  </svg>
+                </div>
               </div>
 
-              <div className="recording-controls">
-                {!recording ? (
-                  <Button
-                    variant="primary"
-                    className="record-button"
-                    onClick={startRecording}
+            </Col>
+
+            {/* RIGHT: Performance — same row as hero, matches height */}
+            <Col lg={5} className="d-flex">
+              {history && history.summary.latestScore !== null && (
+                <div style={{ background: '#ffffff', borderRadius: 18, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', width: '100%' }}>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 16 }}>Your Latest Performance</div>
+                  <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                    <div style={{ position: 'relative' as const, flexShrink: 0 }}>
+                      {(() => {
+                        const score = history.summary.latestScore ?? 0
+                        const r = 54, circ = 2 * Math.PI * r
+                        const dash = (score / 100) * circ
+                        return (
+                          <svg width="130" height="130" viewBox="0 0 130 130">
+                            <circle cx="65" cy="65" r={r} fill="none" stroke="#f0f0f0" strokeWidth="10"/>
+                            <circle cx="65" cy="65" r={r} fill="none" stroke="#ff7a00" strokeWidth="10" strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset="0" strokeLinecap="round" transform="rotate(-90 65 65)"/>
+                            <text x="65" y="60" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: '#1a1a2e' }}>{score}</text>
+                            <text x="65" y="78" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af' }}>/100</text>
+                          </svg>
+                        )
+                      })()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a2e', marginBottom: 4 }}>
+                        {(history.summary.latestScore ?? 0) >= 80 ? 'Great Job!' : (history.summary.latestScore ?? 0) >= 60 ? 'Good Work!' : 'Keep Going!'}
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: '#6c757d', lineHeight: 1.4 }}>Keep practicing to achieve perfection.</div>
+                      <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                        <div style={{ background: '#fff7ed', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
+                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Best Score</div>
+                          <div style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.95rem' }}>{history.summary.bestScore ?? '--'}/100</div>
+                        </div>
+                        <div style={{ background: '#f0efff', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
+                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Attempts</div>
+                          <div style={{ fontWeight: 700, color: '#6c63ff', fontSize: '0.95rem' }}>{history.attemptsUsed}/{history.monthlyLimit}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Col>
+          </Row>
+
+          <Row className="g-4">
+            <Col lg={7}>
+
+              {/* Start Speaking card */}
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '28px 28px 24px', marginBottom: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+
+                {/* Title */}
+                <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '1.05rem', marginBottom: 18 }}>Ready to test your speaking skills?</div>
+
+                {/* Tips 2x2 grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
+                  {([
+                    { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 5-3.5 6.5V17H8.5v-1.5C6.5 14 5 11.5 5 9a7 7 0 0 1 7-7z" stroke="#6c63ff" strokeWidth="1.5"/><line x1="8.5" y1="20" x2="15.5" y2="20" stroke="#6c63ff" strokeWidth="1.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="20" stroke="#6c63ff" strokeWidth="1.5"/></svg>, bg: '#ede9fe', title: 'Plan Before You Speak', desc: 'Take 5–10 seconds to organize your thoughts.' },
+                    { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15z" stroke="#16a34a" strokeWidth="1.5"/></svg>, bg: '#dcfce7', title: 'Expand Your Vocabulary', desc: 'Use varied words to express ideas better.' },
+                    { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="12" r="10" stroke="#0284c7" strokeWidth="1.5"/><polyline points="12,6 12,12 16,14" stroke="#0284c7" strokeWidth="1.5" strokeLinecap="round"/></svg>, bg: '#e0f2fe', title: 'Maintain Good Pace', desc: 'A steady pace is ideal — not too fast or slow.' },
+                    { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M2 12c0 0 3-5 10-5s10 5 10 5-3 5-10 5S2 12 2 12z" stroke="#f59e0b" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" stroke="#f59e0b" strokeWidth="1.5"/></svg>, bg: '#fef9c3', title: 'Practice Regularly', desc: 'More practice builds confidence and fluency.' },
+                  ]).map((tip, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fafafa', borderRadius: 12, padding: '12px 14px' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: tip.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{tip.icon}</div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 2 }}>{tip.title}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#6c757d', lineHeight: 1.4 }}>{tip.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Hint pills */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, marginBottom: 22 }}>
+                  {[
+                    { label: '60 Seconds', color: '#ede9fe', text: '#6c63ff' },
+                    { label: 'Speak Clearly', color: '#e0f2fe', text: '#0284c7' },
+                    { label: 'Express Your Ideas', color: '#fef9c3', text: '#a16207' },
+                    { label: 'Be Confident', color: '#fee2e2', text: '#dc2626' },
+                  ].map(h => (
+                    <span key={h.label} style={{ background: h.color, color: h.text, fontSize: '0.75rem', fontWeight: 600, padding: '5px 13px', borderRadius: 20 }}>{h.label}</span>
+                  ))}
+                </div>
+
+                {/* Start Speaking button */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+                  <button
+                    style={{ background: isLimitReached ? '#e5e7eb' : '#ff7a00', border: 'none', borderRadius: 30, padding: '13px 52px', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: isLimitReached ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: isLimitReached ? 'none' : '0 4px 16px rgba(255,122,0,0.35)' }}
+                    onClick={beginPractice}
                     disabled={isLimitReached}
                   >
-                    <FaMicrophone className="me-2" />
-                    {isWebView ? 'Start App Recording' : 'Start Speaking'}
-                  </Button>
-                ) : (
-                  <Button variant="danger" className="stop-button" onClick={stopRecording}>
-                    <FaStop className="me-2" /> Stop Recording
-                  </Button>
-                )}
-
-                {recording && (
-                  <Badge bg={recordingTime > maxDuration - 10 ? 'warning' : 'danger'} className="timer-badge">
-                    ⏱ {formatTime(recordingTime)} / {formatTime(maxDuration)}
-                  </Badge>
-                )}
-
-                {recordingError && (
-                  <Alert variant="danger" className="mt-2 small p-2">
-                    <FaExclamationTriangle className="me-1" />
-                    {recordingError}
-                  </Alert>
-                )}
-              </div>
-
-              {isWebView && !recording && (
-                <Alert variant="info" className="mt-2 small p-2">
-                  <FaMobileAlt className="me-1" />
-                  <strong>App Recording:</strong> Uses your device's microphone for best quality.
-                </Alert>
-              )}
-
-              {!isWebView && isMobile && !recording && (
-                <Alert variant="info" className="mt-2 small p-2">
-                  <FaMobileAlt className="me-1" />
-                  <strong>Mobile Browser:</strong> Hold phone close for best results.
-                </Alert>
-              )}
-            </div>
-
-            <div className="transcript-section">
-              <div className="transcript-card">
-                <h6 className="transcript-title">
-                  {isWebView ? '📝 Your Speech' : '🎙️ Live Transcript'}
-                </h6>
-                <div className="transcript-content">
-                  {isWebView ? (
-                    <>
-                      {transcript || 'Speech-to-text not available in app mode.'}
-                      {showManualInput && (
-                        <div className="mt-3">
-                          <Form.Control
-                            as="textarea"
-                            rows={3}
-                            value={manualTranscript}
-                            onChange={(e) => setManualTranscript(e.target.value)}
-                            placeholder="Type what you said here..."
-                          />
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="mt-2"
-                            onClick={handleManualSubmit}
-                            disabled={!manualTranscript.trim()}
-                          >
-                            Submit Transcript
-                          </Button>
-                        </div>
-                      )}
-                    </>
+                    <svg viewBox="0 0 24 24" fill="none" width="18" height="18">
+                      <rect x="8" y="1" width="8" height="13" rx="4" fill="white"/>
+                      <path d="M5 10a7 7 0 0 0 14 0" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                      <line x1="9" y1="21" x2="15" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                    Start Speaking (60 Seconds)
+                  </button>
+                  {isLimitReached ? (
+                    <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>
+                      {status === 'pending' ? 'Upgrade to unlock unlimited practice.' : 'Monthly limit reached. Try again next month.'}
+                    </div>
                   ) : (
-                    transcript || 'Start speaking to see your transcript...'
+                    <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#9ca3af' }}>Click the button above to reveal your topic and start speaking.</div>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* FEEDBACK SECTION */}
-          <div className="feedback-section">
-            <h4 className="feedback-title">
-              <FaLightbulb /> AI Feedback
-            </h4>
 
-            {loading && (
-              <div className="loading-feedback">
-                <Spinner animation="border" variant="success" />
-                <p className="loading-feedback-text">
-                  {isWebView ? 'Processing your recording...' : 'Analyzing your speech...'}
-                </p>
+            </Col>
+
+            {/* RIGHT: Tips + Motivational */}
+            <Col lg={5}>
+
+              {/* Your Recent Attempts */}
+              {history && history.attempts.length > 0 && (() => {
+                const PAGE_SIZE = 5
+                const sorted = [...history.attempts].reverse()
+                const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+                const page = Math.min(attemptsPage, totalPages)
+                const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+                return (
+                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Recent Attempts</span>
+                      <span style={{ fontSize: '0.73rem', color: '#9ca3af' }}>{sorted.length} total</span>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr>
+                          {['Date & Time', 'Score', 'Dur.', 'Action'].map(h => (
+                            <th key={h} style={{ textAlign: 'left', padding: '5px 6px', color: '#9ca3af', fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pageItems.map((att) => {
+                          const { date, time } = formatAttemptDate(att.date)
+                          const isBest = att.score === history.summary.bestScore
+                          const scoreColor = att.score >= 80 ? '#16a34a' : att.score >= 60 ? '#d97706' : '#dc2626'
+                          return (
+                            <tr key={att.attempt}>
+                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '36%' }}>
+                                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1a1a2e' }}>{date}</div>
+                                <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{time}</div>
+                              </td>
+                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '22%' }}>
+                                <span style={{ color: scoreColor, fontWeight: 700, fontSize: '0.82rem' }}>{att.score}/100</span>
+                                {isBest && <span style={{ display: 'block', background: '#dcfce7', color: '#16a34a', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, marginTop: 2, width: 'fit-content' }}>Best</span>}
+                              </td>
+                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', color: '#6c757d', fontSize: '0.78rem', width: '12%' }}>1:00</td>
+                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '30%' }}>
+                                <button className="jam-view-report-btn" style={{ fontSize: '0.72rem', padding: '4px 8px' }} onClick={() => setSelectedAttempt(att)}>View Report</button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: '1px solid #f5f5f5' }}>
+                        <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>Page {page} of {totalPages}</span>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            onClick={() => setAttemptsPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#d1d5db' : '#374151', cursor: page === 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="15,18 9,12 15,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(pg => (
+                            <button
+                              key={pg}
+                              onClick={() => setAttemptsPage(pg)}
+                              style={{ width: 28, height: 28, borderRadius: 8, border: pg === page ? '1.5px solid #6c63ff' : '1px solid #e5e7eb', background: pg === page ? '#6c63ff' : '#fff', color: pg === page ? '#fff' : '#374151', cursor: 'pointer', fontSize: '0.72rem', fontWeight: pg === page ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >{pg}</button>
+                          ))}
+                          <button
+                            onClick={() => setAttemptsPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === totalPages ? '#f9fafb' : '#fff', color: page === totalPages ? '#d1d5db' : '#374151', cursor: page === totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="9,18 15,12 9,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+
+            </Col>
+          </Row>
+
+          {/* View Report modal */}
+          {selectedAttempt && (() => {
+            const { date, time } = formatAttemptDate(selectedAttempt.date)
+            const score = selectedAttempt.score
+            const scoreColor = score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : '#dc2626'
+            const scoreBg = score >= 80 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2'
+            const r = 44, circ = 2 * Math.PI * r
+            const dash = (score / 100) * circ
+            return (
+              <div
+                style={{ position: 'fixed' as const, inset: 0, background: 'rgba(15,15,30,0.55)', backdropFilter: 'blur(4px)', zIndex: 1060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+                onClick={() => setSelectedAttempt(null)}
+              >
+                <div
+                  style={{ background: '#ffffff', borderRadius: 24, width: '100%', maxWidth: 420, overflow: 'hidden', boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {/* Gradient header */}
+                  <div style={{ background: 'linear-gradient(120deg,#eceaff 0%,#e8d8ff 60%,#fde8ff 100%)', padding: '24px 24px 20px', position: 'relative' as const }}>
+                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1a1a2e' }}>Attempt #{selectedAttempt.attempt} Report</div>
+                    <div style={{ fontSize: '0.78rem', color: '#6c757d', marginTop: 2 }}>{date} {'·'} {time}</div>
+                    <button
+                      onClick={() => setSelectedAttempt(null)}
+                      style={{ position: 'absolute' as const, top: 16, right: 16, background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#6c757d', fontSize: '1rem', fontWeight: 700, lineHeight: 1 }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M18 6 6 18M6 6l12 12" stroke="#6c757d" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                    </button>
+                  </div>
+
+                  {/* Body */}
+                  <div style={{ padding: '28px 28px 24px' }}>
+                    {/* Score circle */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                      <div style={{ position: 'relative' as const }}>
+                        <svg width="120" height="120" viewBox="0 0 120 120">
+                          <circle cx="60" cy="60" r={r} fill="none" stroke="#f0f0f0" strokeWidth="9"/>
+                          <circle cx="60" cy="60" r={r} fill="none" stroke={scoreColor} strokeWidth="9"
+                            strokeDasharray={`${dash} ${circ}`}
+                            strokeDashoffset={circ * 0.25}
+                            strokeLinecap="round"
+                          />
+                          <text x="60" y="55" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 26, fontWeight: 800, fill: scoreColor }}>{score}</text>
+                          <text x="60" y="72" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af' }}>/100</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Label pill */}
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                      <span style={{ background: scoreBg, color: scoreColor, fontWeight: 700, fontSize: '0.85rem', padding: '5px 18px', borderRadius: 20 }}>{getScoreFeedback(score)}</span>
+                    </div>
+
+                    {/* Stats row */}
+                    <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                      <div style={{ flex: 1, background: '#f8f9ff', borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>Score</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: scoreColor }}>{score}/100</div>
+                      </div>
+                      <div style={{ flex: 1, background: '#f8f9ff', borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>Duration</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1a1a2e' }}>1:00</div>
+                      </div>
+                      <div style={{ flex: 1, background: '#f8f9ff', borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.68rem', color: '#9ca3af', fontWeight: 600, marginBottom: 4, textTransform: 'uppercase' as const, letterSpacing: '0.5px' }}>Attempt</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1a1a2e' }}>#{selectedAttempt.attempt}</div>
+                      </div>
+                    </div>
+
+                    {/* Feedback box */}
+                    <div style={{ background: 'linear-gradient(135deg,#f8f7ff,#fff8f0)', borderRadius: 14, padding: '14px 16px', display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 20 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: scoreBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 2a10 10 0 1 1 0 20A10 10 0 0 1 12 2zm0 6v5m0 3v.5" stroke={scoreColor} strokeWidth="2" strokeLinecap="round"/></svg>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#374151', lineHeight: 1.6 }}>{getAttemptFeedback(score)}</div>
+                    </div>
+
+                    {/* Close button */}
+                    <button
+                      onClick={() => setSelectedAttempt(null)}
+                      style={{ width: '100%', background: '#ff7a00', border: 'none', borderRadius: 12, padding: '11px', color: '#fff', fontWeight: 700, fontSize: '0.92rem', cursor: 'pointer' }}
+                    >
+                      Close Report
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-
-            {feedback && !loading && (
-              <>
-                <div className="score-display">
-                  <h5>Your Score</h5>
-                  <div className="score-number">{feedback.score}/100</div>
-                  <div className="score-feedback">{getScoreFeedback(feedback.score)}</div>
-                  <ProgressBar
-                    now={feedback.score}
-                    variant={getScoreVariant(feedback.score)}
-                    className="score-progress"
-                  />
-                </div>
-
-                {sampleAnswer && (
-                  <Alert variant="success" className="sample-answer-alert">
-                    <h6 className="alert-title">
-                      <FaStar className="me-2" /> Model Answer
-                    </h6>
-                    {sampleAnswer}
-                  </Alert>
-                )}
-
-                <Alert variant="info" className="corrected-transcript-alert">
-                  <h6 className="alert-title">
-                    <FaCheckCircle className="me-2" /> Corrected Transcript
-                  </h6>
-                  {feedback.correctedTranscript}
-                </Alert>
-
-                {feedback.studentAudioUrl && (
-                  <Alert variant="secondary" className="audio-alert">
-                    <strong>🎧 Your Original Audio</strong>
-                    <audio controls className="audio-player" preload="metadata">
-                      <source src={feedback.studentAudioUrl} type="audio/mpeg" />
-                      Your browser does not support the audio element.
-                    </audio>
-                  </Alert>
-                )}
-
-                {feedback.correctedAudioUrl && (
-                  <Alert variant="success" className="audio-alert">
-                    <strong>🗣️ AI Corrected Pronunciation</strong>
-                    <audio controls className="audio-player" preload="metadata">
-                      <source src={feedback.correctedAudioUrl} type="audio/mpeg" />
-                      Your browser does not support the audio element.
-                    </audio>
-                  </Alert>
-                )}
-
-                <div className="feedback-grid">
-                  <div className="feedback-item grammar">
-                    <strong>📚 Grammar:</strong>{' '}
-                    {highlightFeedbackText(feedback.grammar)}
-                  </div>
-
-                  <div className="feedback-item fluency">
-                    <strong>🔄 Fluency:</strong>{' '}
-                    {highlightFeedbackText(feedback.fluency)}
-                  </div>
-
-                  <div className="feedback-item vocabulary">
-                    <strong>💎 Vocabulary:</strong>{' '}
-                    {highlightFeedbackText(feedback.vocabulary)}
-                  </div>
-
-                  <div className="feedback-item pronunciation">
-                    <strong>🔊 Pronunciation:</strong>{' '}
-                    {highlightFeedbackText(feedback.pronunciation)}
-                  </div>
-                </div>
+            )
+          })()}
+        </div>
+      )}
 
 
-                <Alert variant="warning" className="recommendations-alert">
-                  <FaLightbulb className="me-2" />
-                  <strong>Recommendations:</strong> {feedback.recommendations}
-                </Alert>
-
-                <div className="reset-button-container">
-                  <Button variant="outline-primary" onClick={resetPractice} className="reset-button">
-                    <FaRedo className="me-2" /> Try Another Topic
-                  </Button>
-                </div>
-              </>
-            )}
+      {/* SPINNER WHILE LOADING TOPIC */}
+      {showPrompt && loadingPrompt && (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 16 }}>
+          <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg,#eceaff,#fde8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(108,99,255,0.2)' }}>
+            <svg viewBox="0 0 24 24" fill="none" width="30" height="30"><rect x="8" y="1" width="8" height="13" rx="4" stroke="#6c63ff" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg>
           </div>
-        </Card>
+          <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '1rem' }}>Loading your speaking topic...</div>
+          <div style={{ fontSize: '0.82rem', color: '#9ca3af' }}>Please wait a moment</div>
+        </div>
+      )}
+
+      {/* MAIN PRACTICE UI */}
+      {showPrompt && !loadingPrompt && prompt && (
+        <div style={{ padding: '0 0 32px' }}>
+          <Row className="g-3">
+
+            {/* LEFT: Speaking area */}
+            <Col lg={6} md={12}>
+
+              {/* Header bar */}
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '13px 18px', marginBottom: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                  <button
+                    style={{ background: 'rgba(108,99,255,0.08)', border: '1.5px solid rgba(108,99,255,0.2)', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recording ? 'not-allowed' : 'pointer', color: '#6c63ff', flexShrink: 0, opacity: recording ? 0.4 : 1 }}
+                    onClick={() => { if (!recording) { stopAllMedia(); setShowPrompt(false); setFeedback(null); setTranscript(''); setSampleAnswer(''); setRecordingTime(0); setRecordingError('') } }}
+                    disabled={recording}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M19 12H5M5 12l7-7M5 12l7 7" stroke="#6c63ff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: 'linear-gradient(135deg,#eceaff,#fde8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg viewBox="0 0 24 24" fill="none" width="17" height="17"><rect x="8" y="1" width="8" height="13" rx="4" stroke="#6c63ff" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1a1a2e' }}>Just A Minute</div>
+                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>Speak on the given topic for just 60 seconds. Organize your thoughts and express your ideas clearly!</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f4f3ff', border: '1.5px solid #e0deff', borderRadius: 12, padding: '7px 14px', flexShrink: 0 }}>
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><circle cx="12" cy="12" r="10" stroke="#6c63ff" strokeWidth="2"/><polyline points="12,6 12,12 16,14" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <div>
+                    <div style={{ fontSize: '0.62rem', color: '#9ca3af', fontWeight: 600, letterSpacing: '0.2px', lineHeight: 1.2 }}>Time Left</div>
+                    <div style={{ fontWeight: 800, fontSize: '1rem', color: '#1a1a2e', lineHeight: 1.1, letterSpacing: 0, fontVariantNumeric: 'tabular-nums', fontFamily: 'monospace' }}>{recording ? formatTime(maxDuration - recordingTime) : formatTime(maxDuration)}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Topic card — lavender bg, text left, mic right with wave lines */}
+              <div style={{ background: 'linear-gradient(135deg,#f0eeff 0%,#ede8ff 100%)', borderRadius: 18, padding: '20px 20px 20px 22px', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 16, minHeight: 130 }}>
+                {/* Left: text */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: '#6c63ff', fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.6px', textTransform: 'uppercase' as const, marginBottom: 6 }}>Today's Topic</div>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1a1a2e', marginBottom: 6, lineHeight: 1.4 }}>
+                    {loadingNewTopic ? <span style={{ color: '#9ca3af' }}>Generating new topic...</span> : prompt.text}
+                  </h3>
+                  <p style={{ fontSize: '0.75rem', color: '#6c757d', marginBottom: 12, lineHeight: 1.55 }}>Share your thoughts on how this topic affects the lives of people today.</p>
+                  {!recording && !feedback && (
+                    <button
+                      style={{ background: '#ffffff', border: '1.5px solid #d4cfff', borderRadius: 20, padding: '5px 14px', fontSize: '0.73rem', color: '#6c63ff', fontWeight: 600, cursor: loadingNewTopic ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, boxShadow: '0 1px 4px rgba(108,99,255,0.08)' }}
+                      onClick={fetchAnotherTopic}
+                      disabled={recording || loadingNewTopic}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><path d="M1 4v6h6M23 20v-6h-6" stroke="#6c63ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4-4.64 4.36A9 9 0 0 1 3.51 15" stroke="#6c63ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      Change Topic
+                    </button>
+                  )}
+                </div>
+
+                {/* Right: mic + horizontal wave lines */}
+                <div style={{ flexShrink: 0, position: 'relative' as const, width: 100, height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {/* Horizontal wave bars left */}
+                  <div style={{ position: 'absolute' as const, left: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column' as const, gap: 4, alignItems: 'flex-end' }}>
+                    {[18,26,16,30,14,22,10].map((h,i) => (
+                      <div key={i} className={recording ? 'jam-bar-anim' : ''} style={{ width: `${h}px`, height: 3, borderRadius: 2, background: 'rgba(108,99,255,0.25)' }} />
+                    ))}
+                  </div>
+                  {/* Mic SVG */}
+                  <svg viewBox="0 0 110 140" width="70" height="88" fill="none" style={{ position: 'relative' as const, zIndex: 1 }}>
+                    <defs>
+                      <linearGradient id="micGrad3" x1="30" y1="10" x2="80" y2="90" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#a393f5"/>
+                        <stop offset="1" stopColor="#5c4fcf"/>
+                      </linearGradient>
+                      <linearGradient id="micShine3" x1="38" y1="14" x2="55" y2="50" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="rgba(255,255,255,0.45)"/>
+                        <stop offset="1" stopColor="rgba(255,255,255,0)"/>
+                      </linearGradient>
+                      <filter id="micShadow3" x="-30%" y="-10%" width="160%" height="140%">
+                        <feDropShadow dx="0" dy="8" stdDeviation="10" floodColor="#6c63ff" floodOpacity="0.3"/>
+                      </filter>
+                    </defs>
+                    <ellipse cx="55" cy="132" rx="28" ry="5" fill="rgba(108,99,255,0.15)"/>
+                    <rect x="32" y="10" width="46" height="72" rx="23" fill="url(#micGrad3)" filter="url(#micShadow3)"/>
+                    <rect x="38" y="14" width="14" height="36" rx="7" fill="url(#micShine3)"/>
+                    <line x1="42" y1="30" x2="68" y2="30" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="40" y1="38" x2="70" y2="38" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="40" y1="46" x2="70" y2="46" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <line x1="42" y1="54" x2="68" y2="54" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5" strokeLinecap="round"/>
+                    <path d="M22 60c0 18.2 14.8 33 33 33s33-14.8 33-33" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                    <line x1="55" y1="93" x2="55" y2="114" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                    <line x1="38" y1="114" x2="72" y2="114" stroke="#7c6fd4" strokeWidth="4" strokeLinecap="round"/>
+                  </svg>
+                  {/* Horizontal wave bars right */}
+                  <div style={{ position: 'absolute' as const, right: 0, top: '50%', transform: 'translateY(-50%)', display: 'flex', flexDirection: 'column' as const, gap: 4, alignItems: 'flex-start' }}>
+                    {[16,28,12,32,10,24,14].map((h,i) => (
+                      <div key={i} className={recording ? 'jam-bar-anim' : ''} style={{ width: `${h}px`, height: 3, borderRadius: 2, background: 'rgba(108,99,255,0.25)' }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {recordingError && (
+                <div style={{ background: '#fee2e2', borderRadius: 12, padding: '10px 14px', marginBottom: 12, fontSize: '0.82rem', color: '#dc2626', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg viewBox="0 0 24 24" fill="none" width="16" height="16"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"/></svg>
+                  {recordingError}
+                </div>
+              )}
+
+              {/* Recording section — centred card */}
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '32px 24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+
+                {/* Status badge */}
+                <div style={{ marginBottom: 24 }}>
+                  {recording ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff0f0', color: '#dc2626', fontSize: '0.8rem', fontWeight: 700, padding: '5px 14px', borderRadius: 20 }}>
+                      <span className="jam-rec-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }}/>
+                      Recording...
+                    </span>
+                  ) : (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f0eeff', color: '#6c63ff', fontSize: '0.8rem', fontWeight: 600, padding: '5px 16px', borderRadius: 20 }}>
+                      Ready to speak
+                    </span>
+                  )}
+                </div>
+
+                {/* Dots — Mic — Dots (symmetric row) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, width: '100%' }}>
+                  {/* Left dots / waveform */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: recording ? 3 : 5, flex: 1, overflow: 'hidden', height: 44 }}>
+                    {recording
+                      ? Array.from({ length: 14 }).map((_, i) => {
+                          const colors = ['#22c55e','#4ade80','#86efac','#facc15','#fb923c','#f97316','#ef4444']
+                          const c = colors[Math.floor(i / 14 * colors.length)]
+                          return <div key={i} className="jam-bar jam-bar-anim" style={{ width: 4, flexShrink: 0, borderRadius: 3, background: c, '--i': i } as React.CSSProperties} />
+                        })
+                      : Array.from({ length: 10 }).map((_, i) => (
+                          <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#e0deff', flexShrink: 0 }} />
+                        ))
+                    }
+                  </div>
+
+                  {/* Mic button with aura — centred */}
+                  <div style={{ position: 'relative' as const, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: 90, height: 90 }}>
+                    <div style={{ position: 'absolute' as const, width: 90, height: 90, borderRadius: '50%', background: 'rgba(255,122,0,0.07)' }} />
+                    <div style={{ position: 'absolute' as const, width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,122,0,0.12)' }} />
+                    <div style={{ position: 'absolute' as const, width: 57, height: 57, borderRadius: '50%', background: 'rgba(255,122,0,0.18)' }} />
+                    <button
+                      onClick={recording ? stopRecording : startRecording}
+                      disabled={isLimitReached && !recording}
+                      style={{ position: 'relative' as const, zIndex: 1, width: 46, height: 46, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg,#ffb347,#ff7a00)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (isLimitReached && !recording) ? 'not-allowed' : 'pointer', boxShadow: '0 4px 16px rgba(255,122,0,0.45)', transition: 'transform 0.15s' }}
+                    >
+                      {recording
+                        ? <svg viewBox="0 0 24 24" fill="white" width="18" height="18"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+                        : <svg viewBox="0 0 24 24" fill="none" width="20" height="20"><rect x="8" y="1" width="8" height="13" rx="4" fill="white"/><path d="M5 10a7 7 0 0 0 14 0" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2.2" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="white" strokeWidth="2.2" strokeLinecap="round"/></svg>
+                      }
+                    </button>
+                  </div>
+
+                  {/* Right dots / waveform */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: recording ? 3 : 5, flex: 1, overflow: 'hidden', height: 44 }}>
+                    {recording
+                      ? Array.from({ length: 14 }).map((_, i) => {
+                          const colors = ['#ef4444','#f97316','#fb923c','#facc15','#86efac','#4ade80','#22c55e']
+                          const c = colors[Math.floor(i / 14 * colors.length)]
+                          return <div key={i} className="jam-bar jam-bar-anim" style={{ width: 4, flexShrink: 0, borderRadius: 3, background: c, '--i': i + 14 } as React.CSSProperties} />
+                        })
+                      : Array.from({ length: 10 }).map((_, i) => (
+                          <div key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: '#e0deff', flexShrink: 0 }} />
+                        ))
+                    }
+                  </div>
+                </div>
+
+                {/* Tip text */}
+                <div style={{ fontSize: '0.8rem', color: '#7c6fd4', marginBottom: 22, textAlign: 'center' as const }}>
+                  Make sure to speak clearly and cover your points.
+                </div>
+
+                {/* Action button */}
+                {recording ? (
+                  <button onClick={stopRecording} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#fff0f0', border: '1.5px solid #fecaca', borderRadius: 10, padding: '9px 22px', color: '#dc2626', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer' }}>
+                    <svg viewBox="0 0 24 24" fill="#dc2626" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                    Finish Early
+                  </button>
+                ) : !feedback ? (
+                  <button onClick={startRecording} disabled={isLimitReached} style={{ background: isLimitReached ? '#e5e7eb' : 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 50, padding: '13px 48px', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: '0 6px 18px rgba(108,99,255,0.35)', letterSpacing: '0.2px' }}>
+                    Start Speaking
+                  </button>
+                ) : null}
+              </div>
+            </Col>
+
+            {/* RIGHT: Feedback — always visible */}
+            <Col lg={6} md={12}>
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+
+                {/* ── PERFORMANCE HEADER with score opposite ── */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Performance</div>
+                  {feedback && !loading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ textAlign: 'right' as const }}>
+                        <div style={{ fontSize: '0.6rem', color: '#9ca3af', fontWeight: 600 }}>OVERALL SCORE</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#ff7a00', lineHeight: 1 }}>{feedback.score}<span style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 400 }}>/100</span></div>
+                      </div>
+                      <span style={{ background: feedback.score >= 80 ? '#dcfce7' : feedback.score >= 60 ? '#fef9c3' : '#fee2e2', color: feedback.score >= 80 ? '#16a34a' : feedback.score >= 60 ? '#a16207' : '#dc2626', fontWeight: 700, fontSize: '0.7rem', padding: '3px 9px', borderRadius: 20 }}>{getScoreFeedback(feedback.score)}</span>
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: 'right' as const }}>
+                      <div style={{ fontSize: '0.6rem', color: '#d1d5db', fontWeight: 600 }}>OVERALL SCORE</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#d1d5db', lineHeight: 1 }}>--<span style={{ fontSize: '0.7rem', fontWeight: 400 }}>/100</span></div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: 16 }}>
+                  {feedback && !loading
+                    ? (feedback.score >= 60 ? 'Great job! You communicated your ideas well.' : 'Keep practicing to improve your score.')
+                    : 'Complete speaking to see your detailed AI feedback here.'}
+                </div>
+
+                {/* ── TABS (underline style with icons) ── */}
+                <div style={{ display: 'flex', gap: 0, borderBottom: '2px solid #f0f0f0', marginBottom: 18 }}>
+                  {([
+                    { key: 'your-answer',  label: 'Your Answer',  icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="8" y="1" width="8" height="13" rx="4" stroke="currentColor" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                    { key: 'model-answer', label: 'Model Answer', icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                    { key: 'transcript',   label: 'Transcript',   icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/><line x1="7" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="7" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                    { key: 'voice',        label: 'Voice',        icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="8" y="1" width="8" height="13" rx="4" stroke="currentColor" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                    { key: 'detailed',     label: 'Detailed',     icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                  ]).map(tab => {
+                    const isActive = activeTab === tab.key
+                    return (
+                      <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 4px', background: 'none', border: 'none', borderBottom: isActive ? '2.5px solid #6c63ff' : '2.5px solid transparent', marginBottom: -2, color: isActive ? '#6c63ff' : '#4b5563', fontWeight: isActive ? 700 : 500, fontSize: '0.74rem', cursor: 'pointer', whiteSpace: 'nowrap' as const, transition: 'all 0.15s' }}>
+                        {tab.icon}{tab.label}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Loading */}
+                {loading && (
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 14 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#eceaff,#fde8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Spinner animation="border" style={{ color: '#6c63ff', width: 26, height: 26, borderWidth: 3 }} />
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.92rem' }}>Analyzing your speech...</div>
+                    <div style={{ fontSize: '0.76rem', color: '#9ca3af' }}>AI is evaluating fluency, grammar and vocabulary</div>
+                  </div>
+                )}
+
+                {/* Placeholder skeleton */}
+                {!loading && !feedback && (
+                  <div>
+                    {/* Your Answer — always live, no skeleton needed */}
+                    {activeTab === 'your-answer' && (
+                      <div style={{ minHeight: 220 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          {recording && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#fee2e2', color: '#dc2626', fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>
+                              <span className="jam-rec-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }}/>
+                              Recording...
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '16px', minHeight: 160, fontSize: '0.85rem', color: transcript ? '#374151' : '#c4c4c4', lineHeight: 1.8 }}>
+                          {isWebView && !transcript ? 'Speech-to-text not available in app mode.' : transcript || 'Start speaking to see your live transcript here...'}
+                        </div>
+                        {isWebView && showManualInput && (
+                          <div style={{ marginTop: 10 }}>
+                            <Form.Control as="textarea" rows={4} value={manualTranscript} onChange={(e) => setManualTranscript(e.target.value)} placeholder="Type what you said here..." style={{ fontSize: '0.85rem' }} />
+                            <button onClick={handleManualSubmit} disabled={!manualTranscript.trim()} style={{ marginTop: 8, background: '#6c63ff', border: 'none', borderRadius: 8, padding: '6px 16px', color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>Submit Transcript</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {/* Model Answer skeleton */}
+                    {activeTab === 'model-answer' && (
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#d1d5db', marginBottom: 8 }}>Model Answer <span style={{ fontWeight: 400 }}>(Ideal Answer)</span></div>
+                        <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                          {[85, 95, 70, 88, 60].map((w, i) => <div key={i} style={{ height: 8, background: '#e5e7eb', borderRadius: 4, width: `${w}%` }} />)}
+                        </div>
+                      </div>
+                    )}
+                    {activeTab === 'transcript' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                        {['Your Original Transcript', 'AI Corrected Transcript'].map((label, idx) => (
+                          <div key={label}>
+                            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#d1d5db', marginBottom: 6 }}>{label}</div>
+                            <div style={{ background: idx === 0 ? '#f8f9fa' : '#f0fdf4', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                              {[80, 92, 65].map((w, i) => <div key={i} style={{ height: 7, background: idx === 0 ? '#e5e7eb' : '#bbf7d0', borderRadius: 3, width: `${w}%` }} />)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {activeTab === 'voice' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                        {['Your Voice', 'AI Corrected Voice'].map(label => (
+                          <div key={label}>
+                            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: '#d1d5db', marginBottom: 6 }}>{label}</div>
+                            <div style={{ background: '#f8f9fa', borderRadius: 12, height: 44 }} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {activeTab === 'detailed' && (
+                      <div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
+                          {([{ c: '#f0efff' }, { c: '#fff7ed' }, { c: '#dcfce7' }, { c: '#e0f2fe' }]).map((x, i) => (
+                            <div key={i} style={{ background: x.c, borderRadius: 12, padding: '10px 12px', opacity: 0.5 }}>
+                              <div style={{ height: 8, background: 'rgba(0,0,0,0.1)', borderRadius: 3, width: '50%', marginBottom: 8 }} />
+                              <div style={{ height: 6, background: 'rgba(0,0,0,0.07)', borderRadius: 3, width: '80%', marginBottom: 4 }} />
+                              <div style={{ height: 6, background: 'rgba(0,0,0,0.05)', borderRadius: 3, width: '60%' }} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Filled feedback */}
+                {feedback && !loading && (
+                  <div>
+
+                    {/* Tab 1: Model Answer */}
+                    {/* Tab 1: Your Answer */}
+                    {activeTab === 'your-answer' && (
+                      <div style={{ minHeight: 220 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e' }}>Your Answer <span style={{ fontWeight: 400, color: '#6c757d' }}>(Speaking to Text)</span></div>
+                        </div>
+                        <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '16px', minHeight: 160, fontSize: '0.85rem', color: transcript ? '#374151' : '#c4c4c4', lineHeight: 1.8 }}>
+                          {isWebView && !transcript ? 'Speech-to-text not available in app mode.' : transcript || 'No transcript recorded.'}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 2: Model Answer */}
+                    {activeTab === 'model-answer' && (
+                      <div>
+                        {sampleAnswer ? (
+                          <>
+                            <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 8 }}>Model Answer <span style={{ color: '#9ca3af', fontWeight: 400 }}>(Ideal Answer)</span></div>
+                            <div style={{ background: '#f8f9ff', borderRadius: 12, padding: '14px 16px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.75, borderLeft: '3px solid #6c63ff', maxHeight: 320, overflowY: 'auto' as const }}>{sampleAnswer}</div>
+                          </>
+                        ) : (
+                          <div style={{ textAlign: 'center' as const, color: '#9ca3af', fontSize: '0.82rem', padding: '40px 0' }}>Model answer not available for this topic.</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tab 3: Transcript */}
+                    {activeTab === 'transcript' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+                        {transcript && (
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 6 }}>Your Original Transcript</div>
+                            <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '12px 14px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.7 }}>{transcript}</div>
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 6 }}>AI Corrected Transcript</div>
+                          <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '12px 14px', fontSize: '0.83rem', color: '#15803d', lineHeight: 1.7, borderLeft: '3px solid #16a34a' }}>{feedback.correctedTranscript}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tab 3: Voice (both) */}
+                    {activeTab === 'voice' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 16 }}>
+                        {([
+                          { url: feedback.studentAudioUrl, label: 'Your Voice', badge: 'You', badgeBg: '#f0efff', badgeColor: '#6c63ff', waveBg: '#f0efff', waveColor: '#6c63ff', type: ['audio/webm','audio/mpeg'] },
+                          { url: feedback.correctedAudioUrl, label: 'AI Corrected Voice', badge: 'AI', badgeBg: '#dcfce7', badgeColor: '#16a34a', waveBg: '#f0fdf4', waveColor: '#16a34a', type: ['audio/mpeg'] },
+                        ]).map(item => item.url && (
+                          <div key={item.label} style={{ background: item.waveBg, borderRadius: 14, padding: '14px 16px' }}>
+                            {/* Header */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 12 }}>
+                              <span style={{ background: item.badgeColor, color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: '0.66rem', fontWeight: 700 }}>{item.badge}</span>
+                              <span style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e' }}>{item.label}</span>
+                            </div>
+                            {/* Decorative waveform bars */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3, height: 36, marginBottom: 10 }}>
+                              {Array.from({ length: 36 }).map((_, i) => {
+                                const heights = [8,14,20,28,22,32,18,26,12,30,24,16,28,20,10,34,22,28,16,30,24,12,26,20,32,14,22,28,18,10,26,30,16,22,14,8]
+                                return (
+                                  <div key={i} style={{ width: 3, height: heights[i] || 10, borderRadius: 3, background: item.waveColor, opacity: 0.55 + (i % 3) * 0.15 }} />
+                                )
+                              })}
+                            </div>
+                            {/* Audio player */}
+                            <audio controls style={{ width: '100%', height: 32, borderRadius: 8, accentColor: item.badgeColor } as React.CSSProperties}>
+                              {item.type.map(t => <source key={t} src={item.url!} type={t} />)}
+                            </audio>
+                          </div>
+                        ))}
+                        {!feedback.studentAudioUrl && !feedback.correctedAudioUrl && (
+                          <div style={{ textAlign: 'center' as const, color: '#9ca3af', fontSize: '0.82rem', padding: '40px 0' }}>Audio not available.</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Tab 4: Detailed Feedback */}
+                    {activeTab === 'detailed' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                        {([
+                          { label: 'Fluency',       color: '#6c63ff', bg: '#f0efff', borderColor: '#c7c3ff', text: feedback.fluency,       icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg> },
+                          { label: 'Grammar',       color: '#0284c7', bg: '#e0f2fe', borderColor: '#93c5fd', text: feedback.grammar,       icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M4 7h16M4 12h10M4 17h7" stroke="#0284c7" strokeWidth="2" strokeLinecap="round"/></svg> },
+                          { label: 'Vocabulary',    color: '#ff7a00', bg: '#fff7ed', borderColor: '#fed7aa', text: feedback.vocabulary,    icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#ff7a00" strokeWidth="2" strokeLinecap="round"/></svg> },
+                          { label: 'Pronunciation', color: '#16a34a', bg: '#dcfce7', borderColor: '#86efac', text: feedback.pronunciation, icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" stroke="#16a34a" strokeWidth="2" strokeLinejoin="round"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg> },
+                        ] as const).map(item => (
+                          <div key={item.label} style={{ background: item.bg, borderRadius: 12, padding: '12px 14px', borderLeft: `3px solid ${item.borderColor}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: 8, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>{item.icon}</div>
+                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: item.color }}>{item.label}</span>
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: '#374151', lineHeight: 1.65 }}>{String(item.text || 'No feedback available.')}</div>
+                          </div>
+                        ))}
+
+                        {feedback.recommendations && (
+                          <div style={{ background: 'linear-gradient(135deg,#dcfce7,#f0fdf4)', borderRadius: 12, padding: '12px 14px', borderLeft: '3px solid #86efac', display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 4 }}>
+                            <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" stroke="#16a34a" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#15803d', marginBottom: 3 }}>Recommendations</div>
+                              <div style={{ fontSize: '0.78rem', color: '#15803d', lineHeight: 1.6 }}>{feedback.recommendations}</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: 20 }}>
+                      <button onClick={resetPractice} style={{ width: '100%', background: 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 12, padding: '12px', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(108,99,255,0.28)' }}>
+                        Try Another Topic
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </Col>
+
+          </Row>
+        </div>
       )}
 
       <style>{`
+        /* Waveform bar */
+        .jam-bar { height: 4px; transition: height 0.1s; }
+        .jam-bar-anim {
+          animation: jamBarPulse 0.6s ease-in-out infinite alternate;
+          animation-delay: calc(var(--i, 0) * 0.04s);
+        }
+        @keyframes jamBarPulse {
+          from { height: 4px; }
+          to   { height: 22px; }
+        }
+        /* Recording dot blink */
+        .jam-rec-dot { animation: jamBlink 1s step-start infinite; }
+        @keyframes jamBlink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+        /* Mic wave rings */
+        .jam-wave-ring { animation: jamRing 1.8s ease-out infinite; }
+        .jam-wave-ring-2 { animation-delay: 0.5s; }
+        .jam-wave-ring-3 { animation-delay: 1s; }
+        @keyframes jamRing {
+          0%   { transform: scale(0.85); opacity: 0.7; }
+          100% { transform: scale(1.25); opacity: 0; }
+        }
+        /* View Report button */
+        .jam-view-report-btn {
+          background: none; border: 1px solid #e5e7eb; border-radius: 8px;
+          padding: 4px 10px; font-size: 0.75rem; color: #6c757d; cursor: pointer;
+        }
+        .jam-view-report-btn:hover { border-color: #6c63ff; color: #6c63ff; }
+        /* View All button */
+        .jam-view-all-btn {
+          background: none; border: 1px solid #e5e7eb; border-radius: 8px;
+          padding: 4px 10px; font-size: 0.75rem; color: #6c757d; cursor: pointer;
+        }
         .speaking-practice-container {
           padding: 1rem !important;
         }
@@ -1819,6 +2383,197 @@ const SpeakingPractice: React.FC = () => {
           box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
         }
 
+
+        /* â"€â"€ Section cards (Recent Attempts / Tips) â"€â"€ */
+        .jam-section-card {
+          border: none;
+          border-radius: 18px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+          height: 100%;
+        }
+
+        .jam-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+        }
+
+        .jam-section-title {
+          display: flex;
+          align-items: center;
+          font-weight: 700;
+          font-size: 1rem;
+          color: #1a1a2e;
+        }
+
+        .jam-view-all-btn {
+          background: none;
+          border: none;
+          color: #ff7a00;
+          font-size: 0.82rem;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+        }
+        .jam-view-all-btn:hover { text-decoration: underline; }
+
+        /* Table */
+        .jam-table-wrap { overflow-x: auto; }
+
+        .jam-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.875rem;
+        }
+
+        .jam-table th {
+          text-align: left;
+          padding: 8px 10px;
+          color: #6c757d;
+          font-weight: 600;
+          font-size: 0.8rem;
+          border-bottom: 1px solid #f0f0f0;
+          white-space: nowrap;
+        }
+
+        .jam-table td {
+          padding: 10px 10px;
+          border-bottom: 1px solid #f8f8f8;
+          vertical-align: middle;
+          color: #374151;
+        }
+
+        .jam-table tr:last-child td { border-bottom: none; }
+
+        .jam-date-cell {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+        }
+
+        .jam-date-main { font-weight: 600; font-size: 0.85rem; color: #1a1a2e; }
+        .jam-date-sub  { font-size: 0.75rem; color: #9ca3af; margin-top: 1px; }
+
+        .jam-duration { color: #6c757d; white-space: nowrap; }
+
+        .jam-best-badge {
+          display: inline-block;
+          background: #dcfce7;
+          color: #16a34a;
+          font-size: 0.68rem;
+          font-weight: 700;
+          padding: 1px 7px;
+          border-radius: 20px;
+          margin-top: 3px;
+        }
+
+        .jam-feedback-text {
+          color: #4b5563;
+          font-size: 0.82rem;
+          max-width: 200px;
+        }
+
+        .jam-view-report-btn {
+          background: none;
+          border: 1.5px solid #e0e7ef;
+          border-radius: 8px;
+          padding: 5px 14px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          color: #374151;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: border-color 0.15s, color 0.15s;
+        }
+        .jam-view-report-btn:hover {
+          border-color: #ff7a00;
+          color: #ff7a00;
+        }
+
+        /* Tips */
+        .jam-tip-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          padding: 10px 0;
+          border-bottom: 1px solid #f5f5f5;
+        }
+        .jam-tip-item:last-of-type { border-bottom: none; }
+
+        .jam-tip-icon {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .jam-tip-title {
+          font-weight: 700;
+          font-size: 0.875rem;
+          color: #1a1a2e;
+          margin-bottom: 2px;
+        }
+
+        .jam-tip-desc {
+          font-size: 0.78rem;
+          color: #6c757d;
+        }
+
+        /* Motivational banner */
+        .jam-motivational-banner {
+          margin-top: 1.5rem;
+          background: linear-gradient(135deg, #fff8f1 0%, #fff3e8 100%);
+          border-radius: 16px;
+          padding: 16px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+          box-shadow: 0 2px 10px rgba(255,122,0,0.1);
+        }
+
+        .jam-banner-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .jam-banner-title {
+          font-weight: 700;
+          font-size: 0.9rem;
+          color: #1a1a2e;
+        }
+
+        .jam-banner-sub {
+          font-size: 0.8rem;
+          color: #9ca3af;
+          margin-top: 2px;
+        }
+
+        .jam-how-btn {
+          display: inline-flex;
+          align-items: center;
+          background: white;
+          border: 1.5px solid #ff7a00;
+          color: #ff7a00;
+          font-weight: 600;
+          font-size: 0.85rem;
+          border-radius: 10px;
+          padding: 8px 16px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.15s, color 0.15s;
+          flex-shrink: 0;
+        }
+        .jam-how-btn:hover {
+          background: #ff7a00;
+          color: white;
+        }
 
       `}</style>
     </Container>

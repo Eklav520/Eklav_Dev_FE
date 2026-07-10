@@ -670,7 +670,7 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
       },
       {
         key: 'justaMinute',
-        label: 'Speaking Practice',
+        label: 'Just a Minute',
         icon: BsStopwatch,
         url: '/student/JustaMinute', // 👈 lowercase here
         parentKey: 'englishPractice',
