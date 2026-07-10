@@ -906,52 +906,53 @@ const SpeakingPractice: React.FC = () => {
 
             {/* RIGHT: Performance — same row as hero, matches height */}
             <Col lg={5} className="d-flex">
-              {history && history.summary.latestScore !== null && (
-                <div style={{ background: '#ffffff', borderRadius: 18, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', width: '100%' }}>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 16 }}>Your Latest Performance</div>
-                  <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' as const }}>
-                    <div style={{ position: 'relative' as const, flexShrink: 0 }}>
-                      {(() => {
-                        const score = history.summary.latestScore ?? 0
-                        const r = 54, circ = 2 * Math.PI * r
-                        const dash = (score / 100) * circ
-                        return (
-                          <svg width="130" height="130" viewBox="0 0 130 130">
-                            <circle cx="65" cy="65" r={r} fill="none" stroke="#f0f0f0" strokeWidth="10"/>
-                            <circle cx="65" cy="65" r={r} fill="none" stroke="#ff7a00" strokeWidth="10" strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset="0" strokeLinecap="round" transform="rotate(-90 65 65)"/>
-                            <text x="65" y="60" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: '#1a1a2e' }}>{score}</text>
-                            <text x="65" y="78" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af' }}>/100</text>
-                          </svg>
-                        )
-                      })()}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#1a1a2e', marginBottom: 4 }}>
-                        {(history.summary.latestScore ?? 0) >= 80 ? 'Great Job!' : (history.summary.latestScore ?? 0) >= 60 ? 'Good Work!' : 'Keep Going!'}
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', width: '100%' }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 16 }}>Your Latest Performance</div>
+                {(() => {
+                  const hasAttempts = !!(history && history.summary.latestScore !== null)
+                  const score = hasAttempts ? (history!.summary.latestScore ?? 0) : 0
+                  const r = 54, circ = 2 * Math.PI * r
+                  const dash = (score / 100) * circ
+                  return (
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' as const }}>
+                      <div style={{ position: 'relative' as const, flexShrink: 0 }}>
+                        <svg width="130" height="130" viewBox="0 0 130 130">
+                          <circle cx="65" cy="65" r={r} fill="none" stroke="#f0f0f0" strokeWidth="10"/>
+                          <circle cx="65" cy="65" r={r} fill="none" stroke={hasAttempts ? '#ff7a00' : '#e2e8f0'} strokeWidth="10" strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset="0" strokeLinecap="round" transform="rotate(-90 65 65)"/>
+                          <text x="65" y="60" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: hasAttempts ? '#1a1a2e' : '#94a3b8' }}>{score}</text>
+                          <text x="65" y="78" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af' }}>/100</text>
+                        </svg>
                       </div>
-                      <div style={{ fontSize: '0.82rem', color: '#6c757d', lineHeight: 1.4 }}>Keep practicing to achieve perfection.</div>
-                      <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                        <div style={{ background: '#fff7ed', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
-                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Best Score</div>
-                          <div style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.95rem' }}>{history.summary.bestScore ?? '--'}/100</div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: hasAttempts ? '#1a1a2e' : '#64748b', marginBottom: 4 }}>
+                          {hasAttempts ? (score >= 80 ? 'Great Job!' : score >= 60 ? 'Good Work!' : 'Keep Going!') : 'No Attempts Yet'}
                         </div>
-                        <div style={{ background: '#f0efff', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
-                          <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Attempts</div>
-                          <div style={{ fontWeight: 700, color: '#6c63ff', fontSize: '0.95rem' }}>{history.attemptsUsed}/{history.monthlyLimit}</div>
+                        <div style={{ fontSize: '0.82rem', color: '#6c757d', lineHeight: 1.4 }}>
+                          {hasAttempts ? 'Keep practicing to achieve perfection.' : 'Start your first session to see your score here.'}
+                        </div>
+                        <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+                          <div style={{ background: '#fff7ed', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
+                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Best Score</div>
+                            <div style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.95rem' }}>{hasAttempts ? `${history!.summary.bestScore ?? 0}/100` : '0/100'}</div>
+                          </div>
+                          <div style={{ background: '#f0efff', borderRadius: 10, padding: '6px 12px', textAlign: 'center' as const }}>
+                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 1 }}>Attempts</div>
+                            <div style={{ fontWeight: 700, color: '#6c63ff', fontSize: '0.95rem' }}>{history ? `${history.attemptsUsed}/${history.monthlyLimit}` : '0/30'}</div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
+                  )
+                })()}
+              </div>
             </Col>
           </Row>
 
-          <Row className="g-4">
-            <Col lg={7}>
+          <Row className="g-4 align-items-stretch">
+            <Col lg={7} className="d-flex flex-column">
 
               {/* Start Speaking card */}
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '28px 28px 24px', marginBottom: 20, boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+              <div style={{ background: '#ffffff', borderRadius: 18, padding: '28px 28px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1 }}>
 
                 {/* Title */}
                 <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '1.05rem', marginBottom: 18 }}>Ready to test your speaking skills?</div>
@@ -1015,17 +1016,18 @@ const SpeakingPractice: React.FC = () => {
             </Col>
 
             {/* RIGHT: Tips + Motivational */}
-            <Col lg={5}>
+            <Col lg={5} className="d-flex flex-column">
 
               {/* Your Recent Attempts */}
-              {history && history.attempts.length > 0 && (() => {
+              {(() => {
+                const hasAttempts = !!(history && history.attempts.length > 0)
                 const PAGE_SIZE = 5
-                const sorted = [...history.attempts].reverse()
-                const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+                const sorted = hasAttempts ? [...history!.attempts].reverse() : []
+                const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
                 const page = Math.min(attemptsPage, totalPages)
                 const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                 return (
-                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                       <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Recent Attempts</span>
                       <span style={{ fontSize: '0.73rem', color: '#9ca3af' }}>{sorted.length} total</span>
@@ -1033,15 +1035,24 @@ const SpeakingPractice: React.FC = () => {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                       <thead>
                         <tr>
-                          {['Date & Time', 'Score', 'Dur.', 'Action'].map(h => (
+                          {['Date & Time', 'Score', 'Duration', 'Action'].map(h => (
                             <th key={h} style={{ textAlign: 'left', padding: '5px 6px', color: '#9ca3af', fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
+                        {!hasAttempts && (
+                          <tr>
+                            <td colSpan={4} style={{ padding: '28px 6px', textAlign: 'center' }}>
+                              <div style={{ fontSize: '1.6rem', marginBottom: 6 }}>🎤</div>
+                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#64748b', marginBottom: 3 }}>No Attempts Yet</div>
+                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Complete your first speaking session to see results here.</div>
+                            </td>
+                          </tr>
+                        )}
                         {pageItems.map((att) => {
                           const { date, time } = formatAttemptDate(att.date)
-                          const isBest = att.score === history.summary.bestScore
+                          const isBest = att.score === history!.summary.bestScore
                           const scoreColor = att.score >= 80 ? '#16a34a' : att.score >= 60 ? '#d97706' : '#dc2626'
                           return (
                             <tr key={att.attempt}>

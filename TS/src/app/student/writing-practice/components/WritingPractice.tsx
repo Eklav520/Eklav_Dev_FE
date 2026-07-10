@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { Container, Card, Form, Button, Row, Col, Spinner, ProgressBar, Badge, Modal } from 'react-bootstrap'
-import { FaFeatherAlt, FaPlay, FaRedo, FaLightbulb, FaCheckCircle, FaPenNib } from 'react-icons/fa'
+import { Container, Spinner, Modal } from 'react-bootstrap'
+import { FaFeatherAlt, FaRedo, FaCheckCircle, FaPenAlt, FaEnvelope, FaFileAlt, FaLightbulb, FaClipboardList, FaSearch, FaBullseye, FaEdit, FaClock, FaBold, FaItalic, FaUnderline, FaListUl, FaListOl, FaAlignLeft, FaAlignCenter, FaAlignRight, FaLink, FaUndoAlt, FaRedoAlt } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+
+// ─── Interfaces ───────────────────────────────────────────────────────────────
 
 interface WritingFeedbackResult {
   score: number
   corrections?: string
   idealAnswer?: string
   feedback?: FeedbackDetail
-}
-
-interface WritingHistoryUI {
-  monthlyLimit: number
-  attemptsUsed: number
-  remainingAttempts: number
-  bestScore: number | null
 }
 
 interface FeedbackDetail {
@@ -24,18 +19,110 @@ interface FeedbackDetail {
   suggestions?: string[]
 }
 
-interface Submission {
+interface WritingAttempt {
   _id?: string
   mode: string
   prompt: string
-  text: string
-  corrections?: string
-  feedback?: FeedbackDetail
   score?: number
   createdAt?: string
 }
 
+interface WritingHistoryUI {
+  monthlyLimit: number
+  attemptsUsed: number
+  remainingAttempts: number
+  bestScore: number | null
+}
+
 type ModeType = 'essay' | 'email' | 'summary'
+
+// ─── Static config ────────────────────────────────────────────────────────────
+
+interface ModeConfig {
+  label: string
+  desc: string
+  tags: string[]
+  color: string
+  bg: string
+  Icon: React.ElementType
+  statIcon: React.ElementType
+}
+
+const MODES: Record<ModeType, ModeConfig> = {
+  essay: {
+    label: 'Essay Writing',
+    desc: 'Write structured essays on different topics.',
+    tags: ['Opinion', 'Argumentative', 'Descriptive'],
+    color: '#3b82f6',
+    bg: 'rgba(59,130,246,0.1)',
+    Icon: FaPenAlt,
+    statIcon: FaEdit,
+  },
+  email: {
+    label: 'Email Writing',
+    desc: 'Learn professional email writing for any situation.',
+    tags: ['Formal', 'Informal', 'Business'],
+    color: '#10b981',
+    bg: 'rgba(16,185,129,0.1)',
+    Icon: FaEnvelope,
+    statIcon: FaEnvelope,
+  },
+  summary: {
+    label: 'Summary Writing',
+    desc: 'Summarize long content into short and clear points.',
+    tags: ['Article', 'Report', 'Text'],
+    color: '#8b5cf6',
+    bg: 'rgba(139,92,246,0.1)',
+    Icon: FaFileAlt,
+    statIcon: FaClipboardList,
+  },
+}
+
+interface TipConfig {
+  Icon: React.ElementType
+  iconColor: string
+  iconBg: string
+  title: string
+  desc: string
+}
+
+const TIPS: TipConfig[] = [
+  { Icon: FaLightbulb,     iconColor: '#f59e0b', iconBg: '#fffbeb', title: 'Plan Before You Write',  desc: 'Organize your ideas before starting to write.' },
+  { Icon: FaClipboardList, iconColor: '#10b981', iconBg: '#f0fdf4', title: 'Use Clear Structure',    desc: 'Introduction, Body, and Conclusion.' },
+  { Icon: FaSearch,        iconColor: '#3b82f6', iconBg: '#eff6ff', title: 'Review & Edit',          desc: 'Always proofread your writing.' },
+  { Icon: FaBullseye,      iconColor: '#ef4444', iconBg: '#fff1f2', title: 'Practice Regularly',     desc: 'Write a little every day to see big improvements.' },
+]
+
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAY_LABELS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+
+// ─── Calendar helpers ─────────────────────────────────────────────────────────
+
+function buildCalendar(year: number, month: number, attempts: WritingAttempt[]) {
+  const firstDay = new Date(year, month, 1).getDay()
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const scoreMap: Record<number, number> = {}
+  attempts.forEach(a => {
+    if (!a.createdAt) return
+    const d = new Date(a.createdAt)
+    if (d.getFullYear() === year && d.getMonth() === month) {
+      const day = d.getDate()
+      const raw = a.score ?? 0
+      const score = raw <= 10 ? raw * 10 : raw
+      if (!scoreMap[day] || score > scoreMap[day]) scoreMap[day] = score
+    }
+  })
+  return { startOffset, daysInMonth, scoreMap }
+}
+
+function dotColor(score: number) {
+  if (score >= 80) return '#16a34a'   // green  – good
+  if (score >= 60) return '#f59e0b'   // yellow – average
+  return '#f97316'                     // orange – attempted but low score
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 const WritingPractice: React.FC = () => {
   const { user } = useAuthContext()
@@ -45,7 +132,6 @@ const WritingPractice: React.FC = () => {
 
   const TRIAL_LIMIT = 5
   const PREMIUM_DEFAULT = 30
-
   const isTrial = status === 'pending'
 
   const [started, setStarted] = useState(false)
@@ -56,26 +142,35 @@ const WritingPractice: React.FC = () => {
   const [feedback, setFeedback] = useState<WritingFeedbackResult | null>(null)
   const [fetchingPrompt, setFetchingPrompt] = useState(false)
   const [history, setHistory] = useState<WritingHistoryUI | null>(null)
-
+  const [rawAttempts, setRawAttempts] = useState<WritingAttempt[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
-  //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
+  const [timeLeft, setTimeLeft] = useState(30 * 60)
+  const [idealExpanded, setIdealExpanded] = useState(false)
+  const [feedbackTab, setFeedbackTab] = useState<'model' | 'mistakes' | 'overall'>('model')
 
+  const editorRef = React.useRef<HTMLDivElement>(null)
 
-  const startWriting = async () => {
+  const now = new Date()
+  const [calYear, setCalYear] = useState(now.getFullYear())
+  const [calMonth, setCalMonth] = useState(now.getMonth())
+
+  // ─── API functions ────────────────────────────────────────────────────────
+
+  const startWriting = async (selectedMode?: ModeType) => {
+    const m = selectedMode ?? mode
+    setMode(m)
     setStarted(true)
     setFeedback(null)
     setText('')
     setPrompt('')
     setFetchingPrompt(true)
-
     try {
-      const res = await fetch(`${baseURL}/writing/prompt/${mode}`, {
+      const res = await fetch(`${baseURL}/writing/prompt/${m}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
       setPrompt(data?.prompt || 'Write about a topic of your choice.')
-    } catch (err) {
-      console.error('Error fetching AI prompt:', err)
+    } catch {
       setPrompt('Write about a topic of your choice.')
     } finally {
       setFetchingPrompt(false)
@@ -84,55 +179,30 @@ const WritingPractice: React.FC = () => {
 
   const fetchWritingHistory = async () => {
     if (!token || !user?.id) return
-
     try {
       setLoadingHistory(true)
-
       const res = await fetch(`${baseURL}/writing/history/${user.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
-
       if (!res.ok) throw new Error('Failed to fetch writing history')
-
       const data = await res.json()
 
-      // No history yet
       if (!Array.isArray(data) || data.length === 0) {
-        setHistory({
-          attemptsUsed: 0,
-          monthlyLimit: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT,
-          remainingAttempts: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT,
-          bestScore: null,
-        })
+        setHistory({ attemptsUsed: 0, monthlyLimit: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT, remainingAttempts: isTrial ? TRIAL_LIMIT : PREMIUM_DEFAULT, bestScore: null })
+        setRawAttempts([])
         return
       }
 
       const latest = data[0]
-      const attempts = latest.attempts || []
-
-      const rawAttemptsUsed = attempts.length
-
+      const attempts: WritingAttempt[] = latest.attempts || []
       const backendLimit = latest.monthlyLimit ?? PREMIUM_DEFAULT
-
       const monthlyLimit = isTrial ? TRIAL_LIMIT : backendLimit
-
-      // 🔥 DO NOT clamp trial attempts
-      const attemptsUsed = rawAttemptsUsed
-
+      const attemptsUsed = attempts.length
       const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
-
-
-      // Prefer backend summary, fallback to computation
       const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
 
-      setHistory({
-        attemptsUsed,
-        monthlyLimit,
-        remainingAttempts,
-        bestScore,
-      })
+      setHistory({ attemptsUsed, monthlyLimit, remainingAttempts, bestScore })
+      setRawAttempts(attempts)
     } catch (err) {
       console.error('Writing history error:', err)
     } finally {
@@ -141,17 +211,39 @@ const WritingPractice: React.FC = () => {
   }
 
   useEffect(() => {
-    if (token && user?.id) {
-      fetchWritingHistory()
-    }
+    if (token && user?.id) fetchWritingHistory()
   }, [token, user?.id])
 
-  const maxAllowedAttempts = isTrial
-    ? TRIAL_LIMIT
-    : history?.monthlyLimit ?? PREMIUM_DEFAULT
+  useEffect(() => {
+    if (!started) return
+    setTimeLeft(30 * 60)
+    setIdealExpanded(false)
+    setFeedbackTab('model')
+    const id = setInterval(() => setTimeLeft(t => Math.max(t - 1, 0)), 1000)
+    return () => clearInterval(id)
+  }, [started])
 
-  const isLimitReached =
-    !!history && history.attemptsUsed >= maxAllowedAttempts
+  const maxAllowedAttempts = isTrial ? TRIAL_LIMIT : history?.monthlyLimit ?? PREMIUM_DEFAULT
+  const isLimitReached = !!history && history.attemptsUsed >= maxAllowedAttempts
+
+  const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')} : ${String(s % 60).padStart(2, '0')}`
+  const wordCount = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0
+  const charCount = text.length
+  const WORD_LIMITS: Record<ModeType, number> = { essay: 300, email: 200, summary: 150 }
+  const wordLimit = WORD_LIMITS[mode]
+  const modeCfg = MODES[mode]
+
+  const applyFmt = (cmd: string, val?: string) => {
+    editorRef.current?.focus()
+    document.execCommand(cmd, false, val)
+    setText(editorRef.current?.innerText ?? '')
+  }
+
+  const toolbarBtnStyle: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: 5, border: '1px solid transparent',
+    background: 'transparent', cursor: 'pointer', display: 'flex',
+    alignItems: 'center', justifyContent: 'center', color: '#475569',
+  }
 
   const handleSubmit = async () => {
     if (!text.trim()) return alert('Please write your response first!')
@@ -159,16 +251,8 @@ const WritingPractice: React.FC = () => {
     try {
       const res = await fetch(`${baseURL}/writing/submit`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          studentId: user?.id,
-          mode,
-          prompt,
-          text,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId: user?.id, mode, prompt, text }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -190,6 +274,7 @@ const WritingPractice: React.FC = () => {
     setFeedback(null)
     setPrompt('')
     setText('')
+    if (editorRef.current) editorRef.current.innerHTML = ''
   }
 
   const fetchNewTopic = async () => {
@@ -210,11 +295,7 @@ const WritingPractice: React.FC = () => {
     }
   }
 
-  const getScoreVariant = (score: number) => {
-    if (score >= 80) return 'success'
-    if (score >= 60) return 'warning'
-    return 'danger'
-  }
+  const getScoreVariant = (score: number) => score >= 80 ? 'success' : score >= 60 ? 'warning' : 'danger'
 
   const getScoreFeedback = (score: number) => {
     if (score >= 90) return 'Excellent!'
@@ -224,976 +305,666 @@ const WritingPractice: React.FC = () => {
     return 'Needs Improvement'
   }
 
-  const formatParagraphs = (text?: string) => {
-    if (!text) return null // safely handle undefined
-    return text
-      .split(/\n+/)
-      .filter((p) => p.trim() !== '')
-      .map((p, i) => (
-        <p key={i} className="mb-2">
-          {p}
-        </p>
-      ))
+  const formatParagraphs = (t?: string) => {
+    if (!t) return null
+    return t.split(/\n+/).filter(p => p.trim()).map((p, i) => <p key={i} className="mb-2">{p}</p>)
   }
 
-  return (
-    <Container fluid className="writing-practice-container">
-      <div className="start-screen text-center">
-          <div className="start-card">
-            <div className="icon-wrapper">
-              <FaFeatherAlt className="main-icon" />
-            </div>
-            <h2>Writing Practice</h2>
-            <p className="description">
-              Enhance your writing skills with AI-powered feedback on grammar, tone, structure, and vocabulary. Get detailed analysis and improvement
-              suggestions.
-            </p>
+  const renderStructured = (text: string) => {
+    if (!text) return null
+    return text.split(/\n\n+/).filter(b => b.trim()).map((block, i) => {
+      const trimmed = block.trim()
+      if (trimmed.toLowerCase().startsWith('subject:')) {
+        const [, rest] = trimmed.split(/:\s*/)
+        return (
+          <div key={i} style={{ marginBottom: 14, padding: '8px 12px', background: '#f0eeff', borderRadius: 8, border: '1px solid #e0d9ff' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6c63ff', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Subject</span>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', marginTop: 2 }}>{rest}</div>
+          </div>
+        )
+      }
+      const lines = trimmed.split('\n')
+      return (
+        <p key={i} style={{ marginBottom: 12, lineHeight: 1.75, color: '#374151', fontSize: '0.85rem' }}>
+          {lines.map((line, j) => (
+            <React.Fragment key={j}>{line}{j < lines.length - 1 && <br />}</React.Fragment>
+          ))}
+        </p>
+      )
+    })
+  }
 
-            <div className="mode-selection mb-4">
-              <label className="mode-label">Choose Writing Mode</label>
-              <div className="mode-select-wrapper">
-                <Form.Select
-                  value={mode}
-                  onChange={(e) => setMode(e.target.value as ModeType)}
-                  className="mode-selector"
-                >
-                  <option value="essay">📝 Essay Writing</option>
-                  <option value="email">📧 Email Writing</option>
-                  <option value="summary">📄 Summary Writing</option>
-                </Form.Select>
+  // ─── Derived values ───────────────────────────────────────────────────────
+
+  const essayCount = rawAttempts.filter(a => a.mode === 'essay').length
+  const emailCount = rawAttempts.filter(a => a.mode === 'email').length
+  const summaryCount = rawAttempts.filter(a => a.mode === 'summary').length
+  const recentAttempts = [...rawAttempts].reverse().slice(0, 5)
+
+  const { startOffset, daysInMonth, scoreMap } = buildCalendar(calYear, calMonth, rawAttempts)
+  const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth()
+  const cells: (number | null)[] = []
+  for (let i = 0; i < startOffset; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  while (cells.length % 7 !== 0) cells.push(null)
+
+  const navBtnStyle: React.CSSProperties = {
+    width: 26, height: 26, borderRadius: '50%', border: '1px solid #e2e8f0',
+    background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center',
+    justifyContent: 'center', fontSize: '1rem', color: '#374151', fontWeight: 700,
+    lineHeight: 1, padding: 0,
+  }
+
+  // ─── JSX ──────────────────────────────────────────────────────────────────
+
+  return (
+    <Container fluid style={{ padding: '20px 24px', background: '#f8fafc', minHeight: '100vh' }}>
+
+      {/* ════ START SCREEN ════ */}
+      <div style={{ display: 'flex', gap: 20 }}>
+
+        {/* LEFT COLUMN */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Hero Card */}
+          <div style={{ background: 'linear-gradient(to right, #fff9f5 0%, #ffe8cc 60%, #ffd4a8 100%)', border: '1px solid #ffd0a0', borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
+            <div>
+              <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a', marginBottom: 8 }}>Improve Your Writing Skills</h2>
+              <p style={{ color: '#64748b', fontSize: '0.86rem', marginBottom: 22, lineHeight: 1.6 }}>
+                Practice different types of writing, get AI feedback,<br />and improve your communication.
+              </p>
+              <div style={{ display: 'flex', gap: 28 }}>
+                {([
+                  { Icon: MODES.essay.statIcon,   count: essayCount,   label: 'Essays Written',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+                  { Icon: MODES.email.statIcon,   count: emailCount,   label: 'Emails Written',     color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+                  { Icon: MODES.summary.statIcon, count: summaryCount, label: 'Summaries Written',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+                ] as { Icon: React.ElementType; count: number; label: string; color: string; bg: string }[]).map(s => (
+                  <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <s.Icon style={{ fontSize: '0.95rem', color: s.color }} />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1 }}>{s.count}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>{s.label}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <Button variant="primary" size="lg" onClick={startWriting} disabled={fetchingPrompt || isLimitReached} className="start-button">
-              {fetchingPrompt ? (
-                <>
-                  <Spinner animation="border" size="sm" className="me-2" />
-                  Generating Prompt...
-                </>
-              ) : (
-                <>
-                  <FaPlay className="me-2" />
-                  Start {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                </>
-              )}
-            </Button>
-            {history && (
-              <>
-                <div className="writing-stats mt-4">
-                  <div className={`stat-box attempts ${isLimitReached ? 'limit-reached' : ''}`}>
-                    <div className="stat-label">
-                      {isTrial ? 'Trial Attempts' : 'Monthly Attempts'}
-                    </div>
-                    <div className="stat-value">
-                      {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
-                    </div>
-                  </div>
+            {/* Illustration */}
+            <div style={{ flexShrink: 0, position: 'relative', width: 150, height: 110, userSelect: 'none' }}>
+              {/* Notebook body */}
+              <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 72, height: 96, background: 'linear-gradient(145deg, #5a52d5, #3730a3)', borderRadius: 8, boxShadow: '5px 6px 20px rgba(99,88,255,0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 12px', gap: 5 }}>
+                {[100, 80, 65, 50].map((w, i) => (
+                  <div key={i} style={{ height: 2.5, background: 'rgba(255,255,255,0.45)', borderRadius: 2, width: `${w}%` }} />
+                ))}
+                {/* Spine */}
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 10, background: 'rgba(0,0,0,0.18)', borderRadius: '8px 0 0 8px' }} />
+              </div>
+              {/* Pen */}
+              <div style={{ position: 'absolute', right: 58, top: 4, transform: 'rotate(-38deg)', transformOrigin: 'bottom center' }}>
+                <FaPenAlt style={{ fontSize: '1.7rem', color: '#0f172a', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+              </div>
+              {/* Floating envelope bubble */}
+              <div style={{ position: 'absolute', left: 4, top: 8, width: 34, height: 34, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaEnvelope style={{ fontSize: '0.9rem', color: '#ff7a00' }} />
+              </div>
+              {/* Floating edit bubble */}
+              <div style={{ position: 'absolute', left: 18, bottom: 8, width: 30, height: 30, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaEdit style={{ fontSize: '0.8rem', color: '#10b981' }} />
+              </div>
+            </div>
+          </div>
 
-                  <div className="stat-box score">
-                    <div className="stat-label">Best Score</div>
-                    <div className="stat-value">
-                      {history.bestScore !== null
-                        ? `${history.bestScore <= 10 ? history.bestScore * 10 : history.bestScore}/100 ⭐`
-                        : 'No attempts yet'}
-                    </div>
+          {/* Choose a Writing Type */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>Choose a Writing Type</span>
+              <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+              {(Object.entries(MODES) as [ModeType, typeof MODES.essay][]).map(([key, cfg]) => (
+                <div key={key} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 14, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <cfg.Icon style={{ fontSize: '1.3rem', color: cfg.color }} />
                   </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', marginBottom: 4 }}>{cfg.label}</div>
+                    <div style={{ fontSize: '0.77rem', color: '#64748b', lineHeight: 1.55 }}>{cfg.desc}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {cfg.tags.map(t => (
+                      <span key={t} style={{ fontSize: '0.68rem', fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 20, padding: '2px 8px' }}>{t}</span>
+                    ))}
+                  </div>
+                  <button
+                    disabled={isLimitReached}
+                    onClick={() => startWriting(key)}
+                    style={{ marginTop: 6, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: cfg.color, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: isLimitReached ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: isLimitReached ? 0.5 : 1, transition: 'opacity 0.15s, box-shadow 0.15s', letterSpacing: '0.01em' }}
+                  >
+                    Start Practice &nbsp;→
+                  </button>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                {/* 👇 ADD HERE */}
-                {isTrial && isLimitReached && (
-                  <div className="trial-limit-box-modern mt-3">
-                    🔒 Trial limit reached. Upgrade to continue writing practice.
-                  </div>
-                )}
-              </>
+          {/* Recent Writing Practice */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #edf2f7' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Recent Writing Practice</span>
+              <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
+            </div>
+            {recentAttempts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '0.82rem' }}>
+                No writing practice yet. Start your first session!
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc' }}>
+                    {['Type', 'Topic / Title', 'Score', 'Date', 'Action'].map(h => (
+                      <th key={h} style={{ padding: '10px 16px', fontSize: '0.73rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentAttempts.map((a, i) => {
+                    const cfg = MODES[a.mode as ModeType] ?? MODES.essay
+                    const rawScore = a.score
+                    const score = rawScore !== undefined ? (rawScore <= 10 ? rawScore * 10 : rawScore) : null
+                    const sColor = score !== null ? (score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626') : '#94a3b8'
+                    const dt = a.createdAt ? new Date(a.createdAt) : null
+                    const dateStr = dt ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                    const timeStr = dt ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+                    const title = a.prompt?.length > 55 ? a.prompt.slice(0, 55) + '…' : (a.prompt || '—')
+                    return (
+                      <tr key={a._id ?? i} style={{ borderTop: '1px solid #edf2f7' }}>
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 28, height: 28, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><cfg.Icon style={{ fontSize: '0.8rem', color: cfg.color }} /></span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{cfg.label}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '12px 16px', maxWidth: 220 }}>
+                          <div style={{ fontSize: '0.8rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+                        </td>
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: sColor }}>{score !== null ? `${score}/100` : '—'}</span>
+                        </td>
+                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                          <div style={{ fontSize: '0.78rem', color: '#374151' }}>{dateStr}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeStr}</div>
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <button style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Report</button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             )}
-
           </div>
         </div>
 
-      <Modal show={started} fullscreen onHide={restartPractice} className="practice-fullscreen-modal">
-        <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
-          <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem', fontWeight: 700 }}>
-            <FaFeatherAlt style={{ marginRight: 8 }} />
-            {mode === 'essay' ? 'Essay Writing' : mode === 'email' ? 'Email Writing' : 'Summary Writing'}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '1rem 1.25rem' }}>
-        <div className="practice-container">
-          {/* Question Section - Top */}
-          <Card className="question-card">
-            <Card.Body className="question-body">
-              <div className="question-header">
-                <h4 className="question-title">
-                  <FaPenNib className="me-2" />
-                  Writing Topic
-                </h4>
-                <Badge bg="primary" className="mode-badge">
-                  {mode.toUpperCase()}
-                </Badge>
+        {/* RIGHT COLUMN */}
+        <div style={{ width: 310, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+          {/* Writing Calendar */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #edf2f7' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <span style={{ fontSize: '0.9rem' }}>📅</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Your Writing Calendar</span>
               </div>
-              <div className="question-content">
-                {fetchingPrompt ? (
-                  <div className="loading-prompt text-center">
-                    <Spinner animation="border" variant="primary" size="sm" className="me-2" />
-                    Generating your writing prompt...
-                  </div>
-                ) : (
-                  <p className="mb-0 question-text">{prompt}</p>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <button
+                  style={navBtnStyle}
+                  onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
+                >‹</button>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#374151' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+                <button
+                  style={navBtnStyle}
+                  onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
+                >›</button>
               </div>
-            </Card.Body>
-          </Card>
-
-          {/* Writing and Feedback Section - Bottom */}
-          <Row className="practice-layout g-2">
-            {/* Left: Writing Area */}
-            <Col md={6}>
-              <Card className="writing-card">
-                <Card.Header className="writing-header">
-                  <FaFeatherAlt className="me-2" />
-                  Your Response
-                  <span className="word-count">
-                    {text.length > 0 ? `${text.split(/\s+/).filter((word) => word.length > 0).length} words` : 'Start writing...'}
-                  </span>
-                </Card.Header>
-
-                <Card.Body className="writing-body d-flex flex-column">
-                  <Form.Group className="flex-grow-1 d-flex flex-column">
-                    <Form.Control
-                      as="textarea"
-                      placeholder={`Start writing your ${mode} here... Express your thoughts clearly and creatively.`}
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onPaste={(e) => e.preventDefault()}
-                      onCopy={(e) => e.preventDefault()}
-                      onCut={(e) => e.preventDefault()}
-                      onContextMenu={(e) => e.preventDefault()}
-                      className="writing-textarea flex-grow-1"
-                      style={{ userSelect: 'none' }}
-                    />
-                  </Form.Group>
-
-                  {/* Action Buttons */}
-                  <div className="action-buttons">
-                    <Button
-                      disabled={loading || !text.trim() || isLimitReached}
-                      onClick={handleSubmit}
-                      className="submit-button">
-                      {loading ? (
-                        <><Spinner animation="border" size="sm" className="me-1" />Evaluating...</>
-                      ) : (
-                        <><FaCheckCircle className="me-1" />Submit</>
-                      )}
-                    </Button>
-                    <Button onClick={fetchNewTopic} disabled={fetchingPrompt} className="restart-button">
-                      {fetchingPrompt
-                        ? <><Spinner animation="border" size="sm" className="me-1" />Loading...</>
-                        : <><FaRedo className="me-1" />New Topic</>
-                      }
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-
-            {/* Right: AI Feedback */}
-            <Col md={6}>
-              <Card className="feedback-card">
-                <Card.Header className="feedback-header">
-                  <FaLightbulb className="me-2" />
-                  AI Feedback & Analysis
-                </Card.Header>
-
-                <Card.Body className="feedback-body">
-                  {loading ? (
-                    <div className="loading-feedback text-center d-flex flex-column justify-content-center align-items-center">
-                      <Spinner animation="border" variant="info" />
-                      <h5 className="mt-3 text-info">Analyzing Your Writing</h5>
-                      <p className="text-muted">Our AI is evaluating your grammar, tone, and structure...</p>
+            </div>
+            <div style={{ padding: '8px 12px 0' }}>
+              {/* Day headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
+                {DAY_LABELS.map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', padding: '2px 0' }}>{d}</div>
+                ))}
+              </div>
+              {/* Day cells */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, paddingBottom: 10 }}>
+                {cells.map((day, idx) => {
+                  if (!day) return <div key={idx} />
+                  const isToday = isCurrentMonth && day === now.getDate()
+                  const score = scoreMap[day]
+                  const dc = score !== undefined ? dotColor(score) : undefined
+                  const isPastDay = isCurrentMonth
+                    ? day < now.getDate()
+                    : calYear < now.getFullYear() || (calYear === now.getFullYear() && calMonth < now.getMonth())
+                  const isMissed = isPastDay && !isToday && score === undefined
+                  const bgColor = isToday ? '#6c63ff' : dc ?? (isMissed ? '#dc2626' : 'transparent')
+                  const textColor = (isToday || dc || isMissed) ? '#fff' : '#374151'
+                  return (
+                    <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2px 0' }}>
+                      <span style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.68rem', fontWeight: (isToday || dc || isMissed) ? 700 : 500,
+                        color: textColor,
+                        background: bgColor,
+                      }}>{day}</span>
                     </div>
-                  ) : feedback ? (
-                    <div className="feedback-content">
+                  )
+                })}
+              </div>
+            </div>
+            {/* Legend */}
+            <div style={{ padding: '8px 14px 12px', borderTop: '1px solid #edf2f7', display: 'flex', flexWrap: 'wrap', gap: '5px 12px' }}>
+              {[
+                { color: '#16a34a', label: 'Good (≥80)' },
+                { color: '#f59e0b', label: 'Average (≥60)' },
+                { color: '#f97316', label: 'Low Score' },
+                { color: '#dc2626', label: 'Missed' },
+                { color: '#6c63ff', label: 'Today' },
+              ].map(l => (
+                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: l.color, display: 'inline-block', flexShrink: 0 }} />
+                  <span style={{ fontSize: '0.6rem', color: '#64748b' }}>{l.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                      {/* Score Row */}
-                      <div className="score-row">
-                        <div className="score-circle-sm">
-                          <span className="score-num">{feedback.score! <= 10 ? feedback.score! * 10 : feedback.score!}</span>
-                          <span className="score-denom">/100</span>
-                        </div>
-                        <div className="score-details">
-                          {(() => {
-                            const s = feedback.score! <= 10 ? feedback.score! * 10 : feedback.score!
-                            return <>
-                              <div className="score-label">{getScoreFeedback(s)}</div>
-                              <ProgressBar now={s} variant={getScoreVariant(s)} className="score-bar" />
-                              <div className="score-hint">{s >= 70 ? 'Great work! Keep it up.' : s >= 40 ? 'Good effort, room to improve.' : "Keep practising — you'll get there!"}</div>
-                            </>
-                          })()}
-                        </div>
-                      </div>
+          {/* Writing Tips */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 12px', borderBottom: '1px solid #edf2f7' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Writing Tips</span>
+              <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
+            </div>
+            <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {TIPS.map(t => (
+                <div key={t.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: t.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <t.Icon style={{ fontSize: '0.95rem', color: t.iconColor }} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a', marginBottom: 2 }}>{t.title}</div>
+                    <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>{t.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-                      {/* Corrected Version */}
-                      {feedback.corrections && (
-                        <div className="fb-section fb-correction">
-                          <div className="fb-section-title"><span className="fb-icon">✅</span>Corrected Version</div>
-                          <div className="fb-section-body">{formatParagraphs(feedback.corrections)}</div>
-                        </div>
-                      )}
+          {/* Usage card */}
+          {history && (
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a', marginBottom: 8 }}>
+                {isTrial ? 'Trial Usage' : 'Monthly Usage'}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem', color: '#64748b' }}>
+                <span>{Math.min(history.attemptsUsed, maxAllowedAttempts)} of {maxAllowedAttempts} used</span>
+                <span style={{ fontWeight: 700, color: '#ff7a00' }}>
+                  Best: {history.bestScore !== null ? `${history.bestScore! <= 10 ? history.bestScore! * 10 : history.bestScore}/100` : '—'}
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: '#f1f5f9', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, background: isLimitReached ? '#dc2626' : '#ff7a00', width: `${Math.min((history.attemptsUsed / maxAllowedAttempts) * 100, 100)}%`, transition: 'width 0.3s' }} />
+              </div>
+              {isTrial && isLimitReached && (
+                <div style={{ marginTop: 10, fontSize: '0.74rem', color: '#dc2626', background: '#fff1f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
+                  🔒 Trial limit reached. Upgrade to continue.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
-                      {/* Ideal / Model Answer */}
-                      {feedback.idealAnswer && (
-                        <div className="fb-section fb-ideal">
-                          <div className="fb-section-title">
-                            <span className="fb-icon">⭐</span>
-                            {mode === 'summary' ? 'Model Summary' : mode === 'email' ? 'Model Email' : 'Ideal Essay'}
-                          </div>
-                          <div className="fb-section-body">{formatParagraphs(feedback.idealAnswer)}</div>
-                        </div>
-                      )}
+      {/* ════ WRITING PRACTICE MODAL ════ */}
+      <Modal show={started} fullscreen onHide={restartPractice} className="writing-practice-modal">
 
-                      {feedback.feedback && (
-                        <>
-                          {feedback.feedback.overall && (
-                            <div className="fb-section fb-overall">
-                              <div className="fb-section-title"><span className="fb-icon">⭐</span>Overall Feedback</div>
-                              <div className="fb-section-body">{formatParagraphs(feedback.feedback.overall)}</div>
-                            </div>
-                          )}
+        {/* ── Header ── */}
+        <Modal.Header closeButton style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '10px 20px', minHeight: 58 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: modeCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <modeCfg.Icon style={{ fontSize: '1rem', color: modeCfg.color }} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a', lineHeight: 1.2 }}>{modeCfg.label}</div>
+                <div style={{ fontSize: '0.71rem', color: '#64748b' }}>{modeCfg.desc}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginRight: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <div style={{ fontSize: '0.64rem', color: '#64748b', lineHeight: 1, marginBottom: 2 }}>Time Left</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FaClock style={{ fontSize: '1rem', color: timeLeft < 300 ? '#dc2626' : '#6c63ff' }} />
+                  <div style={{ fontWeight: 800, fontSize: '1.25rem', color: timeLeft < 300 ? '#dc2626' : '#6c63ff', lineHeight: 1, letterSpacing: 2, fontVariantNumeric: 'tabular-nums' }}>
+                    {formatTime(timeLeft)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Modal.Header>
 
-                          {(feedback.feedback.grammar || feedback.feedback.tone) && (
-                            <div className="fb-skills-row">
-                              {feedback.feedback.grammar && (
-                                <div className="fb-skill-chip">
-                                  <span className="fb-skill-icon">📚</span>
-                                  <div>
-                                    <div className="fb-skill-title">Grammar</div>
-                                    <div className="fb-skill-text">{formatParagraphs(feedback.feedback.grammar)}</div>
-                                  </div>
-                                </div>
-                              )}
-                              {feedback.feedback.tone && (
-                                <div className="fb-skill-chip">
-                                  <span className="fb-skill-icon">🎯</span>
-                                  <div>
-                                    <div className="fb-skill-title">Tone & Structure</div>
-                                    <div className="fb-skill-text">{formatParagraphs(feedback.feedback.tone)}</div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
+        {/* ── Body: Two Columns ── */}
+        <Modal.Body style={{ padding: 0, display: 'flex', overflow: 'hidden', height: 'calc(100vh - 58px)' }}>
 
-                          {feedback.feedback.suggestions?.length ? (
-                            <div className="fb-section fb-suggestions">
-                              <div className="fb-section-title"><span className="fb-icon">💡</span>Suggestions</div>
-                              <ul className="fb-suggestions-list">
-                                {feedback.feedback.suggestions.map((s, i) => (
-                                  <li key={i}><span className="fb-bullet">→</span>{s}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          ) : null}
-                        </>
-                      )}
+          {/* ── LEFT: Writing Panel ── */}
+          <div style={{ width: '54%', overflowY: 'auto', borderRight: '1px solid #e2e8f0', padding: '20px 22px', background: '#fff', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Topic Card */}
+            <div style={{ background: '#f8fafc', borderRadius: 14, padding: '14px 16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#6c63ff', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Today's Topic</div>
+                  {fetchingPrompt ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#6c63ff', fontSize: '0.85rem' }}>
+                      <Spinner animation="border" size="sm" /> Generating your topic…
                     </div>
                   ) : (
-                    <div className="empty-feedback">
-                      <div className="empty-icon">✍️</div>
-                      <h5>Ready for Feedback</h5>
-                      <p>Submit your writing to receive detailed AI analysis on grammar, tone, and structure.</p>
-                    </div>
+                    <>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1.35, marginBottom: 6 }}>
+                        {prompt.split(/[.!?\n]/)[0]?.trim() || prompt}
+                      </div>
+                      {prompt.includes('.') && (
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.6 }}>
+                          {prompt.replace(/^[^.!?\n]+[.!?\n]\s*/, '').slice(0, 220)}
+                          {prompt.length > 220 ? '…' : ''}
+                        </div>
+                      )}
+                    </>
                   )}
-                </Card.Body>
-              </Card>
-            </Col>
-          </Row>
-        </div>
+                </div>
+                <div style={{ flexShrink: 0, width: 56, height: 56, borderRadius: 14, background: modeCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <modeCfg.Icon style={{ fontSize: '1.5rem', color: modeCfg.color }} />
+                </div>
+              </div>
+              {/* Info pills */}
+              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 12 }}>
+                {[`Word Limit: ${wordLimit - 50}–${wordLimit} words`, 'Time: 30 Minutes', 'Focus: Ideas, Structure, Language, Coherence'].map(p => (
+                  <span key={p} style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 20, padding: '4px 11px' }}>{p}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* Answer Section */}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Your Answer</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.72rem', color: '#16a34a' }}>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} />
+                  Auto-saving...
+                </span>
+              </div>
+
+              {/* Toolbar */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px 10px 0 0', padding: '5px 8px', display: 'flex', alignItems: 'center', gap: 1, background: '#f8fafc', flexWrap: 'wrap' }}>
+                {([{ I: FaUndoAlt, c: 'undo', t: 'Undo' }, { I: FaRedoAlt, c: 'redo', t: 'Redo' }] as {I: React.ElementType; c: string; t: string}[]).map(({ I, c, t }) => (
+                  <button key={c} title={t} onClick={() => applyFmt(c)} style={toolbarBtnStyle}><I style={{ fontSize: '0.65rem' }} /></button>
+                ))}
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 4px' }} />
+                <select style={{ height: 24, border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 5px', fontSize: '0.7rem', color: '#475569', background: '#fff', cursor: 'pointer' }}>
+                  <option>Paragraph</option><option>Heading 1</option><option>Heading 2</option>
+                </select>
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 4px' }} />
+                {([{ I: FaBold, c: 'bold' }, { I: FaItalic, c: 'italic' }, { I: FaUnderline, c: 'underline' }] as {I: React.ElementType; c: string}[]).map(({ I, c }) => (
+                  <button key={c} onClick={() => applyFmt(c)} style={toolbarBtnStyle}><I style={{ fontSize: '0.65rem' }} /></button>
+                ))}
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 4px' }} />
+                {([{ I: FaListUl, c: 'insertUnorderedList' }, { I: FaListOl, c: 'insertOrderedList' }] as {I: React.ElementType; c: string}[]).map(({ I, c }) => (
+                  <button key={c} onClick={() => applyFmt(c)} style={toolbarBtnStyle}><I style={{ fontSize: '0.65rem' }} /></button>
+                ))}
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 4px' }} />
+                {([{ I: FaAlignLeft, c: 'justifyLeft' }, { I: FaAlignCenter, c: 'justifyCenter' }, { I: FaAlignRight, c: 'justifyRight' }] as {I: React.ElementType; c: string}[]).map(({ I, c }) => (
+                  <button key={c} onClick={() => applyFmt(c)} style={toolbarBtnStyle}><I style={{ fontSize: '0.65rem' }} /></button>
+                ))}
+                <div style={{ width: 1, height: 16, background: '#e2e8f0', margin: '0 4px' }} />
+                <button onClick={() => { const u = window.prompt('URL'); if (u) applyFmt('createLink', u) }} style={toolbarBtnStyle}><FaLink style={{ fontSize: '0.65rem' }} /></button>
+              </div>
+
+              {/* Content-editable Editor */}
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={() => setText(editorRef.current?.innerText ?? '')}
+                onPaste={e => e.preventDefault()}
+                onCopy={e => e.preventDefault()}
+                onCut={e => e.preventDefault()}
+                onContextMenu={e => e.preventDefault()}
+                data-placeholder={`Start writing your ${mode} here… Express your thoughts clearly and creatively.`}
+                style={{ minHeight: 280, border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px 16px', fontSize: '0.9rem', lineHeight: 1.78, color: '#1e293b', outline: 'none', overflowY: 'auto', userSelect: 'none' }}
+              />
+
+              {/* Word count footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: '0.73rem', color: '#64748b' }}>
+                <span>Words: {wordCount} | Characters: {charCount}</span>
+                <span style={{ fontWeight: 600, color: wordCount > wordLimit ? '#dc2626' : '#64748b' }}>
+                  {wordCount} / {wordLimit} Words
+                </span>
+              </div>
+            </div>
+
+            {/* Tip */}
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 13px', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              <FaLightbulb style={{ color: '#f59e0b', fontSize: '0.82rem', marginTop: 2, flexShrink: 0 }} />
+              <span style={{ fontSize: '0.76rem', color: '#64748b', lineHeight: 1.55 }}>
+                {mode === 'essay'
+                  ? 'Tip: A good essay has a clear introduction, body and conclusion. Make sure your ideas are well-organised and supported with examples.'
+                  : mode === 'email'
+                  ? 'Tip: Keep your email concise and professional. Start with a clear subject and end with a call to action.'
+                  : 'Tip: Focus on the main points only. Use your own words and keep it shorter than the original text.'}
+              </span>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                disabled={loading || !text.trim() || isLimitReached}
+                onClick={handleSubmit}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #ff6a00, #ff9a3c)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, cursor: loading || !text.trim() || isLimitReached ? 'not-allowed' : 'pointer', opacity: loading || !text.trim() || isLimitReached ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+              >
+                {loading ? <><Spinner animation="border" size="sm" /> Evaluating…</> : <><FaCheckCircle /> Submit Essay</>}
+              </button>
+              <button
+                onClick={fetchNewTopic}
+                disabled={fetchingPrompt}
+                style={{ padding: '10px 18px', borderRadius: 10, border: '1.5px solid #e2e8f0', color: '#475569', background: '#f8fafc', fontSize: '0.85rem', fontWeight: 600, cursor: fetchingPrompt ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                {fetchingPrompt ? <Spinner animation="border" size="sm" /> : <FaRedo />} New Topic
+              </button>
+            </div>
+          </div>
+
+          {/* ── RIGHT: AI Feedback Panel ── */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px', background: '#f8fafc' }}>
+            {loading ? (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, textAlign: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, #6c63ff, #9b93ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 6px 20px rgba(108,99,255,0.3)' }}>
+                  <FaFeatherAlt style={{ color: '#fff', fontSize: '1.2rem' }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>Analyzing Your Writing</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 5 }}>Our AI is evaluating your grammar, tone, and structure…</div>
+                </div>
+                <Spinner animation="border" style={{ color: '#6c63ff' }} />
+              </div>
+            ) : feedback ? (
+              <>
+                {/* Header with inline score */}
+                {(() => {
+                  const s = feedback.score <= 10 ? feedback.score * 10 : feedback.score
+                  return (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <FaLightbulb style={{ color: '#6c63ff', fontSize: '1rem' }} />
+                        <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a' }}>AI Feedback</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', lineHeight: 1, marginBottom: 2 }}>Overall Score</div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 2 }}>
+                          <span style={{ fontSize: '1.8rem', fontWeight: 900, color: s >= 80 ? '#ff7a00' : s >= 60 ? '#f59e0b' : '#dc2626', lineHeight: 1 }}>{s}</span>
+                          <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>/100</span>
+                        </div>
+                        <div style={{ fontSize: '0.68rem', fontWeight: 700, color: s >= 70 ? '#16a34a' : '#dc2626', marginTop: 2 }}>
+                          {s >= 70 ? '👍' : '💪'} {getScoreFeedback(s)}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* ── Tabs ── */}
+                <div style={{ background: '#fff', borderRadius: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                  {/* Tab bar */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
+                    {([
+                      { key: 'model',    label: 'Model Answer' },
+                      { key: 'mistakes', label: 'Mistakes & Improvements' },
+                      { key: 'overall',  label: 'Overall Feedback' },
+                    ] as { key: typeof feedbackTab; label: string }[]).map(t => (
+                      <button
+                        key={t.key}
+                        onClick={() => setFeedbackTab(t.key)}
+                        style={{
+                          flex: 1, padding: '11px 6px', border: 'none', background: 'none',
+                          fontSize: '0.76rem', fontWeight: feedbackTab === t.key ? 700 : 500,
+                          color: feedbackTab === t.key ? '#6c63ff' : '#64748b',
+                          borderBottom: feedbackTab === t.key ? '2.5px solid #6c63ff' : '2.5px solid transparent',
+                          cursor: 'pointer', transition: 'color 0.15s',
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+
+                  {/* Tab content */}
+                  <div style={{ padding: '16px 18px' }}>
+
+                    {/* Model Answer */}
+                    {feedbackTab === 'model' && (
+                      <div>
+                        {feedback.idealAnswer
+                          ? <div style={{ background: '#faf7ff', borderRadius: 10, padding: '14px 16px', border: '1px solid #e9d8fd' }}>
+                              {renderStructured(feedback.idealAnswer)}
+                            </div>
+                          : <div style={{ color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center', padding: '24px 0' }}>No model answer available.</div>
+                        }
+                      </div>
+                    )}
+
+                    {/* Mistakes & Improvements */}
+                    {feedbackTab === 'mistakes' && (
+                      <div>
+                        {feedback.corrections
+                          ? <div style={{ background: '#f9fbff', borderRadius: 10, padding: '14px 16px', border: '1px solid #dbeafe' }}>
+                              {renderStructured(feedback.corrections)}
+                            </div>
+                          : <div style={{ color: '#94a3b8', fontSize: '0.82rem', textAlign: 'center', padding: '24px 0' }}>No corrections available.</div>
+                        }
+                      </div>
+                    )}
+
+                    {/* Overall Feedback */}
+                    {feedbackTab === 'overall' && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* Overall */}
+                        {feedback.feedback?.overall && (
+                          <div style={{ background: '#f8fafc', borderRadius: 10, padding: '12px 14px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#0f172a', marginBottom: 6 }}>Summary</div>
+                            <div style={{ fontSize: '0.81rem', color: '#374151', lineHeight: 1.65 }}>{feedback.feedback.overall}</div>
+                          </div>
+                        )}
+                        {/* Grammar + Tone */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                          {feedback.feedback?.grammar && (
+                            <div style={{ background: '#eff6ff', borderRadius: 10, padding: '12px 14px', border: '1px solid #dbeafe' }}>
+                              <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 6 }}>
+                                <FaEdit style={{ fontSize: '0.65rem', color: '#3b82f6' }} />
+                                <span style={{ fontWeight: 700, fontSize: '0.76rem', color: '#1e40af' }}>Grammar</span>
+                              </div>
+                              <div style={{ fontSize: '0.76rem', color: '#374151', lineHeight: 1.55 }}>{feedback.feedback.grammar}</div>
+                            </div>
+                          )}
+                          {feedback.feedback?.tone && (
+                            <div style={{ background: '#fdf2f8', borderRadius: 10, padding: '12px 14px', border: '1px solid #fce7f3' }}>
+                              <div style={{ display: 'flex', gap: 5, alignItems: 'center', marginBottom: 6 }}>
+                                <FaBullseye style={{ fontSize: '0.65rem', color: '#ec4899' }} />
+                                <span style={{ fontWeight: 700, fontSize: '0.76rem', color: '#9d174d' }}>Tone & Structure</span>
+                              </div>
+                              <div style={{ fontSize: '0.76rem', color: '#374151', lineHeight: 1.55 }}>{feedback.feedback.tone}</div>
+                            </div>
+                          )}
+                        </div>
+                        {/* Suggestions */}
+                        {feedback.feedback?.suggestions?.length ? (
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#0f172a', marginBottom: 8 }}>Suggestions to Improve</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              {feedback.feedback.suggestions.slice(0, 4).map((s, i) => {
+                                const meta = [
+                                  { bg: '#eff6ff', Icon: FaEdit,        ic: '#3b82f6' },
+                                  { bg: '#f0fdf4', Icon: FaCheckCircle, ic: '#10b981' },
+                                  { bg: '#fffbeb', Icon: FaLightbulb,   ic: '#f59e0b' },
+                                  { bg: '#fff1f2', Icon: FaBullseye,    ic: '#ef4444' },
+                                ][i % 4]
+                                return (
+                                  <div key={i} style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                    <div style={{ width: 24, height: 24, borderRadius: 7, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                      <meta.Icon style={{ fontSize: '0.58rem', color: meta.ic }} />
+                                    </div>
+                                    <div style={{ fontSize: '0.74rem', color: '#374151', lineHeight: 1.5 }}>{s}</div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, textAlign: 'center', padding: '2rem' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(108,99,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FaLightbulb style={{ fontSize: '1.6rem', color: '#6c63ff' }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a', marginBottom: 6 }}>AI Feedback</div>
+                  <div style={{ fontSize: '0.81rem', color: '#64748b', lineHeight: 1.65, maxWidth: 240 }}>
+                    Complete your writing and click Submit to receive detailed AI analysis, corrections and improvement suggestions.
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </Modal.Body>
       </Modal>
 
       <style>{`
-        .practice-fullscreen-modal .modal-header .btn-close {
-          filter: invert(1) brightness(2);
-          opacity: 0.9;
+        .writing-practice-modal .modal-header .btn-close {
+          filter: brightness(0) saturate(100%) invert(49%) sepia(83%) saturate(1200%) hue-rotate(5deg) brightness(105%);
+          opacity: 0.85;
         }
-        .practice-fullscreen-modal .modal-header .btn-close:hover {
-          opacity: 1;
+        .writing-practice-modal .modal-header .btn-close:hover { opacity: 1; }
+        .writing-practice-modal .modal-dialog { margin: 0; }
+        .writing-practice-modal .modal-body > div::-webkit-scrollbar { display: none; }
+        .writing-practice-modal .modal-body > div { scrollbar-width: none; -ms-overflow-style: none; }
+        [contenteditable]:empty::before {
+          content: attr(data-placeholder);
+          color: #94a3b8;
+          pointer-events: none;
         }
-
-        .writing-practice-container {
-          padding: 2rem;
-          min-height: 80vh;
-          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-          max-width: 1800px;
-          margin: 0 auto;
-        }
-
-        /* Start Screen */
-        .start-screen {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          min-height: 60vh;
-        }
-
-        .start-card {
-          background: white;
-          padding: 1.5rem;
-          border-radius: 14px;
-          box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
-          text-align: center;
-          max-width: 600px;
-          width: 100%;
-        }
-
-       .icon-wrapper {
-          width: 50px;
-          height: 50px;
-          margin: 0 auto 1rem auto;   /* 🔥 CENTER FIX */
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-
-        .main-icon {
-          font-size: 22px;
-          color: #ff7a00;
-        }
-
-        .start-card h2 {
-          color: #2d3748;
-          margin-bottom: 0.75rem;
-          font-weight: 700;
-          font-size: 2rem;
-        }
-
-        .description {
-          font-size: 1rem;
-          margin-bottom: 1.5rem;
-          max-width: 520px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-
-
-       .mode-selection {
-        max-width: 380px;
-        margin: 0 auto 1.5rem;
-        text-align: center;   /* 🔥 Fix */
-        }
-
-        .start-button {
-        width: 260px;   /* cleaner */
-        margin: 0 auto;
-        display: block;
-        }
-
-        .writing-stats {
-          display: flex;
-          gap: 1rem;
-          justify-content: center;
-          margin-top: 1.5rem;
-        }
-
-        .stat-box {
-          padding: 0.8rem 1.2rem;
-        }
-
-
-
-
-        .mode-label {
-          display: block;
-          text-align: center;
-          font-weight: 600;
-          font-size: 0.95rem;
-          color: #4a5568;
-          margin-bottom: 0.5rem;
-        }
-        
-        .mode-select-wrapper {
-          position: relative;
-        }
-
-        .mode-selector {
-          border-radius: 14px !important;
-          border: 2px solid #ffe0cc !important;
-          padding: 0.85rem 1rem !important;
-          font-size: 1.05rem;
-          font-weight: 500;
-          background-color: white !important;
-          color: black;
-          transition: all 0.25s ease;
-          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.05);
-        }
-
-        /* Make select dropdown arrow black */
-        .mode-selector {
-          appearance: none;
-          -webkit-appearance: none;
-          -moz-appearance: none;
-
-          background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'><path d='M5.516 7.548a.625.625 0 0 1 .884-.032L10 10.89l3.6-3.374a.625.625 0 1 1 .852.916l-4.026 3.774a.625.625 0 0 1-.852 0L5.548 8.432a.625.625 0 0 1-.032-.884z'/></svg>");
-          
-          background-repeat: no-repeat;
-          background-position: right 1rem center;
-          background-size: 18px;
-        }
-
-        .mode-selector:focus {
-          border-color: #ff7a00 !important;
-          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25) !important;
-          background-color: #ffffff !important;
-        }
-
-        .mode-selector:hover {
-          border-color: #ff9a3c !important;
-        }
-
-        .start-button {
-            padding: 1.2rem 3rem;
-            border-radius: 12px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            background: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-            border: none;
-            transition: all 0.3s ease;
-          }
-
-          .start-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 122, 0, 0.35);
-        }
-
-
-        /* Practice Container */
-        .practice-container {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: 0.75rem;
-        }
-
-        /* Question Card - Top (compact) */
-        .question-card {
-          border: none;
-          border-radius: 14px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
-          background: #ffffff;
-          flex-shrink: 0;
-        }
-
-        .question-body {
-          padding: 1rem 1.25rem;
-        }
-
-        .question-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.5rem;
-        }
-
-        .question-title {
-          color: #2d3748;
-          font-weight: 700;
-          font-size: 1rem;
-          margin: 0;
-          display: flex;
-          align-items: center;
-        }
-
-        .mode-badge {
-          font-size: 0.75rem;
-          padding: 0.3rem 0.85rem;
-          border-radius: 20px;
-          background: #ff7a00 !important;
-        }
-
-        .question-content {
-          background: #fff9f5;
-          padding: 0.75rem 1rem;
-          border-radius: 10px;
-          border-left: 4px solid #ff7a00;
-        }
-
-        .question-text {
-          color: #2d3748;
-          font-size: 1.05rem;
-          line-height: 1.6;
-          font-weight: 650;
-          margin: 0;
-        }
-
-        .loading-prompt {
-          color: #667eea;
-          font-weight: 500;
-          font-size: 0.9rem;
-        }
-
-        /* Practice Layout */
-        .practice-layout {
-          height: calc(100vh - 210px);
-          align-items: stretch;
-          margin-left: 0;
-          margin-right: 0;
-          width: 100%;
-        }
-
-        .practice-layout > [class*="col-"] {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-        }
-
-        /* ── Writing Card ── */
-        .writing-card {
-          border: none;
-          border-radius: 14px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-          background: #fff;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
-        .writing-header {
-          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
-          color: #fff;
-          font-size: 0.9rem;
-          font-weight: 600;
-          padding: 0.6rem 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          border-bottom: none;
-          border-radius: 14px 14px 0 0 !important;
-          flex-shrink: 0;
-        }
-
-        .word-count {
-          background: rgba(255,255,255,0.22);
-          padding: 0.2rem 0.65rem;
-          border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 500;
-        }
-
-        .writing-body {
-          padding: 0.75rem 1rem;
-          flex: 1;
-          min-height: 0;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
-        .writing-body .form-group,
-        .writing-body .flex-grow-1 {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          min-height: 0;
-        }
-
-        .writing-textarea {
-          border-radius: 10px;
-          border: 1.5px solid #e2e8f0;
-          padding: 0.85rem;
-          font-size: 0.92rem;
-          line-height: 1.65;
-          resize: none;
-          flex: 1;
-          min-height: 0;
-          background: #fafafa !important;
-          color: #2d3748 !important;
-          transition: border-color 0.2s;
-        }
-
-        .writing-textarea:focus {
-          border-color: #ff7a00;
-          background: #fff !important;
-          box-shadow: 0 0 0 3px rgba(255,122,0,0.12);
-          outline: none;
-        }
-
-        /* ── Action Buttons ── */
-        .action-buttons {
-          display: flex;
-          gap: 8px;
-          padding-top: 0.6rem;
-          flex-shrink: 0;
-        }
-
-        .submit-button {
-          flex: 1;
-          padding: 0.45rem 1rem;
-          border-radius: 8px;
-          font-size: 0.82rem;
-          font-weight: 600;
-          border: none;
-          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
-          color: #fff;
-          transition: opacity 0.15s, box-shadow 0.15s;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-        }
-
-        .submit-button:hover:not(:disabled) { opacity: 0.92; box-shadow: 0 4px 12px rgba(255,122,0,0.3); }
-        .submit-button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .restart-button {
-          flex: 1;
-          padding: 0.45rem 1rem;
-          border-radius: 8px;
-          font-size: 0.82rem;
-          font-weight: 600;
-          border: 1.5px solid #ff7a00 !important;
-          color: #ff7a00 !important;
-          background: transparent !important;
-          transition: all 0.15s;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 5px;
-        }
-
-        .restart-button:hover { background: #ff7a00 !important; color: #fff !important; }
-
-        /* ── Feedback Card ── */
-        .feedback-card {
-          border: none;
-          border-radius: 14px;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-          background: #fff;
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
-
-        .feedback-header {
-          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
-          color: #fff;
-          font-size: 0.9rem;
-          font-weight: 600;
-          padding: 0.6rem 1rem;
-          border-bottom: none;
-          border-radius: 14px 14px 0 0 !important;
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .feedback-body {
-          padding: 0.85rem 1rem;
-          flex: 1;
-          overflow-y: auto;
-          min-height: 0;
-        }
-
-        /* ── Score Row ── */
-        .score-row {
-          display: flex;
-          flex-direction: row;
-          align-items: center;
-          gap: 14px;
-          background: linear-gradient(135deg, #fff7f0, #fff3e8);
-          border: 1px solid #ffe0c0;
-          border-radius: 12px;
-          padding: 12px 14px;
-          margin-bottom: 12px;
-        }
-
-        .score-circle-sm {
-          width: 68px;
-          height: 68px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #ff6a00, #ff9a3c);
-          box-shadow: 0 6px 18px rgba(255,122,0,0.38);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          gap: 1px;
-        }
-
-        .score-num { font-size: 1.25rem; font-weight: 800; color: #fff; line-height: 1; }
-        .score-denom { font-size: 0.65rem; font-weight: 600; color: rgba(255,255,255,0.8); line-height: 1.2; }
-
-        .score-details { flex: 1; min-width: 0; }
-
-        .score-label {
-          font-size: 0.82rem;
-          font-weight: 700;
-          color: #c45000;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-
-        .score-bar { height: 7px; border-radius: 4px; margin-bottom: 5px; }
-
-        .score-hint { font-size: 0.74rem; color: #999; }
-
-        /* ── Feedback Sections ── */
-        .fb-section {
-          border-radius: 10px;
-          margin-bottom: 10px;
-          overflow: hidden;
-          border: 1px solid #eee;
-        }
-
-        .fb-section-title {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          font-size: 0.8rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 7px 12px;
-          color: #fff;
-        }
-
-        .fb-icon { font-size: 0.88rem; }
-
-        .fb-correction .fb-section-title  { background: #1565c0; }
-        .fb-ideal .fb-section-title        { background: #6a1b9a; }
-        .fb-overall .fb-section-title      { background: #2e7d32; }
-        .fb-suggestions .fb-section-title  { background: #e65100; }
-
-        .fb-ideal .fb-section-body {
-          background: #fdf8ff;
-          padding: 16px 18px;
-          font-size: 0.88rem;
-          line-height: 1.85;
-          color: #1e293b;
-          font-family: 'Georgia', 'Times New Roman', serif;
-          border-left: 4px solid #6a1b9a;
-          white-space: pre-wrap;
-          letter-spacing: 0.01em;
-        }
-
-        .fb-ideal .fb-section-body p { margin-bottom: 0.65em; }
-        .fb-ideal .fb-section-body p:last-child { margin-bottom: 0; }
-
-        .fb-section-body {
-          padding: 10px 12px;
-          font-size: 0.83rem;
-          line-height: 1.65;
-          color: #374151;
-          background: #fff;
-        }
-
-        /* Corrected Version — document styling */
-        .fb-correction {
-          border: none;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-        }
-
-        .fb-correction .fb-section-body {
-          background: #f9fbff;
-          padding: 16px 18px;
-          font-size: 0.88rem;
-          line-height: 1.85;
-          color: #1e293b;
-          font-family: 'Georgia', 'Times New Roman', serif;
-          border-left: 4px solid #1565c0;
-          white-space: pre-wrap;
-          letter-spacing: 0.01em;
-        }
-
-        .fb-correction .fb-section-body p {
-          margin-bottom: 0.65em;
-        }
-
-        .fb-correction .fb-section-body p:last-child {
-          margin-bottom: 0;
-        }
-
-        /* ── Skill chips ── */
-        .fb-skills-row {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-bottom: 10px;
-        }
-
-        .fb-skill-chip {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          background: #f8f9fa;
-          border: 1px solid #e9ecef;
-          border-radius: 10px;
-          padding: 9px 12px;
-        }
-
-        .fb-skill-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
-        .fb-skill-title { font-size: 0.78rem; font-weight: 700; color: #374151; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.04em; }
-        .fb-skill-text { font-size: 0.81rem; color: #6b7280; line-height: 1.5; }
-
-        /* ── Suggestions list ── */
-        .fb-suggestions-list {
-          list-style: none;
-          padding: 0;
-          margin: 0;
-        }
-
-        .fb-suggestions-list li {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          font-size: 0.83rem;
-          color: #374151;
-          line-height: 1.55;
-          padding: 4px 0;
-          border-bottom: 1px solid #f3f4f6;
-        }
-
-        .fb-suggestions-list li:last-child { border-bottom: none; }
-        .fb-bullet { color: #ff7a00; font-weight: 700; flex-shrink: 0; font-size: 0.85rem; }
-
-        /* ── Empty / Loading states ── */
-        .empty-feedback {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          text-align: center;
-          padding: 1rem;
-        }
-
-        .empty-icon { font-size: 2.2rem; }
-        .empty-feedback h5 { font-size: 0.95rem; font-weight: 700; color: #374151; margin: 0; }
-        .empty-feedback p { font-size: 0.8rem; color: #9ca3af; max-width: 200px; margin: 0; line-height: 1.5; }
-
-        .loading-feedback {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          text-align: center;
-        }
-
-        .loading-feedback h5 { font-size: 0.9rem; color: #374151; margin: 0; }
-        .loading-feedback p  { font-size: 0.78rem; color: #9ca3af; margin: 0; }
-
-        /* Responsive Design */
-        @media (max-width: 1200px) {
-          .writing-practice-container {
-            padding: 1.5rem;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .writing-practice-container {
-            padding: 1rem;
-          }
-
-          .start-card {
-            padding: 2.5rem 2rem;
-          }
-
-          .question-body {
-            padding: 2rem;
-          }
-
-          .question-header {
-            flex-direction: column;
-            gap: 1rem;
-            align-items: flex-start;
-          }
-
-          .question-content {
-            padding: 1.5rem;
-          }
-
-          .writing-body,
-          .feedback-body {
-            padding: 1.5rem;
-          }
-
-          .writing-header,
-          .feedback-header {
-            padding: 1.25rem;
-            font-size: 1.1rem;
-            flex-direction: column;
-            gap: 0.75rem;
-            text-align: center;
-          }
-
-          .writing-textarea {
-            min-height: 300px;
-            font-size: 1rem;
-          }
-
-          .action-buttons .btn {
-            width: 100%;
-          }
-
-          .score-circle {
-            width: 110px;
-            height: 110px;
-          }
-        }
-        
-        .writing-stats {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.stat-box {
-  background: #fff7f0;
-  border: 2px solid #ffe0cc;
-  padding: 0.9rem 1.5rem;
-  border-radius: 14px;
-  min-width: 170px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.stat-box:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(255, 122, 0, 0.15);
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #9a3412;
-  margin-bottom: 0.3rem;
-}
-
-.stat-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #ff6a00;
-}
-
-/* If limit reached */
-.stat-box.limit-reached {
-  background: #fff1f2;
-  border-color: #fecaca;
-}
-
-.stat-box.limit-reached .stat-value {
-  color: #dc2626;
-}
-
       `}</style>
     </Container>
   )
