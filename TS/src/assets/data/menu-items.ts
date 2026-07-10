@@ -776,12 +776,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         url: '/student/company-rounds',
         parentKey: 'preparation',
       },
-      {
+      /* {
         key: 'terminal',
         label: 'Compiler',
         icon: BsCpu, // 💻 CPU/terminal
         url: '/student/terminal',
-      },
+      }, */
       /* {
         key: 'attendInterview',
         label: 'Recruitment Assessment with AI',
@@ -874,6 +874,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     ],
   },
 
+  {
+    key: 'achievements',
+    label: 'Achievements',
+    icon: BsTrophy,
+    url: '/student/achievements',
+  },
   {
     key: 'assessment',
     label: 'Final Assessment',

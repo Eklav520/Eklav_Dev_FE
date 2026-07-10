@@ -53,10 +53,8 @@ const ResumeMinimalist: React.FC<{ data: ResumeData }> = ({ data }) => {
         {/* ── Skills ── */}
         {!!data.skills?.length && (
           <Section title="Core Skills">
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 8px' }}>
-              {data.skills.map((s, i) => (
-                <span key={i} style={{ fontSize: 10.5, background: '#f0fdfa', color: accent2, border: `1px solid ${accent}44`, borderRadius: 20, padding: '3px 12px', fontWeight: 600 }}>{s}</span>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 24px' }}>
+              {data.skills.map((s, i) => <Bullet key={i} text={s} />)}
             </div>
           </Section>
         )}

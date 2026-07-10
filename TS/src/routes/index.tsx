@@ -164,6 +164,7 @@ const JustAMinute = lazy(() => import('@/app/student/just-a-minute/page'))
 const LearningPractice = lazy(() => import('@/app/student/learning-practice/page'))
 const WritingPractice = lazy(() => import('@/app/student/writing-practice/pages'))
 const StudentCollegeLabs = lazy(() => import('@/app/student/college-labs/page'))
+const StudentAchievements = lazy(() => import('@/app/student/achievements/page'))
 const StudentPlacement = lazy(() => import('@/app/student/placement/page'))
 const StudentCompanyRounds = lazy(() => import('@/app/student/company-rounds/pages'))
 const StudentCompanyDetails = lazy(() => import('@/app/student/company-rounds/pages'))
@@ -907,11 +908,11 @@ export const studentRoutes: RoutesProps[] = [
     name: 'Problem Statement Submit',
     element: <ProblemStatementSubmit />,
   },
-  {
+  /* {
     path: '/student/terminal',
     name: 'Problem Statement Submit',
     element: <Terminal />,
-  },
+  }, */
   {
     path: '/student/bookmark',
     name: 'Wishlist',
@@ -1026,6 +1027,11 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/career-roadmap/:roleId',
     name: 'Career Roadmap Detail',
     element: <CareerRoadmapDetail />,
+  },
+  {
+    path: '/student/achievements',
+    name: 'Achievements',
+    element: <StudentAchievements />,
   },
 ]
 

@@ -4,9 +4,8 @@ import { useAuthContext } from '@/context/useAuthContext'
 import { useProfile } from './hooks/useProfile'
 import { useEnglishDashboardHistory } from './hooks/useEnglishDashboardHistory'
 import { FiMic, FiEdit3, FiHeadphones, FiBook, FiZap, FiAward, FiTrendingUp } from 'react-icons/fi'
-import { MdOutlineSchool, MdOutlineStars, MdOutlineTimer, MdOutlineRocketLaunch } from 'react-icons/md'
-import { BsShieldCheck, BsTrophyFill, BsFire } from 'react-icons/bs'
-import { HiOutlineLightningBolt } from 'react-icons/hi'
+import { MdOutlineTimer } from 'react-icons/md'
+import { BsTrophyFill, BsFire } from 'react-icons/bs'
 import { RiMoonLine } from 'react-icons/ri'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -151,6 +150,9 @@ const StudentDashboardUpdated: React.FC = () => {
   const [topicLimits, setTopicLimits] = useState<Record<string, any>>({})
   const [selectedTopic, setSelectedTopic] = useState('')
   const [aiTab, setAiTab] = useState<'resume' | 'topic'>('resume')
+  const [annAchTab, setAnnAchTab] = useState<'announcements' | 'achievements'>('announcements')
+  const [instituteAchievements, setInstituteAchievements] = useState<any[]>([])
+  const [achModal, setAchModal] = useState<any>(null)
   const [codeStats, setCodeStats] = useState({ total: 0, completed: 0, easy: 0, medium: 0, hard: 0, topProblems: [] as { title: string; difficulty: string }[] })
   const [tsFilter, setTsFilter] = useState<'week' | 'month' | 'history'>('week')
   const [historyMonth, setHistoryMonth] = useState('')   // 'YYYY-MM'
@@ -174,7 +176,8 @@ const StudentDashboardUpdated: React.FC = () => {
       fetch(`${baseURL}/interview/limits`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/ai/me`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/dashboard/adminProblems`, { headers: h }).then(r => r.json()),
-    ]).then(([sumR, enrR, tsR, annR, jobR, resR, limR, mySubR, allProblemsR]) => {
+      fetch(`${baseURL}/api/institute/achievements`, { headers: h }).then(r => r.json()),
+    ]).then(([sumR, enrR, tsR, annR, jobR, resR, limR, mySubR, allProblemsR, achR]) => {
       if (sumR.status === 'fulfilled') setDashSummary(sumR.value)
       if (enrR.status === 'fulfilled') {
         const raw = Array.isArray(enrR.value) ? enrR.value : []
@@ -185,6 +188,7 @@ const StudentDashboardUpdated: React.FC = () => {
       }
       if (tsR.status === 'fulfilled') setTimesheetRecords(Array.isArray(tsR.value) ? tsR.value : [])
       if (annR.status === 'fulfilled') setAnnouncements((annR.value?.data || []).slice(0, 3))
+      if (achR.status === 'fulfilled') setInstituteAchievements((achR.value?.data || []).slice(0, 4))
       if (jobR.status === 'fulfilled') {
         const raw: any[] = Array.isArray(jobR.value) ? jobR.value : (jobR.value?.data || jobR.value?.jobs || [])
         setHrJobs(raw.filter((j: any) => !j.isExpired).slice(0, 4))
@@ -921,8 +925,8 @@ const StudentDashboardUpdated: React.FC = () => {
 
         </div>{/* end Row 2 */}
 
-        {/* ════ ROW 3: AI Mock Interview + Announcements + Jobs + Achievements ════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1.2fr 1.6fr', gap: 14 }}>
+        {/* ════ ROW 3: AI Mock Interview + Announcements & Achievements + Jobs ════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr', gap: 14 }}>
 
           {/* AI Mock Interview */}
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
@@ -1021,10 +1025,20 @@ const StudentDashboardUpdated: React.FC = () => {
             )}
           </Card>
 
-          {/* Announcements */}
+          {/* Announcements + Student Achievements (tabbed) */}
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
-            <CardHeader title="Announcements" />
-              {announcements.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Announcements & Achievements</span>
+            </div>
+            {/* Tabs */}
+            <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
+              <button className={`sd-tab-btn ${annAchTab === 'announcements' ? 'active' : ''}`} onClick={() => setAnnAchTab('announcements')}>Announcements</button>
+              <button className={`sd-tab-btn ${annAchTab === 'achievements' ? 'active' : ''}`} onClick={() => setAnnAchTab('achievements')}>Student Achievements</button>
+            </div>
+
+            {/* Announcements tab */}
+            {annAchTab === 'announcements' && (
+              announcements.length === 0 ? (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', margin: 0 }}>No announcements yet.</p>
                 </div>
@@ -1042,66 +1056,154 @@ const StudentDashboardUpdated: React.FC = () => {
                     </div>
                   </div>
                 ))
-              )}
+              )
+            )}
+
+            {/* Student Achievements tab */}
+            {annAchTab === 'achievements' && (
+              instituteAchievements.length === 0 ? (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 6 }}>
+                  <BsTrophyFill size={28} color="#e2e8f0" />
+                  <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', margin: 0 }}>No achievements yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {instituteAchievements.map((a, i) => {
+                    const CAT_COLORS: Record<string, string> = {
+                      academic: '#f59e0b', sports: '#10b981', placement: '#3b82f6',
+                      extracurricular: '#ec4899', certification: '#8b5cf6', general: '#ff7a00',
+                    }
+                    const CAT_ICONS: Record<string, string> = {
+                      academic: '🎓', sports: '🏆', placement: '💼',
+                      extracurricular: '🌟', certification: '📜', general: '⭐',
+                    }
+                    const color = CAT_COLORS[a.category] || '#ff7a00'
+                    const icon = CAT_ICONS[a.category] || '⭐'
+                    return (
+                      <div key={a._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${color}18`, border: `2px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                          {a.studentPic
+                            ? <img src={a.studentPic} alt={a.studentName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                            : <span style={{ fontSize: '0.85rem', fontWeight: 800, color }}>{a.studentName?.charAt(0)?.toUpperCase() || icon}</span>
+                          }
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.studentName}</div>
+                          <div style={{ fontSize: '0.67rem', color: GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                          <span style={{ fontSize: '0.62rem', fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}28`, borderRadius: 20, padding: '2px 8px', textTransform: 'capitalize' }}>{icon} {a.category}</span>
+                          <button onClick={() => setAchModal(a)} style={{ fontSize: '0.62rem', fontWeight: 700, color: ORANGE, background: '#fff7ed', border: `1px solid ${ORANGE}44`, borderRadius: 20, padding: '2px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>View →</button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            )}
           </Card>
 
-          {/* Latest Jobs by HR */}
-          <Card>
+          {/* Latest Jobs by HR — moved to end */}
+          <Card style={{ display: 'flex', flexDirection: 'column' }}>
             <CardHeader title="Latest Jobs by HR" />
-              {hrJobs.length === 0 ? (
-                <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', padding: '12px 0' }}>No jobs available.</p>
-              ) : (
-                hrJobs.map((job, i) => (
-                  <div key={i} className="sd-job-row">
-                    <div style={{ width: 30, height: 30, background: '#f1f5f9', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                      {job.logo
-                        ? <img src={job.logo} alt={job.company} style={{ width: 22, height: 22, objectFit: 'contain' }} onError={e => ((e.target as HTMLImageElement).style.display = 'none')} />
-                        : <svg width="13" height="13" fill="none" stroke={GRAY} strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-                      }
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.76rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                      <div style={{ fontSize: '0.66rem', color: GRAY }}>{job.company}{job.location ? ` · ${job.location.trim()}` : ''}</div>
-                    </div>
-                    <div style={{ fontSize: '0.62rem', color: '#94a3b8', flexShrink: 0, textAlign: 'right' }}>{timeAgo(job.postedDate)}</div>
+            <div style={{ flex: 1 }}>
+            {hrJobs.length === 0 ? (
+              <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', padding: '12px 0' }}>No jobs available.</p>
+            ) : (
+              hrJobs.map((job, i) => (
+                <div key={i} className="sd-job-row">
+                  <div style={{ width: 30, height: 30, background: '#f1f5f9', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                    {job.logo
+                      ? <img src={job.logo} alt={job.company} style={{ width: 22, height: 22, objectFit: 'contain' }} onError={e => ((e.target as HTMLImageElement).style.display = 'none')} />
+                      : <svg width="13" height="13" fill="none" stroke={GRAY} strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+                    }
                   </div>
-                ))
-              )}
-            <Link to="/student/interview-details" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginTop: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.76rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                    <div style={{ fontSize: '0.66rem', color: GRAY }}>{job.company}{job.location ? ` · ${job.location.trim()}` : ''}</div>
+                  </div>
+                  <div style={{ fontSize: '0.62rem', color: '#94a3b8', flexShrink: 0, textAlign: 'right' }}>{timeAgo(job.postedDate)}</div>
+                </div>
+              ))
+            )}
+            </div>
+            <Link to="/student/interview-details" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto', paddingTop: 12, borderTop: `1px solid #f1f5f9` }}>
               Browse All Jobs <span style={{ fontSize: '0.9rem' }}>→</span>
             </Link>
-            </Card>
-
-          {/* Student Achievements */}
-          <Card>
-            <CardHeader title="Student Achievements" />
-            <div style={{ background: 'linear-gradient(135deg, #fff7ed, #fff)', border: `1px solid ${ORANGE}33`, borderRadius: 10, padding: '10px 12px', marginBottom: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
-              <BsTrophyFill size={28} color={ORANGE} />
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: TEXT, marginBottom: 2 }}>Congratulations!</div>
-                <div style={{ fontSize: '0.7rem', color: GRAY, lineHeight: 1.4 }}>
-                  Institute Rank <strong style={{ color: ORANGE }}>{instituteRank}</strong>{instituteTotal ? `/${instituteTotal}` : ''} · Overall <strong style={{ color: ORANGE }}>{overallRank}</strong>{overallTotal ? `/${overallTotal}` : ''} <MdOutlineRocketLaunch size={13} style={{ verticalAlign: 'middle', color: ORANGE }} />
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {[
-                { icon: <BsShieldCheck size={22} />,         label: 'Top 10% Learner',   sub: 'May 2024',       color: '#f59e0b' },
-                { icon: <MdOutlineSchool size={22} />,       label: 'English Expert',     sub: 'Speaking 80+',   color: '#10b981' },
-                { icon: <HiOutlineLightningBolt size={22} />, label: 'Code Warrior',      sub: '20+ Challenges', color: '#3b82f6' },
-                { icon: <MdOutlineStars size={22} />,        label: 'Consistent Learner', sub: '7 Days Streak',  color: '#8b5cf6' },
-              ].map((b, i) => (
-                <div key={i} className="sd-badge-card">
-                  <div style={{ color: b.color, marginBottom: 5, display: 'flex', justifyContent: 'center' }}>{b.icon}</div>
-                  <div style={{ fontSize: '0.64rem', fontWeight: 700, color: b.color, marginBottom: 1 }}>{b.label}</div>
-                  <div style={{ fontSize: '0.58rem', color: GRAY }}>{b.sub}</div>
-                </div>
-              ))}
-            </div>
           </Card>
 
         </div>
       </div>
+
+      {/* Achievement detail modal */}
+      {achModal && (() => {
+        const CAT_COLORS: Record<string, string> = {
+          academic: '#f59e0b', sports: '#10b981', placement: '#3b82f6',
+          extracurricular: '#ec4899', certification: '#8b5cf6', general: '#ff7a00',
+        }
+        const CAT_ICONS: Record<string, string> = {
+          academic: '🎓', sports: '🏆', placement: '💼',
+          extracurricular: '🌟', certification: '📜', general: '⭐',
+        }
+        const color = CAT_COLORS[achModal.category] || '#ff7a00'
+        const icon = CAT_ICONS[achModal.category] || '⭐'
+        const bg = `linear-gradient(135deg, ${color}, ${color}bb)`
+        return (
+          <div onClick={() => setAchModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', background: '#fff', borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 100px rgba(0,0,0,0.30)' }}>
+
+              {/* ── Banner ── */}
+              <div style={{ background: bg, padding: '28px 32px 24px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                {/* Decorative circles */}
+                <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,.10)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: -20, left: 40, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,.07)', pointerEvents: 'none' }} />
+                {/* Close */}
+                <button onClick={() => setAchModal(null)} style={{ position: 'absolute', top: 16, right: 16, width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.2)', border: '1px solid rgba(255,255,255,.35)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, backdropFilter: 'blur(4px)' }}>×</button>
+                {/* Category + date row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <span style={{ background: 'rgba(255,255,255,.22)', border: '1px solid rgba(255,255,255,.35)', borderRadius: 20, padding: '3px 14px', fontSize: '0.7rem', fontWeight: 700, color: '#fff', textTransform: 'capitalize', letterSpacing: .4 }}>{icon} {achModal.category}</span>
+                  <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,.7)', marginLeft: 'auto' }}>
+                    {new Date(achModal.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+                {/* Title */}
+                <h2 style={{ margin: '0 0 16px', fontSize: '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1.35, paddingRight: 40 }}>{achModal.title}</h2>
+                {/* Student pill */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: '50%', border: '3px solid rgba(255,255,255,.6)', overflow: 'hidden', flexShrink: 0, background: 'rgba(255,255,255,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 800, color: '#fff' }}>
+                    {achModal.studentPic
+                      ? <img src={achModal.studentPic} style={{ width: 48, height: 48, objectFit: 'cover' }} />
+                      : achModal.studentName?.charAt(0)?.toUpperCase()
+                    }
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>{achModal.studentName}</div>
+                    {achModal.studentEmail && <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,.72)', marginTop: 2 }}>{achModal.studentEmail}</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Body ── */}
+              <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '24px 32px' }}>
+                {achModal.imageUrl && (
+                  <img src={achModal.imageUrl} style={{ width: '100%', maxHeight: 180, borderRadius: 14, objectFit: 'cover', marginBottom: 20, boxShadow: '0 4px 16px rgba(0,0,0,.10)' }} />
+                )}
+                <div style={{ fontSize: '0.88rem', color: '#334155', lineHeight: 1.9, wordBreak: 'break-word' }}
+                  dangerouslySetInnerHTML={{ __html: achModal.description }} />
+              </div>
+
+              {/* ── Footer ── */}
+              <div style={{ padding: '14px 32px', borderTop: '1px solid #f1f5f9', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ fontSize: '0.78rem', color: GRAY }}>
+                  {(achModal.likes?.length > 0) && <span>❤️ {achModal.likes.length} {achModal.likes.length === 1 ? 'like' : 'likes'}</span>}
+                </div>
+                <button onClick={() => setAchModal(null)} style={{ background: bg, border: 'none', borderRadius: 12, padding: '9px 28px', color: '#fff', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', boxShadow: `0 4px 14px ${color}55` }}>Close</button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
     </div>
   )
 }

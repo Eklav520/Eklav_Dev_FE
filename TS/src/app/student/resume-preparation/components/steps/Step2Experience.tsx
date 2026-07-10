@@ -1,46 +1,71 @@
-// Step2Experience.tsx
-import React from 'react';
-import { ResumeData } from '../ResumeData';
+import React from 'react'
+import { ResumeData } from '../ResumeData'
+import { Plus, Trash2, ArrowRight } from 'lucide-react'
 
 interface StepProps {
-  data: ResumeData;
-  setData: (data: ResumeData) => void;
-  goNext: () => void;
-  goBack: () => void;
+  data: ResumeData
+  setData: (data: ResumeData) => void
+  goNext: () => void
+  goBack: () => void
+}
+
+const ORANGE = '#f97316'
+const BORDER = '#e5e7eb'
+const GRAY = '#6b7280'
+
+const inp: React.CSSProperties = {
+  flex: 1, padding: '9px 12px', border: `1px solid ${BORDER}`,
+  borderRadius: 8, fontSize: 13, outline: 'none', color: '#1f2937',
+  background: '#fff', fontFamily: 'inherit',
 }
 
 const Step2Experience: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => {
-  const handleChange = (index: number, value: string) => {
-    const updated = [...data.experience];
-    updated[index] = value;
-    setData({ ...data, experience: updated });
-  };
+  const items = data.experience
 
-  const addExperience = () => {
-    setData({ ...data, experience: [...data.experience, ''] });
-  };
-
-  const removeExperience = (index: number) => {
-    const updated = data.experience.filter((_, i) => i !== index);
-    setData({ ...data, experience: updated });
-  };
+  const update = (i: number, v: string) => {
+    const next = [...items]; next[i] = v
+    setData({ ...data, experience: next })
+  }
+  const add = () => setData({ ...data, experience: [...items, ''] })
+  const remove = (i: number) => setData({ ...data, experience: items.filter((_, idx) => idx !== i) })
 
   return (
-    <div className="container mt-4">
-      <h3>Experience</h3>
-      {data.experience.map((exp, i) => (
-        <div className="input-group my-2" key={i}>
-          <input className="form-control" value={exp} onChange={(e) => handleChange(i, e.target.value)} />
-          <button className="btn btn-danger" onClick={() => removeExperience(i)}>Remove</button>
-        </div>
-      ))}
-      <button className="btn btn-secondary mb-3" onClick={addExperience}>+ Add Experience</button>
-      <div>
-        <button className="btn btn-secondary me-2" onClick={goBack}>Back</button>
-        <button className="btn btn-primary" onClick={goNext}>Next</button>
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Experience</h2>
+        <p style={{ fontSize: 13, color: GRAY, margin: '4px 0 0' }}>Add your work experience</p>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {items.map((item, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              style={inp}
+              value={item}
+              onChange={(e) => update(i, e.target.value)}
+              placeholder="e.g. Software Engineer — ABC Corp — 2021–2023 — Built REST APIs"
+            />
+            <button type="button" onClick={() => remove(i)} style={{ flexShrink: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <Trash2 size={14} color="#ef4444" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={add} style={{ fontSize: 13, fontWeight: 600, color: ORANGE, background: '#fff7ed', border: `1.5px dashed ${ORANGE}60`, borderRadius: 8, padding: '9px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28 }}>
+        <Plus size={15} /> Add Experience
+      </button>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+        <button type="button" onClick={goBack} style={{ fontSize: 13, fontWeight: 600, color: '#374151', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '9px 20px', cursor: 'pointer' }}>
+          Save & Exit
+        </button>
+        <button type="button" onClick={goNext} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: ORANGE, border: 'none', borderRadius: 8, padding: '9px 22px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}>
+          Save & Continue <ArrowRight size={14} />
+        </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Step2Experience;
+export default Step2Experience

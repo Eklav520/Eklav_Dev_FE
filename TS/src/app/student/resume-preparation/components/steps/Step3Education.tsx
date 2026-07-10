@@ -1,45 +1,64 @@
-// Step3Education.tsx
-import React from 'react';
-import { StepProps } from '../ResumeBuilder';
+import React from 'react'
+import { StepProps } from '../ResumeBuilder'
+import { Plus, Trash2, ArrowRight } from 'lucide-react'
+
+const ORANGE = '#f97316'
+const BORDER = '#e5e7eb'
+const GRAY = '#6b7280'
+
+const inp: React.CSSProperties = {
+  flex: 1, padding: '9px 12px', border: `1px solid ${BORDER}`,
+  borderRadius: 8, fontSize: 13, outline: 'none', color: '#1f2937',
+  background: '#fff', fontFamily: 'inherit',
+}
 
 const Step3Education: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => {
-  const handleChange = (index: number, value: string) => {
-    const updated = [...data.education];
-    updated[index] = value;
-    setData({ ...data, education: updated });
-  };
+  const items = data.education
 
-  const addField = () => {
-    setData({ ...data, education: [...data.education, ''] });
-  };
-
-  const removeField = (index: number) => {
-    const updated = data.education.filter((_, i) => i !== index);
-    setData({ ...data, education: updated });
-  };
+  const update = (i: number, v: string) => {
+    const next = [...items]; next[i] = v
+    setData({ ...data, education: next })
+  }
+  const add = () => setData({ ...data, education: [...items, ''] })
+  const remove = (i: number) => setData({ ...data, education: items.filter((_, idx) => idx !== i) })
 
   return (
-    <div className="container mt-4">
-      <h3>Education</h3>
-      {data.education.map((item, i) => (
-        <div key={i} className="input-group my-2">
-          <input
-            className="form-control"
-            value={item}
-            onChange={(e) => handleChange(i, e.target.value)}
-            placeholder="Education detail (e.g. B.Tech in CSE - XYZ University - 2023)"
-          />
-          <button className="btn btn-danger" onClick={() => removeField(i)}>Remove</button>
-        </div>
-      ))}
-      <button className="btn btn-secondary my-2" onClick={addField}>+ Add Education</button>
-      <div>
-        <button className="btn btn-secondary me-2" onClick={goBack}>Back</button>
-        <button className="btn btn-primary" onClick={goNext}>Next</button>
+    <div>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Education</h2>
+        <p style={{ fontSize: 13, color: GRAY, margin: '4px 0 0' }}>Add your educational qualifications</p>
       </div>
-      
-    </div>
-  );
-};
 
-export default Step3Education;
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+        {items.map((item, i) => (
+          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              style={inp}
+              value={item}
+              onChange={(e) => update(i, e.target.value)}
+              placeholder="e.g. B.Tech in CSE — XYZ University — 2023 — 8.5 CGPA"
+            />
+            <button type="button" onClick={() => remove(i)} style={{ flexShrink: 0, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '8px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+              <Trash2 size={14} color="#ef4444" />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button type="button" onClick={add} style={{ fontSize: 13, fontWeight: 600, color: ORANGE, background: '#fff7ed', border: `1.5px dashed ${ORANGE}60`, borderRadius: 8, padding: '9px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 28 }}>
+        <Plus size={15} /> Add Education
+      </button>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+        <button type="button" onClick={goBack} style={{ fontSize: 13, fontWeight: 600, color: '#374151', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 8, padding: '9px 20px', cursor: 'pointer' }}>
+          Save & Exit
+        </button>
+        <button type="button" onClick={goNext} style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: ORANGE, border: 'none', borderRadius: 8, padding: '9px 22px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}>
+          Save & Continue <ArrowRight size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export default Step3Education

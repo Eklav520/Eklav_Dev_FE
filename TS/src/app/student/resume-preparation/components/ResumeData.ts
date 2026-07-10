@@ -4,9 +4,12 @@ export interface ResumeData {
   city?: string;
   country?: string;
   pinCode?: string;
+  location?: string;
   email: string;
   phone: string;
   linkedin?: string;
+  portfolio?: string;
+  profilePhoto?: string;
   objective?: string;
   role?: string;
   skills: string[];
