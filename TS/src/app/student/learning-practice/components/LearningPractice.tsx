@@ -1,8 +1,15 @@
 import React, { useState, useRef } from 'react'
 import { useEffect } from 'react'
 import { Button, Card, Container, Row, Col, Spinner, ProgressBar, Form, Modal } from 'react-bootstrap'
-import { FaClipboardList, FaArrowRight, FaPlay, FaVolumeUp, FaCheckCircle, FaArrowLeft } from 'react-icons/fa'
+import {
+  FaClipboardList, FaArrowRight, FaPlay, FaVolumeUp, FaCheckCircle, FaArrowLeft,
+  FaHeadphones, FaMicrophone, FaBrain, FaChartLine, FaBullseye, FaStar, FaFire,
+  FaFileAlt, FaQuestionCircle, FaLightbulb, FaChartBar,
+  FaComments, FaNewspaper, FaUserTie, FaPodcast, FaChalkboardTeacher, FaBook, FaBriefcase,
+} from 'react-icons/fa'
+import { MdGraphicEq } from 'react-icons/md'
 import { useAuthContext } from '@/context/useAuthContext'
+import headsetsImg from '@/assets/images/headsets.png'
 
 type Question = {
   q?: string
@@ -58,6 +65,8 @@ const ListeningPractice: React.FC = () => {
   const [history, setHistory] = useState<ListeningHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
   const [submittedData, setSubmittedData] = useState<{ answers: { [k: string]: string }; prompt: typeof prompt } | null>(null)
+  const [difficulty, setDifficulty] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner')
+  const [activeCategory, setActiveCategory] = useState('Conversations')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
   //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
@@ -100,7 +109,11 @@ const ListeningPractice: React.FC = () => {
     setCurrentQ(0)
 
     try {
-      const res = await fetch(`${baseURL}/learning/listening/prompt`, {
+      const params = new URLSearchParams({
+        difficulty,
+        category: activeCategory,
+      })
+      const res = await fetch(`${baseURL}/learning/listening/prompt?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -185,77 +198,224 @@ const ListeningPractice: React.FC = () => {
 
   const getScorePercentage = () => feedback?.score ?? 0
 
+  const ORANGE = '#ff6b00'
+
+  const DIFFICULTIES = [
+    { id: 'beginner',     label: 'Beginner',     sub: 'Simple conversations\nand slow-paced audio', recommended: true  },
+    { id: 'intermediate', label: 'Intermediate',  sub: 'Daily conversations\nand moderate pace',     recommended: false },
+    { id: 'advanced',     label: 'Advanced',      sub: 'Fast-paced audio\nand complex topics',       recommended: false },
+  ]
+
+  const FEATURES_HERO = [
+    { Icon: FaHeadphones,        label: 'Real-life Audio',      sub: 'Conversations, talks\nand interviews'       },
+    { Icon: FaBrain,             label: 'AI-Powered Questions', sub: 'Smart questions to test\nyour understanding' },
+    { Icon: FaChartLine,         label: 'Instant Feedback',     sub: 'Get detailed analysis\nand improve faster'  },
+  ]
+
+  const WHAT_YOU_GET = [
+    { Icon: FaFileAlt,          label: 'Audio transcripts'        },
+    { Icon: FaQuestionCircle,   label: 'Comprehension questions'  },
+    { Icon: FaLightbulb,        label: 'Detailed explanations'    },
+    { Icon: FaChartBar,         label: 'Performance analytics'    },
+  ]
+
+  const CATEGORIES = [
+    { label: 'Conversations', Icon: FaComments        },
+    { label: 'News',          Icon: FaNewspaper       },
+    { label: 'Interviews',    Icon: FaMicrophone      },
+    { label: 'Podcasts',      Icon: FaPodcast         },
+    { label: 'Lectures',      Icon: FaChalkboardTeacher },
+    { label: 'Stories',       Icon: FaBook            },
+    { label: 'Business',      Icon: FaBriefcase       },
+  ]
+
   return (
-    <Container fluid className="listening-practice-container">
-      <div className="start-screen">
-          <Card className="start-card">
-            <Card.Body className="start-card-body">
-              <div className="icon-wrapper">
-                <FaVolumeUp className="main-icon" />
-              </div>
-              <h1 className="start-title d-flex align-items-center justify-content-center gap-2">
+    <>
+      {/* ── Start Screen ── */}
+      <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: '#fff' }}>
+
+        {/* ── Hero Row ── */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr auto 280px',
+          gap: 0, alignItems: 'stretch',
+          background: 'linear-gradient(120deg, #fffbf5 0%, #fff5e8 50%, #ffecd4 100%)',
+          borderBottom: '1px solid #f1f5f9', minHeight: 220, position: 'relative', overflow: 'hidden',
+        }}>
+          {/* dot pattern */}
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'radial-gradient(circle, #cc5500 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+
+          {/* Left: title + features */}
+          <div style={{ padding: '28px 28px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: 0 }}>
                 Listening Practice
-                {status === 'pending' && (
-                  <span className="trial-badge-modern">
-                    Trial
-                  </span>
-                )}
               </h1>
-              <p className="start-description">
-                Test your listening skills with AI-powered audio challenges. Click start to begin your journey to better English comprehension.
-              </p>
-
-              <div className="start-button-container">
-                <Button
-                  className="start-button"
-                  onClick={startPractice}
-                  disabled={isLimitReached}
-                >
-                  <FaPlay className="me-2" />
-                  {isLimitReached
-                    ? 'Limit Reached'
-                    : 'Start Practice'}
-                </Button>
-
-                {isLimitReached && (
-                  <div className="trial-limit-box-modern">
-                    🔒 {status === 'pending'
-                      ? 'Upgrade to unlock unlimited listening practice.'
-                      : 'Monthly limit reached. Try again next month.'}
+              {status === 'pending' && (
+                <span style={{ fontSize: 11, fontWeight: 700, background: ORANGE, color: '#fff', borderRadius: 20, padding: '3px 10px' }}>Trial</span>
+              )}
+            </div>
+            <div style={{ width: 48, height: 3, background: ORANGE, borderRadius: 4, marginBottom: 12 }} />
+            <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6, maxWidth: 440 }}>
+              Improve your listening comprehension with engaging<br />audio challenges powered by AI.
+            </p>
+            <div style={{ display: 'flex', gap: 28 }}>
+              {FEATURES_HERO.map(({ Icon: FIcon, label, sub }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: `${ORANGE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FIcon style={{ color: ORANGE, fontSize: 16 }} />
                   </div>
-                )}
-
-              </div>
-
-              {!historyLoading && history && (
-                <div className="stats-container">
-                  {/* Attempts */}
-                  <div className="stat-card attempts">
-                    <div className="stat-label">
-                      {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
-                    </div>
-                    <div className="stat-value">
-                      {Math.min(history.attemptsUsed ?? 0, maxAllowedAttempts)} / {maxAllowedAttempts}
-                    </div>
-                  </div>
-                  {/* Best Score */}
-                  <div className="stat-card best-score">
-                    <div className="stat-label">Best Score</div>
-                    <div
-                      className={`stat-value ${history.summary?.bestScore == null ? "empty-score" : ""
-                        }`}
-                    >
-                      {history.summary?.bestScore != null
-                        ? `${history.summary.bestScore}%`
-                        : "No attempts yet"}
-                    </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{sub}</div>
                   </div>
                 </div>
-              )}
+              ))}
+            </div>
+          </div>
 
-            </Card.Body>
-          </Card>
+          {/* Center: headsets illustration */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 8px', zIndex: 2 }}>
+            <img src={headsetsImg} alt="Headsets" style={{ height: 210, width: 'auto', objectFit: 'contain' }} />
+          </div>
+
+          {/* Right: Your Progress card */}
+          <div style={{ padding: '18px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #fde8c8' }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Your Progress</div>
+            {[
+              { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: !historyLoading && history ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}` : '-- / --', color: ORANGE, Icon: FaBullseye },
+              { label: 'Best Score',       value: !historyLoading && history?.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', color: '#3b82f6', Icon: FaStar },
+              { label: 'Overall Progress', value: '0%',      color: '#22c55e', Icon: FaChartLine },
+              { label: 'Current Streak',   value: '0 Days',  color: '#8b5cf6', Icon: FaFire },
+            ].map(({ label, value, color, Icon: PIcon }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ width: 34, height: 34, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <PIcon style={{ color, fontSize: 15 }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>{label}</div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+        {/* ── Difficulty + What You Get ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 0, borderBottom: '1px solid #f1f5f9' }}>
+
+          {/* Left: Choose a Difficulty Level */}
+          <div style={{ padding: '22px 28px', borderRight: '1px solid #f1f5f9' }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 14 }}>Choose a Difficulty Level</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              {DIFFICULTIES.map(({ id, label, sub, recommended }) => {
+                const active = difficulty === id
+                return (
+                  <div
+                    key={id}
+                    onClick={() => setDifficulty(id as typeof difficulty)}
+                    style={{
+                      border: `2px solid ${active ? ORANGE : '#e2e8f0'}`,
+                      borderRadius: 14, padding: '16px 14px', cursor: 'pointer',
+                      background: active ? '#fff7f0' : '#fff',
+                      transition: 'all 0.15s',
+                      position: 'relative',
+                    }}
+                  >
+                    {/* Bar icon */}
+                    <div style={{ display: 'flex', gap: 2, marginBottom: 10 }}>
+                      {[1,2,3].map(n => (
+                        <div key={n} style={{ width: 6, borderRadius: 2, background: active ? ORANGE : (id === 'intermediate' && n <= 2) || (id === 'advanced' && n <= 3) || (id === 'beginner' && n <= 1) ? '#cbd5e1' : '#e2e8f0', height: n === 1 ? 12 : n === 2 ? 18 : 24, alignSelf: 'flex-end' }} />
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: active ? ORANGE : '#0f172a', marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{sub}</div>
+                    {recommended && (
+                      <div style={{ marginTop: 8, display: 'inline-block', fontSize: 10, fontWeight: 700, background: `${ORANGE}18`, color: ORANGE, borderRadius: 20, padding: '3px 10px' }}>Recommended</div>
+                    )}
+                    {active && (
+                      <div style={{ position: 'absolute', top: 10, right: 10, width: 20, height: 20, borderRadius: '50%', background: ORANGE, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <FaCheckCircle style={{ color: '#fff', fontSize: 11 }} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Right: What you will get */}
+          <div style={{ padding: '22px 24px', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', bottom: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: '#eff6ff', pointerEvents: 'none' }} />
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 14 }}>What you will get</div>
+            {WHAT_YOU_GET.map(({ Icon: WIcon, label }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: `${ORANGE}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <WIcon style={{ color: ORANGE, fontSize: 13 }} />
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Popular Categories + Start Button ── */}
+        <div style={{ padding: '18px 28px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Popular Categories</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+            {CATEGORIES.map(({ label, Icon: CIcon }) => {
+              const active = activeCategory === label
+              return (
+                <button
+                  key={label}
+                  onClick={() => setActiveCategory(label)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 16px', borderRadius: 22, fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', transition: 'all 0.15s',
+                    background: active ? '#fff7f0' : '#f8fafc',
+                    color: active ? ORANGE : '#374151',
+                    border: `1.5px solid ${active ? ORANGE : '#e2e8f0'}`,
+                  }}
+                >
+                  <CIcon style={{ fontSize: 12 }} />
+                  {label}
+                </button>
+              )
+            })}
+            <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 22, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: ORANGE, border: `1.5px solid ${ORANGE}` }}>
+              View All
+            </button>
+          </div>
+
+          {isLimitReached && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <FaBullseye style={{ flexShrink: 0 }} />
+              {status === 'pending'
+                ? 'Upgrade to unlock unlimited listening practice.'
+                : 'Monthly limit reached. Try again next month.'}
+            </div>
+          )}
+
+          <button
+            onClick={startPractice}
+            disabled={isLimitReached}
+            style={{
+              width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
+              background: isLimitReached ? '#cbd5e1' : `linear-gradient(90deg, ${ORANGE} 0%, #ff9a3c 100%)`,
+              color: '#fff', fontWeight: 800, fontSize: 16,
+              cursor: isLimitReached ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: isLimitReached ? 'none' : `0 6px 20px ${ORANGE}40`,
+            }}
+          >
+            <FaPlay style={{ fontSize: 14 }} />
+            {isLimitReached ? 'Limit Reached' : 'Start Listening Practice'}
+          </button>
+        </div>
+
+      </div>
 
       <Modal show={started} fullscreen onHide={() => setStarted(false)} className="practice-fullscreen-modal">
         <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
@@ -1209,7 +1369,7 @@ const ListeningPractice: React.FC = () => {
 
 
       `}</style>
-    </Container>
+    </>
   )
 }
 

@@ -1,8 +1,16 @@
 import React, { useState } from 'react'
 import { useEffect } from 'react'
 import { Button, Card, Container, Spinner, ProgressBar, Badge, Modal } from 'react-bootstrap'
-import { FaBookOpen, FaPlay, FaCheckCircle, FaArrowRight } from 'react-icons/fa'
+import {
+  FaBookOpen, FaPlay, FaCheckCircle, FaArrowRight,
+  FaLaptopCode, FaFlask, FaLandmark, FaBriefcase, FaLeaf,
+  FaHeartbeat, FaGraduationCap, FaPalette, FaFootballBall,
+  FaPlane, FaBalanceScale, FaChartLine, FaBrain, FaRocket,
+  FaNewspaper, FaBook, FaGavel, FaUtensils, FaRobot, FaAlignLeft,
+  FaComments, FaQuestionCircle, FaBullseye, FaStar, FaFire, FaChartBar,
+} from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import bookImg from '@/assets/images/Reading.png'
 
 type Question = {
   q: string
@@ -168,111 +176,205 @@ const ReadingPractice: React.FC = () => {
 
   const getScorePercentage = () => feedback?.score ?? 0
 
+  const BLUE = '#3b82f6'
+
+  const TOPICS = [
+    { label: 'Technology',           value: 'Technology',           Icon: FaLaptopCode   },
+    { label: 'Science',              value: 'Science',              Icon: FaFlask        },
+    { label: 'History',              value: 'History',              Icon: FaLandmark     },
+    { label: 'Sports',               value: 'Sports',               Icon: FaFootballBall },
+    { label: 'Business',             value: 'Business',             Icon: FaBriefcase    },
+    { label: 'Nature',               value: 'Nature',               Icon: FaLeaf         },
+    { label: 'Travel',               value: 'Travel',               Icon: FaPlane        },
+    { label: 'Health',               value: 'Health',               Icon: FaHeartbeat    },
+    { label: 'Culture',              value: 'Culture',              Icon: FaPalette      },
+    { label: 'Current Events',       value: 'Current Events',       Icon: FaNewspaper    },
+    { label: 'Politics',             value: 'Politics',             Icon: FaBalanceScale },
+    { label: 'Economics',            value: 'Economics',            Icon: FaChartLine    },
+    { label: 'Psychology',           value: 'Psychology',           Icon: FaBrain        },
+    { label: 'Space',                value: 'Space Exploration',    Icon: FaRocket       },
+    { label: 'Environment',          value: 'Environment',          Icon: FaLeaf         },
+    { label: 'Education',            value: 'Education',            Icon: FaGraduationCap},
+    { label: 'Artificial Intelligence', value: 'Artificial Intelligence', Icon: FaRobot },
+    { label: 'Law & Justice',        value: 'Law and Justice',      Icon: FaGavel        },
+    { label: 'Food & Cuisine',       value: 'Food and Cuisine',     Icon: FaUtensils     },
+    { label: 'Arts & Literature',    value: 'Arts and Literature',  Icon: FaBook         },
+  ]
+
+  const FEATURES = [
+    { Icon: FaAlignLeft,     label: 'Diverse Passages',    sub: 'Wide range of topics'     },
+    { Icon: FaQuestionCircle,label: 'Comprehension Quiz',  sub: 'Test your understanding'  },
+    { Icon: FaComments,      label: 'Instant Feedback',    sub: 'AI-powered analysis'      },
+    { Icon: FaChartBar,      label: 'Track Progress',      sub: 'Monitor your growth'      },
+  ]
+
   return (
-    <Container fluid className="reading-practice-container">
-      <div className="start-screen text-center">
-          <div className="start-card">
-            <div className="icon-wrapper">
-              <FaBookOpen className="main-icon" />
-            </div>
-            <h2 className="d-flex align-items-center justify-content-center gap-2">
+    <>
+      {/* ── Start Screen ── */}
+      <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: '#fff', minHeight: '100%' }}>
+
+        {/* Hero / Header */}
+        <div style={{
+          display: 'flex', alignItems: 'stretch', justifyContent: 'space-between',
+          background: 'linear-gradient(120deg, #eff6ff 0%, #dbeafe 55%, #bfdbfe 100%)',
+          borderBottom: '1px solid #bfdbfe', minHeight: 220,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.10, backgroundImage: 'radial-gradient(circle, #1d4ed8 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+
+          {/* Left: title + features */}
+          <div style={{ padding: '28px 28px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>
               Reading Practice
               {status === 'pending' && (
-                <span className="trial-badge-modern">
-                  Trial
-                </span>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#ff6b00', color: '#fff', borderRadius: 20, padding: '3px 10px', marginLeft: 10, verticalAlign: 'middle' }}>Trial</span>
               )}
-            </h2>
-            <p className="description">
-              Sharpen your comprehension skills with AI-powered reading passages and interactive quizzes designed to improve your reading abilities.
+            </h1>
+            <div style={{ width: 48, height: 3, background: BLUE, borderRadius: 4, marginBottom: 12 }} />
+            <p style={{ fontSize: 13, color: '#1e40af', margin: '0 0 20px', lineHeight: 1.6 }}>
+              Sharpen your comprehension with AI-powered passages and interactive quizzes<br />designed to build lasting reading skills.
             </p>
-
-            {/* Topic Selection */}
-            <div className="topic-section">
-              <p className="topic-label">Choose a Topic <span className="topic-optional">(optional)</span></p>
-              <div className="topic-grid">
-                {[
-                  { label: '🌐 Technology',      value: 'Technology' },
-                  { label: '🔬 Science',         value: 'Science' },
-                  { label: '📜 History',         value: 'History' },
-                  { label: '⚽ Sports',          value: 'Sports' },
-                  { label: '💼 Business',        value: 'Business' },
-                  { label: '🌿 Nature',          value: 'Nature' },
-                  { label: '✈️ Travel',          value: 'Travel' },
-                  { label: '❤️ Health',          value: 'Health' },
-                  { label: '🎨 Culture',         value: 'Culture' },
-                  { label: '📰 Current Events',  value: 'Current Events' },
-                  { label: '🏛️ Politics',        value: 'Politics' },
-                  { label: '💰 Economics',       value: 'Economics' },
-                  { label: '🧠 Psychology',      value: 'Psychology' },
-                  { label: '🚀 Space',           value: 'Space Exploration' },
-                  { label: '🌍 Environment',     value: 'Environment' },
-                  { label: '🎓 Education',       value: 'Education' },
-                  { label: '🤖 Artificial Intelligence', value: 'Artificial Intelligence' },
-                  { label: '⚖️ Law & Justice',  value: 'Law and Justice' },
-                  { label: '🍽️ Food & Cuisine', value: 'Food and Cuisine' },
-                  { label: '🎭 Arts & Literature', value: 'Arts and Literature' },
-                ].map(t => (
-                  <button
-                    key={t.value}
-                    className={`topic-chip${selectedTopic === t.value ? ' topic-chip-active' : ''}`}
-                    onClick={() => setSelectedTopic(prev => prev === t.value ? '' : t.value)}
-                    type="button"
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', gap: 22 }}>
+              {[
+                { Icon: FaAlignLeft,      label: 'Diverse Passages',   sub: 'Wide range of\nengaging topics'     },
+                { Icon: FaQuestionCircle, label: 'Comprehension Quiz', sub: 'Test your\nunderstanding'           },
+                { Icon: FaComments,       label: 'Instant Feedback',   sub: 'AI-powered\nanalysis'               },
+                { Icon: FaChartBar,       label: 'Track Progress',     sub: 'Monitor your\ngrowth'               },
+              ].map(({ Icon: FIcon, label, sub }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: `${BLUE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FIcon style={{ color: BLUE, fontSize: 15 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+                    <div style={{ fontSize: 11, color: '#3b82f6', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{sub}</div>
+                  </div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            <Button
-              size="lg"
-              className="start-button"
-              onClick={startPractice}
-              disabled={isLimitReached}
-            >
-              <FaPlay className="me-2" />
-              {isLimitReached
-                ? 'Limit Reached'
-                : 'Start Practice'}
-            </Button>
-
-            {isLimitReached && (
-              <div className="trial-limit-box-modern">
-                🔒 {status === 'pending'
-                  ? 'Upgrade to unlock unlimited reading practice.'
-                  : 'Monthly limit reached. Try again next month.'}
-              </div>
-            )}
-            {!historyLoading && history && (
-              <div className="stats-container">
-                {/* Monthly Attempts */}
-                <div className="stat-box attempts-box">
-                  <div className="stat-title">
-                    {status === 'pending' ? 'Free Attempts' : 'Monthly Attempts'}
-                  </div>
-                  <div className="stat-value">
-                    {Math.min(history.attemptsUsed, maxAllowedAttempts)} / {maxAllowedAttempts}
-                  </div>
-                </div>
-
-                {/* Best Score */}
-                <div className="stat-box score-box">
-                  <div className="stat-title">Best Score</div>
-                  <div
-                    className={`stat-value ${history.summary?.bestScore == null ? "empty" : ""
-                      }`}
-                  >
-                    {history.summary?.bestScore != null
-                      ? `${history.summary.bestScore}%`
-                      : "No attempts yet"}
-                  </div>
-                </div>
-              </div>
-            )}
-
+          {/* Right: illustration + decorative elements */}
+          <div style={{ position: 'relative', width: 260, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 2 }}>
+            <div style={{ position: 'absolute', top: 20, right: 20, width: 140, height: 140, borderRadius: '50%', background: 'rgba(59,130,246,0.12)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', top: 14, left: 22, fontSize: 42, fontWeight: 900, color: 'rgba(59,130,246,0.18)', fontFamily: 'serif' }}>A</div>
+            <div style={{ position: 'absolute', top: 60, right: 14, fontSize: 30, fontWeight: 900, color: 'rgba(59,130,246,0.13)', fontFamily: 'serif' }}>C</div>
+            <img src={bookImg} alt="Reading" style={{ height: 200, width: 'auto', objectFit: 'contain', position: 'relative', zIndex: 2 }} />
           </div>
         </div>
+
+        {/* Body */}
+        <div style={{ padding: '24px 32px 32px' }}>
+
+          {/* Choose a Topic */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>Choose a Topic <span style={{ fontSize: 12, fontWeight: 500, color: '#94a3b8' }}>(optional)</span></div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Select a specific topic or leave blank for a random passage</div>
+              </div>
+              {selectedTopic && (
+                <button
+                  onClick={() => setSelectedTopic('')}
+                  style={{ fontSize: 11, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {TOPICS.map(({ label, value, Icon: TIcon }) => {
+                const active = selectedTopic === value
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setSelectedTopic(prev => prev === value ? '' : value)}
+                    type="button"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '7px 14px', borderRadius: 22, fontSize: 12.5, fontWeight: 600,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      background: active ? BLUE : '#f8fafc',
+                      color: active ? '#fff' : '#374151',
+                      border: `1.5px solid ${active ? BLUE : '#e2e8f0'}`,
+                      boxShadow: active ? `0 3px 10px ${BLUE}30` : 'none',
+                    }}
+                  >
+                    <TIcon style={{ fontSize: 12, opacity: active ? 1 : 0.6 }} />
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Feature row */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 24 }}>
+            {FEATURES.map(({ Icon: FIcon, label, sub }) => (
+              <div key={label} style={{ background: '#f8fafc', borderRadius: 14, border: '1px solid #f1f5f9', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: `${BLUE}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FIcon style={{ color: BLUE, fontSize: 16 }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Start button */}
+          <button
+            onClick={startPractice}
+            disabled={isLimitReached}
+            style={{
+              width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
+              background: isLimitReached ? '#cbd5e1' : BLUE,
+              color: '#fff', fontWeight: 800, fontSize: 16,
+              cursor: isLimitReached ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: isLimitReached ? 'none' : `0 6px 20px ${BLUE}35`,
+              marginBottom: 14,
+            }}
+          >
+            <FaPlay style={{ fontSize: 14 }} />
+            {isLimitReached ? 'Limit Reached' : 'Start Reading Practice'}
+          </button>
+
+          {isLimitReached && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <FaBullseye style={{ flexShrink: 0 }} />
+              {status === 'pending'
+                ? 'Upgrade to unlock unlimited reading practice.'
+                : 'Monthly limit reached. Try again next month.'}
+            </div>
+          )}
+
+          {/* Stats row */}
+          {!historyLoading && history && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginTop: 8 }}>
+              {[
+                { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}`, sub: `${Math.max(0, maxAllowedAttempts - history.attemptsUsed)} remaining`, color: BLUE, Icon: FaBullseye },
+                { label: 'Best Score', value: history.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', sub: history.summary?.bestScore != null ? 'Personal best' : 'No attempts yet', color: '#f59e0b', Icon: FaStar },
+                { label: 'Latest Score', value: history.summary?.latestScore != null ? `${history.summary.latestScore}%` : '--', sub: history.summary?.trend ?? 'Start practicing', color: '#22c55e', Icon: FaChartBar },
+                { label: 'Streak', value: '0 Days', sub: 'Keep going!', color: '#ff6b00', Icon: FaFire },
+              ].map(({ label, value, sub, color, Icon: SIcon }) => (
+                <div key={label} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 11, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <SIcon style={{ color, fontSize: 18 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{value}</div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>{sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      </div>
 
       <Modal show={started} fullscreen onHide={() => setStarted(false)} className="practice-fullscreen-modal">
         <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
@@ -1259,7 +1361,7 @@ const ReadingPractice: React.FC = () => {
 
 
       `}</style>
-    </Container>
+    </>
   )
 }
 

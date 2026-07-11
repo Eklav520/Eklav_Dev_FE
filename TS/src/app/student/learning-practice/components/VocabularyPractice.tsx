@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from "react"
 import { Card, Container, Button, Spinner, Form, ProgressBar, Badge, Modal } from "react-bootstrap"
-import { FaBookReader, FaPlay, FaArrowRight, FaArrowLeft, FaCheckCircle, FaCalendarCheck } from "react-icons/fa"
+import {
+  FaBookReader, FaPlay, FaArrowRight, FaArrowLeft, FaCheckCircle, FaCalendarCheck,
+  FaBrain, FaBook, FaQuestionCircle, FaChartLine, FaVolumeUp,
+  FaBriefcase, FaGraduationCap, FaLaptopCode, FaFlask, FaLeaf, FaHeartbeat,
+  FaPlane, FaSmile, FaUsers, FaUtensils, FaCity, FaThLarge,
+  FaStar, FaClock, FaFire, FaBullseye,
+} from "react-icons/fa"
 import { useAuthContext } from "@/context/useAuthContext"
+import bookImg from "@/assets/images/vacabularybook.png"
 
 interface Word {
   _id: string
@@ -31,6 +38,9 @@ const VocabularyPractice: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [statusLoading, setStatusLoading] = useState(true)
   const [todayScore, setTodayScore] = useState<{ score: number; total: number } | null>(null)
+  const [wordOfDay, setWordOfDay] = useState<Word | null>(null)
+  const [wordOfDayLoading, setWordOfDayLoading] = useState(true)
+  const [activeTopic, setActiveTopic] = useState('Daily Use')
 
   // pagination states
   const [currentPage, setCurrentPage] = useState(0)
@@ -63,21 +73,39 @@ const VocabularyPractice: React.FC = () => {
     checkStatus()
   }, [token, baseURL])
 
+  // Fetch Word of the Day
+  useEffect(() => {
+    const fetchWordOfDay = async () => {
+      if (!token || !baseURL) { setWordOfDayLoading(false); return }
+      try {
+        const res = await fetch(`${baseURL}/learning/vocab/word-of-day`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const data = await res.json()
+        setWordOfDay(data)
+      } catch (err) {
+        console.error('Error fetching word of the day', err)
+      } finally {
+        setWordOfDayLoading(false)
+      }
+    }
+    fetchWordOfDay()
+  }, [token, baseURL])
+
   const startVocabulary = async () => {
     setStarted(true)
     setLoading(true)
     setAnswers({})
     setCurrentPage(0)
+    setWords([])
 
     try {
-      // words already loaded from status check, but fetch fresh if empty
-      if (!words.length) {
-        const res = await fetch(`${baseURL}/learning/vocab/daily`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        setWords(data)
-      }
+      const params = new URLSearchParams({ topic: activeTopic })
+      const res = await fetch(`${baseURL}/learning/vocab/daily?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setWords(data)
     } catch (err) {
       console.error("Error fetching vocabulary:", err)
     } finally {
@@ -118,57 +146,207 @@ const VocabularyPractice: React.FC = () => {
   const scorePercentage = total > 0 ? (score / total) * 100 : 0
   const alreadyDoneToday = !!todayScore && !started
 
+  const PURPLE = '#8b5cf6'
+
+  const FEATURES_HERO = [
+    { Icon: FaBook,          label: 'Contextual Learning', sub: 'Learn with real\nlife examples'   },
+    { Icon: FaBrain,         label: 'Daily Words',         sub: '10 new words\nevery day'          },
+    { Icon: FaQuestionCircle,label: 'Smart Quizzes',       sub: 'Test and improve\nyour knowledge' },
+    { Icon: FaChartLine,     label: 'Track Progress',      sub: 'Monitor your\ngrowth'             },
+  ]
+
+  const TOPICS = [
+    { label: 'Daily Use',      Icon: FaCalendarCheck, active: true  },
+    { label: 'Business',       Icon: FaBriefcase,     active: false },
+    { label: 'Education',      Icon: FaGraduationCap, active: false },
+    { label: 'Technology',     Icon: FaLaptopCode,    active: false },
+    { label: 'Science',        Icon: FaFlask,         active: false },
+    { label: 'Environment',    Icon: FaLeaf,          active: false },
+    { label: 'Health',         Icon: FaHeartbeat,     active: false },
+    { label: 'Travel',         Icon: FaPlane,         active: false },
+    { label: 'Literature',     Icon: FaBook,          active: false },
+    { label: 'Emotions',       Icon: FaSmile,         active: false },
+    { label: 'Relationships',  Icon: FaUsers,         active: false },
+    { label: 'Food',           Icon: FaUtensils,      active: false },
+    { label: 'Society',        Icon: FaUsers,         active: false },
+    { label: 'Economics',      Icon: FaChartLine,     active: false },
+    { label: 'Workplace',      Icon: FaCity,          active: false },
+  ]
+
   if (statusLoading) {
     return (
-      <Container fluid className="vocabulary-practice-container">
-        <div className="start-screen text-center">
-          <Spinner animation="border" style={{ color: '#ff7a00' }} />
-          <p style={{ marginTop: 12, color: '#888' }}>Loading today's vocabulary...</p>
-        </div>
-      </Container>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12, fontFamily: "'Inter',sans-serif" }}>
+        <Spinner animation="border" style={{ color: PURPLE }} />
+        <span style={{ color: '#64748b', fontSize: 14 }}>Loading today's vocabulary...</span>
+      </div>
     )
   }
 
   return (
-    <Container fluid className="vocabulary-practice-container">
-      <div className="start-screen text-center">
-          <div className="start-card">
-            <div className="icon-wrapper">
-              {alreadyDoneToday
-                ? <FaCalendarCheck className="main-icon" style={{ color: '#22c55e' }} />
-                : <FaBookReader className="main-icon" />
-              }
-            </div>
-            <h2>Vocabulary Practice</h2>
+    <>
+      {/* ── Start Screen ── */}
+      <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: '#fff' }}>
 
-            {alreadyDoneToday ? (
-              <>
-                <div className="done-score-badge">
-                  <span className="done-score">{score}/{total}</span>
-                  <span className="done-pct">{Math.round(scorePercentage)}%</span>
+        {/* ── Hero ── */}
+        <div style={{
+          display: 'flex', alignItems: 'stretch', justifyContent: 'space-between',
+          background: 'linear-gradient(120deg, #f5f3ff 0%, #ede9fe 55%, #ddd6fe 100%)',
+          borderBottom: '1px solid #e9d5ff', minHeight: 220,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.10, backgroundImage: 'radial-gradient(circle, #7c3aed 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+
+          {/* Left: title + features */}
+          <div style={{ padding: '28px 28px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+            <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>Vocabulary Practice</h1>
+            <div style={{ width: 48, height: 3, background: PURPLE, borderRadius: 4, marginBottom: 12 }} />
+            <p style={{ fontSize: 13, color: '#4c1d95', margin: '0 0 20px', lineHeight: 1.6 }}>
+              Learn new words in context, strengthen your vocabulary,<br />and test your knowledge with smart quizzes.
+            </p>
+            <div style={{ display: 'flex', gap: 22 }}>
+              {FEATURES_HERO.map(({ Icon: FIcon, label, sub }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, background: `${PURPLE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <FIcon style={{ color: PURPLE, fontSize: 15 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{label}</div>
+                    <div style={{ fontSize: 11, color: '#7c3aed', lineHeight: 1.5, whiteSpace: 'pre-line' }}>{sub}</div>
+                  </div>
                 </div>
-                <p className="description" style={{ color: '#22c55e', fontWeight: 600 }}>
-                  ✅ You've completed today's vocabulary exam!
-                </p>
-                <p className="description" style={{ fontSize: '0.9rem', marginTop: -10 }}>
-                  Come back tomorrow for 10 new words.
-                </p>
-                <Button size="lg" className="start-button" onClick={() => setStarted(true)}>
-                  📖 Review Today's Words & Result
-                </Button>
-              </>
-            ) : (
-              <>
-                <p className="description">
-                  Improve your vocabulary every day! Learn today's 10 AI-powered words and test yourself with a quiz.
-                </p>
-                <Button size="lg" className="start-button" onClick={startVocabulary}>
-                  <FaPlay className="me-2" /> Start Today's Exam
-                </Button>
-              </>
-            )}
+              ))}
+            </div>
+          </div>
+
+          {/* Right: book illustration + floating letters */}
+          <div style={{ position: 'relative', width: 260, flexShrink: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 0, zIndex: 2 }}>
+            <div style={{ position: 'absolute', top: 16, left: 20, fontSize: 42, fontWeight: 900, color: `${PURPLE}30`, fontFamily: 'serif' }}>A</div>
+            <div style={{ position: 'absolute', top: 60, right: 16, fontSize: 34, fontWeight: 900, color: `${PURPLE}20`, fontFamily: 'serif' }}>C</div>
+            <img src={bookImg} alt="Vocabulary" style={{ height: 200, width: 'auto', objectFit: 'contain' }} />
           </div>
         </div>
+
+        {/* ── Word of the Day + Choose a Topic ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid #f1f5f9' }}>
+
+          {/* Word of the Day */}
+          <div style={{ padding: '20px 24px', borderRight: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${PURPLE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaCalendarCheck style={{ color: PURPLE, fontSize: 13 }} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Word of the Day</div>
+            </div>
+            <div style={{ background: '#faf5ff', borderRadius: 14, border: '1px solid #e9d5ff', padding: '16px 18px', minHeight: 120 }}>
+              {wordOfDayLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                  <Spinner animation="border" size="sm" style={{ color: PURPLE }} />
+                  Loading word of the day...
+                </div>
+              ) : wordOfDay ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <span style={{ fontSize: 26, fontWeight: 900, color: PURPLE }}>{wordOfDay.word}</span>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${PURPLE}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                      <FaVolumeUp style={{ color: PURPLE, fontSize: 12 }} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8, fontStyle: 'italic' }}>(word)</div>
+                  <div style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>{wordOfDay.meaning}</div>
+                  {wordOfDay.example && (
+                    <div style={{ fontSize: 12, color: '#64748b', fontStyle: 'italic', marginBottom: 12 }}>
+                      Example: <span style={{ color: PURPLE, fontWeight: 600 }}>{wordOfDay.example}</span>
+                    </div>
+                  )}
+                  <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${PURPLE}`, background: '#fff', color: PURPLE, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    <FaBook style={{ fontSize: 11 }} /> Add to My Words
+                  </button>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, paddingTop: 16 }}>
+                  Word of the day unavailable
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Choose a Topic */}
+          <div style={{ padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: `${PURPLE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaThLarge style={{ color: PURPLE, fontSize: 12 }} />
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Choose a Topic</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {TOPICS.map(({ label, Icon: TIcon }) => {
+                const isActive = activeTopic === label
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setActiveTopic(label)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '7px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600,
+                      cursor: 'pointer', transition: 'all 0.15s',
+                      background: isActive ? `${PURPLE}18` : '#f8fafc',
+                      color: isActive ? PURPLE : '#374151',
+                      border: `1.5px solid ${isActive ? PURPLE : '#e2e8f0'}`,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <TIcon style={{ fontSize: 11, flexShrink: 0 }} />
+                    {label}
+                  </button>
+                )
+              })}
+              <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 10px', borderRadius: 20, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', background: '#f8fafc', color: '#374151', border: '1.5px solid #e2e8f0' }}>
+                <FaThLarge style={{ fontSize: 11 }} /> View All
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Stats Row ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderBottom: '1px solid #f1f5f9' }}>
+          {[
+            { label: 'Monthly Words Learned', value: '120 / 300',  sub: '',              color: PURPLE,    Icon: FaBook       },
+            { label: 'Quizzes Completed',      value: '18',         sub: 'This Month',    color: '#f59e0b', Icon: FaCheckCircle},
+            { label: 'Accuracy',               value: '85%',        sub: 'Keep it up!',   color: '#22c55e', Icon: FaBullseye   },
+            { label: 'Best Score',             value: '92%',        sub: 'In Vocabulary Quiz', color: '#3b82f6', Icon: FaStar  },
+            { label: 'Time Spent',             value: '4h 30m',     sub: 'This Month',    color: '#8b5cf6', Icon: FaClock      },
+          ].map(({ label, value, sub, color, Icon: SIcon }, i) => (
+            <div key={label} style={{ padding: '16px 18px', borderRight: i < 4 ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <SIcon style={{ color, fontSize: 16 }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color, lineHeight: 1.1 }}>{value}</div>
+                {sub && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{sub}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Start Button ── */}
+        <div style={{ padding: '20px 28px 28px' }}>
+          <button
+            onClick={alreadyDoneToday ? () => setStarted(true) : startVocabulary}
+            style={{
+              width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
+              background: `linear-gradient(90deg, ${PURPLE} 0%, #7c3aed 100%)`,
+              color: '#fff', fontWeight: 800, fontSize: 16,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: `0 6px 20px ${PURPLE}40`,
+            }}
+          >
+            <FaPlay style={{ fontSize: 14 }} />
+            {alreadyDoneToday ? 'Review Today\'s Words & Result' : 'Start Vocabulary Practice'}
+          </button>
+        </div>
+
+      </div>
 
       <Modal show={started} fullscreen onHide={() => setStarted(false)} className="practice-fullscreen-modal">
         <Modal.Header closeButton style={{ background: 'linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%)', color: '#fff', borderBottom: 'none' }}>
@@ -1013,7 +1191,7 @@ const VocabularyPractice: React.FC = () => {
       }
 
       `}</style>
-    </Container>
+    </>
   )
 }
 

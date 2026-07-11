@@ -1,562 +1,262 @@
-// src/pages/student/english-practice/page.tsx
-import React, { useState, useEffect } from "react"
-import { Container } from "react-bootstrap"
+import React, { useState } from "react"
 import PageMetaData from "@/components/PageMetaData"
 import LearningPractice from "./components/LearningPractice"
 import ReadingPractice from "./components/ReadingPractice"
 import VocabularyPractice from "./components/VocabularyPractice"
-import { FaBars, FaTimes, FaHeadphones, FaBookReader, FaBookOpen } from "react-icons/fa"
+import {
+  FaHeadphones, FaBookOpen, FaFont, FaArrowRight, FaArrowLeft,
+  FaCheckCircle, FaMicrophone, FaClipboardList, FaChartLine,
+  FaStar, FaFire, FaBullseye, FaLightbulb, FaBrain, FaLayerGroup,
+} from "react-icons/fa"
+import boyImg from "@/assets/images/Boy.png"
+
+const ORANGE  = "#ff6b00"
+const BLUE    = "#3b82f6"
+const PURPLE  = "#8b5cf6"
+
+const READING_TOPICS = [
+  "Technology", "Science", "History", "Culture",
+  "Business", "Environment", "Sports", "Health",
+]
+
+const PRACTICE_CARDS = [
+  {
+    id: "listening",
+    label: "Listening Practice",
+    color: ORANGE,
+    bg: "#fff7f0",
+    Icon: FaHeadphones,
+    description: "Listen to real-life conversations, lectures, and discussions. Answer questions and improve your comprehension.",
+    features: ["Multiple difficulty levels", "Real-time feedback", "Audio transcripts"],
+    btnLabel: "Start Listening",
+  },
+  {
+    id: "reading",
+    label: "Reading Practice",
+    color: BLUE,
+    bg: "#eff6ff",
+    Icon: FaBookOpen,
+    description: "Read engaging passages on diverse topics and test your comprehension with interactive questions.",
+    features: ["Diverse topics & passages", "Comprehension exercises", "Instant explanations"],
+    btnLabel: "Start Reading",
+    hasTopic: true,
+  },
+  {
+    id: "vocabulary",
+    label: "Vocabulary Practice",
+    color: PURPLE,
+    bg: "#faf5ff",
+    Icon: FaBrain,
+    description: "Learn new words in context, strengthen your vocabulary, and test your knowledge with smart quizzes.",
+    features: ["Word in context", "Vocabulary quizzes", "Spaced repetition"],
+    btnLabel: "Start Vocabulary",
+  },
+]
+
+const NAV_CARDS = [
+  { id: "listening", label: "Listening", color: ORANGE, bg: "#fff7f0", Icon: FaHeadphones, desc: "Improve your listening comprehension with AI-powered audio challenges" },
+  { id: "reading",   label: "Reading",   color: BLUE,   bg: "#eff6ff", Icon: FaBookOpen,  desc: "Enhance reading skills with interactive passages and comprehension exercises" },
+  { id: "vocabulary",label: "Vocabulary",color: PURPLE, bg: "#faf5ff", Icon: FaBrain,     desc: "Build your vocabulary with contextual learning and smart quizzes" },
+]
+
+const STATS = [
+  { label: "Monthly Attempts", value: "0 / 30", sub: "30 attempts remaining",  color: ORANGE,  Icon: FaBullseye },
+  { label: "Best Score",       value: "--",      sub: "No attempts yet",        color: BLUE,    Icon: FaStar    },
+  { label: "Overall Progress", value: "0%",      sub: "Keep practicing!",       color: "#22c55e", Icon: FaChartLine },
+  { label: "Streak",           value: "0 Days",  sub: "Start your streak today!", color: "#f59e0b", Icon: FaFire },
+]
 
 const EnglishPractice = () => {
-  const [activeTab, setActiveTab] = useState<string>("listening")
-  const [isMobile, setIsMobile] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [view, setView]           = useState<"overview" | "listening" | "reading" | "vocabulary">("overview")
+  const [activeTopic, setActiveTopic] = useState("Technology")
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768)
-    }
-    
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  const tabs = [
-    { 
-      id: "listening", 
-      title: "🎧 Listening", 
-      icon: <FaHeadphones />,
-      component: <LearningPractice />,
-      description: "Improve your listening comprehension with AI-powered audio challenges"
-    },
-    { 
-      id: "reading", 
-      title: "📖 Reading", 
-      icon: <FaBookReader />,
-      component: <ReadingPractice />,
-      description: "Enhance reading skills with interactive passages and comprehension exercises"
-    },
-    { 
-      id: "vocabulary", 
-      title: "📚 Vocabulary", 
-      icon: <FaBookOpen />,
-      component: <VocabularyPractice />,
-      description: "Build your vocabulary with contextual learning and practice exercises"
-    }
-  ]
-
-  const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId)
-    if (isMobile) {
-      setSidebarOpen(false)
-    }
-  }
-
-  const getCurrentTab = () => {
-    return tabs.find(tab => tab.id === activeTab) || tabs[0]
-  }
+  const goTo = (id: string) => setView(id as typeof view)
+  const goBack = () => setView("overview")
 
   return (
-    <Container fluid className="english-practice-container">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <PageMetaData title="English Practice" />
-      
-      {/* Mobile Header */}
-      {isMobile && (
-        <div className="mobile-header">
-          <button 
-            className="menu-toggle" 
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle menu"
-          >
-            {sidebarOpen ? <FaTimes /> : <FaBars />}
-          </button>
-          <h1 className="mobile-title">English Practice</h1>
-          <div className="active-tab-mobile">
-            <span className="mobile-tab-icon">{getCurrentTab().title.split(' ')[0]}</span>
-            <span className="mobile-tab-title">
-              {getCurrentTab().title.split(' ').slice(1).join(' ')} Practice
-            </span>
-          </div>
-        </div>
-      )}
 
-      <div className={`main-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
-        {/* Sidebar Navigation */}
-        <div className={`sidebar ${isMobile && !sidebarOpen ? 'sidebar-hidden' : ''}`}>
-          {isMobile && (
-            <div className="mobile-sidebar-header">
-              <h2 className="sidebar-title">English Practice</h2>
-              <button 
-                className="close-sidebar"
-                onClick={() => setSidebarOpen(false)}
-                aria-label="Close sidebar"
-              >
-                <FaTimes />
-              </button>
+      {/* ── Left Sidebar ── */}
+      <div style={{ width: 260, background: "#fff", borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", padding: "24px 14px", gap: 12, flexShrink: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 8, paddingLeft: 6 }}>English Practice</div>
+        {NAV_CARDS.map(({ id, label, color, bg, Icon: NavIcon, desc }) => (
+          <div
+            key={id}
+            onClick={() => goTo(id)}
+            style={{
+              background: view === id ? color + "10" : "#fff",
+              border: `1.5px solid ${view === id ? color + "55" : "#f1f5f9"}`,
+              borderRadius: 14, padding: "14px 14px 10px", cursor: "pointer",
+              transition: "all 0.15s",
+              boxShadow: view === id ? `0 4px 16px ${color}20` : "0 1px 4px rgba(0,0,0,0.04)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <NavIcon style={{ color, fontSize: 18 }} />
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: view === id ? color : "#0f172a" }}>{label}</div>
             </div>
-          )}
-          
-          {!isMobile && (
-            <div className="sidebar-header">
-              <h2 className="sidebar-title">English Practice</h2>
-            </div>
-          )}
-          
-          <div className="tabs-container">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                className={`tab-button ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => handleTabClick(tab.id)}
-                aria-label={`Switch to ${tab.title} practice`}
-              >
-                <div className="tab-content">
-                  <span className="tab-icon">{tab.icon}</span>
-                  <div className="tab-text">
-                    <span className="tab-name">
-                      {tab.title.split(' ').slice(1).join(' ')}
-                    </span>
-                    <span className="tab-description">
-                      {tab.description}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            ))}
+            <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5, marginBottom: 10 }}>{desc}</div>
+            <button
+              onClick={e => { e.stopPropagation(); goTo(id) }}
+              style={{ width: 30, height: 30, borderRadius: "50%", border: `1.5px solid ${color}40`, background: bg, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+            >
+              <FaArrowRight style={{ color, fontSize: 11 }} />
+            </button>
           </div>
-        </div>
-        
-        {/* Main Content Area */}
-        <div className="content-area">
-          {!isMobile && (
-            <div className="content-header">
-              <h2 className="content-title">{getCurrentTab().title.split(' ').slice(1).join(' ')} Practice</h2>
-              <p className="content-subtitle">{getCurrentTab().description}</p>
-            </div>
-          )}
-          
-          <div className="active-tab-content">
-            {getCurrentTab().component}
-          </div>
-        </div>
+        ))}
       </div>
 
-      <style>{`
+      {/* ── Main Content ── */}
+      <div style={{ flex: 1, overflow: "auto" }}>
 
-        :root {
-          --orange-primary: #ff7a00;
-          --orange-dark: #e96d00;
-          --orange-light: #fff4e6;
-          --orange-soft: #ffe8cc;
-          --orange-gradient: linear-gradient(135deg, #ff6a00 0%, #ff9a3c 100%);
-        }
+        {view === "overview" ? (
+          <div>
+            {/* Hero Banner */}
+            <div style={{
+              background: "linear-gradient(120deg, #fffbf5 0%, #fff5e8 55%, #ffecd4 100%)",
+              borderBottom: "1px solid #fde8c8",
+              padding: "32px 36px 0",
+              display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+              minHeight: 190, position: "relative", overflow: "hidden",
+            }}>
+              <div style={{ position: "absolute", right: 0, left: "45%", top: 0, bottom: 0, opacity: 0.14, backgroundImage: "radial-gradient(circle, #cc5500 1.5px, transparent 1.5px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />
+              <div style={{ zIndex: 2, paddingBottom: 28 }}>
+                <h1 style={{ fontSize: 36, fontWeight: 900, color: "#0f172a", margin: "0 0 8px", lineHeight: 1.1 }}>English Practice</h1>
+                <p style={{ fontSize: 14, color: "#64748b", margin: "0 0 20px" }}>Practice daily. Improve steadily. Excel confidently.</p>
+                <div style={{ display: "flex", gap: 20 }}>
+                  {[
+                    { Icon: FaBullseye, label: "AI-Powered",    sub: "Smart learning"       },
+                    { Icon: FaChartLine,label: "Track Progress", sub: "See your improvement" },
+                    { Icon: FaLayerGroup,label:"Personalized",   sub: "Learn at your pace"  },
+                  ].map(({ Icon: BIcon, label, sub }) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <BIcon style={{ color: ORANGE, fontSize: 18, flexShrink: 0 }} />
+                      <div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a" }}>{label}</div>
+                        <div style={{ fontSize: 11, color: "#94a3b8" }}>{sub}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <img src={boyImg} alt="English practice" style={{ height: 175, width: "auto", objectFit: "contain", alignSelf: "flex-end", zIndex: 2, flexShrink: 0 }} />
+            </div>
 
-        .english-practice-container {
-          padding: 0 !important;
-          font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          min-height: 100vh;
-          background: #f8fafc;
-        }
-        
-        /* Mobile Header */
-        .mobile-header {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          z-index: 1000;
-          background: var(--orange-gradient);
-          color: white;
-          padding: 0.75rem 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-          height: 60px;
-        }
-        
-        .menu-toggle {
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 1.25rem;
-          padding: 0.5rem;
-          cursor: pointer;
-          border-radius: 8px;
-          transition: background-color 0.2s;
-        }
-        
-        .menu-toggle:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .mobile-title {
-          font-size: 1.1rem;
-          font-weight: 600;
-          margin: 0;
-          flex: 1;
-          text-align: center;
-        }
-        
-        .active-tab-mobile {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: rgba(255, 255, 255, 0.1);
-          padding: 0.375rem 0.75rem;
-          border-radius: 20px;
-          min-width: 0;
-        }
-        
-        .mobile-tab-icon {
-          font-size: 1rem;
-        }
-        
-        .mobile-tab-title {
-          font-size: 0.85rem;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 100px;
-        }
-        
-        /* Main Layout */
-        .main-layout {
-          display: flex;
-          min-height: 100vh;
-          background: #f8fafc;
-        }
-        
-        @media (max-width: 767px) {
-          .main-layout {
-            padding-top: 60px;
-          }
-        }
-        
-        /* Sidebar */
-        .sidebar {
-          width: 300px;
-           background: var(--orange-gradient);
-          display: flex;
-          flex-direction: column;
-          z-index: 900;
-          transition: transform 0.3s ease;
-        }
-        
-        @media (max-width: 767px) {
-          .sidebar {
-            position: fixed;
-            top: 60px;
-            left: 0;
-            bottom: 0;
-            transform: translateX(-100%);
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-          }
-          
-          .sidebar.sidebar-hidden {
-            transform: translateX(-100%);
-          }
-          
-          .sidebar-open .sidebar {
-            transform: translateX(0);
-          }
-        }
-        
-        .mobile-sidebar-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 1.5rem;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(0, 0, 0, 0.1);
-        }
-        
-        .close-sidebar {
-          background: transparent;
-          border: none;
-          color: white;
-          font-size: 1.25rem;
-          padding: 0.5rem;
-          cursor: pointer;
-          border-radius: 8px;
-          transition: background-color 0.2s;
-        }
-        
-        .close-sidebar:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-header {
-          padding: 2rem 1.5rem 1rem;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          margin-bottom: 1rem;
-        }
-        
-        .sidebar-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: #ffffff;
-          margin: 0;
-          text-align: left;
-        }
-        
-        /* Tabs Container */
-        .tabs-container {
-          flex: 1;
-          padding: 0.5rem;
-          overflow-y: auto;
-        }
-        
-        /* Tab Button */
-        .tab-button {
-          width: 100%;
-          padding: 1rem 1.25rem;
-          background: transparent;
-          border: none;
-          border-left: 4px solid transparent;
-          text-align: left;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          margin-bottom: 0.5rem;
-          border-radius: 8px;
-          color: rgba(255, 255, 255, 0.8);
-        }
-        
-        .tab-button:hover {
-          color: #ffffff;
-          background: rgba(255, 255, 255, 0.15);
-          border-left-color: rgba(255, 255, 255, 0.4);
-        }
-        
-       .tab-button.active {
-          background: white;
-          border-left-color: var(--orange-primary);
-          color: #2d3748;
-          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.15);
-        }
+            {/* Practice Cards */}
+            <div style={{ padding: "28px 28px 0", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
+              {PRACTICE_CARDS.map(({ id, label, color, bg, Icon: PIcon, description, features, btnLabel, hasTopic }) => (
+                <div key={id} style={{ background: "#fff", borderRadius: 18, border: "1px solid #f1f5f9", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                  {/* Card top icon area */}
+                  <div style={{ background: bg, padding: "24px 24px 16px", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: 16, background: "#fff", boxShadow: `0 4px 16px ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <PIcon style={{ color, fontSize: 26 }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color, marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{description}</div>
+                    </div>
+                  </div>
 
-        
-        .tab-button.active:hover {
-          background: rgba(255, 255, 255, 0.95);
-          color: #2d3748;
-        }
-        
-        .tab-content {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-        
-        .tab-icon {
-          font-size: 1.25rem;
-          width: 24px;
-          text-align: center;
-        }
-        
-        .tab-text {
-          display: flex;
-          flex-direction: column;
-          gap: 0.2rem;
-          flex: 1;
-        }
-        
-        .tab-name {
-          font-size: 0.95rem;
-          font-weight: 600;
-        }
-        
-        .tab-description {
-          font-size: 0.8rem;
-          opacity: 0.9;
-          font-weight: 400;
-          line-height: 1.3;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-        
-        /* Sidebar Footer */
-        .sidebar-footer {
-          padding: 1rem 1.5rem;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          margin-top: auto;
-        }
-        
-        .help-text {
-          color: rgba(255, 255, 255, 0.7);
-          font-size: 0.85rem;
-          margin: 0;
-        }
-        
-        .help-link {
-          color: #ffffff;
-          text-decoration: underline;
-          font-weight: 500;
-        }
-        
-        .help-link:hover {
-          color: #ffe8cc;
-        }
-        
-        /* Content Area */
-        .content-area {
-          flex: 1;
-          background: #f8fafc;
-          min-height: 100vh;
-          overflow: auto;
-        }
-        
-        @media (max-width: 767px) {
-          .content-area {
-            width: 100%;
-          }
-        }
-        
-        /* Content Header */
-        .content-header {
-          background: #ffffff;
-          padding: 1.5rem 2rem;
-          border-bottom: 1px solid #e2e8f0;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-        
-        .content-title {
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #2d3748;
-          margin: 0 0 0.5rem 0;
-        }
-        
-        .content-subtitle {
-          color: #718096;
-          font-size: 0.95rem;
-          margin: 0;
-          line-height: 1.5;
-        }
-        
-        /* Active Tab Content */
-        .active-tab-content {
-          padding: 1.5rem;
-          min-height: calc(100vh - 80px);
-          overflow: auto;
-        }
-        
-        @media (max-width: 767px) {
-          .active-tab-content {
-            padding: 1rem;
-            min-height: calc(100vh - 60px);
-          }
-        }
-        
-        /* Responsive Adjustments */
-        @media (min-width: 768px) and (max-width: 1024px) {
-          .sidebar {
-            width: 280px;
-          }
-          
-          .tab-button {
-            padding: 0.875rem 1rem;
-          }
-          
-          .tab-name {
-            font-size: 0.9rem;
-          }
-          
-          .tab-description {
-            font-size: 0.75rem;
-          }
-        }
-        
-        @media (max-width: 576px) {
-          .mobile-header {
-            padding: 0.75rem;
-          }
-          
-          .mobile-title {
-            font-size: 1rem;
-          }
-          
-          .mobile-tab-title {
-            font-size: 0.8rem;
-            max-width: 80px;
-          }
-          
-          .sidebar {
-            width: 280px;
-          }
-          
-          .tab-button {
-            padding: 0.875rem 1rem;
-          }
-          
-          .tab-name {
-            font-size: 0.9rem;
-          }
-          
-          .tab-description {
-            font-size: 0.75rem;
-            -webkit-line-clamp: 2;
-          }
-          
-          .active-tab-content {
-            padding: 1rem 0.75rem;
-          }
-        }
-        
-        @media (max-width: 400px) {
-          .sidebar {
-            width: 100%;
-          }
-          
-          .mobile-tab-title {
-            max-width: 60px;
-          }
-          
-          .tab-content {
-            gap: 0.75rem;
-          }
-          
-          .tab-icon {
-            font-size: 1.1rem;
-          }
-        }
-        
-        /* Overlay for mobile sidebar */
-        @media (max-width: 767px) {
-          .main-layout.sidebar-open::before {
-            content: '';
-            position: fixed;
-            top: 60px;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 800;
-            animation: fadeIn 0.3s ease;
-          }
-          
-          @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-        }
-        
-        /* Accessibility improvements */
-        .tab-button:focus {
-          outline: 2px solid var(--orange-primary);
-          outline-offset: 2px;
-        }
-        
-        .menu-toggle:focus,
-        .close-sidebar:focus {
-          outline: 2px solid white;
-          outline-offset: 2px;
-        }
-      `}</style>
-    </Container>
+                  {/* Features */}
+                  <div style={{ padding: "16px 20px", flex: 1 }}>
+                    {features.map(f => (
+                      <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <FaCheckCircle style={{ color, fontSize: 13, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: "#374151" }}>{f}</span>
+                      </div>
+                    ))}
+
+                    {/* Reading — Choose a Topic */}
+                    {hasTopic && (
+                      <div style={{ marginTop: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Choose a Topic</div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {READING_TOPICS.map(topic => (
+                            <button
+                              key={topic}
+                              onClick={() => setActiveTopic(topic)}
+                              style={{
+                                padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer",
+                                background: activeTopic === topic ? color : "#f8fafc",
+                                color: activeTopic === topic ? "#fff" : "#64748b",
+                                border: `1px solid ${activeTopic === topic ? color : "#e2e8f0"}`,
+                                transition: "all 0.15s",
+                              }}
+                            >
+                              {topic}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Start button */}
+                  <div style={{ padding: "0 20px 20px" }}>
+                    <button
+                      onClick={() => goTo(id)}
+                      style={{
+                        width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
+                        background: color, color: "#fff", fontWeight: 700, fontSize: 14,
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        boxShadow: `0 4px 14px ${color}35`,
+                      }}
+                    >
+                      <PIcon style={{ fontSize: 14 }} /> {btnLabel}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Stats Row */}
+            <div style={{ padding: "24px 28px 32px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+              {STATS.map(({ label, value, sub, color, Icon: SIcon }) => (
+                <div key={label} style={{ background: "#fff", borderRadius: 14, border: "1px solid #f1f5f9", padding: "18px 20px", display: "flex", alignItems: "center", gap: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: color + "15", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <SIcon style={{ color, fontSize: 20 }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{value}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        ) : (
+          /* ── Practice Component View ── */
+          <div>
+            <div style={{ background: "#fff", borderBottom: "1px solid #f1f5f9", padding: "16px 28px", display: "flex", alignItems: "center", gap: 14 }}>
+              <button
+                onClick={goBack}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+              >
+                <FaArrowLeft style={{ fontSize: 11 }} /> Back
+              </button>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+                  {view === "listening" ? "Listening" : view === "reading" ? "Reading" : "Vocabulary"} Practice
+                </div>
+                {view === "reading" && (
+                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Topic: <strong style={{ color: BLUE }}>{activeTopic}</strong></div>
+                )}
+              </div>
+            </div>
+            <div style={{ padding: "20px 28px" }}>
+              {view === "listening"  && <LearningPractice />}
+              {view === "reading"    && <ReadingPractice />}
+              {view === "vocabulary" && <VocabularyPractice />}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
