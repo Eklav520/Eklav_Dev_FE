@@ -837,7 +837,7 @@ const SpeakingPractice: React.FC = () => {
             <Col lg={7} className="d-flex">
 
               {/* Hero header card */}
-              <div style={{ position: 'relative' as const, background: 'linear-gradient(120deg,#eceaff 0%,#e8d8ff 50%,#fde8ff 100%)', borderRadius: 24, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(108,99,255,0.12)', width: '100%' }}>
+              <div style={{ position: 'relative' as const, background: 'linear-gradient(120deg,#c7d2fe 0%,#a5b4fc 50%,#818cf8 100%)', borderRadius: 24, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, overflow: 'hidden', boxShadow: '0 8px 32px rgba(108,99,255,0.25)', width: '100%' }}>
                 {/* Watermark decorative circles */}
                 <div style={{ position: 'absolute' as const, top: -40, right: 110, width: 160, height: 160, borderRadius: '50%', background: 'rgba(108,99,255,0.08)', pointerEvents: 'none' as const }} />
                 <div style={{ position: 'absolute' as const, top: 20, right: 60, width: 100, height: 100, borderRadius: '50%', background: 'rgba(108,99,255,0.06)', pointerEvents: 'none' as const }} />

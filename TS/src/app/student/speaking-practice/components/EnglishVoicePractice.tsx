@@ -1,9 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Card, Button, Spinner, Container, Badge } from 'react-bootstrap'
+﻿import React, { useState, useEffect, useRef } from 'react'
+import { Spinner } from 'react-bootstrap'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
 import RoboAvatar from './RoboAvatar'
-import { FaMicrophoneSlash } from 'react-icons/fa'
+import AnimatedRobotSVG from './AnimatedRobotSVG'
+import {
+  FaMicrophoneSlash, FaRobot, FaUser, FaMicrophone, FaClock, FaPause, FaPlay, FaStop,
+  FaComments, FaClipboardList, FaEdit, FaTrash, FaSyncAlt, FaExclamationTriangle,
+  FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
+  FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
+  FaChevronRight, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
+} from 'react-icons/fa'
+import robotSpeakingImg from '@/assets/images/Robo.png'
 
 interface Message {
   id: string
@@ -29,6 +37,8 @@ const EnglishVoicePractice: React.FC = () => {
 
   const [messages, setMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')
+  const [feedbackScore, setFeedbackScore] = useState<number | null>(null)
+  const [feedbackBreakdown, setFeedbackBreakdown] = useState<{ grammar: number; fluency: number; vocabulary: number } | null>(null)
   const [sessionStarted, setSessionStarted] = useState(false)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -48,6 +58,7 @@ const EnglishVoicePractice: React.FC = () => {
   const recognitionRef = useRef<any>(null)
   const transcriptRef = useRef('')
   const lastUserRef = useRef('')
+  const accumulatedRef = useRef('')   // accumulates finals across pauses within one utterance
   const sessionActiveRef = useRef(false)
   const chatBodyRef = useRef<HTMLDivElement>(null)
   const [history, setHistory] = useState<any>(null)
@@ -77,6 +88,29 @@ const EnglishVoicePractice: React.FC = () => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
 
+  const webcamRef = useRef<HTMLVideoElement>(null)
+  const webcamStreamRef = useRef<MediaStream | null>(null)
+  const [webcamActive, setWebcamActive] = useState(false)
+
+  const startWebcam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      webcamStreamRef.current = stream
+      if (webcamRef.current) {
+        webcamRef.current.srcObject = stream
+      }
+      setWebcamActive(true)
+    } catch {
+      setWebcamActive(false)
+    }
+  }
+
+  const stopWebcam = () => {
+    webcamStreamRef.current?.getTracks().forEach(t => t.stop())
+    webcamStreamRef.current = null
+    setWebcamActive(false)
+  }
+
   const fetchSpeakingHistory = async () => {
     if (!token) return
 
@@ -95,9 +129,14 @@ const EnglishVoicePractice: React.FC = () => {
       const data = await res.json()
       setHistory({
         highestScore: data.summary?.bestScore ?? null,
+        latestScore: data.summary?.latestScore ?? null,
+        trend: data.summary?.trend ?? null,
         attemptsText: `${data.attemptsUsed} / ${data.monthlyLimit ?? 0}`,
         attemptsUsed: data.attemptsUsed,
         monthlyLimit: data.monthlyLimit,
+        latestFeedback: data.latestFeedback ?? null,
+        latestBreakdown: data.latestBreakdown ?? null,
+        attempts: data.attempts ?? [],
       })
     } catch (error) {
       console.error('Speaking history error:', error)
@@ -234,7 +273,6 @@ const EnglishVoicePractice: React.FC = () => {
     rec.onstart = () => {
       setIsListening(true)
       setIsUserSpeaking(true)
-      setLiveSpeech('')
       startSilenceTimer()
     }
 
@@ -242,42 +280,42 @@ const EnglishVoicePractice: React.FC = () => {
       clearSilenceTimer()
 
       let interim = ''
-      let final = ''
+      let newFinal = ''
 
-      // Start from resultIndex so we only process NEW results (not accumulated history)
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const result = e.results[i][0]
         const txt = result.transcript.trim()
         if (!txt) continue
-        // Final results: always accept (Chrome often returns confidence=0 for finals)
-        // Interim results: light filter only
-        if (!e.results[i].isFinal && (result.confidence || 0.5) < 0.3) continue
-        e.results[i].isFinal ? (final += ' ' + txt) : (interim += ' ' + txt)
+        // Accept all finals; only skip interim if very low confidence
+        if (!e.results[i].isFinal && (result.confidence || 0.6) < 0.15) continue
+        e.results[i].isFinal ? (newFinal += ' ' + txt) : (interim += ' ' + txt)
+      }
+
+      if (newFinal.trim()) {
+        noResponseCountRef.current = 0
+        // Append to accumulated so pauses don't wipe previous words
+        accumulatedRef.current = (accumulatedRef.current + ' ' + newFinal.trim()).trim()
+        setLiveSpeech(accumulatedRef.current)
+        clearTimeout(speechPauseTimerRef.current)
+        // 2s pause after last final word before sending
+        speechPauseTimerRef.current = setTimeout(async () => {
+          const text = accumulatedRef.current.trim()
+          if (!sessionActiveRef.current || !text || text === lastUserRef.current) return
+          lastUserRef.current = text
+          accumulatedRef.current = ''
+          setLiveSpeech('')
+          clearSilenceTimer()
+          setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
+          transcriptRef.current += `You: ${text}\n`
+          await sendToRob(text)
+        }, 2000)
       }
 
       if (interim.trim()) {
         noResponseCountRef.current = 0
-        setLiveSpeech(interim.trim())
-        // Student is still speaking — cancel any pending send so we don't cut them off
+        // Show accumulated finals + current interim so nothing looks erased
+        setLiveSpeech((accumulatedRef.current + ' ' + interim.trim()).trim())
         clearTimeout(speechPauseTimerRef.current)
-      }
-
-      if (final.trim()) {
-        noResponseCountRef.current = 0
-        const text = final.trim()
-
-        clearTimeout(speechPauseTimerRef.current)
-        // 3s pause: enough time for a learner to think and continue their sentence
-        speechPauseTimerRef.current = setTimeout(async () => {
-          if (!sessionActiveRef.current || text === lastUserRef.current) return
-          lastUserRef.current = text
-          setLiveSpeech('')
-          clearSilenceTimer()
-
-          setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
-          transcriptRef.current += `You: ${text}\n`
-          await sendToRob(text)
-        }, 3000)
       }
     }
 
@@ -292,6 +330,7 @@ const EnglishVoicePractice: React.FC = () => {
   }
 
   const stopListening = () => {
+    accumulatedRef.current = ''
     try {
       recognitionRef.current?.abort()
     } catch { }
@@ -333,70 +372,55 @@ const EnglishVoicePractice: React.FC = () => {
 
   // tw: typewriter sync — drives character-by-character reveal timed to actual TTS playback
   const speak = (text: string, tw?: { msgId: string; displayText: string; displayOffset?: number }) =>
-    new Promise<void>(async (resolve) => {
+    new Promise<void>((resolve) => {
     if (!sessionActiveRef.current) return resolve()
     onTTSStart()
 
-    const availableVoices = voices.length > 0 ? voices : await waitForVoices()
-    const getBest = (gender: 'male' | 'female') => {
-      const femalePriority = ['google uk english female', 'microsoft zira', 'samantha', 'karen', 'female']
-      const malePriority   = ['google uk english male',  'microsoft david', 'alex', 'daniel', 'male']
-      for (const term of (gender === 'female' ? femalePriority : malePriority)) {
-        const found = availableVoices.find(v => v.name.toLowerCase().includes(term))
-        if (found) return found
-      }
-      return availableVoices[0] ?? null
-    }
+    // Use voices directly from state (loaded at mount via onvoiceschanged) — no async wait
+    const femaleVoice = voices.find(v =>
+      ['google uk english female', 'zira', 'samantha', 'karen', 'female']
+        .some(k => v.name.toLowerCase().includes(k))
+    )
+    const maleVoice = voices.find(v =>
+      ['google uk english male', 'david', 'alex', 'daniel', 'male']
+        .some(k => v.name.toLowerCase().includes(k))
+    )
 
     const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
-    const voice = getBest(voiceGender)
-    if (voice) utter.voice = voice
+    const selectedVoice = voiceGender === 'female' ? (femaleVoice || maleVoice) : (maleVoice || femaleVoice)
+    if (selectedVoice) utter.voice = selectedVoice
+    else if (voices[0]) utter.voice = voices[0]
     utter.pitch = voiceGender === 'female' ? 1.05 : 0.95
     utter.rate = 0.95
 
     let twInterval: any = null
+    let twMsgId: string | undefined
+    let twTotalChars = 0
 
     if (tw) {
-      const { msgId, displayText, displayOffset = 0 } = tw
-      const wordCount = text.trim().split(/\s+/).filter(Boolean).length
-      // estimate how long TTS will take (rate 0.95 ≈ 2.3 words/sec)
-      const estimatedMs = Math.max(1500, (wordCount / 2.3) * 1000)
-      const totalChars = displayText.length
-
-      // Start interval exactly when audio begins, not before
+      const { msgId, displayText } = tw
+      twMsgId = msgId
+      twTotalChars = displayText.length
       utter.onstart = () => {
-        let elapsed = 0
+        let pos = 0
+        // 3 chars per 16ms tick ≈ 187 chars/sec — completes 150-char sentence in ~800ms
         twInterval = setInterval(() => {
-          elapsed += 40
-          const target = Math.min(totalChars - 1, Math.round((elapsed / estimatedMs) * totalChars))
-          setTypewriterMap(prev => ({ ...prev, [msgId]: target }))
-        }, 40)
-      }
-
-      // Fine-tune with word boundaries if the browser fires them
-      utter.onboundary = (e: any) => {
-        if (e.name !== 'word') return
-        const spaceIdx = text.indexOf(' ', e.charIndex)
-        const wordEnd = spaceIdx === -1 ? text.length : spaceIdx
-        const dispIdx = Math.max(0, wordEnd - displayOffset)
-        setTypewriterMap(prev => ({ ...prev, [msgId]: Math.max(prev[msgId] ?? 0, dispIdx) }))
+          pos = Math.min(pos + 3, twTotalChars)
+          setTypewriterMap(prev => ({ ...prev, [msgId]: pos }))
+          if (pos >= twTotalChars) clearInterval(twInterval)
+        }, 16)
       }
     }
 
-    const cleanup = () => { if (twInterval) clearInterval(twInterval) }
+    const cleanup = () => {
+      if (twInterval) clearInterval(twInterval)
+      // Snap to full text so clearTypewriter() causes no visible jump
+      if (twMsgId) setTypewriterMap(prev => ({ ...prev, [twMsgId!]: twTotalChars }))
+    }
 
-    utter.onend = async () => {
-      cleanup()
-      await waitForTTS()
-      onTTSEnd()
-      resolve()
-    }
-    utter.onerror = async () => {
-      cleanup()
-      await waitForTTS()
-      onTTSEnd()
-      resolve()
-    }
+    utter.onend = () => { cleanup(); onTTSEnd(); resolve() }
+    utter.onerror = () => { cleanup(); onTTSEnd(); resolve() }
+
     speechSynthesis.speak(utter)
   })
 
@@ -425,7 +449,9 @@ const EnglishVoicePractice: React.FC = () => {
 
       for (const item of toSpeak) {
         if (!sessionActiveRef.current) break
+        const sg = setTimeout(() => clearTypewriter(item.msgId), 8000)
         await speak(item.spokenText, { msgId: item.msgId, displayText: item.displayText, displayOffset: item.displayOffset })
+        clearTimeout(sg)
         clearTypewriter(item.msgId)
       }
     } finally {
@@ -446,6 +472,9 @@ const EnglishVoicePractice: React.FC = () => {
     lastUserRef.current = ''
     setMessages([])
     setFeedback('')
+    setFeedbackScore(null)
+    setFeedbackBreakdown(null)
+    setActiveSessionTab('conversation')
     setSessionStarted(true)
     setSessionEnded(false)
     setTimeLeft(180)
@@ -477,20 +506,20 @@ const EnglishVoicePractice: React.FC = () => {
     sessionActiveRef.current = true
     startMicMonitor()
 
-    // Pre-warm TTS engine during API call (user gesture context = no Chrome delay)
-    const warmUp = new SpeechSynthesisUtterance(' ')
-    warmUp.volume = 0
-    warmUp.rate = 16
-    speechSynthesis.speak(warmUp)
-
-    const res = await axios.post(`${baseURL}/api/english/start`)
-    speechSynthesis.cancel()
-    const welcomeId = mkId()
-    const welcomeText = res.data.aiMessage
-    setMessages([{ id: welcomeId, sender: 'eklav', text: welcomeText, type: 'reply' }])
-    setTypewriterMap(prev => ({ ...prev, [welcomeId]: 0 }))
-    await speak(welcomeText, { msgId: welcomeId, displayText: welcomeText })
-    clearTypewriter(welcomeId)
+    try {
+      const res = await axios.post(`${baseURL}/api/english/start`)
+      if (!sessionActiveRef.current) return
+      const welcomeText = res.data.aiMessage
+      const welcomeId = mkId()
+      setMessages([{ id: welcomeId, sender: 'eklav', text: welcomeText, type: 'reply' }])
+      setTypewriterMap(prev => ({ ...prev, [welcomeId]: 0 }))
+      const sg = setTimeout(() => clearTypewriter(welcomeId), 8000)
+      await speak(welcomeText, { msgId: welcomeId, displayText: welcomeText })
+      clearTimeout(sg)
+      clearTypewriter(welcomeId)
+    } catch (err) {
+      console.error('Session start error:', err)
+    }
   }
 
   const handleEndSession = async () => {
@@ -507,7 +536,10 @@ const EnglishVoicePractice: React.FC = () => {
 
     try {
       const res = await axios.post(`${baseURL}/api/english/end`, { transcript: transcriptRef.current }, { headers: { Authorization: `Bearer ${token}` } })
-      setFeedback(res.data.feedback)
+      setFeedback(res.data.feedback || '')
+      setFeedbackScore(res.data.score ?? null)
+      setFeedbackBreakdown(res.data.breakdown ?? null)
+      setActiveSessionTab('feedback')
       await fetchSpeakingHistory()
     } finally {
       setIsLoadingFeedback(false)
@@ -534,1106 +566,808 @@ const EnglishVoicePractice: React.FC = () => {
   const extractImprovements = (t: string) => t.split('\n').filter((l) => l.trim().startsWith('-'))
   const extractOverall = (t: string) => t.split('\n').slice(-2).join(' ')
 
+  const [showSessionModal, setShowSessionModal] = useState(false)
+  const [activeSessionTab, setActiveSessionTab] = useState<'conversation' | 'feedback'>('conversation')
+  const topicsScrollRef = useRef<HTMLDivElement>(null)
+
+  const BG_OPTIONS = [
+    { id: 'warm',   style: 'linear-gradient(160deg,#f5e6d0 0%,#e8d5b0 50%,#d4b896 100%)', label: 'Warm'   },
+    { id: 'dark',   style: 'linear-gradient(160deg,#0d1117 0%,#1a1f35 100%)',              label: 'Dark'   },
+    { id: 'ocean',  style: 'linear-gradient(160deg,#0ea5e9 0%,#0369a1 100%)',              label: 'Ocean'  },
+    { id: 'forest', style: 'linear-gradient(160deg,#166534 0%,#15803d 100%)',              label: 'Forest' },
+    { id: 'purple', style: 'linear-gradient(160deg,#6d28d9 0%,#8b5cf6 100%)',              label: 'Purple' },
+    { id: 'slate',  style: 'linear-gradient(160deg,#334155 0%,#475569 100%)',              label: 'Slate'  },
+  ]
+  const [aiBgStyle, setAiBgStyle]   = useState(BG_OPTIONS[0].style)
+  const [youBgStyle, setYouBgStyle] = useState(BG_OPTIONS[1].style)
+  const [showAiBgPicker, setShowAiBgPicker]   = useState(false)
+  const [showYouBgPicker, setShowYouBgPicker] = useState(false)
+  const scrollTopics = () => {
+    if (topicsScrollRef.current) topicsScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' })
+  }
+
+  const ORANGE = '#ff7a00'
+
+  type Topic = { icon: React.ReactNode; title: string; desc: string; level: string; iconBg: string; iconColor: string }
+  const TOPICS: Topic[] = [
+    { icon: <FaUser />,       title: 'Self Introduction',     desc: 'Introduce yourself and your background.',              level: 'Easy',   iconBg: '#fed7aa', iconColor: '#ea580c' },
+    { icon: <FaBullseye />,   title: 'Hobbies',               desc: 'Talk about your hobbies and interests.',                level: 'Easy',   iconBg: '#bbf7d0', iconColor: '#16a34a' },
+    { icon: <FaUniversity />, title: 'Describe your College', desc: 'Describe your college, campus and activities.',         level: 'Medium', iconBg: '#bfdbfe', iconColor: '#2563eb' },
+    { icon: <FaRocket />,     title: 'Future Goals',          desc: 'Talk about your short and long term goals.',            level: 'Medium', iconBg: '#e9d5ff', iconColor: '#7c3aed' },
+    { icon: <FaLaptop />,     title: 'Technology',            desc: 'Discuss technology and its impact.',                    level: 'Hard',   iconBg: '#fecdd3', iconColor: '#dc2626' },
+    { icon: <FaBriefcase />,  title: 'Job Interview',         desc: 'Practice common job interview questions.',              level: 'Hard',   iconBg: '#fef3c7', iconColor: '#d97706' },
+    { icon: <FaGlobe />,      title: 'Travel & Tourism',      desc: 'Discuss travel experiences and destinations.',          level: 'Easy',   iconBg: '#ccfbf1', iconColor: '#0d9488' },
+    { icon: <FaBook />,       title: 'Academic Discussion',   desc: 'Talk about academic topics and study life.',            level: 'Medium', iconBg: '#fce7f3', iconColor: '#db2777' },
+    { icon: <FaUsers />,      title: 'Social Skills',         desc: 'Practice everyday social conversations.',               level: 'Easy',   iconBg: '#e0e7ff', iconColor: '#4338ca' },
+    { icon: <FaChartLine />,  title: 'Current Affairs',       desc: 'Speak about news, events and global topics.',           level: 'Hard',   iconBg: '#d1fae5', iconColor: '#059669' },
+  ]
+  const LEVEL_COLOR: Record<string, string> = { Easy: '#22c55e', Medium: '#f59e0b', Hard: '#ef4444' }
+
+  const handleOpenSession = () => {
+    setShowSessionModal(true)
+    setActiveSessionTab('conversation')
+    setTimeout(() => startWebcam(), 100)
+  }
+
+  const handleCloseSession = () => {
+    // Cancel any in-progress speech/listening without generating feedback
+    sessionActiveRef.current = false
+    clearSilenceTimer()
+    stopListening()
+    stopMicMonitor()
+    speechSynthesis.cancel()
+    ttsCountRef.current = 0
+    stopWebcam()
+    setShowSessionModal(false)
+    setSessionStarted(false)
+    setSessionEnded(false)
+    setMessages([])
+    setFeedback('')
+    setFeedbackScore(null)
+    setFeedbackBreakdown(null)
+    setTimeLeft(180)
+    setIsPaused(false)
+    isPausedRef.current = false
+  }
+
+  const handleMicClick = async () => {
+    if (sessionEnded) {
+      restartSession()
+    } else if (!sessionStarted) {
+      await handleStartSession()
+    } else if (isListening) {
+      stopListening()
+    } else {
+      startListening()
+    }
+  }
+
+  // Compute monthly averages from attempts that have breakdown data
+  const attemptsWithBreakdown = history?.attempts?.filter((a: any) => a.breakdown) ?? []
+  const avgBreakdown = attemptsWithBreakdown.length > 0 ? {
+    grammar:    Math.round(attemptsWithBreakdown.reduce((s: number, a: any) => s + (a.breakdown.grammar    ?? 0), 0) / attemptsWithBreakdown.length),
+    fluency:    Math.round(attemptsWithBreakdown.reduce((s: number, a: any) => s + (a.breakdown.fluency    ?? 0), 0) / attemptsWithBreakdown.length),
+    vocabulary: Math.round(attemptsWithBreakdown.reduce((s: number, a: any) => s + (a.breakdown.vocabulary ?? 0), 0) / attemptsWithBreakdown.length),
+  } : null
+  const avgScore = history?.attempts?.length > 0
+    ? Math.round(history.attempts.reduce((s: number, a: any) => s + (a.score ?? 0), 0) / history.attempts.length)
+    : null
+
+  const SKILL_BARS = avgBreakdown ? [
+    { label: 'Fluency',    pct: Math.round(avgBreakdown.fluency    * 10), color: '#3b82f6', bg: '#eff6ff' },
+    { label: 'Grammar',    pct: Math.round(avgBreakdown.grammar    * 10), color: '#22c55e', bg: '#f0fdf4' },
+    { label: 'Vocabulary', pct: Math.round(avgBreakdown.vocabulary * 10), color: '#06b6d4', bg: '#ecfeff' },
+  ] : [
+    { label: 'Fluency',    pct: 0, color: '#3b82f6', bg: '#eff6ff' },
+    { label: 'Grammar',    pct: 0, color: '#22c55e', bg: '#f0fdf4' },
+    { label: 'Vocabulary', pct: 0, color: '#06b6d4', bg: '#ecfeff' },
+  ]
+
+  const handleViewDetailedFeedback = () => {
+    if (!history?.latestFeedback) return
+    setFeedback(history.latestFeedback)
+    setFeedbackBreakdown(history.latestBreakdown ?? null)
+    setFeedbackScore(history.latestScore ?? null)
+    setActiveSessionTab('feedback')
+    setShowSessionModal(true)
+  }
+
+  const TIPS = [
+    'Speak clearly and at a moderate pace',
+    'Use connecting words for better flow',
+    'Maintain good posture and eye contact',
+    'Try to expand your answers',
+  ]
+
+  type Session = { icon: React.ReactNode; iconBg: string; iconColor: string; title: string; time: string; score: number; up: boolean }
+  const RECENT_SESSIONS: Session[] = [
+    { icon: <FaUser />,       iconBg: '#fed7aa', iconColor: '#ea580c', title: 'Self Introduction',     time: 'Today, 10:30 AM',        score: 72, up: true  },
+    { icon: <FaBullseye />,   iconBg: '#bbf7d0', iconColor: '#16a34a', title: 'Hobbies',               time: 'Yesterday, 09:15 AM',    score: 88, up: true  },
+    { icon: <FaUniversity />, iconBg: '#bfdbfe', iconColor: '#2563eb', title: 'Describe your College', time: '12 May 2025, 06:30 PM',  score: 75, up: false },
+    { icon: <FaRocket />,     iconBg: '#e9d5ff', iconColor: '#7c3aed', title: 'Future Goals',          time: '10 May 2025, 11:20 AM',  score: 90, up: true  },
+  ]
+
+  const overallPct = avgScore ?? 0
+  const R = 46, CX = 56, CY = 56, SW = 9
+  const C = 2 * Math.PI * R
+  const greenOffset = C * (1 - overallPct / 100)
+
+  const HERO_FEATURES = [
+    { icon: <FaComments />,  label: 'Real Conversations', color: '#2563eb', bg: '#dbeafe' },
+    { icon: <FaRobot />,     label: 'AI Feedback',        color: ORANGE,    bg: '#fff7ed' },
+    { icon: <FaChartLine />, label: 'Track Progress',     color: '#16a34a', bg: '#dcfce7' },
+    { icon: <FaBolt />,      label: 'Improve Skills',     color: '#7c3aed', bg: '#f3e8ff' },
+  ]
+
+  const QUICK_ACTIONS = [
+    { icon: <FaMicrophone />, borderColor: '#22c55e', iconColor: '#22c55e', iconBg: '#f0fdf4', title: 'Start New Session', desc: 'Start a conversation with AI Coach',  btnLabel: 'Start Now',    btnColor: '#22c55e' },
+    { icon: <FaEdit />,       borderColor: '#a855f7', iconColor: '#a855f7', iconBg: '#faf5ff', title: 'Custom Topic',      desc: 'Choose your own topic to practice',  btnLabel: 'Choose Topic', btnColor: '#a855f7' },
+    { icon: <FaLightbulb />,  borderColor: '#f59e0b', iconColor: '#f59e0b', iconBg: '#fffbeb', title: 'Random Topic',      desc: 'Let AI pick a random topic for you', btnLabel: 'Surprise Me',  btnColor: '#f59e0b' },
+  ]
+
   return (
-    <div className="english-practice-container">
-      {micWarning && (
-        <div style={{
-          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, background: '#3c4043', borderRadius: 12,
-          boxShadow: '0 8px 28px rgba(0,0,0,0.45)', padding: '16px 20px',
-          minWidth: 320, maxWidth: 400, display: 'flex', alignItems: 'flex-start', gap: 12,
-        }}>
-          <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0, marginTop: 1 }}>⚠️</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem', marginBottom: 4 }}>
-              {micWarning === 'muted' ? 'Microphone muted by system' : 'Microphone volume is very low'}
+    <div style={{ background: '#f8fafc', minHeight: '100vh', fontFamily: 'inherit' }}>
+
+      {/* ── SESSION MODAL (full screen) ── */}
+      {showSessionModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#fff', display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+
+          {/* ── Header ── */}
+          <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            {/* Left: title */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#fff7ed', border: `1.5px solid ${ORANGE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 15 }}>
+                <FaMicrophone />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Speaking with Eklav</div>
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>Have a natural conversation and improve your communication skills</div>
+              </div>
             </div>
-            <div style={{ color: '#bdc1c6', fontSize: '0.82rem', lineHeight: 1.5, marginBottom: 8 }}>
-              Go to your computer's settings to unmute your mic and increase its level
+
+            {/* Center: voice + timer + start/pause/stop */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
+                  <FaMicrophone style={{ fontSize: 10 }} /> Voice
+                </button>
+                <button onClick={() => setVoiceGender('male')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
+                  <FaMale style={{ fontSize: 10 }} /> Boy Voice
+                </button>
+                <button onClick={() => setVoiceGender('female')}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : '#374151', border: 'none' }}>
+                  <FaFemale style={{ fontSize: 10 }} /> Girl Voice
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
+                <FaClock style={{ color: '#374151', fontSize: 12 }} />
+                <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>Time Left: {formatTime(timeLeft)}</span>
+              </div>
+
+              {/* Start → Pause / Resume */}
+              {!sessionStarted || sessionEnded ? (
+                <button onClick={sessionEnded ? restartSession : handleStartSession}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1.5px solid ${ORANGE}`, borderRadius: 8, padding: '5px 14px', background: ORANGE, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>
+                  <FaPlay style={{ fontSize: 9 }} /> {sessionEnded ? 'Restart' : 'Start'}
+                </button>
+              ) : isPaused ? (
+                <button onClick={handleResume}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #22c55e', borderRadius: 8, padding: '5px 14px', background: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>
+                  <FaPlay style={{ fontSize: 9 }} /> Resume
+                </button>
+              ) : (
+                <button onClick={handlePause}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 14px', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+                  <FaPause style={{ fontSize: 9 }} /> Pause
+                </button>
+              )}
+
+              {/* Stop — ends conversation & generates feedback */}
+              {sessionStarted && !sessionEnded && (
+                <button onClick={handleEndSession}
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #ef4444', borderRadius: 8, padding: '5px 14px', background: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#ef4444' }}>
+                  <FaStop style={{ fontSize: 9 }} /> Stop
+                </button>
+              )}
             </div>
-            <button onClick={() => window.open('ms-settings:sound', '_blank')}
-              style={{ background: 'none', border: 'none', padding: 0, color: '#8ab4f8', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
-              Open Sound Settings
+
+            {/* Right: End Session — closes modal only */}
+            <button onClick={handleCloseSession}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1.5px solid #64748b', borderRadius: 8, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#64748b', flexShrink: 0 }}>
+              End Session
             </button>
           </div>
-          <button onClick={() => setMicWarning(null)} style={{ background: 'none', border: 'none', color: '#bdc1c6', fontSize: '1.1rem', cursor: 'pointer' }}>
-            ✕
-          </button>
-        </div>
-      )}
-      <Container fluid className="px-0">
-        <div className="main-layout">
-          {/* Left Column - Avatar */}
-          <div className="avatar-column">
-            <Card className="avatar-card">
-              <RoboAvatar
-                isTyping={isTyping}
-                isListening={isListening}
-                isSpeaking={ttsCountRef.current > 0}
-              />
-            </Card>
+
+          {/* ── Keyframe styles ── */}
+          <style>{`
+            @keyframes roboFloat {
+              0%,100% { transform: translateY(0px) rotate(0deg); }
+              30%      { transform: translateY(-14px) rotate(1.5deg); }
+              70%      { transform: translateY(-8px) rotate(-1deg); }
+            }
+            @keyframes roboSpeak {
+              0%,100% { transform: translateY(-10px) scale(1); }
+              25%     { transform: translateY(-16px) scale(1.03) rotate(2deg); }
+              75%     { transform: translateY(-6px)  scale(1.03) rotate(-2deg); }
+            }
+            @keyframes roboWave {
+              0%,100% { transform: translateY(-8px) rotate(-4deg); }
+              25%     { transform: translateY(-14px) rotate(4deg); }
+              50%     { transform: translateY(-8px)  rotate(-3deg); }
+              75%     { transform: translateY(-13px) rotate(3deg); }
+            }
+            @keyframes glowRing {
+              0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.7; }
+              100% { transform: translate(-50%,-50%) scale(2.2);  opacity: 0; }
+            }
+            @keyframes lipBounce {
+              0%,100% { transform: scaleY(1); }
+              50%     { transform: scaleY(1.6); }
+            }
+            @keyframes earWiggle {
+              0%,100% { transform: rotate(0deg); }
+              30%     { transform: rotate(12deg); }
+              70%     { transform: rotate(-10deg); }
+            }
+          `}</style>
+
+          {/* ── Outer wrapper: 200px side margins ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, margin: '12px 220px', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
+
+          {/* ── Video panels ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: 300, flexShrink: 0, gap: 12, padding: 12, background: '#f1f5f9' }}>
+
+            {/* AI Coach panel */}
+            <div style={{ position: 'relative', background: aiBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 14, overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 10, left: 10, background: '#22c55e', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5, zIndex: 3 }}>
+                <FaRobot style={{ fontSize: 9 }} /> AI Coach
+              </div>
+              <button onClick={() => { setShowAiBgPicker(p => !p); setShowYouBgPicker(false) }}
+                style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                title="Change background">🎨</button>
+              {showAiBgPicker && (
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 20, background: '#fff', borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
+                  {BG_OPTIONS.map(o => (
+                    <button key={o.id} onClick={() => { setAiBgStyle(o.style); setShowAiBgPicker(false) }} title={o.label}
+                      style={{ width: 32, height: 32, borderRadius: 8, background: o.style, border: aiBgStyle === o.style ? `3px solid ${ORANGE}` : '2px solid #e2e8f0', cursor: 'pointer' }} />
+                  ))}
+                </div>
+              )}
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 16px', zIndex: 2 }}>
+                <AnimatedRobotSVG isSpeaking={ttsCountRef.current > 0} isListening={isListening} isTyping={isTyping} />
+              </div>
+              <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end', zIndex: 3 }}>
+                {[3,5,9,6,11,8,5,7,4,9,5,3,6,4,8].map((h, i) => (
+                  <div key={i} style={{ width: 3, height: ttsCountRef.current > 0 ? h * 2.5 : 4, background: ORANGE, borderRadius: 2, transition: 'height .18s', opacity: 0.95 }} />
+                ))}
+              </div>
+            </div>
+
+            {/* You panel */}
+            <div style={{ position: 'relative', background: youBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 14 }}>
+              <video ref={webcamRef} autoPlay playsInline muted
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: webcamActive ? 'block' : 'none' }} />
+              {!webcamActive && (
+                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 36 }}>
+                  <FaUser />
+                </div>
+              )}
+              <div style={{ position: 'absolute', top: 10, left: 10, background: '#2563eb', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <FaUser style={{ fontSize: 9 }} /> You
+              </div>
+              {!webcamActive && (
+                <button onClick={() => { setShowYouBgPicker(p => !p); setShowAiBgPicker(false) }}
+                  style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                  title="Change background">🎨</button>
+              )}
+              {showYouBgPicker && !webcamActive && (
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 10, background: '#fff', borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
+                  {BG_OPTIONS.map(o => (
+                    <button key={o.id} onClick={() => { setYouBgStyle(o.style); setShowYouBgPicker(false) }} title={o.label}
+                      style={{ width: 32, height: 32, borderRadius: 8, background: o.style, border: youBgStyle === o.style ? '3px solid #2563eb' : '2px solid #e2e8f0', cursor: 'pointer' }} />
+                  ))}
+                </div>
+              )}
+              <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+                {[3,5,9,6,11,8,5,7,4,9,5,3,6,4,8].map((h, i) => (
+                  <div key={i} style={{ width: 3, height: isListening && isUserSpeaking ? h * 2.5 : 4, background: '#3b82f6', borderRadius: 2, transition: 'height .15s', opacity: 0.9 }} />
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Right Column - Chat */}
-          <div className="chat-column">
-            <Card className="practice-card">
-              <Card.Header className="practice-header">
-                <div className="header-top">
-                  <div className="header-left">
-                    <h5 className="header-title">
-                      🗣 Speak with Eklav
-                      {isTrialUser && <span className="trial-badge ms-2">Trial</span>}
-                    </h5>
-                    <div className="attempts-text">
-                      <div>
-                        {isTrialUser ? 'Free Attempts' : 'Monthly Attempts'}:{' '}
-                        <strong>{history ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}` : '...'}</strong>
-                      </div>
-                      {isLimitReached && (
-                        <div className="trial-warning mt-1 small">
-                          {isTrialUser ? 'Trial limit reached. Upgrade to continue.' : 'Monthly limit reached.'}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="header-right">
-                    <div className="voice-selector">
-                      <div className="voice-toggle">
-                        <button
-                          className={`voice-btn voice-btn-female${voiceGender === 'female' ? ' active' : ''}`}
-                          onClick={() => setVoiceGender('female')}
-                          title="Female voice"
-                        >
-                          👩‍🦳
-                        </button>
-                        <button
-                          className={`voice-btn voice-btn-male${voiceGender === 'male' ? ' active' : ''}`}
-                          onClick={() => setVoiceGender('male')}
-                          title="Male voice"
-                        >
-                          👨‍🦱
-                        </button>
+          {/* ── Conversation / Feedback ── */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff' }}>
+
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 16px', flexShrink: 0 }}>
+              {(['conversation', 'feedback'] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveSessionTab(tab)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', borderBottom: activeSessionTab === tab ? `2.5px solid ${ORANGE}` : '2.5px solid transparent', marginBottom: -1, padding: '10px 16px', fontSize: 13, fontWeight: activeSessionTab === tab ? 700 : 500, color: activeSessionTab === tab ? ORANGE : '#64748b', cursor: 'pointer' }}>
+                  {tab === 'conversation' ? <><FaComments style={{ fontSize: 12 }} /> Conversation</> : <><FaClipboardList style={{ fontSize: 12 }} /> Feedback</>}
+                </button>
+              ))}
+            </div>
+
+            {/* Chat / Feedback body */}
+            <div ref={chatBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f8fafc' }}>
+              {activeSessionTab === 'conversation' ? (
+                <>
+                  {messages.length === 0 && !isTyping && (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+                      <div style={{ fontSize: 13, color: '#94a3b8' }}>
+                        {!sessionStarted ? 'Click Start to begin your session' : 'Waiting for conversation...'}
                       </div>
                     </div>
-                    <div className="stats-group">
-                      {history && history.highestScore !== null && (
-                        <div className="stat-item">
-                          <small className="stat-label">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 3 }}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                            Best Score
-                          </small>
-                          <strong className="best-score-value">{history.highestScore}</strong>
+                  )}
+                  {messages.map((m, i) => {
+                    const isTypingOut = m.sender === 'eklav' && typewriterMap[m.id] !== undefined
+                    const twPos = typewriterMap[m.id] ?? 0
+                    const displayText = isTypingOut && twPos > 0 ? m.text.slice(0, twPos) : m.text
+                    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    return (
+                      <div key={i} style={{ display: 'flex', justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
+                        {m.sender !== 'user' && (
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', border: `1.5px solid ${ORANGE}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13, marginRight: 8, flexShrink: 0 }}>
+                            <FaRobot />
+                          </div>
+                        )}
+                        <div style={{ maxWidth: '70%' }}>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, textAlign: m.sender === 'user' ? 'right' : 'left' }}>
+                            {m.sender === 'user' ? 'You' : 'AI Coach'} · {time}
+                          </div>
+                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '8px 13px', fontSize: 13, color: '#0f172a', lineHeight: 1.6 }}>
+                            {m.type === 'correction' && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
+                                <FaCheck /> Improved
+                              </div>
+                            )}
+                            {displayText}{isTypingOut && <span style={{ animation: 'blink 1s infinite' }}>|</span>}
+                          </div>
                         </div>
-                      )}
-                      <div className="stat-item">
-                        <small className="stat-label">
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 3 }}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                          Time Left
-                        </small>
-                        <strong className="stat-value" style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '0.04em' }}>{formatTime(timeLeft)}</strong>
-                      </div>
-                      <div className="mic-status" title={micWarning === 'muted' ? 'Microphone muted' : micWarning === 'low' ? 'Mic volume very low' : 'Microphone active'}>
-                        {micWarning ? (
-                          <FaMicrophoneSlash size={18} style={{ color: '#ef4444', animation: 'pulse 1.2s infinite' }} />
-                        ) : (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                            className={`mic-svg-icon ${isListening ? 'listening' : ''}`}>
-                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                            <line x1="12" y1="19" x2="12" y2="23"/>
-                            <line x1="8" y1="23" x2="16" y2="23"/>
-                          </svg>
+                        {m.sender === 'user' && (
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontSize: 13, marginLeft: 8, flexShrink: 0 }}>
+                            <FaUser />
+                          </div>
                         )}
                       </div>
-                    </div>
-                    <div className="action-buttons-group">
-                      <div className="session-buttons">
-                        <Button 
-                          variant={canStart ? 'outline' : 'outline-secondary'} 
-                          className="action-btn start-btn" 
-                          disabled={!canStart} 
-                          onClick={handleStartSession}
-                        >
-                          ▶ Start
-                        </Button>
-                        <Button
-                          variant={canStop ? 'outline' : 'outline-secondary'}
-                          className={`action-btn ${isPaused ? 'resume-btn' : 'pause-btn'}`}
-                          disabled={!canStop}
-                          onClick={isPaused ? handleResume : handlePause}
-                        >
-                          {isPaused ? '▶ Resume' : '⏸ Pause'}
-                        </Button>
-                        <Button
-                          variant={canStop ? 'outline' : 'outline-secondary'}
-                          className="action-btn end-btn"
-                          disabled={!canStop}
-                          onClick={handleEndSession}
-                        >
-                          ⏹ Stop
-                        </Button>
-                        <Button 
-                          variant={canNewSession ? 'outline' : 'outline-secondary'} 
-                          className="action-btn new-btn" 
-                          disabled={!canNewSession} 
-                          onClick={restartSession}
-                        >
-                          🔄 New
-                        </Button>
+                    )
+                  })}
+                  {liveSpeech && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                      <div style={{ maxWidth: '70%', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px 14px 4px 14px', padding: '8px 13px', fontSize: 13, color: '#1e40af', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <FaMicrophone style={{ flexShrink: 0 }} /> {liveSpeech}
                       </div>
                     </div>
-                  </div>
-                </div>
-              </Card.Header>
-
-              <Card.Body className="chat-body-container">
-                <div ref={chatBodyRef} className="chat-messages">
-                  {!sessionStarted ? (
-                    <div className="welcome-screen">
-                      <div className="welcome-icon">🤖</div>
-                      <h5 className="welcome-title">Let's Start Speaking with Eklav!</h5>
-                      <p className="welcome-text">Click Start to begin your session</p>
-                    </div>
-                  ) : (
-                    <>
-                      {messages.map((m, i) => {
-                        const isTypingOut = m.sender === 'eklav' && typewriterMap[m.id] !== undefined
-                        const displayText = isTypingOut ? m.text.slice(0, typewriterMap[m.id]) : m.text
-                        return (
-                        <div key={i} className={`message-container ${m.sender === 'user' ? 'user-message' : 'eklav-message'}`}>
-                          {m.sender === 'user' ? (
-                            <div className="message-bubble user-bubble">
-                              <div className="message-header">
-                                <div className="sender-info">
-                                  <span className="user-avatar">👤</span>
-                                  <strong className="sender-name">You</strong>
-                                </div>
-                                <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
-                              </div>
-                              <div className="message-text">{m.text}</div>
-                            </div>
-                          ) : m.type === 'correction' ? (
-                            <div className="message-bubble correction-bubble">
-                              <div className="message-header">
-                                <div className="sender-info">
-                                  <span className="correction-avatar">🤖</span>
-                                  <div>
-                                    <strong className="sender-name">Eklav</strong>
-                                    <Badge bg="warning" text="dark" className="correction-badge ms-2">Correction</Badge>
-                                  </div>
-                                </div>
-                                <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
-                              </div>
-                              <div className="message-text">{displayText}{isTypingOut && <span className="tw-cursor">|</span>}</div>
-                            </div>
-                          ) : (
-                            <div className="message-bubble rob-bubble">
-                              <div className="message-header">
-                                <div className="sender-info">
-                                  <span className="rob-avatar">🤖</span>
-                                  <strong className="sender-name">Eklav</strong>
-                                </div>
-                                <small className="message-time">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>
-                              </div>
-                              <div className="message-text">{displayText}{isTypingOut && <span className="tw-cursor">|</span>}</div>
-                            </div>
-                          )}
-                        </div>
-                        )
-                      })}
-
-                      {liveSpeech && (
-                        <div className="message-container user-message">
-                          <div className="message-bubble user-bubble speaking">
-                            <div className="message-header">
-                              <div className="sender-info">
-                                <span className="user-avatar">👤</span>
-                                <strong className="sender-name">You (Speaking)</strong>
-                              </div>
-                              <div className="pulsating-dot"></div>
-                            </div>
-                            <div className="message-text live-speech">{liveSpeech}</div>
-                          </div>
-                        </div>
-                      )}
-
-                      {isTyping && (
-                        <div className="typing-indicator">
-                          <span className="rob-avatar">🤖</span>
-                          <div className="typing-dots">
-                            <div className="dot"></div>
-                            <div className="dot"></div>
-                            <div className="dot"></div>
-                          </div>
-                          <span className="typing-text">Eklav is typing...</span>
-                        </div>
-                      )}
-                    </>
                   )}
-                </div>
-              </Card.Body>
+                  {isTyping && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13 }}>
+                        <FaRobot />
+                      </div>
+                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px 14px 14px 4px', padding: '9px 14px', display: 'flex', gap: 4 }}>
+                        {[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8', animation: `bounce 1.2s infinite ${j * 0.2}s` }} />)}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>
+                  {!feedback && !isLoadingFeedback ? (
+                    <div style={{ textAlign: 'center', color: '#94a3b8', padding: '48px 0' }}>
+                      <div style={{ fontSize: 36, marginBottom: 10, display: 'flex', justifyContent: 'center', opacity: 0.4 }}><FaFileAlt /></div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#64748b' }}>No Feedback Yet</div>
+                      <div style={{ fontSize: 12, marginTop: 6, color: '#94a3b8' }}>Complete the session to see your analysis</div>
+                    </div>
+                  ) : isLoadingFeedback ? (
+                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                      <Spinner animation="border" style={{ color: ORANGE }} />
+                      <div style={{ marginTop: 12, color: '#64748b', fontSize: 13, fontWeight: 500 }}>Analyzing your session...</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>This may take a few seconds</div>
+                    </div>
+                  ) : (() => {
+                    // Parse improvement tips and overall note from feedback text
+                    const lines = feedback.split('\n').filter(l => l.trim())
+                    const tips = lines.filter(l => /^[-•*]/.test(l.trim()) || /^\d+[.)]\s/.test(l.trim()))
+                      .map(l => l.replace(/^[-•*\d.)]\s*/, '').trim())
+                    const overallLine = lines.filter(l =>
+                      l.toLowerCase().includes('overall') || l.toLowerCase().includes('keep') ||
+                      l.toLowerCase().includes('great') || l.toLowerCase().includes('well done') ||
+                      l.toLowerCase().includes('excellent') || l.toLowerCase().includes('practice')
+                    ).slice(-1)[0] || lines[lines.length - 1] || ''
 
-              {sessionStarted && !sessionEnded && noResponseCountRef.current > 0 && (
-                <div className="waiting-indicator-bar">
-                  <small>⏳ Waiting for response ({noResponseCountRef.current}/{MAX_NO_RESPONSE})</small>
+                    const scoreColor = (s: number) => s >= 8 ? '#16a34a' : s >= 6 ? '#d97706' : '#dc2626'
+                    const scoreBg   = (s: number) => s >= 8 ? '#f0fdf4' : s >= 6 ? '#fffbeb' : '#fef2f2'
+                    const overallPct = feedbackScore ?? 0
+                    const overallColor = overallPct >= 70 ? '#16a34a' : overallPct >= 50 ? '#d97706' : '#dc2626'
+                    const metrics = feedbackBreakdown
+                      ? [
+                          { label: 'Grammar',    score: feedbackBreakdown.grammar    },
+                          { label: 'Fluency',    score: feedbackBreakdown.fluency    },
+                          { label: 'Vocabulary', score: feedbackBreakdown.vocabulary },
+                        ]
+                      : []
+
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                        {/* Overall score banner */}
+                        <div style={{ background: `linear-gradient(135deg, ${ORANGE}15 0%, ${ORANGE}08 100%)`, border: `1.5px solid ${ORANGE}30`, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 18 }}>
+                          {/* Circle */}
+                          <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
+                            <svg width="72" height="72" viewBox="0 0 72 72">
+                              <circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" strokeWidth="6"/>
+                              <circle cx="36" cy="36" r="30" fill="none" stroke={overallColor} strokeWidth="6"
+                                strokeDasharray={`${(overallPct / 100) * 188.5} 188.5`}
+                                strokeLinecap="round" transform="rotate(-90 36 36)"/>
+                            </svg>
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontSize: 17, fontWeight: 800, color: overallColor, lineHeight: 1 }}>{overallPct}</span>
+                              <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>/ 100</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>Session Score</div>
+                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
+                              {overallPct >= 80 ? 'Excellent performance!' : overallPct >= 60 ? 'Good effort, keep going!' : 'Keep practicing to improve!'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Score breakdown */}
+                        {metrics.length > 0 && (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                            {metrics.map(m => (
+                              <div key={m.label} style={{ background: scoreBg(m.score), border: `1px solid ${scoreColor(m.score)}30`, borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
+                                <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(m.score), lineHeight: 1 }}>{m.score}<span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>/10</span></div>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginTop: 4 }}>{m.label}</div>
+                                <div style={{ height: 4, borderRadius: 4, background: '#e2e8f0', marginTop: 8 }}>
+                                  <div style={{ height: '100%', borderRadius: 4, background: scoreColor(m.score), width: `${m.score * 10}%`, transition: 'width 0.8s ease' }}/>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Improvement tips */}
+                        {tips.length > 0 && (
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 14 }}>📌</span> Areas to Improve
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {tips.slice(0, 5).map((tip, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: '#374151', lineHeight: 1.55 }}>
+                                  <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: `${ORANGE}18`, color: ORANGE, fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
+                                  <span dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}/>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Overall note */}
+                        {overallLine && (
+                          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `3px solid ${ORANGE}`, borderRadius: '0 10px 10px 0', padding: '12px 14px', fontSize: 12.5, color: '#374151', lineHeight: 1.6 }}
+                            dangerouslySetInnerHTML={{ __html: overallLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^(5️⃣|5\.|Overall[:\s]*)/i, '') }}/>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
-            </Card>
+            </div>
+
+            {/* ── Mic bar ── */}
+            <div style={{ background: '#fff', borderTop: '1px solid #e2e8f0', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, minHeight: 44 }}>
+              <div style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>
+                {isPaused ? 'Session paused...' : sessionEnded ? 'Session ended' : !sessionStarted ? 'Click the mic and start speaking...' : isListening ? 'Listening...' : 'Speaking...'}
+              </div>
+              <button onClick={handleMicClick} disabled={isPaused && !sessionEnded}
+                style={{ width: 36, height: 36, borderRadius: '50%', background: sessionEnded ? '#22c55e' : isListening ? '#ef4444' : ORANGE, border: 'none', cursor: (isPaused && !sessionEnded) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, boxShadow: `0 3px 12px ${isListening ? '#ef444455' : ORANGE + '55'}`, transition: 'all .2s', opacity: (isPaused && !sessionEnded) ? 0.5 : 1, flexShrink: 0 }}>
+                {sessionEnded ? <FaSyncAlt /> : isListening ? <FaStop /> : <FaMicrophone />}
+              </button>
+              {micWarning && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
+                  <FaExclamationTriangle /> {micWarning === 'muted' ? 'Mic muted' : 'Mic low'}
+                </div>
+              )}
+            </div>
+          </div>
+
+          </div>{/* end outer 200px wrapper */}
+
+        </div>
+      )}
+
+      {/* ── LANDING PAGE ── */}
+      <div style={{ display: 'flex', minHeight: '100vh' }}>
+
+        {/* Main content */}
+        <div style={{ flex: 1, padding: '20px 24px', minWidth: 0 }}>
+
+          {/* Page header */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 20 }}>
+                <FaMicrophone />
+              </div>
+              <div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Speaking Practice With AI</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Improve your spoken English through real conversations and get AI-powered feedback.</div>
+              </div>
+            </div>
+            <button style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: '#fff', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+              <FaInfoCircle /> How it works?
+            </button>
+          </div>
+
+          {/* Hero banner */}
+          <div style={{ background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 60%, #f472b6 100%)', borderRadius: 20, padding: '28px 32px', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 200 }}>
+            <div style={{ maxWidth: 480, position: 'relative', zIndex: 2 }}>
+              <h2 style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Practice. Speak. Improve.</h2>
+              <p style={{ fontSize: 13.5, color: '#475569', margin: '0 0 16px', lineHeight: 1.6 }}>Have real conversations with our AI coach and enhance your fluency, pronunciation and confidence.</p>
+              <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+                {HERO_FEATURES.map(f => (
+                  <div key={f.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: f.color, fontSize: 17, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>{f.icon}</div>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textAlign: 'center' }}>{f.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 14 }}>
+                {[4,6,10,7,13,9,6,10,8,13,9,6,10,7,4].map((h, i) => (
+                  <div key={i} style={{ width: 3, height: h * 2, background: ORANGE, borderRadius: 2, opacity: 0.6 }} />
+                ))}
+              </div>
+              <button onClick={handleOpenSession} disabled={isLimitReached}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 32px', fontSize: 15, fontWeight: 800, cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: isLimitReached ? 0.5 : 1 }}>
+                <FaMicrophone /> Start Speaking Now
+              </button>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <FaClock /> Jump into a real conversation for just 60 seconds!
+              </div>
+            </div>
+            <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
+              <img src={robotSpeakingImg} alt="Robot speaking" style={{ height: 300, width: 'auto', objectFit: 'contain', display: 'block' }} />
+            </div>
+            <div style={{ position: 'absolute', top: -40, right: 200, width: 180, height: 180, borderRadius: '50%', background: 'rgba(236,72,153,0.08)', zIndex: 1 }} />
+            <div style={{ position: 'absolute', bottom: -60, right: 80, width: 200, height: 200, borderRadius: '50%', background: 'rgba(236,72,153,0.05)', zIndex: 1 }} />
+          </div>
+
+          {/* Practice Topics */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Practice Topics</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Choose a topic and start speaking with AI</div>
+              </div>
+              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                View All Topics <FaChevronRight style={{ fontSize: 11 }} />
+              </button>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <div ref={topicsScrollRef} style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                {TOPICS.map((t, i) => (
+                  <div key={i} style={{ flexShrink: 0, width: 175, background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '16px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                    <div style={{ width: 42, height: 42, borderRadius: 12, background: t.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.iconColor, fontSize: 19, marginBottom: 10 }}>{t.icon}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{t.title}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.45, marginBottom: 12, minHeight: 32 }}>{t.desc}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: 10, color: '#94a3b8' }}>5 Questions</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: LEVEL_COLOR[t.level] }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: LEVEL_COLOR[t.level], display: 'inline-block' }} />
+                        {t.level}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* Right scroll arrow */}
+              <button onClick={scrollTopics} style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: '#fff', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#374151', zIndex: 2 }}>
+                <FaChevronRight style={{ fontSize: 12 }} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Actions + Recent Sessions */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            {/* Quick Actions */}
+            <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>Quick Actions</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Jump into practice or explore more</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                {QUICK_ACTIONS.map((a, i) => (
+                  <div key={i} style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '18px 12px', textAlign: 'center' }}>
+                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: a.iconBg, border: `2px solid ${a.borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.iconColor, fontSize: 24, margin: '0 auto 12px' }}>{a.icon}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 5 }}>{a.title}</div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 1.45 }}>{a.desc}</div>
+                    <button style={{ border: `1.5px solid ${a.btnColor}`, background: '#fff', color: a.btnColor, borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'default', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                      {a.btnLabel} <FaChevronRight style={{ fontSize: 10 }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recent Sessions */}
+            <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Recent Sessions</div>
+                <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  View All <FaChevronRight style={{ fontSize: 10 }} />
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {RECENT_SESSIONS.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < RECENT_SESSIONS.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.iconColor, fontSize: 16, flexShrink: 0 }}>{s.icon}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.title}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{s.time}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: s.up ? '#22c55e' : '#ef4444', minWidth: 42 }}>
+                        <FaArrowUp style={{ fontSize: 9 }} /> {s.score}%
+                      </span>
+                      <button style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontSize: 10 }}>
+                        <FaPlay />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Feedback Section */}
-        <div className="feedback-section">
-          <Card className="feedback-card">
-            <Card.Header className="feedback-header">
-              <h5 className="fw-bold mb-0"><span className="feedback-icon">💡</span> Feedback Summary</h5>
-            </Card.Header>
+        {/* Right sidebar */}
+        <div style={{ width: 280, flexShrink: 0, padding: '20px 20px 20px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-            <Card.Body className="feedback-body">
-              {!feedback && !isLoadingFeedback ? (
-                <div className="empty-feedback">
-                  <div className="empty-icon">📄</div>
-                  <h5>No Feedback Yet</h5>
-                  <p>Complete a practice session to see your feedback</p>
-                </div>
-              ) : isLoadingFeedback ? (
-                <div className="loading-feedback">
-                  <Spinner animation="border" variant="warning" />
-                  <h5>Analyzing your session...</h5>
-                  <p>This may take a few moments</p>
-                </div>
-              ) : (
-                <div className="feedback-content">
-                  <h5 className="score-title"><span className="score-icon">📝</span> Session Score</h5>
+          {/* Your Speaking Progress */}
+          <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Your Speaking Progress</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>This Month · {history?.attemptsUsed ?? 0} session{history?.attemptsUsed !== 1 ? 's' : ''}</div>
 
-                  {extractScore(feedback).length > 0 ? (
-                    <div className="score-circles-container">
-                      {extractScore(feedback).map((s, i) => {
-                        const radius = 35
-                        const circumference = 2 * Math.PI * radius
-                        const progress = (s.score / 10) * circumference
-                        const color = s.score >= 8 ? '#28a745' : s.score >= 5 ? '#ff7a00' : '#dc3545'
-
-                        return (
-                          <div key={i} className="score-circle-wrapper">
-                            <div className="score-circle">
-                              <svg width="90" height="90" viewBox="0 0 100 100">
-                                <circle cx="50" cy="50" r={radius} stroke="#2c2c2c" strokeWidth="8" fill="none" />
-                                <circle cx="50" cy="50" r={radius} stroke={color} strokeWidth="8" fill="none" strokeDasharray={circumference} strokeDashoffset={circumference - progress} strokeLinecap="round" transform="rotate(-90 50 50)" />
-                              </svg>
-                              <div className="score-value">
-                                <strong className="score-number" style={{ color }}>{s.score}<span className="score-denominator">/10</span></strong>
-                              </div>
-                            </div>
-                            <div className="score-label">{s.label}</div>
-                          </div>
-                        )
-                      })}
+            {/* Attempts left bar */}
+            {(() => {
+              const used = history?.attemptsUsed ?? 0
+              const limit = history?.monthlyLimit ?? 30
+              const remaining = Math.max(0, limit - used)
+              const usedPct = Math.round((used / limit) * 100)
+              const isLow = remaining <= 5
+              return (
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#374151' }}>
+                      <FaBullseye style={{ color: isLow ? '#ef4444' : ORANGE, fontSize: 11 }} />
+                      Attempts This Month
                     </div>
-                  ) : (
-                    <div className="no-scores"><p>No detailed scores available</p></div>
-                  )}
-
-                  <h6 className="improvement-title"><span className="improvement-icon">📌</span> Areas for Improvement</h6>
-                  <div className="improvement-list">
-                    {extractImprovements(feedback).map((l, i) => (
-                      <div key={i} className="improvement-item">
-                        <span className="improvement-bullet">•</span>
-                        <span className="improvement-text" dangerouslySetInnerHTML={{ __html: l.replace(/^- /, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
-                      </div>
-                    ))}
+                    <span style={{ fontSize: 11, fontWeight: 700, color: isLow ? '#ef4444' : '#0f172a' }}>
+                      {remaining} left
+                    </span>
                   </div>
+                  <div style={{ height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 5 }}>
+                    <div style={{ height: '100%', width: `${usedPct}%`, background: isLow ? '#ef4444' : ORANGE, borderRadius: 3, transition: 'width 0.8s ease' }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'right' }}>{used} / {limit} used</div>
+                </div>
+              )
+            })()}
 
-                  <h6 className="overall-title"><span className="overall-icon">⭐</span> Overall Feedback</h6>
-                  <div className="overall-feedback">
-                    <div dangerouslySetInnerHTML={{ __html: extractOverall(feedback).replace(/^\s*\d+\s*/, '').replace(/^[^\w<]+/, '').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
+            {!history || history.attemptsUsed === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8' }}>
+                <FaMicrophone style={{ fontSize: 28, marginBottom: 8, color: '#cbd5e1' }} />
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>No sessions yet</div>
+                <div style={{ fontSize: 11, marginTop: 4 }}>Start speaking to see your progress</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
+                  <div style={{ position: 'relative', width: 112, height: 112, flexShrink: 0 }}>
+                    <svg width="112" height="112" style={{ transform: 'rotate(-90deg)' }}>
+                      <circle cx={CX} cy={CY} r={R} fill="none" stroke="#e2e8f0" strokeWidth={SW} />
+                      <circle cx={CX} cy={CY} r={R} fill="none" stroke={overallPct >= 70 ? '#22c55e' : ORANGE} strokeWidth={SW} strokeLinecap="round"
+                        strokeDasharray={C} strokeDashoffset={greenOffset} />
+                      <circle cx={CX} cy={CY} r={R} fill="none" stroke={ORANGE} strokeWidth={SW} strokeLinecap="round"
+                        strokeDasharray={`16 ${C - 16}`} strokeDashoffset={greenOffset + 8} />
+                    </svg>
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{overallPct}%</div>
+                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Avg Score</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: overallPct >= 70 ? '#22c55e' : ORANGE }}>
+                      {overallPct >= 80 ? 'Excellent!' : overallPct >= 60 ? 'Great Progress!' : 'Keep Practicing!'}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                      {history?.trend === 'IMPROVED' ? '↑ Improving this month' :
+                       history?.trend === 'DROPPED'  ? '↓ Keep going, you can do it!' :
+                       history?.trend === 'SAME'     ? '→ Consistent performance' :
+                       'Keep practicing to reach 100%'}
+                    </div>
                   </div>
                 </div>
-              )}
-            </Card.Body>
-          </Card>
+
+                {/* Best Score bar */}
+                {history?.highestScore != null && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9333ea', fontSize: 10 }}>
+                          <FaStar />
+                        </div>
+                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>Best Score</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{history.highestScore}%</span>
+                    </div>
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${history.highestScore}%`, background: '#9333ea', borderRadius: 3, transition: 'width 0.8s ease' }} />
+                    </div>
+                  </div>
+                )}
+
+                {SKILL_BARS.map(s => (
+                  <div key={s.label} style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, fontSize: 10 }}>
+                          <FaBolt />
+                        </div>
+                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{s.label}</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{s.pct > 0 ? `${s.pct}%` : '—'}</span>
+                    </div>
+                    <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 3, transition: 'width 0.8s ease' }} />
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  onClick={handleViewDetailedFeedback}
+                  disabled={!history?.latestFeedback}
+                  style={{ width: '100%', background: '#fff', color: history?.latestFeedback ? ORANGE : '#94a3b8', border: `1.5px solid ${history?.latestFeedback ? ORANGE : '#e2e8f0'}`, borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: history?.latestFeedback ? 'pointer' : 'default', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  View Detailed Feedback <FaChevronRight style={{ fontSize: 11 }} />
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Tips to Improve */}
+          <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tips to Improve</div>
+              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View All Tips <FaChevronRight style={{ fontSize: 10 }} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+              {TIPS.map((tip, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13, flexShrink: 0 }}>
+                    <FaLightbulb />
+                  </div>
+                  <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.5, paddingTop: 6 }}>{tip}</span>
+                </div>
+              ))}
+            </div>
+            <button style={{ width: '100%', background: '#fff', color: ORANGE, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              View All Tips <FaChevronRight style={{ fontSize: 11 }} />
+            </button>
+          </div>
         </div>
-      </Container>
+      </div>
 
       <style>{`
-        .english-practice-container {
-          background: #000000;
-          min-height: 100vh;
-          padding: 1rem;
-        }
-
-        /* Main Layout */
-        .main-layout {
-          display: flex;
-          gap: 1.5rem;
-          margin-bottom: 1.5rem;
-          flex-wrap: wrap;
-        }
-
-        .avatar-column {
-          flex: 0 0 300px;
-        }
-
-        .chat-column {
-          flex: 1;
-          min-width: 0;
-        }
-
-        /* Cards */
-        .avatar-card, .practice-card, .feedback-card {
-          background: #0a0a0a;
-          border: 1px solid #1f1f1f;
-          border-radius: 16px;
-          overflow: hidden;
-          height: 100%;
-        }
-
-        .avatar-card {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          min-height: 500px;
-        }
-
-        /* Header */
-        .practice-header {
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%) !important;
-          border-bottom: none !important;
-          padding: 1rem !important;
-        }
-
-        .header-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-
-        .header-left {
-          flex: 1;
-        }
-
-        .header-title {
-          color: #000000 !important;
-          font-weight: 700;
-          margin: 0;
-          font-size: 1.1rem;
-        }
-
-        .attempts-text {
-          color: rgba(0, 0, 0, 0.7) !important;
-          margin: 0.25rem 0 0 0 !important;
-          font-size: 0.75rem;
-        }
-
-        .trial-warning {
-          color: #000000;
-          font-weight: 600;
-        }
-
-        .trial-badge {
-          background: rgba(0, 0, 0, 0.3);
-          color: #000000;
-          padding: 2px 8px;
-          border-radius: 20px;
-          font-size: 0.7rem;
-          font-weight: 600;
-        }
-
-        .header-right {
-          display: flex;
-          align-items: center;
-          gap: 0;
-        }
-
-        .stats-group {
-          display: flex;
-          align-items: center;
-          gap: 0;
-        }
-
-        .stat-item {
-          text-align: center;
-          padding: 0 1.1rem;
-          border-left: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .stat-label {
-          display: block;
-          color: rgba(0, 0, 0, 0.55) !important;
-          font-size: 0.65rem;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          margin-bottom: 2px;
-        }
-
-        .stat-value {
-          display: block;
-          color: #000000 !important;
-          font-size: 1.05rem;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        .best-score-value {
-          display: block;
-          color: #000000 !important;
-          font-size: 1.05rem;
-          font-weight: 700;
-          line-height: 1;
-        }
-
-        .mic-status {
-          display: flex;
-          align-items: center;
-          padding: 0 0.9rem;
-          border-left: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .mic-icon {
-          font-size: 1.2rem;
-          opacity: 0.75;
-        }
-
-        .mic-icon.listening {
-          color: #000000 !important;
-          opacity: 1;
-          animation: pulse 1.5s infinite;
-        }
-
-        .mic-svg-icon {
-          color: rgba(0,0,0,0.6);
-          transition: color 0.2s, transform 0.2s;
-        }
-
-        .mic-svg-icon.listening {
-          color: #000000;
-          animation: micPulse 1.2s ease-in-out infinite;
-        }
-
-        @keyframes micPulse {
-          0%, 100% { transform: scale(1);    opacity: 1; }
-          50%       { transform: scale(1.15); opacity: 0.8; }
-        }
-
-        .action-buttons-group {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding-left: 1.1rem;
-          border-left: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .session-buttons {
-          display: flex;
-          gap: 0.4rem;
-        }
-
-        .action-btn {
-          min-width: 72px;
-          height: 32px;
-          border-radius: 6px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          transition: all 0.2s ease;
-          background: transparent !important;
-          border-width: 1.5px !important;
-          padding: 0 0.75rem;
-        }
-
-        .action-btn.start-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-        }
-
-        .action-btn.start-btn:hover:not(:disabled) {
-          background: #000000 !important;
-          color: #ff7a00 !important;
-          transform: translateY(-1px);
-        }
-
-        .action-btn.pause-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-        }
-
-        .action-btn.pause-btn:hover:not(:disabled) {
-          background: #000000 !important;
-          color: #ff7a00 !important;
-          transform: translateY(-1px);
-        }
-
-        .action-btn.resume-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-          animation: resumePulse 1.2s ease-in-out infinite;
-        }
-
-        .action-btn.resume-btn:hover:not(:disabled) {
-          background: #000000 !important;
-          color: #ff7a00 !important;
-          transform: translateY(-1px);
-          animation: none;
-        }
-
-        @keyframes resumePulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.6; }
-        }
-
-        .action-btn.end-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-        }
-
-        .action-btn.end-btn:hover:not(:disabled) {
-          background: #7f0000 !important;
-          border-color: #7f0000 !important;
-          color: #ffffff !important;
-          transform: translateY(-1px);
-        }
-
-        .action-btn.new-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-        }
-
-        .action-btn.new-btn:hover:not(:disabled) {
-          background: #000000 !important;
-          color: #ff7a00 !important;
-          transform: translateY(-1px);
-        }
-
-        .action-btn:disabled {
-          border-color: #6c757d !important;
-          color: #6c757d !important;
-          opacity: 0.6;
-        }
-
-        .mic-buttons {
-          display: flex;
-          gap: 0.5rem;
-        }
-
-        .mic-action-btn {
-          min-width: 70px;
-          height: 34px;
-          border-radius: 6px;
-          font-weight: 600;
-          font-size: 0.8rem;
-          background: transparent !important;
-          border-width: 1.5px !important;
-        }
-
-        .mic-action-btn.speak-btn {
-          border-color: #000000 !important;
-          color: #000000 !important;
-        }
-
-        .mic-action-btn.speak-btn:hover:not(:disabled) {
-          background: #000000 !important;
-          color: #ff7a00 !important;
-          transform: translateY(-1px);
-        }
-
-        .mic-action-btn.stop-btn {
-          border-color: #dc3545 !important;
-          color: #dc3545 !important;
-        }
-
-        .mic-action-btn.stop-btn:hover:not(:disabled) {
-          background: #dc3545 !important;
-          color: #ffffff !important;
-          transform: translateY(-1px);
-        }
-
-        .mic-action-btn:disabled {
-          border-color: #6c757d !important;
-          color: #6c757d !important;
-          opacity: 0.6;
-        }
-
-        /* Chat */
-        .chat-body-container {
-          height: 450px;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-          padding: 0 !important;
-        }
-
-        .chat-messages {
-          flex: 1;
-          overflow-y: auto;
-          padding: 1rem;
-          background: #000000;
-        }
-
-        .chat-messages::-webkit-scrollbar {
-          width: 6px;
-        }
-
-        .chat-messages::-webkit-scrollbar-track {
-          background: #1a1a1a;
-          border-radius: 3px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
-          background: #ff7a00;
-          border-radius: 3px;
-        }
-
-        .waiting-indicator-bar {
-          background: #1a1a1a;
-          border-top: 1px solid #ff7a00;
-          padding: 0.5rem;
-          text-align: center;
-          color: #ff7a00;
-          font-size: 0.75rem;
-        }
-
-        .welcome-screen {
-          height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          text-align: center;
-          padding: 2rem;
-        }
-
-        .welcome-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-          color: #ff7a00;
-        }
-
-        .welcome-title {
-          color: #ffffff;
-          margin-bottom: 0.5rem;
-        }
-
-        .welcome-text {
-          color: #8a8a8a;
-          margin: 0;
-        }
-
-        /* Message Bubbles */
-        .message-container {
-          margin-bottom: 1rem;
-        }
-
-        .user-message {
-          display: flex;
-          justify-content: flex-end;
-        }
-
-        .eklav-message {
-          display: flex;
-          justify-content: flex-start;
-        }
-
-        .message-bubble {
-          max-width: 85%;
-          padding: 0.75rem 1rem;
-          border-radius: 1rem;
-          position: relative;
-        }
-
-        .user-bubble {
-          background: linear-gradient(135deg, #1f1f1f 0%, #2c2c2c 100%);
-          border: 1px solid #ff7a00;
-          box-shadow: 0 2px 8px rgba(255, 122, 0, 0.15);
-          border-radius: 1rem 1rem 0.25rem 1rem;
-        }
-
-        .rob-bubble {
-          background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
-          border: 1px solid #2c2c2c;
-          border-radius: 1rem 1rem 1rem 0.25rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        .correction-bubble {
-          background: linear-gradient(135deg, #332200 0%, #442a00 100%);
-          border: 2px solid #ff7a00;
-          border-radius: 1rem 1rem 1rem 0.25rem;
-          box-shadow: 0 2px 8px rgba(255, 122, 0, 0.2);
-        }
-
-        .message-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 0.5rem;
-        }
-
-        .sender-info {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .user-avatar, .rob-avatar, .correction-avatar {
-          width: 28px;
-          height: 28px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.875rem;
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
-          color: #000000;
-        }
-
-        .sender-name {
-          color: #ffffff;
-          font-size: 0.85rem;
-        }
-
-        .message-time {
-          color: #8a8a8a;
-          font-size: 0.7rem;
-        }
-
-        .message-text {
-          color: #e5e5e5;
-          line-height: 1.5;
-          word-break: break-word;
-          white-space: pre-wrap;
-          font-size: 0.9rem;
-        }
-
-        .live-speech {
-          color: #ff7a00;
-          font-style: italic;
-        }
-
-        .pulsating-dot {
-          width: 10px;
-          height: 10px;
-          background-color: #ff7a00;
-          border-radius: 50%;
-          animation: pulse 1.5s infinite ease-in-out;
-        }
-
-        .typing-indicator {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.75rem;
-          background: #1a1a1a;
-          border-radius: 0.5rem;
-          max-width: 80%;
-        }
-
-        .typing-dots {
-          display: flex;
-          gap: 0.25rem;
-        }
-
-        .dot {
-          width: 8px;
-          height: 8px;
-          background-color: #ff7a00;
-          border-radius: 50%;
-          animation: typing 1.4s infinite ease-in-out;
-        }
-
-        .typing-text {
-          color: #8a8a8a;
-          font-size: 0.875rem;
-        }
-
-        /* Feedback */
-        .feedback-section {
-          margin-top: 1.5rem;
-        }
-
-        .feedback-header {
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%) !important;
-          border-bottom: none !important;
-          padding: 1rem !important;
-        }
-
-        .feedback-header h5 {
-          color: #000000 !important;
-          margin: 0 !important;
-        }
-
-        .feedback-icon {
-          color: #000000 !important;
-        }
-
-        .feedback-body {
-          padding: 0 !important;
-        }
-
-        .empty-feedback, .loading-feedback {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 3rem 2rem;
-          text-align: center;
-        }
-
-        .empty-icon {
-          font-size: 4rem;
-          margin-bottom: 1rem;
-          color: #ff7a00;
-        }
-
-        .empty-feedback h5, .loading-feedback h5 {
-          color: #ffffff;
-          margin-bottom: 0.5rem;
-        }
-
-        .empty-feedback p, .loading-feedback p {
-          color: #8a8a8a;
-          margin: 0;
-        }
-
-        .feedback-content {
-          padding: 1.5rem;
-          max-height: 500px;
-          overflow-y: auto;
-        }
-
-        .score-title {
-          text-align: center;
-          color: #ffffff;
-          margin-bottom: 1.5rem;
-        }
-
-        .score-circles-container {
-          display: flex;
-          flex-wrap: wrap;
-          justify-content: center;
-          gap: 1.5rem;
-          margin-bottom: 2rem;
-        }
-
-        .score-circle-wrapper {
-          text-align: center;
-          flex: 0 0 auto;
-        }
-
-        .score-circle {
-          position: relative;
-          margin: 0 auto 0.5rem;
-          width: 90px;
-          height: 90px;
-        }
-
-        .score-value {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          text-align: center;
-          width: 100%;
-        }
-
-        .score-number {
-          font-size: 1.5rem;
-          line-height: 1.2;
-          display: inline-block;
-        }
-
-        .score-denominator {
-          font-size: 0.875rem;
-          color: #8a8a8a;
-          display: block;
-          margin-top: 0.125rem;
-        }
-
-        .score-label {
-          font-weight: 600;
-          color: #ffffff;
-          font-size: 0.875rem;
-          margin-top: 0.25rem;
-        }
-
-        .improvement-title, .overall-title {
-          color: #ffffff;
-          margin: 1.5rem 0 1rem 0;
-        }
-
-        .improvement-list {
-          margin-bottom: 1.5rem;
-        }
-
-        .improvement-item {
-          display: flex;
-          align-items: flex-start;
-          margin-bottom: 0.75rem;
-          padding: 0.75rem;
-          background: #000000;
-          border-left: 4px solid #ff7a00;
-          border-radius: 0.25rem;
-        }
-
-        .improvement-bullet {
-          color: #ff7a00;
-          font-size: 1.5rem;
-          line-height: 1;
-          margin-right: 0.75rem;
-          margin-top: -0.125rem;
-        }
-
-        .improvement-text {
-          color: #e5e5e5;
-          line-height: 1.5;
-          word-break: break-word;
-        }
-
-        .overall-feedback {
-          padding: 1rem;
-          background: #000000;
-          border-left: 4px solid #ff7a00;
-          border-radius: 0.5rem;
-          color: #e5e5e5;
-          line-height: 1.5;
-          word-break: break-word;
-        }
-
-        .tw-cursor {
-          color: #ff7a00;
-          font-weight: 700;
-          animation: blink 0.6s step-start infinite;
-          margin-left: 1px;
-        }
-
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-
-        @keyframes pulse {
-          0% { transform: scale(0.8); opacity: 0.7; }
-          50% { transform: scale(1.2); opacity: 1; }
-          100% { transform: scale(0.8); opacity: 0.7; }
-        }
-
-        @keyframes typing {
-          0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
-          40% { transform: scale(1); opacity: 1; }
-        }
-
-        /* Voice selector */
-        .voice-selector {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding-right: 1.1rem;
-          border-right: 1px solid rgba(0, 0, 0, 0.2);
-        }
-
-        .voice-label {
-          color: rgba(0, 0, 0, 0.75);
-          font-size: 0.72rem;
-          font-weight: 600;
-          white-space: nowrap;
-        }
-
-        .voice-toggle {
-          display: flex;
-          gap: 5px;
-        }
-
-        .voice-btn {
-          background: rgba(0, 0, 0, 0.35);
-          border: 1.5px solid rgba(0, 0, 0, 0.5);
-          padding: 0;
-          width: 38px;
-          height: 38px;
-          font-size: 1.3rem;
-          cursor: pointer;
-          transition: all 0.18s ease;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          filter: grayscale(0.2) opacity(0.7);
-        }
-
-        .voice-btn.active {
-          background: #000000;
-          border-color: #000000;
-          filter: none;
-          transform: scale(1.12);
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
-        }
-
-        .voice-btn:not(.active):hover {
-          background: rgba(0, 0, 0, 0.55);
-          filter: grayscale(0) opacity(0.9);
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-          .main-layout {
-            flex-direction: column;
-          }
-          
-          .avatar-column {
-            flex: 0 0 auto;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-          }
-          
-          .avatar-card {
-            min-height: 400px;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .header-top {
-            flex-direction: column;
-            align-items: stretch;
-          }
-          
-          .header-right {
-            flex-direction: column;
-            align-items: stretch;
-          }
-          
-          .stats-group {
-            justify-content: space-between;
-          }
-          
-          .action-buttons-group {
-            flex-direction: column;
-          }
-          
-          .session-buttons {
-            justify-content: center;
-          }
-          
-          .mic-buttons {
-            justify-content: center;
-          }
-          
-          .action-btn, .mic-action-btn {
-            min-width: 100px;
-          }
-          
-          .chat-body-container {
-            height: 350px;
-          }
-          
-          .score-circles-container {
-            flex-direction: column;
-            align-items: center;
-          }
-        }
+        @keyframes bounce { 0%,80%,100% { transform: translateY(0) } 40% { transform: translateY(-6px) } }
+        @keyframes blink  { 0%,100% { opacity:1 } 50% { opacity:0 } }
+        div::-webkit-scrollbar { display: none; }
       `}</style>
     </div>
   )
 }
 
 export default EnglishVoicePractice
+
+

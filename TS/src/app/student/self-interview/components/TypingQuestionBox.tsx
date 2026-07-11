@@ -1,9 +1,8 @@
-// src/components/TypingQuestionBox.tsx
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Badge } from 'react-bootstrap'
 
-// You can remove this or make it optional if sound not needed
-const typingSound = new Audio('/assets/sounds/typing.mp3') // Ensure this exists or remove
+let typingAudio: HTMLAudioElement | null = null
+try { typingAudio = new Audio('/assets/sounds/typing.mp3') } catch {}
 
 interface Props {
   currentQuestion: string
@@ -12,42 +11,41 @@ interface Props {
 
 const TypingQuestionBox: React.FC<Props> = ({ currentQuestion, isFollowUp }) => {
   const [displayedText, setDisplayedText] = useState('')
-  const [charIndex, setCharIndex] = useState(0)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
- useEffect(() => {
-  let timer: ReturnType<typeof setInterval> | undefined
+  useEffect(() => {
+    // Clear any running interval first
+    if (timerRef.current) clearInterval(timerRef.current)
+    setDisplayedText('')
 
-  setDisplayedText('')
-  setCharIndex(0)
+    if (!currentQuestion) return
 
-  if (currentQuestion) {
-    timer = setInterval(() => {
-      setDisplayedText((prev) => {
-        const nextChar = currentQuestion[charIndex]
-        try {
-          typingSound.currentTime = 0
-          typingSound.play()
-        } catch {}
-        return prev + nextChar
-      })
+    let i = 0  // local — no stale closure
 
-      setCharIndex((prev) => prev + 1)
+    timerRef.current = setInterval(() => {
+      if (i >= currentQuestion.length) {
+        if (timerRef.current) clearInterval(timerRef.current)
+        return
+      }
+      setDisplayedText(prev => prev + currentQuestion[i])
+      i++
+
+      try {
+        if (typingAudio) { typingAudio.currentTime = 0; typingAudio.play() }
+      } catch {}
     }, 40)
 
-    if (charIndex >= currentQuestion.length && timer) clearInterval(timer)
-  }
-
-  return () => {
-    if (timer) clearInterval(timer)
-  }
-}, [currentQuestion])
-
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [currentQuestion])
 
   return (
     <div className="flex-fill d-flex justify-content-center align-items-center bg-body text-body p-4 border-start border-end border-secondary" style={{ minHeight: '300px' }}>
       <div className="text-center">
         <h4 className="fw-semibold" style={{ lineHeight: '1.6' }}>
           🧠 Que : {displayedText}
+          <span style={{ borderRight: '2px solid currentColor', marginLeft: 2, animation: 'blink .7s step-end infinite' }} />
         </h4>
         {isFollowUp && (
           <div className="mt-2">
@@ -57,6 +55,7 @@ const TypingQuestionBox: React.FC<Props> = ({ currentQuestion, isFollowUp }) => 
           </div>
         )}
       </div>
+      <style>{`@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }`}</style>
     </div>
   )
 }

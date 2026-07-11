@@ -367,7 +367,7 @@ const WritingPractice: React.FC = () => {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Hero Card */}
-          <div style={{ background: 'linear-gradient(to right, #fff9f5 0%, #ffe8cc 60%, #ffd4a8 100%)', border: '1px solid #ffd0a0', borderRadius: 16, padding: '24px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
+          <div style={{ background: 'linear-gradient(to right, #fffbeb 0%, #fde68a 60%, #fbbf24 100%)', border: '1px solid #fcd34d', borderRadius: 16, padding: '40px 28px', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
             <div>
               <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a', marginBottom: 8 }}>Improve Your Writing Skills</h2>
               <p style={{ color: '#64748b', fontSize: '0.86rem', marginBottom: 22, lineHeight: 1.6 }}>
@@ -392,18 +392,18 @@ const WritingPractice: React.FC = () => {
               </div>
             </div>
             {/* Illustration */}
-            <div style={{ flexShrink: 0, position: 'relative', width: 150, height: 110, userSelect: 'none' }}>
+            <div style={{ flexShrink: 0, position: 'relative', width: 220, height: 170, userSelect: 'none' }}>
               {/* Notebook body */}
-              <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 72, height: 96, background: 'linear-gradient(145deg, #5a52d5, #3730a3)', borderRadius: 8, boxShadow: '5px 6px 20px rgba(99,88,255,0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 12px', gap: 5 }}>
+              <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 110, height: 148, background: 'linear-gradient(145deg, #5a52d5, #3730a3)', borderRadius: 12, boxShadow: '5px 6px 28px rgba(99,88,255,0.35)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 18px', gap: 8 }}>
                 {[100, 80, 65, 50].map((w, i) => (
-                  <div key={i} style={{ height: 2.5, background: 'rgba(255,255,255,0.45)', borderRadius: 2, width: `${w}%` }} />
+                  <div key={i} style={{ height: 3.5, background: 'rgba(255,255,255,0.45)', borderRadius: 2, width: `${w}%` }} />
                 ))}
                 {/* Spine */}
-                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 10, background: 'rgba(0,0,0,0.18)', borderRadius: '8px 0 0 8px' }} />
+                <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 14, background: 'rgba(0,0,0,0.18)', borderRadius: '12px 0 0 12px' }} />
               </div>
               {/* Pen */}
-              <div style={{ position: 'absolute', right: 58, top: 4, transform: 'rotate(-38deg)', transformOrigin: 'bottom center' }}>
-                <FaPenAlt style={{ fontSize: '1.7rem', color: '#0f172a', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
+              <div style={{ position: 'absolute', right: 90, top: 4, transform: 'rotate(-38deg)', transformOrigin: 'bottom center' }}>
+                <FaPenAlt style={{ fontSize: '2.6rem', color: '#0f172a', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
               </div>
               {/* Floating envelope bubble */}
               <div style={{ position: 'absolute', left: 4, top: 8, width: 34, height: 34, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

@@ -4,12 +4,14 @@ interface RoboAvatarProps {
   isTyping: boolean;
   isListening: boolean;
   isSpeaking: boolean;
+  bgStyle?: string;
 }
 
 const RoboAvatar: React.FC<RoboAvatarProps> = ({
   isTyping,
   isListening,
   isSpeaking,
+  bgStyle,
 }) => {
   const [audioLevels, setAudioLevels] = useState<number[]>([0, 0, 0, 0, 0]);
   const [bodyPosition, setBodyPosition] = useState({ x: 0, y: 0, rotate: 0 });
@@ -160,7 +162,7 @@ const RoboAvatar: React.FC<RoboAvatarProps> = ({
   const rightLeg = getLegTransform('right');
 
   return (
-    <div className="robo-avatar-container">
+    <div className="robo-avatar-container" style={bgStyle ? { background: bgStyle } : undefined}>
       <div className="avatar-content">
         <div 
           className="robot compact"
