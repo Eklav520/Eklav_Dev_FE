@@ -6,12 +6,12 @@ import {
   FaPlay, FaChevronRight, FaBookmark, FaSearch, FaFilter,
   FaReact, FaJava, FaPython, FaDatabase, FaNodeJs,
   FaCode, FaShieldAlt, FaRobot, FaLayerGroup, FaDocker,
-  FaGitAlt, FaTerminal,
+  FaGitAlt, FaTerminal, FaCss3,
 } from "react-icons/fa";
 import {
   SiJavascript, SiSpringboot, SiMysql, SiMongodb,
   SiTypescript, SiFlask, SiAwsamplify, SiPandas,
-  SiCss3, SiHtml5, SiOpenai,
+  SiHtml5, SiOpenai,
 } from "react-icons/si";
 import { BsLockFill, BsPlayCircleFill } from "react-icons/bs";
 import { MdOutlineTimer } from "react-icons/md";
@@ -30,7 +30,7 @@ const COURSE_META = [
   { keys: ["python"],             Icon: FaPython,      color: "#4ec9b0", bg: "linear-gradient(160deg,#04312a,#01100d)" },
   { keys: ["sql","mysql"],        Icon: SiMysql,       color: "#c084fc", bg: "linear-gradient(160deg,#1e0a40,#0a0320)" },
   { keys: ["html"],               Icon: SiHtml5,       color: "#e96228", bg: "linear-gradient(160deg,#3d1100,#150600)" },
-  { keys: ["css"],                Icon: SiCss3,        color: "#38bdf8", bg: "linear-gradient(160deg,#0a2a40,#040f1a)" },
+  { keys: ["css"],                Icon: FaCss3,        color: "#38bdf8", bg: "linear-gradient(160deg,#0a2a40,#040f1a)" },
   { keys: ["git"],                Icon: FaGitAlt,      color: "#f05032", bg: "linear-gradient(160deg,#3d0f0a,#150503)" },
   { keys: ["docker"],             Icon: FaDocker,      color: "#2496ed", bg: "linear-gradient(160deg,#051f40,#010c1a)" },
   { keys: ["api"],                Icon: FaTerminal,    color: "#a3e635", bg: "linear-gradient(160deg,#1a2e04,#090f01)" },
