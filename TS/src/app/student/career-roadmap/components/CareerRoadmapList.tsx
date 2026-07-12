@@ -5,11 +5,8 @@ import {
   FaServer, FaCloud, FaBrain, FaGamepad, FaUsers, FaCubes, FaSearch,
   FaBookmark, FaArrowRight, FaClipboardList, FaUserGraduate, FaBolt,
   FaCommentDots, FaProjectDiagram, FaSortAmountDown,
+  FaLinux, FaDocker, FaDatabase, FaReact, FaGithub, FaJsSquare,
 } from 'react-icons/fa'
-import {
-  SiJavascript, SiLinux, SiDocker, SiKubernetes, SiMongodb,
-  SiReact, SiTypescript, SiGithub, SiOpenai,
-} from 'react-icons/si'
 import { BsBookmark, BsGrid, BsListUl, BsLightbulb, BsPerson, BsLockFill, BsGrid3X3Gap } from 'react-icons/bs'
 import { careerRoadmaps, type CareerRoadmap } from '../data/roadmaps'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -34,15 +31,15 @@ const ROAD_META: Record<string, { Icon: any; tags: string[] }> = {
   'ml-engineer':          { Icon: FaBrain,         tags: ['MLOps', 'Python', 'Deployment', 'Pipeline'] },
   'nlp-engineer':         { Icon: FaCommentDots,   tags: ['NLP', 'BERT', 'Transformers', 'spaCy'] },
   'product-manager':      { Icon: FaClipboardList, tags: ['Roadmapping', 'PRD', 'Metrics', 'OKRs'] },
-  'linux':                { Icon: SiLinux,         tags: ['Shell', 'Bash', 'Permissions', 'Processes'] },
-  'docker':               { Icon: SiDocker,        tags: ['Images', 'Containers', 'Compose', 'Registry'] },
-  'kubernetes':           { Icon: SiKubernetes,    tags: ['Pods', 'Deployments', 'Helm', 'Services'] },
-  'git-github':           { Icon: SiGithub,        tags: ['Git', 'Branching', 'PRs', 'Actions'] },
-  'javascript':           { Icon: SiJavascript,    tags: ['ES6+', 'DOM', 'Async', 'APIs'] },
-  'mongodb':              { Icon: SiMongodb,       tags: ['CRUD', 'Aggregation', 'Atlas', 'Schema'] },
-  'react':                { Icon: SiReact,         tags: ['JSX', 'Hooks', 'Redux', 'Router'] },
-  'typescript':           { Icon: SiTypescript,    tags: ['Types', 'Interfaces', 'Generics', 'Enums'] },
-  'openai-apis':          { Icon: SiOpenai,        tags: ['ChatGPT', 'Embeddings', 'Functions', 'RAG'] },
+  'linux':                { Icon: FaLinux,         tags: ['Shell', 'Bash', 'Permissions', 'Processes'] },
+  'docker':               { Icon: FaDocker,        tags: ['Images', 'Containers', 'Compose', 'Registry'] },
+  'kubernetes':           { Icon: FaCubes,         tags: ['Pods', 'Deployments', 'Helm', 'Services'] },
+  'git-github':           { Icon: FaGithub,        tags: ['Git', 'Branching', 'PRs', 'Actions'] },
+  'javascript':           { Icon: FaJsSquare,      tags: ['ES6+', 'DOM', 'Async', 'APIs'] },
+  'mongodb':              { Icon: FaDatabase,      tags: ['CRUD', 'Aggregation', 'Atlas', 'Schema'] },
+  'react':                { Icon: FaReact,         tags: ['JSX', 'Hooks', 'Redux', 'Router'] },
+  'typescript':           { Icon: FaCode,          tags: ['Types', 'Interfaces', 'Generics', 'Enums'] },
+  'openai-apis':          { Icon: FaRobot,         tags: ['ChatGPT', 'Embeddings', 'Functions', 'RAG'] },
   'claude-code':          { Icon: FaRobot,         tags: ['Claude', 'Agents', 'Tools', 'MCP'] },
   'vibe-coding':          { Icon: FaBolt,          tags: ['AI IDEs', 'Cursor', 'Copilot', 'Prompts'] },
 }
