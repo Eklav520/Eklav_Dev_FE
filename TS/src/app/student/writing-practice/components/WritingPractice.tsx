@@ -353,6 +353,9 @@ const WritingPractice: React.FC = () => {
   const recentAttempts = [...rawAttempts].reverse().slice(0, 5)
 
   const normalizeScore = (s: number) => s <= 10 ? s * 10 : s
+  const bestScoreComputed = rawAttempts.length > 0
+    ? Math.max(...rawAttempts.map(a => normalizeScore(a.score ?? 0)))
+    : null
   const avgScore = rawAttempts.length
     ? Math.round(rawAttempts.reduce((sum, a) => sum + normalizeScore(a.score ?? 0), 0) / rawAttempts.length)
     : 0
@@ -751,7 +754,7 @@ const WritingPractice: React.FC = () => {
             {/* Score Bars */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
               {([
-                { label: 'Best Score',      value: history?.bestScore != null ? normalizeScore(history.bestScore) : null, color: '#8b5cf6', Icon: FaStar },
+                { label: 'Best Score',      value: bestScoreComputed, color: '#8b5cf6', Icon: FaStar },
                 { label: 'Essay Writing',   value: essayAvg,   color: MODES.essay.color,   Icon: MODES.essay.Icon   },
                 { label: 'Email Writing',   value: emailAvg,   color: MODES.email.color,   Icon: MODES.email.Icon   },
                 { label: 'Summary Writing', value: summaryAvg, color: MODES.summary.color, Icon: MODES.summary.Icon },
