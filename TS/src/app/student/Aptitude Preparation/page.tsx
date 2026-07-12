@@ -4,6 +4,10 @@ import { useAuthContext } from '@/context/useAuthContext'
 import DailyExam from './components/DailyExam'
 import Bookmark from './components/Bookmark'
 import { FiBookOpen } from 'react-icons/fi'
+import {
+  FaCalculator, FaBrain, FaBook, FaChartBar, FaPuzzlePiece,
+  FaLightbulb, FaListOl, FaChartLine, FaFire, FaClock, FaClipboardList,
+} from 'react-icons/fa'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,9 +35,11 @@ type CalendarDay = {
 type CalendarStats = { totalAttended: number; streak: number; avgScore: number }
 
 type PracticeTopic = {
-  id: string; title: string; icon: string; iconBg: string
+  id: string; title: string; icon: React.ReactNode; iconColor: string; iconBg: string
   totalQuestions: number; progress: number; accuracy: number
 }
+
+type CategoryProgressEntry = { progress: number; viewed: number; total: number }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -43,17 +49,32 @@ const NAV_TABS: { key: NavTab; label: string }[] = [
   { key: 'practice', label: 'Practice Quiz' },
 ]
 
-const TOPICS: PracticeTopic[] = [
-  { id: 'quant',    title: 'Quantitative Aptitude', icon: '🔢', iconBg: 'rgba(99,102,241,0.1)',  totalQuestions: 120, progress: 0, accuracy: 0 },
-  { id: 'reasoning',title: 'Reasoning Ability',     icon: '🧠', iconBg: 'rgba(139,92,246,0.1)', totalQuestions: 100, progress: 0, accuracy: 0 },
-  { id: 'verbal',   title: 'Verbal Ability',         icon: '📚', iconBg: 'rgba(34,197,94,0.1)',  totalQuestions:  80, progress: 0, accuracy: 0 },
-  { id: 'di',       title: 'Data Interpretation',    icon: '📊', iconBg: 'rgba(249,115,22,0.1)', totalQuestions:  40, progress: 0, accuracy: 0 },
-  { id: 'puzzle',   title: 'Puzzle',                 icon: '🧩', iconBg: 'rgba(236,72,153,0.1)', totalQuestions:  50, progress: 0, accuracy: 0 },
-  { id: 'logical',  title: 'Logical Reasoning',      icon: '💡', iconBg: 'rgba(234,179,8,0.1)',  totalQuestions:  70, progress: 0, accuracy: 0 },
-  { id: 'number',   title: 'Number Series',           icon: '🔣', iconBg: 'rgba(14,165,233,0.1)', totalQuestions:  40, progress: 0, accuracy: 0 },
-  { id: 'profit',   title: 'Profit & Loss',           icon: '📈', iconBg: 'rgba(239,68,68,0.1)', totalQuestions:  40, progress: 0, accuracy: 0 },
-  { id: 'time',     title: 'Time & Work',             icon: '⏱️', iconBg: 'rgba(20,184,166,0.1)', totalQuestions:  40, progress: 0, accuracy: 0 },
+// Icon palette — cycles through when no keyword matches
+const ICON_PALETTE: { icon: React.ReactNode; iconColor: string; iconBg: string }[] = [
+  { icon: <FaCalculator />, iconColor: '#6366f1', iconBg: 'rgba(99,102,241,0.1)' },
+  { icon: <FaBrain />,      iconColor: '#8b5cf6', iconBg: 'rgba(139,92,246,0.1)' },
+  { icon: <FaBook />,       iconColor: '#16a34a', iconBg: 'rgba(34,197,94,0.1)'  },
+  { icon: <FaChartBar />,   iconColor: '#f97316', iconBg: 'rgba(249,115,22,0.1)' },
+  { icon: <FaPuzzlePiece />,iconColor: '#ec4899', iconBg: 'rgba(236,72,153,0.1)' },
+  { icon: <FaLightbulb />,  iconColor: '#d97706', iconBg: 'rgba(234,179,8,0.1)'  },
+  { icon: <FaListOl />,     iconColor: '#0ea5e9', iconBg: 'rgba(14,165,233,0.1)' },
+  { icon: <FaChartLine />,  iconColor: '#ef4444', iconBg: 'rgba(239,68,68,0.1)'  },
+  { icon: <FaClock />,      iconColor: '#14b8a6', iconBg: 'rgba(20,184,166,0.1)' },
 ]
+
+function getTopicIcon(title: string, idx: number) {
+  const t = title.toLowerCase()
+  if (t.includes('quant') || t.includes('math'))          return ICON_PALETTE[0]
+  if (t.includes('reason') || t.includes('logical'))      return ICON_PALETTE[1]
+  if (t.includes('verbal') || t.includes('english'))      return ICON_PALETTE[2]
+  if (t.includes('data') || t.includes('interpret'))      return ICON_PALETTE[3]
+  if (t.includes('puzzle'))                               return ICON_PALETTE[4]
+  if (t.includes('light') || t.includes('knowledge'))     return ICON_PALETTE[5]
+  if (t.includes('number') || t.includes('series'))       return ICON_PALETTE[6]
+  if (t.includes('profit') || t.includes('loss'))         return ICON_PALETTE[7]
+  if (t.includes('time') || t.includes('work') || t.includes('speed')) return ICON_PALETTE[8]
+  return ICON_PALETTE[idx % ICON_PALETTE.length]
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -270,7 +291,9 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
 
           {/* Exam info */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 9, background: 'rgba(255,122,0,0.1)', border: '1px solid rgba(255,122,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 19, flexShrink: 0 }}>📋</div>
+            <div style={{ width: 40, height: 40, borderRadius: 9, background: 'rgba(255,122,0,0.1)', border: '1px solid rgba(255,122,0,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <FaClipboardList size={18} color="#ff7a00" />
+            </div>
             <div>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Today's Exam</div>
               <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.2 }}>{examTitle}</div>
@@ -363,37 +386,46 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
 
 // ─── Practice Topic Card ──────────────────────────────────────────────────────
 
-const TopicCard = ({ topic }: { topic: PracticeTopic }) => (
-  <div
-    style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)')}
-    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-  >
-    <div style={{ width: 36, height: 36, borderRadius: 9, background: topic.iconBg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17 }}>
-      {topic.icon}
-    </div>
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</div>
-      <div style={{ fontSize: '0.67rem', color: '#94a3b8', marginBottom: 7 }}>{topic.totalQuestions} Questions</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-        <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Progress</span>
-        <MiniBar pct={topic.progress} />
-        <span style={{ fontSize: '0.62rem', color: '#ff7a00', fontWeight: 700, width: 24, textAlign: 'right' }}>{topic.progress}%</span>
+const TopicCard = ({ topic, liveProgress }: { topic: PracticeTopic; liveProgress?: CategoryProgressEntry }) => {
+  const progress = liveProgress ? liveProgress.progress : topic.progress
+  const totalQ = liveProgress ? liveProgress.total || topic.totalQuestions : topic.totalQuestions
+  const viewed = liveProgress ? liveProgress.viewed : 0
+  return (
+    <div
+      style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: 9, background: topic.iconBg, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: topic.iconColor, fontSize: 16 }}>
+        {topic.icon}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-        <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Accuracy</span>
-        <MiniBar pct={topic.accuracy} color="#16a34a" />
-        <span style={{ fontSize: '0.62rem', color: '#16a34a', fontWeight: 700, width: 24, textAlign: 'right' }}>{topic.accuracy}%</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</div>
+        <div style={{ fontSize: '0.67rem', color: '#94a3b8', marginBottom: 7 }}>
+          {viewed > 0 ? `${viewed} / ${totalQ} Questions` : `${totalQ} Questions`}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+          <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Progress</span>
+          <MiniBar pct={progress} />
+          <span style={{ fontSize: '0.62rem', color: '#ff7a00', fontWeight: 700, width: 28, textAlign: 'right' }}>{progress}%</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Exam Avg</span>
+          <MiniBar pct={topic.accuracy} color="#16a34a" />
+          <span style={{ fontSize: '0.62rem', color: '#16a34a', fontWeight: 700, width: 28, textAlign: 'right' }}>{topic.accuracy}%</span>
+        </div>
       </div>
+      <span style={{ color: '#cbd5e1', fontSize: '1.1rem', alignSelf: 'center', flexShrink: 0 }}>›</span>
     </div>
-    <span style={{ color: '#cbd5e1', fontSize: '1.1rem', alignSelf: 'center', flexShrink: 0 }}>›</span>
-  </div>
-)
+  )
+}
 
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
+const TOPICS_PER_PAGE = 9
+
 const OverviewTab = ({
-  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData,
+  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData, categoryProgress, dynamicTopics,
 }: {
   todayData: TodayExamData | null
   calendarDays: CalendarDay[]
@@ -402,7 +434,14 @@ const OverviewTab = ({
   onMonthChange: (d: number) => void
   onStartExam: () => void
   weeklyData: number[]
-}) => (
+  categoryProgress: Record<string, CategoryProgressEntry>
+  dynamicTopics: PracticeTopic[]
+}) => {
+  const [topicPage, setTopicPage] = useState(0)
+  const totalPages = Math.max(1, Math.ceil(dynamicTopics.length / TOPICS_PER_PAGE))
+  const visibleTopics = dynamicTopics.slice(topicPage * TOPICS_PER_PAGE, (topicPage + 1) * TOPICS_PER_PAGE)
+
+  return (
   <div style={{ display: 'flex', gap: 22, alignItems: 'flex-start' }}>
 
     {/* ── Left ── */}
@@ -427,12 +466,28 @@ const OverviewTab = ({
             <h5 style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 3px', fontSize: '1rem' }}>Practice Quiz</h5>
             <p style={{ color: '#64748b', fontSize: '0.76rem', margin: 0 }}>Improved by practice. Select a topic and start practicing now!</p>
           </div>
-          <button style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontWeight: 600, fontSize: '0.76rem', padding: '6px 14px', cursor: 'pointer' }}>
-            View All
-          </button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              onClick={() => setTopicPage(p => Math.max(0, p - 1))}
+              disabled={topicPage === 0}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 8, color: topicPage === 0 ? '#cbd5e1' : '#475569', fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === 0 ? 'not-allowed' : 'pointer' }}>
+              ← Prev
+            </button>
+            <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '0 4px' }}>
+              {topicPage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setTopicPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={topicPage === totalPages - 1}
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: topicPage === totalPages - 1 ? '#fff' : '#ff7a00', border: `1.5px solid ${topicPage === totalPages - 1 ? '#e2e8f0' : '#ff7a00'}`, borderRadius: 8, color: topicPage === totalPages - 1 ? '#cbd5e1' : '#fff', fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === totalPages - 1 ? 'not-allowed' : 'pointer' }}>
+              Next Topics →
+            </button>
+          </div>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {TOPICS.map(t => <TopicCard key={t.id} topic={t} />)}
+          {visibleTopics.map(t => (
+            <TopicCard key={t.id} topic={t} liveProgress={categoryProgress[t.title]} />
+          ))}
         </div>
       </div>
     </div>
@@ -455,13 +510,16 @@ const OverviewTab = ({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {[
-            { label: 'Tests Attempted',  value: String(stats?.totalAttended ?? 0),     color: '#6366f1' },
-            { label: 'Average Accuracy', value: `${stats?.avgScore ?? 0}%`,             color: '#16a34a' },
-            { label: 'Current Streak',   value: `🔥 ${stats?.streak ?? 0} Days`,        color: '#ff7a00' },
+            { label: 'Tests Attempted',  value: String(stats?.totalAttended ?? 0), color: '#6366f1', streak: false },
+            { label: 'Average Accuracy', value: `${stats?.avgScore ?? 0}%`,        color: '#16a34a', streak: false },
+            { label: 'Current Streak',   value: `${stats?.streak ?? 0} Days`,      color: '#ff7a00', streak: true  },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f8fafc', borderRadius: 8 }}>
               <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.label}</span>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: item.color }}>{item.value}</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: item.color, display: 'flex', alignItems: 'center', gap: 4 }}>
+                {item.streak && <FaFire size={11} color="#ff7a00" />}
+                {item.value}
+              </span>
             </div>
           ))}
         </div>
@@ -469,7 +527,8 @@ const OverviewTab = ({
 
     </div>
   </div>
-)
+  )
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -484,6 +543,8 @@ const AptitudePage = () => {
   const [calendarStats, setCalendarStats] = useState<CalendarStats | null>(null)
   const [calendarMonth, setCalendarMonth] = useState({ year: new Date().getFullYear(), month: new Date().getMonth() + 1 })
   const [practiceTotal, setPracticeTotal] = useState(0)
+  const [categoryProgress, setCategoryProgress] = useState<Record<string, CategoryProgressEntry>>({})
+  const [dynamicTopics, setDynamicTopics] = useState<PracticeTopic[]>([])
 
   const handleMonthChange = (delta: number) => {
     setCalendarMonth(p => {
@@ -517,6 +578,60 @@ const AptitudePage = () => {
 
   useEffect(() => { fetchToday() }, [fetchToday])
   useEffect(() => { fetchCalendar() }, [fetchCalendar])
+
+  // Fetch categories + topic progress and compute per-category aggregate
+  useEffect(() => {
+    if (!token) return
+    const load = async () => {
+      try {
+        const [catRes, progRes] = await Promise.all([
+          fetch(`${baseURL}/apptitudeQuestions`),
+          fetch(`${baseURL}/apptitudeQuestions/topics/progress`, { headers: { Authorization: `Bearer ${token}` } }),
+        ])
+        const catData = await catRes.json()
+        const progData = await progRes.json()
+
+        const progressById: Record<string, number> = {}
+        if (progData.success) {
+          for (const r of progData.data ?? []) {
+            progressById[String(r.topicId)] = r.questionsViewed ?? 0
+          }
+        }
+
+        if (catData.success) {
+          const result: Record<string, CategoryProgressEntry> = {}
+          const topics: PracticeTopic[] = []
+
+          for (const [idx, cat] of (catData.data ?? []).entries()) {
+            let viewed = 0, total = 0
+            for (const item of cat.items ?? []) {
+              const q = item.questions?.length ?? 0
+              viewed += progressById[String(item._id)] ?? 0
+              total += q
+            }
+            const pct = total > 0 ? Math.min(100, Math.round((viewed / total) * 100)) : 0
+            result[cat.title] = { progress: pct, viewed, total }
+
+            const iconStyle = getTopicIcon(cat.title ?? '', idx)
+            topics.push({
+              id: String(cat._id),
+              title: cat.title ?? `Topic ${idx + 1}`,
+              icon: iconStyle.icon,
+              iconColor: iconStyle.iconColor,
+              iconBg: iconStyle.iconBg,
+              totalQuestions: total,
+              progress: pct,
+              accuracy: 0,
+            })
+          }
+
+          setCategoryProgress(result)
+          setDynamicTopics(topics)
+        }
+      } catch { /* silent */ }
+    }
+    load()
+  }, [baseURL, token])
 
   // Last 7 days performance from calendar
   const weeklyData = (() => {
@@ -598,6 +713,8 @@ const AptitudePage = () => {
             onMonthChange={handleMonthChange}
             onStartExam={() => setActiveTab('daily')}
             weeklyData={weeklyData}
+            categoryProgress={categoryProgress}
+            dynamicTopics={dynamicTopics}
           />
         )}
 

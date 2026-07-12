@@ -150,7 +150,7 @@ const StudentDashboardUpdated: React.FC = () => {
   const [topicLimits, setTopicLimits] = useState<Record<string, any>>({})
   const [selectedTopic, setSelectedTopic] = useState('')
   const [aiTab, setAiTab] = useState<'resume' | 'topic'>('resume')
-  const [annAchTab, setAnnAchTab] = useState<'announcements' | 'achievements'>('announcements')
+  const [annAchTab, setAnnAchTab] = useState<'announcements' | 'achievements'>('achievements')
   const [instituteAchievements, setInstituteAchievements] = useState<any[]>([])
   const [achModal, setAchModal] = useState<any>(null)
   const [codeStats, setCodeStats] = useState({ total: 0, completed: 0, easy: 0, medium: 0, hard: 0, topProblems: [] as { title: string; difficulty: string }[] })
@@ -501,11 +501,17 @@ const StudentDashboardUpdated: React.FC = () => {
               )}
             </div>
           </div>
-          {/* Rank */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff7ed', border: `1px solid ${ORANGE}33`, borderRadius: 8, padding: '5px 10px' }}>
+          {/* Rank + Avg Study */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '0 12px', height: 40 }}>
             <BsTrophyFill size={14} color={ORANGE} />
-            <span style={{ fontSize: '0.7rem', color: GRAY }}>Rank</span>
+            <span style={{ fontSize: '0.75rem', color: GRAY, fontWeight: 500 }}>Rank</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT }}>{overallRank || '—'}</span>
+            <div style={{ width: 1, height: 18, background: BORDER, margin: '0 2px' }} />
+            <svg width="13" height="13" fill="none" stroke="#a855f7" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            <span style={{ fontSize: '0.75rem', color: GRAY, fontWeight: 500 }}>Avg/Day</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT }}>{fmtH(avgPerDay)}</span>
           </div>
         </div>
       </div>
@@ -615,7 +621,15 @@ const StudentDashboardUpdated: React.FC = () => {
           </svg>}
           label="Daily Study Time"
           value={fmtH(todayHours)}
-          sub={<span style={{ color: GREEN, fontWeight: 600 }}>↑ {fmtH(avgPerDay)} avg/day</span>}
+          sub={
+            todayHours === 0
+              ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>💪 Start studying today!</span>
+              : todayHours < 0.5
+              ? <span style={{ color: '#ef4444', fontWeight: 600 }}>📚 Try to study more!</span>
+              : todayHours < 1
+              ? <span style={{ color: '#3b82f6', fontWeight: 600 }}>👍 Good progress, keep going!</span>
+              : <span style={{ color: GREEN, fontWeight: 600 }}>🔥 Excellent! Outstanding effort!</span>
+          }
         />
       </div>
 
@@ -1201,12 +1215,12 @@ const StudentDashboardUpdated: React.FC = () => {
           {/* Announcements + Student Achievements (tabbed) */}
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Announcements & Achievements</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Student Achievements & Announcements</span>
             </div>
             {/* Tabs */}
             <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
-              <button className={`sd-tab-btn ${annAchTab === 'announcements' ? 'active' : ''}`} onClick={() => setAnnAchTab('announcements')}>Announcements</button>
               <button className={`sd-tab-btn ${annAchTab === 'achievements' ? 'active' : ''}`} onClick={() => setAnnAchTab('achievements')}>Student Achievements</button>
+              <button className={`sd-tab-btn ${annAchTab === 'announcements' ? 'active' : ''}`} onClick={() => setAnnAchTab('announcements')}>Announcements</button>
             </div>
 
             {/* Announcements tab */}

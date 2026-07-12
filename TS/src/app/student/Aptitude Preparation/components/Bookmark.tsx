@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Spinner, Alert, Modal, Button, Form, Badge, Accordion } from 'react-bootstrap'
 import { FiHash, FiCpu, FiBookOpen, FiBarChart2, FiGrid, FiGlobe, FiBriefcase, FiCode, FiMoreHorizontal, FiChevronDown, FiChevronRight, FiArrowRight } from 'react-icons/fi'
+import { useAuthContext } from '@/context/useAuthContext'
 
 type QA = {
   _id?: string
@@ -244,6 +245,9 @@ const TOPIC_COLORS = [
 
 const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
+  const { user } = useAuthContext()
+  const token = user?.token
+
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -253,8 +257,13 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
   // Topic preview modal
   const [topicPreviewOpen, setTopicPreviewOpen] = useState(false)
   const [previewTopic, setPreviewTopic] = useState<TopicItem | null>(null)
+  const [previewCurrentQ, setPreviewCurrentQ] = useState(0) // current page (0-indexed)
+  const [expandedExpQ, setExpandedExpQ] = useState<number>(-1)
   const [currentPage, setCurrentPage] = useState(1)
   const QUESTIONS_PER_PAGE = 50
+
+  // topicId -> number of questions seen (persisted across topic switches until modal close)
+  const [topicProgress, setTopicProgress] = useState<Record<string, number>>({})
 
   // Quiz modal
   const [quizOpen, setQuizOpen] = useState(false)
@@ -289,9 +298,25 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
     fetchData()
   }, [baseURL])
 
-  const openTopicPreview = (topicItem: TopicItem) => {
+  const openTopicPreview = async (topicItem: TopicItem) => {
     setPreviewTopic(topicItem)
+    setPreviewCurrentQ(0)
+    setExpandedExpQ(-1)
     setCurrentPage(1)
+    // Load existing progress from DB before opening
+    try {
+      const res = await fetch(`${baseURL}/apptitudeQuestions/topics/progress`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      })
+      const data = await res.json()
+      if (data.success && Array.isArray(data.data)) {
+        const map: Record<string, number> = {}
+        for (const r of data.data) {
+          map[String(r.topicId)] = r.questionsViewed ?? 0
+        }
+        setTopicProgress(map)
+      }
+    } catch { /* silent */ }
     setTopicPreviewOpen(true)
   }
 
@@ -513,7 +538,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                 onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,122,0,0.05)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
               >
-                View All Topics <FiArrowRight size={14} />
+                Take Quiz <FiArrowRight size={14} />
               </button>
             </div>
           </div>
@@ -536,131 +561,299 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
             <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>Take a short assessment and get personalized topic recommendations.</div>
           </div>
         </div>
-        <button style={{
-          background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 9,
-          color: '#0f172a', fontWeight: 700, fontSize: '0.78rem',
-          padding: '9px 18px', cursor: 'pointer', whiteSpace: 'nowrap',
+        <button disabled style={{
+          background: '#f1f5f9', border: '1.5px solid #e2e8f0', borderRadius: 9,
+          color: '#94a3b8', fontWeight: 700, fontSize: '0.78rem',
+          padding: '9px 18px', cursor: 'not-allowed', whiteSpace: 'nowrap',
           display: 'flex', alignItems: 'center', gap: 6,
-          flexShrink: 0,
+          flexShrink: 0, opacity: 0.6,
         }}>
           Take Assessment <FiArrowRight size={13} />
         </button>
       </div>
 
-      {/* ── Topic Preview Modal ── */}
-      <Modal
-        show={topicPreviewOpen}
-        onHide={() => setTopicPreviewOpen(false)}
-        fullscreen
-        backdrop="static"
-        className="text-white"
-        contentClassName="bg-dark"
-      >
-        <Modal.Header closeButton className="bg-dark text-white border-secondary">
-          <Modal.Title className="fw-bold text-white">{previewTopic?.topic} — Preparation</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="px-4 bg-dark text-white">
-          {previewTopic?.questions?.length ? (
-            (() => {
-              const startIndex = (currentPage - 1) * QUESTIONS_PER_PAGE
-              const endIndex = startIndex + QUESTIONS_PER_PAGE
-              const currentQuestions = previewTopic.questions.slice(startIndex, endIndex)
-              const totalPages = Math.ceil(previewTopic.questions.length / QUESTIONS_PER_PAGE)
-              return (
-                <div className="row">
-                  <div className="col-md-3">
-                    <div className="card bg-black text-white border-secondary h-100">
-                      <div className="card-body">
-                        <div className="d-flex justify-content-between align-items-center mb-3">
-                          <h6 className="text-white mb-0">Questions</h6>
-                          <span className="badge" style={{ background: '#ff7a00' }}>{previewTopic.questions.length}</span>
+      {/* ── Topic Preview Modal (light design) ── */}
+      {topicPreviewOpen && previewTopic && (() => {
+        const qs = previewTopic.questions || []
+        const total = qs.length
+        const PER_PAGE = 10
+        const page = previewCurrentQ // 0-indexed page
+        const totalPages = Math.ceil(total / PER_PAGE)
+        const pageStart = page * PER_PAGE
+        const pageEnd = Math.min(pageStart + PER_PAGE, total)
+        const pageQs = qs.slice(pageStart, pageEnd)
+        const isFirstPage = page === 0
+        const isLastPage = page >= totalPages - 1
+
+        // Mark questions seen up to end of current page for active topic
+        const markProgress = (newPage: number) => {
+          const seen = Math.min((newPage + 1) * PER_PAGE, total)
+          setTopicProgress(prev => ({
+            ...prev,
+            [previewTopic._id]: Math.max(prev[previewTopic._id] ?? 0, seen)
+          }))
+        }
+
+        const goToPage = (newPage: number) => {
+          markProgress(newPage)
+          setPreviewCurrentQ(newPage)
+          setExpandedExpQ(-1)
+        }
+
+        const saveProgressToDB = async (progressMap: Record<string, number>) => {
+          if (!token) return
+          const entries = Object.entries(progressMap)
+          await Promise.allSettled(entries.map(([topicId, seen]) => {
+            const topicTotal = selectedCategory?.items.find(i => i._id === topicId)?.questions?.length ?? 0
+            return fetch(`${baseURL}/apptitudeQuestions/topics/${topicId}/progress`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ questionsViewed: seen, totalQuestions: topicTotal })
+            })
+          }))
+        }
+
+        const handleClose = async () => {
+          // Ensure current page is recorded before closing
+          const finalProgress = {
+            ...topicProgress,
+            [previewTopic._id]: Math.max(topicProgress[previewTopic._id] ?? 0, Math.min((page + 1) * PER_PAGE, total))
+          }
+          setTopicProgress(finalProgress)
+          await saveProgressToDB(finalProgress)
+          setTopicPreviewOpen(false)
+          setTopicProgress({}) // reset for next open
+        }
+
+        // Helpers for progress display
+        const CIRC = 69.1 // 2π×11
+        const getProgressPct = (item: TopicItem) => {
+          const seen = topicProgress[item._id] ?? 0
+          const t = item.questions?.length ?? 0
+          return t > 0 ? Math.min(100, Math.round((seen / t) * 100)) : 0
+        }
+
+        // Build page number pills (windowed)
+        const buildPageWindow = (): Array<number | '...'> => {
+          if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i)
+          const items: Array<number | '...'> = [0]
+          const lo = Math.max(1, page - 1)
+          const hi = Math.min(totalPages - 2, page + 1)
+          if (lo > 1) items.push('...')
+          for (let i = lo; i <= hi; i++) items.push(i)
+          if (hi < totalPages - 2) items.push('...')
+          items.push(totalPages - 1)
+          return items
+        }
+
+        // Mark page 0 seen on first open
+        if ((topicProgress[previewTopic._id] ?? 0) === 0 && total > 0) {
+          markProgress(0)
+        }
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#f1f5f9', display: 'flex', flexDirection: 'column', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+            <style>{`.tp-scroll::-webkit-scrollbar{display:none}.tp-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
+
+            {/* ── Header ── */}
+            <div style={{ height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{previewTopic.topic} — Preparation</div>
+              <button onClick={handleClose} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#64748b' }}>×</button>
+            </div>
+
+            {/* ── Body ── */}
+            <div style={{ flex: 1, display: 'flex', gap: 12, padding: '12px 16px', overflow: 'hidden' }}>
+
+              {/* ── LEFT BOX: Topics (wider) ── */}
+              <div style={{ width: 290, background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ padding: '14px 16px 10px', fontWeight: 800, fontSize: '0.88rem', color: '#0f172a', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>Topics</div>
+
+                <div className="tp-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                  {selectedCategory?.items.map((item, idx) => {
+                    const isActive = item._id === previewTopic._id
+                    const tc = TOPIC_COLORS[idx % TOPIC_COLORS.length]
+                    const initials = item.topic.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+                    const pct = getProgressPct(item)
+                    const offset = CIRC * (1 - pct / 100)
+                    const progressColor = pct === 100 ? '#16a34a' : pct > 0 ? '#ff7a00' : '#e2e8f0'
+                    return (
+                      <div key={item._id} onClick={() => {
+                        // save current topic progress before switching
+                        setTopicProgress(prev => ({
+                          ...prev,
+                          [previewTopic._id]: Math.max(prev[previewTopic._id] ?? 0, Math.min((page + 1) * PER_PAGE, total))
+                        }))
+                        setPreviewTopic(item)
+                        setPreviewCurrentQ(0)
+                        setExpandedExpQ(-1)
+                      }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderLeft: isActive ? '3px solid #ff7a00' : '3px solid transparent', background: isActive ? 'rgba(255,122,0,0.05)' : 'transparent', transition: 'all 0.15s' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: 8, background: tc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, color: tc.color, flexShrink: 0 }}>{initials}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: isActive ? 700 : 600, color: isActive ? '#ff7a00' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.topic}</div>
+                          <div style={{ fontSize: '0.64rem', color: '#94a3b8', marginTop: 1 }}>
+                            {Math.min(topicProgress[item._id] ?? 0, item.questions?.length ?? 0)} / {item.questions?.length ?? 0}
+                          </div>
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, maxHeight: '60vh', overflowY: 'auto', padding: 4 }}>
-                          {previewTopic.questions.map((_, i) => {
-                            const inPage = i >= startIndex && i < endIndex
+                        <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
+                          <svg width="32" height="32" viewBox="0 0 32 32">
+                            <circle cx="16" cy="16" r="13" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                            <circle cx="16" cy="16" r="13" fill="none" stroke={progressColor} strokeWidth="3"
+                              strokeDasharray={`${CIRC * 13 / 11}`}
+                              strokeDashoffset={`${(CIRC * 13 / 11) * (1 - pct / 100)}`}
+                              strokeLinecap="round" transform="rotate(-90 16 16)" style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
+                          </svg>
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', fontWeight: 700, color: pct > 0 ? progressColor : '#94a3b8' }}>{pct}%</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                <div style={{ padding: '10px 14px', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
+                  <button style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <FiBarChart2 size={13} /> Topic Summary
+                  </button>
+                </div>
+              </div>
+
+              {/* ── RIGHT BOX: Questions (10 per page) ── */}
+              <div style={{ flex: 1, background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+                {/* Top bar */}
+                <div style={{ borderBottom: '1px solid #f1f5f9', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>Questions</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ff7a00' }}>{pageStart + 1}–{pageEnd} / {total}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}>Page {page + 1} of {totalPages}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.75rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                      <FiBookOpen size={13} /> Bookmark
+                    </button>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.75rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                      <FiGrid size={13} /> Grid View
+                    </button>
+                  </div>
+                </div>
+
+                {/* Questions list — scrollable, no scrollbar */}
+                <div className="tp-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+                  {pageQs.length ? pageQs.map((q, localIdx) => {
+                    const globalIdx = pageStart + localIdx
+                    const qCorrectKey = q.correctOptionKey?.toUpperCase()
+                    const isExpanded = expandedExpQ === globalIdx
+                    return (
+                      <div key={q._id ?? globalIdx} style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', background: '#fff' }}>
+                        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <span style={{ background: '#ff7a00', color: '#fff', fontWeight: 800, fontSize: '0.72rem', padding: '3px 9px', borderRadius: 6, flexShrink: 0, marginTop: 2 }}>Q{globalIdx + 1}</span>
+                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.55, flex: 1 }}>{q.question}</div>
+                        </div>
+                        {q.questionType === 'image' && q.questionImageUrl && (
+                          <div style={{ textAlign: 'center', padding: '12px 18px 0' }}>
+                            <img src={q.questionImageUrl} alt={`Q${globalIdx + 1}`} style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                          </div>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '12px 18px' }}>
+                          {(['A', 'B', 'C', 'D'] as const).map(k => {
+                            const opt = q[`option${k}` as keyof QA]
+                            if (!opt) return null
+                            const isCorrect = k === qCorrectKey
                             return (
-                              <div key={i} onClick={() => setCurrentPage(Math.floor(i / QUESTIONS_PER_PAGE) + 1)}
-                                style={{ cursor: 'pointer', border: inPage ? 'none' : '1px solid #333', aspectRatio: '1/1', fontSize: '0.9rem', fontWeight: inPage ? 600 : 400, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', background: inPage ? '#ff7a00' : '#1a1a1a', color: inPage ? '#fff' : '#9ca3af', transition: 'all 0.2s' }}>
-                                {i + 1}
+                              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, border: isCorrect ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: isCorrect ? 'rgba(22,163,74,0.06)' : '#fafafa' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isCorrect ? '#16a34a' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {isCorrect
+                                    ? <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5l3 3L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    : <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b' }}>{k}</span>}
+                                </div>
+                                <span style={{ fontSize: '0.8rem', color: isCorrect ? '#15803d' : '#374151', fontWeight: isCorrect ? 600 : 400 }}>{opt}</span>
                               </div>
                             )
                           })}
                         </div>
-                        <div className="d-flex justify-content-between align-items-center mt-3">
-                          <Button size="sm" variant="outline-secondary" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)} className="text-white border-secondary">← Prev</Button>
-                          <span className="small text-secondary">Page {currentPage} / {totalPages}</span>
-                          <Button size="sm" variant="outline-secondary" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)} className="text-white border-secondary">Next →</Button>
+                        <div style={{ margin: '0 18px 14px', border: '1px solid #fde68a', borderRadius: 10, overflow: 'hidden', background: '#fffef5' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: isExpanded ? '1px solid #fde68a' : 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontSize: 14 }}>💡</span>
+                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#92400e' }}>Explanation</span>
+                            </div>
+                            <button onClick={() => setExpandedExpQ(isExpanded ? -1 : globalIdx)}
+                              style={{ background: 'none', border: 'none', color: '#16a34a', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', padding: 0 }}>
+                              {isExpanded ? 'Hide Explanation ∧' : 'Show Explanation ∨'}
+                            </button>
+                          </div>
+                          {isExpanded && (
+                            <div style={{ padding: '12px 14px' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: 7, padding: '4px 10px', marginBottom: 10 }}>
+                                <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5l3 3L10 1" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#16a34a' }}>
+                                  Correct Answer: {qCorrectKey}) {q[`option${qCorrectKey}` as keyof QA]}
+                                </span>
+                              </div>
+                              {q.explanation && (
+                                <div style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.8 }}>
+                                  {q.explanation.split(/(?<=\.)\s+/).map((sentence, si) => (
+                                    <div key={si} style={{ marginBottom: si < q.explanation!.split(/(?<=\.)\s+/).length - 1 ? 6 : 0 }}>{sentence}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                    </div>
+                    )
+                  }) : (
+                    <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No questions available.</div>
+                  )}
+                </div>
+
+                {/* ── Footer: page navigation ── */}
+                <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                  <button onClick={() => goToPage(Math.max(0, page - 1))}
+                    disabled={isFirstPage}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: isFirstPage ? '#f8fafc' : '#fff', color: isFirstPage ? '#cbd5e1' : '#374151', fontWeight: 600, fontSize: '0.82rem', cursor: isFirstPage ? 'not-allowed' : 'pointer' }}>
+                    ← Previous
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    {buildPageWindow().map((item, idx) =>
+                      item === '...'
+                        ? <span key={`d${idx}`} style={{ width: 32, textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>···</span>
+                        : (
+                          <button key={item} onClick={() => goToPage(item as number)}
+                            style={{ width: 32, height: 32, borderRadius: 8, border: item === page ? 'none' : '1px solid #e2e8f0', background: item === page ? '#ff7a00' : '#fff', color: item === page ? '#fff' : '#374151', fontWeight: item === page ? 700 : 500, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.15s' }}>
+                            {(item as number) + 1}
+                          </button>
+                        )
+                    )}
                   </div>
-                  <div className="col-md-9">
-                    <div className="card bg-black text-white border-secondary h-100">
-                      <div className="card-body" style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-                        {currentQuestions.map((qa, i) => (
-                          <div key={qa._id ?? i} className="mb-4 pb-3 border-bottom border-secondary">
-                            <h6 className="fw-semibold text-white">Q{startIndex + i + 1}:{qa.question ? ` ${qa.question}` : ''}</h6>
-                            {qa.questionType === 'image' && qa.questionImageUrl && (
-                              <div className="my-3 text-center">
-                                <img src={qa.questionImageUrl} alt={`Q${startIndex + i + 1}`} style={{ maxWidth: '100%', maxHeight: 280, borderRadius: 8, border: '1px solid #333' }} />
-                              </div>
-                            )}
-                            <ul className="mb-2 mt-2" style={{ listStyle: 'none', paddingLeft: 0 }}>
-                              {['A', 'B', 'C', 'D'].map(k => {
-                                const opt = qa[`option${k}` as keyof QA]
-                                if (!opt) return null
-                                return <li key={k} className="text-white mb-1"><span style={{ color: '#ff7a00' }} className="me-2">{k}.</span>{opt}</li>
-                              })}
-                            </ul>
-                            <Accordion>
-                              <Accordion.Item eventKey="0" className="bg-black border-secondary">
-                                <Accordion.Header className="bg-black text-white">Show Answer & Explanation</Accordion.Header>
-                                <Accordion.Body className="bg-black text-secondary">
-                                  <div className="mb-3 p-2 rounded" style={{ background: 'rgba(255,122,0,0.07)', borderLeft: '3px solid #ff7a00' }}>
-                                    <strong className="text-white">Correct Answer:</strong>{' '}
-                                    <span style={{ color: '#ff7a00' }}>Option {qa.correctOptionKey}</span>{' '}
-                                    — {qa[`option${qa.correctOptionKey}` as keyof QA]}
-                                  </div>
-                                  {qa.explanation && (
-                                    <div className="text-secondary">
-                                      <strong className="text-white d-block mb-2">Explanation:</strong>
-                                      {formatExplanation(qa.explanation)}
-                                    </div>
-                                  )}
-                                </Accordion.Body>
-                              </Accordion.Item>
-                            </Accordion>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
+                      disabled={isLastPage}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: isLastPage ? '#f8fafc' : '#fff', color: isLastPage ? '#cbd5e1' : '#374151', fontWeight: 600, fontSize: '0.82rem', cursor: isLastPage ? 'not-allowed' : 'pointer' }}>
+                      Next →
+                    </button>
+                    <button onClick={() => {
+                      setTopicPreviewOpen(false)
+                      const chosen = shuffle(previewTopic.questions).slice(0, COUNT)
+                      setQuizTitle(`${previewTopic.topic} — Practice Quiz`)
+                      setQuizQuestions(chosen)
+                      setUserAnswers(Array(chosen.length).fill(''))
+                      setCurrentIndex(0)
+                      setSubmitted(false)
+                      setResults([])
+                      setQuizOpen(true)
+                    }} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '8px 18px', cursor: 'pointer', boxShadow: '0 3px 10px rgba(255,122,0,0.3)' }}>
+                      Take Quiz (This Topic)
+                    </button>
                   </div>
                 </div>
-              )
-            })()
-          ) : (
-            <p className="text-secondary">No questions available.</p>
-          )}
-        </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
-          <Button variant="secondary" onClick={() => setTopicPreviewOpen(false)}>Close</Button>
-          {previewTopic?.questions?.length ? (
-            <Button style={{ background: '#ff7a00', border: 'none' }} onClick={() => {
-              setTopicPreviewOpen(false)
-              const chosen = shuffle(previewTopic.questions).slice(0, COUNT)
-              setQuizTitle(`${previewTopic.topic} — Practice Quiz`)
-              setQuizQuestions(chosen)
-              setUserAnswers(Array(chosen.length).fill(''))
-              setCurrentIndex(0)
-              setSubmitted(false)
-              setResults([])
-              setQuizOpen(true)
-            }}>
-              Take Quiz (This Topic)
-            </Button>
-          ) : null}
-        </Modal.Footer>
-      </Modal>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Quiz Modal ── */}
       <Modal show={quizOpen} onHide={closeQuiz} fullscreen backdrop="static" className="text-white" contentClassName="bg-dark">
