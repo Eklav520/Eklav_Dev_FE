@@ -804,13 +804,13 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         url: '/student/freelancing/available-tasks',
         parentKey: 'freelancing',
       },
-      {
+      /* {
         key: 'freelancingMyTasks',
         label: 'My Tasks',
         icon: BsFolderCheck,
         url: '/student/freelancing/my-tasks',
         parentKey: 'freelancing',
-      },
+      }, */
     ],
   },
 

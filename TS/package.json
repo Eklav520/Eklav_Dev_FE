@@ -26,6 +26,7 @@
     "@dicebear/collection": "^9.2.3",
     "@heygen/liveavatar-web-sdk": "^0.0.17",
     "@hookform/resolvers": "^3.7.0",
+    "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "@monaco-editor/react": "^4.7.0",
     "@popperjs/core": "^2.11.8",
     "@react-navigation/stack": "^7.4.5",

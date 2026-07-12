@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Container, Spinner, Modal } from 'react-bootstrap'
-import { FaFeatherAlt, FaRedo, FaCheckCircle, FaPenAlt, FaEnvelope, FaFileAlt, FaLightbulb, FaClipboardList, FaSearch, FaBullseye, FaEdit, FaClock, FaBold, FaItalic, FaUnderline, FaListUl, FaListOl, FaAlignLeft, FaAlignCenter, FaAlignRight, FaLink, FaUndoAlt, FaRedoAlt } from 'react-icons/fa'
+import { FaFeatherAlt, FaRedo, FaCheckCircle, FaPenAlt, FaEnvelope, FaFileAlt, FaLightbulb, FaClipboardList, FaSearch, FaBullseye, FaEdit, FaClock, FaBold, FaItalic, FaUnderline, FaListUl, FaListOl, FaAlignLeft, FaAlignCenter, FaAlignRight, FaLink, FaUndoAlt, FaRedoAlt, FaStar } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ interface WritingHistoryUI {
   attemptsUsed: number
   remainingAttempts: number
   bestScore: number | null
+  trend?: string
 }
 
 type ModeType = 'essay' | 'email' | 'summary'
@@ -201,7 +202,7 @@ const WritingPractice: React.FC = () => {
       const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
       const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
 
-      setHistory({ attemptsUsed, monthlyLimit, remainingAttempts, bestScore })
+      setHistory({ attemptsUsed, monthlyLimit, remainingAttempts, bestScore, trend: latest.summary?.trend })
       setRawAttempts(attempts)
     } catch (err) {
       console.error('Writing history error:', err)
@@ -341,6 +342,18 @@ const WritingPractice: React.FC = () => {
   const summaryCount = rawAttempts.filter(a => a.mode === 'summary').length
   const recentAttempts = [...rawAttempts].reverse().slice(0, 5)
 
+  const normalizeScore = (s: number) => s <= 10 ? s * 10 : s
+  const avgScore = rawAttempts.length
+    ? Math.round(rawAttempts.reduce((sum, a) => sum + normalizeScore(a.score ?? 0), 0) / rawAttempts.length)
+    : 0
+  const modeAvg = (m: ModeType) => {
+    const arr = rawAttempts.filter(a => a.mode === m)
+    return arr.length ? Math.round(arr.reduce((s, a) => s + normalizeScore(a.score ?? 0), 0) / arr.length) : null
+  }
+  const essayAvg = modeAvg('essay')
+  const emailAvg = modeAvg('email')
+  const summaryAvg = modeAvg('summary')
+
   const { startOffset, daysInMonth, scoreMap } = buildCalendar(calYear, calMonth, rawAttempts)
   const isCurrentMonth = calYear === now.getFullYear() && calMonth === now.getMonth()
   const cells: (number | null)[] = []
@@ -367,32 +380,44 @@ const WritingPractice: React.FC = () => {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Hero Card */}
-          <div style={{ background: 'linear-gradient(to right, #fffbeb 0%, #fde68a 60%, #fbbf24 100%)', border: '1px solid #fcd34d', borderRadius: 16, padding: '40px 28px', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
-            <div>
+          <div style={{ background: 'linear-gradient(120deg, #fff7f0 0%, #ffedd5 45%, #fed7aa 75%, #fb923c 100%)', border: '1px solid #fdba74', borderRadius: 16, padding: '40px 28px', minHeight: 240, display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden', position: 'relative' }}>
+
+            {/* Watermark dot grid */}
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.12, backgroundImage: 'radial-gradient(circle, #c2410c 1.5px, transparent 1.5px)', backgroundSize: '20px 20px', pointerEvents: 'none' }} />
+
+            {/* Watermark text */}
+            <div style={{ position: 'absolute', right: 220, top: '50%', transform: 'translateY(-50%) rotate(-18deg)', fontSize: 96, fontWeight: 900, color: 'rgba(234,88,12,0.07)', letterSpacing: -4, pointerEvents: 'none', userSelect: 'none', lineHeight: 1 }}>WRITE</div>
+
+            {/* Watermark rings */}
+            <div style={{ position: 'absolute', right: 180, bottom: -40, width: 180, height: 180, borderRadius: '50%', border: '2px solid rgba(234,88,12,0.1)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', right: 200, bottom: -60, width: 240, height: 240, borderRadius: '50%', border: '2px solid rgba(234,88,12,0.06)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', zIndex: 1 }}>
               <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a', marginBottom: 8 }}>Improve Your Writing Skills</h2>
-              <p style={{ color: '#64748b', fontSize: '0.86rem', marginBottom: 22, lineHeight: 1.6 }}>
+              <p style={{ color: '#7c3d12', fontSize: '0.86rem', marginBottom: 22, lineHeight: 1.6 }}>
                 Practice different types of writing, get AI feedback,<br />and improve your communication.
               </p>
               <div style={{ display: 'flex', gap: 28 }}>
                 {([
-                  { Icon: MODES.essay.statIcon,   count: essayCount,   label: 'Essays Written',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-                  { Icon: MODES.email.statIcon,   count: emailCount,   label: 'Emails Written',     color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-                  { Icon: MODES.summary.statIcon, count: summaryCount, label: 'Summaries Written',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+                  { Icon: MODES.essay.statIcon,   count: essayCount,   label: 'Essays Written',     color: '#3b82f6', bg: 'rgba(59,130,246,0.12)' },
+                  { Icon: MODES.email.statIcon,   count: emailCount,   label: 'Emails Written',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+                  { Icon: MODES.summary.statIcon, count: summaryCount, label: 'Summaries Written',  color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)' },
                 ] as { Icon: React.ElementType; count: number; label: string; color: string; bg: string }[]).map(s => (
                   <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, backdropFilter: 'blur(4px)' }}>
                       <s.Icon style={{ fontSize: '0.95rem', color: s.color }} />
                     </div>
                     <div>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#0f172a', lineHeight: 1 }}>{s.count}</div>
-                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>{s.label}</div>
+                      <div style={{ fontSize: '0.68rem', color: '#7c3d12', marginTop: 2 }}>{s.label}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+
             {/* Illustration */}
-            <div style={{ flexShrink: 0, position: 'relative', width: 220, height: 170, userSelect: 'none' }}>
+            <div style={{ flexShrink: 0, position: 'relative', width: 220, height: 170, userSelect: 'none', zIndex: 1 }}>
               {/* Notebook body */}
               <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', width: 110, height: 148, background: 'linear-gradient(145deg, #5a52d5, #3730a3)', borderRadius: 12, boxShadow: '5px 6px 28px rgba(99,88,255,0.35)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 18px', gap: 8 }}>
                 {[100, 80, 65, 50].map((w, i) => (
@@ -400,18 +425,20 @@ const WritingPractice: React.FC = () => {
                 ))}
                 {/* Spine */}
                 <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 14, background: 'rgba(0,0,0,0.18)', borderRadius: '12px 0 0 12px' }} />
+                {/* Watermark "W" on notebook */}
+                <div style={{ position: 'absolute', bottom: 8, right: 10, fontSize: 28, fontWeight: 900, color: 'rgba(255,255,255,0.08)', lineHeight: 1 }}>W</div>
               </div>
               {/* Pen */}
               <div style={{ position: 'absolute', right: 90, top: 4, transform: 'rotate(-38deg)', transformOrigin: 'bottom center' }}>
                 <FaPenAlt style={{ fontSize: '2.6rem', color: '#0f172a', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
               </div>
               {/* Floating envelope bubble */}
-              <div style={{ position: 'absolute', left: 4, top: 8, width: 34, height: 34, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FaEnvelope style={{ fontSize: '0.9rem', color: '#ff7a00' }} />
+              <div style={{ position: 'absolute', left: 4, top: 8, width: 34, height: 34, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(234,88,12,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaEnvelope style={{ fontSize: '0.9rem', color: '#ff6b00' }} />
               </div>
               {/* Floating edit bubble */}
-              <div style={{ position: 'absolute', left: 18, bottom: 8, width: 30, height: 30, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FaEdit style={{ fontSize: '0.8rem', color: '#10b981' }} />
+              <div style={{ position: 'absolute', left: 18, bottom: 8, width: 30, height: 30, borderRadius: '50%', background: '#fff', boxShadow: '0 3px 10px rgba(234,88,12,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaEdit style={{ fontSize: '0.8rem', color: '#ff6b00' }} />
               </div>
             </div>
           </div>
@@ -581,6 +608,109 @@ const WritingPractice: React.FC = () => {
             </div>
           </div>
 
+          {/* Writing Progress Card */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 18px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+
+            {/* Header */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>Your Writing Progress</div>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+                This Month · {history?.attemptsUsed ?? 0} sessions
+              </div>
+            </div>
+
+            {/* Attempts row */}
+            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                  <FaBullseye style={{ color: '#ff6b00', fontSize: '0.85rem' }} />
+                  <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>Attempts This Month</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ff6b00', background: '#fff7f0', padding: '2px 8px', borderRadius: 20, border: '1px solid #fed7aa' }}>
+                  {maxAllowedAttempts - Math.min(history?.attemptsUsed ?? 0, maxAllowedAttempts)} left
+                </span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, background: '#e2e8f0', overflow: 'hidden', marginBottom: 4 }}>
+                <div style={{ height: '100%', borderRadius: 3, background: isLimitReached ? '#dc2626' : '#ff6b00', width: `${history ? Math.min((history.attemptsUsed / maxAllowedAttempts) * 100, 100) : 0}%`, transition: 'width 0.5s' }} />
+              </div>
+              <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#94a3b8' }}>
+                {Math.min(history?.attemptsUsed ?? 0, maxAllowedAttempts)} / {maxAllowedAttempts} used
+              </div>
+            </div>
+
+            {/* Avg Score + Trend */}
+            {(history?.attemptsUsed ?? 0) > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 18 }}>
+                {/* Circular gauge */}
+                <div style={{ position: 'relative', width: 88, height: 88, flexShrink: 0 }}>
+                  <svg width="88" height="88" viewBox="0 0 88 88">
+                    <circle cx="44" cy="44" r="36" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+                    <circle cx="44" cy="44" r="36" fill="none" stroke="#ff6b00" strokeWidth="8"
+                      strokeLinecap="round"
+                      strokeDasharray={`${2 * Math.PI * 36}`}
+                      strokeDashoffset={`${2 * Math.PI * 36 * (1 - avgScore / 100)}`}
+                      transform="rotate(-90 44 44)"
+                    />
+                  </svg>
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{avgScore}%</div>
+                    <div style={{ fontSize: '0.57rem', color: '#94a3b8', marginTop: 2 }}>Avg Score</div>
+                  </div>
+                </div>
+                {/* Trend */}
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#ff6b00', marginBottom: 4 }}>
+                    {avgScore >= 80 ? 'Excellent!' : avgScore >= 60 ? 'Good Work!' : avgScore >= 40 ? 'Keep Going!' : 'Keep Practicing!'}
+                  </div>
+                  <div style={{ fontSize: '0.73rem', color: '#64748b', lineHeight: 1.5 }}>
+                    {history?.trend === 'IMPROVED' ? '↑ Improving this month'
+                      : history?.trend === 'DROPPED' ? '↓ Needs more practice'
+                      : history?.trend === 'FIRST'   ? '🎉 Great start!'
+                      : history?.trend === 'SAME'    ? '→ Staying consistent'
+                      : 'Keep practicing!'}
+                  </div>
+                  {isTrial && isLimitReached && (
+                    <div style={{ marginTop: 8, fontSize: '0.7rem', color: '#dc2626', background: '#fff1f2', border: '1px solid #fecada', borderRadius: 8, padding: '5px 9px' }}>
+                      🔒 Trial limit reached
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Score Bars */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+              {([
+                { label: 'Best Score',      value: history?.bestScore != null ? normalizeScore(history.bestScore) : null, color: '#8b5cf6', Icon: FaStar },
+                { label: 'Essay Writing',   value: essayAvg,   color: MODES.essay.color,   Icon: MODES.essay.Icon   },
+                { label: 'Email Writing',   value: emailAvg,   color: MODES.email.color,   Icon: MODES.email.Icon   },
+                { label: 'Summary Writing', value: summaryAvg, color: MODES.summary.color, Icon: MODES.summary.Icon },
+              ] as { label: string; value: number | null; color: string; Icon: React.ElementType }[]).map(({ label, value, color, Icon: BIcon }) => (
+                <div key={label}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: 6, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <BIcon style={{ fontSize: '0.62rem', color }} />
+                      </div>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151' }}>{label}</span>
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: value !== null ? color : '#94a3b8' }}>
+                      {value !== null ? `${value}%` : '—'}
+                    </span>
+                  </div>
+                  <div style={{ height: 5, borderRadius: 3, background: '#f1f5f9', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: 3, background: color, width: `${value ?? 0}%`, transition: 'width 0.5s' }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer button */}
+            <button style={{ width: '100%', padding: '10px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              View Detailed Feedback <span style={{ fontSize: '0.9rem', marginLeft: 2 }}>›</span>
+            </button>
+          </div>
+
           {/* Writing Tips */}
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 12px', borderBottom: '1px solid #edf2f7' }}>
@@ -601,29 +731,6 @@ const WritingPractice: React.FC = () => {
               ))}
             </div>
           </div>
-
-          {/* Usage card */}
-          {history && (
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a', marginBottom: 8 }}>
-                {isTrial ? 'Trial Usage' : 'Monthly Usage'}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: '0.78rem', color: '#64748b' }}>
-                <span>{Math.min(history.attemptsUsed, maxAllowedAttempts)} of {maxAllowedAttempts} used</span>
-                <span style={{ fontWeight: 700, color: '#ff7a00' }}>
-                  Best: {history.bestScore !== null ? `${history.bestScore! <= 10 ? history.bestScore! * 10 : history.bestScore}/100` : '—'}
-                </span>
-              </div>
-              <div style={{ height: 6, borderRadius: 3, background: '#f1f5f9', overflow: 'hidden' }}>
-                <div style={{ height: '100%', borderRadius: 3, background: isLimitReached ? '#dc2626' : '#ff7a00', width: `${Math.min((history.attemptsUsed / maxAllowedAttempts) * 100, 100)}%`, transition: 'width 0.3s' }} />
-              </div>
-              {isTrial && isLimitReached && (
-                <div style={{ marginTop: 10, fontSize: '0.74rem', color: '#dc2626', background: '#fff1f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                  🔒 Trial limit reached. Upgrade to continue.
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

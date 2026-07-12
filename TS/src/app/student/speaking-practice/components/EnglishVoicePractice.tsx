@@ -92,6 +92,101 @@ const EnglishVoicePractice: React.FC = () => {
   const webcamStreamRef = useRef<MediaStream | null>(null)
   const [webcamActive, setWebcamActive] = useState(false)
 
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const segmentationRef = useRef<any>(null)
+  const rafRef = useRef<number>(0)
+  const [segReady, setSegReady] = useState(false)
+  const youBgOptionRef = useRef<any>({ id: 'dark', canvasColors: ['#0d1117', '#1a1f35'], cat: 'color' })
+  const bgImageCacheRef = useRef<Record<string, HTMLImageElement>>({})
+
+  const loadBgImage = (url: string) => {
+    if (bgImageCacheRef.current[url]) return
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => { bgImageCacheRef.current[url] = img }
+    img.src = url
+  }
+
+  const onSegmentationResults = (results: any) => {
+    const canvas = canvasRef.current
+    if (!canvas || !results.segmentationMask) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    const w = canvas.width
+    const h = canvas.height
+    ctx.save()
+    ctx.clearRect(0, 0, w, h)
+    // Draw mask: person=opaque, background=transparent
+    ctx.drawImage(results.segmentationMask, 0, 0, w, h)
+    // Keep only person pixels from video frame
+    ctx.globalCompositeOperation = 'source-in'
+    ctx.drawImage(results.image, 0, 0, w, h)
+    // Draw chosen background behind the person
+    ctx.globalCompositeOperation = 'destination-over'
+    const option = youBgOptionRef.current
+    const cachedImg: HTMLImageElement | undefined = option.imageUrl ? bgImageCacheRef.current[option.imageUrl] : undefined
+    if (cachedImg) {
+      // Cover-fit the image to the canvas
+      const scale = Math.max(w / cachedImg.naturalWidth, h / cachedImg.naturalHeight)
+      const sw = cachedImg.naturalWidth * scale
+      const sh = cachedImg.naturalHeight * scale
+      ctx.drawImage(cachedImg, (w - sw) / 2, (h - sh) / 2, sw, sh)
+    } else {
+      if (option.imageUrl) loadBgImage(option.imageUrl)
+      const colors: string[] = option.canvasColors ?? ['#0d1117', '#1a1f35']
+      const grad = ctx.createLinearGradient(0, 0, w, h)
+      grad.addColorStop(0, colors[0])
+      grad.addColorStop(1, colors[1])
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, w, h)
+    }
+    ctx.restore()
+  }
+
+  const startSegLoop = () => {
+    const loop = async () => {
+      const video = webcamRef.current
+      const canvas = canvasRef.current
+      if (video && video.readyState >= 2 && video.videoWidth > 0 && segmentationRef.current) {
+        if (canvas && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
+          canvas.width = video.videoWidth
+          canvas.height = video.videoHeight
+        }
+        try { await segmentationRef.current.send({ image: video }) } catch { /* skip frame */ }
+      }
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
+  }
+
+  const initSegmentation = async () => {
+    try {
+      // Load the MediaPipe selfie segmentation script from CDN if not already loaded
+      await new Promise<void>((resolve, reject) => {
+        if ((window as any).SelfieSegmentation) { resolve(); return }
+        const s = document.createElement('script')
+        s.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js'
+        s.crossOrigin = 'anonymous'
+        s.onload = () => resolve()
+        s.onerror = reject
+        document.head.appendChild(s)
+      })
+      const SelfieSegmentation = (window as any).SelfieSegmentation
+      const seg = new SelfieSegmentation({
+        locateFile: (file: string) =>
+          `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation@0.1/${file}`,
+      })
+      seg.setOptions({ modelSelection: 1 })
+      seg.onResults(onSegmentationResults)
+      await seg.initialize()
+      segmentationRef.current = seg
+      setSegReady(true)
+      startSegLoop()
+    } catch (e) {
+      console.warn('Selfie segmentation failed to load, showing raw feed', e)
+    }
+  }
+
   const startWebcam = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -100,12 +195,18 @@ const EnglishVoicePractice: React.FC = () => {
         webcamRef.current.srcObject = stream
       }
       setWebcamActive(true)
+      if (!segmentationRef.current) {
+        initSegmentation()
+      } else {
+        startSegLoop()
+      }
     } catch {
       setWebcamActive(false)
     }
   }
 
   const stopWebcam = () => {
+    cancelAnimationFrame(rafRef.current)
     webcamStreamRef.current?.getTracks().forEach(t => t.stop())
     webcamStreamRef.current = null
     setWebcamActive(false)
@@ -571,15 +672,59 @@ const EnglishVoicePractice: React.FC = () => {
   const topicsScrollRef = useRef<HTMLDivElement>(null)
 
   const BG_OPTIONS = [
-    { id: 'warm',   style: 'linear-gradient(160deg,#f5e6d0 0%,#e8d5b0 50%,#d4b896 100%)', label: 'Warm'   },
-    { id: 'dark',   style: 'linear-gradient(160deg,#0d1117 0%,#1a1f35 100%)',              label: 'Dark'   },
-    { id: 'ocean',  style: 'linear-gradient(160deg,#0ea5e9 0%,#0369a1 100%)',              label: 'Ocean'  },
-    { id: 'forest', style: 'linear-gradient(160deg,#166534 0%,#15803d 100%)',              label: 'Forest' },
-    { id: 'purple', style: 'linear-gradient(160deg,#6d28d9 0%,#8b5cf6 100%)',              label: 'Purple' },
-    { id: 'slate',  style: 'linear-gradient(160deg,#334155 0%,#475569 100%)',              label: 'Slate'  },
+    // ── Color gradients ───────────────────────────────────────────────────────
+    { id: 'dark',   style: 'linear-gradient(160deg,#0d1117 0%,#1a1f35 100%)',              canvasColors: ['#0d1117','#1a1f35'], label: 'Dark',   cat: 'color' },
+    { id: 'ocean',  style: 'linear-gradient(160deg,#0ea5e9 0%,#0369a1 100%)',              canvasColors: ['#0ea5e9','#0369a1'], label: 'Ocean',  cat: 'color' },
+    { id: 'purple', style: 'linear-gradient(160deg,#6d28d9 0%,#8b5cf6 100%)',              canvasColors: ['#6d28d9','#8b5cf6'], label: 'Purple', cat: 'color' },
+    { id: 'slate',  style: 'linear-gradient(160deg,#334155 0%,#475569 100%)',              canvasColors: ['#334155','#475569'], label: 'Slate',  cat: 'color' },
+    { id: 'warm',   style: 'linear-gradient(160deg,#f5e6d0 0%,#e8d5b0 50%,#d4b896 100%)', canvasColors: ['#f5e6d0','#d4b896'], label: 'Warm',   cat: 'color' },
+    { id: 'green',  style: 'linear-gradient(160deg,#064e3b 0%,#065f46 100%)',              canvasColors: ['#064e3b','#065f46'], label: 'Green',  cat: 'color' },
+    // ── Premium image backgrounds ─────────────────────────────────────────────
+    {
+      id: 'forest', label: 'Forest', cat: 'premium',
+      style: 'linear-gradient(160deg,#14532d,#166534)',
+      canvasColors: ['#14532d','#166534'],
+      imageUrl: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1448375240586-882707db888b?w=80&auto=format&fit=crop',
+    },
+    {
+      id: 'office', label: 'Office', cat: 'premium',
+      style: 'linear-gradient(160deg,#1e293b,#334155)',
+      canvasColors: ['#1e293b','#334155'],
+      imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1497366216548-37526070297c?w=80&auto=format&fit=crop',
+    },
+    {
+      id: 'cabin', label: 'Cabin', cat: 'premium',
+      style: 'linear-gradient(160deg,#78350f,#92400e)',
+      canvasColors: ['#78350f','#92400e'],
+      imageUrl: 'https://images.unsplash.com/photo-1474552226712-ac0f0961a954?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1474552226712-ac0f0961a954?w=80&auto=format&fit=crop',
+    },
+    {
+      id: 'library', label: 'Library', cat: 'premium',
+      style: 'linear-gradient(160deg,#1c1917,#292524)',
+      canvasColors: ['#1c1917','#292524'],
+      imageUrl: 'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=80&auto=format&fit=crop',
+    },
+    {
+      id: 'city', label: 'City', cat: 'premium',
+      style: 'linear-gradient(160deg,#0f172a,#1e3a5f)',
+      canvasColors: ['#0f172a','#1e3a5f'],
+      imageUrl: 'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=80&auto=format&fit=crop',
+    },
+    {
+      id: 'beach', label: 'Beach', cat: 'premium',
+      style: 'linear-gradient(160deg,#0284c7,#7dd3fc)',
+      canvasColors: ['#0284c7','#7dd3fc'],
+      imageUrl: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1280&auto=format&fit=crop',
+      thumb:    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=80&auto=format&fit=crop',
+    },
   ]
-  const [aiBgStyle, setAiBgStyle]   = useState(BG_OPTIONS[0].style)
-  const [youBgStyle, setYouBgStyle] = useState(BG_OPTIONS[1].style)
+  const [aiBgStyle, setAiBgStyle] = useState(BG_OPTIONS[0].style)
+  const [youBgOption, setYouBgOption] = useState(BG_OPTIONS[0])
   const [showAiBgPicker, setShowAiBgPicker]   = useState(false)
   const [showYouBgPicker, setShowYouBgPicker] = useState(false)
   const scrollTopics = () => {
@@ -774,8 +919,8 @@ const EnglishVoicePractice: React.FC = () => {
 
             {/* Right: End Session — closes modal only */}
             <button onClick={handleCloseSession}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1.5px solid #64748b', borderRadius: 8, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#64748b', flexShrink: 0 }}>
-              End Session
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ef4444', border: '1.5px solid #ef4444', borderRadius: 8, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
+              <FaStop style={{ fontSize: 9 }} /> End Session
             </button>
           </div>
 
@@ -845,31 +990,78 @@ const EnglishVoicePractice: React.FC = () => {
             </div>
 
             {/* You panel */}
-            <div style={{ position: 'relative', background: youBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 14 }}>
-              <video ref={webcamRef} autoPlay playsInline muted
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: webcamActive ? 'block' : 'none' }} />
-              {!webcamActive && (
-                <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 36 }}>
-                  <FaUser />
+            <div style={{ position: 'relative', background: youBgOption.style, overflow: 'hidden', borderRadius: 14 }}>
+              {/* Video element: hidden when segmentation is ready (canvas takes over), visible as fallback */}
+              <video ref={webcamRef} autoPlay playsInline muted style={{
+                display: webcamActive && !segReady ? 'block' : 'none',
+                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1,
+              }} />
+              {/* Canvas shows the ML-segmented output: person on chosen virtual background */}
+              <canvas ref={canvasRef} style={{
+                display: webcamActive && segReady ? 'block' : 'none',
+                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1,
+              }} />
+              {/* Loading indicator while model initialises */}
+              {webcamActive && !segReady && (
+                <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
+                  <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 20, padding: '4px 14px', color: '#fff', fontSize: 11, fontWeight: 600 }}>
+                    Loading virtual background…
+                  </div>
                 </div>
               )}
-              <div style={{ position: 'absolute', top: 10, left: 10, background: '#2563eb', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5 }}>
+              {/* Avatar shown when webcam not active */}
+              {!webcamActive && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2 }}>
+                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.7)', fontSize: 36 }}>
+                    <FaUser />
+                  </div>
+                </div>
+              )}
+              <div style={{ position: 'absolute', top: 10, left: 10, background: '#2563eb', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5, zIndex: 10 }}>
                 <FaUser style={{ fontSize: 9 }} /> You
               </div>
-              {!webcamActive && (
-                <button onClick={() => { setShowYouBgPicker(p => !p); setShowAiBgPicker(false) }}
-                  style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
-                  title="Change background">🎨</button>
-              )}
-              {showYouBgPicker && !webcamActive && (
-                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 10, background: '#fff', borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.18)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
-                  {BG_OPTIONS.map(o => (
-                    <button key={o.id} onClick={() => { setYouBgStyle(o.style); setShowYouBgPicker(false) }} title={o.label}
-                      style={{ width: 32, height: 32, borderRadius: 8, background: o.style, border: youBgStyle === o.style ? '3px solid #2563eb' : '2px solid #e2e8f0', cursor: 'pointer' }} />
-                  ))}
+              {/* Background picker */}
+              <button onClick={() => { setShowYouBgPicker(p => !p); setShowAiBgPicker(false) }}
+                style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
+                title="Change virtual background">🎨</button>
+              {showYouBgPicker && (
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 30, background: '#fff', borderRadius: 14, padding: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.28)', width: 210 }}>
+                  {/* Color section */}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6 }}>COLORS</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {BG_OPTIONS.filter(o => o.cat === 'color').map(o => (
+                      <button key={o.id} title={o.label}
+                        onClick={() => { setYouBgOption(o); youBgOptionRef.current = o; setShowYouBgPicker(false) }}
+                        style={{ width: 28, height: 28, borderRadius: 7, background: o.style, border: youBgOption.id === o.id ? '3px solid #2563eb' : '2px solid #e2e8f0', cursor: 'pointer', flexShrink: 0 }} />
+                    ))}
+                  </div>
+                  {/* Premium image section */}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    PREMIUM ✨
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                    {BG_OPTIONS.filter(o => o.cat === 'premium').map(o => (
+                      <button key={o.id} title={o.label}
+                        onClick={() => {
+                          setYouBgOption(o); youBgOptionRef.current = o; setShowYouBgPicker(false)
+                          if (o.imageUrl) loadBgImage(o.imageUrl)
+                        }}
+                        style={{
+                          width: '100%', aspectRatio: '16/10', borderRadius: 8, padding: 0, overflow: 'hidden', cursor: 'pointer',
+                          border: youBgOption.id === o.id ? '3px solid #2563eb' : '2px solid #e2e8f0',
+                          backgroundImage: (o as any).thumb ? `url(${(o as any).thumb})` : o.style,
+                          backgroundSize: 'cover', backgroundPosition: 'center',
+                          position: 'relative',
+                        }}>
+                        <span style={{ position: 'absolute', bottom: 2, left: 0, right: 0, textAlign: 'center', fontSize: 9, fontWeight: 700, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.8)', background: 'linear-gradient(transparent, rgba(0,0,0,0.5))', padding: '2px 0' }}>
+                          {o.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
-              <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end' }}>
+              <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end', zIndex: 10 }}>
                 {[3,5,9,6,11,8,5,7,4,9,5,3,6,4,8].map((h, i) => (
                   <div key={i} style={{ width: 3, height: isListening && isUserSpeaking ? h * 2.5 : 4, background: '#3b82f6', borderRadius: 2, transition: 'height .15s', opacity: 0.9 }} />
                 ))}

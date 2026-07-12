@@ -163,11 +163,19 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                     setBranch(Array.isArray(exam.branch) ? exam.branch : (exam.branch ? [exam.branch] : []));
                     setJoiningYear(Array.isArray(exam.joiningYear) ? exam.joiningYear : (exam.joiningYear ? [exam.joiningYear] : []));
 
-                    const updatedRounds = rounds.map((defaultRound) => {
+                    // Always start from clean defaults — never carry over previous exam's state
+                    const freshDefaults: RoundConfig[] = [
+                        { roundType: "mcq",     enabled: false, pickCount: 10, timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "coding",  enabled: false, pickCount: 1,  timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "tr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                    ];
+
+                    const updatedRounds = freshDefaults.map((defaultRound) => {
                         const existing = exam.rounds.find(
                             (r: any) => r.roundType === defaultRound.roundType
                         );
-
                         if (existing) {
                             return {
                                 ...defaultRound,
@@ -179,7 +187,6 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                 passPercentage: existing.passPercentage || 40,
                             };
                         }
-
                         return defaultRound;
                     });
 
@@ -342,30 +349,20 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                 return;
             }
 
-            /* ================= FRONTEND OVERLAP CHECK ================= */
+            /* ── Within-exam overlap check ── */
             for (let i = 0; i < enabledRounds.length; i++) {
                 for (let j = i + 1; j < enabledRounds.length; j++) {
-                    const r1 = enabledRounds[i];
-                    const r2 = enabledRounds[j];
-
-                    const r1Start = new Date(r1.startDateTime);
-                    const r1End = new Date(r1.endDateTime);
-
-                    const r2Start = new Date(r2.startDateTime);
-                    const r2End = new Date(r2.endDateTime);
-
-                    const overlap = r1Start < r2End && r1End > r2Start;
-
+                    const r1 = enabledRounds[i], r2 = enabledRounds[j];
+                    const overlap = new Date(r1.startDateTime) < new Date(r2.endDateTime) &&
+                                    new Date(r1.endDateTime)   > new Date(r2.startDateTime);
                     if (overlap) {
-                        setMessage({
-                            type: 'error',
-                            text: `${roundIcons[r1.roundType].label} overlaps with ${roundIcons[r2.roundType].label}`
-                        });
+                        setMessage({ type: 'error', text: `${r1.roundType.toUpperCase()} and ${r2.roundType.toUpperCase()} rounds overlap within the same exam` });
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                         return;
                     }
                 }
             }
+
             setSaving(true);
             setMessage(null);
 

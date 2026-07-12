@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
-import { Form, Button, Card, Spinner } from 'react-bootstrap'
+import { Form, Button, Spinner } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
+import { FaUpload, FaCheckCircle, FaMicrophone, FaBan } from 'react-icons/fa'
 
 interface Props {
   onStart: (
@@ -265,20 +266,15 @@ const remaining =
 
   return (
 
-    <Card
-      className="border-0 rounded-4 shadow-sm"
-      style={{
-        border: '1px solid rgba(255,122,0,0.15)',
-      }}
-    >
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
-      <Card.Body className="p-4">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
 
         <div className="d-flex justify-content-between align-items-center mb-3">
 
-          <h5 className="fw-semibold mb-0">
-            🎯 Upload Latest Resume
+          <h5 className="fw-semibold mb-0" style={{ color: '#0f172a', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FaUpload size={13} style={{ color: '#ff7a00' }} /> Upload Latest Resume
           </h5>
 
           {resumeLimits && (
@@ -312,21 +308,41 @@ const remaining =
         </div>
 
 
+        <style>{`
+          .resume-file-input::file-selector-button {
+            background: #f1f5f9 !important;
+            border: none !important;
+            border-right: 1.5px solid #e2e8f0 !important;
+            color: #0f172a !important;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-radius: 6px 0 0 6px;
+            transition: background 0.15s;
+          }
+          .resume-file-input:hover::file-selector-button,
+          .resume-file-input::file-selector-button:hover {
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
+          }
+        `}</style>
         <Form.Control
           ref={fileInputRef}
           type="file"
           accept=".pdf,.doc,.docx"
-          className="mt-2"
+          className="mt-2 resume-file-input"
           style={{
             borderRadius: '8px',
-            border: '1px solid rgba(255,122,0,0.3)',
+            border: '1.5px solid #e2e8f0',
+            backgroundColor: '#f8fafc',
+            color: '#0f172a',
           }}
           disabled={uploading || remaining <= 0}
           onChange={handleFileChange}
         />
 
 
-        <div className="small mt-1" style={{ color: '#aaa' }}>
+        <div className="small mt-1" style={{ color: '#64748b' }}>
           Max file size: 3 MB (PDF, DOC, DOCX)
         </div>
 
@@ -349,15 +365,15 @@ const remaining =
         {interviewId && !uploading && (
           <div
             className="mt-3 text-center fw-semibold"
-            style={{ color: '#ff7a00' }}
+            style={{ color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
           >
-            ✅ Resume uploaded & analyzed
+            <FaCheckCircle size={14} /> Resume uploaded & analyzed
           </div>
         )}
 
 
         <Button
-          className="mt-4 w-100 fw-semibold"
+          className="w-100 fw-semibold"
           size="lg"
           disabled={
             !validFile ||
@@ -368,19 +384,12 @@ const remaining =
           }
           onClick={startResumeInterview}
           style={{
-            backgroundColor:
-              remaining > 0
-                ? '#ff7a00'
-                : '#ccc',
-
+            marginTop: 'auto',
+            backgroundColor: remaining > 0 ? '#2563eb' : '#ccc',
             border: 'none',
             borderRadius: '10px',
             padding: '12px',
-
-            cursor:
-              remaining > 0
-                ? 'pointer'
-                : 'not-allowed',
+            cursor: remaining > 0 ? 'pointer' : 'not-allowed',
           }}
         >
 
@@ -390,18 +399,16 @@ const remaining =
               Starting Interview...
             </>
           ) : remaining > 0 ? (
-            '🎤 Start Interview'
+            <><FaMicrophone size={14} style={{ marginRight: 8 }} />Start Interview</>
           ) : (
-            status === 'pending'
-              ? '🚫 Free Limit Reached'
-              : '🚫 Monthly Limit Reached'
+            <><FaBan size={14} style={{ marginRight: 8 }} />{status === 'pending' ? 'Free Limit Reached' : 'Monthly Limit Reached'}</>
           )}
 
         </Button>
 
-      </Card.Body>
+      </div>
 
-    </Card>
+    </div>
   )
 }
 

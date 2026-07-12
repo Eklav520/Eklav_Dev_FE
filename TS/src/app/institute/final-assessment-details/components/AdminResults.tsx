@@ -9,7 +9,7 @@ import {
   FaCheckDouble, FaFileExport, FaGraduationCap,
   FaTrophy, FaUsers, FaAward, FaCalendarAlt,
   FaUser, FaEnvelope, FaBookOpen, FaPercent,
-  FaPlay, FaStop, FaRedoAlt, FaFilePdf
+  FaPlay, FaStop, FaRedoAlt, FaFilePdf, FaEdit
 } from 'react-icons/fa';
 import { useAuthContext } from '@/context/useAuthContext';
 import axios from 'axios';
@@ -64,6 +64,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveComments, setApproveComments] = useState('');
   const [approving, setApproving] = useState(false);
+  const [selectedRoundTypes, setSelectedRoundTypes] = useState<string[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
   const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
@@ -295,21 +296,22 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
 
   const handleApprove = async (status: 'approved' | 'rejected') => {
     if (!selectedResult) return;
-    
+
     try {
       setApproving(true);
       const response = await axios.put(
         `${baseURL}/api/assessment/admin/results/${selectedResult._id}/approve`,
-        { approvalStatus: status, comments: approveComments },
+        { approvalStatus: status, comments: approveComments, roundTypes: selectedRoundTypes },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (response.data.success) {
         await fetchResults();
         await fetchStats(selectedExamId || undefined);
         setShowApproveModal(false);
         setSelectedResult(null);
         setApproveComments('');
+        setSelectedRoundTypes([]);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update approval status');
@@ -567,7 +569,15 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
   };
 
-  const getApprovalBadge = (status: string) => {
+  const getApprovalBadge = (status: string, roundResults?: any[]) => {
+    if (roundResults && roundResults.length > 0) {
+      const anyApproved = roundResults.some((r: any) => r.approvalStatus === 'approved');
+      const allApproved = roundResults.every((r: any) => r.approvalStatus === 'approved');
+      const anyRejected = roundResults.some((r: any) => r.approvalStatus === 'rejected');
+      if (anyRejected) return <Badge bg="danger"><FaTimesCircle className="me-1" /> Rejected</Badge>;
+      if (allApproved) return <Badge bg="success"><FaCheckCircle className="me-1" /> Approved</Badge>;
+      if (anyApproved) return <Badge style={{ background: '#f59e0b' }}><FaClock className="me-1" /> Partial</Badge>;
+    }
     switch(status) {
       case 'approved':
         return <Badge bg="success"><FaCheckCircle className="me-1" /> Approved</Badge>;
@@ -852,15 +862,22 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                           const LABELS: Record<string, string> = { mcq: 'MCQ', coding: 'Code', tr: 'Tech', hr: 'HR', english: 'English' };
                           const label = LABELS[r.roundType] || r.roundType?.toUpperCase();
                           const passed = r.passed;
+                          const isApproved = r.approvalStatus === 'approved';
+                          const isPending = !r.approvalStatus || r.approvalStatus === 'pending';
                           return (
                             <span key={r.roundType} style={{
                               display: 'inline-flex', alignItems: 'center', gap: 4,
                               padding: '3px 9px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-                              background: passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                              color: passed ? '#22c55e' : '#ef4444',
-                              border: `1px solid ${passed ? '#22c55e44' : '#ef444444'}`,
+                              background: isApproved
+                                ? (passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)')
+                                : 'rgba(100,116,139,0.12)',
+                              color: isApproved
+                                ? (passed ? '#22c55e' : '#ef4444')
+                                : '#64748b',
+                              border: `1px solid ${isApproved ? (passed ? '#22c55e44' : '#ef444444') : '#64748b44'}`,
+                              opacity: isPending ? 0.6 : 1,
                             }}>
-                              {passed ? '✓' : '✗'} {label}
+                              {isApproved ? (passed ? '✓' : '✗') : '⏳'} {label}
                               <span style={{ fontWeight: 400, opacity: 0.8 }}>{r.percentage?.toFixed(0)}%</span>
                             </span>
                           );
@@ -870,7 +887,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                         )}
                       </div>
                     </td>
-                    <td>{getApprovalBadge(result.approvalStatus)}</td>
+                    <td>{getApprovalBadge(result.approvalStatus, result.roundResults)}</td>
                     <td>
                       <div className="action-buttons">
                         <button
@@ -883,11 +900,23 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                         >
                           <FaEye /> View
                         </button>
+                        <button
+                          className="edit-approval-btn"
+                          onClick={() => {
+                            setSelectedResult(result);
+                            setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
+                            setApproveComments(result.approvalComments || '');
+                            setShowApproveModal(true);
+                          }}
+                        >
+                          <FaEdit /> Edit
+                        </button>
                         {result.approvalStatus === 'pending' && (
                           <button
                             className="approve-btn"
                             onClick={() => {
                               setSelectedResult(result);
+                              setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
                               setShowApproveModal(true);
                             }}
                           >
@@ -1339,6 +1368,43 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   <span className="info-value">{selectedResult.totalScore || 0} ({selectedResult.finalPercentage?.toFixed(1) || 0}%)</span>
                 </div>
               </div>
+
+              {/* Per-round selection */}
+              {selectedResult.roundResults && selectedResult.roundResults.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>Select rounds to approve:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {selectedResult.roundResults.map((r: any) => {
+                      const label: Record<string, string> = { mcq: 'MCQ Quiz', coding: 'Code Challenge', tr: 'Technical Round', hr: 'HR Round', english: 'English' }
+                      const checked = selectedRoundTypes.includes(r.roundType)
+                      return (
+                        <label
+                          key={r.roundType}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                            background: checked ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${checked ? '#22c55e' : '#334155'}`,
+                            borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 600,
+                            color: checked ? '#22c55e' : '#94a3b8', transition: 'all 0.15s',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSelectedRoundTypes(prev =>
+                              checked ? prev.filter(x => x !== r.roundType) : [...prev, r.roundType]
+                            )}
+                            style={{ accentColor: '#22c55e' }}
+                          />
+                          {label[r.roundType] || r.roundType}
+                          <span style={{ opacity: 0.7, fontWeight: 400 }}>({r.score}/{r.total})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <Form.Group className="mt-3">
                 <Form.Label className="comment-label">Comments (Optional)</Form.Label>
                 <Form.Control
@@ -1357,9 +1423,9 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           <Button variant="danger" onClick={() => handleApprove('rejected')} disabled={approving} className="reject-modal-btn">
             <FaTimesCircle className="me-1" /> Reject
           </Button>
-          <Button variant="success" onClick={() => handleApprove('approved')} disabled={approving} className="approve-modal-btn">
+          <Button variant="success" onClick={() => handleApprove('approved')} disabled={approving || selectedRoundTypes.length === 0} className="approve-modal-btn">
             {approving ? <Spinner size="sm" className="me-1" /> : <FaCheckCircle className="me-1" />}
-            Approve
+            Approve {selectedRoundTypes.length > 0 ? `(${selectedRoundTypes.length} round${selectedRoundTypes.length > 1 ? 's' : ''})` : ''}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -1740,7 +1806,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           gap: 8px;
         }
 
-        .view-btn, .approve-btn {
+        .view-btn, .approve-btn, .edit-approval-btn {
           padding: 6px 12px;
           border-radius: 6px;
           font-size: 12px;
@@ -1760,6 +1826,17 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
         .view-btn:hover {
           background: #ff7a00;
           color: #000000;
+        }
+
+        .edit-approval-btn {
+          background: transparent;
+          border: 1px solid #6366f1;
+          color: #6366f1;
+        }
+
+        .edit-approval-btn:hover {
+          background: #6366f1;
+          color: #fff;
         }
 
         .approve-btn {

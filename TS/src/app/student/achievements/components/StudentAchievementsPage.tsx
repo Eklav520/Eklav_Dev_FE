@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useAuthContext } from '@/context/useAuthContext'
 import { Search, SlidersHorizontal, Heart, Star, Trophy, Award, Crown, GraduationCap, Briefcase, Activity, Sparkles, BookOpen } from 'lucide-react'
+import achievementsImg from '@/assets/images/Achivements.png'
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
@@ -370,8 +371,8 @@ export default function StudentAchievementsPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
 
-    // Fetch top 5 institute rankers
-    fetch(`${baseURL}/dashboard/top-rankers?limit=5`, {
+    // Fetch top 25 institute rankers
+    fetch(`${baseURL}/dashboard/top-rankers?limit=25`, {
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then(r => r.json())
@@ -428,48 +429,60 @@ export default function StudentAchievementsPage() {
           {/* ── LEFT COLUMN ── */}
           <div style={{ minWidth: 0 }}>
 
-            {/* ── Hero Banner (inside left column) ── */}
-            <div style={{ background: 'linear-gradient(135deg, #ff8c00 0%, #e05800 100%)', borderRadius: 20, padding: '28px 28px 24px', position: 'relative', overflow: 'hidden', marginBottom: 16 }}>
-              {/* Decorative circles */}
-              <div style={{ position: 'absolute', top: -40, right: -30, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,.08)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', bottom: -20, left: 160, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', top: 20, left: 40, width: 50, height: 50, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
+            {/* ── Hero Banner ── */}
+            <div style={{ background: 'linear-gradient(135deg, #ffb347 0%, #f07020 100%)', borderRadius: 20, padding: '20px 24px 0', position: 'relative', overflow: 'hidden', marginBottom: 16, minHeight: 180 }}>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
-                {/* Left: text + stats */}
-                <div style={{ flex: 1 }}>
-                  <h1 style={{ color: '#fff', fontWeight: 900, fontSize: '1.55rem', margin: '0 0 5px', lineHeight: 1.2 }}>Student Achievements</h1>
-                  <p style={{ color: 'rgba(255,255,255,.82)', fontSize: 12.5, margin: '0 0 20px', maxWidth: 380, lineHeight: 1.5 }}>
+              {/* Decorative circles */}
+              <div style={{ position: 'absolute', top: -50, right: -40, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,.07)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 180, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,.05)', pointerEvents: 'none' }} />
+
+              {/* Bar chart watermark */}
+              <div style={{ position: 'absolute', right: 340, bottom: 0, display: 'flex', alignItems: 'flex-end', gap: 5, opacity: 0.12, pointerEvents: 'none' }}>
+                {[40, 65, 50, 80, 55, 90, 70].map((h, i) => (
+                  <div key={i} style={{ width: 14, height: h, background: '#fff', borderRadius: '3px 3px 0 0' }} />
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                {/* Left: icon + text + stats */}
+                <div style={{ flex: 1, paddingBottom: 20 }}>
+                  {/* Trophy badge top-left */}
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(255,255,255,.22)', border: '1px solid rgba(255,255,255,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                    <Trophy size={18} color="#fff" />
+                  </div>
+
+                  <h1 style={{ color: '#fff', fontWeight: 900, fontSize: '1.5rem', margin: '0 0 4px', lineHeight: 1.2 }}>Student Achievements</h1>
+                  <p style={{ color: 'rgba(255,255,255,.82)', fontSize: 12.5, margin: '0 0 18px', maxWidth: 360, lineHeight: 1.5 }}>
                     Celebrating the milestones, hard work and dedication<br />of our amazing students.
                   </p>
-                  {/* Stats pills */}
+
+                  {/* Stats pills — 4 fixed */}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {/* Total */}
-                    <div style={{ background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.28)', borderRadius: 12, padding: '10px 16px', textAlign: 'center', backdropFilter: 'blur(8px)', minWidth: 80 }}>
-                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4, color: '#fff', opacity: 0.85 }}><Trophy size={16} /></div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{achievements.length}</div>
-                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,.78)', fontWeight: 600, marginTop: 3 }}>Total</div>
-                    </div>
-                    {/* Per-category pills */}
-                    {CATEGORIES.slice(1).map(cat => {
-                      const cnt = counts[cat] || 0
-                      if (cnt === 0) return null
-                      const s = ACHIEVE_STYLE[cat]
-                      const label = CAT_LABELS[cat]
-                      return (
-                        <div key={cat} style={{ background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.28)', borderRadius: 12, padding: '10px 16px', textAlign: 'center', backdropFilter: 'blur(8px)', minWidth: 72 }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4, color: '#fff', opacity: 0.85 }}>{s.icon}</div>
-                          <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{cnt}</div>
-                          <div style={{ fontSize: 10, color: 'rgba(255,255,255,.78)', fontWeight: 600, marginTop: 3 }}>{label}</div>
+                    {([
+                      { Icon: Trophy,       value: achievements.length,          label: 'Total Achievements'   },
+                      { Icon: Star,         value: counts['general'] || 0,        label: 'General Achievements' },
+                      { Icon: Activity,     value: '25',                          label: 'Top Rankers'          },
+                      { Icon: Award,        value: '78%',                         label: 'Participation Rate'   },
+                    ] as { Icon: React.ElementType; value: string | number; label: string }[]).map(({ Icon: PIcon, value, label }) => (
+                      <div key={label} style={{ background: 'rgba(255,255,255,.18)', border: '1px solid rgba(255,255,255,.28)', borderRadius: 12, padding: '10px 14px', backdropFilter: 'blur(8px)', minWidth: 100 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 5 }}>
+                          <PIcon size={13} color="rgba(255,255,255,0.9)" />
+                          <Activity size={11} color="rgba(255,255,255,0.6)" />
                         </div>
-                      )
-                    })}
+                        <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{value}</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,.75)', fontWeight: 600, marginTop: 3, whiteSpace: 'nowrap' }}>{label}</div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Right: Trophy SVG */}
-                <div style={{ flexShrink: 0, paddingLeft: 8, filter: 'drop-shadow(0 6px 20px rgba(0,0,0,0.22))' }}>
-                  <TrophyGraphic />
+                {/* Right: Achievements image */}
+                <div style={{ flexShrink: 0, alignSelf: 'flex-end' }}>
+                  <img
+                    src={achievementsImg}
+                    alt="Achievements"
+                    style={{ height: 240, width: 'auto', objectFit: 'contain', display: 'block', filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18))' }}
+                  />
                 </div>
               </div>
             </div>
@@ -657,16 +670,16 @@ export default function StudentAchievementsPage() {
                             <div style={{ width: `${Math.min(ranker.score, 100)}%`, height: '100%', background: color, borderRadius: 10, opacity: 0.8 }} />
                           </div>
                           {/* Footer */}
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, marginTop: 'auto', borderTop: `1px solid ${BORDER}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, paddingTop: 8, marginTop: 'auto', borderTop: `1px solid ${BORDER}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
                               <div style={{ width: 20, height: 20, borderRadius: '50%', background: `${color}22`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 800, color, flexShrink: 0 }}>
                                 {ranker.name.charAt(0).toUpperCase()}
                               </div>
-                              <span style={{ fontSize: 11, color: GRAY, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: 11, color: GRAY, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                                 {ranker.name.split(' ')[0]}
                               </span>
                             </div>
-                            <span style={{ fontSize: 10.5, fontWeight: 700, color, background: `${color}14`, borderRadius: 20, padding: '2px 8px' }}>#{ranker.rank} of {ranker.rankTotal}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color, background: `${color}14`, borderRadius: 20, padding: '2px 8px', flexShrink: 0, whiteSpace: 'nowrap' }}>#{ranker.rank} of {ranker.rankTotal}</span>
                           </div>
                         </div>
                       </div>

@@ -17,6 +17,7 @@ type Feedback = {
   pronunciation: string
   recommendations: string
   score: number
+  scores?: { grammar: number; fluency: number; vocabulary: number; sentence: number }
   studentAudioUrl?: string
   correctedAudioUrl?: string
 }
@@ -28,11 +29,17 @@ type JamHistory = {
   summary: {
     bestScore: number | null
     latestScore: number | null
+    trend?: 'FIRST' | 'IMPROVED' | 'DROPPED' | 'SAME' | 'NA'
   }
   attempts: {
     attempt: number
     score: number
     date: string
+    promptText?: string | null
+    breakdown?: Record<string, string> | null
+    scores?: { grammar: number; fluency: number; vocabulary: number; sentence: number } | null
+    studentAudioUrl?: string | null
+    correctedAudioUrl?: string | null
   }[]
 }
 
@@ -78,6 +85,9 @@ const SpeakingPractice: React.FC = () => {
   const [pendingAudioUri, setPendingAudioUri] = useState<string | null>(null)
   const [selectedAttempt, setSelectedAttempt] = useState<JamHistory['attempts'][0] | null>(null)
   const [preloadedPrompt, setPreloadedPrompt] = useState<Prompt | null>(null)
+  const [availableMonths, setAvailableMonths] = useState<string[]>([])
+  const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [scoreFilter, setScoreFilter] = useState<'all' | 'excellent' | 'good' | 'needs'>('all')
   const [loadingPreloadedPrompt, setLoadingPreloadedPrompt] = useState(false)
   const [activeTab, setActiveTab] = useState('your-answer')
   const [attemptsPage, setAttemptsPage] = useState(1)
@@ -85,6 +95,8 @@ const SpeakingPractice: React.FC = () => {
   const sessionIdRef = useRef<string>('')
   const isSubmittingRef = useRef(false)
   const isStoppingRef = useRef(false)
+  const [submissionFailed, setSubmissionFailed] = useState(false)
+  const lastSubmitDataRef = useRef<{ audio: Blob | string; transcript: string } | null>(null)
 
   //const isMonthlyLimitReached: boolean = !!history && history.attemptsUsed >= history.monthlyLimit
 
@@ -183,6 +195,7 @@ const SpeakingPractice: React.FC = () => {
   useEffect(() => {
     if (token) {
       fetchJamHistory()
+      fetchAvailableMonths()
       preloadPrompt()
     }
 
@@ -191,27 +204,60 @@ const SpeakingPractice: React.FC = () => {
     }
   }, [token])
 
-  const fetchJamHistory = async () => {
-    if (!token) return
+  useEffect(() => {
+    if (selectedMonth) {
+      fetchJamHistory(selectedMonth)
+      setAttemptsPage(1)
+    }
+  }, [selectedMonth])
 
+  const fetchJamHistory = async (month?: string) => {
+    if (!token) return
     try {
       setLoadingHistory(true)
-
-      const res = await fetch(`${baseURL}/api/just-a-minute/history`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
+      const url = month
+        ? `${baseURL}/api/just-a-minute/history?month=${month}`
+        : `${baseURL}/api/just-a-minute/history`
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) throw new Error('History fetch failed')
-
       const data = await res.json()
-
       setHistory(data)
     } catch (err) {
       console.error('JAM history error', err)
     } finally {
       setLoadingHistory(false)
+    }
+  }
+
+  const fetchAvailableMonths = async () => {
+    // Always generate last 6 months so the dropdown is never empty
+    const generated: string[] = []
+    const now = new Date()
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      generated.push(`${y}-${m}`)
+    }
+    setAvailableMonths(generated)
+    // Pick current month as default
+    if (!selectedMonth) setSelectedMonth(generated[0])
+
+    // Also fetch from backend to know which months actually have data (for future use)
+    if (!token) return
+    try {
+      const res = await fetch(`${baseURL}/api/just-a-minute/history/months`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      // Merge API months with generated — include any older months from DB not in last 6
+      const merged = Array.from(new Set([...generated, ...(data.months || [])]))
+        .sort()
+        .reverse()
+      setAvailableMonths(merged)
+    } catch (err) {
+      // Keep the generated months even if API fails
     }
   }
 
@@ -578,6 +624,8 @@ const SpeakingPractice: React.FC = () => {
       return
     }
     setLoading(true)
+    setSubmissionFailed(false)
+    lastSubmitDataRef.current = { audio: audioData, transcript: transcriptText }
 
     try {
       const formData = new FormData()
@@ -618,18 +666,23 @@ const SpeakingPractice: React.FC = () => {
         pronunciation: data.feedback.pronunciation,
         recommendations: data.feedback.recommendations,
         score: data.score,
+        scores: data.scores,
         studentAudioUrl: data.studentAudioUrl,
         correctedAudioUrl: data.correctedAudioUrl,
       })
+      setActiveTab('model-answer')
 
       // Clear pending state
       setPendingAudioUri(null)
       setShowManualInput(false)
+      setSubmissionFailed(false)
     } catch (error) {
       console.error('Error submitting speech:', error)
       setRecordingError(error instanceof Error ? error.message : 'Failed to submit recording. Please try again.')
+      setSubmissionFailed(true)
     } finally {
       setLoading(false)
+      isSubmittingRef.current = false
     }
   }
 
@@ -708,6 +761,36 @@ const SpeakingPractice: React.FC = () => {
     if (score >= 60) return 'Good fluency and clear expression.'
     if (score >= 40) return 'Try to improve your vocabulary and confidence.'
     return 'Keep practicing to improve your overall performance.'
+  }
+
+  const formatMonthKey = (key: string) => {
+    const [y, m] = key.split('-')
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleString('default', { month: 'short', year: 'numeric' })
+  }
+
+  const computeWordDiff = (orig: string, corr: string) => {
+    const ow = orig.trim().split(/\s+/).filter(Boolean)
+    const cw = corr.trim().split(/\s+/).filter(Boolean)
+    const m = ow.length, n = cw.length
+    const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+    for (let i = 1; i <= m; i++)
+      for (let j = 1; j <= n; j++)
+        dp[i][j] = ow[i-1].toLowerCase().replace(/[^\w]/g, '') === cw[j-1].toLowerCase().replace(/[^\w]/g, '')
+          ? dp[i-1][j-1] + 1
+          : Math.max(dp[i-1][j], dp[i][j-1])
+    const origOut: { w: string; ok: boolean }[] = []
+    const corrOut: { w: string; ok: boolean }[] = []
+    let i = m, j = n
+    while (i > 0 || j > 0) {
+      if (i > 0 && j > 0 && ow[i-1].toLowerCase().replace(/[^\w]/g, '') === cw[j-1].toLowerCase().replace(/[^\w]/g, '')) {
+        origOut.unshift({ w: ow[i-1], ok: true }); corrOut.unshift({ w: cw[j-1], ok: true }); i--; j--
+      } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+        corrOut.unshift({ w: cw[j-1], ok: false }); j--
+      } else {
+        origOut.unshift({ w: ow[i-1], ok: false }); i--
+      }
+    }
+    return { origOut, corrOut }
   }
 
   const formatAttemptDate = (dateStr: string) => {
@@ -1015,35 +1098,236 @@ const SpeakingPractice: React.FC = () => {
 
             </Col>
 
-            {/* RIGHT: Tips + Motivational */}
+            {/* Speaking Progress card */}
             <Col lg={5} className="d-flex flex-column">
-
-              {/* Your Recent Attempts */}
               {(() => {
                 const hasAttempts = !!(history && history.attempts.length > 0)
+                const sessions = history?.attemptsUsed ?? 0
+                const limit = history?.monthlyLimit ?? 30
+                const used = sessions
+                const left = Math.max(0, limit - used)
+                const usedPct = Math.round((used / limit) * 100)
+
+                // Compute averages from all attempts
+                const attWithScores = (history?.attempts ?? []).filter(a => (a as any).scores)
+                const avgOf = (key: string) => attWithScores.length
+                  ? Math.round(attWithScores.reduce((s, a) => s + ((a as any).scores?.[key] ?? 0), 0) / attWithScores.length)
+                  : 0
+                const avgFluency    = avgOf('fluency')
+                const avgGrammar    = avgOf('grammar')
+                const avgVocabulary = avgOf('vocabulary')
+
+                const bestScore = history?.summary?.bestScore ?? 0
+                const avgScore  = hasAttempts
+                  ? Math.round((history!.attempts.map(a => a.score).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0)) / sessions)
+                  : 0
+                const trend = history?.summary?.trend
+                const motivMsg = !hasAttempts ? 'Start practicing!'
+                  : trend === 'IMPROVED' ? 'Improving this month'
+                  : trend === 'DROPPED'  ? 'Keep pushing!'
+                  : trend === 'SAME'     ? 'Staying consistent'
+                  : 'First attempt done!'
+                const motivLabel = !hasAttempts ? 'No attempts yet'
+                  : avgScore >= 80 ? 'Excellent!'
+                  : avgScore >= 60 ? 'Good Progress!'
+                  : 'Keep Practicing!'
+                const r = 46, circ = 2 * Math.PI * r
+                const dash = (avgScore / 100) * circ
+
+                return (
+                  <div style={{ background: '#fff', borderRadius: 18, padding: '20px 22px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+                    {/* Header */}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Speaking Progress</div>
+                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>This Month · {sessions} session{sessions !== 1 ? 's' : ''}</div>
+                    </div>
+
+                    {/* Avg Score + Attempts side by side — compact */}
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
+
+                      {/* Circular avg score — compact */}
+                      <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: '#fff8f0', borderRadius: 10, padding: '8px 12px', gap: 2 }}>
+                        <svg width="68" height="68" viewBox="0 0 110 110">
+                          <circle cx="55" cy="55" r={r} fill="none" stroke="#f0f0f0" strokeWidth="9"/>
+                          <circle cx="55" cy="55" r={r} fill="none" stroke="#ff7a00" strokeWidth="9"
+                            strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset="0"
+                            strokeLinecap="round" transform="rotate(-90 55 55)"/>
+                          <text x="55" y="50" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: hasAttempts ? '#1a1a2e' : '#94a3b8' }}>{avgScore}%</text>
+                          <text x="55" y="68" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 10, fill: '#9ca3af' }}>Avg Score</text>
+                        </svg>
+                        <div style={{ fontWeight: 700, fontSize: '0.72rem', color: '#ff7a00', textAlign: 'center' as const }}>{motivLabel}</div>
+                        <div style={{ fontSize: '0.65rem', color: '#6c757d', display: 'flex', alignItems: 'center', gap: 2 }}>
+                          {trend === 'IMPROVED' && <span style={{ color: '#16a34a' }}>↑</span>}
+                          {trend === 'DROPPED'  && <span style={{ color: '#dc2626' }}>↓</span>}
+                          {trend === 'SAME'     && <span style={{ color: '#6c63ff' }}>→</span>}
+                          {motivMsg}
+                        </div>
+                      </div>
+
+                      {/* Attempts bar — compact */}
+                      <div style={{ flex: 1, background: '#fff8f0', borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column' as const, justifyContent: 'center', gap: 7 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 24, height: 24, borderRadius: 7, background: '#ff7a00', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <svg viewBox="0 0 24 24" fill="none" width="12" height="12"><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/><polyline points="12,6 12,12 16,14" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: '0.76rem', color: '#1a1a2e' }}>Attempts This Month</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#1a1a2e', lineHeight: 1 }}>{used} <span style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 400 }}>/ {limit}</span></span>
+                          <span style={{ fontWeight: 700, fontSize: '0.76rem', color: '#ff7a00' }}>{left} left</span>
+                        </div>
+                        <div style={{ height: 5, background: '#ffe4c4', borderRadius: 3 }}>
+                          <div style={{ height: 5, background: '#ff7a00', borderRadius: 3, width: `${usedPct}%`, transition: 'width 0.6s ease' }} />
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: '#9ca3af' }}>{used} / {limit} used</div>
+                      </div>
+
+                    </div>
+
+                    {/* Score bars — 2 per row */}
+                    {(() => {
+                      const bars = [
+                        {
+                          label: 'Best Score', val: bestScore, color: '#6c63ff', bg: '#ede9fe',
+                          icon: <svg viewBox="0 0 24 24" fill="#6c63ff" width="13" height="13"><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/></svg>,
+                        },
+                        {
+                          label: 'Fluency', val: avgFluency, color: '#0284c7', bg: '#e0f2fe',
+                          icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#0284c7" strokeWidth="2.2" strokeLinecap="round"/></svg>,
+                        },
+                        {
+                          label: 'Grammar', val: avgGrammar, color: '#16a34a', bg: '#dcfce7',
+                          icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M4 7h16M4 12h10M4 17h7" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"/></svg>,
+                        },
+                        {
+                          label: 'Vocabulary', val: avgVocabulary, color: '#f97316', bg: '#fff7ed',
+                          icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#f97316" strokeWidth="2" strokeLinecap="round"/></svg>,
+                        },
+                      ]
+                      const rows = [[bars[0], bars[1]], [bars[2], bars[3]]]
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                          {rows.map((pair, ri) => (
+                            <div key={ri} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                              {pair.map(item => (
+                                <div key={item.label} style={{ background: '#fafafa', borderRadius: 10, padding: '10px 12px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                      <div style={{ width: 22, height: 22, borderRadius: 6, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{item.icon}</div>
+                                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>{item.label}</span>
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: item.color }}>{item.val}%</span>
+                                  </div>
+                                  <div style={{ height: 5, background: '#ececec', borderRadius: 3 }}>
+                                    <div style={{ height: 5, background: item.color, borderRadius: 3, width: `${item.val}%`, transition: 'width 0.6s ease' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+
+                    {/* View Detailed Feedback button */}
+                    <button
+                      onClick={() => setShowPrompt(true)}
+                      style={{ marginTop: 'auto', background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '9px 14px', color: '#6c757d', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'border-color 0.15s' }}
+                    >
+                      <span>View Detailed Feedback</span>
+                      <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="9,18 15,12 9,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </button>
+                  </div>
+                )
+              })()}
+            </Col>
+
+          </Row>
+
+          {/* Your Recent Attempts — full width below */}
+          <Row className="g-4 mt-0">
+            <Col lg={12}>
+              {(() => {
+                const allAttempts = history?.attempts ?? []
+                // Apply score filter
+                const filtered = allAttempts.filter(a => {
+                  if (scoreFilter === 'excellent') return a.score >= 80
+                  if (scoreFilter === 'good') return a.score >= 60 && a.score < 80
+                  if (scoreFilter === 'needs') return a.score < 60
+                  return true
+                })
+                const hasAttempts = filtered.length > 0
                 const PAGE_SIZE = 5
-                const sorted = hasAttempts ? [...history!.attempts].reverse() : []
+                const sorted = [...filtered].reverse()
                 const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE))
                 const page = Math.min(attemptsPage, totalPages)
                 const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                 return (
-                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+                    {/* Header + Filters */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10, marginBottom: 14 }}>
                       <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Recent Attempts</span>
-                      <span style={{ fontSize: '0.73rem', color: '#9ca3af' }}>{sorted.length} total</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+
+                        {/* Month filter */}
+                        <div style={{ position: 'relative' as const, display: 'inline-flex', alignItems: 'center' }}>
+                          <svg viewBox="0 0 24 24" fill="none" width="13" height="13" style={{ position: 'absolute' as const, left: 9, pointerEvents: 'none' as const }}>
+                            <rect x="3" y="4" width="18" height="18" rx="2" stroke="#6c757d" strokeWidth="1.8"/>
+                            <line x1="16" y1="2" x2="16" y2="6" stroke="#6c757d" strokeWidth="1.8" strokeLinecap="round"/>
+                            <line x1="8" y1="2" x2="8" y2="6" stroke="#6c757d" strokeWidth="1.8" strokeLinecap="round"/>
+                            <line x1="3" y1="10" x2="21" y2="10" stroke="#6c757d" strokeWidth="1.8"/>
+                          </svg>
+                          <select
+                            value={selectedMonth}
+                            onChange={e => { setSelectedMonth(e.target.value); setAttemptsPage(1) }}
+                            style={{ appearance: 'none' as const, paddingLeft: 28, paddingRight: 24, paddingTop: 6, paddingBottom: 6, border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: '0.78rem', color: '#374151', fontWeight: 600, background: '#fff', cursor: 'pointer', outline: 'none' }}
+                          >
+                            {availableMonths.length === 0 && (
+                              <option value="">{formatMonthKey(new Date().toISOString().slice(0,7))}</option>
+                            )}
+                            {availableMonths.map(m => (
+                              <option key={m} value={m}>{formatMonthKey(m)}</option>
+                            ))}
+                          </select>
+                          <svg viewBox="0 0 24 24" fill="none" width="12" height="12" style={{ position: 'absolute' as const, right: 7, pointerEvents: 'none' as const }}>
+                            <polyline points="6,9 12,15 18,9" stroke="#6c757d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+
+                        {/* Score filter pills */}
+                        {([
+                          { key: 'all',       label: 'All',         color: '#374151', activeBg: '#1a1a2e',  activeText: '#fff' },
+                          { key: 'excellent', label: '80+ Excellent', color: '#16a34a', activeBg: '#dcfce7', activeText: '#16a34a' },
+                          { key: 'good',      label: '60–79 Good',  color: '#d97706', activeBg: '#fef9c3', activeText: '#d97706' },
+                          { key: 'needs',     label: '<60 Needs Work', color: '#dc2626', activeBg: '#fee2e2', activeText: '#dc2626' },
+                        ] as const).map(f => (
+                          <button
+                            key={f.key}
+                            onClick={() => { setScoreFilter(f.key); setAttemptsPage(1) }}
+                            style={{
+                              padding: '5px 11px', fontSize: '0.73rem', fontWeight: 600, borderRadius: 20, cursor: 'pointer', transition: 'all 0.15s',
+                              background: scoreFilter === f.key ? f.activeBg : '#f8f9fa',
+                              color: scoreFilter === f.key ? f.activeText : '#6c757d',
+                              border: scoreFilter === f.key ? `1.5px solid ${f.activeText}` : '1.5px solid #e5e7eb',
+                            }}
+                          >{f.label}</button>
+                        ))}
+
+                        <span style={{ fontSize: '0.73rem', color: '#9ca3af', whiteSpace: 'nowrap' as const }}>{sorted.length} result{sorted.length !== 1 ? 's' : ''}</span>
+                      </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                       <thead>
                         <tr>
-                          {['Date & Time', 'Score', 'Duration', 'Action'].map(h => (
-                            <th key={h} style={{ textAlign: 'left', padding: '5px 6px', color: '#9ca3af', fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
+                          {['Date & Time', 'Overall', 'Grammar', 'Fluency', 'Vocabulary', 'Sentence', 'Duration', 'Action'].map(h => (
+                            <th key={h} style={{ textAlign: 'left', padding: '5px 10px', color: '#9ca3af', fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {!hasAttempts && (
                           <tr>
-                            <td colSpan={4} style={{ padding: '28px 6px', textAlign: 'center' }}>
+                            <td colSpan={8} style={{ padding: '28px 6px', textAlign: 'center' }}>
                               <div style={{ fontSize: '1.6rem', marginBottom: 6 }}>🎤</div>
                               <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#64748b', marginBottom: 3 }}>No Attempts Yet</div>
                               <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Complete your first speaking session to see results here.</div>
@@ -1056,16 +1340,26 @@ const SpeakingPractice: React.FC = () => {
                           const scoreColor = att.score >= 80 ? '#16a34a' : att.score >= 60 ? '#d97706' : '#dc2626'
                           return (
                             <tr key={att.attempt}>
-                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '36%' }}>
+                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
                                 <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1a1a2e' }}>{date}</div>
                                 <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{time}</div>
                               </td>
-                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '22%' }}>
+                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
                                 <span style={{ color: scoreColor, fontWeight: 700, fontSize: '0.82rem' }}>{att.score}/100</span>
                                 {isBest && <span style={{ display: 'block', background: '#dcfce7', color: '#16a34a', fontSize: '0.6rem', fontWeight: 700, padding: '1px 5px', borderRadius: 10, marginTop: 2, width: 'fit-content' }}>Best</span>}
                               </td>
-                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', color: '#6c757d', fontSize: '0.78rem', width: '12%' }}>1:00</td>
-                              <td style={{ padding: '8px 6px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', width: '30%' }}>
+                              {(['grammar','fluency','vocabulary','sentence'] as const).map(key => {
+                                const sc = (att as any).scores
+                                const v = sc?.[key]
+                                const c = key === 'grammar' ? '#0284c7' : key === 'fluency' ? '#6c63ff' : key === 'vocabulary' ? '#ff7a00' : '#16a34a'
+                                return (
+                                  <td key={key} style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
+                                    {v != null ? <span style={{ color: c, fontWeight: 700, fontSize: '0.78rem' }}>{v}</span> : <span style={{ color: '#d1d5db', fontSize: '0.72rem' }}>—</span>}
+                                  </td>
+                                )
+                              })}
+                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', color: '#6c757d', fontSize: '0.78rem' }}>1:00</td>
+                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
                                 <button className="jam-view-report-btn" style={{ fontSize: '0.72rem', padding: '4px 8px' }} onClick={() => setSelectedAttempt(att)}>View Report</button>
                               </td>
                             </tr>
@@ -1106,7 +1400,6 @@ const SpeakingPractice: React.FC = () => {
                   </div>
                 )
               })()}
-
             </Col>
           </Row>
 
@@ -1253,7 +1546,7 @@ const SpeakingPractice: React.FC = () => {
                 {/* Left: text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: '#6c63ff', fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.6px', textTransform: 'uppercase' as const, marginBottom: 6 }}>Today's Topic</div>
-                  <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1a1a2e', marginBottom: 6, lineHeight: 1.4 }}>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: '#f97316', marginBottom: 6, lineHeight: 1.4 }}>
                     {loadingNewTopic ? <span style={{ color: '#9ca3af' }}>Generating new topic...</span> : prompt.text}
                   </h3>
                   <p style={{ fontSize: '0.75rem', color: '#6c757d', marginBottom: 12, lineHeight: 1.55 }}>Share your thoughts on how this topic affects the lives of people today.</p>
@@ -1395,6 +1688,30 @@ const SpeakingPractice: React.FC = () => {
                     <svg viewBox="0 0 24 24" fill="#dc2626" width="14" height="14"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
                     Finish Early
                   </button>
+                ) : loading ? (
+                  <button disabled style={{ background: 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 50, padding: '13px 48px', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'not-allowed', opacity: 0.75, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    <span className="spinner-border spinner-border-sm" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                    Submitting...
+                  </button>
+                ) : submissionFailed && lastSubmitDataRef.current ? (
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 10 }}>
+                    <button
+                      onClick={() => {
+                        const d = lastSubmitDataRef.current
+                        if (d) { setRecordingError(''); submitAudioToBackend(d.audio, d.transcript) }
+                      }}
+                      style={{ background: 'linear-gradient(90deg,#f97316,#fb923c)', border: 'none', borderRadius: 50, padding: '13px 48px', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', boxShadow: '0 6px 18px rgba(249,115,22,0.4)', letterSpacing: '0.2px', display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M1 4v6h6" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><path d="M3.51 15a9 9 0 1 0 .49-4.95L1 10" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      Resubmit
+                    </button>
+                    <button
+                      onClick={() => { setSubmissionFailed(false); setRecordingError(''); lastSubmitDataRef.current = null }}
+                      style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '0.78rem', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Start over (record again)
+                    </button>
+                  </div>
                 ) : !feedback ? (
                   <button onClick={startRecording} disabled={isLimitReached} style={{ background: isLimitReached ? '#e5e7eb' : 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 50, padding: '13px 48px', color: '#fff', fontWeight: 700, fontSize: '1rem', cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: '0 6px 18px rgba(108,99,255,0.35)', letterSpacing: '0.2px' }}>
                     Start Speaking
@@ -1474,7 +1791,20 @@ const SpeakingPractice: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '16px', minHeight: 160, fontSize: '0.85rem', color: transcript ? '#374151' : '#c4c4c4', lineHeight: 1.8 }}>
+                        <div style={{
+                          background: 'linear-gradient(135deg,#fdf8ff 0%,#f5f0ff 100%)',
+                          border: '1.5px solid #e8e0ff',
+                          borderRadius: 12,
+                          padding: '18px 20px',
+                          minHeight: 160,
+                          fontFamily: "'Georgia', 'Palatino Linotype', serif",
+                          fontSize: transcript ? '1.08rem' : '0.85rem',
+                          fontWeight: transcript ? 700 : 400,
+                          color: transcript ? '#4f35e8' : '#c4c4c4',
+                          lineHeight: 1.85,
+                          letterSpacing: transcript ? '0.01em' : 'normal',
+                          transition: 'all 0.2s',
+                        }}>
                           {isWebView && !transcript ? 'Speech-to-text not available in app mode.' : transcript || 'Start speaking to see your live transcript here...'}
                         </div>
                         {isWebView && showManualInput && (
@@ -1614,34 +1944,88 @@ const SpeakingPractice: React.FC = () => {
                     )}
 
                     {/* Tab 4: Detailed Feedback */}
-                    {activeTab === 'detailed' && (
-                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
-                        {([
-                          { label: 'Fluency',       color: '#6c63ff', bg: '#f0efff', borderColor: '#c7c3ff', text: feedback.fluency,       icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg> },
-                          { label: 'Grammar',       color: '#0284c7', bg: '#e0f2fe', borderColor: '#93c5fd', text: feedback.grammar,       icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M4 7h16M4 12h10M4 17h7" stroke="#0284c7" strokeWidth="2" strokeLinecap="round"/></svg> },
-                          { label: 'Vocabulary',    color: '#ff7a00', bg: '#fff7ed', borderColor: '#fed7aa', text: feedback.vocabulary,    icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#ff7a00" strokeWidth="2" strokeLinecap="round"/></svg> },
-                          { label: 'Pronunciation', color: '#16a34a', bg: '#dcfce7', borderColor: '#86efac', text: feedback.pronunciation, icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19" stroke="#16a34a" strokeWidth="2" strokeLinejoin="round"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="#16a34a" strokeWidth="2" strokeLinecap="round"/></svg> },
-                        ] as const).map(item => (
-                          <div key={item.label} style={{ background: item.bg, borderRadius: 12, padding: '12px 14px', borderLeft: `3px solid ${item.borderColor}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                              <div style={{ width: 26, height: 26, borderRadius: 8, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>{item.icon}</div>
-                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: item.color }}>{item.label}</span>
-                            </div>
-                            <div style={{ fontSize: '0.78rem', color: '#374151', lineHeight: 1.65 }}>{String(item.text || 'No feedback available.')}</div>
-                          </div>
-                        ))}
+                    {activeTab === 'detailed' && (() => {
+                      const diff = computeWordDiff(transcript || '', feedback.correctedTranscript || '')
+                      const sc = feedback.scores
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
 
-                        {feedback.recommendations && (
-                          <div style={{ background: 'linear-gradient(135deg,#dcfce7,#f0fdf4)', borderRadius: 12, padding: '12px 14px', borderLeft: '3px solid #86efac', display: 'flex', alignItems: 'flex-start', gap: 9, marginTop: 4 }}>
-                            <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" stroke="#16a34a" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            <div>
-                              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#15803d', marginBottom: 3 }}>Recommendations</div>
-                              <div style={{ fontSize: '0.78rem', color: '#15803d', lineHeight: 1.6 }}>{feedback.recommendations}</div>
+                          {/* ── Word-level diff ── */}
+                          {transcript && feedback.correctedTranscript && (
+                            <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '12px 14px' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 8 }}>Sentence Analysis</div>
+                              {/* Student line */}
+                              <div style={{ marginBottom: 6 }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 6, padding: '1px 7px', marginRight: 8 }}>YOU</span>
+                                <span style={{ fontSize: '0.8rem', lineHeight: 1.7 }}>
+                                  {diff.origOut.map((t, idx) => (
+                                    <span key={idx} style={t.ok ? { color: '#374151' } : { color: '#dc2626', background: '#fee2e2', borderRadius: 3, padding: '0 2px', textDecoration: 'line-through', marginRight: 1 }}>{t.w} </span>
+                                  ))}
+                                </span>
+                              </div>
+                              {/* AI corrected line */}
+                              <div>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '1px 7px', marginRight: 8 }}>AI</span>
+                                <span style={{ fontSize: '0.8rem', lineHeight: 1.7 }}>
+                                  {diff.corrOut.map((t, idx) => (
+                                    <span key={idx} style={t.ok ? { color: '#374151' } : { color: '#16a34a', background: '#dcfce7', borderRadius: 3, padding: '0 2px', fontWeight: 600, marginRight: 1 }}>{t.w} </span>
+                                  ))}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
+
+                          {/* ── Category score bars ── */}
+                          {sc && (
+                            <div style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1px solid #f0f0f0' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 10 }}>Category Scores</div>
+                              {([
+                                { label: 'Grammar',    val: sc.grammar,    color: '#0284c7' },
+                                { label: 'Fluency',    val: sc.fluency,    color: '#6c63ff' },
+                                { label: 'Vocabulary', val: sc.vocabulary, color: '#ff7a00' },
+                                { label: 'Sentence',   val: sc.sentence,   color: '#16a34a' },
+                              ]).map(s => (
+                                <div key={s.label} style={{ marginBottom: 8 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                    <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#374151' }}>{s.label}</span>
+                                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: s.color }}>{s.val}/100</span>
+                                  </div>
+                                  <div style={{ height: 6, background: '#f0f0f0', borderRadius: 4 }}>
+                                    <div style={{ height: 6, background: s.color, borderRadius: 4, width: `${s.val}%`, transition: 'width 0.6s ease' }} />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* ── Category text feedback ── */}
+                          {([
+                            { label: 'Grammar',    color: '#0284c7', bg: '#e0f2fe', borderColor: '#93c5fd', text: feedback.grammar,    icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M4 7h16M4 12h10M4 17h7" stroke="#0284c7" strokeWidth="2" strokeLinecap="round"/></svg> },
+                            { label: 'Fluency',    color: '#6c63ff', bg: '#f0efff', borderColor: '#c7c3ff', text: feedback.fluency,    icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M18 20V10M12 20V4M6 20v-6" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg> },
+                            { label: 'Vocabulary', color: '#ff7a00', bg: '#fff7ed', borderColor: '#fed7aa', text: feedback.vocabulary, icon: <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#ff7a00" strokeWidth="2" strokeLinecap="round"/></svg> },
+                          ] as const).map(item => (
+                            <div key={item.label} style={{ background: item.bg, borderRadius: 12, padding: '10px 14px', borderLeft: `3px solid ${item.borderColor}` }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>{item.icon}</div>
+                                <span style={{ fontWeight: 700, fontSize: '0.78rem', color: item.color }}>{item.label}</span>
+                              </div>
+                              <div style={{ fontSize: '0.76rem', color: '#374151', lineHeight: 1.6 }}>{String(item.text || 'No feedback available.')}</div>
+                            </div>
+                          ))}
+
+                          {/* ── Recommendations ── */}
+                          {feedback.recommendations && (
+                            <div style={{ background: 'linear-gradient(135deg,#dcfce7,#f0fdf4)', borderRadius: 12, padding: '12px 14px', borderLeft: '3px solid #86efac', display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+                              <svg viewBox="0 0 24 24" fill="none" width="17" height="17" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10" stroke="#16a34a" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#15803d', marginBottom: 3 }}>Recommendations</div>
+                                <div style={{ fontSize: '0.76rem', color: '#15803d', lineHeight: 1.6 }}>{feedback.recommendations}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
 
                     <div style={{ marginTop: 20 }}>
                       <button onClick={resetPractice} style={{ width: '100%', background: 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 12, padding: '12px', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(108,99,255,0.28)' }}>

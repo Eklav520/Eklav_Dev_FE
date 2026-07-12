@@ -1,6 +1,7 @@
 import { useAuthContext } from '@/context/useAuthContext'
 import React, { useEffect, useState, useRef } from 'react'
 import { Form, Button } from 'react-bootstrap'
+import { FaRocket } from 'react-icons/fa'
 
 interface TopicSelectionProps {
   onStart: (
@@ -48,14 +49,13 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
   const maxAllowed =
     status === 'pending' ? TRIAL_MAX_ATTEMPTS : MAX_ATTEMPTS
   const selectStyle: React.CSSProperties = {
-    borderRadius: '14px',
-    border: '1px solid rgba(255,122,0,0.55)',
-    boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
-    backgroundColor: '#121212',
-    backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0))',
-    color: '#ffffff',
-    minHeight: '54px',
-    padding: '0.78rem 1rem',
+    borderRadius: '10px',
+    border: '1.5px solid #e2e8f0',
+    boxShadow: 'none',
+    backgroundColor: '#f8fafc',
+    color: '#0f172a',
+    minHeight: '46px',
+    padding: '0.6rem 1rem',
     fontWeight: 600,
     letterSpacing: '0.01em',
   };
@@ -166,8 +166,8 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
   }
 
   return (
-    <Form>
-      <div className="mt-2">
+    <Form style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div className="mt-2" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
         <Form.Group className="mb-3">
           <Form.Label className="fw-semibold mb-2">
@@ -199,11 +199,11 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                       value={t}
                       disabled={isDisabled}
                       style={{
-                        backgroundColor: isDisabled ? '#1b1b1b' : '#121212',
-                        color: isDisabled ? 'rgba(255,255,255,0.55)' : '#ffffff',
+                        backgroundColor: isDisabled ? '#f1f5f9' : '#fff',
+                        color: isDisabled ? '#94a3b8' : '#0f172a',
                       }}
                     >
-                      {t.toUpperCase()} — Used {used}/{maxAllowed}
+                      {t} — Used {used}/{maxAllowed}
                       {isDisabled
                         ? ` (Retry in ${formatTime(countdownMs)})`
                         : ''}
@@ -217,14 +217,14 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                 <span style={badgeStyle}>Selected topic: {topic}</span>
               </div>
             )}
-            <Form.Text className="text-muted" style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.95rem' }}>
+            <Form.Text style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.85rem', color: '#475569' }}>
               {status === 'pending'
                 ? 'Trial users can attempt only 2 interviews per topic.'
                 : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
             </Form.Text>
           </Form.Group>
 
-          <div className="d-grid">
+          <div className="d-grid" style={{ marginTop: 'auto', paddingTop: 12 }}>
           <Button
             size="lg"
             onClick={startInterview}
@@ -245,7 +245,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                   : 1,
             }}
           >
-            🚀 Start Interview
+            <FaRocket size={14} style={{ marginRight: 8 }} /> Start Interview
           </Button>
         </div>
 

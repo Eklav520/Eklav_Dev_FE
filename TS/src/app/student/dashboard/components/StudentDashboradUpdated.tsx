@@ -160,6 +160,11 @@ const StudentDashboardUpdated: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(false)
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null)  // 1–5
   const [loading, setLoading] = useState(true)
+  const [aptitudeData, setAptitudeData] = useState<{ days: any[]; stats: { totalAttended: number; streak: number; avgScore: number } } | null>(null)
+  const [aptitudeMonth, setAptitudeMonth] = useState(() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+  })
 
   useEffect(() => {
     if (!user?.token) return
@@ -228,6 +233,15 @@ const StudentDashboardUpdated: React.FC = () => {
       }
     }).finally(() => setLoading(false))
   }, [user?.token, baseURL])
+
+  // ── Fetch Daily Aptitude Calendar ──
+  useEffect(() => {
+    if (!user?.token || !aptitudeMonth) return
+    const [yr, mo] = aptitudeMonth.split('-').map(Number)
+    fetch(`${baseURL}/api/student/daily-aptitude/calendar?year=${yr}&month=${mo}`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    }).then(r => r.json()).then(d => { if (d.success) setAptitudeData(d) }).catch(() => {})
+  }, [user?.token, baseURL, aptitudeMonth])
 
   // ── Fetch history month on demand ──
   useEffect(() => {
@@ -608,8 +622,8 @@ const StudentDashboardUpdated: React.FC = () => {
       {/* ── MAIN BODY — ROW LAYOUT ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 28px' }}>
 
-        {/* ════ ROW 1: Course Progress + English Practice ════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 14 }}>
+        {/* ════ ROW 1: Course Progress + English Practice + Daily Aptitude ════ */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 14 }}>
         {/* placeholder-open */}
 
           {/* Course Progress */}
@@ -702,6 +716,165 @@ const StudentDashboardUpdated: React.FC = () => {
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiAward size={14} color={ORANGE} /> Practice everyday to improve your communication skills.</span>
             </div>
           </Card>
+          {/* Daily Aptitude */}
+          {(() => {
+            const stats = aptitudeData?.stats
+            const days = aptitudeData?.days || []
+            const today = days.find((d: any) => d.isToday)
+            const last7 = days.filter((d: any) => !d.isFuture).slice(-7)
+
+            const CAT_COLOR: Record<string, string> = {
+              Reasoning: '#7c3aed', Technical: '#2563eb',
+              Puzzle: '#d97706', Aptitude: '#10b981',
+            }
+            const todayColor = today ? (CAT_COLOR[today.category] || ORANGE) : ORANGE
+
+            // Compute stats from the selected month's days array
+            const pastDays = days.filter((d: any) => !d.isFuture)
+            const attendedDays = pastDays.filter((d: any) => d.attended)
+            const attendedCount = attendedDays.length
+            const attendancePct = pastDays.length > 0 ? Math.round((attendedCount / pastDays.length) * 100) : 0
+            const monthAvgScore = attendedDays.length > 0
+              ? Math.round(attendedDays.reduce((sum: number, d: any) => sum + (d.score / d.total) * 100, 0) / attendedDays.length)
+              : 0
+
+            // Monthly category breakdown
+            const categories = ['Reasoning', 'Technical', 'Puzzle', 'Aptitude']
+            const catStats = categories.map(cat => {
+              const catDays = days.filter((d: any) => d.category === cat && !d.isFuture)
+              const attended = catDays.filter((d: any) => d.attended)
+              const totalScore = attended.reduce((s: number, d: any) => s + (d.score || 0), 0)
+              const totalPossible = attended.reduce((s: number, d: any) => s + (d.total || 0), 0)
+              const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0
+              return { cat, attended: attended.length, total: catDays.length, totalScore, totalPossible, pct }
+            })
+
+            return (
+              <Card style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Header with month filter */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
+                  <div>
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Daily Aptitude</div>
+                    <div style={{ fontSize: '0.72rem', color: GRAY }}>Monthly Progress</div>
+                  </div>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <select
+                      value={aptitudeMonth}
+                      onChange={e => setAptitudeMonth(e.target.value)}
+                      style={{
+                        border: `1.5px solid ${BORDER}`, borderRadius: 8,
+                        padding: '4px 24px 4px 8px', fontSize: '0.7rem',
+                        fontWeight: 600, color: ORANGE, background: '#fff7ed',
+                        appearance: 'none', cursor: 'pointer', outline: 'none',
+                      }}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => {
+                        const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i)
+                        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+                        return (
+                          <option key={val} value={val}>
+                            {d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2.5" strokeLinecap="round"
+                      style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Stats row */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
+                  {[
+                    { label: 'Attended',  value: attendedCount, color: GREEN, bg: '#f0fdf4' },
+                    { label: 'Attendance', value: `${attendancePct}%`, color: ORANGE, bg: '#fff7ed' },
+                    { label: 'Avg Score', value: attendedCount > 0 ? `${monthAvgScore}%` : '—', color: '#7c3aed', bg: '#f5f3ff' },
+                  ].map(s => (
+                    <div key={s.label} style={{ textAlign: 'center', background: s.bg, borderRadius: 8, padding: '10px 6px' }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+                      <div style={{ fontSize: '0.6rem', color: GRAY, marginTop: 3 }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Monthly category progress */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: TEXT, marginBottom: 8 }}>Monthly Progress by Category</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {catStats.map(({ cat, attended, total, totalScore, totalPossible, pct }) => {
+                      const color = CAT_COLOR[cat]
+                      return (
+                        <div key={cat}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: TEXT }}>{cat}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ fontSize: '0.65rem', color: GRAY }}>{attended}/{total} days</span>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: attended > 0 ? color : '#94a3b8' }}>
+                                {attended > 0 ? `${totalScore}/${totalPossible}` : '—'}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4, transition: 'width 0.4s' }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Today's quiz */}
+                {today && (
+                  <div style={{ border: `1.5px solid ${todayColor}33`, borderRadius: 10, padding: '9px 12px', marginBottom: 10, background: `${todayColor}08` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: today.attended && today.total ? 5 : 0 }}>
+                      <div>
+                        <div style={{ fontSize: '0.62rem', color: GRAY }}>Today's Quiz</div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: todayColor }}>{today.category}</div>
+                      </div>
+                      {today.attended ? (
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: '0.62rem', color: GREEN, fontWeight: 700 }}>Completed</div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: TEXT }}>{today.score}/{today.total}</div>
+                        </div>
+                      ) : (
+                        <Link to="/student/aptitude" style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fff', background: todayColor, borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
+                          Start →
+                        </Link>
+                      )}
+                    </div>
+                    {today.attended && today.total && (
+                      <Bar pct={(today.score / today.total) * 100} color={todayColor} />
+                    )}
+                  </div>
+                )}
+
+                {/* Last 7 days mini dots */}
+                <div style={{ marginTop: 'auto' }}>
+                  <div style={{ fontSize: '0.65rem', color: GRAY, fontWeight: 600, marginBottom: 5 }}>Last 7 Days</div>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    {last7.map((d: any, i: number) => {
+                      const dotColor = d.isToday ? (CAT_COLOR[d.category] || ORANGE) : d.attended ? GREEN : '#fca5a5'
+                      return (
+                        <div key={i} title={`${d.date} · ${d.category}${d.attended ? ` · ${d.score}/${d.total}` : ' · Missed'}`}
+                          style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                          <div style={{ width: '100%', height: 22, borderRadius: 5, background: `${dotColor}18`, border: `1.5px solid ${dotColor}44`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor }} />
+                          </div>
+                          <span style={{ fontSize: '0.52rem', color: GRAY }}>{new Date(d.date + 'T00:00:00').getDate()}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </Card>
+            )
+          })()}
+
         </div>{/* end Row 1 */}
 
         {/* ════ ROW 2: Code Challenges + Time Sheet ════ */}

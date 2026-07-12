@@ -45,6 +45,7 @@ type ListeningHistory = {
     latestScore: number | null
     trend: string
   }
+  attempts: { attempt: number; score: number; date: string }[]
 }
 
 const ListeningPractice: React.FC = () => {
@@ -78,6 +79,29 @@ const ListeningPractice: React.FC = () => {
   const isLimitReached =
     !!history && history.attemptsUsed >= maxAllowedAttempts
 
+  const computeStreak = (attempts: { date: string }[]): number => {
+    if (!attempts?.length) return 0
+    const days = Array.from(new Set(
+      attempts.map(a => new Date(a.date).toISOString().slice(0, 10))
+    )).sort().reverse()
+    const today = new Date().toISOString().slice(0, 10)
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    // Streak must start from today or yesterday
+    if (days[0] !== today && days[0] !== yesterday) return 0
+    let streak = 1
+    for (let i = 1; i < days.length; i++) {
+      const prev = new Date(days[i - 1])
+      const curr = new Date(days[i])
+      const diff = (prev.getTime() - curr.getTime()) / 86400000
+      if (diff === 1) streak++
+      else break
+    }
+    return streak
+  }
+
+  const streak = computeStreak(history?.attempts ?? [])
+  const lastScore = history?.summary?.latestScore
+
   useEffect(() => {
     const fetchHistory = async () => {
       try {
@@ -109,9 +133,13 @@ const ListeningPractice: React.FC = () => {
     setCurrentQ(0)
 
     try {
+      const categoryLabels = ['Conversations','News','Interviews','Podcasts','Lectures','Stories','Business']
+      const resolvedCategory = activeCategory === 'Random'
+        ? categoryLabels[Math.floor(Math.random() * categoryLabels.length)]
+        : activeCategory
       const params = new URLSearchParams({
         difficulty,
-        category: activeCategory,
+        category: resolvedCategory,
       })
       const res = await fetch(`${baseURL}/learning/listening/prompt?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -283,9 +311,9 @@ const ListeningPractice: React.FC = () => {
             <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Your Progress</div>
             {[
               { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: !historyLoading && history ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}` : '-- / --', color: ORANGE, Icon: FaBullseye },
-              { label: 'Best Score',       value: !historyLoading && history?.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', color: '#3b82f6', Icon: FaStar },
-              { label: 'Overall Progress', value: '0%',      color: '#22c55e', Icon: FaChartLine },
-              { label: 'Current Streak',   value: '0 Days',  color: '#8b5cf6', Icon: FaFire },
+              { label: 'Best Score',     value: !historyLoading && history?.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', color: '#3b82f6', Icon: FaStar },
+              { label: 'Last Score',     value: !historyLoading && lastScore != null ? `${lastScore}%` : '--', color: '#22c55e', Icon: FaChartLine },
+              { label: 'Current Streak', value: !historyLoading ? `${streak} Day${streak !== 1 ? 's' : ''}` : '--', color: '#8b5cf6', Icon: FaFire },
             ].map(({ label, value, color, Icon: PIcon }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ width: 34, height: 34, borderRadius: 9, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -384,8 +412,21 @@ const ListeningPractice: React.FC = () => {
                 </button>
               )
             })}
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 22, fontSize: 13, fontWeight: 600, cursor: 'pointer', background: '#fff', color: ORANGE, border: `1.5px solid ${ORANGE}` }}>
-              View All
+            <button
+              onClick={() => setActiveCategory('Random')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 22, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.15s',
+                background: activeCategory === 'Random' ? '#fff7f0' : '#fff',
+                color: activeCategory === 'Random' ? ORANGE : '#6c757d',
+                border: `1.5px solid ${activeCategory === 'Random' ? ORANGE : '#e2e8f0'}`,
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" width="12" height="12">
+                <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Random
             </button>
           </div>
 

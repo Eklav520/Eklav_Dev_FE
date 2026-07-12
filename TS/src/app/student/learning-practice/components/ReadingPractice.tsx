@@ -39,6 +39,7 @@ type ReadingHistory = {
     latestScore: number | null
     trend: string
   }
+  attempts: { attempt: number; score: number; createdAt?: string; date?: string }[]
 }
 
 const ReadingPractice: React.FC = () => {
@@ -66,6 +67,25 @@ const ReadingPractice: React.FC = () => {
 
   const isLimitReached =
   !!history && history.attemptsUsed >= maxAllowedAttempts
+
+  const computeStreak = (attempts: { createdAt?: string; date?: string }[]): number => {
+    if (!attempts?.length) return 0
+    const days = Array.from(new Set(
+      attempts.map(a => new Date(a.createdAt || a.date || '').toISOString().slice(0, 10))
+    )).sort().reverse()
+    const today = new Date().toISOString().slice(0, 10)
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
+    if (days[0] !== today && days[0] !== yesterday) return 0
+    let streak = 1
+    for (let i = 1; i < days.length; i++) {
+      const diff = (new Date(days[i - 1]).getTime() - new Date(days[i]).getTime()) / 86400000
+      if (diff === 1) streak++
+      else break
+    }
+    return streak
+  }
+
+  const streak = computeStreak(history?.attempts ?? [])
 
   //const isMonthlyLimitReached =!!history && history.attemptsUsed >= history.monthlyLimit
 
@@ -357,7 +377,7 @@ const ReadingPractice: React.FC = () => {
                 { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}`, sub: `${Math.max(0, maxAllowedAttempts - history.attemptsUsed)} remaining`, color: BLUE, Icon: FaBullseye },
                 { label: 'Best Score', value: history.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', sub: history.summary?.bestScore != null ? 'Personal best' : 'No attempts yet', color: '#f59e0b', Icon: FaStar },
                 { label: 'Latest Score', value: history.summary?.latestScore != null ? `${history.summary.latestScore}%` : '--', sub: history.summary?.trend ?? 'Start practicing', color: '#22c55e', Icon: FaChartBar },
-                { label: 'Streak', value: '0 Days', sub: 'Keep going!', color: '#ff6b00', Icon: FaFire },
+                { label: 'Current Streak', value: `${streak} Day${streak !== 1 ? 's' : ''}`, sub: streak > 0 ? 'Keep it up!' : 'Start your streak!', color: '#ff6b00', Icon: FaFire },
               ].map(({ label, value, sub, color, Icon: SIcon }) => (
                 <div key={label} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 14, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                   <div style={{ width: 42, height: 42, borderRadius: 11, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
