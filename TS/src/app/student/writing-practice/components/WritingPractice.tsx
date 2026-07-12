@@ -340,6 +340,16 @@ const WritingPractice: React.FC = () => {
   const essayCount = rawAttempts.filter(a => a.mode === 'essay').length
   const emailCount = rawAttempts.filter(a => a.mode === 'email').length
   const summaryCount = rawAttempts.filter(a => a.mode === 'summary').length
+
+  const HISTORY_PER_PAGE = 5
+  const [historyFilter, setHistoryFilter] = useState<'all' | ModeType>('all')
+  const [historyPage, setHistoryPage] = useState(1)
+
+  const allAttempts = [...rawAttempts].reverse()
+  const filteredAttempts = historyFilter === 'all' ? allAttempts : allAttempts.filter(a => a.mode === historyFilter)
+  const historyTotalPages = Math.max(1, Math.ceil(filteredAttempts.length / HISTORY_PER_PAGE))
+  const pagedAttempts = filteredAttempts.slice((historyPage - 1) * HISTORY_PER_PAGE, historyPage * HISTORY_PER_PAGE)
+
   const recentAttempts = [...rawAttempts].reverse().slice(0, 5)
 
   const normalizeScore = (s: number) => s <= 10 ? s * 10 : s
@@ -478,59 +488,119 @@ const WritingPractice: React.FC = () => {
 
           {/* Recent Writing Practice */}
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+
+            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #edf2f7' }}>
               <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Recent Writing Practice</span>
               <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
             </div>
-            {recentAttempts.length === 0 ? (
+
+            {/* Filter tabs */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderBottom: '1px solid #edf2f7', background: '#fafafa' }}>
+              {([
+                { key: 'all',     label: 'All',             count: allAttempts.length },
+                { key: 'essay',   label: 'Essay Writing',   count: essayCount },
+                { key: 'email',   label: 'Email Writing',   count: emailCount },
+                { key: 'summary', label: 'Summary Writing', count: summaryCount },
+              ] as { key: 'all' | ModeType; label: string; count: number }[]).map(f => {
+                const active = historyFilter === f.key
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => { setHistoryFilter(f.key); setHistoryPage(1) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 20, border: `1px solid ${active ? '#ff7a00' : '#e2e8f0'}`, background: active ? 'rgba(255,122,0,0.07)' : '#fff', color: active ? '#ff7a00' : '#64748b', fontSize: '0.75rem', fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+                  >
+                    {f.label}
+                    <span style={{ background: active ? '#ff7a00' : '#f1f5f9', color: active ? '#fff' : '#94a3b8', borderRadius: 10, padding: '0px 6px', fontSize: '0.65rem', fontWeight: 700, minWidth: 18, textAlign: 'center' }}>
+                      {f.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {pagedAttempts.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8', fontSize: '0.82rem' }}>
-                No writing practice yet. Start your first session!
+                {rawAttempts.length === 0 ? 'No writing practice yet. Start your first session!' : 'No entries for this filter.'}
               </div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    {['Type', 'Topic / Title', 'Score', 'Date', 'Action'].map(h => (
-                      <th key={h} style={{ padding: '10px 16px', fontSize: '0.73rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentAttempts.map((a, i) => {
-                    const cfg = MODES[a.mode as ModeType] ?? MODES.essay
-                    const rawScore = a.score
-                    const score = rawScore !== undefined ? (rawScore <= 10 ? rawScore * 10 : rawScore) : null
-                    const sColor = score !== null ? (score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626') : '#94a3b8'
-                    const dt = a.createdAt ? new Date(a.createdAt) : null
-                    const dateStr = dt ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
-                    const timeStr = dt ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
-                    const title = a.prompt?.length > 55 ? a.prompt.slice(0, 55) + '…' : (a.prompt || '—')
-                    return (
-                      <tr key={a._id ?? i} style={{ borderTop: '1px solid #edf2f7' }}>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ width: 28, height: 28, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><cfg.Icon style={{ fontSize: '0.8rem', color: cfg.color }} /></span>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{cfg.label}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '12px 16px', maxWidth: 220 }}>
-                          <div style={{ fontSize: '0.8rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
-                        </td>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.88rem', color: sColor }}>{score !== null ? `${score}/100` : '—'}</span>
-                        </td>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <div style={{ fontSize: '0.78rem', color: '#374151' }}>{dateStr}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeStr}</div>
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <button style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Report</button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              <>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      {['Type', 'Topic / Title', 'Score', 'Date', 'Action'].map(h => (
+                        <th key={h} style={{ padding: '10px 16px', fontSize: '0.73rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedAttempts.map((a, i) => {
+                      const cfg = MODES[a.mode as ModeType] ?? MODES.essay
+                      const rawScore = a.score
+                      const score = rawScore !== undefined ? (rawScore <= 10 ? rawScore * 10 : rawScore) : null
+                      const sColor = score !== null ? (score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626') : '#94a3b8'
+                      const dt = a.createdAt ? new Date(a.createdAt) : null
+                      const dateStr = dt ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                      const timeStr = dt ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+                      const title = a.prompt?.length > 55 ? a.prompt.slice(0, 55) + '…' : (a.prompt || '—')
+                      return (
+                        <tr key={a._id ?? i} style={{ borderTop: '1px solid #edf2f7' }}>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ width: 28, height: 28, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><cfg.Icon style={{ fontSize: '0.8rem', color: cfg.color }} /></span>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{cfg.label}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', maxWidth: 220 }}>
+                            <div style={{ fontSize: '0.8rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+                          </td>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: sColor }}>{score !== null ? `${score}/100` : '—'}</span>
+                          </td>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '0.78rem', color: '#374151' }}>{dateStr}</div>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeStr}</div>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <button style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Report</button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Pagination */}
+                {historyTotalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderTop: '1px solid #edf2f7', background: '#fafafa' }}>
+                    <span style={{ fontSize: '0.73rem', color: '#94a3b8' }}>
+                      Showing {(historyPage - 1) * HISTORY_PER_PAGE + 1}–{Math.min(historyPage * HISTORY_PER_PAGE, filteredAttempts.length)} of {filteredAttempts.length}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <button
+                        onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                        disabled={historyPage === 1}
+                        style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === 1 ? '#cbd5e1' : '#475569', cursor: historyPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                      {Array.from({ length: historyTotalPages }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === historyTotalPages || Math.abs(p - historyPage) <= 1)
+                        .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                          if (idx > 0 && typeof arr[idx - 1] === 'number' && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...')
+                          acc.push(p)
+                          return acc
+                        }, [])
+                        .map((p, idx) => p === '...'
+                          ? <span key={`e${idx}`} style={{ padding: '0 4px', fontSize: '0.8rem', color: '#94a3b8' }}>…</span>
+                          : <button key={p} onClick={() => setHistoryPage(p as number)}
+                              style={{ width: 28, height: 28, border: `1px solid ${p === historyPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 7, background: p === historyPage ? '#ff7a00' : '#fff', color: p === historyPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.73rem', fontWeight: p === historyPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                        )}
+                      <button
+                        onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))}
+                        disabled={historyPage === historyTotalPages}
+                        style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === historyTotalPages ? '#cbd5e1' : '#475569', cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
