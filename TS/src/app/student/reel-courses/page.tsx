@@ -6,13 +6,9 @@ import {
   FaPlay, FaChevronRight, FaBookmark, FaSearch, FaFilter,
   FaReact, FaJava, FaPython, FaDatabase, FaNodeJs,
   FaCode, FaShieldAlt, FaRobot, FaLayerGroup, FaDocker,
-  FaGitAlt, FaTerminal, FaCss3,
+  FaGitAlt, FaTerminal, FaCss3, FaHtml5, FaAws,
+  FaJsSquare, FaLeaf, FaFlask, FaTable,
 } from "react-icons/fa";
-import {
-  SiJavascript, SiSpringboot, SiMysql, SiMongodb,
-  SiTypescript, SiFlask, SiAwsamplify, SiPandas,
-  SiHtml5, SiOpenai,
-} from "react-icons/si";
 import { BsLockFill, BsPlayCircleFill } from "react-icons/bs";
 import { MdOutlineTimer } from "react-icons/md";
 import { VscVscode } from "react-icons/vsc";
@@ -25,27 +21,27 @@ const ORANGE = "#ff6b00";
 /* ── keyword → icon + card background gradient ── */
 const COURSE_META = [
   { keys: ["react"],              Icon: FaReact,       color: "#61dafb", bg: "linear-gradient(160deg,#0c3d54,#061d2b)" },
-  { keys: ["javascript","js"],    Icon: SiJavascript,  color: "#f7df1e", bg: "linear-gradient(160deg,#2a1f00,#0d0a00)" },
+  { keys: ["javascript","js"],    Icon: FaJsSquare,    color: "#f7df1e", bg: "linear-gradient(160deg,#2a1f00,#0d0a00)" },
   { keys: ["node"],               Icon: FaNodeJs,      color: "#68a063", bg: "linear-gradient(160deg,#0d2e0b,#040f04)" },
   { keys: ["python"],             Icon: FaPython,      color: "#4ec9b0", bg: "linear-gradient(160deg,#04312a,#01100d)" },
-  { keys: ["sql","mysql"],        Icon: SiMysql,       color: "#c084fc", bg: "linear-gradient(160deg,#1e0a40,#0a0320)" },
-  { keys: ["html"],               Icon: SiHtml5,       color: "#e96228", bg: "linear-gradient(160deg,#3d1100,#150600)" },
+  { keys: ["sql","mysql"],        Icon: FaDatabase,    color: "#c084fc", bg: "linear-gradient(160deg,#1e0a40,#0a0320)" },
+  { keys: ["html"],               Icon: FaHtml5,       color: "#e96228", bg: "linear-gradient(160deg,#3d1100,#150600)" },
   { keys: ["css"],                Icon: FaCss3,        color: "#38bdf8", bg: "linear-gradient(160deg,#0a2a40,#040f1a)" },
   { keys: ["git"],                Icon: FaGitAlt,      color: "#f05032", bg: "linear-gradient(160deg,#3d0f0a,#150503)" },
   { keys: ["docker"],             Icon: FaDocker,      color: "#2496ed", bg: "linear-gradient(160deg,#051f40,#010c1a)" },
   { keys: ["api"],                Icon: FaTerminal,    color: "#a3e635", bg: "linear-gradient(160deg,#1a2e04,#090f01)" },
   { keys: ["deep learning","deep"],Icon: FaRobot,      color: "#f472b6", bg: "linear-gradient(160deg,#3d0a26,#15030e)" },
-  { keys: ["spring boot"],        Icon: SiSpringboot,  color: "#6db33f", bg: "linear-gradient(160deg,#0e2d0a,#040f04)" },
+  { keys: ["spring boot"],        Icon: FaLeaf,        color: "#6db33f", bg: "linear-gradient(160deg,#0e2d0a,#040f04)" },
   { keys: ["java"],               Icon: FaJava,        color: "#f97316", bg: "linear-gradient(160deg,#2d1000,#0f0600)" },
   { keys: ["dsa","data str"],     Icon: FaCode,        color: "#a78bfa", bg: "linear-gradient(160deg,#160d3b,#060315)" },
   { keys: ["vscode","vs code"],   Icon: VscVscode,     color: "#0098ff", bg: "linear-gradient(160deg,#00213d,#000d1a)" },
-  { keys: ["mongo"],              Icon: SiMongodb,     color: "#47a248", bg: "linear-gradient(160deg,#0d2e0b,#040f04)" },
-  { keys: ["flask"],              Icon: SiFlask,       color: "#ffffff", bg: "linear-gradient(160deg,#1a1a2e,#09090f)" },
+  { keys: ["mongo"],              Icon: FaDatabase,    color: "#47a248", bg: "linear-gradient(160deg,#0d2e0b,#040f04)" },
+  { keys: ["flask"],              Icon: FaFlask,       color: "#ffffff", bg: "linear-gradient(160deg,#1a1a2e,#09090f)" },
   { keys: ["postman"],            Icon: FaTerminal,    color: "#ff6c37", bg: "linear-gradient(160deg,#3d1800,#150900)" },
-  { keys: ["typescript","ts"],    Icon: SiTypescript,  color: "#3178c6", bg: "linear-gradient(160deg,#061a36,#020a15)" },
-  { keys: ["aws","s3"],           Icon: SiAwsamplify,  color: "#ff9900", bg: "linear-gradient(160deg,#2d1f00,#0f0a00)" },
-  { keys: ["pandas"],             Icon: SiPandas,      color: "#150458", bg: "linear-gradient(160deg,#05012e,#020015)" },
-  { keys: ["chatgpt","openai","gpt"], Icon: SiOpenai,  color: "#10a37f", bg: "linear-gradient(160deg,#012b22,#000f0c)" },
+  { keys: ["typescript","ts"],    Icon: FaCode,        color: "#3178c6", bg: "linear-gradient(160deg,#061a36,#020a15)" },
+  { keys: ["aws","s3"],           Icon: FaAws,         color: "#ff9900", bg: "linear-gradient(160deg,#2d1f00,#0f0a00)" },
+  { keys: ["pandas"],             Icon: FaTable,       color: "#7c3aed", bg: "linear-gradient(160deg,#05012e,#020015)" },
+  { keys: ["chatgpt","openai","gpt"], Icon: FaRobot,   color: "#10a37f", bg: "linear-gradient(160deg,#012b22,#000f0c)" },
   { keys: ["interview"],          Icon: FaLayerGroup,  color: "#34d399", bg: "linear-gradient(160deg,#043d22,#01150b)" },
   { keys: ["ai","ml","machine"],  Icon: FaRobot,       color: "#c084fc", bg: "linear-gradient(160deg,#220a40,#0a0320)" },
   { keys: ["cyber","security"],   Icon: FaShieldAlt,   color: "#f87171", bg: "linear-gradient(160deg,#3d0808,#150303)" },
