@@ -7,7 +7,7 @@ import CodingChallenge from './CodingChallenge'
 import MCQQuiz from './MCQQuiz'
 import HRInterviewPractice from './HRInterviewPractice'
 import TRInterviewPractice from './TRInterviewPractice'
-import { FiSearch, FiChevronRight, FiBookmark, FiTool, FiTarget, FiTrendingUp, FiClock, FiAward } from 'react-icons/fi'
+import { FiSearch, FiChevronRight, FiBookmark, FiTool, FiTarget, FiTrendingUp, FiClock, FiAward, FiList, FiEdit2, FiCheckCircle, FiXCircle, FiCopy, FiBriefcase, FiMonitor, FiFileText, FiZap, FiEye, FiX, FiStar, FiUser, FiClipboard } from 'react-icons/fi'
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 type Question = {
@@ -108,7 +108,20 @@ const getDifficulty = (company: Company) => {
   return              { label: 'Easy',  color: '#16a34a', bg: 'rgba(22,163,74,0.08)'  }
 }
 
-const ROUND_ICONS: Record<string, string> = { MCQ: '📝', CODING: '💻', HR: '👔', TR: '🔧' }
+const ROUND_DISPLAY_NAMES: Record<string, string> = {
+  MCQ: 'Aptitude Round',
+  CODING: 'Coding Challenge',
+  TR: 'Technical Round',
+  HR: 'Human Resource Round',
+}
+
+const getRoundIcon = (type: string, size = 18, color = '#ff7a00'): React.ReactNode => {
+  if (type === 'MCQ')    return <FiClipboard size={size} color={color} />
+  if (type === 'CODING') return <Code2 size={size} color={color} />
+  if (type === 'HR')     return <FiUser size={size} color={color} />
+  if (type === 'TR')     return <FiTool size={size} color={color} />
+  return <FiList size={size} color={color} />
+}
 const ROUND_COLORS = ['#ff7a00', '#0891b2', '#d97706', '#7c3aed']
 
 const getSanitizedHtml = (html?: string) => DOMPurify.sanitize(html || '')
@@ -139,10 +152,94 @@ const getVisiblePages = (cur: number, total: number, max = 5) => {
   return Array.from({ length: end - start + 1 }, (_, i) => start + i)
 }
 
+const renderInlineText = (text: string): React.ReactNode[] =>
+  text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**'))
+      return <strong key={i} style={{ fontWeight: 700, color: '#0f172a' }}>{part.slice(2, -2)}</strong>
+    if (part.startsWith('`') && part.endsWith('`'))
+      return <code key={i} style={{ background: '#f1f5f9', color: '#e11d48', padding: '1px 5px', borderRadius: 4, fontSize: '0.78rem', fontFamily: 'monospace' }}>{part.slice(1, -1)}</code>
+    return part
+  })
+
+const renderAiExplanation = (text: string): React.ReactNode => {
+  const blocks: React.ReactNode[] = []
+  const codeBlockParts = text.split(/(```[\s\S]*?```)/g)
+  let key = 0
+
+  codeBlockParts.forEach(part => {
+    if (part.startsWith('```')) {
+      const lines = part.split('\n')
+      const lang = lines[0].replace('```', '').trim()
+      const code = lines.slice(1, -1).join('\n')
+      blocks.push(
+        <div key={key++} style={{ marginBottom: 14 }}>
+          {lang && <div style={{ background: '#334155', color: '#94a3b8', fontSize: '0.65rem', fontWeight: 600, padding: '4px 12px', borderRadius: '8px 8px 0 0', fontFamily: 'monospace' }}>{lang}</div>}
+          <pre style={{ background: '#1e293b', color: '#e2e8f0', borderRadius: lang ? '0 0 8px 8px' : 8, padding: '12px 14px', fontSize: '0.78rem', overflowX: 'auto', margin: 0, lineHeight: 1.65 }}>
+            <code>{code}</code>
+          </pre>
+        </div>
+      )
+      return
+    }
+
+    const lines = part.split('\n')
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li].trim()
+      if (!line) continue
+
+      // Numbered item: `1. **Term**: description`
+      const numMatch = line.match(/^(\d+)\.\s+\*\*([^*]+)\*\*:?\s*(.*)/)
+      if (numMatch) {
+        blocks.push(
+          <div key={key++} style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,122,0,0.1)', color: '#ff7a00', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 800, flexShrink: 0, marginTop: 1 }}>{numMatch[1]}</div>
+            <div style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.65 }}>
+              <span style={{ fontWeight: 700, color: '#0f172a' }}>{numMatch[2]}: </span>
+              {renderInlineText(numMatch[3])}
+            </div>
+          </div>
+        )
+        continue
+      }
+
+      // Bullet: `- text`
+      const bulletMatch = line.match(/^[-•]\s+(.+)/)
+      if (bulletMatch) {
+        blocks.push(
+          <div key={key++} style={{ display: 'flex', gap: 8, marginBottom: 5 }}>
+            <span style={{ color: '#ff7a00', fontWeight: 700, flexShrink: 0, marginTop: 1 }}>•</span>
+            <span style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.65 }}>{renderInlineText(bulletMatch[1])}</span>
+          </div>
+        )
+        continue
+      }
+
+      // Section heading: `**Label:** optional text`
+      const headingMatch = line.match(/^\*\*([^*]+)\*\*:?\s*(.*)$/)
+      if (headingMatch) {
+        blocks.push(
+          <div key={key++} style={{ marginTop: 14, marginBottom: 6 }}>
+            <span style={{ fontWeight: 800, color: '#ff7a00', fontSize: '0.85rem', display: 'inline-block', borderBottom: '2px solid rgba(255,122,0,0.15)', paddingBottom: 2 }}>{headingMatch[1]}</span>
+            {headingMatch[2] && <span style={{ fontSize: '0.82rem', color: '#374151', marginLeft: 6 }}>{renderInlineText(headingMatch[2])}</span>}
+          </div>
+        )
+        continue
+      }
+
+      // Plain paragraph
+      blocks.push(
+        <p key={key++} style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.7, marginBottom: 6 }}>{renderInlineText(line)}</p>
+      )
+    }
+  })
+
+  return <div style={{ fontSize: '0.82rem' }}>{blocks}</div>
+}
+
 // ─── TINY SUB-COMPONENTS ─────────────────────────────────────────────────────
-const InfoBox = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+const InfoBox = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 120 }}>
-    <span style={{ fontSize: '1.1rem' }}>{icon}</span>
+    <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
     <div>
       <div style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{label}</div>
       <div style={{ fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, marginTop: 1 }}>{value}</div>
@@ -211,6 +308,16 @@ const StudentCompanyInterviewPage = () => {
   const [expandedAnswers, setExpandedAnswers] = useState<Record<string, boolean>>({})
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([])
   const [selectedCodingQuestionId, setSelectedCodingQuestionId] = useState<string | null>(null)
+  const [selectedCodingPreviewQIdx, setSelectedCodingPreviewQIdx] = useState(0)
+  const [codingProbPage, setCodingProbPage] = useState(1)
+  const [codingSearchTerm, setCodingSearchTerm] = useState('')
+  const [selectedMcqPreviewQIdx, setSelectedMcqPreviewQIdx] = useState(0)
+  const [mcqProbPage, setMcqProbPage] = useState(1)
+  const [mcqSearchTerm, setMcqSearchTerm] = useState('')
+  const [selectedHrTrPreviewQIdx, setSelectedHrTrPreviewQIdx] = useState(0)
+  const [hrTrProbPage, setHrTrProbPage] = useState(1)
+  const [aiExplanations, setAiExplanations] = useState<Record<string, string>>({})
+  const [aiExplanationLoading, setAiExplanationLoading] = useState<Record<string, boolean>>({})
   const [roundResult, setRoundResult] = useState<RoundResult | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [recentAttempts, setRecentAttempts] = useState<Record<string, RecentAttempt>>({})
@@ -300,6 +407,14 @@ const StudentCompanyInterviewPage = () => {
     setRoundResult(null)
     setIsAnalyzing(false)
     setSelectedCodingQuestionId(null)
+    setSelectedCodingPreviewQIdx(0)
+    setCodingProbPage(1)
+    setCodingSearchTerm('')
+    setSelectedMcqPreviewQIdx(0)
+    setMcqProbPage(1)
+    setMcqSearchTerm('')
+    setSelectedHrTrPreviewQIdx(0)
+    setHrTrProbPage(1)
     try { window.speechSynthesis?.cancel() } catch { /* ignore */ }
   }
 
@@ -308,6 +423,14 @@ const StudentCompanyInterviewPage = () => {
     setActiveMode('preview')
     setExpandedAnswers({})
     setQuizQuestions([])
+    setSelectedCodingPreviewQIdx(0)
+    setCodingProbPage(1)
+    setCodingSearchTerm('')
+    setSelectedMcqPreviewQIdx(0)
+    setMcqProbPage(1)
+    setMcqSearchTerm('')
+    setSelectedHrTrPreviewQIdx(0)
+    setHrTrProbPage(1)
     setShowRoundModal(true)
   }
 
@@ -454,9 +577,9 @@ const StudentCompanyInterviewPage = () => {
             borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 10,
             maxWidth: 300, flexShrink: 0,
           }}>
-            <span style={{ fontSize: '1.1rem' }}>💡</span>
+            <FiZap size={18} color="#ff7a00" style={{ flexShrink: 0 }} />
             <div>
-              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Level Up Your Interview Skills 🚀</div>
+              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
               <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2, lineHeight: 1.5 }}>
                 Practice company based mock interviews and track your performance.
               </div>
@@ -577,7 +700,7 @@ const StudentCompanyInterviewPage = () => {
             <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
               {!selectedCompany ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
-                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14, fontSize: '2rem' }}>🏢</div>
+                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><FiBriefcase size={30} color="#cbd5e1" /></div>
                   <div style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Select a company</div>
                   <div style={{ fontSize: '0.78rem', marginTop: 4, color: '#94a3b8' }}>Choose from the left panel to view details</div>
                 </div>
@@ -669,10 +792,10 @@ const StudentCompanyInterviewPage = () => {
 
                           {/* Info row */}
                           <div style={{ display: 'flex', gap: 24, marginBottom: 22, flexWrap: 'wrap', padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
-                            <InfoBox icon="🎓" label="Eligibility" value={selectedCompany.role || 'All'} />
-                            <InfoBox icon="💼" label="Experience" value="Fresher" />
-                            <InfoBox icon="💻" label="Interview Type" value="Online" />
-                            <InfoBox icon="⏱" label="Duration" value={`${selectedCompany.rounds?.reduce((s, r) => s + r.duration, 0) ?? 0} mins`} />
+                            <InfoBox icon={<FiAward size={16} color="#ff7a00" />} label="Eligibility" value={selectedCompany.role || 'All'} />
+                            <InfoBox icon={<FiBriefcase size={16} color="#ff7a00" />} label="Experience" value="Fresher" />
+                            <InfoBox icon={<FiMonitor size={16} color="#ff7a00" />} label="Interview Type" value="Online" />
+                            <InfoBox icon={<FiClock size={16} color="#ff7a00" />} label="Duration" value={`${selectedCompany.rounds?.reduce((s, r) => s + r.duration, 0) ?? 0} mins`} />
                           </div>
 
                           {/* Rounds Included */}
@@ -707,7 +830,7 @@ const StudentCompanyInterviewPage = () => {
                             ].map((res, idx, arr) => (
                               <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0 }}>📄</div>
+                                  <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FiFileText size={16} color="#ff7a00" /></div>
                                   <div>
                                     <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{res.title}</div>
                                     <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>{res.desc}</div>
@@ -727,11 +850,11 @@ const StudentCompanyInterviewPage = () => {
                             const attempt = recentAttempts[round._id]
                             return (
                               <div key={round._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: '#fff' }}>
-                                <div style={{ width: 44, height: 44, borderRadius: 10, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', flexShrink: 0 }}>
-                                  {ROUND_ICONS[round.roundType] || '📋'}
+                                <div style={{ width: 44, height: 44, borderRadius: 10, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  {getRoundIcon(round.roundType, 20, ROUND_COLORS[idx % ROUND_COLORS.length])}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>{round.roundName}</div>
+                                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
                                   <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>{round.questionCount} Questions • {round.duration} mins</div>
                                 </div>
                                 {attempt && (
@@ -739,8 +862,8 @@ const StudentCompanyInterviewPage = () => {
                                     Last: {attempt.score}%
                                   </span>
                                 )}
-                                <button onClick={() => handleStartRound(round)} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', padding: '7px 14px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                  {attempt ? 'Reattempt' : 'Start'}
+                                <button onClick={() => handleStartRound(round)} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'transparent', border: '1.5px solid #ff7a00', borderRadius: 8, color: '#ff7a00', padding: '7px 14px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                  ▷ {attempt ? 'Reattempt' : 'Start Practice'}
                                 </button>
                               </div>
                             )
@@ -820,11 +943,11 @@ const StudentCompanyInterviewPage = () => {
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {selectedCompany.rounds?.map((round, idx) => (
                         <div key={round._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
-                          <div style={{ width: 34, height: 34, borderRadius: 8, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', flexShrink: 0 }}>
-                            {ROUND_ICONS[round.roundType] || '📋'}
+                          <div style={{ width: 34, height: 34, borderRadius: 8, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {getRoundIcon(round.roundType, 16, ROUND_COLORS[idx % ROUND_COLORS.length])}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{round.roundName}</div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
                             <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: 1 }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'} • {round.duration} min</div>
                           </div>
                           <button
@@ -848,97 +971,718 @@ const StudentCompanyInterviewPage = () => {
       <Modal show={showRoundModal} onHide={handleCloseRoundModal} fullscreen className="round-modal" backdrop="static" keyboard={false}>
         {activeMode === 'preview' && (
           <>
-            <Modal.Header className="round-modal-header" closeButton>
-              <div className="round-modal-title">
-                <div>
-                  <h4>{selectedRound?.roundName} Round</h4>
-                  <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
+            {selectedRound?.roundType !== 'CODING' && selectedRound?.roundType !== 'MCQ' && selectedRound?.roundType !== 'TR' && selectedRound?.roundType !== 'HR' && (
+              <Modal.Header className="round-modal-header" closeButton>
+                <div className="round-modal-title">
+                  <div>
+                    <h4>{selectedRound?.roundName} Round</h4>
+                    <p>{selectedCompany?.companyName} • {selectedCompany?.role}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="round-modal-actions">
-                {selectedRound?.roundType !== 'CODING' && (
+                <div className="round-modal-actions">
                   <button className="header-quiz-btn" onClick={handleTakeQuiz}>
                     {selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR' ? 'Start Practice' : 'Take Quiz'}
                   </button>
-                )}
-              </div>
-            </Modal.Header>
-            <Modal.Body className="round-modal-body">
-              <div className="preview-container">
-                <div className="questions-container">
-                  {selectedRound?.roundType === 'MCQ' && selectedRound.questions.map((q, idx) => (
-                    <div key={q._id} className="mcq-question">
-                      <div className="question-header">
-                        <span className="question-number">Q{idx + 1}</span>
-                        <span className="question-type">MCQ</span>
-                      </div>
-                      <h5 className="question-text">{q.question}</h5>
-                      <div className="options-list">
-                        {(q.options || []).map((opt, oi) => (
-                          <div key={oi} className="option-item static">
-                            <span className="option-label">{String.fromCharCode(65 + oi)}.</span>
-                            <span className="option-text">{String(opt)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
-                        {expandedAnswers[q._id] ? 'Hide Answer & Explanation' : 'Show Answer & Explanation'}
-                      </button>
-                      {expandedAnswers[q._id] && (
-                        <div className="answer-panel">
-                          <p><strong>Answer:</strong> {q.correctAnswer ?? 'Not provided'}</p>
-                          <p><strong>Explanation:</strong></p>
-                          <div className="answer-text multi-line-text">{formatExplanation(q.explanation)}</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                </div>
+              </Modal.Header>
+            )}
+            {selectedRound?.roundType === 'CODING' ? (() => {
+              const questions = selectedRound.questions || []
+              const PROB_PER_PAGE = Math.max(10, Math.floor((window.innerHeight - 290) / 44))
+              const filtered = codingSearchTerm
+                ? questions.filter(q => (q.title || '').toLowerCase().includes(codingSearchTerm.toLowerCase()))
+                : questions
+              const probTotalPages = Math.max(1, Math.ceil(filtered.length / PROB_PER_PAGE))
+              const visibleProbs = filtered.slice((codingProbPage - 1) * PROB_PER_PAGE, codingProbPage * PROB_PER_PAGE)
+              const qIdx = selectedCodingPreviewQIdx
+              const selectedQ = questions[qIdx]
+              const attempt = recentAttempts[selectedRound._id]
+              return (
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
 
-                  {selectedRound?.roundType === 'CODING' && selectedRound.questions.map((q, idx) => (
-                    <div key={q._id} className="coding-question">
-                      <div className="question-header">
-                        <span className="question-number">Q{idx + 1}</span>
-                        <span className="question-type coding">CODING</span>
+                  {/* Light header */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Code2 size={20} color="#ff7a00" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>Coding Round</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                    </div>
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color="#64748b" />
+                    </button>
+                  </div>
+
+                  {/* Stats bar */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                    {[
+                      { label: 'Total Problems', value: String(questions.length), icon: <FiList size={20} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                      { label: 'Attempted', value: attempt ? '1' : '0', icon: <FiEdit2 size={20} color="#16a34a" />, iconBg: 'rgba(22,163,74,0.08)' },
+                      { label: 'Solved', value: attempt && attempt.score >= 60 ? '1' : '0', icon: <FiCheckCircle size={20} color="#0891b2" />, iconBg: 'rgba(8,145,178,0.08)' },
+                      { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={20} color="#7c3aed" />, iconBg: 'rgba(124,58,237,0.08)' },
+                      { label: 'Time Left', value: `${selectedRound.duration} min`, icon: <FiClock size={20} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                    ].map((stat, si, arr) => (
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, padding: '0 20px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                        <div style={{ width: 42, height: 42, borderRadius: 10, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {stat.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '1rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                        </div>
                       </div>
-                      <h5 className="question-title">{q.title}</h5>
-                      <p className="question-description">{q.description}</p>
-                      <div className="sample-io">
-                        <div className="sample-input"><span className="label">Sample Input:</span><code>{q.input || 'N/A'}</code></div>
-                        <div className="sample-output"><span className="label">Expected Output:</span><code>{q.output ?? 'N/A'}</code></div>
-                      </div>
-                      <div className="coding-question-footer">
-                        {recentAttempts[selectedRound._id] && (
-                          <span className={`recent-score-badge ${recentAttempts[selectedRound._id].score >= 60 ? 'pass' : 'fail'}`}>
-                            <Trophy size={10} /> Last: {recentAttempts[selectedRound._id].score}%
-                          </span>
-                        )}
-                        <button className="coding-start-btn" onClick={() => { setSelectedCodingQuestionId(q._id); setActiveMode('coding') }}>
-                          <Code2 size={14} /> Start Challenge
+                    ))}
+                  </div>
+
+                  {/* Two-column layout */}
+                  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+
+                    {/* LEFT: Problem list */}
+                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+
+                      {/* Search + filter */}
+                      <div style={{ padding: '8px 12px', display: 'flex', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <FiSearch size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                          <input
+                            placeholder="Search problems..."
+                            value={codingSearchTerm}
+                            onChange={e => { setCodingSearchTerm(e.target.value); setCodingProbPage(1) }}
+                            style={{ width: '100%', height: 30, paddingLeft: 26, paddingRight: 8, border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.72rem', outline: 'none', background: '#f8fafc', color: '#0f172a' }}
+                          />
+                        </div>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 30, flexShrink: 0 }}>
+                          All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
                         </button>
                       </div>
-                    </div>
-                  ))}
 
-                  {(selectedRound?.roundType === 'HR' || selectedRound?.roundType === 'TR') && selectedRound.questions.map((q, idx) => (
-                    <div key={q._id} className="mcq-question">
-                      <div className="question-header">
-                        <span className="question-number">Q{idx + 1}</span>
-                        <span className={`question-type ${selectedRound.roundType.toLowerCase()}`}>{selectedRound.roundType}</span>
+                      {/* Problem list — compact rows fill the sidebar */}
+                      <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                        {visibleProbs.map(q => {
+                          const idx = questions.indexOf(q)
+                          const isActive = idx === qIdx
+                          const displayNum = (codingProbPage - 1) * PROB_PER_PAGE + visibleProbs.indexOf(q) + 1
+                          return (
+                            <div
+                              key={q._id}
+                              onClick={() => setSelectedCodingPreviewQIdx(idx)}
+                              style={{
+                                padding: '9px 12px',
+                                borderBottom: '1px solid #f1f5f9',
+                                background: isActive ? 'rgba(255,122,0,0.04)' : '#fff',
+                                borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 9,
+                              }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                            >
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                                {String(displayNum).padStart(2, '0')}
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+                                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
+                                    {q.title || `Problem ${idx + 1}`}
+                                  </span>
+                                  <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', flexShrink: 0 }}>CODING</span>
+                                </div>
+                              </div>
+                              <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}`, flexShrink: 0 }} />
+                            </div>
+                          )
+                        })}
+                        {filtered.length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No problems found</div>
+                        )}
                       </div>
-                      <h5 className="question-text">{q.question || q.title || 'Interview Question'}</h5>
-                      <button className="show-answer-btn" onClick={() => toggleAnswer(q._id)}>
-                        {expandedAnswers[q._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
-                      </button>
-                      {expandedAnswers[q._id] && (
-                        <div className="answer-panel">
-                          <p><strong>Suggested:</strong> {q.expectedAnswer || q.explanation || 'Not provided'}</p>
+
+                      {/* Full-width pagination */}
+                      {probTotalPages > 1 && (
+                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                          <button
+                            onClick={() => setCodingProbPage(p => Math.max(1, p - 1))}
+                            disabled={codingProbPage === 1}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: codingProbPage === 1 ? '#cbd5e1' : '#475569', cursor: codingProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          >‹</button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {getVisiblePages(codingProbPage, probTotalPages).map(p => (
+                              <button
+                                key={p}
+                                onClick={() => setCodingProbPage(p)}
+                                style={{ width: 26, height: 26, border: `1px solid ${p === codingProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === codingProbPage ? '#ff7a00' : '#fff', color: p === codingProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === codingProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >{p}</button>
+                            ))}
+                            {probTotalPages > 5 && codingProbPage < probTotalPages - 2 && (
+                              <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>
+                            )}
+                            {probTotalPages > 5 && codingProbPage <= probTotalPages - 3 && (
+                              <button
+                                onClick={() => setCodingProbPage(probTotalPages)}
+                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >{probTotalPages}</button>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setCodingProbPage(p => Math.min(probTotalPages, p + 1))}
+                            disabled={codingProbPage === probTotalPages}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: codingProbPage === probTotalPages ? '#cbd5e1' : '#475569', cursor: codingProbPage === probTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          >›</button>
                         </div>
                       )}
                     </div>
-                  ))}
+
+                    {/* RIGHT: Problem detail */}
+                    {selectedQ ? (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+
+                          {/* Q number + CODING badge */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: '1.1rem', color: '#ff7a00', fontWeight: 800 }}>Q{qIdx + 1}</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: '1px solid #ff7a00', color: '#ff7a00' }}>CODING</span>
+                          </div>
+
+                          {/* Title */}
+                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.2rem', marginBottom: 14, lineHeight: 1.3 }}>
+                            {selectedQ.title || `Problem ${qIdx + 1}`}
+                          </div>
+
+                          {/* Problem Statement */}
+                          {selectedQ.description && (
+                            <div style={{ fontSize: '0.85rem', color: '#374151', lineHeight: 1.75, marginBottom: 16 }}>
+                              {selectedQ.description}
+                            </div>
+                          )}
+
+                          {/* Explanation */}
+                          {selectedQ.explanation && (
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 14px', marginBottom: 16, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                              <FiZap size={15} color="#ff7a00" style={{ flexShrink: 0, marginTop: 1 }} />
+                              <div style={{ fontSize: '0.82rem', color: '#78350f', lineHeight: 1.6 }}>
+                                <strong style={{ color: '#92400e' }}>Explanation: </strong>
+                                {selectedQ.explanation}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Sample Input + Expected Output */}
+                          {(selectedQ.input || selectedQ.output != null) && (
+                            <div style={{ display: 'flex', gap: 14 }}>
+                              {selectedQ.input && (
+                                <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                                  <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Sample Input</span>
+                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.input || ''))} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
+                                      <FiCopy size={12} /> Copy
+                                    </button>
+                                  </div>
+                                  <div style={{ padding: '12px 14px' }}>
+                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                                      {String(selectedQ.input)}
+                                    </code>
+                                  </div>
+                                </div>
+                              )}
+                              {selectedQ.output != null && (
+                                <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
+                                  <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Expected Output</span>
+                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.output ?? ''))} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
+                                      <FiCopy size={12} /> Copy
+                                    </button>
+                                  </div>
+                                  <div style={{ padding: '12px 14px' }}>
+                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                                      {String(selectedQ.output)}
+                                    </code>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                        </div>
+
+                        {/* Footer: Start Challenge only */}
+                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: '#fff', flexShrink: 0 }}>
+                          <button
+                            onClick={() => { setSelectedCodingQuestionId(selectedQ._id); setActiveMode('coding') }}
+                            style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', padding: '10px 24px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <Code2 size={15} /> Start Challenge
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc' }}>
+                        Select a problem to view details
+                      </div>
+                    )}
+                  </div>
+                </Modal.Body>
+              )
+            })() : selectedRound?.roundType === 'MCQ' ? (() => {
+              const questions = selectedRound.questions || []
+              const MCQ_PER_PAGE = Math.max(8, Math.floor((window.innerHeight - 290) / 44))
+              const filteredMcq = mcqSearchTerm
+                ? questions.filter(q => (q.question || '').toLowerCase().includes(mcqSearchTerm.toLowerCase()))
+                : questions
+              const mcqTotalPages = Math.max(1, Math.ceil(filteredMcq.length / MCQ_PER_PAGE))
+              const visibleMcqs = filteredMcq.slice((mcqProbPage - 1) * MCQ_PER_PAGE, mcqProbPage * MCQ_PER_PAGE)
+              const qIdx = selectedMcqPreviewQIdx
+              const selectedQ = questions[qIdx]
+              const attempt = recentAttempts[selectedRound._id]
+              const totalQ = questions.length
+              const correctQ = attempt ? Math.round(attempt.score / 100 * totalQ) : 0
+              const incorrectQ = attempt ? Math.max(0, totalQ - correctQ) : 0
+              return (
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
+
+                  {/* Light header */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Code2 size={20} color="#ff7a00" />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>MCQ Round</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                    </div>
+                    <button onClick={handleTakeQuiz} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1.5px solid #ff7a00', borderRadius: 8, color: '#ff7a00', padding: '7px 18px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      ▷ Take Quiz
+                    </button>
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color="#64748b" />
+                    </button>
+                  </div>
+
+                  {/* Stats bar */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                    {[
+                      { label: 'Total Questions', value: String(totalQ), icon: <FiList size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                      { label: 'Attempted', value: attempt ? String(totalQ) : '0', icon: <FiEdit2 size={19} color="#64748b" />, iconBg: 'rgba(100,116,139,0.08)' },
+                      { label: 'Correct', value: String(correctQ), icon: <FiCheckCircle size={19} color="#16a34a" />, iconBg: 'rgba(22,163,74,0.08)' },
+                      { label: 'Incorrect', value: String(incorrectQ), icon: <FiXCircle size={19} color="#dc2626" />, iconBg: 'rgba(220,38,38,0.08)' },
+                      { label: 'Time Spent', value: '—', icon: <FiClock size={19} color="#7c3aed" />, iconBg: 'rgba(124,58,237,0.08)' },
+                      { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={19} color="#d97706" />, iconBg: 'rgba(217,119,6,0.08)' },
+                    ].map((stat, si, arr) => (
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 9, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {stat.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.58rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Two-column layout */}
+                  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+
+                    {/* LEFT: Questions list */}
+                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+
+                      {/* Header + filter */}
+                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
+                        <div style={{ flex: 1 }} />
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
+                          All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
+                        </button>
+                      </div>
+
+                      {/* Question list */}
+                      <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                        {visibleMcqs.map(q => {
+                          const idx = questions.indexOf(q)
+                          const isActive = idx === qIdx
+                          const displayNum = (mcqProbPage - 1) * MCQ_PER_PAGE + visibleMcqs.indexOf(q) + 1
+                          return (
+                            <div
+                              key={q._id}
+                              onClick={() => setSelectedMcqPreviewQIdx(idx)}
+                              style={{ padding: '9px 12px', borderBottom: '1px solid #f1f5f9', background: isActive ? 'rgba(255,122,0,0.04)' : '#fff', borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                            >
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                                {String(displayNum).padStart(2, '0')}
+                              </div>
+                              <span style={{ flex: 1, fontSize: '0.78rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                                {q.question || `Question ${idx + 1}`}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}` }} />
+                                <FiBookmark size={12} color="#cbd5e1" />
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {filteredMcq.length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No questions found</div>
+                        )}
+                      </div>
+
+                      {/* Full-width pagination */}
+                      {mcqTotalPages > 1 && (
+                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                          <button onClick={() => setMcqProbPage(p => Math.max(1, p - 1))} disabled={mcqProbPage === 1}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: mcqProbPage === 1 ? '#cbd5e1' : '#475569', cursor: mcqProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {getVisiblePages(mcqProbPage, mcqTotalPages).map(p => (
+                              <button key={p} onClick={() => setMcqProbPage(p)}
+                                style={{ width: 26, height: 26, border: `1px solid ${p === mcqProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === mcqProbPage ? '#ff7a00' : '#fff', color: p === mcqProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === mcqProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                            ))}
+                            {mcqTotalPages > 5 && mcqProbPage < mcqTotalPages - 2 && <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
+                            {mcqTotalPages > 5 && mcqProbPage <= mcqTotalPages - 3 && (
+                              <button onClick={() => setMcqProbPage(mcqTotalPages)}
+                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{mcqTotalPages}</button>
+                            )}
+                          </div>
+                          <button onClick={() => setMcqProbPage(p => Math.min(mcqTotalPages, p + 1))} disabled={mcqProbPage === mcqTotalPages}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: mcqProbPage === mcqTotalPages ? '#cbd5e1' : '#475569', cursor: mcqProbPage === mcqTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT: Question detail */}
+                    {selectedQ ? (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+
+                          {/* Q number + MCQ badge + bookmark */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <span style={{ fontSize: '1.1rem', color: '#ff7a00', fontWeight: 800 }}>Q{qIdx + 1}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: '1px solid #ff7a00', color: '#ff7a00' }}>MCQ</span>
+                              <FiBookmark size={16} color="#cbd5e1" style={{ cursor: 'pointer' }} />
+                            </div>
+                          </div>
+
+                          {/* Question text */}
+                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
+                            {selectedQ.question}
+                          </div>
+
+                          {/* Options — 2×2 grid */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                            {(selectedQ.options || []).map((opt, oi) => {
+                              const letter = String.fromCharCode(65 + oi)
+                              const optText = String(opt)
+                              const isCorrect =
+                                selectedQ.correctAnswer === letter ||
+                                selectedQ.correctAnswer === optText ||
+                                selectedQ.correctAnswer === oi ||
+                                selectedQ.correctAnswer === oi + 1
+                              return (
+                                <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isCorrect ? '#16a34a' : '#e2e8f0'}`, background: isCorrect ? 'rgba(22,163,74,0.04)' : '#fff' }}>
+                                  <div style={{ width: 26, height: 26, borderRadius: 7, border: `1.5px solid ${isCorrect ? '#16a34a' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: isCorrect ? '#16a34a' : '#94a3b8', flexShrink: 0 }}>
+                                    {letter}
+                                  </div>
+                                  <span style={{ fontSize: '0.85rem', color: '#374151', flex: 1 }}>{optText}</span>
+                                  {isCorrect && <FiCheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />}
+                                </div>
+                              )
+                            })}
+                          </div>
+
+                          {/* Explanation */}
+                          {(selectedQ.explanation || selectedQ.correctAnswer != null) && (
+                            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                <FiZap size={15} color="#ff7a00" style={{ flexShrink: 0 }} />
+                                <span style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.82rem' }}>Explanation</span>
+                              </div>
+                              {selectedQ.correctAnswer != null && (
+                                <div style={{ fontWeight: 700, color: '#16a34a', fontSize: '0.82rem', marginBottom: selectedQ.explanation ? 6 : 0 }}>
+                                  Answer: {String(selectedQ.correctAnswer)}
+                                </div>
+                              )}
+                              {selectedQ.explanation && (
+                                <div style={{ fontSize: '0.82rem', color: '#374151', lineHeight: 1.65 }}>
+                                  {selectedQ.explanation}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                        </div>
+
+                        {/* Footer: ← Previous | Question X of N | Next → */}
+                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', flexShrink: 0 }}>
+                          <button
+                            onClick={() => qIdx > 0 && setSelectedMcqPreviewQIdx(qIdx - 1)}
+                            disabled={qIdx === 0}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, color: qIdx === 0 ? '#cbd5e1' : '#64748b', padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
+                          >← Previous</button>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                            Question {qIdx + 1} of {questions.length}
+                          </span>
+                          <button
+                            onClick={() => qIdx < questions.length - 1 && setSelectedMcqPreviewQIdx(qIdx + 1)}
+                            disabled={qIdx === questions.length - 1}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : '#f1f5f9', border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : '#cbd5e1', padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
+                          >Next →</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc' }}>
+                        Select a question to view details
+                      </div>
+                    )}
+                  </div>
+                </Modal.Body>
+              )
+            })() : (selectedRound?.roundType === 'TR' || selectedRound?.roundType === 'HR') ? (() => {
+              const questions = selectedRound.questions || []
+              const HRTR_PER_PAGE = Math.max(8, Math.floor((window.innerHeight - 290) / 44))
+              const hrtrTotalPages = Math.max(1, Math.ceil(questions.length / HRTR_PER_PAGE))
+              const visibleHrTr = questions.slice((hrTrProbPage - 1) * HRTR_PER_PAGE, hrTrProbPage * HRTR_PER_PAGE)
+              const qIdx = selectedHrTrPreviewQIdx
+              const selectedQ = questions[qIdx]
+              const attempt = recentAttempts[selectedRound._id]
+              const isHR = selectedRound.roundType === 'HR'
+              const roundLabel = isHR ? 'HR Round' : 'Technical Round'
+              const chipLabel = selectedRound.roundType
+              const chipColor = isHR ? '#7c3aed' : '#ff7a00'
+              const chipBg = isHR ? 'rgba(124,58,237,0.08)' : 'rgba(255,122,0,0.08)'
+              return (
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
+
+                  {/* Light header */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#ff7a00', fontFamily: 'monospace', letterSpacing: -1 }}>&lt;/&gt;</span>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>{roundLabel}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                    </div>
+                    <button onClick={handleTakeQuiz} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1.5px solid #ff7a00', borderRadius: 8, color: '#ff7a00', padding: '7px 18px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      ▷ Start Practice
+                    </button>
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color="#64748b" />
+                    </button>
+                  </div>
+
+                  {/* Stats bar */}
+                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                    {[
+                      { label: 'Total Questions', value: String(questions.length), icon: <FiList size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                      { label: 'Attempted', value: attempt ? String(questions.length) : '0', icon: <FiEdit2 size={19} color="#16a34a" />, iconBg: 'rgba(22,163,74,0.08)' },
+                      { label: 'Answered', value: attempt ? String(questions.length) : '0', icon: <FiCheckCircle size={19} color="#2563eb" />, iconBg: 'rgba(37,99,235,0.08)' },
+                      { label: 'Bookmarked', value: '0', icon: <FiBookmark size={19} color="#7c3aed" />, iconBg: 'rgba(124,58,237,0.08)' },
+                      { label: 'Time Spent', value: '—', icon: <FiClock size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                      { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
+                    ].map((stat, si, arr) => (
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 9, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {stat.icon}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.58rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Two-column layout */}
+                  <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
+
+                    {/* LEFT: Questions list */}
+                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+
+                      {/* Header + filter */}
+                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
+                        <div style={{ flex: 1 }} />
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
+                          All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
+                        </button>
+                      </div>
+
+                      {/* Question list */}
+                      <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto' }}>
+                        {visibleHrTr.map(q => {
+                          const idx = questions.indexOf(q)
+                          const isActive = idx === qIdx
+                          const displayNum = (hrTrProbPage - 1) * HRTR_PER_PAGE + visibleHrTr.indexOf(q) + 1
+                          return (
+                            <div
+                              key={q._id}
+                              onClick={() => setSelectedHrTrPreviewQIdx(idx)}
+                              style={{ padding: '9px 12px', borderBottom: '1px solid #f1f5f9', background: isActive ? 'rgba(255,122,0,0.04)' : '#fff', borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                            >
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                                {String(displayNum).padStart(2, '0')}
+                              </div>
+                              <span style={{ flex: 1, fontSize: '0.78rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                                {q.question || q.title || `Question ${idx + 1}`}
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                                <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: chipBg, color: chipColor }}>{chipLabel}</span>
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}` }} />
+                                <FiBookmark size={12} color="#cbd5e1" />
+                              </div>
+                            </div>
+                          )
+                        })}
+                        {questions.length === 0 && (
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No questions found</div>
+                        )}
+                      </div>
+
+                      {/* Full-width pagination */}
+                      {hrtrTotalPages > 1 && (
+                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                          <button onClick={() => setHrTrProbPage(p => Math.max(1, p - 1))} disabled={hrTrProbPage === 1}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: hrTrProbPage === 1 ? '#cbd5e1' : '#475569', cursor: hrTrProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                            {getVisiblePages(hrTrProbPage, hrtrTotalPages).map(p => (
+                              <button key={p} onClick={() => setHrTrProbPage(p)}
+                                style={{ width: 26, height: 26, border: `1px solid ${p === hrTrProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === hrTrProbPage ? '#ff7a00' : '#fff', color: p === hrTrProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === hrTrProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                            ))}
+                            {hrtrTotalPages > 5 && hrTrProbPage < hrtrTotalPages - 2 && <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
+                            {hrtrTotalPages > 5 && hrTrProbPage <= hrtrTotalPages - 3 && (
+                              <button onClick={() => setHrTrProbPage(hrtrTotalPages)}
+                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hrtrTotalPages}</button>
+                            )}
+                          </div>
+                          <button onClick={() => setHrTrProbPage(p => Math.min(hrtrTotalPages, p + 1))} disabled={hrTrProbPage === hrtrTotalPages}
+                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: hrTrProbPage === hrtrTotalPages ? '#cbd5e1' : '#475569', cursor: hrTrProbPage === hrtrTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* RIGHT: Question detail */}
+                    {selectedQ ? (
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+
+                          {/* Q number + chip badge + bookmark */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <span style={{ fontSize: '1.1rem', color: '#ff7a00', fontWeight: 800 }}>Q{qIdx + 1}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: `1px solid ${chipColor}`, color: chipColor }}>{chipLabel}</span>
+                              <FiBookmark size={16} color="#cbd5e1" style={{ cursor: 'pointer' }} />
+                            </div>
+                          </div>
+
+                          {/* Question text */}
+                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
+                            {selectedQ.question || selectedQ.title}
+                          </div>
+
+                          {/* Collapsible suggested answer */}
+                          <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+                            <button
+                              onClick={() => toggleAnswer(selectedQ._id)}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                            >
+                              <FiEye size={15} color="#64748b" style={{ flexShrink: 0 }} />
+                              <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+                                {expandedAnswers[selectedQ._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
+                              </span>
+                              <span style={{ fontSize: '0.85rem', color: '#94a3b8', transform: expandedAnswers[selectedQ._id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                            </button>
+                            {expandedAnswers[selectedQ._id] && (
+                              <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 16px', background: '#fafafa' }}>
+                                <div style={{ marginBottom: 10 }}>
+                                  <span style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.82rem' }}>Suggested: </span>
+                                  <span style={{ fontSize: '0.82rem', color: '#374151' }}>{selectedQ.expectedAnswer || selectedQ.explanation || 'Not provided'}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* AI Detailed Explanation */}
+                          <div style={{ border: '1px solid #fde68a', borderRadius: 10, overflow: 'hidden' }}>
+                            <button
+                              onClick={async () => {
+                                const qId = selectedQ._id
+                                if (aiExplanations[qId] || aiExplanationLoading[qId]) return
+                                setAiExplanationLoading(prev => ({ ...prev, [qId]: true }))
+                                try {
+                                  const res = await fetch(`${baseURL}/api/aiEvaluate/explain-question`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ question: selectedQ.question || selectedQ.title, roundType: selectedRound.roundType, questionId: selectedQ._id }),
+                                  })
+                                  const data = await res.json()
+                                  setAiExplanations(prev => ({ ...prev, [qId]: data.explanation || 'No explanation available.' }))
+                                } catch {
+                                  setAiExplanations(prev => ({ ...prev, [qId]: 'Failed to load explanation. Please try again.' }))
+                                } finally {
+                                  setAiExplanationLoading(prev => ({ ...prev, [qId]: false }))
+                                }
+                              }}
+                              disabled={!!aiExplanations[selectedQ._id] || !!aiExplanationLoading[selectedQ._id]}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fffbeb', border: 'none', cursor: aiExplanations[selectedQ._id] ? 'default' : 'pointer', textAlign: 'left' }}
+                            >
+                              <FiZap size={15} color="#ff7a00" style={{ flexShrink: 0 }} />
+                              <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 700, color: '#ff7a00' }}>Detailed Explanation</span>
+                              {aiExplanationLoading[selectedQ._id] ? (
+                                <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Generating...</span>
+                              ) : !aiExplanations[selectedQ._id] ? (
+                                <span style={{ fontSize: '0.75rem', color: '#ff7a00', border: '1px solid #ff7a00', borderRadius: 5, padding: '2px 8px', fontWeight: 600 }}>Ask AI</span>
+                              ) : null}
+                            </button>
+                            {aiExplanationLoading[selectedQ._id] && (
+                              <div style={{ padding: '14px 16px', background: '#fffbeb', borderTop: '1px solid #fde68a', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 18, height: 18, border: '2.5px solid #fde68a', borderTopColor: '#ff7a00', borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.8rem', color: '#92400e' }}>AI is generating a detailed explanation…</span>
+                              </div>
+                            )}
+                            {aiExplanations[selectedQ._id] && (
+                              <div style={{ padding: '14px 16px', background: '#fffbeb', borderTop: '1px solid #fde68a' }}>
+                                {renderAiExplanation(aiExplanations[selectedQ._id])}
+                              </div>
+                            )}
+                          </div>
+
+                        </div>
+
+                        {/* Footer: ← Previous | Question X of N | Next → */}
+                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', flexShrink: 0 }}>
+                          <button
+                            onClick={() => qIdx > 0 && setSelectedHrTrPreviewQIdx(qIdx - 1)}
+                            disabled={qIdx === 0}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, color: qIdx === 0 ? '#cbd5e1' : '#64748b', padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
+                          >← Previous</button>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                            Question {qIdx + 1} of {questions.length}
+                          </span>
+                          <button
+                            onClick={() => qIdx < questions.length - 1 && setSelectedHrTrPreviewQIdx(qIdx + 1)}
+                            disabled={qIdx === questions.length - 1}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : '#f1f5f9', border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : '#cbd5e1', padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
+                          >Next →</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc' }}>
+                        Select a question to view details
+                      </div>
+                    )}
+                  </div>
+                </Modal.Body>
+              )
+            })() : (
+              <Modal.Body className="round-modal-body">
+                <div className="preview-container">
+                  <div className="questions-container" />
                 </div>
-              </div>
-            </Modal.Body>
+              </Modal.Body>
+            )}
           </>
         )}
 
@@ -986,8 +1730,8 @@ const StudentCompanyInterviewPage = () => {
                       {roundResult.roundType === 'MCQ' ? `${roundResult.correctAnswers}/${roundResult.totalQuestions} correct` : roundResult.avgRating > 0 ? `Avg Rating ${roundResult.avgRating.toFixed(1)}/5` : 'Score'}
                     </span>
                   </div>
-                  <div className={`result-status-badge ${roundResult.score >= 60 ? 'pass' : 'fail'}`}>
-                    {roundResult.score >= 60 ? '✓ Good Performance' : '✗ Needs More Practice'}
+                  <div className={`result-status-badge ${roundResult.score >= 60 ? 'pass' : 'fail'}`} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {roundResult.score >= 60 ? <><FiCheckCircle size={14} /> Good Performance</> : <><FiXCircle size={14} /> Needs More Practice</>}
                   </div>
                   <div className="result-feedback-card">
                     <h6>AI Feedback</h6>
@@ -1014,8 +1758,10 @@ const StudentCompanyInterviewPage = () => {
                               </div>
                             )}
                             {!isMCQ && (
-                              <div className="result-q-stars">
-                                {'★'.repeat(item.rating)}{'☆'.repeat(Math.max(0, 5 - item.rating))}
+                              <div className="result-q-stars" style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <FiStar key={i} size={13} color={i < item.rating ? '#f59e0b' : '#d1d5db'} fill={i < item.rating ? '#f59e0b' : 'none'} />
+                                ))}
                                 <span className="result-q-rating-num">{item.rating}/5</span>
                               </div>
                             )}
@@ -1042,6 +1788,8 @@ const StudentCompanyInterviewPage = () => {
         .ci-rich-content * { max-width: 100% !important; word-break: break-word; overflow-wrap: break-word; box-sizing: border-box; }
         .ci-rich-content img, .ci-rich-content table { max-width: 100% !important; }
         .ci-rich-content pre, .ci-rich-content code { white-space: pre-wrap; word-break: break-all; }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Thin scrollbars on all scrollable panels */
         .ci-scroll { scrollbar-width: thin; scrollbar-color: #e2e8f0 transparent; }
