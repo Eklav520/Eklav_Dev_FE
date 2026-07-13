@@ -3,13 +3,9 @@ export function setupFetchInterceptor(removeSession: () => void) {
 
   window.fetch = async (input, init = {}) => {
     const token = localStorage.getItem('token');
-    /* console.log('Fetch interceptor - Token:', token);
-    console.log('Fetch interceptor - URL:', typeof input === 'string' ? input : input.url); */
 
     const newHeaders = new Headers(init.headers || {});
     if (token) newHeaders.set('Authorization', `Bearer ${token}`);
-
-    //console.log('Fetch interceptor - Headers set:', Array.from(newHeaders.entries()));
 
     const modifiedInit: RequestInit = {
       ...init,
@@ -20,15 +16,13 @@ export function setupFetchInterceptor(removeSession: () => void) {
 
     if (response.status === 401) {
       const clonedResponse = response.clone();
+      let msg = 'Your session has expired. Please log in again.';
       try {
         const data = await clonedResponse.json();
-        const msg = data?.message || 'Session expired or logged in elsewhere';
-        alert(`🚫 ${msg}`);
-      } catch (_) {
-        alert('🚫 You have been logged out.');
-      }
+        if (data?.message) msg = data.message;
+      } catch (_) {}
 
-      removeSession();
+      window.dispatchEvent(new CustomEvent('session-expired', { detail: { message: msg } }));
       return Promise.reject(new Error('Unauthorized'));
     }
 

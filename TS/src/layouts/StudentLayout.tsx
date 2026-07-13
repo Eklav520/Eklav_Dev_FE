@@ -60,7 +60,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const hostname = window.location.hostname
-  const isMainDomain = hostname === 'eklav.in' || hostname === 'www.eklav.in'
+  const isMainDomain = hostname === 'eklav.in' || hostname === 'www.eklav.in' || hostname === 'localhost'
 
   const userName = profile?.fullName || profile?.name || 'Student'
   const userBatch = profile?.batch || ''

@@ -7,6 +7,7 @@ import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useActivityTracker } from '@/hooks/useActivityTracker'
 import IdleWarningModal from '@/components/IdleWarningModal'
+import SessionExpiredModal from '@/components/SessionExpiredModal'
 
 import '@/assets/scss/style.scss'
 
@@ -135,6 +136,7 @@ function AppInner() {
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
   const [idleVisible, setIdleVisible] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState<{ show: boolean; message: string }>({ show: false, message: '' })
 
   const { resumeSession } = useActivityTracker({
     token:    user?.token,
@@ -147,6 +149,15 @@ function AppInner() {
   useEffect(() => {
     setupFetchInterceptor(removeSession)
   }, [removeSession])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const msg = (e as CustomEvent<{ message: string }>).detail?.message || 'Your session has expired. Please log in again.'
+      setSessionExpired({ show: true, message: msg })
+    }
+    window.addEventListener('session-expired', handler)
+    return () => window.removeEventListener('session-expired', handler)
+  }, [])
 
   return (
     <>
@@ -168,6 +179,12 @@ function AppInner() {
         onStay={() => resumeSession()}
         onLogout={() => { setIdleVisible(false); removeSession() }}
         autoLogoutSeconds={120}
+      />
+
+      <SessionExpiredModal
+        show={sessionExpired.show}
+        message={sessionExpired.message}
+        onOk={() => { setSessionExpired({ show: false, message: '' }); removeSession() }}
       />
     </>
   )

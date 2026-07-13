@@ -341,14 +341,15 @@ const WritingPractice: React.FC = () => {
   const emailCount = rawAttempts.filter(a => a.mode === 'email').length
   const summaryCount = rawAttempts.filter(a => a.mode === 'summary').length
 
-  const HISTORY_PER_PAGE = 5
   const [historyFilter, setHistoryFilter] = useState<'all' | ModeType>('all')
   const [historyPage, setHistoryPage] = useState(1)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [goToPage, setGoToPage] = useState('')
 
   const allAttempts = [...rawAttempts].reverse()
   const filteredAttempts = historyFilter === 'all' ? allAttempts : allAttempts.filter(a => a.mode === historyFilter)
-  const historyTotalPages = Math.max(1, Math.ceil(filteredAttempts.length / HISTORY_PER_PAGE))
-  const pagedAttempts = filteredAttempts.slice((historyPage - 1) * HISTORY_PER_PAGE, historyPage * HISTORY_PER_PAGE)
+  const historyTotalPages = Math.max(1, Math.ceil(filteredAttempts.length / rowsPerPage))
+  const pagedAttempts = filteredAttempts.slice((historyPage - 1) * rowsPerPage, historyPage * rowsPerPage)
 
   const recentAttempts = [...rawAttempts].reverse().slice(0, 5)
 
@@ -493,13 +494,23 @@ const WritingPractice: React.FC = () => {
           <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
 
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #edf2f7' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Recent Writing Practice</span>
-              <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 20px 12px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+                  <span style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <FaEdit style={{ color: '#ff7a00', fontSize: '0.85rem' }} />
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>Recent Writing Practice</span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#94a3b8', paddingLeft: 42 }}>Track your latest writing practice and performance.</div>
+              </div>
+              <button style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #ff7a00', background: 'transparent', color: '#ff7a00', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+                View All <span>→</span>
+              </button>
             </div>
 
             {/* Filter tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderBottom: '1px solid #edf2f7', background: '#fafafa' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px 12px' }}>
               {([
                 { key: 'all',     label: 'All',             count: allAttempts.length },
                 { key: 'essay',   label: 'Essay Writing',   count: essayCount },
@@ -508,13 +519,10 @@ const WritingPractice: React.FC = () => {
               ] as { key: 'all' | ModeType; label: string; count: number }[]).map(f => {
                 const active = historyFilter === f.key
                 return (
-                  <button
-                    key={f.key}
-                    onClick={() => { setHistoryFilter(f.key); setHistoryPage(1) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 20, border: `1px solid ${active ? '#ff7a00' : '#e2e8f0'}`, background: active ? 'rgba(255,122,0,0.07)' : '#fff', color: active ? '#ff7a00' : '#64748b', fontSize: '0.75rem', fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
-                  >
+                  <button key={f.key} onClick={() => { setHistoryFilter(f.key); setHistoryPage(1) }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${active ? '#ff7a00' : '#e2e8f0'}`, background: active ? 'rgba(255,122,0,0.07)' : '#fff', color: active ? '#ff7a00' : '#64748b', fontSize: '0.78rem', fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {f.label}
-                    <span style={{ background: active ? '#ff7a00' : '#f1f5f9', color: active ? '#fff' : '#94a3b8', borderRadius: 10, padding: '0px 6px', fontSize: '0.65rem', fontWeight: 700, minWidth: 18, textAlign: 'center' }}>
+                    <span style={{ background: active ? '#ff7a00' : '#f1f5f9', color: active ? '#fff' : '#94a3b8', borderRadius: 10, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 700 }}>
                       {f.count}
                     </span>
                   </button>
@@ -530,9 +538,9 @@ const WritingPractice: React.FC = () => {
               <>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      {['Type', 'Topic / Title', 'Score', 'Date', 'Action'].map(h => (
-                        <th key={h} style={{ padding: '10px 16px', fontSize: '0.73rem', fontWeight: 700, color: '#64748b', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                    <tr style={{ background: '#f8fafc', borderTop: '1px solid #edf2f7', borderBottom: '1px solid #edf2f7' }}>
+                      {['#', 'TYPE', 'TOPIC / TITLE', 'SCORE', 'DATE', 'ACTION'].map((h, hi) => (
+                        <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textAlign: hi === 0 ? 'center' : 'left', whiteSpace: 'nowrap', letterSpacing: '0.04em' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -541,31 +549,52 @@ const WritingPractice: React.FC = () => {
                       const cfg = MODES[a.mode as ModeType] ?? MODES.essay
                       const rawScore = a.score
                       const score = rawScore !== undefined ? (rawScore <= 10 ? rawScore * 10 : rawScore) : null
-                      const sColor = score !== null ? (score >= 80 ? '#16a34a' : score >= 60 ? '#f59e0b' : '#dc2626') : '#94a3b8'
+                      const scoreBg = score !== null ? (score >= 80 ? 'rgba(22,163,74,0.1)' : score >= 60 ? 'rgba(245,158,11,0.1)' : 'rgba(220,38,38,0.1)') : '#f1f5f9'
+                      const scoreColor = score !== null ? (score >= 80 ? '#16a34a' : score >= 60 ? '#d97706' : '#dc2626') : '#94a3b8'
                       const dt = a.createdAt ? new Date(a.createdAt) : null
-                      const dateStr = dt ? dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                      const dateStr = dt ? dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
                       const timeStr = dt ? dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
-                      const title = a.prompt?.length > 55 ? a.prompt.slice(0, 55) + '…' : (a.prompt || '—')
+                      const title = a.prompt?.length > 52 ? a.prompt.slice(0, 52) + '…' : (a.prompt || '—')
+                      const rowNum = (historyPage - 1) * rowsPerPage + i + 1
                       return (
-                        <tr key={a._id ?? i} style={{ borderTop: '1px solid #edf2f7' }}>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ width: 28, height: 28, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><cfg.Icon style={{ fontSize: '0.8rem', color: cfg.color }} /></span>
-                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{cfg.label}</span>
+                        <tr key={a._id ?? i} style={{ borderBottom: '1px solid #edf2f7', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                          onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                          {/* # */}
+                          <td style={{ padding: '14px 16px', textAlign: 'center', width: 48 }}>
+                            <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600 }}>{rowNum}</span>
+                          </td>
+                          {/* TYPE */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                              <span style={{ width: 32, height: 32, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <cfg.Icon style={{ fontSize: '0.85rem', color: cfg.color }} />
+                              </span>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>{cfg.label}</span>
                             </div>
                           </td>
-                          <td style={{ padding: '12px 16px', maxWidth: 220 }}>
-                            <div style={{ fontSize: '0.8rem', color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+                          {/* TOPIC / TITLE */}
+                          <td style={{ padding: '14px 16px', maxWidth: 260 }}>
+                            <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 500, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+                            <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 5, background: cfg.bg, color: cfg.color, fontSize: '0.68rem', fontWeight: 600 }}>{cfg.label}</span>
                           </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: sColor }}>{score !== null ? `${score}/100` : '—'}</span>
+                          {/* SCORE */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 7, background: scoreBg, color: scoreColor, fontWeight: 700, fontSize: '0.82rem' }}>
+                              {score !== null ? `${score}/100` : '—'}
+                            </span>
                           </td>
-                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: '0.78rem', color: '#374151' }}>{dateStr}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{timeStr}</div>
+                          {/* DATE */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500 }}>{dateStr}</div>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>{timeStr}</div>
                           </td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <button style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Report</button>
+                          {/* ACTION */}
+                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <button style={{ padding: '0', border: 'none', background: 'none', color: '#3b82f6', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>View Report</button>
+                              <button style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, lineHeight: 1 }}>⋮</button>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -574,35 +603,45 @@ const WritingPractice: React.FC = () => {
                 </table>
 
                 {/* Pagination */}
-                {historyTotalPages > 1 && (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderTop: '1px solid #edf2f7', background: '#fafafa' }}>
-                    <span style={{ fontSize: '0.73rem', color: '#94a3b8' }}>
-                      Showing {(historyPage - 1) * HISTORY_PER_PAGE + 1}–{Math.min(historyPage * HISTORY_PER_PAGE, filteredAttempts.length)} of {filteredAttempts.length}
-                    </span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <button
-                        onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
-                        disabled={historyPage === 1}
-                        style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === 1 ? '#cbd5e1' : '#475569', cursor: historyPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-                      {Array.from({ length: historyTotalPages }, (_, i) => i + 1)
-                        .filter(p => p === 1 || p === historyTotalPages || Math.abs(p - historyPage) <= 1)
-                        .reduce<(number | '...')[]>((acc, p, idx, arr) => {
-                          if (idx > 0 && typeof arr[idx - 1] === 'number' && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...')
-                          acc.push(p)
-                          return acc
-                        }, [])
-                        .map((p, idx) => p === '...'
-                          ? <span key={`e${idx}`} style={{ padding: '0 4px', fontSize: '0.8rem', color: '#94a3b8' }}>…</span>
-                          : <button key={p} onClick={() => setHistoryPage(p as number)}
-                              style={{ width: 28, height: 28, border: `1px solid ${p === historyPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 7, background: p === historyPage ? '#ff7a00' : '#fff', color: p === historyPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.73rem', fontWeight: p === historyPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
-                        )}
-                      <button
-                        onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))}
-                        disabled={historyPage === historyTotalPages}
-                        style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === historyTotalPages ? '#cbd5e1' : '#475569', cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-                    </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #edf2f7', background: '#fafafa', flexWrap: 'wrap', gap: 8 }}>
+                  {/* Left: rows per page */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Rows per page:</span>
+                    <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setHistoryPage(1) }}
+                      style={{ border: '1px solid #e2e8f0', borderRadius: 7, padding: '3px 8px', fontSize: '0.78rem', color: '#374151', background: '#fff', cursor: 'pointer', outline: 'none' }}>
+                      {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
                   </div>
-                )}
+
+                  {/* Center: page buttons */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage === 1}
+                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === 1 ? '#cbd5e1' : '#475569', cursor: historyPage === 1 ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                    {Array.from({ length: historyTotalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === historyTotalPages || Math.abs(p - historyPage) <= 1)
+                      .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && typeof arr[idx - 1] === 'number' && (p as number) - (arr[idx - 1] as number) > 1) acc.push('...')
+                        acc.push(p); return acc
+                      }, [])
+                      .map((p, idx) => p === '...'
+                        ? <span key={`e${idx}`} style={{ padding: '0 4px', fontSize: '0.8rem', color: '#94a3b8' }}>...</span>
+                        : <button key={p} onClick={() => setHistoryPage(p as number)}
+                            style={{ width: 30, height: 30, border: `1px solid ${p === historyPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 7, background: p === historyPage ? '#ff7a00' : '#fff', color: p === historyPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.75rem', fontWeight: p === historyPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                      )}
+                    <button onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))} disabled={historyPage === historyTotalPages}
+                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === historyTotalPages ? '#cbd5e1' : '#475569', cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                  </div>
+
+                  {/* Right: go to page */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <style>{`#wp-goto-input { width:52px!important; border:1.5px solid #cbd5e1!important; border-radius:7px!important; padding:4px 8px!important; font-size:0.78rem!important; color:#111827!important; background:#f8fafc!important; text-align:center!important; outline:none!important; box-sizing:border-box!important; } #wp-goto-input::-webkit-outer-spin-button, #wp-goto-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }`}</style>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Go to page:</span>
+                    <input id="wp-goto-input" type="number" min={1} max={historyTotalPages} value={goToPage}
+                      onChange={e => setGoToPage(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { const p = Math.min(historyTotalPages, Math.max(1, Number(goToPage))); if (!isNaN(p)) { setHistoryPage(p); setGoToPage('') } } }}
+                    />
+                  </div>
+                </div>
               </>
             )}
           </div>

@@ -393,53 +393,41 @@ const SubscriptionPage = () => {
         );
     }
 
+    const OG = '#ff7a00'
+    const OG2 = '#ff6020'
+    const GRAD = `linear-gradient(135deg, ${OG}, ${OG2})`
+
     return (
         <>
             <PageMetaData title="Subscription" />
 
             <style>{`
         body {
-          background: linear-gradient(135deg, #fff9f5 0%, #fff2e8 100%);
+          background: #f1f3f8;
         }
 
         /* Orange Glassmorphism Effects */
         .glass-card {
-          background: ${THEME.glass};
-          backdrop-filter: blur(10px);
-          border: 1px solid ${THEME.border};
-          border-radius: 24px;
-          box-shadow: ${THEME.shadow};
-          transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          background: #ffffff;
+          border: 1px solid #ebebeb;
+          border-radius: 20px;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+          transition: all 0.3s ease;
           position: relative;
           overflow: hidden;
           height: 100%;
         }
 
-        .glass-card::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-          transition: left 0.7s ease;
-        }
-
-        .glass-card:hover::before {
-          left: 100%;
-        }
-
         .glass-card:hover {
-          transform: translateY(-4px) scale(1.01);
+          transform: translateY(-4px);
+          box-shadow: 0 12px 36px rgba(255,107,43,0.15);
           border-color: ${THEME.primary};
-          box-shadow: 0 30px 50px -15px ${THEME.glow};
         }
 
         .glass-card.popular {
-          background: ${THEME.glassDark};
+          background: #ffffff;
           border: 2px solid ${THEME.primary};
-          box-shadow: 0 30px 50px -15px ${THEME.glow};
+          box-shadow: 0 8px 32px rgba(255,107,43,0.18);
         }
 
         /* Popular Badge */
@@ -463,17 +451,16 @@ const SubscriptionPage = () => {
           backdrop-filter: blur(4px);
         }
 
-        /* Plan Header with Orange Glow */
+        /* Plan Header */
         .plan-header {
           text-align: center;
-          padding: 20px 16px 12px;
-          border-bottom: 2px dashed ${THEME.border};
+          padding: 28px 20px 16px;
         }
 
         .plan-icon {
-          width: 60px;
-          height: 60px;
-          margin: 0 auto 16px;
+          width: 68px;
+          height: 68px;
+          margin: 0 auto 18px;
           background: ${THEME.gradient};
           border-radius: 20px;
           display: flex;
@@ -481,57 +468,62 @@ const SubscriptionPage = () => {
           justify-content: center;
           color: white;
           font-size: 2rem;
-          box-shadow: 0 12px 20px -8px ${THEME.glow};
-          transform: rotate(0deg);
+          box-shadow: 0 8px 20px -6px ${THEME.glow};
           transition: transform 0.3s ease;
         }
 
         .glass-card:hover .plan-icon {
-          transform: rotate(5deg) scale(1.05);
+          transform: scale(1.06);
         }
 
         .plan-title {
-          font-size: clamp(1.5rem, 5vw, 2rem);
+          font-size: clamp(1.4rem, 4vw, 1.75rem);
           font-weight: 800;
-          color: ${THEME.text.primary};
-          margin-bottom: 4px;
-          letter-spacing: -0.5px;
+          color: #1a1a1a;
+          margin-bottom: 6px;
+          letter-spacing: -0.3px;
         }
 
         .plan-subtitle {
-          color: ${THEME.text.orange};
-          font-weight: 600;
-          font-size: clamp(0.8rem, 3vw, 0.95rem);
+          color: ${THEME.secondary};
+          font-weight: 700;
+          font-size: 0.8rem;
           text-transform: uppercase;
-          letter-spacing: 1px;
+          letter-spacing: 1.2px;
         }
 
         /* Price Section */
         .price-section {
           text-align: center;
-          padding: 16px;
-          background: linear-gradient(145deg, ${THEME.light}, transparent);
+          padding: 0 20px 8px;
+        }
+
+        .price-box {
+          background: #fff4ec;
+          border-radius: 14px;
+          padding: 18px 16px 14px;
+          margin-bottom: 4px;
         }
 
         .price {
-          font-size: clamp(2rem, 8vw, 3.5rem);
-          font-weight: 800;
-          color: ${THEME.text.primary};
+          font-size: clamp(2.2rem, 8vw, 3.2rem);
+          font-weight: 900;
+          color: #1a1a1a;
           line-height: 1;
         }
 
         .price small {
-          font-size: clamp(0.9rem, 3vw, 1.2rem);
+          font-size: clamp(0.85rem, 2.5vw, 1rem);
           font-weight: 500;
-          color: ${THEME.text.muted};
+          color: #888;
         }
 
         .price-period {
-          color: ${THEME.text.muted};
-          font-size: clamp(0.8rem, 2.5vw, 1rem);
+          color: #888;
+          font-size: 0.88rem;
           font-weight: 500;
           display: block;
-          margin-top: 4px;
+          margin-top: 6px;
         }
 
         .original-price {
@@ -556,7 +548,7 @@ const SubscriptionPage = () => {
 
         /* Features List */
         .features-list {
-          padding: 16px;
+          padding: 12px 20px 8px;
         }
 
         .feature-item {
@@ -597,43 +589,27 @@ const SubscriptionPage = () => {
 
         /* Action Button */
         .plan-action {
-          padding: 0 16px 20px;
+          padding: 8px 20px 24px;
         }
 
         .btn-plan {
           width: 100%;
           padding: 14px;
-          border-radius: 40px;
+          border-radius: 12px;
           font-weight: 700;
-          font-size: clamp(0.95rem, 3vw, 1.1rem);
-          letter-spacing: 0.5px;
+          font-size: 1rem;
+          letter-spacing: 0.3px;
           border: none;
           background: ${THEME.gradient};
           color: white;
-          box-shadow: 0 8px 16px -5px ${THEME.glow};
-          transition: all 0.3s ease;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .btn-plan::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: -100%;
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
-          transition: left 0.5s ease;
-        }
-
-        .btn-plan:hover::before {
-          left: 100%;
+          box-shadow: 0 4px 14px -4px ${THEME.glow};
+          transition: all 0.25s ease;
         }
 
         .btn-plan:hover {
           transform: translateY(-2px);
-          box-shadow: 0 15px 25px -8px ${THEME.glow};
+          box-shadow: 0 10px 24px -6px ${THEME.glow};
+          opacity: 0.92;
         }
 
         .btn-plan:disabled {
@@ -835,12 +811,12 @@ const SubscriptionPage = () => {
             font-weight: 800;
             margin-bottom: 0.5rem;
             font-size: clamp(1.8rem, 5vw, 2.5rem);
-            color: white;
+            color: #1a1a1a;
         }
 
         .features-header-text p {
-            color: #ddd;
-            font-size: clamp(1rem, 3vw, 1.2rem);
+            color: #777;
+            font-size: clamp(0.95rem, 3vw, 1.1rem);
         }
 
         /* Feature Cards */
@@ -895,303 +871,285 @@ const SubscriptionPage = () => {
         }
       `}</style>
 
-            <Container className="py-4 py-md-5">
-                {/* Active Subscription Banner */}
+            {/* ── Page wrapper ── */}
+            <div style={{ padding: '12px 20px', fontFamily: '"Segoe UI", sans-serif' }}>
+
+                {/* ── Title ── */}
+                <div style={{ textAlign: 'center', marginBottom: 12 }}>
+                    <h2 style={{ fontWeight: 800, color: '#1a1a1a', fontSize: '1.6rem', marginBottom: 2 }}>
+                        ✦ Choose Your Plan ✦
+                    </h2>
+                    <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>
+                        Unlock all features and accelerate your learning journey with Eklav.
+                    </p>
+                </div>
+
+                {/* ── Active Plan Banner ── */}
                 {subscription?.isActive && (
-                    <Row className="justify-content-center mb-4 mb-md-5">
-                        <Col xs={12} lg={10}>
-                            <div className="active-banner d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
-                                <div className="active-banner-item">
-                                    <BsShieldCheck />
-                                    <div>
-                                        <div className="label">Active Plan</div>
-                                        <div className="value">
-                                            {subscription.plan === '12months' ? '12 Months Premium' :
-                                                subscription.plan === '6months' ? '6 Months Premium' :
-                                                    'Premium Plan'}
-                                        </div>
-                                    </div>
+                    <div style={{
+                        background: GRAD,
+                        borderRadius: 16,
+                        padding: '14px 24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                        marginBottom: 14,
+                        color: 'white',
+                        boxShadow: '0 6px 20px rgba(255,107,43,0.3)',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <BsShieldCheck size={28} style={{ opacity: 0.9 }} />
+                            <div>
+                                <div style={{ fontSize: '0.78rem', opacity: 0.85, marginBottom: 2 }}>Active Plan</div>
+                                <div style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: 1 }}>
+                                    {subscription.plan === '12months' ? '12 Months Premium'
+                                        : subscription.plan === '6months' ? '6 Months Premium'
+                                        : 'Premium Plan'}
                                 </div>
-                                <div className="active-banner-item">
-                                    <BsClock />
-                                    <div>
-                                        <div className="label">Valid Until</div>
-                                        <div className="value">{formatDate(subscription.endDate)}</div>
-                                    </div>
-                                </div>
-                                <span className="active-status-badge">
-                                    <BsCheckCircleFill />
-                                    Active
-                                </span>
                             </div>
-                        </Col>
-                    </Row>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                            <BsClock size={24} style={{ opacity: 0.9 }} />
+                            <div>
+                                <div style={{ fontSize: '0.78rem', opacity: 0.85, marginBottom: 2 }}>Valid Until</div>
+                                <div style={{ fontWeight: 800, fontSize: '1.2rem', lineHeight: 1 }}>{formatDate(subscription.endDate)}</div>
+                            </div>
+                        </div>
+                        <div style={{
+                            background: 'rgba(255,255,255,0.18)',
+                            border: '2px solid rgba(255,255,255,0.55)',
+                            borderRadius: 50,
+                            padding: '9px 30px',
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: '0.95rem',
+                        }}>
+                            <BsCheckCircleFill />
+                            Active
+                        </div>
+                    </div>
                 )}
 
-                {/* Coupon Section */}
+                {/* ── Coupon Section (only when not subscribed) ── */}
                 {!subscription?.isActive && (
-                    <Row className="justify-content-center mb-4 mb-md-5">
-                        <Col xs={12} lg={8}>
-                            <div className="coupon-section text-center">
-                                <h4 className="mb-3 mb-md-4" style={{ color: THEME.text.orange, fontWeight: 700, fontSize: 'clamp(1.2rem, 4vw, 1.5rem)' }}>
-                                    <BsTagFill className="me-2" />
-                                    Exclusive Offers
-                                </h4>
-
-                                {/* Available Coupons */}
-                                {universalCoupons.length > 0 && !appliedCoupon && (
-                                    <div className="d-flex flex-column flex-sm-row justify-content-center flex-wrap gap-2 mb-3 mb-md-4">
-                                        {universalCoupons.map((coupon) => (
-                                            <div
-                                                key={coupon.code}
-                                                className="coupon-chip"
-                                                onClick={() => copyToClipboard(coupon.code)}
-                                            >
-                                                <span className="coupon-code">{coupon.code}</span>
-                                                <span className="coupon-badge">{coupon.discountPercent}% OFF</span>
-                                                {copiedCode === coupon.code ? (
-                                                    <BsClipboardCheck style={{ color: '#10b981' }} />
-                                                ) : (
-                                                    <BsClipboard style={{ color: THEME.text.light }} />
-                                                )}
-                                            </div>
-                                        ))}
+                    <div style={{
+                        background: 'white',
+                        borderRadius: 16,
+                        padding: '20px 24px',
+                        marginBottom: 20,
+                        border: '1px solid #f0e8ff',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                        textAlign: 'center',
+                    }}>
+                        <div style={{ color: OG, fontWeight: 700, fontSize: '1.05rem', marginBottom: 12 }}>
+                            <BsTagFill style={{ marginRight: 8 }} />
+                            Exclusive Offers
+                        </div>
+                        {universalCoupons.length > 0 && !appliedCoupon && (
+                            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
+                                {universalCoupons.map((coupon) => (
+                                    <div key={coupon.code} onClick={() => copyToClipboard(coupon.code)} style={{
+                                        background: 'white', border: `1px solid ${OG}`, borderRadius: 40,
+                                        padding: '8px 16px', cursor: 'pointer', display: 'inline-flex',
+                                        alignItems: 'center', gap: 8, fontSize: '0.88rem',
+                                    }}>
+                                        <span style={{ fontWeight: 700, letterSpacing: 1, color: OG }}>{coupon.code}</span>
+                                        <span style={{ background: GRAD, color: 'white', padding: '2px 10px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>{coupon.discountPercent}% OFF</span>
+                                        {copiedCode === coupon.code ? <BsClipboardCheck style={{ color: '#10b981' }} /> : <BsClipboard style={{ color: '#aaa' }} />}
                                     </div>
-                                )}
-
-                                {/* Coupon Input */}
-                                {appliedCoupon?.valid ? (
-                                    <div className="applied-coupon">
-                                        <div>
-                                            <span className="fw-bold" style={{ color: THEME.primary }}>
-                                                {appliedCoupon.code}
-                                            </span>
-                                            <span className="mx-2 text-muted">•</span>
-                                            <span style={{ color: '#10b981', fontWeight: 600 }}>
-                                                {appliedCoupon.discountPercent}% OFF
-                                            </span>
-                                        </div>
-                                        <Button
-                                            variant="link"
-                                            className="text-danger p-0"
-                                            onClick={removeCoupon}
-                                        >
-                                            <BsXCircleFill size={20} />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="coupon-input-group">
-                                        <Form.Control
-                                            type="text"
-                                            placeholder="ENTER COUPON CODE"
-                                            value={couponCode}
-                                            onChange={(e) => {
-                                                setCouponCode(e.target.value.toUpperCase());
-                                                if (couponResult) setCouponResult(null);
-                                            }}
-                                            onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
-                                            className="coupon-input"
-                                            disabled={couponLoading}
-                                        />
-                                        <Button
-                                            className="coupon-apply-btn"
-                                            onClick={() => validateCoupon()}
-                                            disabled={!couponCode.trim() || couponLoading}
-                                        >
-                                            {couponLoading ? <Spinner size="sm" /> : 'Apply'}
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {couponResult && !couponResult.valid && (
-                                    <div className="text-danger small mt-3">
-                                        <BsXCircleFill className="me-1" />
-                                        {couponResult.error}
-                                    </div>
-                                )}
+                                ))}
                             </div>
-                        </Col>
-                    </Row>
+                        )}
+                        {appliedCoupon?.valid ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff4ec', borderRadius: 40, padding: '10px 16px', border: `1px solid ${OG}` }}>
+                                <span><strong style={{ color: OG }}>{appliedCoupon.code}</strong> <span style={{ color: '#aaa' }}>•</span> <span style={{ color: '#10b981', fontWeight: 600 }}>{appliedCoupon.discountPercent}% OFF</span></span>
+                                <Button variant="link" className="text-danger p-0" onClick={removeCoupon}><BsXCircleFill size={18} /></Button>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', gap: 8, background: '#f9f9f9', borderRadius: 50, padding: 4, border: '1px solid #eee' }}>
+                                <Form.Control type="text" placeholder="ENTER COUPON CODE" value={couponCode}
+                                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); if (couponResult) setCouponResult(null); }}
+                                    onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
+                                    disabled={couponLoading}
+                                    style={{ border: 'none', background: 'transparent', fontWeight: 600, letterSpacing: 1, fontSize: '0.9rem', outline: 'none', boxShadow: 'none' }}
+                                />
+                                <button onClick={() => validateCoupon()} disabled={!couponCode.trim() || couponLoading}
+                                    style={{ background: GRAD, border: 'none', borderRadius: 50, padding: '10px 22px', color: 'white', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
+                                    {couponLoading ? <Spinner size="sm" /> : 'Apply'}
+                                </button>
+                            </div>
+                        )}
+                        {couponResult && !couponResult.valid && (
+                            <div style={{ color: '#dc2626', fontSize: '0.83rem', marginTop: 8 }}>
+                                <BsXCircleFill style={{ marginRight: 4 }} />{couponResult.error}
+                            </div>
+                        )}
+                    </div>
                 )}
 
-                {/* Plan Cards */}
-                <Row className="g-3 g-md-4 justify-content-center">
-                    {allPlans.map((plan, index) => {
-                        const isCurrentPlan = subscription?.isActive && subscription.plan === plan.id;
-                        const discountedPrice = getDiscountedPrice(plan);
-                        const displayPrice = discountedPrice ?? plan.price;
+                {/* ── Alerts ── */}
+                {error && <Alert variant="danger" className="mb-3">{error}</Alert>}
+                {successMsg && <Alert variant="success" className="mb-3">{successMsg}</Alert>}
 
-                        // Map icons based on plan
-                        const PlanIcon = index === 0 ? BsLightningCharge : index === 1 ? BsPeople : BsRocket;
+                {/* ── Plan Cards ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                    {allPlans.map((plan, index) => {
+                        const isCurrentPlan = subscription?.isActive && subscription.plan === plan.id
+                        const discountedPrice = getDiscountedPrice(plan)
+                        const displayPrice = discountedPrice ?? plan.price
+                        const PlanIcon = index === 0 ? BsLightningCharge : index === 1 ? BsPeople : BsRocket
 
                         return (
-                            <Col key={plan.id} xs={12} md={6} lg={4}>
-                                <Card className={`glass-card ${plan.popular ? 'popular' : ''} ${plan.isFree ? 'bg-white' : ''}`}>
-                                    {plan.popular && (
-                                        <div className="popular-badge">
-                                            <BsStarFill size={14} />
-                                            Most Popular
+                            <div key={plan.id} style={{
+                                background: 'white',
+                                borderRadius: 18,
+                                border: plan.popular ? `2px solid ${OG}` : '1px solid #eee',
+                                padding: '18px 16px 16px',
+                                position: 'relative',
+                                boxShadow: plan.popular
+                                    ? '0 6px 24px rgba(255,107,43,0.15)'
+                                    : '0 2px 12px rgba(0,0,0,0.06)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                            }}>
+                                {/* Popular badge */}
+                                {plan.popular && (
+                                    <div style={{
+                                        position: 'absolute', top: -14, right: 18,
+                                        background: GRAD, color: 'white',
+                                        padding: '5px 14px', borderRadius: 30,
+                                        fontSize: '0.78rem', fontWeight: 700,
+                                        display: 'flex', alignItems: 'center', gap: 5,
+                                        boxShadow: '0 4px 12px rgba(255,107,43,0.4)',
+                                    }}>
+                                        <BsStarFill size={11} /> Most Popular
+                                    </div>
+                                )}
+
+                                {/* Icon */}
+                                <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                                    <div style={{
+                                        width: 54, height: 54,
+                                        background: GRAD,
+                                        borderRadius: 15,
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'white',
+                                        fontSize: 22,
+                                        boxShadow: '0 4px 14px rgba(255,107,43,0.35)',
+                                    }}>
+                                        <PlanIcon />
+                                    </div>
+                                </div>
+
+                                {/* Plan name + subtitle */}
+                                <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                                    <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: '#1a1a1a', margin: '0 0 3px' }}>
+                                        {plan.label}
+                                    </h3>
+                                    {plan.duration && (
+                                        <div style={{ color: OG, fontWeight: 700, fontSize: '0.68rem', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                                            {plan.duration} Access
                                         </div>
                                     )}
+                                </div>
 
-                                    {/* Plan Header with Icon */}
-                                    <div className="plan-header">
-                                        <div className="plan-icon">
-                                            <PlanIcon />
+                                {/* Price box */}
+                                <div style={{
+                                    background: '#fff4ec',
+                                    borderRadius: 12,
+                                    padding: '10px 14px',
+                                    textAlign: 'center',
+                                    marginBottom: 10,
+                                }}>
+                                    {plan.isFree ? (
+                                        <div style={{ fontWeight: 900, fontSize: '2rem', color: '#1a1a1a', lineHeight: 1 }}>Free</div>
+                                    ) : (
+                                        <>
+                                            {discountedPrice && (
+                                                <span style={{ textDecoration: 'line-through', color: '#bbb', fontSize: '0.85rem', marginRight: 6 }}>₹{plan.price}</span>
+                                            )}
+                                            <div style={{ lineHeight: 1 }}>
+                                                <span style={{ fontWeight: 900, fontSize: '2rem', color: '#1a1a1a' }}>₹{displayPrice}</span>
+                                                <span style={{ fontWeight: 500, fontSize: '0.85rem', color: '#888' }}>.00</span>
+                                            </div>
+                                            <div style={{ color: '#888', fontSize: '0.78rem', marginTop: 3 }}>/{plan.duration.toLowerCase()}</div>
+                                            {discountedPrice && (
+                                                <div style={{ display: 'inline-block', background: GRAD, color: 'white', padding: '2px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600, marginTop: 6 }}>
+                                                    Save {appliedCoupon?.discountPercent}%
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Features */}
+                                <div style={{ flex: 1, marginBottom: 10 }}>
+                                    {plan.features?.slice(0, 5).map((feature, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: '#444', fontSize: '0.83rem' }}>
+                                            <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 13 }} />
+                                            <span>{feature}</span>
                                         </div>
-                                        <h3 className="plan-title">{plan.label}</h3>
-                                        {plan.duration && (
-                                            <div className="plan-subtitle">{plan.duration} Access</div>
-                                        )}
-                                    </div>
+                                    ))}
+                                    {plan.features && plan.features.length > 5 && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: OG, fontSize: '0.83rem', fontWeight: 600 }}>
+                                            <BsPlusCircle style={{ flexShrink: 0, fontSize: 13 }} />
+                                            +{plan.features.length - 5} more features
+                                        </div>
+                                    )}
+                                </div>
 
-                                    {/* Price Section */}
-                                    <div className="price-section">
-                                        {plan.isFree ? (
-                                            <div className="price">Free</div>
-                                        ) : (
-                                            <>
-                                                <div>
-                                                    {discountedPrice && (
-                                                        <span className="original-price">₹{plan.price}</span>
-                                                    )}
-                                                    <span className="price">
-                                                        ₹{displayPrice}
-                                                        <small>.00</small>
-                                                    </span>
-                                                </div>
-                                                <span className="price-period">/{plan.duration.toLowerCase()}</span>
-                                                {discountedPrice && (
-                                                    <div className="discount-badge">
-                                                        Save {appliedCoupon?.discountPercent}%
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-
-                                    {/* Features List */}
-                                    <div className="features-list">
-                                        {plan.features?.slice(0, 6).map((feature, idx) => (
-                                            <div key={idx} className="feature-item">
-                                                <div className="feature-icon-wrapper">
-                                                    <BsCheckCircleFill />
-                                                </div>
-                                                <span>{feature}</span>
-                                            </div>
-                                        ))}
-                                        {plan.features && plan.features.length > 6 && (
-                                            <div className="more-features">
-                                                <BsPlusCircle />
-                                                <span>+{plan.features.length - 6} more features</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Action Button */}
-                                    <div className="plan-action">
-                                        {isCurrentPlan ? (
-                                            <Button className="btn-plan" disabled>
-                                                <BsCheckCircleFill className="me-2" />
-                                                Current Plan
-                                            </Button>
-                                        ) : plan.isFree ? (
-                                            <Button
-                                                className="btn-plan btn-plan-outline"
-                                                onClick={() => window.location.href = '/student/dashboard'}
-                                                disabled={subscription?.isActive}
-                                            >
-                                                {subscription?.isActive ? 'Already Subscribed' : 'Start Free Trial'}
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                className={`btn-plan ${!plan.popular ? 'btn-plan-outline' : ''}`}
-                                                onClick={() => handlePayment(plan)}
-                                                disabled={!!paymentLoading || subscription?.isActive}
-                                            >
-                                                {paymentLoading === plan.id ? (
-                                                    <>
-                                                        <Spinner animation="border" size="sm" className="me-2" />
-                                                        Processing...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        Select Plan
-                                                        <BsArrowRight className="ms-2" />
-                                                    </>
-                                                )}
-                                            </Button>
-                                        )}
-                                    </div>
-                                </Card>
-                            </Col>
-                        );
+                                {/* Button */}
+                                {isCurrentPlan ? (
+                                    <button disabled style={{
+                                        width: '100%', padding: '10px', borderRadius: 10,
+                                        background: GRAD, color: 'white',
+                                        fontWeight: 700, border: 'none', opacity: 0.75,
+                                        cursor: 'not-allowed', fontSize: '0.88rem',
+                                    }}>
+                                        <BsCheckCircleFill style={{ marginRight: 6 }} />
+                                        Current Plan
+                                    </button>
+                                ) : plan.isFree ? (
+                                    <button
+                                        onClick={() => { window.location.href = '/student/dashboard' }}
+                                        disabled={!!subscription?.isActive}
+                                        style={{
+                                            width: '100%', padding: '10px', borderRadius: 10,
+                                            background: 'transparent', border: `2px solid ${OG}`,
+                                            color: OG, fontWeight: 700, cursor: subscription?.isActive ? 'not-allowed' : 'pointer',
+                                            fontSize: '0.88rem', opacity: subscription?.isActive ? 0.6 : 1,
+                                        }}>
+                                        {subscription?.isActive ? 'Already Subscribed' : 'Start Free Trial'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => handlePayment(plan)}
+                                        disabled={!!paymentLoading || !!subscription?.isActive}
+                                        style={{
+                                            width: '100%', padding: '10px', borderRadius: 10,
+                                            background: GRAD, color: 'white',
+                                            fontWeight: 700, border: 'none',
+                                            cursor: (!!paymentLoading || subscription?.isActive) ? 'not-allowed' : 'pointer',
+                                            opacity: (!!paymentLoading || subscription?.isActive) ? 0.7 : 1,
+                                            fontSize: '0.88rem',
+                                            boxShadow: '0 4px 12px rgba(255,107,43,0.35)',
+                                        }}>
+                                        {paymentLoading === plan.id ? (
+                                            <><Spinner animation="border" size="sm" style={{ marginRight: 6 }} />Processing...</>
+                                        ) : 'Choose Plan'}
+                                    </button>
+                                )}
+                            </div>
+                        )
                     })}
-                </Row>
-
-                {/* Features Section */}
-                <Row className="mt-4 mt-md-5 pt-3 pt-md-4">
-                    <Col xs={12}>
-                        <div className="features-header-text">
-                            <h2>Everything You Get</h2>
-                            <p>All premium plans include these core features</p>
-                        </div>
-                    </Col>
-
-                    <Row className="g-3 g-md-4 mt-2">
-                        <Col xs={12} md={4}>
-                            <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
-                                    <BsFolderSymlink />
-                                </div>
-                                <h4>Learning & Courses</h4>
-                                {['Top Tech Courses', 'Unlimited Access', 'Communication Skills', 'Mock Interviews', '24/7 Support'].map((item, idx) => (
-                                    <div key={idx} className="feature-item">
-                                        <div className="feature-icon-wrapper">
-                                            <BsCheckCircleFill />
-                                        </div>
-                                        <span>{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Col>
-
-                        <Col xs={12} md={4}>
-                            <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
-                                    <BsHddStack />
-                                </div>
-                                <h4>AI-Powered Tools</h4>
-                                {['AI Practice Tools', 'Leadership Board', 'English Practice', 'Speaking Practice', 'Writing Practice'].map((item, idx) => (
-                                    <div key={idx} className="feature-item">
-                                        <div className="feature-icon-wrapper">
-                                            <BsCheckCircleFill />
-                                        </div>
-                                        <span>{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Col>
-
-                        <Col xs={12} md={4}>
-                            <div className="feature-card">
-                                <div className="plan-icon" style={{ width: 50, height: 50, fontSize: '1.6rem', marginBottom: 16 }}>
-                                    <BsShieldLock />
-                                </div>
-                                <h4>Assessment & Prep</h4>
-                                {['Aptitude Prep', 'Code Challenges', 'AI Interview', 'Online Classes', 'Final Assessment'].map((item, idx) => (
-                                    <div key={idx} className="feature-item">
-                                        <div className="feature-icon-wrapper">
-                                            <BsCheckCircleFill />
-                                        </div>
-                                        <span>{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </Col>
-                    </Row>
-                </Row>
-            </Container>
+                </div>
+            </div>
         </>
     );
 };
