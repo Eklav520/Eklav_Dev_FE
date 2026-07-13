@@ -12,6 +12,7 @@ import { ChildrenType } from '@/types/component-props'
 import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import logoWhite from '@/assets/images/logo_white.png'
+import logoIcon from '@/assets/images/logo-mobile-light.svg'
 
 const ordinal = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd']
@@ -153,7 +154,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <img src={logoWhite} alt="Eklav" style={{ height: 22, objectFit: 'contain' }} />
+            <img src={logoIcon} alt="Eklav" style={{ height: 22, objectFit: 'contain', marginTop: 8 }} />
             <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
               <FiMenu size={16} />
             </button>
