@@ -203,7 +203,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
           <p style={{ fontSize: '0.72rem', color: SIDEBAR_TEXT, margin: '0 0 10px', lineHeight: 1.4 }}>
             Unlock all premium courses, mock interviews and more.
           </p>
-          <Link to="/student/subscriptions" style={{
+          <Link to="/student/subscription" style={{
             display: 'block', textAlign: 'center',
             background: ACCENT, color: '#fff',
             borderRadius: 8, padding: '7px 0',

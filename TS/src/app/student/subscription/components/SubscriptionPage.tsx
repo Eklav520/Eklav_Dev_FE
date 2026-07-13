@@ -1,4 +1,5 @@
 import PageMetaData from '@/components/PageMetaData';
+import cupponboxImg from '@/assets/images/Cupponbox.png';
 import { useAuthContext } from '@/context/useAuthContext';
 import { useEffect, useState, useCallback } from 'react';
 import {
@@ -168,6 +169,37 @@ const SubscriptionPage = () => {
     const [universalCoupons, setUniversalCoupons] = useState<UniversalCoupon[]>([]);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+    // Confetti
+    const [showConfetti, setShowConfetti] = useState(false);
+    const triggerConfetti = () => {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 2800);
+    };
+
+    // Countdown timer for first universal coupon
+    const [countdown, setCountdown] = useState({ d: '00', h: '00', m: '00', s: '00' });
+    useEffect(() => {
+        if (!universalCoupons.length) return;
+        const end = new Date(universalCoupons[0].endDate).getTime();
+        const tick = () => {
+            const diff = end - Date.now();
+            if (diff <= 0) { setCountdown({ d: '00', h: '00', m: '00', s: '00' }); return; }
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            setCountdown({
+                d: String(d).padStart(2, '0'),
+                h: String(h).padStart(2, '0'),
+                m: String(m).padStart(2, '0'),
+                s: String(s).padStart(2, '0'),
+            });
+        };
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [universalCoupons]);
+
     // Add the same premium features to all paid plans
     const plansWithFeatures = plans.map((plan) => ({
         ...plan,
@@ -241,6 +273,7 @@ const SubscriptionPage = () => {
                 const data: CouponResult = await response.json();
                 setCouponResult(data);
                 setAppliedCoupon(data.valid ? data : null);
+                if (data.valid) triggerConfetti();
             } catch {
                 setCouponResult({ valid: false, error: 'Failed to validate coupon' });
                 setAppliedCoupon(null);
@@ -869,7 +902,52 @@ const SubscriptionPage = () => {
             --bs-gutter-y: 1.5rem;
           }
         }
+
+        @keyframes confetti-fall {
+          0%   { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translateY(-320px) rotate(720deg) scale(0.4); opacity: 0; }
+        }
+        @keyframes confetti-side {
+          0%   { transform: translateX(0) translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateX(var(--tx)) translateY(-260px) rotate(540deg); opacity: 0; }
+        }
+        .confetti-piece {
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          width: 10px;
+          height: 10px;
+          border-radius: 2px;
+          animation: confetti-side 2.4s ease-out forwards;
+          pointer-events: none;
+        }
       `}</style>
+
+            {/* ── Confetti burst ── */}
+            {showConfetti && (
+                <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9999, overflow: 'hidden' }}>
+                    {Array.from({ length: 48 }).map((_, i) => {
+                        const colors = ['#ff7a00','#ff3d00','#ffd600','#00c853','#2979ff','#e040fb','#f06292','#00bcd4','#ffab40'];
+                        const color = colors[i % colors.length];
+                        const tx = `${(Math.random() - 0.5) * 600}px`;
+                        const delay = `${Math.random() * 0.5}s`;
+                        const size = 6 + Math.random() * 10;
+                        const left = `${10 + Math.random() * 80}%`;
+                        const isCircle = i % 3 === 0;
+                        return (
+                            <div key={i} className="confetti-piece" style={{
+                                left, bottom: '40%',
+                                width: size, height: isCircle ? size : size * 0.5,
+                                background: color,
+                                borderRadius: isCircle ? '50%' : 2,
+                                animationDelay: delay,
+                                ['--tx' as any]: tx,
+                            }} />
+                        );
+                    })}
+                </div>
+            )}
 
             {/* ── Page wrapper ── */}
             <div style={{ padding: '12px 20px', fontFamily: '"Segoe UI", sans-serif' }}>
@@ -936,58 +1014,137 @@ const SubscriptionPage = () => {
 
                 {/* ── Coupon Section (only when not subscribed) ── */}
                 {!subscription?.isActive && (
-                    <div style={{
-                        background: 'white',
-                        borderRadius: 16,
-                        padding: '20px 24px',
-                        marginBottom: 20,
-                        border: '1px solid #f0e8ff',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                        textAlign: 'center',
-                    }}>
-                        <div style={{ color: OG, fontWeight: 700, fontSize: '1.05rem', marginBottom: 12 }}>
-                            <BsTagFill style={{ marginRight: 8 }} />
-                            Exclusive Offers
-                        </div>
-                        {universalCoupons.length > 0 && !appliedCoupon && (
-                            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-                                {universalCoupons.map((coupon) => (
-                                    <div key={coupon.code} onClick={() => copyToClipboard(coupon.code)} style={{
-                                        background: 'white', border: `1px solid ${OG}`, borderRadius: 40,
-                                        padding: '8px 16px', cursor: 'pointer', display: 'inline-flex',
-                                        alignItems: 'center', gap: 8, fontSize: '0.88rem',
-                                    }}>
-                                        <span style={{ fontWeight: 700, letterSpacing: 1, color: OG }}>{coupon.code}</span>
-                                        <span style={{ background: GRAD, color: 'white', padding: '2px 10px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>{coupon.discountPercent}% OFF</span>
-                                        {copiedCode === coupon.code ? <BsClipboardCheck style={{ color: '#10b981' }} /> : <BsClipboard style={{ color: '#aaa' }} />}
+                    <div style={{ marginBottom: 20 }}>
+                        {/* Banner */}
+                        {universalCoupons.length > 0 && (
+                            <div style={{
+                                background: '#fff8f3',
+                                borderRadius: 16,
+                                border: '1px solid #ffe0c8',
+                                padding: '20px 28px',
+                                marginBottom: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 24,
+                                flexWrap: 'wrap',
+                                boxShadow: '0 2px 12px rgba(255,122,0,0.07)',
+                            }}>
+                                {/* Gift image */}
+                                <img src={cupponboxImg} alt="Offer" style={{ height: 90, objectFit: 'contain', flexShrink: 0 }} />
+
+                                {/* Text */}
+                                <div style={{ flex: 1, minWidth: 180 }}>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #ffd4b0', borderRadius: 20, padding: '4px 12px', marginBottom: 8 }}>
+                                        <BsTagFill style={{ color: OG, fontSize: 11 }} />
+                                        <span style={{ color: OG, fontWeight: 700, fontSize: '0.75rem', letterSpacing: 0.5 }}>LIMITED TIME OFFER</span>
                                     </div>
-                                ))}
+                                    <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1a1a1a', marginBottom: 4 }}>Unlock Premium. Save More.</div>
+                                    <div style={{ color: '#888', fontSize: '0.85rem' }}>Get an exclusive discount on all premium plans.<br />Hurry, offer ends soon!</div>
+                                </div>
+
+                                {/* Coupon codes + timer */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 220 }}>
+                                    {universalCoupons.map((coupon) => (
+                                        <div key={coupon.code}>
+                                            <div style={{
+                                                border: `1.5px dashed ${OG}`, borderRadius: 12,
+                                                padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                                                background: 'white', cursor: 'pointer',
+                                            }} onClick={() => copyToClipboard(coupon.code)}>
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: OG, letterSpacing: 1 }}>{coupon.code}</div>
+                                                    <div style={{ fontSize: '0.68rem', color: '#999', letterSpacing: 0.5 }}>COUPON CODE</div>
+                                                </div>
+                                                <div style={{ width: 1, background: '#ffd4b0', alignSelf: 'stretch' }} />
+                                                <div style={{ flex: 1, textAlign: 'center' }}>
+                                                    <div style={{ fontWeight: 800, fontSize: '1.1rem', color: OG }}>{coupon.discountPercent}% OFF</div>
+                                                    <div style={{ fontSize: '0.68rem', color: '#999', letterSpacing: 0.5 }}>ON ALL PLANS</div>
+                                                </div>
+                                                <div>
+                                                    {copiedCode === coupon.code
+                                                        ? <BsClipboardCheck style={{ color: '#10b981', fontSize: 16 }} />
+                                                        : <BsClipboard style={{ color: '#bbb', fontSize: 16 }} />}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 8, fontSize: '0.8rem', color: '#555' }}>
+                                                <BsClock style={{ color: OG, fontSize: 13 }} />
+                                                <span>Offer ends in</span>
+                                                <span style={{ color: OG, fontWeight: 700 }}>{countdown.d}d : {countdown.h}h : {countdown.m}m : {countdown.s}s</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
-                        {appliedCoupon?.valid ? (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff4ec', borderRadius: 40, padding: '10px 16px', border: `1px solid ${OG}` }}>
-                                <span><strong style={{ color: OG }}>{appliedCoupon.code}</strong> <span style={{ color: '#aaa' }}>•</span> <span style={{ color: '#10b981', fontWeight: 600 }}>{appliedCoupon.discountPercent}% OFF</span></span>
-                                <Button variant="link" className="text-danger p-0" onClick={removeCoupon}><BsXCircleFill size={18} /></Button>
+
+                        {/* Coupon input */}
+                        <div style={{
+                            background: 'white', borderRadius: 14, border: '1px solid #eee',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.05)', padding: '18px 20px',
+                            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: '0 0 auto' }}>
+                                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#fff4ec', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    <BsTagFill style={{ color: OG, fontSize: 18 }} />
+                                </div>
+                                <div>
+                                    <div style={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.95rem' }}>Have a coupon code?</div>
+                                    <div style={{ color: '#888', fontSize: '0.78rem' }}>Enter your code to get the best discount</div>
+                                </div>
                             </div>
-                        ) : (
-                            <div style={{ display: 'flex', gap: 8, background: '#f9f9f9', borderRadius: 50, padding: 4, border: '1px solid #eee' }}>
-                                <Form.Control type="text" placeholder="ENTER COUPON CODE" value={couponCode}
-                                    onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); if (couponResult) setCouponResult(null); }}
-                                    onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
-                                    disabled={couponLoading}
-                                    style={{ border: 'none', background: 'transparent', fontWeight: 600, letterSpacing: 1, fontSize: '0.9rem', outline: 'none', boxShadow: 'none' }}
-                                />
-                                <button onClick={() => validateCoupon()} disabled={!couponCode.trim() || couponLoading}
-                                    style={{ background: GRAD, border: 'none', borderRadius: 50, padding: '10px 22px', color: 'white', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}>
-                                    {couponLoading ? <Spinner size="sm" /> : 'Apply'}
-                                </button>
-                            </div>
-                        )}
+
+                            {appliedCoupon?.valid ? (
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff4ec', borderRadius: 40, padding: '10px 16px', border: `1px solid ${OG}` }}>
+                                    <span><strong style={{ color: OG }}>{appliedCoupon.code}</strong> <span style={{ color: '#aaa' }}>•</span> <span style={{ color: '#10b981', fontWeight: 600 }}>{appliedCoupon.discountPercent}% OFF</span></span>
+                                    <Button variant="link" className="text-danger p-0" onClick={removeCoupon}><BsXCircleFill size={18} /></Button>
+                                </div>
+                            ) : (
+                                <div style={{ flex: 1, display: 'flex', gap: 8, background: '#f9f9f9', borderRadius: 50, padding: '4px 4px 4px 16px', border: '1px solid #eee', minWidth: 220 }}>
+                                    <Form.Control type="text" placeholder="Enter coupon code"
+                                        value={couponCode}
+                                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); if (couponResult) setCouponResult(null); }}
+                                        onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
+                                        disabled={couponLoading}
+                                        style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', outline: 'none', boxShadow: 'none', padding: 0, color: '#1a1a1a', fontWeight: 700, letterSpacing: 1 }}
+                                    />
+                                    <button onClick={() => validateCoupon()} disabled={!couponCode.trim() || couponLoading}
+                                        style={{ background: GRAD, border: 'none', borderRadius: 50, padding: '10px 24px', color: 'white', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                        {couponLoading ? <Spinner size="sm" /> : 'Apply'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                         {couponResult && !couponResult.valid && (
-                            <div style={{ color: '#dc2626', fontSize: '0.83rem', marginTop: 8 }}>
+                            <div style={{ color: '#dc2626', fontSize: '0.83rem', marginTop: 6, paddingLeft: 4 }}>
                                 <BsXCircleFill style={{ marginRight: 4 }} />{couponResult.error}
                             </div>
                         )}
+
+                        {/* Trust badges */}
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginTop: 12, background: 'white', borderRadius: 12, border: '1px solid #eee', overflow: 'hidden' }}>
+                            {[
+                                { icon: <BsTagFill style={{ color: OG, fontSize: 18 }} />, title: 'Best Prices Guaranteed', sub: 'Get the lowest price on all plans' },
+                                { icon: <BsShieldCheck style={{ color: OG, fontSize: 18 }} />, title: 'Secure & Safe Payment', sub: '100% secure transactions' },
+                                { icon: <BsPeople style={{ color: OG, fontSize: 18 }} />, title: '24/7 Support', sub: "We're here to help anytime" },
+                            ].map((item, i, arr) => (
+                                <div key={i} style={{
+                                    flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px',
+                                    borderRight: i < arr.length - 1 ? '1px solid #eee' : 'none',
+                                }}>
+                                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fff4ec', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        {item.icon}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1a1a1a' }}>{item.title}</div>
+                                        <div style={{ fontSize: '0.72rem', color: '#888' }}>{item.sub}</div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{ textAlign: 'center', color: '#aaa', fontSize: '0.75rem', marginTop: 8 }}>
+                            <BsShieldCheck style={{ marginRight: 4 }} />Your data is safe and encrypted
+                        </div>
                     </div>
                 )}
 
