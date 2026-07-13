@@ -65,6 +65,7 @@ const EnglishVoicePractice: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const speechPauseTimerRef = useRef<any>(null)
   const [isPaused, setIsPaused] = useState(false)
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
   const isPausedRef = useRef(false)
 
   const canStop = sessionStarted && !sessionEnded
@@ -821,7 +822,11 @@ const EnglishVoicePractice: React.FC = () => {
     'Speak clearly and at a moderate pace',
     'Use connecting words for better flow',
     'Maintain good posture and eye contact',
-    'Try to expand your answers',
+    'Avoid filler words like "um" and "uh"',
+    'Practice tongue twisters to improve pronunciation',
+    'Read aloud daily to build fluency',
+    'Record yourself and review your speech',
+    'Learn 5 new words every day to grow vocabulary',
   ]
 
   type Session = { icon: React.ReactNode; iconBg: string; iconColor: string; title: string; time: string; score: number; up: boolean }
@@ -878,11 +883,11 @@ const EnglishVoicePractice: React.FC = () => {
                 </button>
                 <button onClick={() => setVoiceGender('male')}
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
-                  <FaMale style={{ fontSize: 10 }} /> Boy Voice
+                  <FaMale style={{ fontSize: 10 }} /> Male Voice
                 </button>
                 <button onClick={() => setVoiceGender('female')}
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : '#374151', border: 'none' }}>
-                  <FaFemale style={{ fontSize: 10 }} /> Girl Voice
+                  <FaFemale style={{ fontSize: 10 }} /> Female Voice
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
@@ -1290,7 +1295,7 @@ const EnglishVoicePractice: React.FC = () => {
                 <div style={{ fontSize: 12, color: '#64748b' }}>Improve your spoken English through real conversations and get AI-powered feedback.</div>
               </div>
             </div>
-            <button style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: '#fff', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowHowItWorks(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: '#fff', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <FaInfoCircle /> How it works?
             </button>
           </div>
@@ -1519,9 +1524,8 @@ const EnglishVoicePractice: React.FC = () => {
                 ))}
 
                 <button
-                  onClick={handleViewDetailedFeedback}
-                  disabled={!history?.latestFeedback}
-                  style={{ width: '100%', background: '#fff', color: history?.latestFeedback ? ORANGE : '#94a3b8', border: `1.5px solid ${history?.latestFeedback ? ORANGE : '#e2e8f0'}`, borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: history?.latestFeedback ? 'pointer' : 'default', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  disabled
+                  style={{ width: '100%', background: '#f1f5f9', color: '#cbd5e1', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'not-allowed', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   View Detailed Feedback <FaChevronRight style={{ fontSize: 11 }} />
                 </button>
               </>
@@ -1532,7 +1536,7 @@ const EnglishVoicePractice: React.FC = () => {
           <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
               <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tips to Improve</div>
-              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View All Tips <FaChevronRight style={{ fontSize: 10 }} /></button>
+              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View Tips <FaChevronRight style={{ fontSize: 10 }} /></button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
               {TIPS.map((tip, i) => (
@@ -1544,9 +1548,6 @@ const EnglishVoicePractice: React.FC = () => {
                 </div>
               ))}
             </div>
-            <button style={{ width: '100%', background: '#fff', color: ORANGE, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              View All Tips <FaChevronRight style={{ fontSize: 11 }} />
-            </button>
           </div>
         </div>
       </div>
@@ -1556,6 +1557,80 @@ const EnglishVoicePractice: React.FC = () => {
         @keyframes blink  { 0%,100% { opacity:1 } 50% { opacity:0 } }
         div::-webkit-scrollbar { display: none; }
       `}</style>
+
+      {/* ── How It Works Modal ── */}
+      {showHowItWorks && (
+        <div onClick={() => setShowHowItWorks(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', fontFamily: '"Segoe UI", sans-serif' }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 32px 0' }}>
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <FaStar style={{ color: '#f59e0b', fontSize: 16 }} /> How It Works <FaStar style={{ color: '#f59e0b', fontSize: 16 }} />
+                </div>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '6px 0 0' }}>Your AI speaking coach is here to help you speak with confidence.</p>
+                <div style={{ width: 40, height: 3, background: ORANGE, borderRadius: 4, margin: '10px auto 0' }} />
+              </div>
+              <button onClick={() => setShowHowItWorks(false)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#64748b', flexShrink: 0 }}>✕</button>
+            </div>
+
+            {/* Body */}
+            <div style={{ display: 'flex', gap: 24, padding: '24px 32px' }}>
+              {/* Left: robot image */}
+              <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+                <img src={robotSpeakingImg} alt="AI Coach" style={{ width: 150, height: 'auto', objectFit: 'contain' }} />
+                <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: '12px 14px', maxWidth: 150, textAlign: 'center' }}>
+                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: ORANGE, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 6px' }}>
+                    <FaRobot style={{ color: '#fff', fontSize: 12 }} />
+                  </div>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>Your Personal AI Coach</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Practice anytime, get instant feedback and improve every day.</div>
+                </div>
+              </div>
+
+              {/* Right: steps */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  { num: '1', color: '#f97316', bg: '#fff7ed', icon: <FaMicrophone />, title: 'Start a Topic', desc: "Select a topic you're interested in from various real-life scenarios and conversations." },
+                  { num: '2', color: '#3b82f6', bg: '#eff6ff', icon: <FaMicrophone />, title: 'Speak & Record', desc: 'Speak naturally for 60 seconds. Our AI will listen to your pronunciation, fluency and clarity.' },
+                  { num: '3', color: '#8b5cf6', bg: '#f5f3ff', icon: <FaRobot />, title: 'AI Analysis', desc: 'Our AI analyzes your speech on multiple parameters like fluency, grammar, vocabulary and pronunciation.' },
+                  { num: '4', color: '#16a34a', bg: '#f0fdf4', icon: <FaChartLine />, title: 'Get Feedback', desc: 'Receive detailed feedback, score and suggestions to help you improve your speaking skills.' },
+                  { num: '5', color: '#f59e0b', bg: '#fffbeb', icon: <FaBullseye />, title: 'Track & Improve', desc: 'Track your progress over time and keep practicing to achieve your best score.' },
+                ].map((step, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: step.bg, border: `2px solid ${step.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: step.color, fontSize: 15 }}>
+                      {step.icon}
+                    </div>
+                    <div style={{ flex: 1, paddingTop: 2 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ background: step.color, color: '#fff', borderRadius: 6, fontSize: 10, fontWeight: 800, padding: '1px 6px' }}>{step.num}</span>
+                        {step.title}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>{step.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ margin: '0 32px 28px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <FaLightbulb style={{ color: ORANGE, fontSize: 20, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Consistent practice leads to confidence!</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>Just 10 minutes daily can help you see a big improvement.</div>
+                </div>
+              </div>
+              <button onClick={() => setShowHowItWorks(false)}
+                style={{ background: ORANGE, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 24px', fontWeight: 800, fontSize: 14, cursor: 'pointer', flexShrink: 0, boxShadow: `0 4px 14px ${ORANGE}44` }}>
+                Got It!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

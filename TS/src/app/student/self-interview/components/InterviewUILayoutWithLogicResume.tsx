@@ -10,6 +10,7 @@ import RobotAvatarSVG from './RobotAvatarSVG'
 import Avatar from './LetterAvatar'
 import CircularScore from './CircularScore'
 import GlowMic from './GlowMic'
+import { FaMicrophone, FaCode } from 'react-icons/fa'
 
 /* ---------------- TYPES ---------------- */
 
@@ -69,6 +70,7 @@ const InterviewUILayoutWithLogicResume: React.FC<Props> = ({
   const [currentVideoUrl, setCurrentVideoUrl] = useState('')
   const [answers, setAnswers] = useState<AnswerItem[]>([])
   const [currentExample, setCurrentExample] = useState('')
+  const [answerTab, setAnswerTab] = useState<'transcript' | 'code'>('transcript')
   const [hasSubmitted, setHasSubmitted] = useState(false)
 
   /* ---------------- UI ---------------- */
@@ -421,19 +423,46 @@ return (
                 )}
               </div>
 
-              <h6 className="text-muted">🎤 Voice Transcript</h6>
-              <div className="transcript-box mb-3">
-                {transcript || 'Start speaking...'}
+              {/* TABBED: Voice Transcript / Code Editor */}
+              <div className="mb-3" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)' }}>
+                  <button
+                    onClick={() => setAnswerTab('transcript')}
+                    style={{
+                      flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                      background: answerTab === 'transcript' ? 'rgba(255,122,0,0.12)' : 'transparent',
+                      color: answerTab === 'transcript' ? '#ff7a00' : '#94a3b8',
+                      borderBottom: answerTab === 'transcript' ? '2px solid #ff7a00' : '2px solid transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    }}>
+                    <FaMicrophone size={13} /> Voice Transcript
+                  </button>
+                  <button
+                    onClick={() => setAnswerTab('code')}
+                    style={{
+                      flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                      background: answerTab === 'code' ? 'rgba(99,102,241,0.12)' : 'transparent',
+                      color: answerTab === 'code' ? '#818cf8' : '#94a3b8',
+                      borderBottom: answerTab === 'code' ? '2px solid #818cf8' : '2px solid transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    }}>
+                    <FaCode size={13} /> Code Editor
+                  </button>
+                </div>
+                {answerTab === 'transcript' ? (
+                  <div className="transcript-box p-3" style={{ minHeight: 180, maxHeight: 260, overflowY: 'auto' }}>
+                    {transcript || 'Start speaking...'}
+                  </div>
+                ) : (
+                  <Form.Control
+                    as="textarea"
+                    rows={8}
+                    style={{ borderRadius: 0, border: 'none', background: '#1e1e2e', color: '#cdd6f4', resize: 'none', fontFamily: 'monospace', fontSize: '0.82rem' }}
+                    value={currentExample}
+                    onChange={(e) => setCurrentExample(e.target.value)}
+                  />
+                )}
               </div>
-
-              <h6 className="text-muted">🧩 Example Code</h6>
-              <Form.Control
-                as="textarea"
-                rows={6}
-                className="mb-3"
-                value={currentExample}
-                onChange={(e) => setCurrentExample(e.target.value)}
-              />
 
               <Button
                 variant="primary"

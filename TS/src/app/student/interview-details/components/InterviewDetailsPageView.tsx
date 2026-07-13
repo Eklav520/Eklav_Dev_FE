@@ -73,8 +73,8 @@ const JobRow = ({
   return (
     <div style={{
       background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
-      padding: '16px 18px', display: 'flex', alignItems: 'flex-start',
-      gap: 14, cursor: 'pointer', transition: 'box-shadow 0.15s',
+      padding: '22px 24px', display: 'flex', alignItems: 'flex-start',
+      gap: 16, cursor: 'pointer', transition: 'box-shadow 0.15s',
     }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
@@ -343,14 +343,14 @@ const InterviewDetailsPageView = () => {
         </div>
 
         {/* Search */}
-        <div style={{ flex: 1, display: 'flex', gap: 8, marginLeft: 24 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
+          <div style={{ width: 320, position: 'relative' }}>
             <FiSearch size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               placeholder="Search by job title, company, skills..."
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
-              style={{ width: '100%', paddingLeft: 32, paddingRight: 12, height: 36, border: '1px solid #e2e8f0', borderRadius: 20, fontSize: '0.78rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+              style={{ width: '100%', paddingLeft: 32, paddingRight: 12, height: 36, border: '1px solid #e2e8f0', borderRadius: 20, fontSize: '0.78rem', color: '#0f172a', outline: 'none', background: '#f8fafc', boxSizing: 'border-box' as const }}
             />
           </div>
           <div style={{ position: 'relative' }}>

@@ -215,7 +215,7 @@ function DetailModal({ item, onClose }: { item: any; onClose: () => void }) {
           <div style={{ width: 260, flexShrink: 0, background: '#fafafa', borderRight: '1px solid #f0f0f0', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ textAlign: 'center', padding: 16, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', boxShadow: '0 2px 10px rgba(0,0,0,.05)' }}>
               {item.studentPic
-                ? <img src={item.studentPic} onClick={e => { e.stopPropagation(); setZoomedImg(item.studentPic) }} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${a.color}`, marginBottom: 10, cursor: 'zoom-in' }} />
+                ? <img src={`${baseURL}${item.studentPic}`} onClick={e => { e.stopPropagation(); setZoomedImg(`${baseURL}${item.studentPic}`) }} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${a.color}`, marginBottom: 10, cursor: 'zoom-in' }} />
                 : <div style={{ width: 80, height: 80, borderRadius: '50%', background: `${a.color}22`, border: `3px solid ${a.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 30, color: a.color, margin: '0 auto 10px' }}>{item.studentName?.charAt(0)}</div>
               }
               <div style={{ fontWeight: 700, fontSize: 15, color: '#111' }}>{item.studentName}</div>
@@ -278,7 +278,7 @@ function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: 
         <div style={{ borderRadius: '50%', padding: 3, background: s.color, boxShadow: `0 4px 14px ${s.color}55` }}>
           <div style={{ borderRadius: '50%', padding: 2, background: '#fff' }}>
             {item.studentPic
-              ? <img src={item.studentPic} alt={item.studentName} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+              ? <img src={`${baseURL}${item.studentPic}`} alt={item.studentName} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
               : <div style={{ width: 60, height: 60, borderRadius: '50%', background: `${s.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: s.color }}>
                   {item.studentName?.charAt(0)?.toUpperCase() || '?'}
                 </div>

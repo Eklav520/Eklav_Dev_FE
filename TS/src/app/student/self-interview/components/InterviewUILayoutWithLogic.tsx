@@ -15,6 +15,7 @@ import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView } from '@codemirror/view'
+import { FaMicrophone, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb } from 'react-icons/fa'
 
 type AnswerItem = {
   question: string
@@ -257,6 +258,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const [finalFeedback, setFinalFeedback] = useState<any>(null)
   const [isListening, setIsListening] = useState(false)
   const [currentExample, setCurrentExample] = useState('')
+  const [answerTab, setAnswerTab] = useState<'transcript' | 'code'>('transcript')
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [loadingFinalFeedback, setLoadingFinalFeedback] = useState(false)
   const [stopRecording, setStopRecording] = useState(false);
@@ -1290,20 +1292,19 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
         </Row>
 
         {!interviewFinished ? (
-          <Row className="g-3">
+          <Row className="g-3" style={{ alignItems: 'stretch' }}>
             {/* ================= LEFT / TOP (VIDEO) ================= */}
-            <Col xs={12} md={7}>
+            <Col xs={12} md={7} style={{ display: 'flex', flexDirection: 'column' }}>
               <Card
                 className={`shadow-sm rounded-4 d-flex flex-column ${isMobile ? 'p-2' : 'p-3'}`}
-                style={{
-                  minHeight: isMobile ? 'auto' : 520, // ⭐ helps align with right card
-                }}>
+                style={{ flex: 1, gap: 10 }}>
                 {/* VIDEO */}
                 <div
                   className="position-relative rounded-4 overflow-hidden"
                   style={{
-                    minHeight: isMobile ? 240 : 400, // ⭐ INCREASED
-                    maxHeight: isMobile ? 260 : 420, // ⭐ INCREASED
+                    flex: 1,
+                    minHeight: isMobile ? 160 : 240,
+                    maxHeight: isMobile ? 200 : 400,
                   }}>
                   <VideoRecorderUpdated interviewId={interviewId} token={token} stopRecording={stopRecording || !isRecordingActive} onVideoUpload={handleVideoUpload} />
                   {/* ROBOT */}
@@ -1333,7 +1334,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 </div>
 
                 {/* GRID CONTAINER */}
-                <div className="bg-dark bg-opacity-75 rounded-4 p-3 my-3 border border-secondary">
+                <div className="bg-dark bg-opacity-75 rounded-4 p-3 border border-secondary" style={{ marginTop: 'auto' }}>
                   <div className="row align-items-center">
 
                     {/* LEFT: Status Indicators */}
@@ -1413,7 +1414,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                           ) : (
                             <>
                               <i className="bi bi-mic-fill"></i>
-                              Start Recording
+                              Start Answering
                             </>
                           )}
                         </Button>
@@ -1445,15 +1446,18 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
             </Col>
 
             {/* ================= RIGHT / BOTTOM ================= */}
-            <Col xs={12} md={5}>
-              <Card className="shadow-sm p-3 rounded-4">
+            <Col xs={12} md={5} style={{ display: 'flex', flexDirection: 'column' }}>
+              <Card className="shadow-sm p-2 rounded-4 d-flex flex-column" style={{ flex: 1 }}>
                 {/* QUESTION */}
-                <div className="mb-3 p-3 rounded-3 bg-dark border border-secondary">
-                  <h6 className="fw-bold text-info mb-2">🎯 Interview Question</h6>
-
-                  <p className="mb-0 fs-5 fw-bold lh-base"
+                <div className="mb-2 p-3 rounded-3 bg-dark border border-secondary">
+                  <div className="d-flex align-items-center gap-2 mb-2">
+                    <FaBullseye style={{ color: '#38bdf8', fontSize: '1rem', flexShrink: 0 }} />
+                    <span className="fw-bold text-info" style={{ fontSize: '0.85rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Interview Question</span>
+                  </div>
+                  <p className="mb-0 fw-bold lh-base"
                     style={{
                       fontFamily: "'Poppins', sans-serif",
+                      fontSize: '0.95rem',
                       color: '#ffa726',
                       letterSpacing: '0.3px',
                       textShadow: '0 1px 3px rgba(255, 167, 38, 0.2)'
@@ -1461,30 +1465,77 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                     {currentQuestion}
                   </p>
                 </div>
-                {/* TRANSCRIPT */}
-                <div className="mb-3">
-                  <small className="text-muted">🎤 Voice Transcript</small>
-                  <div
-                    className="transcript-box p-2 rounded"
-                    style={{
-                      minHeight: 80,
-                      maxHeight: isMobile ? 120 : 180,
-                      overflowY: 'auto',
-                    }}>
-                    {getDisplayedTranscript() || 'Your voice transcript will appear here...'}
+                {/* TABBED: Voice Transcript / Code Editor */}
+                <div className="mb-2 flex-grow-1 d-flex flex-column" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
+                  {/* Tab headers */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', flexShrink: 0 }}>
+                    <button
+                      onClick={() => setAnswerTab('transcript')}
+                      style={{
+                        flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                        background: answerTab === 'transcript' ? 'rgba(255,122,0,0.12)' : 'transparent',
+                        color: answerTab === 'transcript' ? '#ff7a00' : '#94a3b8',
+                        borderBottom: answerTab === 'transcript' ? '2px solid #ff7a00' : '2px solid transparent',
+                        transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      }}>
+                      <FaMicrophone size={13} /> Voice Transcript
+                    </button>
+                    <button
+                      onClick={() => setAnswerTab('code')}
+                      style={{
+                        flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                        background: answerTab === 'code' ? 'rgba(99,102,241,0.12)' : 'transparent',
+                        color: answerTab === 'code' ? '#818cf8' : '#94a3b8',
+                        borderBottom: answerTab === 'code' ? '2px solid #818cf8' : '2px solid transparent',
+                        transition: 'all 0.15s',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      }}>
+                      <FaCode size={13} /> Code Editor
+                    </button>
                   </div>
-                </div>
 
-                {/* CODE EDITOR */}
-                <small className="text-muted">🧩 Example Code (optional)</small>
-                <div className="terminal-box mt-1 mb-3">
-                  <CodeMirror
-                    value={currentExample}
-                    height={isMobile ? '140px' : '220px'}
-                    theme={oneDark}
-                    extensions={[javascript()]}
-                    onChange={(value) => setCurrentExample(value)}
-                  />
+                  {/* Tab body — fixed height so both tabs are identical */}
+                  {answerTab === 'transcript' ? (
+                    <div
+                      className="transcript-box p-4"
+                      style={{ height: isMobile ? 200 : 280, overflowY: 'auto' }}>
+                      {getDisplayedTranscript() ? (
+                        <p style={{
+                          fontFamily: "'Georgia', 'Times New Roman', serif",
+                          fontSize: '1.08rem',
+                          lineHeight: 1.85,
+                          color: '#1e293b',
+                          letterSpacing: '0.01em',
+                          margin: 0,
+                          fontWeight: 400,
+                        }}>
+                          {getDisplayedTranscript()}
+                        </p>
+                      ) : (
+                        <p style={{
+                          fontFamily: "'Georgia', serif",
+                          fontSize: '0.95rem',
+                          color: '#94a3b8',
+                          fontStyle: 'italic',
+                          margin: 0,
+                          lineHeight: 1.7,
+                        }}>
+                          Your voice transcript will appear here...
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="terminal-box">
+                      <CodeMirror
+                        value={currentExample}
+                        height={isMobile ? '200px' : '280px'}
+                        theme={oneDark}
+                        extensions={[javascript()]}
+                        onChange={(value) => setCurrentExample(value)}
+                      />
+                    </div>
+                  )}
                 </div>
                 {/* SUBMIT */}
                 <Button
@@ -1700,7 +1751,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
             <div className="d-flex align-items-start justify-content-between mb-4">
               <div className="d-flex align-items-center">
                 <div className="bg-warning bg-opacity-20 p-2 rounded-circle me-3">
-                  <span className="text-warning fs-5">📊</span>
+                  <FaChartBar className="text-warning" size={18} />
                 </div>
                 <div>
                   <h5 className="fw-bold text-light mb-1">AI Evaluation</h5>
@@ -1726,7 +1777,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
               {currentFeedback.feedback?.theory && (
                 <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
                   <div className="d-flex align-items-center mb-2">
-                    <span className="text-info me-2 fs-5">📝</span>
+                    <FaClipboardList className="text-info me-2" size={16} />
                     <h6 className="text-info fw-bold mb-0">Theory Feedback</h6>
                   </div>
                   <p className="text-light mb-0 mt-2 lh-base fs-6">
@@ -1739,7 +1790,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
               {currentFeedback.feedback?.example && (
                 <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
                   <div className="d-flex align-items-center mb-2">
-                    <span className="text-info me-2 fs-5">⚙️</span>
+                    <FaCog className="text-info me-2" size={16} />
                     <h6 className="text-info fw-bold mb-0">Example Feedback</h6>
                   </div>
                   <p className="text-light mb-0 mt-2 lh-base fs-6">
@@ -1753,7 +1804,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 <div className="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-2">
                   <div className="d-flex align-items-center mb-2">
                     <div className="bg-success bg-opacity-25 p-1 rounded-2 me-2">
-                      <span className="text-success fs-5">✅</span>
+                      <FaCheckCircle className="text-success" size={15} />
                     </div>
                     <h6 className="text-success fw-bold mb-0">Ideal Answer</h6>
                   </div>
@@ -1795,7 +1846,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
                   <div className="d-flex align-items-center justify-content-between mb-2">
                     <div className="d-flex align-items-center">
-                      <span className="text-info me-2 fs-5">📦</span>
+                      <FaBoxOpen className="text-info me-2" size={16} />
                       <div>
                         <h6 className="text-info fw-bold mb-0">Example Program</h6>
                         <small className="text-light-emphasis">{currentFeedback.exampleProgram.title}</small>
@@ -1841,7 +1892,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
               {Array.isArray(currentFeedback.improvementTips) && currentFeedback.improvementTips.length > 0 && (
                 <div className="p-3 rounded-3 bg-info bg-opacity-10 border-start border-3 border-info">
                   <div className="d-flex align-items-center mb-2">
-                    <span className="text-info me-2 fs-5">🚀</span>
+                    <FaLightbulb className="text-info me-2" size={16} />
                     <h6 className="text-info fw-bold mb-0">Improvement Tips</h6>
                   </div>
                   <ul className="text-light ps-3 mb-0 mt-2">

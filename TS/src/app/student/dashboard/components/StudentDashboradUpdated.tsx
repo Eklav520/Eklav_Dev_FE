@@ -445,13 +445,6 @@ const StudentDashboardUpdated: React.FC = () => {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {/* Search */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <svg width="16" height="16" fill="none" stroke="#94a3b8" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" style={{ position: 'absolute', left: 11 }}>
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input placeholder="Search anything..." style={{ paddingLeft: 34, paddingRight: 12, height: 40, width: 210, border: `1px solid ${BORDER}`, borderRadius: 10, fontSize: '0.82rem', color: TEXT, background: '#f8fafc', outline: 'none' }} />
-          </div>
           {/* Bell — hover notification dropdown */}
           <div style={{ position: 'relative' }} className="sd-notif-wrap">
             <button style={{ width: 40, height: 40, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: GRAY }}>
@@ -1119,7 +1112,7 @@ const StudentDashboardUpdated: React.FC = () => {
           <Card style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>AI Mock Interview</span>
-              <Link to="/student/ai-mock-interview" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none' }}>View History</Link>
+              <Link to="/student/selfInterview" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none' }}>View History</Link>
             </div>
             <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
               <button className={`sd-tab-btn ${aiTab === 'resume' ? 'active' : ''}`} onClick={() => setAiTab('resume')}>Resume Based</button>

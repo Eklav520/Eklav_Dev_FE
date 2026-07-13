@@ -1008,7 +1008,7 @@ const SubscriptionPage = () => {
                                 background: 'white',
                                 borderRadius: 18,
                                 border: plan.popular ? `2px solid ${OG}` : '1px solid #eee',
-                                padding: '18px 16px 16px',
+                                padding: '24px 20px 20px',
                                 position: 'relative',
                                 boxShadow: plan.popular
                                     ? '0 6px 24px rgba(255,107,43,0.15)'
@@ -1034,14 +1034,14 @@ const SubscriptionPage = () => {
                                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
                                     <div style={{
                                         width: 54, height: 54,
-                                        background: GRAD,
+                                        background: isCurrentPlan ? 'linear-gradient(135deg, #10b981, #059669)' : GRAD,
                                         borderRadius: 15,
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         color: 'white',
                                         fontSize: 22,
-                                        boxShadow: '0 4px 14px rgba(255,107,43,0.35)',
+                                        boxShadow: isCurrentPlan ? '0 4px 14px rgba(16,185,129,0.35)' : '0 4px 14px rgba(255,107,43,0.35)',
                                     }}>
                                         <PlanIcon />
                                     </div>
@@ -1089,30 +1089,25 @@ const SubscriptionPage = () => {
                                 </div>
 
                                 {/* Features */}
-                                <div style={{ flex: 1, marginBottom: 10 }}>
-                                    {plan.features?.slice(0, 5).map((feature, idx) => (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: '#444', fontSize: '0.83rem' }}>
-                                            <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 13 }} />
+                                <div style={{ flex: 1, marginBottom: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 6px' }}>
+                                    {plan.features?.map((feature, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', color: '#444', fontSize: '0.78rem' }}>
+                                            <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 11 }} />
                                             <span>{feature}</span>
                                         </div>
                                     ))}
-                                    {plan.features && plan.features.length > 5 && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', color: OG, fontSize: '0.83rem', fontWeight: 600 }}>
-                                            <BsPlusCircle style={{ flexShrink: 0, fontSize: 13 }} />
-                                            +{plan.features.length - 5} more features
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* Button */}
                                 {isCurrentPlan ? (
                                     <button disabled style={{
                                         width: '100%', padding: '10px', borderRadius: 10,
-                                        background: GRAD, color: 'white',
-                                        fontWeight: 700, border: 'none', opacity: 0.75,
+                                        background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
+                                        fontWeight: 700, border: 'none',
                                         cursor: 'not-allowed', fontSize: '0.88rem',
+                                        boxShadow: '0 4px 12px rgba(16,185,129,0.35)',
                                     }}>
-                                        <BsCheckCircleFill style={{ marginRight: 6 }} />
+                                        <BsShieldCheck style={{ marginRight: 6 }} />
                                         Current Plan
                                     </button>
                                 ) : plan.isFree ? (
