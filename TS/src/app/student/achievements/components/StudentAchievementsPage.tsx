@@ -639,7 +639,7 @@ export default function StudentAchievementsPage() {
                           <div style={{ borderRadius: '50%', padding: 3, background: color, boxShadow: `0 4px 14px ${color}55` }}>
                             <div style={{ borderRadius: '50%', padding: 2, background: '#fff' }}>
                               {ranker.profileImage
-                                ? <img src={ranker.profileImage} alt={ranker.name} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+                                ? <img src={`${baseURL}${ranker.profileImage}`} alt={ranker.name} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                                 : <div style={{ width: 60, height: 60, borderRadius: '50%', background: `${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color }}>
                                     {ranker.name.charAt(0).toUpperCase()}
                                   </div>
@@ -773,7 +773,7 @@ export default function StudentAchievementsPage() {
 
                         {/* Avatar */}
                         {ranker.profileImage
-                          ? <img src={ranker.profileImage} alt={ranker.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${rc}`, flexShrink: 0 }} />
+                          ? <img src={`${baseURL}${ranker.profileImage}`} alt={ranker.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${rc}`, flexShrink: 0 }} />
                           : <div style={{ width: 34, height: 34, borderRadius: '50%', background: `${rc}22`, border: `2px solid ${rc}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: rc, flexShrink: 0 }}>
                               {ranker.name.charAt(0).toUpperCase()}
                             </div>
