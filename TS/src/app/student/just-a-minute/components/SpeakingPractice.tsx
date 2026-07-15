@@ -1885,7 +1885,7 @@ const SpeakingPractice: React.FC = () => {
                         {sampleAnswer ? (
                           <>
                             <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 8 }}>Model Answer <span style={{ color: '#9ca3af', fontWeight: 400 }}>(Ideal Answer)</span></div>
-                            <div style={{ background: '#f8f9ff', borderRadius: 12, padding: '14px 16px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.75, borderLeft: '3px solid #6c63ff', maxHeight: 320, overflowY: 'auto' as const }}>{sampleAnswer}</div>
+                            <div style={{ background: '#f8f9ff', borderRadius: 12, padding: '14px 16px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.75, borderLeft: '3px solid #6c63ff' }}>{sampleAnswer}</div>
                           </>
                         ) : (
                           <div style={{ textAlign: 'center' as const, color: '#9ca3af', fontSize: '0.82rem', padding: '40px 0' }}>Model answer not available for this topic.</div>
