@@ -10,6 +10,7 @@ import {
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
   FaChevronRight, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
+  FaSpellCheck, FaTachometerAlt, FaFont,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
 
@@ -88,6 +89,7 @@ const EnglishVoicePractice: React.FC = () => {
   const ttsCountRef = useRef(0)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>('')
 
   const webcamRef = useRef<HTMLVideoElement>(null)
   const webcamStreamRef = useRef<MediaStream | null>(null)
@@ -425,6 +427,10 @@ const EnglishVoicePractice: React.FC = () => {
       setIsListening(false)
       setIsUserSpeaking(false)
       manualStopRef.current = false
+      // Auto-restart if session is active, not paused, and TTS is not playing
+      if (sessionActiveRef.current && !isPausedRef.current && ttsCountRef.current === 0) {
+        setTimeout(() => startListening(), 300)
+      }
     }
 
     recognitionRef.current = rec
@@ -479,18 +485,14 @@ const EnglishVoicePractice: React.FC = () => {
     onTTSStart()
 
     // Use voices directly from state (loaded at mount via onvoiceschanged) — no async wait
-    const femaleVoice = voices.find(v =>
-      ['google uk english female', 'zira', 'samantha', 'karen', 'female']
-        .some(k => v.name.toLowerCase().includes(k))
-    )
-    const maleVoice = voices.find(v =>
-      ['google uk english male', 'david', 'alex', 'daniel', 'male']
-        .some(k => v.name.toLowerCase().includes(k))
-    )
-
     const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
-    const selectedVoice = voiceGender === 'female' ? (femaleVoice || maleVoice) : (maleVoice || femaleVoice)
-    if (selectedVoice) utter.voice = selectedVoice
+    const pickedVoice = selectedVoiceName
+      ? voices.find(v => v.name === selectedVoiceName)
+      : voices.find(v => voiceGender === 'female'
+          ? ['google uk english female', 'zira', 'samantha', 'karen', 'female'].some(k => v.name.toLowerCase().includes(k))
+          : ['google uk english male', 'david', 'alex', 'daniel', 'male'].some(k => v.name.toLowerCase().includes(k))
+        )
+    if (pickedVoice) utter.voice = pickedVoice
     else if (voices[0]) utter.voice = voices[0]
     utter.pitch = voiceGender === 'female' ? 1.05 : 0.95
     utter.rate = 0.95
@@ -635,13 +637,13 @@ const EnglishVoicePractice: React.FC = () => {
     ttsCountRef.current = 0
     setSessionEnded(true)
     setIsLoadingFeedback(true)
+    setActiveSessionTab('feedback')
 
     try {
       const res = await axios.post(`${baseURL}/api/english/end`, { transcript: transcriptRef.current }, { headers: { Authorization: `Bearer ${token}` } })
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
       setFeedbackBreakdown(res.data.breakdown ?? null)
-      setActiveSessionTab('feedback')
       await fetchSpeakingHistory()
     } finally {
       setIsLoadingFeedback(false)
@@ -878,18 +880,34 @@ const EnglishVoicePractice: React.FC = () => {
             {/* Center: voice + timer + start/pause/stop */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
+                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'default', color: '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
                   <FaMicrophone style={{ fontSize: 10 }} /> Voice
                 </button>
-                <button onClick={() => setVoiceGender('male')}
+                <button onClick={() => { setVoiceGender('male'); setSelectedVoiceName('') }}
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
                   <FaMale style={{ fontSize: 10 }} /> Male Voice
                 </button>
-                <button onClick={() => setVoiceGender('female')}
+                <button onClick={() => { setVoiceGender('female'); setSelectedVoiceName('') }}
                   style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : '#374151', border: 'none' }}>
                   <FaFemale style={{ fontSize: 10 }} /> Female Voice
                 </button>
               </div>
+              {/* Voice picker */}
+              {voices.filter(v => v.lang.startsWith('en')).length > 0 && (
+                <select
+                  value={selectedVoiceName}
+                  onChange={e => setSelectedVoiceName(e.target.value)}
+                  style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: selectedVoiceName ? ORANGE : '#374151', background: '#f8fafc', cursor: 'pointer', outline: 'none', maxWidth: 180 }}
+                >
+                  <option value=''>Auto ({voiceGender})</option>
+                  {voices
+                    .filter(v => v.lang.startsWith('en'))
+                    .map(v => (
+                      <option key={v.name} value={v.name}>{v.name}</option>
+                    ))
+                  }
+                </select>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
                 <FaClock style={{ color: '#374151', fontSize: 12 }} />
                 <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>Time Left: {formatTime(timeLeft)}</span>
@@ -962,14 +980,16 @@ const EnglishVoicePractice: React.FC = () => {
             }
           `}</style>
 
-          {/* ── Outer wrapper: 200px side margins ── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, margin: '12px 220px', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
+          {/* ── Outer wrapper ── */}
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, margin: '12px 60px', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
 
+          {/* ── LEFT: videos stacked ── */}
+          <div style={{ width: '42%', flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', background: '#f1f5f9', gap: 6, padding: 8, alignSelf: 'stretch' }}>
           {/* ── Video panels ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: 300, flexShrink: 0, gap: 12, padding: 12, background: '#f1f5f9' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
 
-            {/* AI Coach panel */}
-            <div style={{ position: 'relative', background: aiBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 14, overflow: 'hidden' }}>
+            {/* AI Coach panel — equal height */}
+            <div style={{ position: 'relative', background: aiBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, overflow: 'hidden', flex: 1, minHeight: 0 }}>
               <div style={{ position: 'absolute', top: 10, left: 10, background: '#22c55e', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5, zIndex: 3 }}>
                 <FaRobot style={{ fontSize: 9 }} /> AI Coach
               </div>
@@ -994,8 +1014,8 @@ const EnglishVoicePractice: React.FC = () => {
               </div>
             </div>
 
-            {/* You panel */}
-            <div style={{ position: 'relative', background: youBgOption.style, overflow: 'hidden', borderRadius: 14 }}>
+            {/* You panel — equal height */}
+            <div style={{ position: 'relative', background: youBgOption.style, overflow: 'hidden', borderRadius: 12, flex: 1, minHeight: 0 }}>
               {/* Video element: hidden when segmentation is ready (canvas takes over), visible as fallback */}
               <video ref={webcamRef} autoPlay playsInline muted style={{
                 display: webcamActive && !segReady ? 'block' : 'none',
@@ -1072,16 +1092,17 @@ const EnglishVoicePractice: React.FC = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </div>{/* end video stack */}
+          </div>{/* end left panel */}
 
-          {/* ── Conversation / Feedback ── */}
+          {/* ── RIGHT: Conversation / Feedback ── */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff' }}>
 
             {/* Tab bar */}
-            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', padding: '0 16px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
               {(['conversation', 'feedback'] as const).map(tab => (
                 <button key={tab} onClick={() => setActiveSessionTab(tab)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', borderBottom: activeSessionTab === tab ? `2.5px solid ${ORANGE}` : '2.5px solid transparent', marginBottom: -1, padding: '10px 16px', fontSize: 13, fontWeight: activeSessionTab === tab ? 700 : 500, color: activeSessionTab === tab ? ORANGE : '#64748b', cursor: 'pointer' }}>
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: 'none', border: 'none', borderBottom: activeSessionTab === tab ? `2.5px solid ${ORANGE}` : '2.5px solid transparent', borderRight: tab === 'conversation' ? '1px solid #e2e8f0' : 'none', marginBottom: -1, padding: '12px 16px', fontSize: 13, fontWeight: activeSessionTab === tab ? 700 : 500, color: activeSessionTab === tab ? ORANGE : '#64748b', cursor: 'pointer' }}>
                   {tab === 'conversation' ? <><FaComments style={{ fontSize: 12 }} /> Conversation</> : <><FaClipboardList style={{ fontSize: 12 }} /> Feedback</>}
                 </button>
               ))}
@@ -1114,7 +1135,7 @@ const EnglishVoicePractice: React.FC = () => {
                           <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, textAlign: m.sender === 'user' ? 'right' : 'left' }}>
                             {m.sender === 'user' ? 'You' : 'AI Coach'} · {time}
                           </div>
-                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '8px 13px', fontSize: 13, color: '#0f172a', lineHeight: 1.6 }}>
+                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: '#0f172a', lineHeight: 1.65 }}>
                             {m.type === 'correction' && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
                                 <FaCheck /> Improved
@@ -1164,90 +1185,185 @@ const EnglishVoicePractice: React.FC = () => {
                       <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>This may take a few seconds</div>
                     </div>
                   ) : (() => {
-                    // Parse improvement tips and overall note from feedback text
-                    const lines = feedback.split('\n').filter(l => l.trim())
-                    const tips = lines.filter(l => /^[-•*]/.test(l.trim()) || /^\d+[.)]\s/.test(l.trim()))
-                      .map(l => l.replace(/^[-•*\d.)]\s*/, '').trim())
-                    const overallLine = lines.filter(l =>
-                      l.toLowerCase().includes('overall') || l.toLowerCase().includes('keep') ||
-                      l.toLowerCase().includes('great') || l.toLowerCase().includes('well done') ||
-                      l.toLowerCase().includes('excellent') || l.toLowerCase().includes('practice')
-                    ).slice(-1)[0] || lines[lines.length - 1] || ''
+                    // Strip all markdown artifacts and emoji numbers
+                    const cleanMd = (t: string) =>
+                      t.replace(/\*\*(.*?)\*\*/g, '$1')
+                       .replace(/\*(.*?)\*/g, '$1')
+                       .replace(/^[*\-•.\s]*[1-9]?[0-9]?[️⃣🔟1234567890]*[.):\s]*/u, '')
+                       .replace(/^[*\-•.\s]+/, '')
+                       .trim()
 
-                    const scoreColor = (s: number) => s >= 8 ? '#16a34a' : s >= 6 ? '#d97706' : '#dc2626'
-                    const scoreBg   = (s: number) => s >= 8 ? '#f0fdf4' : s >= 6 ? '#fffbeb' : '#fef2f2'
-                    const overallPct = feedbackScore ?? 0
+                    const lines = feedback.split('\n').map(l => l.trim()).filter(Boolean)
+
+                    // Skip lines that are just score summaries or section headers
+                    const isScoreLine = (l: string) =>
+                      /score\s*:\s*\*?\*?\s*\d+\/10/i.test(l) ||
+                      /grammar score|fluency score|vocabulary score/i.test(l) ||
+                      /friendly improvement tips?/i.test(l) ||
+                      /improvement tips?:/i.test(l)
+
+                    const tips = lines
+                      .filter(l => !isScoreLine(l))
+                      .filter(l => /^[-•*.1-9]|^\d+[.)]/.test(l) || l.startsWith('.'))
+                      .map(l => cleanMd(l))
+                      .filter(t => t.length > 8)
+
+                    const overallLine = lines.filter(l =>
+                      !isScoreLine(l) && (
+                        l.toLowerCase().includes('overall') || l.toLowerCase().includes('keep') ||
+                        l.toLowerCase().includes('great') || l.toLowerCase().includes('well done') ||
+                        l.toLowerCase().includes('excellent') || l.toLowerCase().includes('practice')
+                      )
+                    ).slice(-1)[0] || ''
+
+                    const scoreColor  = (s: number) => s >= 8 ? '#16a34a' : s >= 6 ? '#d97706' : '#dc2626'
+                    const scoreBg     = (s: number) => s >= 8 ? '#f0fdf4' : s >= 6 ? '#fffbeb' : '#fef2f2'
+                    const scoreLabel  = (s: number) => s >= 8 ? 'Good' : s >= 6 ? 'Average' : 'Needs Improvement'
+                    const scoreTrend  = (s: number) => s >= 8 ? <FaArrowUp style={{ fontSize: 9 }} /> : s >= 6 ? <FaArrowUp style={{ fontSize: 9 }} /> : <FaArrowDown style={{ fontSize: 9 }} />
+                    const overallPct  = feedbackScore ?? 0
                     const overallColor = overallPct >= 70 ? '#16a34a' : overallPct >= 50 ? '#d97706' : '#dc2626'
+                    const overallGrade = overallPct >= 80 ? 'Excellent' : overallPct >= 60 ? 'Good' : overallPct >= 40 ? 'Average' : 'Needs Work'
+                    const overallMsg   = overallPct >= 80 ? 'Excellent performance! Keep it up.' : overallPct >= 60 ? 'Good effort! Keep practicing to improve your skills.' : 'Keep practicing to improve your skills.'
+
                     const metrics = feedbackBreakdown
                       ? [
-                          { label: 'Grammar',    score: feedbackBreakdown.grammar    },
-                          { label: 'Fluency',    score: feedbackBreakdown.fluency    },
-                          { label: 'Vocabulary', score: feedbackBreakdown.vocabulary },
+                          { label: 'Grammar',    score: feedbackBreakdown.grammar,    icon: <FaSpellCheck />,     iconBg: '#fef2f2', iconColor: scoreColor(feedbackBreakdown.grammar) },
+                          { label: 'Fluency',    score: feedbackBreakdown.fluency,    icon: <FaTachometerAlt />,  iconBg: '#fffbeb', iconColor: scoreColor(feedbackBreakdown.fluency) },
+                          { label: 'Vocabulary', score: feedbackBreakdown.vocabulary, icon: <FaFont />,           iconBg: '#f0fdf4', iconColor: scoreColor(feedbackBreakdown.vocabulary) },
                         ]
                       : []
 
-                    return (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    const focusAreas = metrics.filter(m => m.score < 7).map(m => m.label)
+                    const goodAreas  = metrics.filter(m => m.score >= 7).map(m => m.label)
+                    const nextGoal   = overallPct >= 80 ? '90+' : overallPct >= 60 ? '80+' : '70+'
 
-                        {/* Overall score banner */}
-                        <div style={{ background: `linear-gradient(135deg, ${ORANGE}15 0%, ${ORANGE}08 100%)`, border: `1.5px solid ${ORANGE}30`, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 18 }}>
-                          {/* Circle */}
-                          <div style={{ position: 'relative', width: 72, height: 72, flexShrink: 0 }}>
-                            <svg width="72" height="72" viewBox="0 0 72 72">
-                              <circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" strokeWidth="6"/>
-                              <circle cx="36" cy="36" r="30" fill="none" stroke={overallColor} strokeWidth="6"
-                                strokeDasharray={`${(overallPct / 100) * 188.5} 188.5`}
-                                strokeLinecap="round" transform="rotate(-90 36 36)"/>
-                            </svg>
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                              <span style={{ fontSize: 17, fontWeight: 800, color: overallColor, lineHeight: 1 }}>{overallPct}</span>
-                              <span style={{ fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>/ 100</span>
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                        {/* Header */}
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>Performance Summary</div>
+                          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                            Your overall interview performance <FaInfoCircle style={{ fontSize: 11 }} />
+                          </div>
+                        </div>
+
+                        {/* Score + metrics row */}
+                        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px', display: 'flex', gap: 12, alignItems: 'stretch' }}>
+
+                          {/* Overall circle */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 16, borderRight: '1px solid #e2e8f0', flexShrink: 0 }}>
+                            <div style={{ position: 'relative', width: 80, height: 80 }}>
+                              <svg width="80" height="80" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="#e2e8f0" strokeWidth="6"/>
+                                <circle cx="40" cy="40" r="34" fill="none" stroke={overallColor} strokeWidth="6"
+                                  strokeDasharray={`${(overallPct / 100) * 213.6} 213.6`}
+                                  strokeLinecap="round" transform="rotate(-90 40 40)"/>
+                              </svg>
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ fontSize: 20, fontWeight: 900, color: overallColor, lineHeight: 1 }}>{overallPct}</span>
+                                <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>/100</span>
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 6 }}>Session Score</div>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: `${overallColor}12`, border: `1px solid ${overallColor}30`, borderRadius: 20, padding: '3px 10px', marginBottom: 8 }}>
+                                <FaStar style={{ color: overallColor, fontSize: 10 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: overallColor }}>{overallGrade}</span>
+                              </div>
+                              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, maxWidth: 130 }}>{overallMsg}</div>
                             </div>
                           </div>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>Session Score</div>
-                            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3 }}>
-                              {overallPct >= 80 ? 'Excellent performance!' : overallPct >= 60 ? 'Good effort, keep going!' : 'Keep practicing to improve!'}
+
+                          {/* Metric cards */}
+                          {metrics.map(m => (
+                            <div key={m.label} style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 14px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                                <div style={{ width: 34, height: 34, borderRadius: 10, background: m.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.iconColor, fontSize: 14, flexShrink: 0 }}>
+                                  {m.icon}
+                                </div>
+                                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{m.label}</span>
+                              </div>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor(m.score), lineHeight: 1, marginBottom: 6 }}>
+                                {m.score}<span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>/10</span>
+                              </div>
+                              <div style={{ height: 4, borderRadius: 4, background: '#e2e8f0', marginBottom: 8 }}>
+                                <div style={{ height: '100%', borderRadius: 4, background: scoreColor(m.score), width: `${m.score * 10}%`, transition: 'width 0.8s ease' }}/>
+                              </div>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: `${scoreColor(m.score)}12`, border: `1px solid ${scoreColor(m.score)}25`, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: scoreColor(m.score), whiteSpace: 'nowrap' }}>
+                                {scoreTrend(m.score)} {scoreLabel(m.score)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Insights row */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <FaBullseye style={{ color: '#7c3aed', fontSize: 14 }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: '#7c3aed' }}>Focus Areas</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{focusAreas.length > 0 ? focusAreas.join(', ') : 'All areas good!'}</div>
+                            </div>
+                          </div>
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <FaChartLine style={{ color: '#2563eb', fontSize: 14 }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: '#2563eb' }}>Keep It Up</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{goodAreas.length > 0 ? `Your ${goodAreas.join(', ')} ${goodAreas.length > 1 ? 'are' : 'is'} Good!` : 'Practice more!'}</div>
+                            </div>
+                          </div>
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <FaClock style={{ color: '#16a34a', fontSize: 14 }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: '#16a34a' }}>Practice Regularly</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Consistency leads to improvement</div>
+                            </div>
+                          </div>
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <FaStar style={{ color: '#ca8a04', fontSize: 14 }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 700, fontSize: 12, color: '#ca8a04' }}>Next Goal</div>
+                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Aim for {nextGoal} in your next session</div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Score breakdown */}
-                        {metrics.length > 0 && (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                            {metrics.map(m => (
-                              <div key={m.label} style={{ background: scoreBg(m.score), border: `1px solid ${scoreColor(m.score)}30`, borderRadius: 12, padding: '12px 14px', textAlign: 'center' }}>
-                                <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor(m.score), lineHeight: 1 }}>{m.score}<span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>/10</span></div>
-                                <div style={{ fontSize: 11, fontWeight: 600, color: '#64748b', marginTop: 4 }}>{m.label}</div>
-                                <div style={{ height: 4, borderRadius: 4, background: '#e2e8f0', marginTop: 8 }}>
-                                  <div style={{ height: '100%', borderRadius: 4, background: scoreColor(m.score), width: `${m.score * 10}%`, transition: 'width 0.8s ease' }}/>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
                         {/* Improvement tips */}
                         {tips.length > 0 && (
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ fontSize: 14 }}>📌</span> Areas to Improve
+                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: 8, background: `${ORANGE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FaLightbulb style={{ color: ORANGE, fontSize: 13 }} />
+                              </div>
+                              Areas to Improve
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                              {tips.slice(0, 5).map((tip, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 12.5, color: '#374151', lineHeight: 1.55 }}>
-                                  <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', background: `${ORANGE}18`, color: ORANGE, fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
-                                  <span dangerouslySetInnerHTML={{ __html: tip.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }}/>
-                                </div>
-                              ))}
+                              {tips.slice(0, 6).map((tip, i) => {
+                                const colonIdx = tip.indexOf(':')
+                                const hasTitle = colonIdx > 0 && colonIdx < 40
+                                const title = hasTitle ? tip.slice(0, colonIdx).trim() : null
+                                const body = hasTitle ? tip.slice(colonIdx + 1).trim() : tip
+                                return (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#f8fafc', borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+                                    <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: ORANGE, color: '#fff', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
+                                    <span style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.6 }}>
+                                      {title && <strong style={{ color: '#1e293b' }}>{title}: </strong>}
+                                      {body}
+                                    </span>
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
-                        )}
-
-                        {/* Overall note */}
-                        {overallLine && (
-                          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: `3px solid ${ORANGE}`, borderRadius: '0 10px 10px 0', padding: '12px 14px', fontSize: 12.5, color: '#374151', lineHeight: 1.6 }}
-                            dangerouslySetInnerHTML={{ __html: overallLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/^(5️⃣|5\.|Overall[:\s]*)/i, '') }}/>
                         )}
                       </div>
                     )
@@ -1271,9 +1387,9 @@ const EnglishVoicePractice: React.FC = () => {
                 </div>
               )}
             </div>
-          </div>
+          </div>{/* end right conversation panel */}
 
-          </div>{/* end outer 200px wrapper */}
+          </div>{/* end outer wrapper */}
 
         </div>
       )}
