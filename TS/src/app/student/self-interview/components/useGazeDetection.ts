@@ -86,7 +86,11 @@ function classifyHeadPose(lm: any[]): GazeDirection {
 
 export function useGazeDetection(
   videoElement: HTMLVideoElement | null,
-  enabled: boolean
+  enabled: boolean,
+  // While true, gaze/head "away" time stops accumulating and no new
+  // violations are counted — used to exempt legitimate screen-focused
+  // activity (e.g. typing a code answer) from being flagged as cheating.
+  suspend: boolean = false
 ): GazeState {
   const [state, setState] = useState<GazeState>({
     direction: 'unknown',
@@ -114,6 +118,16 @@ export function useGazeDetection(
   const intervalRef  = useRef<any>(null)
   const cameraRef    = useRef<any>(null)
   const faceMeshRef  = useRef<any>(null)
+  const suspendRef   = useRef(suspend)
+
+  useEffect(() => {
+    suspendRef.current = suspend
+    // Don't let a stale away-timer resume mid-count once un-suspended
+    if (suspend) {
+      gazeAwayStartRef.current = null
+      headAwayStartRef.current = null
+    }
+  }, [suspend])
 
   useEffect(() => {
     if (!enabled || !videoElement) return
@@ -152,7 +166,7 @@ export function useGazeDetection(
           if (gazeHistoryRef.current.length > 5) gazeHistoryRef.current.shift()
           const awayVotes = gazeHistoryRef.current.filter(Boolean).length
           const gazeAway = awayVotes > gazeHistoryRef.current.length / 2
-          if (gazeAway) {
+          if (gazeAway && !suspendRef.current) {
             if (gazeAwayStartRef.current === null) gazeAwayStartRef.current = Date.now()
           } else {
             gazeAwayStartRef.current = null
@@ -161,7 +175,7 @@ export function useGazeDetection(
           // Head pose
           const headDir: GazeDirection = hasFace ? classifyHeadPose(lm!) : 'no-face'
           const headAway = !hasFace || headDir !== 'center'
-          if (headAway) {
+          if (headAway && !suspendRef.current) {
             if (headAwayStartRef.current === null) headAwayStartRef.current = Date.now()
           } else {
             headAwayStartRef.current = null
@@ -172,9 +186,9 @@ export function useGazeDetection(
             faceDetected: hasFace,
             landmarks: lm,
             direction: gazeDir,
-            isLookingAway: gazeAway,
+            isLookingAway: gazeAway && !suspendRef.current,
             headDirection: headDir,
-            isHeadTurned: headAway,
+            isHeadTurned: headAway && !suspendRef.current,
           }))
         })
 
