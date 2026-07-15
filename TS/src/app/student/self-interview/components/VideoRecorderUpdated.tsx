@@ -4,17 +4,19 @@ import React, { useEffect, useRef, useState } from 'react';
 interface VideoRecorderUpdatedProps {
   interviewId: string;
   token?: string;
-  stopRecording: boolean; // When true, stops recording and uploads
+  stopRecording: boolean;
   onVideoUpload?: (url: string) => void;
   onRecordingError?: (error: string) => void;
+  onVideoElementReady?: (video: HTMLVideoElement) => void;
 }
 
 const VideoRecorderUpdated: React.FC<VideoRecorderUpdatedProps> = ({
   interviewId,
   token,
-  stopRecording: shouldStopRecording, // Renamed to avoid conflict
+  stopRecording: shouldStopRecording,
   onVideoUpload,
   onRecordingError,
+  onVideoElementReady,
 }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -48,6 +50,7 @@ const VideoRecorderUpdated: React.FC<VideoRecorderUpdatedProps> = ({
         videoRef.current.srcObject = stream;
         videoRef.current.muted = true;
         videoRef.current.play().catch(e => console.warn('Video play error:', e));
+        onVideoElementReady?.(videoRef.current);
       }
 
       // Setup media recorder

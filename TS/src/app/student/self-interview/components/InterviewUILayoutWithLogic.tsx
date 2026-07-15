@@ -11,11 +11,35 @@ import RobotAvatarSVG from './RobotAvatarSVG'
 import Avatar from './LetterAvatar'
 import CircularScore from './CircularScore'
 import GlowMic from './GlowMic'
+import GazeScanOverlay from './GazeScanOverlay'
+import { useGazeDetection } from './useGazeDetection'
 import CodeMirror from '@uiw/react-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
+import { python } from '@codemirror/lang-python'
+import { java } from '@codemirror/lang-java'
+import { cpp } from '@codemirror/lang-cpp'
+import { php } from '@codemirror/lang-php'
+import { go } from '@codemirror/lang-go'
+import { rust } from '@codemirror/lang-rust'
+import { html } from '@codemirror/lang-html'
+import { css } from '@codemirror/lang-css'
+import { sql } from '@codemirror/lang-sql'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { EditorView } from '@codemirror/view'
-import { FaMicrophone, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb } from 'react-icons/fa'
+
+const CODE_LANGUAGES = [
+  { label: 'JavaScript', extension: javascript() },
+  { label: 'Python', extension: python() },
+  { label: 'Java', extension: java() },
+  { label: 'C++', extension: cpp() },
+  { label: 'PHP', extension: php() },
+  { label: 'Go', extension: go() },
+  { label: 'Rust', extension: rust() },
+  { label: 'HTML', extension: html() },
+  { label: 'CSS', extension: css() },
+  { label: 'SQL', extension: sql() },
+] as const
+import { FaMicrophone, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb, FaShieldAlt, FaEye, FaHandPaper, FaVideo, FaSun, FaVolumeUp, FaUserCheck, FaClock, FaStop, FaStar, FaArrowRight, FaCheck } from 'react-icons/fa'
 
 type AnswerItem = {
   question: string
@@ -33,6 +57,32 @@ type AnswerItem = {
   isFollowUp?: boolean
   exampleProgram?: { title: string; language: string; code: string } | null
   fixedExampleCode?: string
+}
+
+// Green → yellow → orange → red taper used by the answer waveform, matching
+// the equalizer reference (tall/green near the mic, short/red at the edges).
+const WAVE_COLOR_STOPS: [number, [number, number, number]][] = [
+  [0,    [22, 163, 74]],   // green
+  [0.45, [132, 204, 22]],  // lime
+  [0.7,  [245, 158, 11]],  // orange
+  [1,    [239, 68, 68]],   // red
+]
+
+const waveColorAt = (t: number) => {
+  const clamped = Math.min(1, Math.max(0, t))
+  for (let i = 0; i < WAVE_COLOR_STOPS.length - 1; i++) {
+    const [t0, c0] = WAVE_COLOR_STOPS[i]
+    const [t1, c1] = WAVE_COLOR_STOPS[i + 1]
+    if (clamped >= t0 && clamped <= t1) {
+      const localT = t1 === t0 ? 0 : (clamped - t0) / (t1 - t0)
+      const r = Math.round(c0[0] + (c1[0] - c0[0]) * localT)
+      const g = Math.round(c0[1] + (c1[1] - c0[1]) * localT)
+      const b = Math.round(c0[2] + (c1[2] - c0[2]) * localT)
+      return `rgb(${r},${g},${b})`
+    }
+  }
+  const last = WAVE_COLOR_STOPS[WAVE_COLOR_STOPS.length - 1][1]
+  return `rgb(${last[0]},${last[1]},${last[2]})`
 }
 
 const isCodeLanguage = (language?: string) => {
@@ -154,7 +204,7 @@ const normalizeExampleProgram = (
     }
 
     return {
-      title: `${title} • ${summarizeNarrative(code)}`,
+      title: `${title} â€¢ ${summarizeNarrative(code)}`,
       language: 'javascript',
       code: generateExampleCode(question, code),
     }
@@ -258,11 +308,16 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const [finalFeedback, setFinalFeedback] = useState<any>(null)
   const [isListening, setIsListening] = useState(false)
   const [currentExample, setCurrentExample] = useState('')
+  const [codeLanguage, setCodeLanguage] = useState<string>(CODE_LANGUAGES[0].label)
   const [answerTab, setAnswerTab] = useState<'transcript' | 'code'>('transcript')
   const [hasSubmitted, setHasSubmitted] = useState(false)
   const [loadingFinalFeedback, setLoadingFinalFeedback] = useState(false)
   const [stopRecording, setStopRecording] = useState(false);
   const [isRecordingActive, setIsRecordingActive] = useState(true);
+  const [centerTab, setCenterTab] = useState<'question' | 'feedback'>('question')
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
+  const [lightingLabel, setLightingLabel] = useState<string>('Checking...')
+  const [lightingOk, setLightingOk] = useState(true)
 
 
   // speech synth
@@ -384,7 +439,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
         const x = (i / dataArrayRef.current.length) * w
 
-        // ⭐ TRUE SIRI MOTION: amplitude + phase shift
+        // â­ TRUE SIRI MOTION: amplitude + phase shift
         const y = centerY + Math.sin(time * layer.speed + i * 0.018 + layer.phase) * layer.amp + normalized * (layer.amp * 0.6)
 
         const cpX = (prevX + x) / 2
@@ -423,7 +478,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
     // Layer colors
     const layers = [
-      ['#00E5FF', '#00FFC8'], // cyan → green
+      ['#00E5FF', '#00FFC8'], // cyan â†' green
       ['#FF00E0', '#FF6AF9'], // pink
       ['#FFFFFF', '#99FFFF'], // white glow
     ]
@@ -480,7 +535,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
     animationId = requestAnimationFrame(drawWaveform)
 
-    // ⭐ Use frequency data instead of time domain
+    // â­ Use frequency data instead of time domain
     analyserRef.current.getByteFrequencyData(dataArrayRef.current)
 
     ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -490,10 +545,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     const centerY = canvas.height / 2
 
     for (let i = 0; i < barCount; i++) {
-      // raw volume value 0–255
+      // raw volume value 0â€"255
       const value = dataArrayRef.current[i] || 0
 
-      // ⭐ strong responsiveness
+      // â­ strong responsiveness
       const barHeight = Math.max(6, (value / 255) * 90)
 
       // Siri neon gradient
@@ -534,48 +589,31 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
     ctx.clearRect(0, 0, w, h)
 
-    const time = Date.now() * 0.002
+    // Equalizer mirrored from the center: tall/green near the mic,
+    // tapering down to short/red bars at the outer edges.
+    const barCount = 32
+    const half = barCount / 2
+    const barWidth = w / barCount
+    const step = Math.floor(dataArrayRef.current.length / barCount) || 1
 
-    // Siri ribbon colors
-    const layers = [
-      { color: 'rgba(0,255,200,0.95)', amp: 35, phase: 0, speed: 1.8 }, // green
-      { color: 'rgba(255,60,160,0.95)', amp: 30, phase: 1.4, speed: 1.4 }, // pink
-      { color: 'rgba(0,140,255,0.95)', amp: 26, phase: 2.8, speed: 1.2 }, // blue
-      { color: 'rgba(255,255,255,0.90)', amp: 20, phase: 4.0, speed: 1.0 }, // white
-    ]
+    for (let i = 0; i < barCount; i++) {
+      const raw = dataArrayRef.current[i * step] || 128
+      const norm = Math.abs(raw - 128) / 128 // 0 to 1
+      const distFromCenter = Math.abs(i - (half - 0.5)) / half // 0 center → 1 edge
+      const envelope = 1 - distFromCenter * 0.85
+      const barHeight = Math.max(3, (0.35 + norm * 0.65) * envelope * h * 0.9)
 
-    layers.forEach((layer) => {
+      ctx.fillStyle = waveColorAt(distFromCenter)
       ctx.beginPath()
-      ctx.lineWidth = 5
-      ctx.strokeStyle = layer.color
-      ctx.shadowBlur = 18
-      ctx.shadowColor = layer.color
-
-      let prevX = 0
-      let prevY = centerY
-
-      for (let i = 0; i < dataArrayRef.current.length; i += 2) {
-        const raw = dataArrayRef.current[i] || 128
-        const norm = (raw - 128) / 128 // −1 to +1
-
-        const x = (i / dataArrayRef.current.length) * w
-
-        // Real Siri motion (phase + smooth movement)
-        const sine = Math.sin(time * layer.speed + i * 0.02 + layer.phase)
-
-        // Mix mic input + fluid sine
-        const y = centerY + sine * layer.amp + norm * layer.amp * 0.8 // microphone movement
-
-        const cpX = (prevX + x) / 2
-
-        ctx.bezierCurveTo(cpX, prevY, cpX, y, x, y)
-
-        prevX = x
-        prevY = y
-      }
-
-      ctx.stroke()
-    })
+      ctx.roundRect(
+        i * barWidth + barWidth * 0.2,
+        centerY - barHeight / 2,
+        barWidth * 0.6,
+        barHeight,
+        barWidth * 0.3,
+      )
+      ctx.fill()
+    }
   }
 
   useEffect(() => {
@@ -585,11 +623,47 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   }, [isListening])
 
   /*  useEffect(() => {
-     // After final question evaluation completed → auto finish
+     // After final question evaluation completed â†' auto finish
      if (showFeedback && hasSubmitted && mainQuestionIndex + 1 === questions.length) {
        setTimeout(() => handleNext(), 500)
      }
    }, [showFeedback]) */
+
+  // Real lighting detection — samples video frame brightness every 2s
+  useEffect(() => {
+    if (!videoElement) return
+    const canvas = document.createElement('canvas')
+    canvas.width = 64
+    canvas.height = 48
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const measure = () => {
+      try {
+        if (videoElement.readyState < 2) return
+        ctx.drawImage(videoElement, 0, 0, 64, 48)
+        const pixels = ctx.getImageData(0, 0, 64, 48).data
+        let sum = 0
+        for (let i = 0; i < pixels.length; i += 4) {
+          sum += 0.299 * pixels[i] + 0.587 * pixels[i + 1] + 0.114 * pixels[i + 2]
+        }
+        const brightness = sum / (pixels.length / 4) // 0–255
+        if (brightness < 35) {
+          setLightingLabel('Too Dark'); setLightingOk(false)
+        } else if (brightness < 75) {
+          setLightingLabel('Dim'); setLightingOk(false)
+        } else if (brightness > 220) {
+          setLightingLabel('Too Bright'); setLightingOk(false)
+        } else {
+          setLightingLabel('Well Lit'); setLightingOk(true)
+        }
+      } catch { /* cross-origin or not ready */ }
+    }
+
+    measure() // run immediately
+    const id = setInterval(measure, 2000)
+    return () => clearInterval(id)
+  }, [videoElement])
 
   // eye movement
   useEffect(() => {
@@ -653,7 +727,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       u.onend = () => {
         setIsSpeaking(false)
         setRobotStatus('listening')
-        // do not auto-start listening by default — leave manual control for stability
+        // do not auto-start listening by default â€" leave manual control for stability
       }
       const voices = window.speechSynthesis.getVoices()
       const v = voices.find((vv) => (vv.name || '').includes('Microsoft') || (vv.name || '').includes('Google'))
@@ -773,7 +847,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     listeningHardRef.current = true
 
     // --------------------------
-    // 🎵  WAVEFORM INITIALIZATION
+    // ðŸŽµ  WAVEFORM INITIALIZATION
     // --------------------------
     // --- Create Audio Context ---
     audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -801,7 +875,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
     // DRAW WAVEFORM LOOP
     // ------------------------------
-    // 🔵 Siri-Style Vertical Bars
+    // ðŸ"µ Siri-Style Vertical Bars
     // ------------------------------
     // DRAW WAVEFORM LOOP
     // ------------------------------
@@ -827,7 +901,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
         const normalized = (raw - 128) / 128
 
-        // ⭐ Siri pulse effect (bigger bars near center)
+        // â­ Siri pulse effect (bigger bars near center)
         const distanceFromCenter = Math.abs(i - barCount / 2)
         const centerBoost = Math.max(1, 10 - distanceFromCenter * 0.3)
 
@@ -843,7 +917,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       }
     }
 
-    // 🔥 START LOOP HERE
+    // ðŸ"¥ START LOOP HERE
     requestAnimationFrame(draw)
 
     // Start recognition
@@ -889,7 +963,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   };
   /*   useEffect(() => {
       if (interviewFinished && finalFeedback) {
-        downloadPDF() // 🎉 auto triggers once
+        downloadPDF() // ðŸŽ‰ auto triggers once
       }
     }, [interviewFinished, finalFeedback]) */
 
@@ -902,6 +976,11 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       listeningHardRef.current = false
     }
   }, [])
+
+  useEffect(() => {
+    if (showFeedback) setCenterTab('feedback')
+    else setCenterTab('question')
+  }, [showFeedback])
 
   /* -------------------------
      Handlers: evaluate / next / finish
@@ -963,7 +1042,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
         feedback: data.feedback, // now an object
         idealAnswer: data.idealAnswer,
         improvementTips: data.improvementTips || [],
-        rating: data.rating?.total ?? 0,
+        rating: data.rating ?? 0,
         exampleProgram: normalizedExampleProgram,
         fixedExampleCode: data.fixedExampleCode || '',
       }
@@ -976,7 +1055,6 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
       setCurrentAnswer('')
       setTranscript('')
-      setCurrentExample('') // ← reset
     } catch (err) {
       console.error('evaluate error', err)
       alert('Evaluation failed. See console.')
@@ -995,26 +1073,29 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setStopRecording(false);
     setIsRecordingActive(true);
 
-    // 🔇 Stop mic completely so user cannot speak after feedback
+    // ðŸ"‡ Stop mic completely so user cannot speak after feedback
     stopListening()
     listeningHardRef.current = false
     setIsListening(false)
 
-    // 🧹 Reset transcript & speech buffer for next question
+    // ðŸ§¹ Reset transcript & speech buffer for next question
     setTranscript('')
     finalRef.current = ''
+    setCurrentExample('')
+    setAnswerTab('transcript')
+    setCodeLanguage(CODE_LANGUAGES[0].label)
 
-    // 🔓 Unlock submit for next question
+    // ðŸ"" Unlock submit for next question
     setHasSubmitted(false)
 
-    // 🎭 Hide previous feedback
+    // ðŸŽ­ Hide previous feedback
     setShowFeedback(false)
     setCurrentFeedback(null)
 
-    // 🤖 Robot will speak the next question
+    // ðŸ¤– Robot will speak the next question
     setRobotStatus('speaking')
 
-    // 👉 Handle pending follow-up question
+    // ðŸ'‰ Handle pending follow-up question
     if (pendingFollowUp && !isFollowUp) {
       setIsFollowUp(true)
       setFollowUpCount((p) => p + 1)
@@ -1030,15 +1111,15 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setPendingFollowUp(null)
     setAwaitingFollowUp(false)
 
-    // ⭐ Final Question → Finish interview
-    // ⭐ Final Question → DO NOT auto-finish
+    // â­ Final Question â†' Finish interview
+    // â­ Final Question â†' DO NOT auto-finish
     if (mainQuestionIndex + 1 === questions.length) {
       // Just stop here and wait for user to click "Finish Interview"
       return
     }
 
 
-    // ➡️ Move to next main question
+    // âž¡ï¸ Move to next main question
     const nextMain = questions[mainQuestionIndex + 1]
     setMainQuestionIndex((p) => p + 1)
     setQuestionsQueue((prev) => [...prev, nextMain])
@@ -1050,13 +1131,22 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     setRobotStatus('processing')
     if (setLoadingFeedback) setLoadingFeedback(true)
     try {
+      const monitoring = {
+        eyeViolations: gaze.violationCount,
+        headViolations: gaze.headViolationCount,
+        faceDetected: gaze.faceDetected,
+        lightingOk,
+        lightingLabel,
+        recordingActive: isRecordingActive,
+      }
+
       const res = await fetch(`${baseURL}/final-feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ interviewId, answers: finalAnswers }),
+        body: JSON.stringify({ interviewId, answers: finalAnswers, monitoring }),
       })
       const data = await res.json()
       const merged = finalAnswers.map((ans, i) => {
@@ -1132,7 +1222,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const downloadPDF = async () => {
     if (!pdfRef.current || isDownloadingPdf) return
 
-    setIsDownloadingPdf(true) // 🔥 START SPINNER
+    setIsDownloadingPdf(true) // ðŸ"¥ START SPINNER
 
     try {
       // Ensure DOM is fully rendered
@@ -1191,7 +1281,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       console.error('PDF generation failed', err)
       alert('Could not generate PDF.')
     } finally {
-      setIsDownloadingPdf(false) // ✅ STOP SPINNER
+      setIsDownloadingPdf(false) // âœ… STOP SPINNER
     }
   }
 
@@ -1265,672 +1355,534 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     normalizeCodeForCompare(formattedFixedExampleCode) !== normalizeCodeForCompare(formattedExampleProgramCode)
 
 
+  // Gaze detection (runs whenever we have a live video element)
+  const gaze = useGazeDetection(videoElement, !interviewFinished)
+
+  // Average scores across ALL completed questions (not just the current one)
+  const scoredAnswers = answers.filter(a => a.rating != null)
+  const getRating = (r: any) => typeof r === 'number' ? r : (r?.total ?? 0)
+  const getField = (r: any, field: string, fallback: number) =>
+    typeof r === 'object' && r !== null ? (r[field] ?? fallback) : fallback
+
+  const overallScore = scoredAnswers.length > 0
+    ? scoredAnswers.reduce((s, a) => s + getRating(a.rating), 0) / scoredAnswers.length
+    : 0
+  const accuracy = scoredAnswers.length > 0
+    ? scoredAnswers.reduce((s, a) => s + getField(a.rating, 'accuracy', getRating(a.rating)), 0) / scoredAnswers.length
+    : 0
+  const clarity = scoredAnswers.length > 0
+    ? scoredAnswers.reduce((s, a) => s + getField(a.rating, 'clarity', getRating(a.rating)), 0) / scoredAnswers.length
+    : 0
+  const completeness = scoredAnswers.length > 0
+    ? scoredAnswers.reduce((s, a) => s + getField(a.rating, 'completeness', getRating(a.rating)), 0) / scoredAnswers.length
+    : 0
+
   return (
-    <div className="interview-layout-with-logic">
-      <Container fluid className="px-2 px-md-4 py-3 interview-page-bg">
-        {/* HEADER */}
-        <Row className="mb-3 align-items-center">
-          <Col xs={12} md>
-            <h5 className="fw-bold mb-1">Interview for {title}</h5>
-            <small className="text-light opacity-75">
-              Question {mainQuestionIndex + 1} of {questions.length}
-              {isFollowUp ? ' • Follow-up' : ''}
-            </small>
-          </Col>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117', fontFamily: '"Segoe UI", system-ui, sans-serif', overflow: 'hidden' }}>
 
-          <Col xs="auto" className="d-flex align-items-center mt-2 mt-md-0 pe-md-5 me-md-3">
-            <Avatar name={user?.fullName || 'User'} image={user?.profileImage} size={isMobile ? 32 : 40} className="me-2" />
-
-            {/* TEXT: responsive */}
-            <div className="d-flex flex-column">
-              <strong className="text-light">{isMobile ? user?.fullName || 'User' : user?.email || 'Student'}</strong>
-
-              {/* Optional subtitle only on mobile */}
-              {isMobile && <small className="text-light opacity-75">Student</small>}
+      {/* â"€â"€ TOP HEADER BAR â"€â"€ */}
+      <div style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', background: '#0d1117', borderBottom: '1px solid #1e2432', flexShrink: 0, gap: 16 }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220 }}>
+          <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: 14 }}>AI</span>
+          </div>
+          <div>
+            <div style={{ color: '#fff', fontWeight: 800, fontSize: 14, lineHeight: 1.2 }}>AI INTERVIEW</div>
+            <div style={{ color: '#64748b', fontSize: 10 }}>Real-time Proctoring & Interview Platform</div>
+          </div>
+        </div>
+        {/* Timer + Round */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FaClock color="#64748b" size={12} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ color: '#64748b', fontSize: 10 }}>Time Remaining</div>
+              <div style={{ color: '#00e5ff', fontWeight: 800, fontSize: 20, fontFamily: 'monospace', letterSpacing: 2 }}>
+                {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
+              </div>
             </div>
-          </Col>
-        </Row>
+          </div>
+          <div style={{ width: 1, height: 32, background: '#1e2432' }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#64748b', fontSize: 10 }}>Round {mainQuestionIndex + 1} / {questions.length}</div>
+            <div style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 12 }}>{title}</div>
+          </div>
+        </div>
+        {/* End Interview */}
+        <div style={{ minWidth: 220, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            onClick={() => { stopListening(); onComplete?.() }}
+            style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+          >
+            <FaStop size={10} /> End Interview
+          </button>
+        </div>
+      </div>
 
-        {!interviewFinished ? (
-          <Row className="g-3" style={{ alignItems: 'stretch' }}>
-            {/* ================= LEFT / TOP (VIDEO) ================= */}
-            <Col xs={12} md={7} style={{ display: 'flex', flexDirection: 'column' }}>
-              <Card
-                className={`shadow-sm rounded-4 d-flex flex-column ${isMobile ? 'p-2' : 'p-3'}`}
-                style={{ flex: 1, gap: 10 }}>
-                {/* VIDEO */}
-                <div
-                  className="position-relative rounded-4 overflow-hidden"
-                  style={{
-                    flex: 1,
-                    minHeight: isMobile ? 160 : 240,
-                    maxHeight: isMobile ? 200 : 400,
-                  }}>
-                  <VideoRecorderUpdated interviewId={interviewId} token={token} stopRecording={stopRecording || !isRecordingActive} onVideoUpload={handleVideoUpload} />
-                  {/* ROBOT */}
-                  <div
-                    className="position-absolute d-flex align-items-center justify-content-center"
-                    style={{
-                      /* 📍 POSITION - MOVED TO TOP-LEFT CORNER */
-                      top: isMobile ? 8 : 16,
-                      left: isMobile ? 8 : 14,
+      {/* â"€â"€ MAIN CONTENT â"€â"€ */}
+      {!interviewFinished ? (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-                      /* 📐 SIZE */
-                      width: isMobile ? 64 : 170,
-                      height: isMobile ? 64 : 170,
-
-                      borderRadius: '50%',
-
-                      /* 🟠 ORANGE BORDER + SOFT GLOW */
-                      border: isMobile ? '2px solid rgba(255,165,0,0.75)' : '3px solid rgba(255,165,0,0.85)',
-
-                      boxShadow: isMobile ? '0 0 6px rgba(255,165,0,0.45)' : '0 0 12px rgba(255,165,0,0.6)',
-
-                      background: 'rgba(0,0,0,0.25)',
-                      zIndex: 5, // stay above video
-                    }}>
-                    <RobotAvatarSVG size={isMobile ? 46 : 150} status={robotStatus} />
-                  </div>
+          {/* LEFT: Video Panel */}
+          <div className="ai-interview-video-panel" style={{ width: '28%', flexShrink: 0, background: '#0a0d14', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e2432', position: 'relative' }}>
+            {/* LIVE badge */}
+            <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(220,38,38,0.9)', borderRadius: 5, padding: '3px 8px' }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />
+              <span style={{ color: '#fff', fontSize: 11, fontWeight: 700 }}>LIVE</span>
+            </div>
+            {/* Signal bars */}
+            <div style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+              {[4, 7, 10, 13].map((h, i) => (
+                <div key={i} style={{ width: 4, height: h, background: '#22c55e', borderRadius: 2 }} />
+              ))}
+            </div>
+            {/* Video */}
+            <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+              <VideoRecorderUpdated
+                interviewId={interviewId}
+                token={token}
+                stopRecording={stopRecording || !isRecordingActive}
+                onVideoUpload={handleVideoUpload}
+                onVideoElementReady={setVideoElement}
+              />
+              {/* Gaze scan overlay */}
+              <GazeScanOverlay
+                landmarks={gaze.landmarks}
+                faceDetected={gaze.faceDetected}
+                direction={gaze.direction}
+                isLookingAway={gaze.isLookingAway}
+                violationCount={gaze.violationCount}
+                lookAwaySeconds={gaze.lookAwaySeconds}
+                headDirection={gaze.headDirection}
+                isHeadTurned={gaze.isHeadTurned}
+                headViolationCount={gaze.headViolationCount}
+                headAwaySeconds={gaze.headAwaySeconds}
+              />
+              {/* Look-away / head-turn warning banner */}
+              {(gaze.isLookingAway || gaze.isHeadTurned) && (
+                <div style={{ position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)', zIndex: 8, background: 'rgba(239,68,68,0.95)', color: '#fff', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 12px rgba(0,0,0,0.4)', display: 'flex', gap: 10 }}>
+                  {gaze.isLookingAway && <span>Eye away: {gaze.lookAwaySeconds}s (×{gaze.violationCount})</span>}
+                  {gaze.isHeadTurned  && <span>Head turned: {gaze.headAwaySeconds}s (×{gaze.headViolationCount})</span>}
                 </div>
+              )}
+              {/* Violation toast */}
+              {gaze.violationCount > 0 && (
+                <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 9, background: 'rgba(239,68,68,0.92)', color: '#fff', borderRadius: 8, padding: '4px 12px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  Eye Violation #{gaze.violationCount}
+                </div>
+              )}
+              {/* Robot avatar overlay */}
+              <div style={{ position: 'absolute', bottom: 10, right: 10, width: 116, height: 116, borderRadius: 14, border: '2px solid rgba(255,165,0,0.8)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 7 }}>
+                <RobotAvatarSVG size={82} status={robotStatus} />
+              </div>
+            </div>
+            {/* Monitoring Active + gaze status */}
+            <div style={{ padding: '6px 14px', background: '#0d1117', borderTop: '1px solid #1e2432', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FaShieldAlt color="#22c55e" size={12} />
+                <span style={{ color: '#22c55e', fontSize: 11, fontWeight: 600 }}>Monitoring Active</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: gaze.faceDetected ? '#22c55e' : '#ef4444' }} />
+                  <span style={{ fontSize: 10, color: gaze.faceDetected ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                    {gaze.faceDetected ? `Eye: ${gaze.direction}` : 'No Face'}
+                  </span>
+                </div>
+                {gaze.violationCount > 0 && (
+                  <div style={{ background: '#dc2626', color: '#fff', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700 }}>
+                    {gaze.violationCount} violation{gaze.violationCount > 1 ? 's' : ''}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
-                {/* GRID CONTAINER */}
-                <div className="bg-dark bg-opacity-75 rounded-4 p-3 border border-secondary" style={{ marginTop: 'auto' }}>
-                  <div className="row align-items-center">
+          {/* CENTER: Question + Answer */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
+            {/* Tab bar */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+              <button onClick={() => setCenterTab('question')} style={{ flex: 1, padding: '12px 0', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: 'transparent', color: centerTab === 'question' ? '#3b82f6' : '#64748b', borderBottom: centerTab === 'question' ? '2px solid #3b82f6' : '2px solid transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
+                <FaBullseye size={12} /> Question
+              </button>
+              <button onClick={() => setCenterTab('feedback')} style={{ flex: 1, padding: '12px 0', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, background: 'transparent', color: centerTab === 'feedback' ? '#f59e0b' : '#64748b', borderBottom: centerTab === 'feedback' ? '2px solid #f59e0b' : '2px solid transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all 0.15s' }}>
+                <FaStar size={12} /> Feedback
+              </button>
+            </div>
 
-                    {/* LEFT: Status Indicators */}
-                    <div className="col-md-4">
-                      <div className="d-flex align-items-center gap-3">
-                        {/* Timer */}
-                        {/* <div className="text-center">
-                          <div className={`fw-bold ${timeLeft < 10 ? 'text-danger' : 'text-success'}`}
-                            style={{ fontSize: '2rem', lineHeight: '1' }}>
-                            {timeLeft}
-                          </div>
-                          <small className="text-light-emphasis">seconds</small>
-                        </div> */}
-
-                        {/* Mic Status */}
-                        <div className="d-flex align-items-center gap-2">
-                          <div className="position-relative">
-                            {isListening ? (
-                              <>
-                                <div className="position-absolute top-50 start-50 translate-middle"
-                                  style={{
-                                    width: '28px',
-                                    height: '28px',
-                                    border: '2px solid #0dcaf0',
-                                    borderRadius: '50%',
-                                    animation: 'pulse 1.5s infinite',
-                                    opacity: '0.5',
-                                  }}
-                                ></div>
-                                <GlowMic listening size={20} />
-                              </>
-                            ) : (
-                              <i className="bi bi-mic text-secondary fs-5"></i>
-                            )}
-                          </div>
-                          <div>
-                            <small className={`fw-medium ${isListening ? 'text-info' : 'text-light-emphasis'}`}>
-                              {isListening ? 'Recording' : 'Ready'}
-                            </small>
-                            {isListening && (
-                              <div className="text-info" style={{ fontSize: '0.7rem' }}>
-                                <i className="bi bi-circle-fill me-1"></i>
-                                Live
-                              </div>
-                            )}
-                          </div>
+            {/* Tab body */}
+            <div className="slim-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+              {centerTab === 'question' ? (
+                <>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#3b82f6', fontSize: 13, fontWeight: 700 }}>Question {mainQuestionIndex + 1} of {questions.length}</span>
+                      {isFollowUp && <span style={{ background: '#fef3c7', color: '#d97706', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>Follow-up</span>}
+                    </div>
+                    {/* AI Interviewer chip */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', background: '#f0f9ff', borderRadius: 8 }}>
+                      <div style={{ width: 22, height: 22, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ color: '#fff', fontSize: 8, fontWeight: 800 }}>AI</span>
+                      </div>
+                      <span style={{ color: '#475569', fontSize: 12, fontWeight: 600 }}>AI Interviewer</span>
+                      <span style={{ color: '#64748b', fontSize: 12 }}>
+                        {isSpeaking ? 'Reading the question...' : isListening ? 'Listening to your answer...' : loadingEvaluation ? 'Analyzing your answer...' : showFeedback ? 'Review feedback and proceed.' : 'Click Start Answering when ready.'}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Question text */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px', marginBottom: 8 }}>
+                    <p style={{ color: '#1e293b', fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.6 }}>{currentQuestion}</p>
+                  </div>
+                </>
+              ) : (
+                showFeedback && currentFeedback ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {currentFeedback.feedback?.theory && (
+                      <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0f9ff', borderLeft: '3px solid #3b82f6' }}>
+                        <div style={{ color: '#1d4ed8', fontWeight: 700, fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><FaClipboardList size={12} /> Theory Feedback</div>
+                        <p style={{ color: '#374151', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{currentFeedback.feedback.theory}</p>
+                      </div>
+                    )}
+                    {currentFeedback.feedback?.example && (
+                      <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fdf4ff', borderLeft: '3px solid #a855f7' }}>
+                        <div style={{ color: '#7e22ce', fontWeight: 700, fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><FaCog size={12} /> Example Feedback</div>
+                        <p style={{ color: '#374151', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{currentFeedback.feedback.example}</p>
+                      </div>
+                    )}
+                    {currentFeedback.idealAnswer && (
+                      <div style={{ padding: '12px 14px', borderRadius: 10, background: '#f0fdf4', borderLeft: '3px solid #22c55e' }}>
+                        <div style={{ color: '#16a34a', fontWeight: 700, fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}><FaCheckCircle size={12} /> Ideal Answer</div>
+                        <p style={{ color: '#374151', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{currentFeedback.idealAnswer}</p>
+                      </div>
+                    )}
+                    {/* Real-world example — text narrative */}
+                    {!currentExampleProgramIsCode && currentFeedback.exampleProgram?.code && (
+                      <div style={{ padding: '12px 14px', borderRadius: 10, background: '#fff7ed', borderLeft: '3px solid #f97316' }}>
+                        <div style={{ color: '#c2410c', fontWeight: 700, fontSize: 12, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <FaLightbulb size={12} /> {currentFeedback.exampleProgram.title || 'Real-world Example'}
+                        </div>
+                        <p style={{ color: '#374151', fontSize: 13, margin: 0, lineHeight: 1.6 }}>{currentFeedback.exampleProgram.code}</p>
+                      </div>
+                    )}
+                    {/* Code-based example program */}
+                    {currentExampleProgramIsCode && formattedExampleProgramCode && (
+                      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                        <div style={{ padding: '8px 14px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', fontWeight: 700, fontSize: 12, color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <FaBoxOpen size={12} /> {currentFeedback.exampleProgram?.title || 'Example Program'}
+                        </div>
+                        <div className="slim-scroll">
+                          <CodeMirror value={formattedExampleProgramCode} height="200px" theme={oneDark} extensions={[javascript(), EditorView.lineWrapping]} editable={false} />
                         </div>
                       </div>
-                    </div>
-
-                    {/* CENTER: Divider (visible on desktop) */}
-                    <div className="col-md-1 d-none d-md-block">
-                      <div className="border-start border-secondary h-100"></div>
-                    </div>
-
-                    {/* RIGHT: Action Buttons */}
-                    <div className="col-md-7">
-                      <div className="d-flex align-items-center justify-content-end gap-3">
-
-                        {/* Record/Stop Button - FIXED: Toggle between start/stop */}
-                        <Button
-                          onClick={isListening ? stopListening : startListening}
-                          disabled={showFeedback || hasSubmitted}
-                          variant={isListening ? "danger" : "success"}
-                          className={`rounded-pill d-flex align-items-center gap-2 px-4 py-2 ${showFeedback || hasSubmitted ? 'opacity-50' : ''
-                            }`}
-                          style={{
-                            minWidth: '120px',
-                            transition: 'all 0.2s ease',
-                          }}
-                        >
-                          {isListening ? (
-                            <>
-                              <i className="bi bi-stop-fill"></i>
-                              Stop Recording
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-mic-fill"></i>
-                              Start Answering
-                            </>
-                          )}
-                        </Button>
-
-                        {/* Next Button — hidden on last question */}
-                        {!isLastQuestion && (
-                          <Button
-                            onClick={handleNext}
-                            disabled={!showFeedback}
-                            variant={showFeedback ? "primary" : "secondary"}
-                            className="rounded-pill d-flex align-items-center gap-2 px-4 py-2"
-                            style={{
-                              minWidth: '120px',
-                              opacity: showFeedback ? 1 : 0.5,
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            <i className="bi bi-arrow-right"></i>
-                            Next Question
-                          </Button>
-                        )}
-
-                      </div>
-                    </div>
-
+                    )}
                   </div>
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 20px', fontSize: 13 }}>
+                    Submit your answer to see detailed feedback here.
+                  </div>
+                )
+              )}
+            </div>
+
+            {/* YOUR ANSWER — only shown while the student is composing an answer */}
+            {!showFeedback && (
+            <div style={{ borderTop: '2px solid #e2e8f0', flexShrink: 0 }}>
+              {/* Answer tabs header */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '6px 14px 0', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                <span style={{ color: '#1e293b', fontWeight: 700, fontSize: 12, marginRight: 12 }}>Your Answer</span>
+                {(['transcript', 'code'] as const).map((tab) => (
+                  <button key={tab} onClick={() => setAnswerTab(tab)} style={{ padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, background: 'transparent', color: answerTab === tab ? '#3b82f6' : '#94a3b8', borderBottom: answerTab === tab ? '2px solid #3b82f6' : '2px solid transparent', transition: 'all 0.15s' }}>
+                    {tab === 'transcript' ? 'Voice Answer' : 'Code'}
+                  </button>
+                ))}
+                <div style={{ marginLeft: 'auto' }}>
+                  <select
+                    value={codeLanguage}
+                    onChange={(e) => setCodeLanguage(e.target.value)}
+                    style={{ fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6, padding: '3px 8px', color: '#475569', background: '#fff' }}
+                  >
+                    {CODE_LANGUAGES.map((l) => (
+                      <option key={l.label} value={l.label}>{l.label}</option>
+                    ))}
+                  </select>
                 </div>
-              </Card>
-            </Col>
+              </div>
 
-            {/* ================= RIGHT / BOTTOM ================= */}
-            <Col xs={12} md={5} style={{ display: 'flex', flexDirection: 'column' }}>
-              <Card className="shadow-sm p-2 rounded-4 d-flex flex-column" style={{ flex: 1 }}>
-                {/* QUESTION */}
-                <div className="mb-2 p-3 rounded-3 bg-dark border border-secondary">
-                  <div className="d-flex align-items-center gap-2 mb-2">
-                    <FaBullseye style={{ color: '#38bdf8', fontSize: '1rem', flexShrink: 0 }} />
-                    <span className="fw-bold text-info" style={{ fontSize: '0.85rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Interview Question</span>
-                  </div>
-                  <p className="mb-0 fw-bold lh-base"
-                    style={{
-                      fontFamily: "'Poppins', sans-serif",
-                      fontSize: '0.95rem',
-                      color: '#ffa726',
-                      letterSpacing: '0.3px',
-                      textShadow: '0 1px 3px rgba(255, 167, 38, 0.2)'
-                    }}>
-                    {currentQuestion}
-                  </p>
-                </div>
-                {/* TABBED: Voice Transcript / Code Editor */}
-                <div className="mb-2 flex-grow-1 d-flex flex-column" style={{ border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
-                  {/* Tab headers */}
-                  <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', flexShrink: 0 }}>
-                    <button
-                      onClick={() => setAnswerTab('transcript')}
-                      style={{
-                        flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                        background: answerTab === 'transcript' ? 'rgba(255,122,0,0.12)' : 'transparent',
-                        color: answerTab === 'transcript' ? '#ff7a00' : '#94a3b8',
-                        borderBottom: answerTab === 'transcript' ? '2px solid #ff7a00' : '2px solid transparent',
-                        transition: 'all 0.15s',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                      }}>
-                      <FaMicrophone size={13} /> Voice Transcript
-                    </button>
-                    <button
-                      onClick={() => setAnswerTab('code')}
-                      style={{
-                        flex: 1, padding: '11px 0', border: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                        background: answerTab === 'code' ? 'rgba(99,102,241,0.12)' : 'transparent',
-                        color: answerTab === 'code' ? '#818cf8' : '#94a3b8',
-                        borderBottom: answerTab === 'code' ? '2px solid #818cf8' : '2px solid transparent',
-                        transition: 'all 0.15s',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                      }}>
-                      <FaCode size={13} /> Code Editor
-                    </button>
-                  </div>
-
-                  {/* Tab body — fixed height so both tabs are identical */}
-                  {answerTab === 'transcript' ? (
-                    <div
-                      className="transcript-box p-4"
-                      style={{ height: isMobile ? 200 : 280, overflowY: 'auto' }}>
-                      {getDisplayedTranscript() ? (
-                        <p style={{
-                          fontFamily: "'Georgia', 'Times New Roman', serif",
-                          fontSize: '1.08rem',
-                          lineHeight: 1.85,
-                          color: '#1e293b',
-                          letterSpacing: '0.01em',
-                          margin: 0,
-                          fontWeight: 400,
-                        }}>
-                          {getDisplayedTranscript()}
-                        </p>
-                      ) : (
-                        <p style={{
-                          fontFamily: "'Georgia', serif",
-                          fontSize: '0.95rem',
-                          color: '#94a3b8',
-                          fontStyle: 'italic',
-                          margin: 0,
-                          lineHeight: 1.7,
-                        }}>
-                          Your voice transcript will appear here...
-                        </p>
-                      )}
-                    </div>
+              {/* Answer body */}
+              {answerTab === 'transcript' ? (
+                <div className="slim-scroll" style={{ height: 200, overflowY: 'auto', padding: '14px 16px', background: '#fff' }}>
+                  {getDisplayedTranscript() ? (
+                    <p style={{ color: '#1e293b', fontSize: 14, margin: 0, lineHeight: 1.7 }}>{getDisplayedTranscript()}</p>
                   ) : (
-                    <div className="terminal-box">
-                      <CodeMirror
-                        value={currentExample}
-                        height={isMobile ? '200px' : '280px'}
-                        theme={oneDark}
-                        extensions={[javascript()]}
-                        onChange={(value) => setCurrentExample(value)}
-                      />
-                    </div>
+                    <p style={{ color: '#94a3b8', fontSize: 13, fontStyle: 'italic', margin: 0 }}>Your voice transcript will appear here...</p>
                   )}
                 </div>
-                {/* SUBMIT */}
-                <Button
-                  variant="primary"
-                  className="fw-bold w-100"
+              ) : (
+                <div className="slim-scroll">
+                  <CodeMirror
+                    value={currentExample}
+                    height="200px"
+                    theme={oneDark}
+                    extensions={[CODE_LANGUAGES.find((l) => l.label === codeLanguage)?.extension || javascript()]}
+                    onChange={(v) => setCurrentExample(v)}
+                  />
+                </div>
+              )}
+
+              {/* Controls row */}
+              <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', gap: 10, background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={showFeedback || hasSubmitted}
+                  style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: isListening ? '#dc2626' : '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (showFeedback || hasSubmitted) ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: (showFeedback || hasSubmitted) ? 0.5 : 1 }}
+                >
+                  <FaMicrophone size={13} />
+                </button>
+                <canvas ref={canvasRef} width={200} height={34} style={{ flex: 1, height: 34, background: 'transparent', border: 'none' }} />
+                <span style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
+                  {String(Math.floor((QUESTION_TIME - timeLeft) / 60)).padStart(2, '0')}:{String((QUESTION_TIME - timeLeft) % 60).padStart(2, '0')}
+                </span>
+                <button
                   disabled={!canSubmit}
                   onClick={handleEvaluate}
+                  style={{ background: canSubmit ? '#3b82f6' : '#94a3b8', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 16px', fontSize: 12, fontWeight: 700, cursor: canSubmit ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}
                 >
-                  {loadingEvaluation ? (
-                    <>
-                      <Spinner size="sm" /> Analyzing...
-                    </>
-                  ) : (
-                    'Submit Answer'
+                  {loadingEvaluation ? <><Spinner size="sm" /> Analyzing...</> : <><FaArrowRight size={11} /> Submit Answer</>}
+                </button>
+              </div>
+            </div>
+            )}
+          </div>
+
+          {/* RIGHT: Feedback Panel */}
+          <div style={{ width: '24%', flexShrink: 0, background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <FaStar color="#f59e0b" size={13} />
+              <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>Feedback</span>
+            </div>
+            <div className="slim-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
+              {showFeedback && currentFeedback ? (
+                <>
+                  {/* Score circle */}
+                  <div style={{ textAlign: 'center', marginBottom: 18 }}>
+                    <div style={{ position: 'relative', width: 90, height: 90, margin: '0 auto 8px' }}>
+                      <svg width="90" height="90" viewBox="0 0 90 90">
+                        <circle cx="45" cy="45" r="38" fill="none" stroke="#e2e8f0" strokeWidth="7" />
+                        <circle cx="45" cy="45" r="38" fill="none"
+                          stroke={overallScore >= 8 ? '#22c55e' : overallScore >= 6 ? '#f59e0b' : '#ef4444'}
+                          strokeWidth="7"
+                          strokeDasharray={`${2 * Math.PI * 38 * overallScore / 10} ${2 * Math.PI * 38}`}
+                          strokeLinecap="round" transform="rotate(-90 45 45)" />
+                      </svg>
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontWeight: 800, fontSize: 22, color: '#1e293b', lineHeight: 1 }}>{overallScore.toFixed(1)}</span>
+                        <span style={{ fontSize: 10, color: '#64748b' }}>/10</span>
+                      </div>
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>
+                      Avg Score{scoredAnswers.length > 1 ? ` (${scoredAnswers.length} questions)` : ''}
+                    </div>
+                  </div>
+
+                  {/* Metric cards */}
+                  {[
+                    { label: 'Technical Accuracy', score: accuracy, color: '#3b82f6' },
+                    { label: 'Communication', score: clarity, color: '#8b5cf6' },
+                    { label: 'Completeness', score: completeness, color: '#10b981' },
+                  ].map((m, i) => {
+                    const stars = Math.round(m.score / 2)
+                    const desc = m.score >= 8 ? 'Very Good' : m.score >= 6 ? 'Good' : 'Needs Work'
+                    return (
+                      <div key={i} style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: m.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>{m.label}</span>
+                          </div>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#1e293b' }}>{m.score.toFixed(1)}/10</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginBottom: 5 }}>
+                          {[1,2,3,4,5].map(s => (
+                            <FaStar key={s} size={11} color={s <= stars ? '#f59e0b' : '#e2e8f0'} />
+                          ))}
+                          <span style={{ fontSize: 10, color: '#64748b', marginLeft: 4 }}>{desc}</span>
+                        </div>
+                        <div style={{ height: 4, background: '#e2e8f0', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${m.score * 10}%`, background: m.color, borderRadius: 4, transition: 'width 0.5s ease' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* AI Suggestions */}
+                  {Array.isArray(currentFeedback.improvementTips) && currentFeedback.improvementTips.length > 0 && (
+                    <div style={{ padding: '12px', background: '#fffbeb', borderRadius: 10, border: '1px solid #fde68a' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                        <FaLightbulb color="#f59e0b" size={12} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>AI Suggestions</span>
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {currentFeedback.improvementTips.slice(0, 4).map((tip, i) => (
+                          <li key={i} style={{ fontSize: 11, color: '#78350f', lineHeight: 1.5 }}>{tip}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
-                </Button>
-                {isLastQuestion && showFeedback && currentFeedback && (
-                  <Button
-                    variant="success"
-                    className="fw-bold w-100 mt-2"
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px 12px' }}>
+                  <FaStar size={28} color="#e2e8f0" style={{ display: 'block', margin: '0 auto 10px' }} />
+                  <div style={{ fontSize: 12, lineHeight: 1.6 }}>Feedback will appear here after you submit your answer.</div>
+                </div>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            {showFeedback && (
+              <div style={{ padding: '12px 14px', borderTop: '1px solid #e2e8f0', flexShrink: 0 }}>
+                {isLastQuestion ? (
+                  <button
                     onClick={async () => {
                       const mergedAnswers = await finishInterview([...answers])
                       await submitScoreIfNeeded(mergedAnswers)
-                      // modal stays open → PDF section renders via interviewFinished state
                     }}
+                    disabled={loadingFinalFeedback}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
                   >
-                    Finish Interview
-                  </Button>
+                    {loadingFinalFeedback ? <><Spinner size="sm" /> Processing...</> : 'Finish Interview'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleNext}
+                    style={{ width: '100%', background: 'linear-gradient(135deg, #22c55e, #16a34a)', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    Next Question <FaArrowRight size={11} />
+                  </button>
                 )}
-
-              </Card>
-            </Col>
-          </Row>
-        ) : (
-          /* FINAL SUMMARY stays same */
-          interviewFinished && finalFeedback ? (
-            <div className="text-center py-5">
-              <h4 className="fw-bold mb-4">🎉 Interview Completed!</h4>
-              <p className="text-light mb-4">Your results have been saved. Download your report below.</p>
-
-              <div className="d-flex justify-content-center gap-3 flex-wrap">
-                <Button
-                  variant="success"
-                  className="fw-bold px-5 py-2"
-                  disabled={isDownloadingPdf}
-                  onClick={downloadPDF}
-                >
-                  {isDownloadingPdf ? (
-                    <>
-                      <Spinner size="sm" /> Generating PDF...
-                    </>
-                  ) : (
-                    '📄 Download Interview Report'
-                  )}
-                </Button>
-
-                <Button
-                  variant="outline-secondary"
-                  className="fw-bold px-5 py-2"
-                  onClick={() => onComplete?.()}
-                >
-                  Close
-                </Button>
               </div>
-            </div>
-          ) : null
-        )}
-        {/* 🔽 PDF CONTENT (HIDDEN) */}
-        <div
-          ref={pdfRef}
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: 0,
-            width: '794px', // A4 width @ 96dpi
-            background: '#ffffff',
-            padding: '24px',
-            color: '#000',
-          }}
-        >
-          <h2 style={{ marginBottom: 16 }}>Interview Feedback Report</h2>
-
-          <p><strong>Candidate:</strong> {user?.fullName}</p>
-          <p><strong>Topic:</strong> {title}</p>
-          <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
-
-          <hr />
-
-          {finalFeedback?.map((item: any, idx: number) => {
-            return (
-
-              <div key={idx} style={{
-                marginBottom: 32, pageBreakInside: 'avoid',   // 🔥 CRITICAL
-                breakInside: 'avoid',
-              }}>
-                {/* QUESTION */}
-                <h4
-                  style={{
-                    marginBottom: 8,
-                    color: '#000',        // 🔥 FORCE BLACK
-                    fontWeight: 500,
-                  }}
-                >
-                  Q{idx + 1}. {item.question}
-                </h4>
-
-
-
-                {/* USER ANSWER */}
-                <p><strong>Your Answer:</strong></p>
-                <p>{item.answer?.trim() ? item.answer : '— Skipped —'}</p>
-
-                {/* AI FEEDBACK */}
-
-                {item.feedback && (
-                  <>
-                    <p><strong>AI Feedback:</strong></p>
-
-                    {item.feedback.theory && (
-                      <p>
-                        <strong>Theory:</strong><br />
-                        {item.feedback.theory}
-                      </p>
-                    )}
-
-                    {item.feedback.example && (
-                      <p>
-                        <strong>Example:</strong><br />
-                        {item.feedback.example}
-                      </p>
-                    )}
-                  </>
-                )}
-
-
-                {/* IDEAL ANSWER */}
-                {item.idealAnswer && (
-                  <>
-                    <p><strong>Ideal Answer:</strong></p>
-                    <p>{item.idealAnswer}</p>
-                  </>
-                )}
-
-                {/* EXAMPLE PROGRAM */}
-                {item.exampleProgram && (
-                  <>
-                    <p><strong>Example Program:</strong></p>
-                    {isCodeLanguage((item.exampleProgram as any)?.language) ? (
-                      <pre
-                        style={{
-                          background: '#f5f5f5',
-                          padding: '12px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          overflowX: 'auto',
-                        }}
-                      >
-                        {formatCodeSnippet(
-                          typeof item.exampleProgram === 'string'
-                            ? item.exampleProgram
-                            : item.exampleProgram.code
-                        )}
-                      </pre>
-                    ) : (
-                      <div
-                        style={{
-                          background: '#f5f5f5',
-                          padding: '12px',
-                          borderRadius: '4px',
-                          fontSize: '14px',
-                          lineHeight: 1.6,
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {typeof item.exampleProgram === 'string'
-                          ? item.exampleProgram
-                          : item.exampleProgram.code}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* IMPROVEMENT TIPS */}
-                {Array.isArray(item.improvementTips) && item.improvementTips.length > 0 && (
-                  <>
-                    <p><strong>Improvement Tips:</strong></p>
-                    <ul>
-                      {item.improvementTips.map((tip: string, i: number) => (
-                        <li key={i}>{tip}</li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-
-                {/* SCORE */}
-                <p style={{ marginTop: 8 }}>
-                  <strong>Score:</strong> {item.rating?.total ?? 0}/10
-                </p>
-
-                <hr />
-              </div>
-            )
-
-          })}
-
+            )}
+          </div>
         </div>
+      ) : (
+        interviewFinished && finalFeedback ? (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f8fafc' }}>
+            <div style={{ fontSize: 48 }}>ðŸŽ‰</div>
+            <h4 style={{ fontWeight: 800, color: '#1e293b', margin: 0 }}>Interview Completed!</h4>
+            <p style={{ color: '#64748b', margin: 0 }}>Your results have been saved. Download your report below.</p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button disabled={isDownloadingPdf} onClick={downloadPDF}
+                style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                {isDownloadingPdf ? <><Spinner size="sm" /> Generating...</> : 'ðŸ"„ Download Interview Report'}
+              </button>
+              <button onClick={() => onComplete?.()}
+                style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        ) : null
+      )}
 
-        {/* ================= AI FEEDBACK ================= */}
-        {showFeedback && currentFeedback && (
-          <Card className="mt-4 p-4 rounded-3 border border-warning-subtle shadow-lg bg-dark bg-gradient">
-            {/* Header with better visual hierarchy */}
-            <div className="d-flex align-items-start justify-content-between mb-4">
-              <div className="d-flex align-items-center">
-                <div className="bg-warning bg-opacity-20 p-2 rounded-circle me-3">
-                  <FaChartBar className="text-warning" size={18} />
-                </div>
-                <div>
-                  <h5 className="fw-bold text-light mb-1">AI Evaluation</h5>
-                  <small className="text-light-emphasis">Detailed feedback and analysis</small>
-                </div>
+      {/* BOTTOM PROCTORING STATUS BAR */}
+      {!interviewFinished && (
+        <div style={{ display: 'flex', alignItems: 'center', padding: '7px 24px', background: '#0d1117', borderTop: '1px solid #1e2432', gap: 0, flexShrink: 0, overflowX: 'auto', justifyContent: 'space-between' }}>
+          {([
+            {
+              label: 'Face Detection',
+              value: gaze.faceDetected ? '100%' : '0%',
+              sub: gaze.faceDetected ? 'Good' : 'No Face',
+              icon: <FaUserCheck size={13} />,
+              iconColor: gaze.faceDetected ? '#60a5fa' : '#ef4444',
+              ok: gaze.faceDetected,
+            },
+            {
+              label: 'Eye Detection',
+              value: gaze.isReady ? (gaze.violationCount > 0 ? `${gaze.violationCount} Violation${gaze.violationCount > 1 ? 's' : ''}` : 'Active') : 'Loading...',
+              sub: gaze.isLookingAway ? `Away ${gaze.lookAwaySeconds}s` : (gaze.direction === 'center' ? 'On Camera' : gaze.direction),
+              icon: <FaEye size={13} />,
+              iconColor: gaze.violationCount > 0 ? '#ef4444' : (gaze.isLookingAway ? '#f59e0b' : '#34d399'),
+              ok: !gaze.isLookingAway && gaze.violationCount === 0,
+            },
+            {
+              label: 'Head Position',
+              value: gaze.faceDetected
+                ? (gaze.headDirection === 'center' || gaze.headDirection === 'unknown'
+                    ? 'Center'
+                    : gaze.headDirection.charAt(0).toUpperCase() + gaze.headDirection.slice(1))
+                : 'Unknown',
+              sub: gaze.headViolationCount > 0
+                ? `Violations: ${gaze.headViolationCount}`
+                : gaze.isHeadTurned
+                  ? `Turned ${gaze.headAwaySeconds}s`
+                  : 'Good',
+              icon: <FaUserCheck size={13} />,
+              iconColor: gaze.isHeadTurned ? '#ef4444' : '#a78bfa',
+              ok: !gaze.isHeadTurned && gaze.headViolationCount === 0,
+            },
+            { label: 'Audio Level', value: isListening ? 'Active' : 'Good', sub: isListening ? 'Recording' : 'Clear', icon: <FaVolumeUp size={13} />, iconColor: isListening ? '#22d3ee' : '#94a3b8', ok: true },
+            { label: 'Lighting', value: lightingLabel, sub: lightingOk ? 'Good' : 'Poor', icon: <FaSun size={13} />, iconColor: lightingOk ? '#fbbf24' : '#ef4444', ok: lightingOk },
+            { label: 'Recording', value: '1080p 30fps', sub: isRecordingActive ? 'Active' : 'Paused', icon: <FaVideo size={13} />, iconColor: isRecordingActive ? '#f87171' : '#64748b', ok: isRecordingActive },
+          ] as { label: string; value: string; sub: string; icon: React.ReactNode; iconColor: string; ok: boolean }[]).map((item, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, padding: '0 14px', borderRight: i < 6 ? '1px solid #1e2432' : 'none' }}>
+              <div style={{ color: item.iconColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {item.icon}
               </div>
-
-              {/* Score badge positioned in header */}
-              {typeof currentFeedback.rating === 'number' && (
-                <Badge
-                  bg={currentFeedback.rating >= 7 ? 'success' : currentFeedback.rating >= 4 ? 'warning' : 'danger'}
-                  className="px-3 py-2 fw-bold rounded-pill shadow-sm"
-                >
-                  {currentFeedback.rating}/10
-                </Badge>
-              )}
+              <div>
+                <div style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase' as const, letterSpacing: 0.5, fontWeight: 600 }}>{item.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#e2e8f0', lineHeight: 1.3 }}>{item.value}</div>
+                <div style={{ fontSize: 9, color: item.ok ? '#22c55e' : '#f59e0b', fontWeight: 500 }}>{item.sub}</div>
+              </div>
+              <FaCheck size={11} color={item.ok ? '#22c55e' : '#f59e0b'} style={{ flexShrink: 0, marginLeft: 2 }} />
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Content area with better spacing */}
-            <div className="d-flex flex-column gap-4">
-
-              {/* THEORY FEEDBACK */}
-              {currentFeedback.feedback?.theory && (
-                <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
-                  <div className="d-flex align-items-center mb-2">
-                    <FaClipboardList className="text-info me-2" size={16} />
-                    <h6 className="text-info fw-bold mb-0">Theory Feedback</h6>
+      {/* PDF (hidden) */}
+      <div ref={pdfRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '794px', background: '#ffffff', padding: '24px', color: '#000' }}>
+        <h2 style={{ marginBottom: 16 }}>Interview Feedback Report</h2>
+        <p><strong>Candidate:</strong> {user?.fullName}</p>
+        <p><strong>Topic:</strong> {title}</p>
+        <p><strong>Date:</strong> {new Date().toLocaleDateString()}</p>
+        <p><strong>Eye Detection Violations:</strong> {gaze.violationCount} (looked away &gt;15s, {gaze.violationCount} time{gaze.violationCount !== 1 ? 's' : ''})</p>
+        <hr />
+        {finalFeedback?.map((item: any, idx: number) => (
+          <div key={idx} style={{ marginBottom: 32, pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+            <h4 style={{ marginBottom: 8, color: '#000', fontWeight: 500 }}>Q{idx + 1}. {item.question}</h4>
+            <p><strong>Your Answer:</strong></p>
+            <p>{item.answer?.trim() ? item.answer : 'â€" Skipped â€"'}</p>
+            {item.feedback && (
+              <>
+                <p><strong>AI Feedback:</strong></p>
+                {item.feedback.theory && <p><strong>Theory:</strong><br />{item.feedback.theory}</p>}
+                {item.feedback.example && <p><strong>Example:</strong><br />{item.feedback.example}</p>}
+              </>
+            )}
+            {item.idealAnswer && <><p><strong>Ideal Answer:</strong></p><p>{item.idealAnswer}</p></>}
+            {item.exampleProgram && (
+              <>
+                <p><strong>Example Program:</strong></p>
+                {isCodeLanguage((item.exampleProgram as any)?.language) ? (
+                  <pre style={{ background: '#f5f5f5', padding: '12px', borderRadius: '4px', fontSize: '12px', overflowX: 'auto' }}>
+                    {formatCodeSnippet(typeof item.exampleProgram === 'string' ? item.exampleProgram : item.exampleProgram.code)}
+                  </pre>
+                ) : (
+                  <div style={{ background: '#f5f5f5', padding: '12px', borderRadius: '4px', fontSize: '14px', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {typeof item.exampleProgram === 'string' ? item.exampleProgram : item.exampleProgram.code}
                   </div>
-                  <p className="text-light mb-0 mt-2 lh-base fs-6">
-                    {currentFeedback.feedback.theory}
-                  </p>
-                </div>
-              )}
-
-              {/* EXAMPLE FEEDBACK */}
-              {currentFeedback.feedback?.example && (
-                <div className="p-3 rounded-3 bg-black bg-opacity-25 border-start border-3 border-info">
-                  <div className="d-flex align-items-center mb-2">
-                    <FaCog className="text-info me-2" size={16} />
-                    <h6 className="text-info fw-bold mb-0">Example Feedback</h6>
-                  </div>
-                  <p className="text-light mb-0 mt-2 lh-base fs-6">
-                    {currentFeedback.feedback.example}
-                  </p>
-                </div>
-              )}
-
-              {/* IDEAL ANSWER - More prominent */}
-              {currentFeedback.idealAnswer && (
-                <div className="p-3 rounded-3 bg-success bg-opacity-10 border border-success border-2">
-                  <div className="d-flex align-items-center mb-2">
-                    <div className="bg-success bg-opacity-25 p-1 rounded-2 me-2">
-                      <FaCheckCircle className="text-success" size={15} />
-                    </div>
-                    <h6 className="text-success fw-bold mb-0">Ideal Answer</h6>
-                  </div>
-                  <p className="text-light mb-0 mt-2 lh-base fs-6">
-                    {currentFeedback.idealAnswer}
-                  </p>
-                </div>
-              )}
-
-              {/* FIXED EXAMPLE CODE */}
-              {hasDistinctFixedExampleCode && currentExampleProgramIsCode && (
-                <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="d-flex align-items-center">
-                      <span className="text-info me-2 fs-5">🔧</span>
-                      <h6 className="text-info fw-bold mb-0">Corrected Example Code</h6>
-                    </div>
-                    <Badge bg="dark" className="px-2 py-1">JavaScript</Badge>
-                  </div>
-                  <div className="mt-2 rounded-2 overflow-hidden border border-dark">
-                    <CodeMirror
-                      value={formattedFixedExampleCode}
-                      height="180px"
-                      theme={oneDark}
-                      extensions={[javascript(), EditorView.lineWrapping]}
-                      editable={false}
-                      basicSetup={{
-                        lineNumbers: true,
-                        highlightActiveLineGutter: false,
-                        foldGutter: false,
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* FULL EXAMPLE PROGRAM */}
-              {currentFeedback.exampleProgram && (
-                <div className="p-3 rounded-3 bg-black bg-opacity-50 border border-secondary">
-                  <div className="d-flex align-items-center justify-content-between mb-2">
-                    <div className="d-flex align-items-center">
-                      <FaBoxOpen className="text-info me-2" size={16} />
-                      <div>
-                        <h6 className="text-info fw-bold mb-0">Example Program</h6>
-                        <small className="text-light-emphasis">{currentFeedback.exampleProgram.title}</small>
-                      </div>
-                    </div>
-                    <Badge bg="secondary" className="px-2 py-1">
-                      {currentFeedback.exampleProgram.language.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div className="mt-2 rounded-2 overflow-hidden border border-dark">
-                    {currentExampleProgramIsCode ? (
-                      <CodeMirror
-                        value={formattedExampleProgramCode}
-                        height="240px"
-                        theme={oneDark}
-                        extensions={[javascript(), EditorView.lineWrapping]}
-                        editable={false}
-                        basicSetup={{
-                          lineNumbers: true,
-                          highlightActiveLineGutter: false,
-                          foldGutter: false,
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="p-3"
-                        style={{
-                          color: '#f8f9fa',
-                          whiteSpace: 'pre-wrap',
-                          wordBreak: 'break-word',
-                          lineHeight: 1.7,
-                          fontSize: '15px',
-                        }}
-                      >
-                        {currentFeedback.exampleProgram.code}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* IMPROVEMENT TIPS */}
-              {Array.isArray(currentFeedback.improvementTips) && currentFeedback.improvementTips.length > 0 && (
-                <div className="p-3 rounded-3 bg-info bg-opacity-10 border-start border-3 border-info">
-                  <div className="d-flex align-items-center mb-2">
-                    <FaLightbulb className="text-info me-2" size={16} />
-                    <h6 className="text-info fw-bold mb-0">Improvement Tips</h6>
-                  </div>
-                  <ul className="text-light ps-3 mb-0 mt-2">
-                    {currentFeedback.improvementTips.map((tip, i) => (
-                      <li key={i} className="mb-2 lh-base fs-6">
-                        <span className="text-info me-2">•</span>
-                        {tip}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* FOLLOW-UP QUESTION */}
-              {(currentFeedback as any)?.followUpQuestion && (
-                <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning">
-                  <div className="d-flex align-items-start">
-                    <div className="bg-warning bg-opacity-20 p-1 rounded-2 me-3 mt-1">
-                      <span className="text-warning fs-5">🤔</span>
-                    </div>
-                    <div>
-                      <h6 className="text-warning fw-bold mb-1">Follow-up Question</h6>
-                      <p className="text-light mb-0 mt-2 lh-base fs-6">
-                        {(currentFeedback as any).followUpQuestion}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Optional: Footer with timestamp or additional info */}
-            <div className="text-end mt-4 pt-3 border-top border-secondary-subtle">
-              <small className="text-light-emphasis">AI-generated feedback • Refresh to see updates</small>
-            </div>
-          </Card>
-        )}
-      </Container>
+                )}
+              </>
+            )}
+            {Array.isArray(item.improvementTips) && item.improvementTips.length > 0 && (
+              <><p><strong>Improvement Tips:</strong></p><ul>{item.improvementTips.map((tip: string, i: number) => <li key={i}>{tip}</li>)}</ul></>
+            )}
+            <p style={{ marginTop: 8 }}><strong>Score:</strong> {item.rating?.total ?? 0}/10</p>
+            <hr />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

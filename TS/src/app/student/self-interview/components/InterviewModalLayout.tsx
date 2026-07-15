@@ -312,21 +312,6 @@ const InterviewModalLayout = () => {
         centered={isMobile}
         size={isMobile ? 'xl' : undefined}
       >
-        <Modal.Header className="border-0 p-0 position-relative">
-          <Button
-            onClick={handleClose}
-            variant="light"
-            className="position-absolute"
-            style={{
-              top: isMobile ? 10 : 12, right: isMobile ? 10 : 16, zIndex: 1056,
-              width: isMobile ? 28 : 30, height: isMobile ? 28 : 30,
-              borderRadius: '50%', backgroundColor: '#f97316', color: '#fff',
-              border: 'none', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-            }}
-          >
-            <FaTimes size={11} />
-          </Button>
-        </Modal.Header>
         <Modal.Body className="p-0">
           <div ref={modalRef} className="w-100 h-100 bg-body">
             {show && interviewId && questions.length > 0 && (

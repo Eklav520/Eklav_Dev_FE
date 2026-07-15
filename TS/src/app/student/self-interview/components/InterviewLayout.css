@@ -1,4 +1,23 @@
 /* ======================================================
+   THIN / HIDDEN SCROLLBARS
+   Keeps panels scrollable without the bulky native scrollbar.
+====================================================== */
+.slim-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.slim-scroll::-webkit-scrollbar {
+  display: none;
+}
+.slim-scroll .cm-scroller {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.slim-scroll .cm-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* ======================================================
    BASE PAGE
 ====================================================== */
 .interview-page-bg {
@@ -1913,3 +1932,17 @@
 
 
 
+
+/* ── New Figma-style full-screen interview layout overrides ── */
+.ai-interview-video-panel .video-container {
+  height: 100% !important;
+  border-radius: 0 !important;
+  flex: 1;
+}
+
+.ai-interview-video-panel .video-feed {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 0 !important;
+}

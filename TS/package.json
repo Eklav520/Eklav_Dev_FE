@@ -26,6 +26,8 @@
     "@dicebear/collection": "^9.2.3",
     "@heygen/liveavatar-web-sdk": "^0.0.17",
     "@hookform/resolvers": "^3.7.0",
+    "@mediapipe/camera_utils": "^0.3.1675466862",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
     "@mediapipe/selfie_segmentation": "^0.1.1675465747",
     "@monaco-editor/react": "^4.7.0",
     "@popperjs/core": "^2.11.8",

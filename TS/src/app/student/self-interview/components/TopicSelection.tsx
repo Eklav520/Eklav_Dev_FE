@@ -8,7 +8,8 @@ interface TopicSelectionProps {
     interviewId: string,
     questions: string[],
     totalQuestions: number,
-    role: string
+    role: string,
+    options?: { interviewType: 'topic' | 'resume'; attemptId?: string; attemptNumber?: number }
   ) => void
   limits: any
 }
@@ -162,7 +163,10 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
     const data = await response.json()
     if (!response.ok) return alert(data.message || 'Failed to start interview')
 
-    onStart(data.interviewId, data.questions, data.totalQuestions, topic)
+    onStart(data.interviewId, data.questions, data.totalQuestions, topic, {
+      interviewType: 'topic',
+      attemptNumber: data.attemptNumber,
+    })
   }
 
   return (
