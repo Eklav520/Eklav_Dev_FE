@@ -1356,7 +1356,9 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
 
   // Gaze detection (runs whenever we have a live video element)
-  const gaze = useGazeDetection(videoElement, !interviewFinished)
+  // Typing a code answer means legitimately looking at the editor/keyboard —
+  // exempt that from eye/head "away" violations.
+  const gaze = useGazeDetection(videoElement, !interviewFinished, answerTab === 'code' && !showFeedback)
 
   // Average scores across ALL completed questions (not just the current one)
   const scoredAnswers = answers.filter(a => a.rating != null)

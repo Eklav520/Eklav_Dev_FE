@@ -9,6 +9,7 @@ import {
   FiX, FiChevronDown, FiTool,
 } from 'react-icons/fi'
 import { FaLock, FaStar } from 'react-icons/fa'
+import { fetchSkillProfile, calcJobMatch } from '@/utils/jobMatch'
 
 export interface Job {
   _id: string
@@ -157,9 +158,9 @@ const JobRow = ({
 // ── Recommended section ───────────────────────────────────────────────────────
 
 const RecommendedSection = ({
-  jobs, recPage, setRecPage, REC_PAGE_SIZE,
+  jobs, recPage, setRecPage, REC_PAGE_SIZE, userSkills,
 }: {
-  jobs: Job[]; recPage: number; setRecPage: React.Dispatch<React.SetStateAction<number>>; REC_PAGE_SIZE: number
+  jobs: Job[]; recPage: number; setRecPage: React.Dispatch<React.SetStateAction<number>>; REC_PAGE_SIZE: number; userSkills: string[]
 }) => {
   const recTotal = Math.ceil(jobs.length / REC_PAGE_SIZE)
   const recJobs = jobs.slice((recPage - 1) * REC_PAGE_SIZE, recPage * REC_PAGE_SIZE)
@@ -195,7 +196,9 @@ const RecommendedSection = ({
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         {recJobs.map(job => {
           const [fg, bg] = avatarColor(job.company)
-          const match = 80 + (job.company.charCodeAt(0) % 18)
+          const match = userSkills.length
+            ? calcJobMatch(job.skills, `${job.title} ${job.highlights.join(' ')}`, userSkills)
+            : 80 + (job.company.charCodeAt(0) % 18) // no skill profile yet — fall back to a stable placeholder
           return (
             <div key={job._id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 14px 10px', minWidth: 160, width: 170, flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -240,6 +243,7 @@ const InterviewDetailsPageView = () => {
   const [error, setError] = useState('')
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set())
+  const [userSkills, setUserSkills] = useState<string[]>([])
 
   // tabs
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'applied' | 'shortlisted' | 'interview' | 'offers' | 'saved' | 'live'>('all')
@@ -261,6 +265,11 @@ const InterviewDetailsPageView = () => {
   const REC_PAGE_SIZE = 5
 
   useEffect(() => { if (token) fetchJobs() }, [token])
+
+  useEffect(() => {
+    if (!token) return
+    fetchSkillProfile(baseURL, token).then(sp => { if (sp?.combinedSkills.length) setUserSkills(sp.combinedSkills) })
+  }, [baseURL, token])
 
   const fetchJobs = async () => {
     try {
@@ -627,6 +636,7 @@ const InterviewDetailsPageView = () => {
               recPage={recPage}
               setRecPage={setRecPage}
               REC_PAGE_SIZE={REC_PAGE_SIZE}
+              userSkills={userSkills}
             />
           )}
         </div>

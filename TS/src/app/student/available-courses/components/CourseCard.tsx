@@ -1352,6 +1352,8 @@ interface MarketInsightData {
   salaryEntry: string
   salaryMid: string
   salarySenior: string
+  salarySource?: 'adzuna' | 'ai_estimate'
+  salarySampleSize?: number
   topCities?: string[]
   industrySectors?: string[]
   careerPath?: string[]
@@ -1363,6 +1365,7 @@ interface MarketInsightData {
   trendLabels?: string[]
   trendHistorical?: number[]
   trendProjection?: number[]
+  liveJobs?: { title: string; company: string; location: string; salary: string | null; applyUrl: string; postedAt: string | null }[]
   fromCache: boolean
   lastFetched?: string
 }
@@ -1720,6 +1723,11 @@ function MarketInsightModal({ courseId, courseTitle, show, onHide }: {
                         </div>
                       ))}
                     </div>
+                    <div style={{ marginTop: '0.85rem', paddingTop: '0.6rem', borderTop: '1px solid #1e1e1e', fontSize: '0.65rem', color: '#4b5563' }}>
+                      {data.salarySource === 'adzuna'
+                        ? `📡 Based on ${data.salarySampleSize || 'live'} real job postings (Adzuna, India)`
+                        : '🤖 AI estimate — not sourced from live job market data'}
+                    </div>
                   </div>
 
                   {/* Career path */}
@@ -1799,7 +1807,43 @@ function MarketInsightModal({ courseId, courseTitle, show, onHide }: {
                   </div>
                 </div>
 
-                {/* ══ SECTION 7 — Certifications ══ */}
+                {/* ══ SECTION 7 — Live job openings ══ */}
+                {data.liveJobs && data.liveJobs.length > 0 && (
+                  <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+                    <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>💼 Live job openings</div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginBottom: '0.85rem' }}>Real, currently open roles for this technology (via Adzuna, India)</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                      {data.liveJobs.map((job, i) => (
+                        <a
+                          key={i}
+                          href={job.applyUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+                            background: '#1a1a1a', border: '1px solid #252525', borderRadius: '10px',
+                            padding: '0.65rem 0.9rem', textDecoration: 'none',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ color: '#e5e7eb', fontSize: '0.82rem', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.title}</div>
+                            <div style={{ color: '#8b8f98', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                              {job.company} · {job.location}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+                            {job.salary && (
+                              <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 700 }}>{job.salary}</span>
+                            )}
+                            <span style={{ color: '#3b82f6', fontSize: '0.72rem', fontWeight: 700 }}>Apply →</span>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ SECTION 8 — Certifications ══ */}
                 {data.certifications && data.certifications.length > 0 && (
                   <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: '12px', padding: '1rem 1.25rem' }}>
                     <div style={{ color: '#e5e7eb', fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.15rem' }}>🎓 Recommended Certifications</div>

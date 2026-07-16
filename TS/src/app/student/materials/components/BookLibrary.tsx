@@ -48,47 +48,19 @@ const BookLibrary = ({ onSelectBook }: Props) => {
   return (
     <div style={{ minHeight: "100vh", background: "#fff", padding: "0 0 40px" }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 14px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 10, background: "#f0eeff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BsBookHalf style={{ color: "#7c3aed", fontSize: 18 }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: "#0f172a" }}>Books</h1>
-            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>Explore our collection of books</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 320, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px" }}>
-            <FaSearch style={{ color: "#94a3b8", fontSize: 13, flexShrink: 0 }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search books..."
-              style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: "#374151", width: "100%" }}
-            />
-          </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 7, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "10px 16px", fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
-            <FaFilter style={{ fontSize: 12, color: "#64748b" }} /> Filter
-          </button>
-        </div>
-      </div>
-
-
       {/* ── Hero Banner ── */}
       <div style={{
-        margin: "0 24px 20px",
+        margin: "20px 24px 20px",
         borderRadius: 20,
         background: "linear-gradient(120deg, #f3e8ff 0%, #e9d5ff 55%, #d8b4fe 100%)",
         border: "1px solid #e9d5ff",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "24px 28px",
+        padding: "16px 28px",
         position: "relative",
         overflow: "hidden",
-        minHeight: 160,
+        minHeight: 100,
       }}>
         {/* decorative blobs */}
         <div style={{ position: "absolute", top: -40, right: 260, width: 180, height: 180, borderRadius: "50%", background: "rgba(139,92,246,0.12)", pointerEvents: "none" }} />
@@ -133,30 +105,47 @@ const BookLibrary = ({ onSelectBook }: Props) => {
         <img
           src={bookAloneImg}
           alt="Books illustration"
-          style={{ height: 210, width: "auto", objectFit: "contain", position: "relative", zIndex: 2, flexShrink: 0 }}
+          style={{ height: 130, width: "auto", objectFit: "contain", position: "relative", zIndex: 2, flexShrink: 0 }}
         />
       </div>
 
-      {/* ── Category Pills ── */}
-      <div style={{ overflowX: "auto", padding: "10px 24px 16px" }}>
-        <div style={{ display: "flex", gap: 8, width: "max-content" }}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              style={{
-                padding: "6px 18px", borderRadius: 22,
-                border: activeCategory === cat ? "none" : "1px solid #e2e8f0",
-                background: activeCategory === cat ? ORANGE : "#f8fafc",
-                color: activeCategory === cat ? "#fff" : "#374151",
-                cursor: "pointer", fontSize: 12.5,
-                fontWeight: activeCategory === cat ? 700 : 500,
-                whiteSpace: "nowrap", outline: "none",
-              }}
-            >
-              {cat}
-            </button>
-          ))}
+      {/* ── Category Pills + Search/Filter ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "10px 24px 16px" }}>
+        <div style={{ overflowX: "auto" }}>
+          <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                style={{
+                  padding: "6px 18px", borderRadius: 22,
+                  border: activeCategory === cat ? "none" : "1px solid #e2e8f0",
+                  background: activeCategory === cat ? ORANGE : "#f8fafc",
+                  color: activeCategory === cat ? "#fff" : "#374151",
+                  cursor: "pointer", fontSize: 12.5,
+                  fontWeight: activeCategory === cat ? 700 : 500,
+                  whiteSpace: "nowrap", outline: "none",
+                }}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ width: 260, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8, padding: "9px 14px" }}>
+            <FaSearch style={{ color: "#94a3b8", fontSize: 13, flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search books..."
+              style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: "#374151", width: "100%" }}
+            />
+          </div>
+          <button style={{ display: "flex", alignItems: "center", gap: 7, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 16px", fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+            <FaFilter style={{ fontSize: 12, color: "#64748b" }} /> Filter
+          </button>
         </div>
       </div>
 

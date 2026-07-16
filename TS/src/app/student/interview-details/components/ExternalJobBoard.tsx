@@ -8,6 +8,7 @@ import {
   FaWifi, FaHandshake, FaChevronLeft, FaChevronRight, FaInfoCircle, FaBookmark, FaRegBookmark,
 } from "react-icons/fa";
 import { FiSliders, FiX, FiSearch as FiSearchIcon, FiChevronDown } from "react-icons/fi";
+import { fetchSkillProfile, calcJobMatch, matchColor, SkillProfile } from "@/utils/jobMatch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ExternalJob {
@@ -54,36 +55,17 @@ const timeAgo = (dateStr: string | null): string => {
 };
 
 // ─── Match Score ──────────────────────────────────────────────────────────────
-const calcMatchScore = (job: ExternalJob, userSkills: string[]): number => {
-  if (!userSkills.length) return 0;
-  const us = userSkills.map(s => s.toLowerCase());
-  const titleDesc = `${job.title} ${job.description}`.toLowerCase();
-
-  // Skills in job.skills that match user skills (60 pts)
-  let skillPts = 0;
-  if (job.skills.length > 0) {
-    const hits = job.skills.filter(s => us.some(u => u.includes(s.toLowerCase()) || s.toLowerCase().includes(u))).length;
-    skillPts = Math.round((hits / job.skills.length) * 60);
-  }
-
-  // User skills mentioned in title or description (30 pts)
-  const kwHits = us.filter(s => titleDesc.includes(s)).length;
-  const kwPts = Math.min(30, Math.round((kwHits / us.length) * 30));
-
-  // Not a senior/director role (student-friendly) (10 pts)
-  const seniorPts = /senior|lead|head|director|vp |chief|principal/.test(job.title.toLowerCase()) ? 0 : 10;
-
-  return Math.min(100, skillPts + kwPts + seniorPts);
-};
+const calcMatchScore = (job: ExternalJob, userSkills: string[]): number =>
+  calcJobMatch(job.skills, `${job.title} ${job.description}`, userSkills);
 
 // ─── Match Ring ───────────────────────────────────────────────────────────────
-const MatchRing: React.FC<{ score: number; size?: number }> = ({ score, size = 46 }) => {
+const MatchRing: React.FC<{ score: number; size?: number; tooltip?: string }> = ({ score, size = 46, tooltip }) => {
   const r = (size - 6) / 2;
   const circ = 2 * Math.PI * r;
   const filled = (score / 100) * circ;
-  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#f59e0b" : "#ef4444";
+  const color = matchColor(score);
   return (
-    <div className="ext-match-ring" title={`${score}% profile match`}>
+    <div className="ext-match-ring" title={tooltip || `${score}% profile match`}>
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={5} />
         <circle
@@ -95,7 +77,7 @@ const MatchRing: React.FC<{ score: number; size?: number }> = ({ score, size = 4
           style={{ transition: "stroke-dasharray 0.6s ease" }}
         />
       </svg>
-      <span className="ext-match-pct" style={{ color }}>{score}%</span>
+      <span className="ext-match-pct" style={{ color, fontSize: size / 46 * 0.58 + "rem" }}>{score}%</span>
     </div>
   );
 };
@@ -110,7 +92,7 @@ const extAvatarColor = (name: string) => EXT_AVATAR_COLORS[name.charCodeAt(0) % 
 const extInitials = (name: string) => name.split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
-const ExtJobCard: React.FC<{ job: ExternalJob; onView: (j: ExternalJob) => void; saved: boolean; onToggleSave: (id: string) => void }> = ({ job, onView, saved, onToggleSave }) => {
+const ExtJobCard: React.FC<{ job: ExternalJob; score: number; matchTooltip: string; onView: (j: ExternalJob) => void; saved: boolean; onToggleSave: (id: string) => void }> = ({ job, score, matchTooltip, onView, saved, onToggleSave }) => {
   const [fg, bg] = extAvatarColor(job.company || "A");
   const badgeColor = job.source === "remotive" ? "#059669" : job.source === "arbeitnow" ? "#7c3aed" : "#ea580c";
 
@@ -122,17 +104,12 @@ const ExtJobCard: React.FC<{ job: ExternalJob; onView: (j: ExternalJob) => void;
       </div>
 
       <div className="ext-job-body">
-        {/* Row 1: title + source badge + time */}
+        {/* Row 1: title + source badge */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
           <span className="ext-job-title">{job.title}</span>
           {job.source && (
             <span style={{ background: `${badgeColor}18`, color: badgeColor, border: `1px solid ${badgeColor}44`, borderRadius: 6, padding: "1px 7px", fontSize: "0.62rem", fontWeight: 700 }}>
               {job.source.toUpperCase()}
-            </span>
-          )}
-          {job.postedAt && (
-            <span style={{ marginLeft: "auto", fontSize: "0.68rem", color: "#94a3b8", whiteSpace: "nowrap", flexShrink: 0, display: "flex", alignItems: "center", gap: 3 }}>
-              <FaClock size={10} />{timeAgo(job.postedAt)}
             </span>
           )}
         </div>
@@ -155,20 +132,33 @@ const ExtJobCard: React.FC<{ job: ExternalJob; onView: (j: ExternalJob) => void;
         )}
       </div>
 
-      {/* Right: bookmark + apply */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, flexShrink: 0 }}>
-        <button
-          onClick={e => { e.stopPropagation(); onToggleSave(job.id); }}
-          style={{ background: saved ? "rgba(255,122,0,0.1)" : "none", border: "1px solid #e2e8f0", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: saved ? "#ff7a00" : "#94a3b8" }}
-        >
-          {saved ? <FaBookmark size={13} color="#ff7a00" /> : <FaRegBookmark size={13} color="#94a3b8" />}
-        </button>
-        <button
-          className="ext-apply-btn"
-          onClick={e => { e.stopPropagation(); window.open(job.applyUrl, "_blank"); }}
-        >
-          <FaExternalLinkAlt style={{ marginRight: 4 }} />Apply
-        </button>
+      {/* Divider */}
+      <div style={{ alignSelf: "stretch", width: 1, background: "#e2e8f0", flexShrink: 0 }} />
+
+      {/* Right panel: time+bookmark on top, match ring+apply below */}
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 14, flexShrink: 0, minWidth: 190, alignSelf: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          {job.postedAt ? (
+            <span style={{ fontSize: "0.68rem", color: "#94a3b8", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+              <FaClock size={10} />{timeAgo(job.postedAt)}
+            </span>
+          ) : <span />}
+          <button
+            onClick={e => { e.stopPropagation(); onToggleSave(job.id); }}
+            style={{ background: saved ? "rgba(255,122,0,0.1)" : "none", border: "1px solid #e2e8f0", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: saved ? "#ff7a00" : "#94a3b8", flexShrink: 0 }}
+          >
+            {saved ? <FaBookmark size={13} color="#ff7a00" /> : <FaRegBookmark size={13} color="#94a3b8" />}
+          </button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          {matchTooltip ? <MatchRing score={score} tooltip={matchTooltip} size={54} /> : <span />}
+          <button
+            className="ext-apply-btn"
+            onClick={e => { e.stopPropagation(); window.open(job.applyUrl, "_blank"); }}
+          >
+            <FaExternalLinkAlt style={{ marginRight: 4 }} />Apply
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -270,6 +260,7 @@ const ExternalJobBoard: React.FC = () => {
   const [sources, setSources] = useState<Record<string, number>>({});
   const [userSkills, setUserSkills] = useState<string[]>([]);
   const [matchFilter, setMatchFilter] = useState<"all" | "high" | "medium" | "low">("all");
+  const [matchSort, setMatchSort] = useState<"none" | "high-low" | "low-high">("none");
 
   // sidebar filter state
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -283,15 +274,15 @@ const ExternalJobBoard: React.FC = () => {
   const clearSideFilters = () => { setSideTypeFilter(""); setSideSourceFilter(""); setSideRemoteOnly(false); setSideLocQ(""); setSideSkillQ(""); };
   const activeSideFilterCount = [sideTypeFilter, sideSourceFilter, sideRemoteOnly ? "remote" : "", sideLocQ, sideSkillQ].filter(Boolean).length;
 
-  // Fetch user profile for match scoring
+  // Fetch combined skill profile (declared skills + completed-course skills) for match scoring
+  const [skillProfile, setSkillProfile] = useState<SkillProfile | null>(null);
   useEffect(() => {
-    fetch(`${baseURL}/profile`, { headers: { Authorization: `Bearer ${user?.token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        const skills: string[] = data?.profile?.skills ?? data?.skills ?? [];
-        if (skills.length) setUserSkills(skills);
-      })
-      .catch(() => {});
+    fetchSkillProfile(baseURL, user?.token).then(sp => {
+      if (sp) {
+        setSkillProfile(sp);
+        if (sp.combinedSkills.length) setUserSkills(sp.combinedSkills);
+      }
+    });
   }, [baseURL, user?.token]);
 
   const fetchJobs = useCallback(async (cat: string, q: string, loc: string, pg: number) => {
@@ -338,19 +329,49 @@ const ExternalJobBoard: React.FC = () => {
 
   // Client-side filtering
   const scoredJobs = jobs.map(job => ({ job, score: calcMatchScore(job, userSkills) }));
+
+  const passesSideFilters = (job: ExternalJob) => {
+    if (sideTypeFilter && (TYPE_LABEL[job.employmentType] || job.employmentType) !== sideTypeFilter) return false;
+    if (sideSourceFilter && job.source !== sideSourceFilter) return false;
+    if (sideRemoteOnly && !job.isRemote) return false;
+    if (sideLocQ && !job.location?.toLowerCase().includes(sideLocQ.toLowerCase())) return false;
+    if (sideSkillQ && !job.skills.some(s => s.toLowerCase().includes(sideSkillQ.toLowerCase()))) return false;
+    return true;
+  };
+
+  // Counts per match tier (respecting the other filters, but not the match filter itself)
+  const sideFilteredScored = scoredJobs.filter(({ job }) => passesSideFilters(job));
+  const matchCounts = {
+    high:   sideFilteredScored.filter(({ score }) => score >= 70).length,
+    medium: sideFilteredScored.filter(({ score }) => score >= 40 && score < 70).length,
+    low:    sideFilteredScored.filter(({ score }) => score > 0 && score < 40).length,
+  };
+  const MATCH_TIERS = [
+    { key: "high",   label: "High Match",   sub: "70%+",     color: "#22c55e" },
+    { key: "medium", label: "Medium Match", sub: "40-69%",   color: "#f59e0b" },
+    { key: "low",    label: "Low Match",    sub: "Below 40%", color: "#ef4444" },
+  ] as const;
+
+  const matchTooltipFor = (score: number) => {
+    if (!userSkills.length) return "";
+    const parts = [`${score}% profile match`];
+    if (skillProfile?.skills.length) parts.push(`${skillProfile.skills.length} declared skill${skillProfile.skills.length === 1 ? "" : "s"}`);
+    if (skillProfile?.completedCourses.length) parts.push(`${skillProfile.completedCourses.length} completed course${skillProfile.completedCourses.length === 1 ? "" : "s"}`);
+    if (skillProfile?.certificationsCount) parts.push(`${skillProfile.certificationsCount} certification${skillProfile.certificationsCount === 1 ? "" : "s"}`);
+    return parts.length > 1 ? `${parts[0]} — based on ${parts.slice(1).join(", ")}` : parts[0];
+  };
   const displayedJobs = scoredJobs
     .filter(({ job, score }) => {
-      if (matchFilter === "high")   return score >= 70;
-      if (matchFilter === "medium") return score >= 40 && score < 70;
-      if (matchFilter === "low")    return score > 0  && score < 40;
-      if (sideTypeFilter && (TYPE_LABEL[job.employmentType] || job.employmentType) !== sideTypeFilter) return false;
-      if (sideSourceFilter && job.source !== sideSourceFilter) return false;
-      if (sideRemoteOnly && !job.isRemote) return false;
-      if (sideLocQ && !job.location?.toLowerCase().includes(sideLocQ.toLowerCase())) return false;
-      if (sideSkillQ && !job.skills.some(s => s.toLowerCase().includes(sideSkillQ.toLowerCase()))) return false;
-      return true;
+      if (matchFilter === "high"   && !(score >= 70)) return false;
+      if (matchFilter === "medium" && !(score >= 40 && score < 70)) return false;
+      if (matchFilter === "low"    && !(score > 0  && score < 40)) return false;
+      return passesSideFilters(job);
     })
-    .sort((a, b) => matchFilter !== "all" ? b.score - a.score : 0);
+    .sort((a, b) => {
+      if (matchSort === "high-low") return b.score - a.score;
+      if (matchSort === "low-high") return a.score - b.score;
+      return matchFilter !== "all" ? b.score - a.score : 0;
+    });
 
   // unique skills from loaded jobs (top 8)
   const extSkillOptions = [...new Set(jobs.flatMap(j => j.skills))].slice(0, 8);
@@ -362,6 +383,46 @@ const ExternalJobBoard: React.FC = () => {
 
         {/* ── Left: job list ── */}
         <div style={{ flex: 1, minWidth: 0 }}>
+
+          {/* match filter bar — only meaningful once we know the student's skills */}
+          {userSkills.length > 0 && (
+            <div className="ext-match-filter-bar">
+              <span className="ext-match-filter-label">Profile Match</span>
+              <button
+                className={`ext-match-filter-btn${matchFilter === "all" ? " active" : ""}`}
+                style={{ ["--mf-color" as any]: "#ff7a00" }}
+                onClick={() => setMatchFilter("all")}
+              >
+                All <span className="ext-mf-count">{scoredJobs.filter(({ job }) => passesSideFilters(job)).length}</span>
+              </button>
+              {MATCH_TIERS.map(t => (
+                <button
+                  key={t.key}
+                  className={`ext-match-filter-btn${matchFilter === t.key ? " active" : ""}`}
+                  style={{ ["--mf-color" as any]: t.color }}
+                  onClick={() => setMatchFilter(matchFilter === t.key ? "all" : t.key)}
+                  title={t.sub}
+                >
+                  <span className="ext-mf-dot" />
+                  {t.label} <span className="ext-mf-count">{matchCounts[t.key]}</span>
+                </button>
+              ))}
+
+              {/* Sort by match % — independent of the tier filter buttons above */}
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                <span className="ext-match-filter-label" style={{ marginRight: 0 }}>Sort</span>
+                <select
+                  value={matchSort}
+                  onChange={e => setMatchSort(e.target.value as typeof matchSort)}
+                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 20, padding: "0.3rem 0.65rem", fontSize: "0.75rem", fontWeight: 600, color: "#475569", background: "#fff", cursor: "pointer", outline: "none" }}
+                >
+                  <option value="none">Default</option>
+                  <option value="high-low">Match: High → Low</option>
+                  <option value="low-high">Match: Low → High</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* results bar */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
@@ -395,8 +456,8 @@ const ExternalJobBoard: React.FC = () => {
               </div>
             )}
             <div className={`ext-job-list${loading ? " ext-job-list--faded" : ""}`}>
-              {displayedJobs.map(({ job }) => (
-                <ExtJobCard key={job.id} job={job} onView={setSelectedJob} saved={savedIds.has(job.id)} onToggleSave={toggleSave} />
+              {displayedJobs.map(({ job, score }) => (
+                <ExtJobCard key={job.id} job={job} score={score} matchTooltip={matchTooltipFor(score)} onView={setSelectedJob} saved={savedIds.has(job.id)} onToggleSave={toggleSave} />
               ))}
             </div>
           </div>
