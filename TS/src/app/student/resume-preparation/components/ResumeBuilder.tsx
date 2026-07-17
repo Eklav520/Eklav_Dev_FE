@@ -39,9 +39,13 @@ const RESUME_TIP_ICONS = [
 ]
 
 const ORANGE = '#f97316'
-const BORDER = '#e5e7eb'
-const GRAY = '#6b7280'
-const BG = '#f8fafc'
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const BORDER = 'var(--dash-border, #e5e7eb)'
+const GRAY = 'var(--dash-gray, #6b7280)'
+const BG = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG = 'var(--dash-card-bg, #ffffff)'
+const TEXT = 'var(--dash-text, #0f172a)'
 
 type MainStage = 1 | 2
 type SectionKey = 'personal' | 'education' | 'skills' | 'experience' | 'projects' | 'certifications' | 'achievements' | 'additional'
@@ -183,7 +187,7 @@ const ResumeBuilder: React.FC = () => {
       <TopProgressBar stage={mainStage} templateLabel={templateList[selectedTemplate]?.label} />
 
       {/* subtitle */}
-      <div style={{ background: '#fff', borderBottom: `1px solid ${BORDER}`, padding: '10px 32px', fontSize: 13, color: GRAY }}>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '10px 32px', fontSize: 13, color: GRAY }}>
         Fill in your details step by step. You can save and continue anytime.
       </div>
 
@@ -191,7 +195,7 @@ const ResumeBuilder: React.FC = () => {
       <div style={{ maxWidth: 1260, margin: '0 auto', padding: '20px 24px', display: 'grid', gridTemplateColumns: '200px 1fr 270px', gap: 20, alignItems: 'flex-start' }}>
 
         {/* ── Left nav sidebar ── */}
-        <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${BORDER}`, padding: '8px 0', position: 'sticky', top: 20 }}>
+        <div style={{ background: CARD_BG, borderRadius: 12, border: `1px solid ${BORDER}`, padding: '8px 0', position: 'sticky', top: 20 }}>
           {SIDEBAR_SECTIONS.map((s) => {
             const isActive = activeSection === s.key
             return (
@@ -203,7 +207,7 @@ const ResumeBuilder: React.FC = () => {
                   padding: '11px 16px', background: isActive ? '#fff7ed' : 'transparent',
                   border: 'none', borderLeft: isActive ? `3px solid ${ORANGE}` : '3px solid transparent',
                   cursor: 'pointer', textAlign: 'left',
-                  color: isActive ? ORANGE : '#374151',
+                  color: isActive ? ORANGE : TEXT,
                   fontSize: 13, fontWeight: isActive ? 600 : 400, transition: 'all 0.15s',
                 }}
               >
@@ -216,7 +220,7 @@ const ResumeBuilder: React.FC = () => {
 
         {/* ── Center: form + info bar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${BORDER}`, padding: '28px 28px' }}>
+          <div style={{ background: CARD_BG, borderRadius: 12, border: `1px solid ${BORDER}`, padding: '28px 28px' }}>
             {renderSectionForm()}
           </div>
           {/* info bar */}
@@ -230,8 +234,8 @@ const ResumeBuilder: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 20 }}>
 
           {/* How It Works */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>How It Works</h3>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>How It Works</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {HOW_IT_WORKS.map((s, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
@@ -239,7 +243,7 @@ const ResumeBuilder: React.FC = () => {
                     {s.icon}
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 1 }}>{i + 1}. {s.title}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 1 }}>{i + 1}. {s.title}</div>
                     <div style={{ fontSize: 10, color: GRAY, lineHeight: 1.4 }}>{s.desc}</div>
                   </div>
                 </div>
@@ -248,45 +252,45 @@ const ResumeBuilder: React.FC = () => {
           </div>
 
           {/* Your Resume Progress */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>Your Resume Progress</h3>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Your Resume Progress</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
               <div style={{ position: 'relative', width: 62, height: 62, flexShrink: 0 }}>
                 <svg width="62" height="62">
-                  <circle cx="31" cy="31" r={r} fill="none" stroke="#f1f5f9" strokeWidth="6" />
+                  <circle cx="31" cy="31" r={r} fill="none" stroke={BORDER} strokeWidth="6" />
                   <circle cx="31" cy="31" r={r} fill="none" stroke={ORANGE} strokeWidth="6"
                     strokeDasharray={`${(progressPct / 100) * circ} ${circ}`}
                     strokeDashoffset={circ * 0.25} strokeLinecap="round" />
                 </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: '#0f172a' }}>{progressPct}%</div>
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: TEXT }}>{progressPct}%</div>
               </div>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>{completedCount} of {PROGRESS_SECTIONS.length} Sections Completed</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{completedCount} of {PROGRESS_SECTIONS.length} Sections Completed</div>
                 {PROGRESS_SECTIONS.map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                    <span style={{ color: item.done ? '#10b981' : '#d1d5db', flexShrink: 0 }}>
+                    <span style={{ color: item.done ? '#10b981' : BORDER, flexShrink: 0 }}>
                       {item.done ? <CheckCircle size={13} /> : <Circle size={13} />}
                     </span>
-                    <span style={{ fontSize: 10, color: item.done ? '#0f172a' : GRAY, fontWeight: item.done ? 600 : 400 }}>{item.label}</span>
+                    <span style={{ fontSize: 10, color: item.done ? TEXT : GRAY, fontWeight: item.done ? 600 : 400 }}>{item.label}</span>
                   </div>
                 ))}
               </div>
             </div>
             <button
               onClick={() => setActiveSection(nextIncompleteSection())}
-              style={{ width: '100%', padding: '8px', border: `1.5px solid ${BORDER}`, borderRadius: 9, background: '#fff', color: '#0f172a', fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+              style={{ width: '100%', padding: '8px', border: `1.5px solid ${BORDER}`, borderRadius: 9, background: CARD_BG, color: TEXT, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
             >
               Continue Building <ArrowRight size={13} />
             </button>
           </div>
 
           {/* Resume Tips */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>Resume Tips</h3>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Resume Tips</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
               {RESUME_TIPS.map((tip, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 5, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 5, background: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
                     {RESUME_TIP_ICONS[i]}
                   </div>
                   <span style={{ fontSize: 10, color: GRAY, lineHeight: 1.5 }}>{tip}</span>

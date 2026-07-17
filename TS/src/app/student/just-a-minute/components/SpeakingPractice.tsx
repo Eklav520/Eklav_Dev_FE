@@ -52,6 +52,13 @@ const SpeakingPractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
+  // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+  // (light-mode values as fallback), so this page re-themes along with
+  // the rest of the portal without needing its own theme plumbing.
+  const PAGE_TEXT = 'var(--dash-text, #1a1a2e)'
+  const PAGE_GRAY = 'var(--dash-gray, #6c757d)'
+  const CARD_BG = 'var(--dash-card-bg, #ffffff)'
+
   const [prompt, setPrompt] = useState<Prompt | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
 
@@ -989,8 +996,8 @@ const SpeakingPractice: React.FC = () => {
 
             {/* RIGHT: Performance — same row as hero, matches height */}
             <Col lg={5} className="d-flex">
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', width: '100%' }}>
-                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 16 }}>Your Latest Performance</div>
+              <div style={{ background: CARD_BG, borderRadius: 18, padding: '20px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', width: '100%' }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT, marginBottom: 16 }}>Your Latest Performance</div>
                 {(() => {
                   const hasAttempts = !!(history && history.summary.latestScore !== null)
                   const score = hasAttempts ? (history!.summary.latestScore ?? 0) : 0
@@ -1002,15 +1009,15 @@ const SpeakingPractice: React.FC = () => {
                         <svg width="130" height="130" viewBox="0 0 130 130">
                           <circle cx="65" cy="65" r={r} fill="none" stroke="#f0f0f0" strokeWidth="10"/>
                           <circle cx="65" cy="65" r={r} fill="none" stroke={hasAttempts ? '#ff7a00' : '#e2e8f0'} strokeWidth="10" strokeDasharray={`${dash} ${circ - dash}`} strokeDashoffset="0" strokeLinecap="round" transform="rotate(-90 65 65)"/>
-                          <text x="65" y="60" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: hasAttempts ? '#1a1a2e' : '#94a3b8' }}>{score}</text>
-                          <text x="65" y="78" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: '#9ca3af' }}>/100</text>
+                          <text x="65" y="60" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 22, fontWeight: 800, fill: hasAttempts ? PAGE_TEXT : PAGE_GRAY }}>{score}</text>
+                          <text x="65" y="78" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: 11, fill: PAGE_GRAY }}>/100</text>
                         </svg>
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: hasAttempts ? '#1a1a2e' : '#64748b', marginBottom: 4 }}>
+                        <div style={{ fontWeight: 700, fontSize: '1.05rem', color: hasAttempts ? PAGE_TEXT : PAGE_GRAY, marginBottom: 4 }}>
                           {hasAttempts ? (score >= 80 ? 'Great Job!' : score >= 60 ? 'Good Work!' : 'Keep Going!') : 'No Attempts Yet'}
                         </div>
-                        <div style={{ fontSize: '0.82rem', color: '#6c757d', lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.82rem', color: PAGE_GRAY, lineHeight: 1.4 }}>
                           {hasAttempts ? 'Keep practicing to achieve perfection.' : 'Start your first session to see your score here.'}
                         </div>
                         <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
@@ -1035,10 +1042,10 @@ const SpeakingPractice: React.FC = () => {
             <Col lg={7} className="d-flex flex-column">
 
               {/* Start Speaking card */}
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '28px 28px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1 }}>
+              <div style={{ background: CARD_BG, borderRadius: 18, padding: '28px 28px 24px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1 }}>
 
                 {/* Title */}
-                <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '1.05rem', marginBottom: 18 }}>Ready to test your speaking skills?</div>
+                <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '1.05rem', marginBottom: 18 }}>Ready to test your speaking skills?</div>
 
                 {/* Tips 2x2 grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 22 }}>
@@ -1048,11 +1055,11 @@ const SpeakingPractice: React.FC = () => {
                     { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><circle cx="12" cy="12" r="10" stroke="#0284c7" strokeWidth="1.5"/><polyline points="12,6 12,12 16,14" stroke="#0284c7" strokeWidth="1.5" strokeLinecap="round"/></svg>, bg: '#e0f2fe', title: 'Maintain Good Pace', desc: 'A steady pace is ideal — not too fast or slow.' },
                     { icon: <svg viewBox="0 0 24 24" fill="none" width="18" height="18"><path d="M2 12c0 0 3-5 10-5s10 5 10 5-3 5-10 5S2 12 2 12z" stroke="#f59e0b" strokeWidth="1.5"/><circle cx="12" cy="12" r="3" stroke="#f59e0b" strokeWidth="1.5"/></svg>, bg: '#fef9c3', title: 'Practice Regularly', desc: 'More practice builds confidence and fluency.' },
                   ]).map((tip, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#fafafa', borderRadius: 12, padding: '12px 14px' }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'var(--dash-page-bg, #fafafa)', borderRadius: 12, padding: '12px 14px' }}>
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: tip.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{tip.icon}</div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 2 }}>{tip.title}</div>
-                        <div style={{ fontSize: '0.72rem', color: '#6c757d', lineHeight: 1.4 }}>{tip.desc}</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.78rem', color: PAGE_TEXT, marginBottom: 2 }}>{tip.title}</div>
+                        <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, lineHeight: 1.4 }}>{tip.desc}</div>
                       </div>
                     </div>
                   ))}
@@ -1090,7 +1097,7 @@ const SpeakingPractice: React.FC = () => {
                       {status === 'pending' ? 'Upgrade to unlock unlimited practice.' : 'Monthly limit reached. Try again next month.'}
                     </div>
                   ) : (
-                    <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#9ca3af' }}>Click the button above to reveal your topic and start speaking.</div>
+                    <div style={{ textAlign: 'center', fontSize: '0.75rem', color: PAGE_GRAY }}>Click the button above to reveal your topic and start speaking.</div>
                   )}
                 </div>
               </div>
@@ -1135,17 +1142,18 @@ const SpeakingPractice: React.FC = () => {
                 const dash = (avgScore / 100) * circ
 
                 return (
-                  <div style={{ background: '#fff', borderRadius: 18, padding: '20px 22px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
+                  <div style={{ background: CARD_BG, borderRadius: 18, padding: '20px 22px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', flex: 1, display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
                     {/* Header */}
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Speaking Progress</div>
-                      <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>This Month · {sessions} session{sessions !== 1 ? 's' : ''}</div>
+                      <div style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT }}>Your Speaking Progress</div>
+                      <div style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginTop: 2 }}>This Month · {sessions} session{sessions !== 1 ? 's' : ''}</div>
                     </div>
 
                     {/* Avg Score + Attempts side by side — compact */}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
 
                       {/* Circular avg score — compact */}
+                      {/* Fixed peach box — background never changes with theme, so keep text fixed too */}
                       <div style={{ flex: '0 0 auto', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: '#fff8f0', borderRadius: 10, padding: '8px 12px', gap: 2 }}>
                         <svg width="68" height="68" viewBox="0 0 110 110">
                           <circle cx="55" cy="55" r={r} fill="none" stroke="#f0f0f0" strokeWidth="9"/>
@@ -1210,11 +1218,11 @@ const SpeakingPractice: React.FC = () => {
                           {rows.map((pair, ri) => (
                             <div key={ri} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                               {pair.map(item => (
-                                <div key={item.label} style={{ background: '#fafafa', borderRadius: 10, padding: '10px 12px' }}>
+                                <div key={item.label} style={{ background: 'var(--dash-page-bg, #fafafa)', borderRadius: 10, padding: '10px 12px' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                                       <div style={{ width: 22, height: 22, borderRadius: 6, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{item.icon}</div>
-                                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>{item.label}</span>
+                                      <span style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_TEXT }}>{item.label}</span>
                                     </div>
                                     <span style={{ fontSize: '0.78rem', fontWeight: 800, color: item.color }}>{item.val}%</span>
                                   </div>
@@ -1232,7 +1240,7 @@ const SpeakingPractice: React.FC = () => {
                     {/* View Detailed Feedback button */}
                     <button
                       onClick={() => setShowPrompt(true)}
-                      style={{ marginTop: 'auto', background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '9px 14px', color: '#6c757d', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'border-color 0.15s' }}
+                      style={{ marginTop: 'auto', background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 10, padding: '9px 14px', color: PAGE_GRAY, fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', transition: 'border-color 0.15s' }}
                     >
                       <span>View Detailed Feedback</span>
                       <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="9,18 15,12 9,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1263,10 +1271,10 @@ const SpeakingPractice: React.FC = () => {
                 const page = Math.min(attemptsPage, totalPages)
                 const pageItems = sorted.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
                 return (
-                  <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+                  <div style={{ background: CARD_BG, borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
                     {/* Header + Filters */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10, marginBottom: 14 }}>
-                      <span style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Recent Attempts</span>
+                      <span style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT }}>Your Recent Attempts</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
 
                         {/* Month filter */}
@@ -1280,7 +1288,7 @@ const SpeakingPractice: React.FC = () => {
                           <select
                             value={selectedMonth}
                             onChange={e => { setSelectedMonth(e.target.value); setAttemptsPage(1) }}
-                            style={{ appearance: 'none' as const, paddingLeft: 28, paddingRight: 24, paddingTop: 6, paddingBottom: 6, border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: '0.78rem', color: '#374151', fontWeight: 600, background: '#fff', cursor: 'pointer', outline: 'none' }}
+                            style={{ appearance: 'none' as const, paddingLeft: 28, paddingRight: 24, paddingTop: 6, paddingBottom: 6, border: '1.5px solid #e5e7eb', borderRadius: 8, fontSize: '0.78rem', color: PAGE_TEXT, fontWeight: 600, background: CARD_BG, cursor: 'pointer', outline: 'none' }}
                           >
                             {availableMonths.length === 0 && (
                               <option value="">{formatMonthKey(new Date().toISOString().slice(0,7))}</option>
@@ -1306,21 +1314,21 @@ const SpeakingPractice: React.FC = () => {
                             onClick={() => { setScoreFilter(f.key); setAttemptsPage(1) }}
                             style={{
                               padding: '5px 11px', fontSize: '0.73rem', fontWeight: 600, borderRadius: 20, cursor: 'pointer', transition: 'all 0.15s',
-                              background: scoreFilter === f.key ? f.activeBg : '#f8f9fa',
-                              color: scoreFilter === f.key ? f.activeText : '#6c757d',
+                              background: scoreFilter === f.key ? f.activeBg : 'var(--dash-page-bg, #f8f9fa)',
+                              color: scoreFilter === f.key ? f.activeText : PAGE_GRAY,
                               border: scoreFilter === f.key ? `1.5px solid ${f.activeText}` : '1.5px solid #e5e7eb',
                             }}
                           >{f.label}</button>
                         ))}
 
-                        <span style={{ fontSize: '0.73rem', color: '#9ca3af', whiteSpace: 'nowrap' as const }}>{sorted.length} result{sorted.length !== 1 ? 's' : ''}</span>
+                        <span style={{ fontSize: '0.73rem', color: PAGE_GRAY, whiteSpace: 'nowrap' as const }}>{sorted.length} result{sorted.length !== 1 ? 's' : ''}</span>
                       </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                       <thead>
                         <tr>
                           {['Date & Time', 'Overall', 'Grammar', 'Fluency', 'Vocabulary', 'Sentence', 'Duration', 'Action'].map(h => (
-                            <th key={h} style={{ textAlign: 'left', padding: '5px 10px', color: '#9ca3af', fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
+                            <th key={h} style={{ textAlign: 'left', padding: '5px 10px', color: PAGE_GRAY, fontWeight: 600, fontSize: '0.72rem', borderBottom: '1px solid #f0f0f0', whiteSpace: 'nowrap' as const }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1329,8 +1337,8 @@ const SpeakingPractice: React.FC = () => {
                           <tr>
                             <td colSpan={8} style={{ padding: '28px 6px', textAlign: 'center' }}>
                               <div style={{ fontSize: '1.6rem', marginBottom: 6 }}>🎤</div>
-                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#64748b', marginBottom: 3 }}>No Attempts Yet</div>
-                              <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Complete your first speaking session to see results here.</div>
+                              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: PAGE_GRAY, marginBottom: 3 }}>No Attempts Yet</div>
+                              <div style={{ fontSize: '0.75rem', color: PAGE_GRAY }}>Complete your first speaking session to see results here.</div>
                             </td>
                           </tr>
                         )}
@@ -1341,8 +1349,8 @@ const SpeakingPractice: React.FC = () => {
                           return (
                             <tr key={att.attempt}>
                               <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
-                                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#1a1a2e' }}>{date}</div>
-                                <div style={{ fontSize: '0.7rem', color: '#9ca3af' }}>{time}</div>
+                                <div style={{ fontWeight: 600, fontSize: '0.78rem', color: PAGE_TEXT }}>{date}</div>
+                                <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>{time}</div>
                               </td>
                               <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
                                 <span style={{ color: scoreColor, fontWeight: 700, fontSize: '0.82rem' }}>{att.score}/100</span>
@@ -1358,7 +1366,7 @@ const SpeakingPractice: React.FC = () => {
                                   </td>
                                 )
                               })}
-                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', color: '#6c757d', fontSize: '0.78rem' }}>1:00</td>
+                              <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle', color: PAGE_GRAY, fontSize: '0.78rem' }}>1:00</td>
                               <td style={{ padding: '8px 10px', borderBottom: '1px solid #f8f8f8', verticalAlign: 'middle' }}>
                                 <button className="jam-view-report-btn" style={{ fontSize: '0.72rem', padding: '4px 8px' }} onClick={() => setSelectedAttempt(att)}>View Report</button>
                               </td>
@@ -1371,12 +1379,12 @@ const SpeakingPractice: React.FC = () => {
                     {/* Pagination */}
                     {totalPages > 1 && (
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: '1px solid #f5f5f5' }}>
-                        <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>Page {page} of {totalPages}</span>
+                        <span style={{ fontSize: '0.72rem', color: PAGE_GRAY }}>Page {page} of {totalPages}</span>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             onClick={() => setAttemptsPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === 1 ? '#f9fafb' : '#fff', color: page === 1 ? '#d1d5db' : '#374151', cursor: page === 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === 1 ? 'var(--dash-page-bg, #f9fafb)' : CARD_BG, color: page === 1 ? '#d1d5db' : PAGE_TEXT, cursor: page === 1 ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="15,18 9,12 15,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           </button>
@@ -1384,13 +1392,13 @@ const SpeakingPractice: React.FC = () => {
                             <button
                               key={pg}
                               onClick={() => setAttemptsPage(pg)}
-                              style={{ width: 28, height: 28, borderRadius: 8, border: pg === page ? '1.5px solid #6c63ff' : '1px solid #e5e7eb', background: pg === page ? '#6c63ff' : '#fff', color: pg === page ? '#fff' : '#374151', cursor: 'pointer', fontSize: '0.72rem', fontWeight: pg === page ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              style={{ width: 28, height: 28, borderRadius: 8, border: pg === page ? '1.5px solid #6c63ff' : '1px solid #e5e7eb', background: pg === page ? '#6c63ff' : CARD_BG, color: pg === page ? '#fff' : PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', fontWeight: pg === page ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             >{pg}</button>
                           ))}
                           <button
                             onClick={() => setAttemptsPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages}
-                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === totalPages ? '#f9fafb' : '#fff', color: page === totalPages ? '#d1d5db' : '#374151', cursor: page === totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e5e7eb', background: page === totalPages ? 'var(--dash-page-bg, #f9fafb)' : CARD_BG, color: page === totalPages ? '#d1d5db' : PAGE_TEXT, cursor: page === totalPages ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg viewBox="0 0 24 24" fill="none" width="14" height="14"><polyline points="9,18 15,12 9,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           </button>
@@ -1515,7 +1523,7 @@ const SpeakingPractice: React.FC = () => {
             <Col lg={6} md={12}>
 
               {/* Header bar */}
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '13px 18px', marginBottom: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ background: CARD_BG, borderRadius: 18, padding: '13px 18px', marginBottom: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                   <button
                     style={{ background: 'rgba(108,99,255,0.08)', border: '1.5px solid rgba(108,99,255,0.2)', borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recording ? 'not-allowed' : 'pointer', color: '#6c63ff', flexShrink: 0, opacity: recording ? 0.4 : 1 }}
@@ -1528,8 +1536,8 @@ const SpeakingPractice: React.FC = () => {
                     <svg viewBox="0 0 24 24" fill="none" width="17" height="17"><rect x="8" y="1" width="8" height="13" rx="4" stroke="#6c63ff" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/><line x1="9" y1="21" x2="15" y2="21" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/></svg>
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#1a1a2e' }}>Just A Minute</div>
-                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>Speak on the given topic for just 60 seconds. Organize your thoughts and express your ideas clearly!</div>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', color: PAGE_TEXT }}>Just A Minute</div>
+                    <div style={{ fontSize: '0.7rem', color: PAGE_GRAY, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>Speak on the given topic for just 60 seconds. Organize your thoughts and express your ideas clearly!</div>
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f4f3ff', border: '1.5px solid #e0deff', borderRadius: 12, padding: '7px 14px', flexShrink: 0 }}>
@@ -1613,7 +1621,7 @@ const SpeakingPractice: React.FC = () => {
               )}
 
               {/* Recording section — centred card */}
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '32px 24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
+              <div style={{ background: CARD_BG, borderRadius: 18, padding: '32px 24px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column' as const, alignItems: 'center' }}>
 
                 {/* Status badge */}
                 <div style={{ marginBottom: 24 }}>
@@ -1722,27 +1730,27 @@ const SpeakingPractice: React.FC = () => {
 
             {/* RIGHT: Feedback — always visible */}
             <Col lg={6} md={12}>
-              <div style={{ background: '#ffffff', borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
+              <div style={{ background: CARD_BG, borderRadius: 18, padding: '18px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.07)' }}>
 
                 {/* ── PERFORMANCE HEADER with score opposite ── */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e' }}>Your Performance</div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT }}>Your Performance</div>
                   {feedback && !loading ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{ textAlign: 'right' as const }}>
-                        <div style={{ fontSize: '0.6rem', color: '#9ca3af', fontWeight: 600 }}>OVERALL SCORE</div>
-                        <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#ff7a00', lineHeight: 1 }}>{feedback.score}<span style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 400 }}>/100</span></div>
+                        <div style={{ fontSize: '0.6rem', color: PAGE_GRAY, fontWeight: 600 }}>OVERALL SCORE</div>
+                        <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#ff7a00', lineHeight: 1 }}>{feedback.score}<span style={{ fontSize: '0.7rem', color: PAGE_GRAY, fontWeight: 400 }}>/100</span></div>
                       </div>
                       <span style={{ background: feedback.score >= 80 ? '#dcfce7' : feedback.score >= 60 ? '#fef9c3' : '#fee2e2', color: feedback.score >= 80 ? '#16a34a' : feedback.score >= 60 ? '#a16207' : '#dc2626', fontWeight: 700, fontSize: '0.7rem', padding: '3px 9px', borderRadius: 20 }}>{getScoreFeedback(feedback.score)}</span>
                     </div>
                   ) : (
                     <div style={{ textAlign: 'right' as const }}>
-                      <div style={{ fontSize: '0.6rem', color: '#d1d5db', fontWeight: 600 }}>OVERALL SCORE</div>
-                      <div style={{ fontWeight: 800, fontSize: '1.2rem', color: '#d1d5db', lineHeight: 1 }}>--<span style={{ fontSize: '0.7rem', fontWeight: 400 }}>/100</span></div>
+                      <div style={{ fontSize: '0.6rem', color: PAGE_GRAY, fontWeight: 600 }}>OVERALL SCORE</div>
+                      <div style={{ fontWeight: 800, fontSize: '1.2rem', color: PAGE_GRAY, lineHeight: 1 }}>--<span style={{ fontSize: '0.7rem', fontWeight: 400 }}>/100</span></div>
                     </div>
                   )}
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginBottom: 16 }}>
+                <div style={{ fontSize: '0.78rem', color: PAGE_GRAY, marginBottom: 16 }}>
                   {feedback && !loading
                     ? (feedback.score >= 60 ? 'Great job! You communicated your ideas well.' : 'Keep practicing to improve your score.')
                     : 'Complete speaking to see your detailed AI feedback here.'}
@@ -1759,7 +1767,7 @@ const SpeakingPractice: React.FC = () => {
                   ]).map(tab => {
                     const isActive = activeTab === tab.key
                     return (
-                      <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 4px', background: 'none', border: 'none', borderBottom: isActive ? '2.5px solid #6c63ff' : '2.5px solid transparent', marginBottom: -2, color: isActive ? '#6c63ff' : '#4b5563', fontWeight: isActive ? 700 : 500, fontSize: '0.74rem', cursor: 'pointer', whiteSpace: 'nowrap' as const, transition: 'all 0.15s' }}>
+                      <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 4px', background: 'none', border: 'none', borderBottom: isActive ? '2.5px solid #6c63ff' : '2.5px solid transparent', marginBottom: -2, color: isActive ? '#6c63ff' : PAGE_GRAY, fontWeight: isActive ? 700 : 500, fontSize: '0.74rem', cursor: 'pointer', whiteSpace: 'nowrap' as const, transition: 'all 0.15s' }}>
                         {tab.icon}{tab.label}
                       </button>
                     )
@@ -1772,8 +1780,8 @@ const SpeakingPractice: React.FC = () => {
                     <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#eceaff,#fde8ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Spinner animation="border" style={{ color: '#6c63ff', width: 26, height: 26, borderWidth: 3 }} />
                     </div>
-                    <div style={{ fontWeight: 700, color: '#1a1a2e', fontSize: '0.92rem' }}>Analyzing your speech...</div>
-                    <div style={{ fontSize: '0.76rem', color: '#9ca3af' }}>AI is evaluating fluency, grammar and vocabulary</div>
+                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.92rem' }}>Analyzing your speech...</div>
+                    <div style={{ fontSize: '0.76rem', color: PAGE_GRAY }}>AI is evaluating fluency, grammar and vocabulary</div>
                   </div>
                 )}
 
@@ -2067,7 +2075,7 @@ const SpeakingPractice: React.FC = () => {
         /* View Report button */
         .jam-view-report-btn {
           background: none; border: 1px solid #e5e7eb; border-radius: 8px;
-          padding: 4px 10px; font-size: 0.75rem; color: #6c757d; cursor: pointer;
+          padding: 4px 10px; font-size: 0.75rem; color: ${PAGE_GRAY}; cursor: pointer;
         }
         .jam-view-report-btn:hover { border-color: #6c63ff; color: #6c63ff; }
         /* View All button */
@@ -2876,7 +2884,7 @@ const SpeakingPractice: React.FC = () => {
           padding: 5px 14px;
           font-size: 0.8rem;
           font-weight: 600;
-          color: #374151;
+          color: ${PAGE_TEXT};
           cursor: pointer;
           white-space: nowrap;
           transition: border-color 0.15s, color 0.15s;

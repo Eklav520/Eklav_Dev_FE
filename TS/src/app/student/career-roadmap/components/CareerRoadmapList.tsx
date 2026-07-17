@@ -13,6 +13,15 @@ import { useAuthContext } from '@/context/useAuthContext'
 import roadmapImg from '@/assets/images/roadmap.png'
 import roadImg from '@/assets/images/road.png'
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes along with
+// the rest of the portal without needing its own theme plumbing.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #f1f5f9)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 /* ── Icon + tag metadata per roadmap ── */
 const ROAD_META: Record<string, { Icon: any; tags: string[] }> = {
   'web-developer':        { Icon: FaCode,          tags: ['HTML', 'CSS', 'JavaScript', 'React'] },
@@ -61,8 +70,8 @@ const RoadmapCard = ({ roadmap, isLocked }: { roadmap: CareerRoadmap; isLocked: 
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        background: '#fff', borderRadius: 16, overflow: 'hidden',
-        border: `1px solid ${hovered && !isLocked ? roadmap.color + '55' : '#f1f5f9'}`,
+        background: CARD_BG, borderRadius: 16, overflow: 'hidden',
+        border: `1px solid ${hovered && !isLocked ? roadmap.color + '55' : PAGE_BORDER}`,
         boxShadow: hovered && !isLocked ? `0 8px 28px ${roadmap.color}22` : '0 2px 10px rgba(0,0,0,0.05)',
         cursor: isLocked ? 'not-allowed' : 'pointer',
         display: 'flex', flexDirection: 'column',
@@ -91,25 +100,25 @@ const RoadmapCard = ({ roadmap, isLocked }: { roadmap: CareerRoadmap; isLocked: 
         </div>
 
         {/* Title */}
-        <div style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', marginBottom: 6, lineHeight: 1.3 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, color: PAGE_TEXT, marginBottom: 6, lineHeight: 1.3 }}>
           {roadmap.title}
         </div>
 
         {/* Description */}
-        <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.6, marginBottom: 14 }}>
           {roadmap.description}
         </div>
 
         {/* Divider */}
-        <div style={{ height: 1, background: '#f1f5f9', marginBottom: 12 }} />
+        <div style={{ height: 1, background: PAGE_BORDER, marginBottom: 12 }} />
 
         {/* Topics + Difficulty */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: PAGE_GRAY }}>
             <FaClipboardList style={{ fontSize: 12, color: '#94a3b8' }} />
             {roadmap.totalTopics} Topics
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: PAGE_GRAY }}>
             <FaUserGraduate style={{ fontSize: 12, color: '#94a3b8' }} />
             Beginner to Advanced
           </div>
@@ -123,7 +132,7 @@ const RoadmapCard = ({ roadmap, isLocked }: { roadmap: CareerRoadmap; isLocked: 
             </span>
           ))}
           {extraCount > 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: '#f8fafc', borderRadius: 20, padding: '2px 9px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', background: PAGE_BG, borderRadius: 20, padding: '2px 9px', border: `1px solid ${PAGE_BORDER}` }}>
               +{extraCount}
             </span>
           )}
@@ -179,7 +188,7 @@ const CareerRoadmapList = () => {
   }
 
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh' }}>
 
       {/* ── Hero Banner ── */}
       <div style={{
@@ -247,14 +256,14 @@ const CareerRoadmapList = () => {
             { value: '500+', label: 'Skills to Master',     sub: 'Industry Relevant',     color: '#8b5cf6', bg: '#faf5ff', Icon: FaBolt },
             { value: '50K+', label: 'Learners on Track',    sub: 'Building their future', color: '#3b82f6', bg: '#eff6ff', Icon: FaUsers },
           ].map(({ value, label, sub, color, bg, Icon: StatIcon }) => (
-            <div key={label} style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div key={label} style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ width: 46, height: 46, borderRadius: 12, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <StatIcon style={{ color, fontSize: 20 }} />
               </div>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginTop: 3 }}>{label}</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{sub}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: PAGE_TEXT, marginTop: 3 }}>{label}</div>
+                <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 1 }}>{sub}</div>
               </div>
             </div>
           ))}
@@ -275,9 +284,9 @@ const CareerRoadmapList = () => {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 7,
                   padding: '8px 16px', borderRadius: 22,
-                  background: activeType === key ? '#ff6b00' : '#fff',
-                  color: activeType === key ? '#fff' : '#374151',
-                  border: activeType === key ? 'none' : '1px solid #e2e8f0',
+                  background: activeType === key ? '#ff6b00' : CARD_BG,
+                  color: activeType === key ? '#fff' : PAGE_TEXT,
+                  border: activeType === key ? 'none' : `1px solid ${PAGE_BORDER}`,
                   fontWeight: 700, fontSize: 13, cursor: 'pointer',
                   boxShadow: activeType === key ? '0 4px 14px rgba(255,107,0,0.3)' : '0 1px 4px rgba(0,0,0,0.05)',
                 }}
@@ -286,8 +295,8 @@ const CareerRoadmapList = () => {
                 {label}
                 <span style={{
                   fontSize: 11, fontWeight: 800, minWidth: 20, textAlign: 'center',
-                  background: activeType === key ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
-                  color: activeType === key ? '#fff' : '#64748b',
+                  background: activeType === key ? 'rgba(255,255,255,0.25)' : PAGE_BG,
+                  color: activeType === key ? '#fff' : PAGE_GRAY,
                   borderRadius: 20, padding: '1px 7px',
                 }}>
                   {counts[key]}
@@ -298,20 +307,20 @@ const CareerRoadmapList = () => {
 
           {/* Sort + View */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '8px 14px' }}>
               <FaSortAmountDown style={{ color: '#94a3b8', fontSize: 13 }} />
-              <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>Sort by:</span>
+              <span style={{ fontSize: 13, color: PAGE_TEXT, fontWeight: 600 }}>Sort by:</span>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                style={{ border: 'none', outline: 'none', fontSize: 13, color: '#374151', fontWeight: 700, background: 'transparent', cursor: 'pointer' }}
+                style={{ border: 'none', outline: 'none', fontSize: 13, color: PAGE_TEXT, fontWeight: 700, background: 'transparent', cursor: 'pointer' }}
               >
                 {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', gap: 2 }}>
               {([['grid', BsGrid3X3Gap], ['list', BsListUl]] as const).map(([mode, ModeIcon]) => (
-                <button key={mode} onClick={() => setViewMode(mode)} style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, background: viewMode === mode ? '#ff6b00' : '#fff', color: viewMode === mode ? '#fff' : '#94a3b8', cursor: 'pointer' }}>
+                <button key={mode} onClick={() => setViewMode(mode)} style={{ padding: '8px 10px', border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, background: viewMode === mode ? '#ff6b00' : CARD_BG, color: viewMode === mode ? '#fff' : '#94a3b8', cursor: 'pointer' }}>
                   <ModeIcon style={{ fontSize: 14 }} />
                 </button>
               ))}
@@ -328,9 +337,9 @@ const CareerRoadmapList = () => {
         )}
 
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: PAGE_GRAY }}>
             <FaSearch style={{ fontSize: 36, color: '#e2e8f0', marginBottom: 12 }} />
-            <div style={{ fontWeight: 600, fontSize: 15 }}>No roadmaps found for "<strong style={{ color: '#0f172a' }}>{search}</strong>"</div>
+            <div style={{ fontWeight: 600, fontSize: 15 }}>No roadmaps found for "<strong style={{ color: PAGE_TEXT }}>{search}</strong>"</div>
           </div>
         ) : (
           <>
@@ -338,8 +347,8 @@ const CareerRoadmapList = () => {
             {roleRoadmaps.length > 0 && (
               <div style={{ marginBottom: 40 }}>
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Popular Career Roadmaps</div>
-                  <div style={{ fontSize: 13, color: '#64748b' }}>Discover the most in-demand career paths and start your journey today</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT, marginBottom: 4 }}>Popular Career Roadmaps</div>
+                  <div style={{ fontSize: 13, color: PAGE_GRAY }}>Discover the most in-demand career paths and start your journey today</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(4,1fr)' : '1fr', gap: 18 }}>
                   {roleRoadmaps.map(r => (
@@ -353,8 +362,8 @@ const CareerRoadmapList = () => {
             {skillRoadmaps.length > 0 && (
               <div>
                 <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Skill-Based Roadmaps</div>
-                  <div style={{ fontSize: 13, color: '#64748b' }}>Deep dive into a specific technology or skill</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT, marginBottom: 4 }}>Skill-Based Roadmaps</div>
+                  <div style={{ fontSize: 13, color: PAGE_GRAY }}>Deep dive into a specific technology or skill</div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'grid' ? 'repeat(4,1fr)' : '1fr', gap: 18 }}>
                   {skillRoadmaps.map(r => (

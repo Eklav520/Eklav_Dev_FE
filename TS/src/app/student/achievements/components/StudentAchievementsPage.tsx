@@ -6,9 +6,19 @@ import achievementsImg from '@/assets/images/Achivements.png'
 const baseURL = import.meta.env.VITE_API_BASE_URL || ''
 
 const ORANGE = '#ff7a00'
-const TEXT   = '#0f172a'
-const GRAY   = '#64748b'
-const BORDER = '#e2e8f0'
+
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+// The orange hero banner stays fixed in both themes — do not convert it.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
+const TEXT   = PAGE_TEXT
+const GRAY   = PAGE_GRAY
+const BORDER = PAGE_BORDER
 
 const ACHIEVE_STYLE: Record<string, { color: string; icon: React.ReactNode; bg: string; badgeBg: string; gradient: string }> = {
   academic:        { color: '#d97706', icon: <GraduationCap size={13} />, bg: '#fef3c7', badgeBg: '#fde68a', gradient: 'linear-gradient(135deg,#f59e0b,#d97706)' },
@@ -187,7 +197,7 @@ function DetailModal({ item, onClose }: { item: any; onClose: () => void }) {
       )}
       <div onClick={e => e.stopPropagation()} style={{
         width: '75vw', maxHeight: '88vh',
-        background: '#fff', borderRadius: 24,
+        background: CARD_BG, borderRadius: 24,
         overflowX: 'hidden', overflowY: 'hidden', display: 'flex', flexDirection: 'column',
         boxShadow: '0 32px 100px rgba(0,0,0,.3)',
       }}>
@@ -212,14 +222,14 @@ function DetailModal({ item, onClose }: { item: any; onClose: () => void }) {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex' }}>
-          <div style={{ width: 260, flexShrink: 0, background: '#fafafa', borderRight: '1px solid #f0f0f0', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ textAlign: 'center', padding: 16, background: '#fff', borderRadius: 16, border: '1px solid #f0f0f0', boxShadow: '0 2px 10px rgba(0,0,0,.05)' }}>
+          <div style={{ width: 260, flexShrink: 0, background: PAGE_BG, borderRight: `1px solid ${PAGE_BORDER}`, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ textAlign: 'center', padding: 16, background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, boxShadow: '0 2px 10px rgba(0,0,0,.05)' }}>
               {item.studentPic
                 ? <img src={`${baseURL}${item.studentPic}`} onClick={e => { e.stopPropagation(); setZoomedImg(`${baseURL}${item.studentPic}`) }} style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${a.color}`, marginBottom: 10, cursor: 'zoom-in' }} />
                 : <div style={{ width: 80, height: 80, borderRadius: '50%', background: `${a.color}22`, border: `3px solid ${a.color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 30, color: a.color, margin: '0 auto 10px' }}>{item.studentName?.charAt(0)}</div>
               }
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#111' }}>{item.studentName}</div>
-              {item.studentEmail && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{item.studentEmail}</div>}
+              <div style={{ fontWeight: 700, fontSize: 15, color: PAGE_TEXT }}>{item.studentName}</div>
+              {item.studentEmail && <div style={{ fontSize: 12, color: PAGE_GRAY, marginTop: 2 }}>{item.studentEmail}</div>}
               <div style={{ marginTop: 10, background: `${a.color}14`, color: a.color, border: `1px solid ${a.color}33`, borderRadius: 20, padding: '3px 14px', fontSize: 11, fontWeight: 700, display: 'inline-block', textTransform: 'uppercase', letterSpacing: .5 }}>
                 {item.category}
               </div>
@@ -229,12 +239,12 @@ function DetailModal({ item, onClose }: { item: any; onClose: () => void }) {
             )}
           </div>
           <div style={{ flex: 1, minWidth: 0, padding: '28px 36px', overflowY: 'auto' }}>
-            <div style={{ fontSize: 15, color: '#333', lineHeight: 2, wordBreak: 'break-word' }}
+            <div style={{ fontSize: 15, color: PAGE_TEXT, lineHeight: 2, wordBreak: 'break-word' }}
               dangerouslySetInnerHTML={{ __html: item.description }} />
           </div>
         </div>
 
-        <div style={{ padding: '14px 36px', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'flex-end', background: '#fafafa' }}>
+        <div style={{ padding: '14px 36px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', justifyContent: 'flex-end', background: PAGE_BG }}>
           <button onClick={onClose} style={{ background: a.gradient, border: 'none', borderRadius: 10, padding: '10px 28px', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 14px rgba(0,0,0,.15)' }}>
             Close
           </button>
@@ -259,7 +269,7 @@ function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: 
       onMouseLeave={() => setHov(false)}
       style={{
         borderRadius: 16, overflow: 'hidden', border: `1.5px solid ${hov ? s.color + '60' : BORDER}`,
-        background: '#fff', cursor: 'pointer',
+        background: CARD_BG, cursor: 'pointer',
         transition: 'transform .22s, box-shadow .22s, border-color .22s',
         transform: hov ? 'translateY(-4px)' : 'none',
         boxShadow: hov ? `0 12px 32px ${s.color}22` : '0 2px 8px rgba(0,0,0,.06)',
@@ -276,7 +286,7 @@ function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: 
         <span style={{ position: 'absolute', top: 10, right: 12, color: s.color, opacity: 0.75 }}><Star size={18} fill={s.color} /></span>
         {/* Profile — colored outer ring + white inner ring */}
         <div style={{ borderRadius: '50%', padding: 3, background: s.color, boxShadow: `0 4px 14px ${s.color}55` }}>
-          <div style={{ borderRadius: '50%', padding: 2, background: '#fff' }}>
+          <div style={{ borderRadius: '50%', padding: 2, background: CARD_BG }}>
             {item.studentPic
               ? <img src={`${baseURL}${item.studentPic}`} alt={item.studentName} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
               : <div style={{ width: 60, height: 60, borderRadius: '50%', background: `${s.color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: s.color }}>
@@ -294,7 +304,7 @@ function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: 
           <span style={{ background: `${s.color}18`, color: s.color, borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: 0.4, border: `1px solid ${s.color}30` }}>
             #{item.category}
           </span>
-          <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>
+          <span style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 500 }}>
             {new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
           </span>
         </div>
@@ -325,8 +335,8 @@ function AchievementCard({ item, onRead, onLike, userId }: { item: any; onRead: 
             onClick={e => { e.stopPropagation(); onLike(item._id) }}
             style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}
           >
-            <Heart size={13} fill={liked ? '#ef4444' : 'none'} color={liked ? '#ef4444' : '#94a3b8'} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: liked ? '#ef4444' : '#94a3b8' }}>{likeCount}</span>
+            <Heart size={13} fill={liked ? '#ef4444' : 'none'} color={liked ? '#ef4444' : PAGE_GRAY} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: liked ? '#ef4444' : PAGE_GRAY }}>{likeCount}</span>
           </button>
         </div>
       </div>
@@ -421,7 +431,7 @@ export default function StudentAchievementsPage() {
 
       {modal && <DetailModal item={modal} onClose={() => setModal(null)} />}
 
-      <div style={{ background: '#f8fafc', minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+      <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
 
         {/* ── Main 2-column grid (banner is inside left col so sidebar aligns to top) ── */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 290px', gap: 20, padding: '20px 24px', maxWidth: 1400, margin: '0 auto' }}>
@@ -488,17 +498,17 @@ export default function StudentAchievementsPage() {
             </div>
 
             {/* Filter bar */}
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '10px 14px', marginBottom: 18 }}>
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '10px 14px', marginBottom: 18 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* Search */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <Search size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
                   <input
                     className="ach-search"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search by name or title..."
-                    style={{ width: 190, padding: '7px 10px 7px 28px', border: `1.5px solid ${BORDER}`, borderRadius: 8, fontSize: 12, color: TEXT, background: '#f8fafc', transition: 'border-color .2s, box-shadow .2s' }}
+                    style={{ width: 190, padding: '7px 10px 7px 28px', border: `1.5px solid ${BORDER}`, borderRadius: 8, fontSize: 12, color: TEXT, background: PAGE_BG, transition: 'border-color .2s, box-shadow .2s' }}
                   />
                 </div>
 
@@ -516,7 +526,7 @@ export default function StudentAchievementsPage() {
                         style={{
                           padding: '5px 11px', borderRadius: 20, cursor: 'pointer', fontSize: 11.5, fontWeight: isActive ? 700 : 500,
                           border: `1.5px solid ${isActive ? (s?.color || ORANGE) : BORDER}`,
-                          background: isActive ? (s ? s.badgeBg : '#fff7ed') : '#fff',
+                          background: isActive ? (s ? s.badgeBg : '#fff7ed') : CARD_BG,
                           color: isActive ? (s?.color || ORANGE) : GRAY,
                           transition: 'all .18s', whiteSpace: 'nowrap', flexShrink: 0,
                         }}
@@ -528,7 +538,7 @@ export default function StudentAchievementsPage() {
                 </div>
 
                 {/* Filter btn */}
-                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', border: `1.5px solid ${BORDER}`, borderRadius: 8, background: '#fff', color: GRAY, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
+                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', border: `1.5px solid ${BORDER}`, borderRadius: 8, background: CARD_BG, color: GRAY, fontWeight: 600, fontSize: 12, cursor: 'pointer', flexShrink: 0 }}>
                   <SlidersHorizontal size={12} /> Filter
                 </button>
               </div>
@@ -544,7 +554,7 @@ export default function StudentAchievementsPage() {
                   <div style={{ height: 3, width: 36, background: ORANGE, borderRadius: 4 }} />
                 </div>
                 {mainView === 'rankers' && topRankers.length > 0 && topRankers[0].updatedAt && (
-                  <span style={{ fontSize: 10, color: GRAY, background: '#f1f5f9', borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>
+                  <span style={{ fontSize: 10, color: GRAY, background: PAGE_BG, borderRadius: 20, padding: '2px 10px', fontWeight: 600 }}>
                     Updated {new Date(topRankers[0].updatedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                   </span>
                 )}
@@ -552,7 +562,7 @@ export default function StudentAchievementsPage() {
 
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 {/* Main view toggle */}
-                <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
+                <div style={{ display: 'flex', gap: 4, background: PAGE_BG, borderRadius: 10, padding: 3 }}>
                   {([
                     { key: 'rankers',      icon: <Crown  size={12} />, label: 'Top 25 Rankers' },
                     { key: 'achievements', icon: <Trophy size={12} />, label: 'Achievements' },
@@ -560,7 +570,7 @@ export default function StudentAchievementsPage() {
                     <button key={v.key} onClick={() => setMainView(v.key as 'achievements' | 'rankers')} style={{
                       padding: '5px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                       fontSize: 12, fontWeight: 700, transition: 'all .18s',
-                      background: mainView === v.key ? '#fff' : 'transparent',
+                      background: mainView === v.key ? CARD_BG : 'transparent',
                       color: mainView === v.key ? ORANGE : GRAY,
                       boxShadow: mainView === v.key ? '0 1px 4px rgba(0,0,0,.10)' : 'none',
                       display: 'flex', alignItems: 'center', gap: 5,
@@ -570,7 +580,7 @@ export default function StudentAchievementsPage() {
 
                 {/* Achievement sub-tabs (only in achievements view) */}
                 {mainView === 'achievements' && (
-                  <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 10, padding: 3 }}>
+                  <div style={{ display: 'flex', gap: 4, background: PAGE_BG, borderRadius: 10, padding: 3 }}>
                     {([
                       { key: 'all',       label: 'All' },
                       { key: 'institute', label: 'Institute' },
@@ -579,7 +589,7 @@ export default function StudentAchievementsPage() {
                       <button key={tab.key} onClick={() => setAchieveTab(tab.key)} style={{
                         padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         fontSize: 11.5, fontWeight: 700, transition: 'all .18s',
-                        background: achieveTab === tab.key ? '#fff' : 'transparent',
+                        background: achieveTab === tab.key ? CARD_BG : 'transparent',
                         color: achieveTab === tab.key ? ORANGE : GRAY,
                         boxShadow: achieveTab === tab.key ? '0 1px 4px rgba(0,0,0,.10)' : 'none',
                       }}>{tab.label}</button>
@@ -593,15 +603,15 @@ export default function StudentAchievementsPage() {
             {mainView === 'rankers' ? (
               /* ── Rankers view — same card grid ── */
               rankersLoading ? (
-                <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
-                  <div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: `3px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite', margin: '0 auto 16px' }} />
+                <div style={{ textAlign: 'center', padding: '80px 0', color: PAGE_GRAY }}>
+                  <div style={{ width: 40, height: 40, border: `3px solid ${PAGE_BORDER}`, borderTop: `3px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite', margin: '0 auto 16px' }} />
                   <div style={{ fontSize: 14, fontWeight: 600 }}>Loading institute rankers…</div>
                 </div>
               ) : topRankers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 16, border: `1px solid ${BORDER}` }}>
+                <div style={{ textAlign: 'center', padding: '80px 20px', background: CARD_BG, borderRadius: 16, border: `1px solid ${BORDER}` }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, color: ORANGE, opacity: 0.6 }}><Award size={48} /></div>
-                  <div style={{ fontWeight: 700, fontSize: '1rem', color: '#334155', marginBottom: 6 }}>No rankings yet</div>
-                  <div style={{ fontSize: 13, color: '#94a3b8' }}>Ranks are computed nightly. Check back tomorrow.</div>
+                  <div style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT, marginBottom: 6 }}>No rankings yet</div>
+                  <div style={{ fontSize: 13, color: PAGE_GRAY }}>Ranks are computed nightly. Check back tomorrow.</div>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(195px, 1fr))', gap: 16 }}>
@@ -626,7 +636,7 @@ export default function StudentAchievementsPage() {
                                 : ranker.rank === 3 ? <Award size={18} color={color} />
                                 : <span style={{ fontSize: 11, fontWeight: 800, color }}>#{ranker.rank}</span>
                     return (
-                      <div key={ranker._id} style={{ borderRadius: 16, overflow: 'hidden', border: `1.5px solid ${color}30`, background: '#fff', display: 'flex', flexDirection: 'column', boxShadow: `0 2px 8px ${color}18`, transition: 'transform .22s, box-shadow .22s' }}>
+                      <div key={ranker._id} style={{ borderRadius: 16, overflow: 'hidden', border: `1.5px solid ${color}30`, background: CARD_BG, display: 'flex', flexDirection: 'column', boxShadow: `0 2px 8px ${color}18`, transition: 'transform .22s, box-shadow .22s' }}>
                         {/* Tinted top */}
                         <div style={{ background: bg, padding: '20px 16px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', minHeight: 108, overflow: 'hidden' }}>
                           {/* Decorative blobs */}
@@ -637,7 +647,7 @@ export default function StudentAchievementsPage() {
                           <span style={{ position: 'absolute', top: 10, right: 12, lineHeight: 1, display: 'flex' }}>{badge}</span>
                           {/* Profile — colored outer ring + white inner ring */}
                           <div style={{ borderRadius: '50%', padding: 3, background: color, boxShadow: `0 4px 14px ${color}55` }}>
-                            <div style={{ borderRadius: '50%', padding: 2, background: '#fff' }}>
+                            <div style={{ borderRadius: '50%', padding: 2, background: CARD_BG }}>
                               {ranker.profileImage
                                 ? <img src={`${baseURL}${ranker.profileImage}`} alt={ranker.name} style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                                 : <div style={{ width: 60, height: 60, borderRadius: '50%', background: `${color}28`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color }}>
@@ -654,7 +664,7 @@ export default function StudentAchievementsPage() {
                             <span style={{ background: `${color}18`, color, borderRadius: 6, padding: '2px 8px', fontSize: 10, fontWeight: 800, letterSpacing: 0.4, border: `1px solid ${color}30` }}>
                               RANK #{ranker.rank}
                             </span>
-                            <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>{ranker.score}% score</span>
+                            <span style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 500 }}>{ranker.score}% score</span>
                           </div>
                           {/* Name */}
                           <div style={{ fontWeight: 700, fontSize: 13, color: TEXT, lineHeight: 1.45, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
@@ -663,10 +673,10 @@ export default function StudentAchievementsPage() {
                           {/* Branch / roll */}
                           <div style={{ fontSize: 11.5, color: GRAY, lineHeight: 1.5 }}>
                             {ranker.branch || 'Student'}
-                            {ranker.rollNumber && <span style={{ color: '#94a3b8' }}> · {ranker.rollNumber}</span>}
+                            {ranker.rollNumber && <span style={{ color: PAGE_GRAY }}> · {ranker.rollNumber}</span>}
                           </div>
                           {/* Score bar */}
-                          <div style={{ background: '#f1f5f9', borderRadius: 10, height: 4, marginTop: 2 }}>
+                          <div style={{ background: PAGE_BG, borderRadius: 10, height: 4, marginTop: 2 }}>
                             <div style={{ width: `${Math.min(ranker.score, 100)}%`, height: '100%', background: color, borderRadius: 10, opacity: 0.8 }} />
                           </div>
                           {/* Footer */}
@@ -688,17 +698,17 @@ export default function StudentAchievementsPage() {
                 </div>
               )
             ) : loading ? (
-              <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
-                <div style={{ width: 40, height: 40, border: '3px solid #f1f5f9', borderTop: `3px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite', margin: '0 auto 16px' }} />
+              <div style={{ textAlign: 'center', padding: '80px 0', color: PAGE_GRAY }}>
+                <div style={{ width: 40, height: 40, border: `3px solid ${PAGE_BORDER}`, borderTop: `3px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite', margin: '0 auto 16px' }} />
                 <div style={{ fontSize: 14, fontWeight: 600 }}>Loading achievements...</div>
               </div>
             ) : filtered.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 16, border: `1px solid ${BORDER}` }}>
+              <div style={{ textAlign: 'center', padding: '80px 20px', background: CARD_BG, borderRadius: 16, border: `1px solid ${BORDER}` }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, color: ORANGE, opacity: 0.6 }}><Trophy size={48} /></div>
-                <div style={{ fontWeight: 700, fontSize: '1rem', color: '#334155', marginBottom: 6 }}>
+                <div style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT, marginBottom: 6 }}>
                   {search || activeCategory !== 'all' ? 'No achievements match your filters' : 'No achievements yet'}
                 </div>
-                <div style={{ fontSize: 13, color: '#94a3b8', maxWidth: 320, margin: '0 auto' }}>
+                <div style={{ fontSize: 13, color: PAGE_GRAY, maxWidth: 320, margin: '0 auto' }}>
                   {search || activeCategory !== 'all'
                     ? 'Try adjusting your search or category filter.'
                     : 'Student achievements will appear here once added by the institute.'}
@@ -725,7 +735,7 @@ export default function StudentAchievementsPage() {
 
                 {/* View All */}
                 <div style={{ textAlign: 'center', marginTop: 28 }}>
-                  <button style={{ background: '#fff', border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '10px 32px', fontSize: 13, fontWeight: 700, color: GRAY, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <button style={{ background: CARD_BG, border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '10px 32px', fontSize: 13, fontWeight: 700, color: GRAY, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     View All Achievements →
                   </button>
                 </div>
@@ -737,7 +747,7 @@ export default function StudentAchievementsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Top Rankers */}
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: '0 0 2px' }}>Top Rankers</h3>
@@ -748,11 +758,11 @@ export default function StudentAchievementsPage() {
 
               {rankersLoading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 8 }}>
-                  <div style={{ width: 18, height: 18, border: `2px solid #f1f5f9`, borderTop: `2px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite' }} />
+                  <div style={{ width: 18, height: 18, border: `2px solid ${PAGE_BORDER}`, borderTop: `2px solid ${ORANGE}`, borderRadius: '50%', animation: 'ach-spin .8s linear infinite' }} />
                   <span style={{ fontSize: 12, color: GRAY }}>Loading rankers…</span>
                 </div>
               ) : topRankers.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '16px 0' }}>
+                <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center', padding: '16px 0' }}>
                   <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: ORANGE, opacity: 0.5 }}><Award size={24} /></div>
                   Ranks not yet computed.<br />Check back after the nightly update.
                 </div>
@@ -799,7 +809,7 @@ export default function StudentAchievementsPage() {
             </div>
 
             {/* Achievement Categories */}
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                 <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: 0 }}>Achievement Categories</h3>
                 <button style={{ background: 'none', border: 'none', color: ORANGE, fontWeight: 700, fontSize: 12, cursor: 'pointer', padding: 0 }}>View All</button>
@@ -827,7 +837,7 @@ export default function StudentAchievementsPage() {
             </div>
 
             {/* Congratulations */}
-            <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+            <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: '0 0 6px' }}>Congratulations! 🎉</h3>

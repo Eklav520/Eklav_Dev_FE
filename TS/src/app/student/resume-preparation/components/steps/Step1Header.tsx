@@ -4,7 +4,12 @@ import { Trash2, ArrowRight, User } from 'lucide-react'
 
 const ORANGE = '#f97316'
 const BORDER = '#e5e7eb'
-const GRAY = '#6b7280'
+const GRAY = 'var(--dash-gray, #6b7280)'
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode.
+// Input fields stay intentionally fixed white/light (always legible);
+// only heading/label text sitting directly on the theme-following card needs to adapt.
+const TEXT = 'var(--dash-text, #111827)'
+const CARD_BG = 'var(--dash-card-bg, #ffffff)'
 const MAX_SUMMARY = 200
 
 const inp: React.CSSProperties = {
@@ -14,7 +19,7 @@ const inp: React.CSSProperties = {
 }
 
 const lbl: React.CSSProperties = {
-  fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 5, display: 'block',
+  fontSize: 12, fontWeight: 600, color: TEXT, marginBottom: 5, display: 'block',
 }
 
 const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => {
@@ -38,7 +43,7 @@ const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
     <div>
       {/* Section heading */}
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Personal Information</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: TEXT, margin: 0 }}>Personal Information</h2>
         <p style={{ fontSize: 13, color: GRAY, margin: '4px 0 0' }}>Add your basic information</p>
       </div>
 
@@ -183,7 +188,7 @@ const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
           type="button"
           onClick={goBack}
           style={{
-            fontSize: 13, fontWeight: 600, color: '#374151', background: '#fff',
+            fontSize: 13, fontWeight: 600, color: TEXT, background: CARD_BG,
             border: `1px solid ${BORDER}`, borderRadius: 8, padding: '9px 20px', cursor: 'pointer',
           }}
         >

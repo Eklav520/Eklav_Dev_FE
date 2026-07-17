@@ -41,6 +41,14 @@ type PracticeTopic = {
 
 type CategoryProgressEntry = { progress: number; viewed: number; total: number }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const NAV_TABS: { key: NavTab; label: string }[] = [
@@ -93,14 +101,14 @@ const DonutChart = ({ pct, size = 100, sw = 10, color = '#ff7a00', subLabel = ''
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ display: 'block' }}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={sw} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={PAGE_BORDER} strokeWidth={sw} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={sw}
           strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ transition: 'stroke-dasharray 0.4s ease' }} />
       </svg>
       <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: size * 0.19, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{pct}%</span>
-        {subLabel && <span style={{ fontSize: size * 0.09, color: '#94a3b8', marginTop: 2, textAlign: 'center', lineHeight: 1.2 }}>{subLabel}</span>}
+        <span style={{ fontSize: size * 0.19, fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>{pct}%</span>
+        {subLabel && <span style={{ fontSize: size * 0.09, color: PAGE_GRAY, marginTop: 2, textAlign: 'center', lineHeight: 1.2 }}>{subLabel}</span>}
       </div>
     </div>
   )
@@ -109,7 +117,7 @@ const DonutChart = ({ pct, size = 100, sw = 10, color = '#ff7a00', subLabel = ''
 // ─── Mini Progress Bar ────────────────────────────────────────────────────────
 
 const MiniBar = ({ pct, color = '#ff7a00' }: { pct: number; color?: string }) => (
-  <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', flex: 1 }}>
+  <div style={{ height: 5, background: PAGE_BORDER, borderRadius: 99, overflow: 'hidden', flex: 1 }}>
     <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 99 }} />
   </div>
 )
@@ -136,24 +144,24 @@ const CalendarWidget = ({ days, month, onMonthChange }: {
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7))
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 18px 14px' }}>
+    <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 18px 14px' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.92rem' }}>Progress Calendar</span>
+        <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.92rem' }}>Progress Calendar</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={() => onMonthChange(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, padding: '0 4px', lineHeight: 1 }}>‹</button>
-          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a', minWidth: 80, textAlign: 'center' }}>
+          <button onClick={() => onMonthChange(-1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PAGE_GRAY, fontSize: 18, padding: '0 4px', lineHeight: 1 }}>‹</button>
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, minWidth: 80, textAlign: 'center' }}>
             {monthName(month.month)} {month.year}
           </span>
-          <button onClick={() => onMonthChange(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 18, padding: '0 4px', lineHeight: 1 }}>›</button>
+          <button onClick={() => onMonthChange(1)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PAGE_GRAY, fontSize: 18, padding: '0 4px', lineHeight: 1 }}>›</button>
         </div>
       </div>
 
       {/* Day headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 700, color: '#94a3b8', paddingBottom: 6 }}>{d}</div>
+          <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, paddingBottom: 6 }}>{d}</div>
         ))}
       </div>
 
@@ -165,7 +173,7 @@ const CalendarWidget = ({ days, month, onMonthChange }: {
             return (
               <div key={di} style={{ height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {otherMonth ? (
-                  <span style={{ fontSize: '0.7rem', color: '#e2e8f0', fontWeight: 400 }}>{num}</span>
+                  <span style={{ fontSize: '0.7rem', color: PAGE_BORDER, fontWeight: 400 }}>{num}</span>
                 ) : day?.attended ? (
                   <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(22,163,74,0.3)' }}>
                     <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
@@ -183,7 +191,7 @@ const CalendarWidget = ({ days, month, onMonthChange }: {
                     </svg>
                   </div>
                 ) : (
-                  <span style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 400 }}>{num}</span>
+                  <span style={{ fontSize: '0.72rem', color: PAGE_GRAY, fontWeight: 400 }}>{num}</span>
                 )}
               </div>
             )
@@ -193,7 +201,7 @@ const CalendarWidget = ({ days, month, onMonthChange }: {
 
       {/* Today label */}
       <div style={{ marginTop: 10, paddingTop: 4 }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', marginBottom: 6 }}>Today</div>
+        <div style={{ fontSize: '0.7rem', fontWeight: 600, color: PAGE_GRAY, marginBottom: 6 }}>Today</div>
         <div style={{ display: 'flex', gap: 14 }}>
           {[
             { color: '#16a34a', label: 'Attempted', check: true },
@@ -204,7 +212,7 @@ const CalendarWidget = ({ days, month, onMonthChange }: {
               <div style={{ width: 14, height: 14, borderRadius: '50%', background: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {item.check && <svg width="8" height="7" viewBox="0 0 8 7" fill="none"><path d="M1 3.5l2 2L7 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
               </div>
-              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{item.label}</span>
+              <span style={{ fontSize: '0.65rem', color: PAGE_GRAY }}>{item.label}</span>
             </div>
           ))}
         </div>
@@ -231,8 +239,8 @@ const WeeklyChart = ({ data }: { data: number[] }) => {
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 42 }}>
-        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem' }}>Weekly Performance</span>
-        <select style={{ border: '1px solid #e2e8f0', borderRadius: 6, padding: '2px 8px', fontSize: '0.68rem', color: '#475569', background: '#fff', cursor: 'pointer', outline: 'none' }}>
+        <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem' }}>Weekly Performance</span>
+        <select style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, padding: '2px 8px', fontSize: '0.68rem', color: PAGE_TEXT, background: CARD_BG, cursor: 'pointer', outline: 'none' }}>
           <option>This Week</option>
         </select>
       </div>
@@ -241,8 +249,8 @@ const WeeklyChart = ({ data }: { data: number[] }) => {
           const y = padT + (1 - v / 100) * iH
           return (
             <g key={v}>
-              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="#f1f5f9" strokeWidth={1} />
-              <text x={padL - 3} y={y + 3} textAnchor="end" fontSize={7} fill="#94a3b8">{v}%</text>
+              <line x1={padL} y1={y} x2={W - padR} y2={y} stroke={PAGE_BORDER} strokeWidth={1} />
+              <text x={padL - 3} y={y + 3} textAnchor="end" fontSize={7} fill={PAGE_GRAY}>{v}%</text>
             </g>
           )
         })}
@@ -250,7 +258,7 @@ const WeeklyChart = ({ data }: { data: number[] }) => {
         <path d={line} fill="none" stroke="#ff7a00" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={3} fill="#ff7a00" />)}
         {DAY_LABELS.map((d, i) => (
-          <text key={d} x={padL + (i / (DAY_LABELS.length - 1)) * iW} y={H - 3} textAnchor="middle" fontSize={7} fill="#94a3b8">{d}</text>
+          <text key={d} x={padL + (i / (DAY_LABELS.length - 1)) * iW} y={H - 3} textAnchor="middle" fontSize={7} fill={PAGE_GRAY}>{d}</text>
         ))}
       </svg>
     </div>
@@ -276,18 +284,18 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
   const examTitle = data?.category ? (CATEGORY_DISPLAY[data.category] ?? data.category) : 'General Aptitude'
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+    <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 220 }}>
 
         {/* ── Left: exam info ── */}
         <div style={{ flex: '0 0 240px', padding: '24px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {/* Section heading inside the card */}
           <div>
-            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1.2 }}>Daily Exam</div>
-            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: 3 }}>Attempt the daily exam and test your skills</div>
+            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1rem', lineHeight: 1.2 }}>Daily Exam</div>
+            <div style={{ fontSize: '0.7rem', color: PAGE_GRAY, marginTop: 3 }}>Attempt the daily exam and test your skills</div>
           </div>
 
-          <div style={{ height: 1, background: '#f1f5f9' }} />
+          <div style={{ height: 1, background: PAGE_BORDER }} />
 
           {/* Exam info */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -295,12 +303,12 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
               <FaClipboardList size={18} color="#ff7a00" />
             </div>
             <div>
-              <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, marginBottom: 1 }}>Today's Exam</div>
-              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.2 }}>{examTitle}</div>
+              <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 600, marginBottom: 1 }}>Today's Exam</div>
+              <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.9rem', lineHeight: 1.2 }}>{examTitle}</div>
             </div>
           </div>
 
-          <div style={{ fontSize: '0.71rem', color: '#94a3b8', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ fontSize: '0.71rem', color: PAGE_GRAY, display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
             <span>{qs} Questions</span><span>•</span><span>{qs} Marks</span><span>•</span><span>20 Min</span>
           </div>
 
@@ -310,14 +318,14 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
               Start Exam
             </button>
             <button onClick={onStart}
-              style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontWeight: 600, fontSize: '0.82rem', padding: '10px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ background: CARD_BG, border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, color: PAGE_TEXT, fontWeight: 600, fontSize: '0.82rem', padding: '10px 14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               View Details
             </button>
           </div>
         </div>
 
         {/* ── Divider ── */}
-        <div style={{ width: 1, background: '#f1f5f9', flexShrink: 0 }} />
+        <div style={{ width: 1, background: PAGE_BORDER, flexShrink: 0 }} />
 
         {/* ── Right: Progress (always shown) ── */}
         <div style={{ flex: 1, padding: '18px 28px', display: 'flex', alignItems: 'stretch' }}>
@@ -325,30 +333,30 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
 
             {/* Header: PROGRESS + Best Score */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Progress</div>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Progress</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ height: 14, width: 1, background: '#e2e8f0' }} />
-                <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>Best Score</span>
+                <div style={{ height: 14, width: 1, background: PAGE_BORDER }} />
+                <span style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 600 }}>Best Score</span>
                 <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ff7a00' }}>
                   {data?.bestScore != null ? `${data.bestScore} / ${data.totalQuestions ?? 20}` : `— / ${data?.totalQuestions ?? 20}`}
                 </span>
               </div>
             </div>
-            <div style={{ height: 1, background: '#f1f5f9', marginBottom: 0 }} />
+            <div style={{ height: 1, background: PAGE_BORDER, marginBottom: 0 }} />
 
             {/* Donut + Stats — expands to fill remaining height and centers content */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 24 }}>
               {/* Donut ring */}
               <div style={{ position: 'relative', width: 108, height: 108, flexShrink: 0 }}>
                 <svg width={108} height={108} style={{ display: 'block' }}>
-                  <circle cx={54} cy={54} r={r} fill="none" stroke="#f1f5f9" strokeWidth={sw} />
+                  <circle cx={54} cy={54} r={r} fill="none" stroke={PAGE_BORDER} strokeWidth={sw} />
                   <circle cx={54} cy={54} r={r} fill="none" stroke="#ff7a00" strokeWidth={sw}
                     strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
                     transform="rotate(-90 54 54)" />
                 </svg>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{pct}%</span>
-                  <span style={{ fontSize: '0.54rem', color: '#94a3b8', textAlign: 'center', lineHeight: 1.4, marginTop: 3 }}>
+                  <span style={{ fontSize: '1.35rem', fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>{pct}%</span>
+                  <span style={{ fontSize: '0.54rem', color: PAGE_GRAY, textAlign: 'center', lineHeight: 1.4, marginTop: 3 }}>
                     {attempted ? `${score} / ${total}` : `0 / ${qs}`}<br />Questions<br />Attempted
                   </span>
                 </div>
@@ -362,7 +370,7 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
                   { label: 'Time Left',  value: attempted ? '00:00' : '20:00',                    color: '#ff7a00' },
                 ].map(s => (
                   <div key={s.label}>
-                    <div style={{ fontSize: '0.63rem', color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>{s.label}</div>
+                    <div style={{ fontSize: '0.63rem', color: PAGE_GRAY, fontWeight: 600, marginBottom: 2 }}>{s.label}</div>
                     <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</div>
                   </div>
                 ))}
@@ -392,7 +400,7 @@ const TopicCard = ({ topic, liveProgress }: { topic: PracticeTopic; liveProgress
   const viewed = liveProgress ? liveProgress.viewed : 0
   return (
     <div
-      style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+      style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
     >
@@ -400,22 +408,22 @@ const TopicCard = ({ topic, liveProgress }: { topic: PracticeTopic; liveProgress
         {topic.icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</div>
-        <div style={{ fontSize: '0.67rem', color: '#94a3b8', marginBottom: 7 }}>
+        <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic.title}</div>
+        <div style={{ fontSize: '0.67rem', color: PAGE_GRAY, marginBottom: 7 }}>
           {viewed > 0 ? `${viewed} / ${totalQ} Questions` : `${totalQ} Questions`}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-          <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Progress</span>
+          <span style={{ fontSize: '0.62rem', color: PAGE_GRAY, width: 48, flexShrink: 0 }}>Progress</span>
           <MiniBar pct={progress} />
           <span style={{ fontSize: '0.62rem', color: '#ff7a00', fontWeight: 700, width: 28, textAlign: 'right' }}>{progress}%</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ fontSize: '0.62rem', color: '#64748b', width: 48, flexShrink: 0 }}>Exam Avg</span>
+          <span style={{ fontSize: '0.62rem', color: PAGE_GRAY, width: 48, flexShrink: 0 }}>Exam Avg</span>
           <MiniBar pct={topic.accuracy} color="#16a34a" />
           <span style={{ fontSize: '0.62rem', color: '#16a34a', fontWeight: 700, width: 28, textAlign: 'right' }}>{topic.accuracy}%</span>
         </div>
       </div>
-      <span style={{ color: '#cbd5e1', fontSize: '1.1rem', alignSelf: 'center', flexShrink: 0 }}>›</span>
+      <span style={{ color: PAGE_GRAY, fontSize: '1.1rem', alignSelf: 'center', flexShrink: 0 }}>›</span>
     </div>
   )
 }
@@ -453,7 +461,7 @@ const OverviewTab = ({
           <div style={{ flex: 1, minWidth: 0 }}>
             <TodayExamCard data={todayData} onStart={onStartExam} />
           </div>
-          <div style={{ width: 320, minWidth: 320, flexShrink: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          <div style={{ width: 320, minWidth: 320, flexShrink: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
             <WeeklyChart data={weeklyData} />
           </div>
         </div>
@@ -463,23 +471,23 @@ const OverviewTab = ({
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div>
-            <h5 style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 3px', fontSize: '1rem' }}>Practice Quiz</h5>
-            <p style={{ color: '#64748b', fontSize: '0.76rem', margin: 0 }}>Improved by practice. Select a topic and start practicing now!</p>
+            <h5 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 3px', fontSize: '1rem' }}>Practice Quiz</h5>
+            <p style={{ color: PAGE_GRAY, fontSize: '0.76rem', margin: 0 }}>Improved by practice. Select a topic and start practicing now!</p>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               onClick={() => setTopicPage(p => Math.max(0, p - 1))}
               disabled={topicPage === 0}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 8, color: topicPage === 0 ? '#cbd5e1' : '#475569', fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === 0 ? 'not-allowed' : 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: CARD_BG, border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, color: topicPage === 0 ? PAGE_GRAY : PAGE_TEXT, fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === 0 ? 'not-allowed' : 'pointer' }}>
               ← Prev
             </button>
-            <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.72rem', color: '#94a3b8', fontWeight: 600, padding: '0 4px' }}>
+            <span style={{ display: 'flex', alignItems: 'center', fontSize: '0.72rem', color: PAGE_GRAY, fontWeight: 600, padding: '0 4px' }}>
               {topicPage + 1} / {totalPages}
             </span>
             <button
               onClick={() => setTopicPage(p => Math.min(totalPages - 1, p + 1))}
               disabled={topicPage === totalPages - 1}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: topicPage === totalPages - 1 ? '#fff' : '#ff7a00', border: `1.5px solid ${topicPage === totalPages - 1 ? '#e2e8f0' : '#ff7a00'}`, borderRadius: 8, color: topicPage === totalPages - 1 ? '#cbd5e1' : '#fff', fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === totalPages - 1 ? 'not-allowed' : 'pointer' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 5, background: topicPage === totalPages - 1 ? CARD_BG : '#ff7a00', border: `1.5px solid ${topicPage === totalPages - 1 ? PAGE_BORDER : '#ff7a00'}`, borderRadius: 8, color: topicPage === totalPages - 1 ? PAGE_GRAY : '#fff', fontWeight: 600, fontSize: '0.76rem', padding: '6px 12px', cursor: topicPage === totalPages - 1 ? 'not-allowed' : 'pointer' }}>
               Next Topics →
             </button>
           </div>
@@ -499,12 +507,12 @@ const OverviewTab = ({
       <CalendarWidget days={calendarDays} month={calendarMonth} onMonthChange={onMonthChange} />
 
       {/* Overall Progress */}
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px 18px' }}>
-        <h6 style={{ fontWeight: 700, color: '#0f172a', margin: '0 0 14px', fontSize: '0.88rem' }}>Overall Progress</h6>
+      <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+        <h6 style={{ fontWeight: 700, color: PAGE_TEXT, margin: '0 0 14px', fontSize: '0.88rem' }}>Overall Progress</h6>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 14 }}>
           <DonutChart pct={stats?.avgScore ?? 0} size={86} sw={9} color="#ff7a00" />
           <div>
-            <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600, marginBottom: 2 }}>Overall Score</div>
+            <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 600, marginBottom: 2 }}>Overall Score</div>
             <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ff7a00', lineHeight: 1 }}>{stats?.avgScore ?? 0}%</div>
           </div>
         </div>
@@ -514,8 +522,8 @@ const OverviewTab = ({
             { label: 'Average Accuracy', value: `${stats?.avgScore ?? 0}%`,        color: '#16a34a', streak: false },
             { label: 'Current Streak',   value: `${stats?.streak ?? 0} Days`,      color: '#ff7a00', streak: true  },
           ].map(item => (
-            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: '#f8fafc', borderRadius: 8 }}>
-              <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{item.label}</span>
+            <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: PAGE_BG, borderRadius: 8 }}>
+              <span style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>{item.label}</span>
               <span style={{ fontSize: '0.78rem', fontWeight: 700, color: item.color, display: 'flex', alignItems: 'center', gap: 4 }}>
                 {item.streak && <FaFire size={11} color="#ff7a00" />}
                 {item.value}
@@ -656,13 +664,13 @@ const AptitudePage = () => {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, marginBottom: 20 }}>
           {/* Title */}
           <div style={{ flexShrink: 0 }}>
-            <h4 style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontSize: '1.3rem' }}>Aptitude Preparation</h4>
-            <p style={{ color: '#64748b', fontSize: '0.82rem', margin: 0 }}>Practice daily, improve skills and achieve your goals.</p>
+            <h4 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 4px', fontSize: '1.3rem' }}>Aptitude Preparation</h4>
+            <p style={{ color: PAGE_GRAY, fontSize: '0.82rem', margin: 0 }}>Practice daily, improve skills and achieve your goals.</p>
           </div>
 
           {/* Stats — Total Quizzes only */}
           <div style={{
-            background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+            background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12,
             padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
             flexShrink: 0, minWidth: 160,
           }}>
@@ -674,16 +682,16 @@ const AptitudePage = () => {
               <FiBookOpen size={18} color="#6366f1" />
             </div>
             <div>
-              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem', lineHeight: 1.1 }}>
+              <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.05rem', lineHeight: 1.1 }}>
                 {practiceTotal > 0 ? practiceTotal.toLocaleString() : '—'}
               </div>
-              <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>Total Quizzes</div>
+              <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 2 }}>Total Quizzes</div>
             </div>
           </div>
         </div>
 
         {/* ── Tab Bar ── */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 22, gap: 2 }}>
+        <div style={{ display: 'flex', borderBottom: `1px solid ${PAGE_BORDER}`, marginBottom: 22, gap: 2 }}>
           {NAV_TABS.map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
               style={{
@@ -694,7 +702,7 @@ const AptitudePage = () => {
                 padding: '9px 18px',
                 fontWeight: 600,
                 fontSize: '0.82rem',
-                color: activeTab === t.key ? '#ff7a00' : '#64748b',
+                color: activeTab === t.key ? '#ff7a00' : PAGE_GRAY,
                 cursor: 'pointer',
                 transition: 'all 0.15s',
               }}>

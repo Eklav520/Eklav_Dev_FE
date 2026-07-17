@@ -55,6 +55,15 @@ type CourseType = {
   courseStatus?: 'active' | 'comingsoon'
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this modal re-themes along with
+// the rest of the portal without needing its own theme plumbing.
+const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketInsight, hideCard }: {
   course: CourseType
   open?: boolean
@@ -86,7 +95,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
   const isComingSoon = courseStatus === 'coming-soon'
   const [enrolling, setEnrolling] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Curriculum' | 'Instructor' | 'Reviews' | 'Q&A'>('Curriculum')
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Curriculum' | 'Instructor' | 'Reviews' | 'Q&A'>('Overview')
   const [showInlineVideo, setShowInlineVideo] = useState(false)
   const [miniInsight, setMiniInsight] = useState<{ jobs?: string; salary?: string; companies?: string[]; status?: string } | null>(null)
 
@@ -459,7 +468,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
 
       {/* ═══ VIEW DETAILS MODAL — Marketplace 3-Panel Layout ═══ */}
       <Modal show={!isComingSoon && showDetails} onHide={handleCloseDetails} fullscreen backdrop="static" keyboard={false} animation={false} className="cd-modal">
-        <Modal.Body className="p-0" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#f1f5f9', overflow: 'hidden' }}>
+        <Modal.Body className="p-0" style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: PAGE_BG, overflow: 'hidden' }}>
 
           {/* Toast */}
           <ToastContainer position="top-end" className="p-3" style={{ position: 'fixed', zIndex: 99999 }}>
@@ -469,52 +478,52 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
           </ToastContainer>
 
           {/* ── TOP BAR ── */}
-          <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', height: 50, flexShrink: 0 }}>
+          <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', height: 50, flexShrink: 0 }}>
             {/* Breadcrumb — same fixed width as left panel so tabs always align with center panel */}
-            <div style={{ width: 380, minWidth: 380, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.73rem', color: '#94a3b8', borderRight: '1px solid #e2e8f0', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ width: 380, minWidth: 380, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.73rem', color: PAGE_GRAY, borderRight: `1px solid ${PAGE_BORDER}`, height: '100%', flexShrink: 0, overflow: 'hidden' }}>
               <span style={{ whiteSpace: 'nowrap' }}>Home</span>
               <span>›</span>
               <span style={{ whiteSpace: 'nowrap' }}>All Courses</span>
               <span>›</span>
-              <span style={{ color: '#0f172a', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ color: PAGE_TEXT, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {categories[0] ? clean(categories[0]) : 'Course'}
               </span>
             </div>
-            {/* Tabs — equal width + dividers */}
-            <div style={{ display: 'flex', height: '100%' }}>
+            {/* Tabs — equally divide the remaining center width, with dividers */}
+            <div style={{ display: 'flex', height: '100%', flex: 1, minWidth: 0 }}>
               {(['Overview', 'Curriculum', 'Instructor', 'Reviews', 'Q&A'] as const).map((tab, idx, arr) => (
-                <div key={tab} style={{ display: 'flex', alignItems: 'stretch', height: '100%' }}>
+                <div key={tab} style={{ display: 'flex', alignItems: 'stretch', height: '100%', flex: 1, minWidth: 0 }}>
                   <button onClick={() => setActiveTab(tab)} style={{
                     background: 'transparent', border: 'none',
                     borderBottom: activeTab === tab ? '2.5px solid #ff7a00' : '2.5px solid transparent',
-                    color: activeTab === tab ? '#ff7a00' : '#64748b',
+                    color: activeTab === tab ? '#ff7a00' : PAGE_GRAY,
                     fontWeight: activeTab === tab ? 700 : 500,
-                    fontSize: '0.84rem', width: 120, textAlign: 'center', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap', height: '100%',
+                    fontSize: '0.84rem', flex: 1, minWidth: 0, textAlign: 'center', padding: 0, cursor: 'pointer', whiteSpace: 'nowrap', height: '100%',
                     transition: 'color 0.15s, border-color 0.15s',
                   }}>
                     {tab}{tab === 'Reviews' && totalRatings > 0 ? ` (${totalRatings > 999 ? `${(totalRatings / 1000).toFixed(1)}K` : totalRatings})` : ''}
                   </button>
                   {idx < arr.length - 1 && (
-                    <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'center', height: 16, flexShrink: 0 }} />
+                    <div style={{ width: 1, background: PAGE_BORDER, alignSelf: 'center', height: 16, flexShrink: 0 }} />
                   )}
                 </div>
               ))}
             </div>
-            {/* Spacer */}
-            <div style={{ flex: 1 }} />
-            {/* Close */}
-            <button onClick={handleCloseDetails} style={{
-              background: 'rgba(0,0,0,0.07)', border: 'none', borderRadius: '50%', width: 30, height: 30,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-              color: '#475569', fontSize: '1.15rem', flexShrink: 0, marginRight: 16,
-            }} aria-label="Close">×</button>
+            {/* Right zone — same fixed width as the right panel below, so its border lines up */}
+            <div style={{ width: 310, minWidth: 310, maxWidth: 310, height: '100%', borderLeft: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button onClick={handleCloseDetails} style={{
+                background: 'rgba(0,0,0,0.07)', border: 'none', borderRadius: '50%', width: 30, height: 30,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                color: PAGE_TEXT, fontSize: '1.15rem', flexShrink: 0, marginRight: 16,
+              }} aria-label="Close">×</button>
+            </div>
           </div>
 
           {/* ── 3-PANEL BODY ── */}
           <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
             {/* ── LEFT PANEL — same width as breadcrumb (380px) ── */}
-            <div style={{ width: 380, minWidth: 380, maxWidth: 380, background: '#fff', borderRight: '1px solid #e2e8f0', overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }} className="cd-panel-scroll">
+            <div style={{ width: 380, minWidth: 380, maxWidth: 380, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, overflowY: 'auto', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12, flexShrink: 0 }} className="cd-panel-scroll">
 
               {/* Thumbnail / Inline Video Player */}
               <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#000', width: '100%', height: 180, flexShrink: 0 }}>
@@ -585,11 +594,11 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
               </div>
 
               {/* Title */}
-              <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem', lineHeight: 1.4, margin: 0 }}>{title}</h6>
+              <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.95rem', lineHeight: 1.4, margin: 0 }}>{title}</h6>
 
               {/* Short description */}
               {shortDescription && (
-                <p style={{ fontSize: '0.77rem', color: '#64748b', margin: 0, lineHeight: 1.55 }}>
+                <p style={{ fontSize: '0.77rem', color: PAGE_GRAY, margin: 0, lineHeight: 1.55 }}>
                   {shortDescription.replace(/<[^>]*>/g, '').slice(0, 130)}{shortDescription.replace(/<[^>]*>/g, '').length > 130 ? '…' : ''}
                 </p>
               )}
@@ -600,11 +609,11 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {renderStarRating(averageRating, false, 13)}
                     <span style={{ fontWeight: 700, fontSize: '0.86rem', color: '#f59e0b' }}>{averageRating.toFixed(1)}</span>
-                    <span style={{ color: '#64748b', fontSize: '0.74rem' }}>({totalRatings > 999 ? `${(totalRatings / 1000).toFixed(1)}K` : totalRatings} Reviews)</span>
+                    <span style={{ color: PAGE_GRAY, fontSize: '0.74rem' }}>({totalRatings > 999 ? `${(totalRatings / 1000).toFixed(1)}K` : totalRatings} Reviews)</span>
                   </div>
                 )}
                 {totalRatings > 0 && (
-                  <div style={{ fontSize: '0.73rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ fontSize: '0.73rem', color: PAGE_GRAY, display: 'flex', alignItems: 'center', gap: 5 }}>
                     <FaBriefcase size={10} color="#94a3b8" />
                     Enrolled by {(totalRatings * 7).toLocaleString('en-IN')} students
                   </div>
@@ -631,7 +640,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
               {/* Price */}
               {hasOriginalPrice && (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: effectivePrice === 0 ? '#16a34a' : '#0f172a' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: effectivePrice === 0 ? '#16a34a' : PAGE_TEXT }}>
                     {effectivePrice === 0 ? 'Free' : `₹${formatRupee(effectivePrice)}`}
                   </span>
                   {hasValidDiscount && <span style={{ fontSize: '0.82rem', color: '#94a3b8', textDecoration: 'line-through' }}>₹{formatRupee(rawPrice)}</span>}
@@ -670,10 +679,10 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
 
               {/* Wishlist + Share */}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={toggle} style={{ flex: 1, background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontSize: '0.76rem', fontWeight: 600, padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                <button onClick={toggle} style={{ flex: 1, background: 'transparent', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, color: PAGE_TEXT, fontSize: '0.76rem', fontWeight: 600, padding: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                   {isWishlisted ? <FaHeart color="#ef4444" size={12} /> : <FaRegHeart size={12} />} Add to Wishlist
                 </button>
-                <button style={{ flex: 0, background: 'transparent', border: '1.5px solid #e2e8f0', borderRadius: 8, color: '#475569', fontSize: '0.76rem', fontWeight: 600, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                <button style={{ flex: 0, background: 'transparent', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, color: PAGE_TEXT, fontSize: '0.76rem', fontWeight: 600, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                   <FaCode size={11} /> Share
                 </button>
               </div>
@@ -739,12 +748,12 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                 {/* Overview tab */}
                 {activeTab === 'Overview' && (
                   <div>
-                    <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: 16 }}>About this course</h5>
-                    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: '20px 24px', color: '#334155', lineHeight: 1.8, fontSize: '0.87rem' }}>
+                    <h5 style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 16 }}>About this course</h5>
+                    <div style={{ background: CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, padding: '20px 24px', color: PAGE_TEXT, lineHeight: 1.8, fontSize: '0.87rem' }}>
                       {description ? (
                         <div dangerouslySetInnerHTML={{ __html: cleanDescription }} />
                       ) : (
-                        <p style={{ color: '#64748b', margin: 0 }}>{shortDescription || 'No description available.'}</p>
+                        <p style={{ color: PAGE_GRAY, margin: 0 }}>{shortDescription || 'No description available.'}</p>
                       )}
                     </div>
                   </div>
@@ -754,14 +763,14 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                 {activeTab === 'Curriculum' && (
                   <div>
                     <div style={{ marginBottom: 16 }}>
-                      <h5 style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Course Curriculum</h5>
-                      <p style={{ color: '#64748b', fontSize: '0.79rem', margin: 0 }}>
+                      <h5 style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 4 }}>Course Curriculum</h5>
+                      <p style={{ color: PAGE_GRAY, fontSize: '0.79rem', margin: 0 }}>
                         {videos.length} {videos.length === 1 ? 'Lecture' : 'Lectures'}{duration ? ` • ${duration} Total Length` : ''}
                       </p>
                     </div>
 
                     {videos.length > 0 ? (
-                      <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
+                      <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, overflow: 'hidden' }}>
                         {videos.map((video, index) => {
                           const label = video.description || `Lecture ${index + 1}`
                           return (
@@ -770,16 +779,16 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 14,
                                 padding: '13px 18px',
-                                borderBottom: index < videos.length - 1 ? '1px solid #f1f5f9' : 'none',
-                                background: '#fff',
+                                borderBottom: index < videos.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none',
+                                background: CARD_BG,
                               }}
                             >
                               {/* Play icon */}
-                              <div style={{ width: 28, height: 28, borderRadius: '50%', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: '50%', border: `1.5px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <FaPlay size={9} color="#94a3b8" style={{ marginLeft: 1 }} />
                               </div>
                               {/* Label */}
-                              <span style={{ flex: 1, fontSize: '0.84rem', fontWeight: 500, color: '#1e293b', minWidth: 0 }}>
+                              <span style={{ flex: 1, fontSize: '0.84rem', fontWeight: 500, color: PAGE_TEXT, minWidth: 0 }}>
                                 {index + 1}. {label}
                               </span>
                               {/* Progress or lock */}
@@ -793,7 +802,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                         })}
                       </div>
                     ) : (
-                      <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
+                      <div style={{ textAlign: 'center', padding: '48px 0', color: PAGE_GRAY }}>
                         <FaPlay size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
                         <p style={{ margin: 0 }}>No curriculum available yet.</p>
                       </div>
@@ -803,26 +812,26 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
 
                 {/* Other tabs placeholder */}
                 {(activeTab === 'Instructor' || activeTab === 'Reviews' || activeTab === 'Q&A') && (
-                  <div style={{ textAlign: 'center', padding: '64px 0', color: '#94a3b8' }}>
+                  <div style={{ textAlign: 'center', padding: '64px 0', color: PAGE_GRAY }}>
                     <div style={{ fontSize: 40, marginBottom: 12 }}>{activeTab === 'Instructor' ? '👨‍🏫' : activeTab === 'Reviews' ? '⭐' : '💬'}</div>
-                    <p style={{ fontWeight: 600, color: '#475569', marginBottom: 4 }}>{activeTab}</p>
+                    <p style={{ fontWeight: 600, color: PAGE_TEXT, marginBottom: 4 }}>{activeTab}</p>
                     <p style={{ fontSize: '0.82rem', margin: 0 }}>Coming soon</p>
                   </div>
                 )}
               </div>
 
               {/* Bottom trust strip */}
-              <div style={{ flexShrink: 0, borderTop: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, padding: '14px 24px' }}>
+              <div style={{ flexShrink: 0, borderTop: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, padding: '14px 24px' }}>
                 {[
                   { icon: '🛡️', title: '30-Day Money Back Guarantee', sub: 'No Questions Asked' },
                   { icon: '♾️', title: 'Lifetime Access', sub: 'Learn at your own pace' },
                   { icon: '👥', title: 'Trusted by 50,000+ Students', sub: '4.7/5 Average Rating' },
                 ].map((item, i) => (
-                  <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', borderRight: i < 2 ? '1px solid #e2e8f0' : 'none' }}>
+                  <div key={i} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', borderRight: i < 2 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                     <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{item.icon}</span>
                     <div>
-                      <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#0f172a' }}>{item.title}</div>
-                      <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{item.sub}</div>
+                      <div style={{ fontSize: '0.76rem', fontWeight: 700, color: PAGE_TEXT }}>{item.title}</div>
+                      <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>{item.sub}</div>
                     </div>
                   </div>
                 ))}
@@ -830,11 +839,11 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
             </div>
 
             {/* ── RIGHT PANEL ── */}
-            <div style={{ width: 310, minWidth: 310, maxWidth: 310, background: '#fff', borderLeft: '1px solid #e2e8f0', overflowY: 'auto', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }} className="cd-panel-scroll">
+            <div style={{ width: 310, minWidth: 310, maxWidth: 310, background: CARD_BG, borderLeft: `1px solid ${PAGE_BORDER}`, overflowY: 'auto', padding: '20px 20px', display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }} className="cd-panel-scroll">
 
               {/* This Course Includes */}
               <div>
-                <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>This Course Includes</h6>
+                <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${PAGE_BORDER}` }}>This Course Includes</h6>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {([
                     { icon: '▶', text: `${duration || '—'} Hr on-demand video`, color: '#ff7a00' },
@@ -845,7 +854,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                   ] as { icon: string; text: string; color: string }[]).map(({ icon, text, color }, i) => (
                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ width: 22, height: 22, borderRadius: 6, background: `rgba(255,122,0,0.1)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color, flexShrink: 0, fontWeight: 700 }}>{icon}</span>
-                      <span style={{ fontSize: '0.78rem', color: '#334155' }}>{text}</span>
+                      <span style={{ fontSize: '0.78rem', color: PAGE_TEXT }}>{text}</span>
                     </div>
                   ))}
                 </div>
@@ -853,7 +862,7 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
 
               {/* Course Details */}
               <div>
-                <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>Course Details</h6>
+                <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${PAGE_BORDER}` }}>Course Details</h6>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
                   {[
                     { label: 'Level', value: clean(level) || 'All Levels' },
@@ -863,8 +872,8 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                     ...(hasOriginalPrice ? [{ label: 'Price', value: effectivePrice === 0 ? 'Free' : `₹${formatRupee(effectivePrice)}` }] : []),
                   ].map(({ label, value }) => (
                     <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{label}</span>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#0f172a', textAlign: 'right' }}>{value}</span>
+                      <span style={{ fontSize: '0.75rem', color: PAGE_GRAY }}>{label}</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: PAGE_TEXT, textAlign: 'right' }}>{value}</span>
                     </div>
                   ))}
                 </div>
@@ -873,12 +882,12 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
               {/* What you'll learn */}
               {courseFeatures.length > 0 && (
                 <div>
-                  <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>What you'll learn</h6>
+                  <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 14, paddingBottom: 8, borderBottom: `1px solid ${PAGE_BORDER}` }}>What you'll learn</h6>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {courseFeatures.map((feature, i) => (
                       <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                         <FaCheck size={10} color="#16a34a" style={{ flexShrink: 0, marginTop: 3 }} />
-                        <span style={{ fontSize: '0.77rem', color: '#334155', lineHeight: 1.5 }}>{feature}</span>
+                        <span style={{ fontSize: '0.77rem', color: PAGE_TEXT, lineHeight: 1.5 }}>{feature}</span>
                       </div>
                     ))}
                   </div>

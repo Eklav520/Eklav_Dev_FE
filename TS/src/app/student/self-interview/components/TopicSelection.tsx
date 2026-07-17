@@ -23,6 +23,13 @@ interface Limits {
   [topic: string]: TopicLimit
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this re-themes with the portal.
+const PAGE_BG   = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG   = 'var(--dash-card-bg, #ffffff)'
+const PAGE_TEXT = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY = 'var(--dash-gray, #64748b)'
+
 const MAX_ATTEMPTS = 5
 const TRIAL_MAX_ATTEMPTS = 2
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
@@ -53,8 +60,8 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
     borderRadius: '10px',
     border: '1.5px solid #e2e8f0',
     boxShadow: 'none',
-    backgroundColor: '#f8fafc',
-    color: '#0f172a',
+    backgroundColor: PAGE_BG,
+    color: PAGE_TEXT,
     minHeight: '46px',
     padding: '0.6rem 1rem',
     fontWeight: 600,
@@ -174,7 +181,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
       <div className="mt-2" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 
         <Form.Group className="mb-3">
-          <Form.Label className="fw-semibold mb-2">
+          <Form.Label className="fw-semibold mb-2" style={{ color: PAGE_TEXT }}>
             Choose Topic
           </Form.Label>
 
@@ -203,8 +210,8 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                       value={t}
                       disabled={isDisabled}
                       style={{
-                        backgroundColor: isDisabled ? '#f1f5f9' : '#fff',
-                        color: isDisabled ? '#94a3b8' : '#0f172a',
+                        backgroundColor: isDisabled ? '#f1f5f9' : CARD_BG,
+                        color: isDisabled ? '#94a3b8' : PAGE_TEXT,
                       }}
                     >
                       {t} — Used {used}/{maxAllowed}
@@ -221,7 +228,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                 <span style={badgeStyle}>Selected topic: {topic}</span>
               </div>
             )}
-            <Form.Text style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.85rem', color: '#475569' }}>
+            <Form.Text style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.85rem', color: PAGE_GRAY }}>
               {status === 'pending'
                 ? 'Trial users can attempt only 2 interviews per topic.'
                 : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}

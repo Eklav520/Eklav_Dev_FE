@@ -29,6 +29,15 @@ interface Course {
   courseStatus?: string
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes along with
+// the rest of the portal without needing its own theme plumbing.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const ACCENT = '#ff7a00'
 const SORT_OPTIONS = ['Most Popular', 'Newest', 'Highest Rated', 'Oldest']
 const ITEMS_PER_PAGE = 8
@@ -72,9 +81,9 @@ const StarRating = ({ rating, count }: { rating: number; count: number }) => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
       <FaStar size={14} color="#f59e0b" />
-      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>{rating.toFixed(1)}</span>
+      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: PAGE_TEXT }}>{rating.toFixed(1)}</span>
     </div>
-    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>({formatCount(count)} Reviews)</span>
+    <span style={{ fontSize: '0.72rem', color: PAGE_GRAY }}>({formatCount(count)} Reviews)</span>
   </div>
 )
 
@@ -110,7 +119,7 @@ const CourseRowItem = ({ course }: { course: any }) => {
     <>
       <div
         style={{
-          background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
+          background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14,
           padding: '22px 28px', display: 'flex', alignItems: 'center', gap: 24,
           transition: 'box-shadow 0.18s, border-color 0.18s',
         }}
@@ -120,7 +129,7 @@ const CourseRowItem = ({ course }: { course: any }) => {
         }}
         onMouseLeave={e => {
           (e.currentTarget as HTMLElement).style.boxShadow = 'none'
-          ;(e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'
+          ;(e.currentTarget as HTMLElement).style.borderColor = PAGE_BORDER
         }}
       >
         {/* Thumbnail */}
@@ -129,13 +138,13 @@ const CourseRowItem = ({ course }: { course: any }) => {
         {/* Middle: title, description, badges */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
           <h6 style={{
-            fontSize: '0.93rem', fontWeight: 700, color: '#0f172a', margin: 0, lineHeight: 1.35,
+            fontSize: '0.93rem', fontWeight: 700, color: PAGE_TEXT, margin: 0, lineHeight: 1.35,
             overflow: 'hidden', display: '-webkit-box',
             WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as any,
           }}>
             {course.title}
           </h6>
-          <p style={{ fontSize: '0.76rem', color: '#475569', margin: 0, lineHeight: 1.55, maxHeight: '2.4em', overflow: 'hidden' }}>
+          <p style={{ fontSize: '0.76rem', color: PAGE_GRAY, margin: 0, lineHeight: 1.55, maxHeight: '2.4em', overflow: 'hidden' }}>
             {(() => {
               const raw = course.shortDescription || course.description || ''
               const stripped = raw.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim()
@@ -154,7 +163,7 @@ const CourseRowItem = ({ course }: { course: any }) => {
               </span>
             ))}
             {lang && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.68rem', fontWeight: 600, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 20, padding: '2px 10px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.68rem', fontWeight: 600, background: PAGE_BG, color: PAGE_GRAY, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, padding: '2px 10px' }}>
                 <FaGlobe size={9} /> {lang}
               </span>
             )}
@@ -168,10 +177,10 @@ const CourseRowItem = ({ course }: { course: any }) => {
           <div style={{ display: 'grid', gridTemplateColumns: '105px 88px', rowGap: 12 }}>
 
             {/* Row 1 — Rating | Hours */}
-            <div style={{ paddingRight: 16, borderRight: '1px solid #e2e8f0' }}>
+            <div style={{ paddingRight: 16, borderRight: `1px solid ${PAGE_BORDER}` }}>
               {rating > 0
                 ? <StarRating rating={rating} count={reviewCount} />
-                : <div style={{ fontSize: '0.72rem', color: '#94a3b8', fontStyle: 'italic' }}>No ratings</div>
+                : <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, fontStyle: 'italic' }}>No ratings</div>
               }
             </div>
             <div style={{ paddingLeft: 16 }}>
@@ -179,24 +188,24 @@ const CourseRowItem = ({ course }: { course: any }) => {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <FaRegClock size={13} color={ACCENT} />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: PAGE_TEXT }}>
                       {String(course.duration).replace(/[^0-9.]+/g, '') || '—'}
                     </span>
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Hours</div>
+                  <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>Hours</div>
                 </>
               ) : <div />}
             </div>
 
             {/* Row 2 — Lectures | Price */}
-            <div style={{ paddingRight: 16, borderRight: '1px solid #e2e8f0' }}>
+            <div style={{ paddingRight: 16, borderRight: `1px solid ${PAGE_BORDER}` }}>
               {lectures ? (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <FaListUl size={11} color={ACCENT} />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>{lectures}</span>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700, color: PAGE_TEXT }}>{lectures}</span>
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Lectures</div>
+                  <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>Lectures</div>
                 </>
               ) : <div />}
             </div>
@@ -204,7 +213,7 @@ const CourseRowItem = ({ course }: { course: any }) => {
               {price ? (
                 <>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#16a34a' }}>{price}</div>
-                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Price</div>
+                  <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>Price</div>
                 </>
               ) : <div />}
             </div>
@@ -338,7 +347,7 @@ const CoursesList = () => {
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '60px 0' }}>
       <div className="spinner-border" style={{ color: ACCENT }} role="status" />
-      <p style={{ marginTop: 12, color: '#64748b' }}>Loading courses...</p>
+      <p style={{ marginTop: 12, color: PAGE_GRAY }}>Loading courses...</p>
     </div>
   )
 
@@ -346,8 +355,8 @@ const CoursesList = () => {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h4 style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 4px' }}>All Courses</h4>
-        <p style={{ color: '#64748b', fontSize: '0.85rem', margin: 0 }}>Explore our wide range of courses and start learning today!</p>
+        <h4 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 4px' }}>All Courses</h4>
+        <p style={{ color: PAGE_GRAY, fontSize: '0.85rem', margin: 0 }}>Explore our wide range of courses and start learning today!</p>
       </div>
 
       {/* Category tabs + controls */}
@@ -358,15 +367,15 @@ const CoursesList = () => {
               style={{
                 padding: '6px 16px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
                 cursor: 'pointer', transition: 'all 0.15s', border: 'none',
-                background: activeCategory === cat ? ACCENT : '#fff',
-                color: activeCategory === cat ? '#fff' : '#475569',
+                background: activeCategory === cat ? ACCENT : CARD_BG,
+                color: activeCategory === cat ? '#fff' : PAGE_TEXT,
                 boxShadow: activeCategory === cat ? `0 2px 8px ${ACCENT}44` : '0 1px 3px rgba(0,0,0,0.08)',
               }}>
               {cat}
             </button>
           ))}
           {extraCategories.length > 0 && (
-            <button style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: '#fff', color: '#475569', border: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <button style={{ padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', background: CARD_BG, color: PAGE_TEXT, border: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               More ▾
             </button>
           )}
@@ -380,24 +389,24 @@ const CoursesList = () => {
               placeholder="Search courses..."
               value={searchTerm}
               onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1) }}
-              style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.82rem', background: '#fff', color: '#0f172a', outline: 'none', width: 200 }}
+              style={{ paddingLeft: 32, paddingRight: 12, paddingTop: 7, paddingBottom: 7, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: '0.82rem', background: CARD_BG, color: PAGE_TEXT, outline: 'none', width: 200 }}
             />
           </div>
 
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShowSortMenu(s => !s)}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, background: '#fff', color: '#475569', border: '1px solid #e2e8f0', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 600, background: CARD_BG, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <BsSortDown size={14} /> Sort: <strong>{sortBy}</strong> ▾
             </button>
             {showSortMenu && (
               <>
                 <div onClick={() => setShowSortMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
                   {SORT_OPTIONS.map(opt => (
                     <button key={opt}
                       onClick={() => { setSortBy(opt); setShowSortMenu(false); setCurrentPage(1) }}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', fontSize: '0.82rem', border: 'none', background: sortBy === opt ? '#fff7ed' : 'transparent', color: sortBy === opt ? ACCENT : '#475569', fontWeight: sortBy === opt ? 700 : 400, cursor: 'pointer' }}>
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 16px', fontSize: '0.82rem', border: 'none', background: sortBy === opt ? '#fff7ed' : 'transparent', color: sortBy === opt ? ACCENT : PAGE_TEXT, fontWeight: sortBy === opt ? 700 : 400, cursor: 'pointer' }}>
                       {opt}
                     </button>
                   ))}
@@ -416,7 +425,7 @@ const CoursesList = () => {
       </div>
 
       {paginated.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
+        <div style={{ textAlign: 'center', padding: '60px 0', color: PAGE_GRAY }}>
           No courses found{searchTerm ? ` matching "${searchTerm}"` : ''}.
         </div>
       )}
@@ -425,30 +434,30 @@ const CoursesList = () => {
       {totalPages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 28 }}>
           <button onClick={() => goTo(currentPage - 1)} disabled={currentPage === 1}
-            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: currentPage === 1 ? '#cbd5e1' : '#475569', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: currentPage === 1 ? '#cbd5e1' : PAGE_TEXT, cursor: currentPage === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FaAngleLeft size={13} />
           </button>
 
           {pageNumbers.map((p, i) =>
             p === '...'
-              ? <span key={`dots-${i}`} style={{ color: '#94a3b8', fontSize: '0.85rem', padding: '0 4px' }}>...</span>
+              ? <span key={`dots-${i}`} style={{ color: PAGE_GRAY, fontSize: '0.85rem', padding: '0 4px' }}>...</span>
               : (
                 <button key={p} onClick={() => goTo(p as number)}
-                  style={{ width: 34, height: 34, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, border: currentPage === p ? 'none' : '1px solid #e2e8f0', background: currentPage === p ? ACCENT : '#fff', color: currentPage === p ? '#fff' : '#475569', cursor: 'pointer' }}>
+                  style={{ width: 34, height: 34, borderRadius: 8, fontSize: '0.82rem', fontWeight: 600, border: currentPage === p ? 'none' : `1px solid ${PAGE_BORDER}`, background: currentPage === p ? ACCENT : CARD_BG, color: currentPage === p ? '#fff' : PAGE_TEXT, cursor: 'pointer' }}>
                   {p}
                 </button>
               )
           )}
 
           <button onClick={() => goTo(currentPage + 1)} disabled={currentPage === totalPages}
-            style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: currentPage === totalPages ? '#cbd5e1' : '#475569', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: currentPage === totalPages ? '#cbd5e1' : PAGE_TEXT, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <FaAngleRight size={13} />
           </button>
         </div>
       )}
 
       {filtered.length > 0 && (
-        <p style={{ textAlign: 'center', marginTop: 12, fontSize: '0.78rem', color: '#94a3b8' }}>
+        <p style={{ textAlign: 'center', marginTop: 12, fontSize: '0.78rem', color: PAGE_GRAY }}>
           Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length} courses
         </p>
       )}

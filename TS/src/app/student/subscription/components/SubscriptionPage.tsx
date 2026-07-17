@@ -430,6 +430,15 @@ const SubscriptionPage = () => {
     const OG2 = '#ff6020'
     const GRAD = `linear-gradient(135deg, ${OG}, ${OG2})`
 
+    // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+    // (light-mode values as fallback), so this page re-themes along with
+    // the rest of the portal without needing its own theme plumbing.
+    const PAGE_TEXT = 'var(--dash-text, #1a1a1a)'
+    const PAGE_GRAY = 'var(--dash-gray, #6f6f6f)'
+    const PAGE_CARD_BG = 'var(--dash-card-bg, #ffffff)'
+    const PAGE_BORDER = 'var(--dash-border, #ebebeb)'
+    const PAGE_BG = 'var(--dash-page-bg, #f9f9f9)'
+
     return (
         <>
             <PageMetaData title="Subscription" />
@@ -441,8 +450,8 @@ const SubscriptionPage = () => {
 
         /* Orange Glassmorphism Effects */
         .glass-card {
-          background: #ffffff;
-          border: 1px solid #ebebeb;
+          background: ${PAGE_CARD_BG};
+          border: 1px solid ${PAGE_BORDER};
           border-radius: 20px;
           box-shadow: 0 4px 24px rgba(0,0,0,0.06);
           transition: all 0.3s ease;
@@ -458,7 +467,7 @@ const SubscriptionPage = () => {
         }
 
         .glass-card.popular {
-          background: #ffffff;
+          background: ${PAGE_CARD_BG};
           border: 2px solid ${THEME.primary};
           box-shadow: 0 8px 32px rgba(255,107,43,0.18);
         }
@@ -512,7 +521,7 @@ const SubscriptionPage = () => {
         .plan-title {
           font-size: clamp(1.4rem, 4vw, 1.75rem);
           font-weight: 800;
-          color: #1a1a1a;
+          color: ${PAGE_TEXT};
           margin-bottom: 6px;
           letter-spacing: -0.3px;
         }
@@ -844,11 +853,11 @@ const SubscriptionPage = () => {
             font-weight: 800;
             margin-bottom: 0.5rem;
             font-size: clamp(1.8rem, 5vw, 2.5rem);
-            color: #1a1a1a;
+            color: ${PAGE_TEXT};
         }
 
         .features-header-text p {
-            color: #777;
+            color: ${PAGE_GRAY};
             font-size: clamp(0.95rem, 3vw, 1.1rem);
         }
 
@@ -954,10 +963,10 @@ const SubscriptionPage = () => {
 
                 {/* ── Title ── */}
                 <div style={{ textAlign: 'center', marginBottom: 12 }}>
-                    <h2 style={{ fontWeight: 800, color: '#1a1a1a', fontSize: '1.6rem', marginBottom: 2 }}>
+                    <h2 style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.6rem', marginBottom: 2 }}>
                         ✦ Choose Your Plan ✦
                     </h2>
-                    <p style={{ color: '#888', fontSize: '0.85rem', margin: 0 }}>
+                    <p style={{ color: PAGE_GRAY, fontSize: '0.85rem', margin: 0 }}>
                         Unlock all features and accelerate your learning journey with Eklav.
                     </p>
                 </div>
@@ -1079,7 +1088,7 @@ const SubscriptionPage = () => {
 
                         {/* Coupon input */}
                         <div style={{
-                            background: 'white', borderRadius: 14, border: '1px solid #eee',
+                            background: PAGE_CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`,
                             boxShadow: '0 2px 10px rgba(0,0,0,0.05)', padding: '18px 20px',
                             display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
                         }}>
@@ -1088,8 +1097,8 @@ const SubscriptionPage = () => {
                                     <BsTagFill style={{ color: OG, fontSize: 18 }} />
                                 </div>
                                 <div>
-                                    <div style={{ fontWeight: 700, color: '#1a1a1a', fontSize: '0.95rem' }}>Have a coupon code?</div>
-                                    <div style={{ color: '#888', fontSize: '0.78rem' }}>Enter your code to get the best discount</div>
+                                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.95rem' }}>Have a coupon code?</div>
+                                    <div style={{ color: PAGE_GRAY, fontSize: '0.78rem' }}>Enter your code to get the best discount</div>
                                 </div>
                             </div>
 
@@ -1099,13 +1108,13 @@ const SubscriptionPage = () => {
                                     <Button variant="link" className="text-danger p-0" onClick={removeCoupon}><BsXCircleFill size={18} /></Button>
                                 </div>
                             ) : (
-                                <div style={{ flex: 1, display: 'flex', gap: 8, background: '#f9f9f9', borderRadius: 50, padding: '4px 4px 4px 16px', border: '1px solid #eee', minWidth: 220 }}>
+                                <div style={{ flex: 1, display: 'flex', gap: 8, background: PAGE_BG, borderRadius: 50, padding: '4px 4px 4px 16px', border: `1px solid ${PAGE_BORDER}`, minWidth: 220 }}>
                                     <Form.Control type="text" placeholder="Enter coupon code"
                                         value={couponCode}
                                         onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); if (couponResult) setCouponResult(null); }}
                                         onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
                                         disabled={couponLoading}
-                                        style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', outline: 'none', boxShadow: 'none', padding: 0, color: '#1a1a1a', fontWeight: 700, letterSpacing: 1 }}
+                                        style={{ border: 'none', background: 'transparent', fontSize: '0.9rem', outline: 'none', boxShadow: 'none', padding: 0, color: PAGE_TEXT, fontWeight: 700, letterSpacing: 1 }}
                                     />
                                     <button onClick={() => validateCoupon()} disabled={!couponCode.trim() || couponLoading}
                                         style={{ background: GRAD, border: 'none', borderRadius: 50, padding: '10px 24px', color: 'white', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -1122,7 +1131,7 @@ const SubscriptionPage = () => {
                         )}
 
                         {/* Trust badges */}
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginTop: 12, background: 'white', borderRadius: 12, border: '1px solid #eee', overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 0, marginTop: 12, background: PAGE_CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, overflow: 'hidden' }}>
                             {[
                                 { icon: <BsTagFill style={{ color: OG, fontSize: 18 }} />, title: 'Best Prices Guaranteed', sub: 'Get the lowest price on all plans' },
                                 { icon: <BsShieldCheck style={{ color: OG, fontSize: 18 }} />, title: 'Secure & Safe Payment', sub: '100% secure transactions' },
@@ -1130,14 +1139,14 @@ const SubscriptionPage = () => {
                             ].map((item, i, arr) => (
                                 <div key={i} style={{
                                     flex: 1, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px',
-                                    borderRight: i < arr.length - 1 ? '1px solid #eee' : 'none',
+                                    borderRight: i < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none',
                                 }}>
                                     <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#fff4ec', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         {item.icon}
                                     </div>
                                     <div>
-                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#1a1a1a' }}>{item.title}</div>
-                                        <div style={{ fontSize: '0.72rem', color: '#888' }}>{item.sub}</div>
+                                        <div style={{ fontWeight: 700, fontSize: '0.82rem', color: PAGE_TEXT }}>{item.title}</div>
+                                        <div style={{ fontSize: '0.72rem', color: PAGE_GRAY }}>{item.sub}</div>
                                     </div>
                                 </div>
                             ))}
@@ -1162,9 +1171,9 @@ const SubscriptionPage = () => {
 
                         return (
                             <div key={plan.id} style={{
-                                background: 'white',
+                                background: PAGE_CARD_BG,
                                 borderRadius: 18,
-                                border: plan.popular ? `2px solid ${OG}` : '1px solid #eee',
+                                border: plan.popular ? `2px solid ${OG}` : `1px solid ${PAGE_BORDER}`,
                                 padding: '24px 20px 20px',
                                 position: 'relative',
                                 boxShadow: plan.popular
@@ -1206,7 +1215,7 @@ const SubscriptionPage = () => {
 
                                 {/* Plan name + subtitle */}
                                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                                    <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: '#1a1a1a', margin: '0 0 3px' }}>
+                                    <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: PAGE_TEXT, margin: '0 0 3px' }}>
                                         {plan.label}
                                     </h3>
                                     {plan.duration && (
@@ -1248,7 +1257,7 @@ const SubscriptionPage = () => {
                                 {/* Features */}
                                 <div style={{ flex: 1, marginBottom: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 6px' }}>
                                     {plan.features?.map((feature, idx) => (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', color: '#444', fontSize: '0.78rem' }}>
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>
                                             <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 11 }} />
                                             <span>{feature}</span>
                                         </div>

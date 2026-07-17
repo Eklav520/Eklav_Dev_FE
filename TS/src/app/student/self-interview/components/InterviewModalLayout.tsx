@@ -17,6 +17,15 @@ type InterviewMeta = {
   attemptNumber?: number
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes along with
+// the rest of the portal without needing its own theme plumbing.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const InterviewModalLayout = () => {
   const { user } = useAuthContext()
   const token = user?.token
@@ -86,7 +95,7 @@ const InterviewModalLayout = () => {
   const totalAvailable = totalTopicRemaining + resumeRemaining
 
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh', padding: '28px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '28px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'space-between', gap: 0, marginBottom: 28, background: '#fff8f2', borderRadius: 18, overflow: 'hidden', boxShadow: '0 2px 12px rgba(255,122,0,0.07)' }}>
@@ -145,64 +154,64 @@ const InterviewModalLayout = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 36 }}>
 
         {/* Topic-Based Card */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#ff7a00', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <FaLaptopCode color="#fff" size={16} />
                 </div>
-                <h5 style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', margin: 0 }}>Topic-Based Interview</h5>
+                <h5 style={{ fontWeight: 700, fontSize: 15, color: PAGE_TEXT, margin: 0 }}>Topic-Based Interview</h5>
               </div>
               <span style={{ background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>Tech Stack</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 13, margin: '10px 0 0' }}>Practice interviews on React, JavaScript, Node.js and more.</p>
+            <p style={{ color: PAGE_GRAY, fontSize: 13, margin: '10px 0 0' }}>Practice interviews on React, JavaScript, Node.js and more.</p>
           </div>
           <div style={{ padding: '16px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
             <TopicSelection onStart={handleStart} limits={limits?.limits || {}} />
           </div>
-          <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 20px', display: 'flex', gap: 0 }}>
+          <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 20px', display: 'flex', gap: 0 }}>
             {[
               { icon: <FaBrain size={13} />, label: 'AI Interviewer', sub: 'Real-time conversation' },
               { icon: <FaChartLine size={13} />, label: 'Smart Feedback', sub: 'Detailed AI insights' },
               { icon: <FaTrophy size={13} />, label: 'Performance Score', sub: 'Track your progress' },
             ].map((f, i) => (
-              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 4px', borderRight: i < 2 ? '1px solid #f1f5f9' : 'none' }}>
+              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 4px', borderRight: i < 2 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                 <div style={{ color: '#ff7a00', marginBottom: 3 }}>{f.icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{f.label}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>{f.sub}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: PAGE_TEXT }}>{f.label}</div>
+                <div style={{ fontSize: 10, color: PAGE_GRAY }}>{f.sub}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Resume-Based Card */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <FaFileAlt color="#fff" size={16} />
                 </div>
-                <h5 style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', margin: 0 }}>Resume-Based Interview</h5>
+                <h5 style={{ fontWeight: 700, fontSize: 15, color: PAGE_TEXT, margin: 0 }}>Resume-Based Interview</h5>
               </div>
               <span style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700 }}>Core Branch</span>
             </div>
-            <p style={{ color: '#64748b', fontSize: 13, margin: '10px 0 0' }}>Upload your resume and get personalized interview questions.</p>
+            <p style={{ color: PAGE_GRAY, fontSize: 13, margin: '10px 0 0' }}>Upload your resume and get personalized interview questions.</p>
           </div>
           <div style={{ padding: '16px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
             <ResumeInterviewSelection onStart={handleStart} resumeLimits={resumeLimits} />
           </div>
-          <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 20px', display: 'flex', gap: 0 }}>
+          <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 20px', display: 'flex', gap: 0 }}>
             {[
               { icon: <FaUserTie size={13} />, label: 'Personalized Questions', sub: 'Tailored to your resume' },
               { icon: <FaBrain size={13} />, label: 'AI Evaluation', sub: 'In-depth analysis' },
               { icon: <FaRocket size={13} />, label: 'Improve & Grow', sub: 'Strengthen your skills' },
             ].map((f, i) => (
-              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 4px', borderRight: i < 2 ? '1px solid #f1f5f9' : 'none' }}>
+              <div key={i} style={{ flex: 1, textAlign: 'center', padding: '0 4px', borderRight: i < 2 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                 <div style={{ color: '#3b82f6', marginBottom: 3 }}>{f.icon}</div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{f.label}</div>
-                <div style={{ fontSize: 10, color: '#94a3b8' }}>{f.sub}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: PAGE_TEXT }}>{f.label}</div>
+                <div style={{ fontSize: 10, color: PAGE_GRAY }}>{f.sub}</div>
               </div>
             ))}
           </div>
@@ -210,10 +219,10 @@ const InterviewModalLayout = () => {
       </div>
 
       {/* ── How It Works ──────────────────────────────────── */}
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '28px 32px 32px', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, padding: '28px 32px 32px', marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h3 style={{ fontWeight: 800, color: '#0f172a', marginBottom: 6 }}>How It Works</h3>
-          <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>A simple 3-step process to simulate real interview experience and receive AI-powered feedback.</p>
+          <h3 style={{ fontWeight: 800, color: PAGE_TEXT, marginBottom: 6 }}>How It Works</h3>
+          <p style={{ color: PAGE_GRAY, fontSize: 14, margin: 0 }}>A simple 3-step process to simulate real interview experience and receive AI-powered feedback.</p>
         </div>
 
         {/* Steps row */}
@@ -266,8 +275,8 @@ const InterviewModalLayout = () => {
 
                 {/* Title + description */}
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 6 }}>{step.title}</div>
-                  <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6 }}>{step.desc}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT, marginBottom: 6 }}>{step.title}</div>
+                  <div style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.6 }}>{step.desc}</div>
                 </div>
               </div>
 
@@ -290,13 +299,13 @@ const InterviewModalLayout = () => {
           { icon: <FaLaptopCode size={14} color="#0891b2" />, bg: '#ecfeff', label: 'Industry-Relevant Questions', sub: 'Stay prepared for top tech interviews' },
           { icon: <FaRocket size={14} color="#ea580c" />, bg: '#fff7ed', label: 'Continuous Improvement', sub: 'Learn, adapt, and succeed' },
         ].map((f, i) => (
-          <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div key={i} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: f.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {f.icon}
             </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{f.label}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8' }}>{f.sub}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT }}>{f.label}</div>
+              <div style={{ fontSize: 11, color: PAGE_GRAY }}>{f.sub}</div>
             </div>
           </div>
         ))}

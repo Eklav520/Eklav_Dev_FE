@@ -15,6 +15,15 @@ const ORANGE  = "#ff6b00"
 const BLUE    = "#3b82f6"
 const PURPLE  = "#8b5cf6"
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes along with
+// the rest of the portal without needing its own theme plumbing.
+const PAGE_BG     = "var(--dash-page-bg, #f8fafc)"
+const CARD_BG     = "var(--dash-card-bg, #ffffff)"
+const PAGE_BORDER = "var(--dash-border, #f1f5f9)"
+const PAGE_TEXT   = "var(--dash-text, #0f172a)"
+const PAGE_GRAY   = "var(--dash-gray, #64748b)"
+
 const READING_TOPICS = [
   "Technology", "Science", "History", "Culture",
   "Business", "Environment", "Sports", "Health",
@@ -96,19 +105,19 @@ const EnglishPractice = () => {
   const goBack = () => setView("overview")
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#f8fafc", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: PAGE_BG, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
       <PageMetaData title="English Practice" />
 
       {/* ── Left Sidebar ── */}
-      <div style={{ width: 260, background: "#fff", borderRight: "1px solid #f1f5f9", display: "flex", flexDirection: "column", padding: "24px 14px", gap: 12, flexShrink: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 8, paddingLeft: 6 }}>English Practice</div>
+      <div style={{ width: 260, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, display: "flex", flexDirection: "column", padding: "24px 14px", gap: 12, flexShrink: 0 }}>
+        <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT, marginBottom: 8, paddingLeft: 6 }}>English Practice</div>
         {NAV_CARDS.map(({ id, label, color, bg, Icon: NavIcon, desc }) => (
           <div
             key={id}
             onClick={() => goTo(id)}
             style={{
-              background: view === id ? color + "10" : "#fff",
-              border: `1.5px solid ${view === id ? color + "55" : "#f1f5f9"}`,
+              background: view === id ? color + "10" : CARD_BG,
+              border: `1.5px solid ${view === id ? color + "55" : PAGE_BORDER}`,
               borderRadius: 14, padding: "14px 14px 10px", cursor: "pointer",
               transition: "all 0.15s",
               boxShadow: view === id ? `0 4px 16px ${color}20` : "0 1px 4px rgba(0,0,0,0.04)",
@@ -118,9 +127,9 @@ const EnglishPractice = () => {
               <div style={{ width: 38, height: 38, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <NavIcon style={{ color, fontSize: 18 }} />
               </div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: view === id ? color : "#0f172a" }}>{label}</div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: view === id ? color : PAGE_TEXT }}>{label}</div>
             </div>
-            <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.5, marginBottom: 10 }}>{desc}</div>
+            <div style={{ fontSize: 11, color: PAGE_GRAY, lineHeight: 1.5, marginBottom: 10 }}>{desc}</div>
             <button
               onClick={e => { e.stopPropagation(); goTo(id) }}
               style={{ width: 30, height: 30, borderRadius: "50%", border: `1.5px solid ${color}40`, background: bg, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
@@ -170,8 +179,8 @@ const EnglishPractice = () => {
             {/* Practice Cards */}
             <div style={{ padding: "28px 28px 0", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
               {PRACTICE_CARDS.map(({ id, label, color, bg, Icon: PIcon, description, features, btnLabel, hasTopic, hasCategory }: any) => (
-                <div key={id} style={{ background: "#fff", borderRadius: 18, border: "1px solid #f1f5f9", boxShadow: "0 2px 12px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-                  {/* Card top icon area */}
+                <div key={id} style={{ background: CARD_BG, borderRadius: 18, border: `1px solid ${PAGE_BORDER}`, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                  {/* Card top icon area — fixed tint, doesn't change with theme */}
                   <div style={{ background: bg, padding: "24px 24px 16px", display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{ width: 56, height: 56, borderRadius: 16, background: "#fff", boxShadow: `0 4px 16px ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <PIcon style={{ color, fontSize: 26 }} />
@@ -187,14 +196,14 @@ const EnglishPractice = () => {
                     {features.map((f: string) => (
                       <div key={f} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                         <FaCheckCircle style={{ color, fontSize: 13, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: "#374151" }}>{f}</span>
+                        <span style={{ fontSize: 13, color: PAGE_TEXT }}>{f}</span>
                       </div>
                     ))}
 
                     {/* Listening — Choose a Category */}
                     {hasCategory && (
                       <div style={{ marginTop: 14 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Choose a Category</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_GRAY, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Choose a Category</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                           {LISTENING_CATEGORIES.map(cat => (
                             <button
@@ -202,9 +211,9 @@ const EnglishPractice = () => {
                               onClick={() => setActiveCategory(cat)}
                               style={{
                                 padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                                background: activeCategory === cat ? color : "#f8fafc",
-                                color: activeCategory === cat ? "#fff" : "#64748b",
-                                border: `1px solid ${activeCategory === cat ? color : "#e2e8f0"}`,
+                                background: activeCategory === cat ? color : PAGE_BG,
+                                color: activeCategory === cat ? "#fff" : PAGE_GRAY,
+                                border: `1px solid ${activeCategory === cat ? color : PAGE_BORDER}`,
                                 transition: "all 0.15s",
                               }}
                             >
@@ -218,7 +227,7 @@ const EnglishPractice = () => {
                     {/* Reading — Choose a Topic */}
                     {hasTopic && (
                       <div style={{ marginTop: 14 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Choose a Topic</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_GRAY, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.5px" }}>Choose a Topic</div>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                           {READING_TOPICS.map(topic => (
                             <button
@@ -226,9 +235,9 @@ const EnglishPractice = () => {
                               onClick={() => setActiveTopic(topic)}
                               style={{
                                 padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer",
-                                background: activeTopic === topic ? color : "#f8fafc",
-                                color: activeTopic === topic ? "#fff" : "#64748b",
-                                border: `1px solid ${activeTopic === topic ? color : "#e2e8f0"}`,
+                                background: activeTopic === topic ? color : PAGE_BG,
+                                color: activeTopic === topic ? "#fff" : PAGE_GRAY,
+                                border: `1px solid ${activeTopic === topic ? color : PAGE_BORDER}`,
                                 transition: "all 0.15s",
                               }}
                             >
@@ -271,8 +280,8 @@ const EnglishPractice = () => {
                 const lastScore = stats?.summary?.latestScore
                 const pct       = Math.round((attempts / limit) * 100)
                 return (
-                  <div key={label} style={{ background: "#fff", borderRadius: 16, border: "1px solid #f1f5f9", boxShadow: "0 2px 10px rgba(0,0,0,0.04)", overflow: "hidden" }}>
-                    {/* Card header */}
+                  <div key={label} style={{ background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", overflow: "hidden" }}>
+                    {/* Card header — fixed tint, doesn't change with theme */}
                     <div style={{ background: bg, padding: "14px 20px", display: "flex", alignItems: "center", gap: 10, borderBottom: "1px solid " + color + "20" }}>
                       <div style={{ width: 36, height: 36, borderRadius: 10, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 2px 8px ${color}25` }}>
                         <SIcon style={{ color, fontSize: 17 }} />
@@ -284,27 +293,27 @@ const EnglishPractice = () => {
                     {/* Stats grid */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
                       {/* Attempts */}
-                      <div style={{ padding: "16px 18px", borderRight: "1px solid #f1f5f9" }}>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Attempts</div>
-                        <div style={{ fontSize: 24, fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>
-                          {attempts}<span style={{ fontSize: 14, color: "#94a3b8", fontWeight: 600 }}>/{limit}</span>
+                      <div style={{ padding: "16px 18px", borderRight: `1px solid ${PAGE_BORDER}` }}>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Attempts</div>
+                        <div style={{ fontSize: 24, fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>
+                          {attempts}<span style={{ fontSize: 14, color: PAGE_GRAY, fontWeight: 600 }}>/{limit}</span>
                         </div>
-                        <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: "#f1f5f9", overflow: "hidden" }}>
+                        <div style={{ marginTop: 8, height: 4, borderRadius: 4, background: PAGE_BG, overflow: "hidden" }}>
                           <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 4, transition: "width 0.5s" }} />
                         </div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 4 }}>{limit - attempts} remaining</div>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, marginTop: 4 }}>{limit - attempts} remaining</div>
                       </div>
 
                       {/* Best Score */}
-                      <div style={{ padding: "16px 18px", borderRight: "1px solid #f1f5f9" }}>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Best Score</div>
+                      <div style={{ padding: "16px 18px", borderRight: `1px solid ${PAGE_BORDER}` }}>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Best Score</div>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                          <div style={{ fontSize: 24, fontWeight: 900, color: bestScore !== null && bestScore !== undefined ? color : "#94a3b8", lineHeight: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 900, color: bestScore !== null && bestScore !== undefined ? color : PAGE_GRAY, lineHeight: 1 }}>
                             {bestScore !== null && bestScore !== undefined ? bestScore : "--"}
                           </div>
-                          {bestScore !== null && bestScore !== undefined && <span style={{ fontSize: 13, color: "#94a3b8" }}>%</span>}
+                          {bestScore !== null && bestScore !== undefined && <span style={{ fontSize: 13, color: PAGE_GRAY }}>%</span>}
                         </div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 8 }}>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, marginTop: 8 }}>
                           {bestScore !== null && bestScore !== undefined
                             ? bestScore >= 80 ? "Excellent" : bestScore >= 60 ? "Good" : "Keep going"
                             : "No attempts yet"}
@@ -313,14 +322,14 @@ const EnglishPractice = () => {
 
                       {/* Last Score */}
                       <div style={{ padding: "16px 18px" }}>
-                        <div style={{ fontSize: 10, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Last Score</div>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 4 }}>Last Score</div>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 2 }}>
-                          <div style={{ fontSize: 24, fontWeight: 900, color: lastScore !== null && lastScore !== undefined ? "#0f172a" : "#94a3b8", lineHeight: 1 }}>
+                          <div style={{ fontSize: 24, fontWeight: 900, color: lastScore !== null && lastScore !== undefined ? PAGE_TEXT : PAGE_GRAY, lineHeight: 1 }}>
                             {lastScore !== null && lastScore !== undefined ? lastScore : "--"}
                           </div>
-                          {lastScore !== null && lastScore !== undefined && <span style={{ fontSize: 13, color: "#94a3b8" }}>%</span>}
+                          {lastScore !== null && lastScore !== undefined && <span style={{ fontSize: 13, color: PAGE_GRAY }}>%</span>}
                         </div>
-                        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 8 }}>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, marginTop: 8 }}>
                           {lastScore !== null && lastScore !== undefined ? "Most recent" : "No attempts yet"}
                         </div>
                       </div>
@@ -334,19 +343,19 @@ const EnglishPractice = () => {
         ) : (
           /* ── Practice Component View ── */
           <div>
-            <div style={{ background: "#fff", borderBottom: "1px solid #f1f5f9", padding: "16px 28px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: "16px 28px", display: "flex", alignItems: "center", gap: 14 }}>
               <button
                 onClick={goBack}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+                style={{ display: "flex", alignItems: "center", gap: 6, background: PAGE_BG, border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 14px", fontSize: 13, fontWeight: 600, color: PAGE_TEXT, cursor: "pointer" }}
               >
                 <FaArrowLeft style={{ fontSize: 11 }} /> Back
               </button>
               <div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: PAGE_TEXT }}>
                   {view === "listening" ? "Listening" : view === "reading" ? "Reading" : "Vocabulary"} Practice
                 </div>
                 {view === "reading" && (
-                  <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>Topic: <strong style={{ color: BLUE }}>{activeTopic}</strong></div>
+                  <div style={{ fontSize: 12, color: PAGE_GRAY, marginTop: 2 }}>Topic: <strong style={{ color: BLUE }}>{activeTopic}</strong></div>
                 )}
               </div>
             </div>

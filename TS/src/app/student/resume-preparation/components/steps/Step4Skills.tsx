@@ -4,7 +4,12 @@ import { Plus, X, ArrowRight } from 'lucide-react'
 
 const ORANGE = '#f97316'
 const BORDER = '#e5e7eb'
-const GRAY = '#6b7280'
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode.
+// Input fields stay intentionally fixed white/light (always legible);
+// only heading/label text sitting directly on the theme-following card needs to adapt.
+const GRAY = 'var(--dash-gray, #6b7280)'
+const TEXT = 'var(--dash-text, #111827)'
+const CARD_BG = 'var(--dash-card-bg, #ffffff)'
 
 const Step4Skills: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => {
   const items = data.skills
@@ -19,7 +24,7 @@ const Step4Skills: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
   return (
     <div>
       <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>Skills</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, color: TEXT, margin: 0 }}>Skills</h2>
         <p style={{ fontSize: 13, color: GRAY, margin: '4px 0 0' }}>Add your technical and soft skills</p>
       </div>
 

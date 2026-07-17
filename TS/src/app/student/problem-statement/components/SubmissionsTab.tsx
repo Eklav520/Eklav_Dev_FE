@@ -51,6 +51,15 @@ const fmtDate = (iso: string) => {
 
 const known = (v: string) => v && v !== 'Not calculated' && v !== 'N/A'
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback). The CodeModal below is an intentional
+// fixed dark code viewer and does NOT use these.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const pct = (n: number, total: number) => total > 0 ? `${((n / total) * 100).toFixed(2)}%` : '0.00%'
 
 /* ── Icons ── */
@@ -71,10 +80,10 @@ const IconCode2     = () => <svg width="22" height="22" viewBox="0 0 24 24" fill
 const FilterSelect = ({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) => (
   <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
     <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ appearance: 'none', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 32px 7px 12px', fontSize: '0.8rem', color: '#374151', fontWeight: 500, cursor: 'pointer', outline: 'none', minWidth: 130 }}>
+      style={{ appearance: 'none', background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 32px 7px 12px', fontSize: '0.8rem', color: PAGE_TEXT, fontWeight: 500, cursor: 'pointer', outline: 'none', minWidth: 130 }}>
       {options.map(o => <option key={o}>{o}</option>)}
     </select>
-    <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: '#64748b' }}><IconChevDown /></span>
+    <span style={{ position: 'absolute', right: 10, pointerEvents: 'none', color: PAGE_GRAY }}><IconChevDown /></span>
   </div>
 )
 
@@ -196,54 +205,54 @@ const SubmissionsTab = () => {
       {/* ── Stat Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 12, marginBottom: 20 }}>
         {statCards.map(c => (
-          <div key={c.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div key={c.label} style={{ background: CARD_BG, borderRadius: 12, padding: '14px 16px', border: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 44, height: 44, borderRadius: 10, background: c.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.iconColor, flexShrink: 0 }}>{c.icon}</div>
             <div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>{c.value}</div>
-              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginTop: 2 }}>{c.label}</div>
-              <div style={{ fontSize: '0.63rem', color: '#94a3b8', marginTop: 1 }}>{c.sub}</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: PAGE_TEXT, lineHeight: 1.1 }}>{c.value}</div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: PAGE_TEXT, marginTop: 2 }}>{c.label}</div>
+              <div style={{ fontSize: '0.63rem', color: PAGE_GRAY, marginTop: 1 }}>{c.sub}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* ── Table Card ── */}
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, overflow: 'hidden' }}>
 
         {/* Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${PAGE_BORDER}`, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}><IconSearch /></span>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }}><IconSearch /></span>
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }} placeholder="Search by problem title..."
-              style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: '0.8rem', color: '#374151', outline: 'none', background: '#fff', width: 200 }} />
+              style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 12px 7px 32px', fontSize: '0.8rem', color: PAGE_TEXT, outline: 'none', background: CARD_BG, width: 200 }} />
           </div>
 
           <FilterSelect value={filterLang}   onChange={v => { setFilterLang(v);   setPage(1) }} options={langOptions} />
           <FilterSelect value={filterStatus} onChange={v => { setFilterStatus(v); setPage(1) }} options={statusOptions} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #e2e8f0', borderRadius: 8, padding: '7px 14px', fontSize: '0.8rem', color: '#94a3b8', cursor: 'pointer', background: '#fff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 14px', fontSize: '0.8rem', color: PAGE_GRAY, cursor: 'pointer', background: CARD_BG }}>
             <IconCalendar /><span>Select Date Range</span>
           </div>
 
           <div style={{ flex: 1 }} />
 
-          <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>
+          <button onClick={resetFilters} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_GRAY, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>
             <IconReset /> Reset Filters
           </button>
         </div>
 
         {/* Table */}
         {filtered.length === 0 ? (
-          <div style={{ padding: 48, textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+          <div style={{ padding: 48, textAlign: 'center', color: PAGE_GRAY, fontSize: '0.85rem' }}>
             {data.length === 0 ? '🚀 No submissions yet — start solving!' : 'No submissions match your filters.'}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <tr style={{ borderBottom: `1px solid ${PAGE_BORDER}` }}>
                   {['Problem', 'Language', 'Status', 'Pass Rate', 'Time Complexity', 'Space', 'Submitted On', 'Action'].map(h => (
-                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontWeight: 600, color: '#374151', fontSize: '0.78rem', whiteSpace: 'nowrap', background: '#fff' }}>{h}</th>
+                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontWeight: 600, color: PAGE_TEXT, fontSize: '0.78rem', whiteSpace: 'nowrap', background: CARD_BG }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -255,26 +264,26 @@ const SubmissionsTab = () => {
                   const starCount = stars(s.summary.passPercentage)
 
                   return (
-                    <tr key={s._id} style={{ borderBottom: '1px solid #f8fafc' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                    <tr key={s._id} style={{ borderBottom: `1px solid ${PAGE_BORDER}` }}
+                      onMouseEnter={e => (e.currentTarget.style.background = PAGE_BG)}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
 
                       {/* Problem */}
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 600 }}>#{s.problemId}</span>
-                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{s.problemTitle}</span>
+                          <span style={{ fontSize: '0.65rem', color: PAGE_GRAY, fontWeight: 600 }}>#{s.problemId}</span>
+                          <span style={{ fontWeight: 600, color: PAGE_TEXT }}>{s.problemTitle}</span>
                           {s.isBestSubmission && (
                             <span style={{ fontSize: '0.58rem', fontWeight: 700, color: '#facc15', background: 'rgba(250,204,21,0.1)', border: '1px solid rgba(250,204,21,0.3)', borderRadius: 4, padding: '1px 5px' }}>BEST</span>
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                           {tags.map(t => (
-                            <span key={t} style={{ fontSize: '0.6rem', background: '#f1f5f9', color: '#64748b', borderRadius: 4, padding: '1px 7px', fontWeight: 500 }}>{t}</span>
+                            <span key={t} style={{ fontSize: '0.6rem', background: PAGE_BG, color: PAGE_GRAY, borderRadius: 4, padding: '1px 7px', fontWeight: 500 }}>{t}</span>
                           ))}
                           <div style={{ display: 'flex', gap: 2, marginLeft: 4 }}>
                             {Array.from({ length: 5 }).map((_, i) =>
-                              i < starCount ? <FaStar key={i} size={9} color="#facc15" /> : <FaRegStar key={i} size={9} color="#cbd5e1" />
+                              i < starCount ? <FaStar key={i} size={9} color="#facc15" /> : <FaRegStar key={i} size={9} color={PAGE_BORDER} />
                             )}
                           </div>
                         </div>
@@ -284,7 +293,7 @@ const SubmissionsTab = () => {
                       <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           <span style={{ width: 10, height: 10, borderRadius: '50%', background: lColor, display: 'inline-block', flexShrink: 0 }} />
-                          <span style={{ color: '#374151', fontWeight: 500, textTransform: 'capitalize' }}>{s.language}</span>
+                          <span style={{ color: PAGE_TEXT, fontWeight: 500, textTransform: 'capitalize' }}>{s.language}</span>
                         </div>
                       </td>
 
@@ -299,21 +308,21 @@ const SubmissionsTab = () => {
                       {/* Pass Rate */}
                       <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         <div style={{ fontSize: '0.78rem', fontWeight: 600, color: v.color }}>{s.summary.passPercentage}%</div>
-                        <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 2 }}>{s.summary.passed}/{s.summary.totalTestCases} tests</div>
+                        <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 2 }}>{s.summary.passed}/{s.summary.totalTestCases} tests</div>
                       </td>
 
                       {/* Time Complexity */}
-                      <td style={{ padding: '12px 16px', color: known(s.timeComplexity) ? '#374151' : '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                      <td style={{ padding: '12px 16px', color: known(s.timeComplexity) ? PAGE_TEXT : PAGE_GRAY, whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                         {known(s.timeComplexity) ? s.timeComplexity : '—'}
                       </td>
 
                       {/* Space */}
-                      <td style={{ padding: '12px 16px', color: known(s.spaceComplexity) ? '#374151' : '#cbd5e1', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                      <td style={{ padding: '12px 16px', color: known(s.spaceComplexity) ? PAGE_TEXT : PAGE_GRAY, whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                         {known(s.spaceComplexity) ? s.spaceComplexity : '—'}
                       </td>
 
                       {/* Submitted On */}
-                      <td style={{ padding: '12px 16px', color: '#64748b', whiteSpace: 'nowrap', fontSize: '0.73rem' }}>
+                      <td style={{ padding: '12px 16px', color: PAGE_GRAY, whiteSpace: 'nowrap', fontSize: '0.73rem' }}>
                         <div>Attempt #{s.attemptNumber}</div>
                         <div style={{ marginTop: 2 }}>{fmtDate(s.createdAt)}</div>
                       </td>
@@ -325,7 +334,7 @@ const SubmissionsTab = () => {
                             style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.73rem', fontWeight: 600, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                             <FiCode size={12} /> View Code
                           </button>
-                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2 }}><IconDots /></button>
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: PAGE_GRAY, padding: 2 }}><IconDots /></button>
                         </div>
                       </td>
                     </tr>
@@ -337,27 +346,27 @@ const SubmissionsTab = () => {
         )}
 
         {/* Pagination */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid #f1f5f9' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderTop: `1px solid ${PAGE_BORDER}` }}>
+          <span style={{ fontSize: '0.75rem', color: PAGE_GRAY }}>
             Showing {filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} submissions
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#cbd5e1' : '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ width: 32, height: 32, borderRadius: 7, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconChevLeft />
             </button>
             {pageRange().map((p, i) =>
               p === '...' ? (
-                <span key={`e${i}`} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.8rem' }}>···</span>
+                <span key={`e${i}`} style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_GRAY, fontSize: '0.8rem' }}>···</span>
               ) : (
                 <button key={p} onClick={() => setPage(p as number)}
-                  style={{ width: 32, height: 32, borderRadius: 7, border: page === p ? 'none' : '1px solid #e2e8f0', background: page === p ? '#ff7a00' : '#fff', color: page === p ? '#fff' : '#374151', fontWeight: page === p ? 700 : 400, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: page === p ? '0 2px 8px rgba(255,122,0,0.3)' : 'none' }}>
+                  style={{ width: 32, height: 32, borderRadius: 7, border: page === p ? 'none' : `1px solid ${PAGE_BORDER}`, background: page === p ? '#ff7a00' : CARD_BG, color: page === p ? '#fff' : PAGE_TEXT, fontWeight: page === p ? 700 : 400, fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: page === p ? '0 2px 8px rgba(255,122,0,0.3)' : 'none' }}>
                   {p}
                 </button>
               )
             )}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              style={{ width: 32, height: 32, borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: page === totalPages ? 'not-allowed' : 'pointer', color: page === totalPages ? '#cbd5e1' : '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              style={{ width: 32, height: 32, borderRadius: 7, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, cursor: page === totalPages ? 'not-allowed' : 'pointer', color: page === totalPages ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IconChevRight />
             </button>
           </div>

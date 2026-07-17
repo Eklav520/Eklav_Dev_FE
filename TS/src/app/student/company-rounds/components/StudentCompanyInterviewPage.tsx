@@ -124,6 +124,14 @@ const getRoundIcon = (type: string, size = 18, color = '#ff7a00'): React.ReactNo
 }
 const ROUND_COLORS = ['#ff7a00', '#0891b2', '#d97706', '#7c3aed']
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const getSanitizedHtml = (html?: string) => DOMPurify.sanitize(html || '')
 
 const getPlainText = (html?: string) => {
@@ -526,14 +534,14 @@ const StudentCompanyInterviewPage = () => {
 
   // ── Loading ──
   if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f1f5f9', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: PAGE_BG, gap: 12 }}>
       <Spinner animation="border" style={{ color: '#ff7a00' }} />
-      <p style={{ color: '#64748b', margin: 0, fontSize: '0.85rem' }}>Loading companies…</p>
+      <p style={{ color: PAGE_GRAY, margin: 0, fontSize: '0.85rem' }}>Loading companies…</p>
     </div>
   )
 
   if (error) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f1f5f9', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: PAGE_BG, gap: 12 }}>
       <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, padding: '16px 24px', color: '#dc2626', fontSize: '0.85rem' }}>{error}</div>
     </div>
   )
@@ -556,19 +564,19 @@ const StudentCompanyInterviewPage = () => {
   // ── RENDER ──
   return (
     <>
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f1f5f9', overflow: 'hidden' }}>
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: PAGE_BG, overflow: 'hidden' }}>
 
         {/* ── Page Header ── */}
         <div style={{
-          background: '#fff', borderBottom: '1px solid #e2e8f0',
+          background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`,
           padding: '14px 24px', display: 'flex', alignItems: 'flex-start',
           justifyContent: 'space-between', gap: 20, flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.1rem', lineHeight: 1 }}>
+            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.1rem', lineHeight: 1 }}>
               Company Mock Interviews
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>
+            <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 3 }}>
               Practice company-specific interview rounds and improve your selection chances.
             </div>
           </div>
@@ -579,8 +587,8 @@ const StudentCompanyInterviewPage = () => {
           }}>
             <FiZap size={18} color="#ff7a00" style={{ flexShrink: 0 }} />
             <div>
-              <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
-              <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2, lineHeight: 1.5 }}>
+              <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
+              <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, marginTop: 2, lineHeight: 1.5 }}>
                 Practice company based mock interviews and track your performance.
               </div>
             </div>
@@ -606,18 +614,18 @@ const StudentCompanyInterviewPage = () => {
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
             {/* ── LEFT: Company Sidebar ── */}
-            <div style={{ width: 310, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ width: 310, flexShrink: 0, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
               {/* Sidebar header */}
-              <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-                <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 10 }}>All Companies</div>
+              <div style={{ padding: '14px 14px 10px', borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 10 }}>All Companies</div>
                 <div style={{ position: 'relative' }}>
-                  <FiSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <FiSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
                   <input
                     placeholder="Search company"
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
-                    style={{ width: '100%', height: 32, paddingLeft: 28, paddingRight: 10, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                    style={{ width: '100%', height: 32, paddingLeft: 28, paddingRight: 10, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: '0.75rem', color: PAGE_TEXT, outline: 'none', background: PAGE_BG }}
                   />
                 </div>
               </div>
@@ -647,15 +655,15 @@ const StudentCompanyInterviewPage = () => {
                       key={company._id}
                       onClick={() => !isLocked && !isLoading && fetchCompanyDetails(company._id)}
                       style={{
-                        padding: '11px 14px', borderBottom: '1px solid #f8fafc',
-                        background: isSelected ? 'rgba(255,122,0,0.04)' : '#fff',
+                        padding: '11px 14px', borderBottom: `1px solid ${PAGE_BORDER}`,
+                        background: isSelected ? 'rgba(255,122,0,0.04)' : CARD_BG,
                         borderLeft: `3px solid ${isSelected ? '#ff7a00' : 'transparent'}`,
                         cursor: isLocked ? 'not-allowed' : 'pointer',
                         opacity: isLocked ? 0.45 : 1,
                         display: 'flex', alignItems: 'center', gap: 10,
                       }}
-                      onMouseEnter={e => { if (!isLocked && !isSelected) e.currentTarget.style.background = '#fafafa' }}
-                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = '#fff' }}
+                      onMouseEnter={e => { if (!isLocked && !isSelected) e.currentTarget.style.background = PAGE_BG }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = CARD_BG }}
                     >
                       {/* Avatar */}
                       <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: fg }}>
@@ -663,35 +671,35 @@ const StudentCompanyInterviewPage = () => {
                       </div>
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {company.companyName}
                         </div>
-                        <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 1 }}>{count} Interviews</div>
+                        <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 1 }}>{count} Interviews</div>
                       </div>
                       {/* Difficulty + chevron */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                         {isLocked
-                          ? <Lock size={11} color="#94a3b8" />
+                          ? <Lock size={11} color={PAGE_GRAY} />
                           : <span style={{ fontSize: '0.58rem', fontWeight: 700, padding: '2px 7px', borderRadius: 20, background: diff.bg, color: diff.color }}>{diff.label}</span>
                         }
-                        <FiChevronRight size={12} color="#cbd5e1" />
+                        <FiChevronRight size={12} color={PAGE_GRAY} />
                       </div>
                     </div>
                   )
                 })}
                 {filteredCompanies.length === 0 && !isFetching && (
-                  <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No companies found</div>
+                  <div style={{ textAlign: 'center', padding: '30px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>No companies found</div>
                 )}
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div style={{ padding: '8px 14px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                <div style={{ padding: '8px 14px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                   <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
-                    style={{ background: currentPage === 1 ? '#f1f5f9' : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === 1 ? '#cbd5e1' : '#fff', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>‹</button>
+                    style={{ background: currentPage === 1 ? PAGE_BORDER : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === 1 ? PAGE_GRAY : '#fff', cursor: currentPage === 1 ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>‹</button>
                   <span style={{ fontSize: '0.65rem', color: '#ff7a00', fontWeight: 600 }}>{currentPage} / {totalPages} • {totalCompanies} total</span>
                   <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
-                    style={{ background: currentPage === totalPages ? '#f1f5f9' : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === totalPages ? '#cbd5e1' : '#fff', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>›</button>
+                    style={{ background: currentPage === totalPages ? PAGE_BORDER : '#ff7a00', border: 'none', borderRadius: 6, padding: '3px 10px', color: currentPage === totalPages ? PAGE_GRAY : '#fff', cursor: currentPage === totalPages ? 'default' : 'pointer', fontSize: '0.8rem', fontWeight: 700 }}>›</button>
                 </div>
               )}
             </div>
@@ -699,15 +707,15 @@ const StudentCompanyInterviewPage = () => {
             {/* ── CENTER: Company Detail ── */}
             <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
               {!selectedCompany ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>
-                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><FiBriefcase size={30} color="#cbd5e1" /></div>
-                  <div style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Select a company</div>
-                  <div style={{ fontSize: '0.78rem', marginTop: 4, color: '#94a3b8' }}>Choose from the left panel to view details</div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: PAGE_GRAY }}>
+                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><FiBriefcase size={30} color={PAGE_GRAY} /></div>
+                  <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.9rem' }}>Select a company</div>
+                  <div style={{ fontSize: '0.78rem', marginTop: 4, color: PAGE_GRAY }}>Choose from the left panel to view details</div>
                 </div>
               ) : (
                 <div style={{ padding: '20px 24px' }}>
                   {/* Company Header Card */}
-                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
+                  <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 20px', marginBottom: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
                       {/* Logo */}
                       {(() => {
@@ -720,13 +728,13 @@ const StudentCompanyInterviewPage = () => {
                       })()}
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>
+                        <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.05rem' }}>
                           {selectedCompany.companyName} Mock Interview
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                        <div style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginTop: 2 }}>
                           Practice {selectedCompany.companyName} interview rounds based on latest pattern and syllabus
                         </div>
-                        <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: '0.68rem', color: '#94a3b8', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 14, marginTop: 8, fontSize: '0.68rem', color: PAGE_GRAY, flexWrap: 'wrap' }}>
                           <span>{selectedCompany.rounds?.length ?? 0} Interviews</span>
                           <span>•</span>
                           <span>45k+ Students Practiced</span>
@@ -736,8 +744,8 @@ const StudentCompanyInterviewPage = () => {
                       </div>
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0 }}>
-                        <button style={{ width: 36, height: 36, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <FiBookmark size={15} color="#94a3b8" />
+                        <button style={{ width: 36, height: 36, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <FiBookmark size={15} color={PAGE_GRAY} />
                         </button>
                         <button
                           onClick={() => selectedCompany.rounds?.[0] && handleStartRound(selectedCompany.rounds[0])}
@@ -750,24 +758,30 @@ const StudentCompanyInterviewPage = () => {
                   </div>
 
                   {/* Detail Tabs */}
-                  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
+                  <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden' }}>
                     {/* Tab bar */}
-                    <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 20px', display: 'flex' }}>
-                      {[
+                    <div style={{ borderBottom: `1px solid ${PAGE_BORDER}`, padding: '0 20px', display: 'flex' }}>
+                      {([
                         { key: 'overview', label: 'Overview' },
                         { key: 'rounds', label: `Rounds (${selectedCompany.rounds?.length ?? 0})` },
                         { key: 'previousAttempts', label: 'Previous Attempts' },
-                      ].map(t => {
+                      ] as const).map((t, idx, arr) => {
                         const active = activeDetailTab === t.key
                         return (
-                          <button key={t.key} onClick={() => setActiveDetailTab(t.key as any)} style={{
-                            background: 'none', border: 'none',
-                            borderBottom: `2px solid ${active ? '#ff7a00' : 'transparent'}`,
-                            color: active ? '#ff7a00' : '#64748b',
-                            fontWeight: active ? 700 : 500,
-                            fontSize: '0.8rem', padding: '12px 16px',
-                            cursor: 'pointer', whiteSpace: 'nowrap',
-                          }}>{t.label}</button>
+                          <div key={t.key} style={{ display: 'flex', alignItems: 'stretch', flex: 1 }}>
+                            <button onClick={() => setActiveDetailTab(t.key as any)} style={{
+                              background: 'none', border: 'none',
+                              borderBottom: `2px solid ${active ? '#ff7a00' : 'transparent'}`,
+                              color: active ? '#ff7a00' : PAGE_GRAY,
+                              fontWeight: active ? 700 : 500,
+                              fontSize: '0.8rem', padding: '12px 16px',
+                              cursor: 'pointer', whiteSpace: 'nowrap',
+                              flex: 1, textAlign: 'center',
+                            }}>{t.label}</button>
+                            {idx < arr.length - 1 && (
+                              <div style={{ width: 1, background: PAGE_BORDER, alignSelf: 'center', height: 16, flexShrink: 0 }} />
+                            )}
+                          </div>
                         )
                       })}
                     </div>
@@ -780,18 +794,18 @@ const StudentCompanyInterviewPage = () => {
                         <>
                           {/* About */}
                           <div style={{ marginBottom: 22 }}>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 10 }}>
+                            <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 10 }}>
                               About {selectedCompany.companyName} Interview
                             </div>
                             <div
                               className="ci-rich-content"
-                              style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}
+                              style={{ fontSize: '0.8rem', color: PAGE_GRAY, lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word', maxWidth: '100%' }}
                               dangerouslySetInnerHTML={{ __html: getSanitizedHtml(selectedCompany.description) }}
                             />
                           </div>
 
                           {/* Info row */}
-                          <div style={{ display: 'flex', gap: 24, marginBottom: 22, flexWrap: 'wrap', padding: '14px 16px', background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                          <div style={{ display: 'flex', gap: 24, marginBottom: 22, flexWrap: 'wrap', padding: '14px 16px', background: PAGE_BG, borderRadius: 10, border: `1px solid ${PAGE_BORDER}` }}>
                             <InfoBox icon={<FiAward size={16} color="#ff7a00" />} label="Eligibility" value={selectedCompany.role || 'All'} />
                             <InfoBox icon={<FiBriefcase size={16} color="#ff7a00" />} label="Experience" value="Fresher" />
                             <InfoBox icon={<FiMonitor size={16} color="#ff7a00" />} label="Interview Type" value="Online" />
@@ -800,18 +814,18 @@ const StudentCompanyInterviewPage = () => {
 
                           {/* Rounds Included */}
                           <div style={{ marginBottom: 22 }}>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 12 }}>Rounds Included</div>
+                            <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 12 }}>Rounds Included</div>
                             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                               {selectedCompany.rounds?.map((round, idx) => {
                                 const color = ROUND_COLORS[idx % ROUND_COLORS.length]
                                 return (
-                                  <div key={round._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px', background: '#fff', minWidth: 130, flex: '1 1 130px', maxWidth: 180 }}>
+                                  <div key={round._id} style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px', background: CARD_BG, minWidth: 130, flex: '1 1 130px', maxWidth: 180 }}>
                                     <div style={{ width: 30, height: 30, borderRadius: 8, background: `${color}18`, border: `1px solid ${color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color, fontSize: '0.8rem', marginBottom: 8 }}>
                                       {idx + 1}
                                     </div>
-                                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem', marginBottom: 4 }}>{round.roundName}</div>
-                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'}</div>
-                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem', marginBottom: 4 }}>{round.roundName}</div>
+                                    <div style={{ fontSize: '0.65rem', color: PAGE_GRAY }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'}</div>
+                                    <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
                                       <Clock size={10} /> {round.duration} min
                                     </div>
                                   </div>
@@ -822,21 +836,21 @@ const StudentCompanyInterviewPage = () => {
 
                           {/* Preparation Resources */}
                           <div>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', marginBottom: 12 }}>Preparation Resources</div>
+                            <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 12 }}>Preparation Resources</div>
                             {[
                               { title: `${selectedCompany.companyName} Interview Experience`, desc: 'Read experiences from selected students', count: '120+' },
                               { title: `${selectedCompany.companyName} Previous Year Questions`, desc: 'Download and practice PYQs', count: '80+' },
                               { title: `${selectedCompany.companyName} Syllabus & Pattern`, desc: 'Detailed syllabus and interview pattern', count: null },
                             ].map((res, idx, arr) => (
-                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
+                              <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: idx < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                                   <div style={{ width: 34, height: 34, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FiFileText size={16} color="#ff7a00" /></div>
                                   <div>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0f172a' }}>{res.title}</div>
-                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>{res.desc}</div>
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT }}>{res.title}</div>
+                                    <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 1 }}>{res.desc}</div>
                                   </div>
                                 </div>
-                                {res.count && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', whiteSpace: 'nowrap' }}>{res.count} ›</span>}
+                                {res.count && <span style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_GRAY, whiteSpace: 'nowrap' }}>{res.count} ›</span>}
                               </div>
                             ))}
                           </div>
@@ -849,13 +863,13 @@ const StudentCompanyInterviewPage = () => {
                           {selectedCompany.rounds?.map((round, idx) => {
                             const attempt = recentAttempts[round._id]
                             return (
-                              <div key={round._id} style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: '#fff' }}>
+                              <div key={round._id} style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, background: CARD_BG }}>
                                 <div style={{ width: 44, height: 44, borderRadius: 10, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                   {getRoundIcon(round.roundType, 20, ROUND_COLORS[idx % ROUND_COLORS.length])}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
-                                  <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: 2 }}>{round.questionCount} Questions • {round.duration} mins</div>
+                                  <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.85rem' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
+                                  <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, marginTop: 2 }}>{round.questionCount} Questions • {round.duration} mins</div>
                                 </div>
                                 {attempt && (
                                   <span style={{ background: attempt.score >= 60 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: attempt.score >= 60 ? '#16a34a' : '#dc2626', borderRadius: 20, padding: '2px 10px', fontSize: '0.68rem', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -874,7 +888,7 @@ const StudentCompanyInterviewPage = () => {
                       {/* ── Previous Attempts ── */}
                       {activeDetailTab === 'previousAttempts' && (
                         Object.keys(recentAttempts).length === 0 ? (
-                          <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                          <div style={{ textAlign: 'center', padding: '40px 0', color: PAGE_GRAY }}>
                             <Trophy size={36} style={{ marginBottom: 10, opacity: 0.3 }} />
                             <div style={{ fontSize: '0.82rem' }}>No attempts yet. Start practicing!</div>
                           </div>
@@ -883,10 +897,10 @@ const StudentCompanyInterviewPage = () => {
                             {Object.entries(recentAttempts).map(([roundId, attempt]) => {
                               const round = selectedCompany.rounds?.find(r => r._id === roundId)
                               return (
-                                <div key={roundId} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
+                                <div key={roundId} style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, background: CARD_BG }}>
                                   <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.82rem' }}>{round?.roundName || 'Round'}</div>
-                                    <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 1 }}>{new Date(attempt.attemptedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                                    <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.82rem' }}>{round?.roundName || 'Round'}</div>
+                                    <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 1 }}>{new Date(attempt.attemptedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
                                   </div>
                                   <span style={{ background: attempt.score >= 60 ? 'rgba(22,163,74,0.1)' : 'rgba(220,38,38,0.1)', color: attempt.score >= 60 ? '#16a34a' : '#dc2626', borderRadius: 20, padding: '3px 12px', fontSize: '0.78rem', fontWeight: 700 }}>
                                     {attempt.score}%
@@ -904,25 +918,25 @@ const StudentCompanyInterviewPage = () => {
             </div>
 
             {/* ── RIGHT: Progress Panel ── */}
-            <div className="ci-scroll" style={{ width: 270, flexShrink: 0, borderLeft: '1px solid #e2e8f0', background: '#fff', overflowY: 'auto', padding: '18px 16px' }}>
+            <div className="ci-scroll" style={{ width: 270, flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, background: CARD_BG, overflowY: 'auto', padding: '18px 16px' }}>
               {!selectedCompany ? (
-                <div style={{ color: '#94a3b8', fontSize: '0.78rem', textAlign: 'center', paddingTop: 40 }}>
+                <div style={{ color: PAGE_GRAY, fontSize: '0.78rem', textAlign: 'center', paddingTop: 40 }}>
                   Select a company to view progress
                 </div>
               ) : (
                 <>
                   {/* Your Progress */}
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px', marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: 14 }}>Your Progress</div>
+                  <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px', marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.85rem', marginBottom: 14 }}>Your Progress</div>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
                       {/* Circular progress */}
                       <svg width="90" height="90" style={{ flexShrink: 0 }}>
-                        <circle cx="45" cy="45" r={ringRadius} fill="none" stroke="#f1f5f9" strokeWidth="7" />
+                        <circle cx="45" cy="45" r={ringRadius} fill="none" stroke={PAGE_BORDER} strokeWidth="7" />
                         <circle cx="45" cy="45" r={ringRadius} fill="none" stroke="#ff7a00" strokeWidth="7"
                           strokeDasharray={ringCirc} strokeDashoffset={ringOffset}
                           strokeLinecap="round" transform="rotate(-90 45 45)" />
-                        <text x="45" y="41" textAnchor="middle" fontSize="13" fontWeight="800" fill="#0f172a">{overallProgress}%</text>
-                        <text x="45" y="54" textAnchor="middle" fontSize="7" fill="#94a3b8">Progress</text>
+                        <text x="45" y="41" textAnchor="middle" fontSize="13" fontWeight="800" fill={PAGE_TEXT}>{overallProgress}%</text>
+                        <text x="45" y="54" textAnchor="middle" fontSize="7" fill={PAGE_GRAY}>Progress</text>
                       </svg>
                       {/* Stats */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
@@ -939,16 +953,16 @@ const StudentCompanyInterviewPage = () => {
 
                   {/* Prepare by Round */}
                   <div>
-                    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', marginBottom: 12 }}>Prepare by Round</div>
+                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.85rem', marginBottom: 12 }}>Prepare by Round</div>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                       {selectedCompany.rounds?.map((round, idx) => (
-                        <div key={round._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <div key={round._id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${PAGE_BORDER}` }}>
                           <div style={{ width: 34, height: 34, borderRadius: 8, background: `${ROUND_COLORS[idx % ROUND_COLORS.length]}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             {getRoundIcon(round.roundType, 16, ROUND_COLORS[idx % ROUND_COLORS.length])}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
-                            <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: 1 }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'} • {round.duration} min</div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ROUND_DISPLAY_NAMES[round.roundType] || round.roundName}</div>
+                            <div style={{ fontSize: '0.6rem', color: PAGE_GRAY, marginTop: 1 }}>{round.questionCount} {round.roundType === 'CODING' ? 'Problems' : 'Questions'} • {round.duration} min</div>
                           </div>
                           <button
                             onClick={() => handleStartRound(round)}
@@ -998,24 +1012,24 @@ const StudentCompanyInterviewPage = () => {
               const selectedQ = questions[qIdx]
               const attempt = recentAttempts[selectedRound._id]
               return (
-                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: CARD_BG, minHeight: 0 }}>
 
-                  {/* Light header */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  {/* Header */}
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <Code2 size={20} color="#ff7a00" />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>Coding Round</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                      <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1rem', lineHeight: 1 }}>Coding Round</div>
+                      <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
                     </div>
-                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FiX size={16} color="#64748b" />
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color={PAGE_GRAY} />
                     </button>
                   </div>
 
                   {/* Stats bar */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
                     {[
                       { label: 'Total Problems', value: String(questions.length), icon: <FiList size={20} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                       { label: 'Attempted', value: attempt ? '1' : '0', icon: <FiEdit2 size={20} color="#16a34a" />, iconBg: 'rgba(22,163,74,0.08)' },
@@ -1023,13 +1037,13 @@ const StudentCompanyInterviewPage = () => {
                       { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={20} color="#7c3aed" />, iconBg: 'rgba(124,58,237,0.08)' },
                       { label: 'Time Left', value: `${selectedRound.duration} min`, icon: <FiClock size={20} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                     ].map((stat, si, arr) => (
-                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, padding: '0 20px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, padding: '0 20px', borderRight: si < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                         <div style={{ width: 42, height: 42, borderRadius: 10, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {stat.icon}
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{stat.label}</div>
-                          <div style={{ fontSize: '1rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                          <div style={{ fontSize: '0.6rem', color: PAGE_GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '1rem', color: PAGE_TEXT, fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
                         </div>
                       </div>
                     ))}
@@ -1039,20 +1053,20 @@ const StudentCompanyInterviewPage = () => {
                   <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
                     {/* LEFT: Problem list */}
-                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: 310, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
 
                       {/* Search + filter */}
-                      <div style={{ padding: '8px 12px', display: 'flex', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+                      <div style={{ padding: '8px 12px', display: 'flex', gap: 8, borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
                         <div style={{ position: 'relative', flex: 1 }}>
-                          <FiSearch size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                          <FiSearch size={12} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
                           <input
                             placeholder="Search problems..."
                             value={codingSearchTerm}
                             onChange={e => { setCodingSearchTerm(e.target.value); setCodingProbPage(1) }}
-                            style={{ width: '100%', height: 30, paddingLeft: 26, paddingRight: 8, border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.72rem', outline: 'none', background: '#f8fafc', color: '#0f172a' }}
+                            style={{ width: '100%', height: 30, paddingLeft: 26, paddingRight: 8, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, fontSize: '0.72rem', outline: 'none', background: PAGE_BG, color: PAGE_TEXT }}
                           />
                         </div>
-                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 30, flexShrink: 0 }}>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: PAGE_GRAY, cursor: 'pointer', whiteSpace: 'nowrap', height: 30, flexShrink: 0 }}>
                           All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
                         </button>
                       </div>
@@ -1069,67 +1083,67 @@ const StudentCompanyInterviewPage = () => {
                               onClick={() => setSelectedCodingPreviewQIdx(idx)}
                               style={{
                                 padding: '9px 12px',
-                                borderBottom: '1px solid #f1f5f9',
-                                background: isActive ? 'rgba(255,122,0,0.04)' : '#fff',
+                                borderBottom: `1px solid ${PAGE_BORDER}`,
+                                background: isActive ? 'rgba(255,122,0,0.04)' : CARD_BG,
                                 borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`,
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 9,
                               }}
-                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
-                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = PAGE_BG }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = CARD_BG }}
                             >
-                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : PAGE_BORDER, color: isActive ? '#fff' : PAGE_GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
                                 {String(displayNum).padStart(2, '0')}
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-                                  <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
+                                  <span style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flexShrink: 1 }}>
                                     {q.title || `Problem ${idx + 1}`}
                                   </span>
                                   <span style={{ fontSize: '0.55rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: 'rgba(255,122,0,0.1)', color: '#ff7a00', flexShrink: 0 }}>CODING</span>
                                 </div>
                               </div>
-                              <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}`, flexShrink: 0 }} />
+                              <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : PAGE_BORDER}`, flexShrink: 0 }} />
                             </div>
                           )
                         })}
                         {filtered.length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No problems found</div>
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>No problems found</div>
                         )}
                       </div>
 
                       {/* Full-width pagination */}
                       {probTotalPages > 1 && (
-                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ padding: '8px 12px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                           <button
                             onClick={() => setCodingProbPage(p => Math.max(1, p - 1))}
                             disabled={codingProbPage === 1}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: codingProbPage === 1 ? '#cbd5e1' : '#475569', cursor: codingProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: codingProbPage === 1 ? PAGE_GRAY : PAGE_TEXT, cursor: codingProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                           >‹</button>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             {getVisiblePages(codingProbPage, probTotalPages).map(p => (
                               <button
                                 key={p}
                                 onClick={() => setCodingProbPage(p)}
-                                style={{ width: 26, height: 26, border: `1px solid ${p === codingProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === codingProbPage ? '#ff7a00' : '#fff', color: p === codingProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === codingProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                style={{ width: 26, height: 26, border: `1px solid ${p === codingProbPage ? '#ff7a00' : PAGE_BORDER}`, borderRadius: 6, background: p === codingProbPage ? '#ff7a00' : CARD_BG, color: p === codingProbPage ? '#fff' : PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === codingProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               >{p}</button>
                             ))}
                             {probTotalPages > 5 && codingProbPage < probTotalPages - 2 && (
-                              <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>
+                              <span style={{ color: PAGE_GRAY, fontSize: '0.8rem', padding: '0 2px' }}>…</span>
                             )}
                             {probTotalPages > 5 && codingProbPage <= probTotalPages - 3 && (
                               <button
                                 onClick={() => setCodingProbPage(probTotalPages)}
-                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                               >{probTotalPages}</button>
                             )}
                           </div>
                           <button
                             onClick={() => setCodingProbPage(p => Math.min(probTotalPages, p + 1))}
                             disabled={codingProbPage === probTotalPages}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: codingProbPage === probTotalPages ? '#cbd5e1' : '#475569', cursor: codingProbPage === probTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: codingProbPage === probTotalPages ? PAGE_GRAY : PAGE_TEXT, cursor: codingProbPage === probTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                           >›</button>
                         </div>
                       )}
@@ -1138,7 +1152,7 @@ const StudentCompanyInterviewPage = () => {
                     {/* RIGHT: Problem detail */}
                     {selectedQ ? (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: PAGE_BG }}>
 
                           {/* Q number + CODING badge */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -1147,13 +1161,13 @@ const StudentCompanyInterviewPage = () => {
                           </div>
 
                           {/* Title */}
-                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.2rem', marginBottom: 14, lineHeight: 1.3 }}>
+                          <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.2rem', marginBottom: 14, lineHeight: 1.3 }}>
                             {selectedQ.title || `Problem ${qIdx + 1}`}
                           </div>
 
                           {/* Problem Statement */}
                           {selectedQ.description && (
-                            <div style={{ fontSize: '0.85rem', color: '#374151', lineHeight: 1.75, marginBottom: 16 }}>
+                            <div style={{ fontSize: '0.85rem', color: PAGE_TEXT, lineHeight: 1.75, marginBottom: 16 }}>
                               {selectedQ.description}
                             </div>
                           )}
@@ -1173,30 +1187,30 @@ const StudentCompanyInterviewPage = () => {
                           {(selectedQ.input || selectedQ.output != null) && (
                             <div style={{ display: 'flex', gap: 14 }}>
                               {selectedQ.input && (
-                                <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
-                                  <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Sample Input</span>
-                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.input || ''))} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
+                                <div style={{ flex: 1, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, overflow: 'hidden', background: CARD_BG }}>
+                                  <div style={{ padding: '10px 14px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Sample Input</span>
+                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.input || ''))} style={{ background: 'none', border: 'none', color: PAGE_GRAY, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
                                       <FiCopy size={12} /> Copy
                                     </button>
                                   </div>
                                   <div style={{ padding: '12px 14px' }}>
-                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: PAGE_TEXT, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
                                       {String(selectedQ.input)}
                                     </code>
                                   </div>
                                 </div>
                               )}
                               {selectedQ.output != null && (
-                                <div style={{ flex: 1, border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', background: '#fff' }}>
-                                  <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.8rem' }}>Expected Output</span>
-                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.output ?? ''))} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
+                                <div style={{ flex: 1, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, overflow: 'hidden', background: CARD_BG }}>
+                                  <div style={{ padding: '10px 14px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Expected Output</span>
+                                    <button onClick={() => navigator.clipboard?.writeText(String(selectedQ.output ?? ''))} style={{ background: 'none', border: 'none', color: PAGE_GRAY, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.68rem' }}>
                                       <FiCopy size={12} /> Copy
                                     </button>
                                   </div>
                                   <div style={{ padding: '12px 14px' }}>
-                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: '#374151', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                                    <code style={{ fontSize: '0.82rem', fontFamily: 'monospace', color: PAGE_TEXT, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.6 }}>
                                       {String(selectedQ.output)}
                                     </code>
                                   </div>
@@ -1208,7 +1222,7 @@ const StudentCompanyInterviewPage = () => {
                         </div>
 
                         {/* Footer: Start Challenge only */}
-                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: '#fff', flexShrink: 0 }}>
+                        <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', background: CARD_BG, flexShrink: 0 }}>
                           <button
                             onClick={() => { setSelectedCodingQuestionId(selectedQ._id); setActiveMode('coding') }}
                             style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', padding: '10px 24px', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
@@ -1240,27 +1254,27 @@ const StudentCompanyInterviewPage = () => {
               const correctQ = attempt ? Math.round(attempt.score / 100 * totalQ) : 0
               const incorrectQ = attempt ? Math.max(0, totalQ - correctQ) : 0
               return (
-                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: CARD_BG, minHeight: 0 }}>
 
-                  {/* Light header */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  {/* Header */}
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <Code2 size={20} color="#ff7a00" />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>MCQ Round</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                      <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1rem', lineHeight: 1 }}>MCQ Round</div>
+                      <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
                     </div>
                     <button onClick={handleTakeQuiz} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1.5px solid #ff7a00', borderRadius: 8, color: '#ff7a00', padding: '7px 18px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       ▷ Take Quiz
                     </button>
-                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FiX size={16} color="#64748b" />
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color={PAGE_GRAY} />
                     </button>
                   </div>
 
                   {/* Stats bar */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
                     {[
                       { label: 'Total Questions', value: String(totalQ), icon: <FiList size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                       { label: 'Attempted', value: attempt ? String(totalQ) : '0', icon: <FiEdit2 size={19} color="#64748b" />, iconBg: 'rgba(100,116,139,0.08)' },
@@ -1269,13 +1283,13 @@ const StudentCompanyInterviewPage = () => {
                       { label: 'Time Spent', value: '—', icon: <FiClock size={19} color="#7c3aed" />, iconBg: 'rgba(124,58,237,0.08)' },
                       { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={19} color="#d97706" />, iconBg: 'rgba(217,119,6,0.08)' },
                     ].map((stat, si, arr) => (
-                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                         <div style={{ width: 38, height: 38, borderRadius: 9, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {stat.icon}
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.58rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
-                          <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                          <div style={{ fontSize: '0.58rem', color: PAGE_GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '0.95rem', color: PAGE_TEXT, fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
                         </div>
                       </div>
                     ))}
@@ -1285,13 +1299,13 @@ const StudentCompanyInterviewPage = () => {
                   <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
                     {/* LEFT: Questions list */}
-                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: 310, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
 
                       {/* Header + filter */}
-                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
+                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
                         <div style={{ flex: 1 }} />
-                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: PAGE_GRAY, cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
                           All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
                         </button>
                       </div>
@@ -1306,46 +1320,46 @@ const StudentCompanyInterviewPage = () => {
                             <div
                               key={q._id}
                               onClick={() => setSelectedMcqPreviewQIdx(idx)}
-                              style={{ padding: '9px 12px', borderBottom: '1px solid #f1f5f9', background: isActive ? 'rgba(255,122,0,0.04)' : '#fff', borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
-                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
-                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                              style={{ padding: '9px 12px', borderBottom: `1px solid ${PAGE_BORDER}`, background: isActive ? 'rgba(255,122,0,0.04)' : CARD_BG, borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = PAGE_BG }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = CARD_BG }}
                             >
-                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : PAGE_BORDER, color: isActive ? '#fff' : PAGE_GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
                                 {String(displayNum).padStart(2, '0')}
                               </div>
-                              <span style={{ flex: 1, fontSize: '0.78rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                              <span style={{ flex: 1, fontSize: '0.78rem', color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                                 {q.question || `Question ${idx + 1}`}
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}` }} />
-                                <FiBookmark size={12} color="#cbd5e1" />
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : PAGE_BORDER}` }} />
+                                <FiBookmark size={12} color={PAGE_GRAY} />
                               </div>
                             </div>
                           )
                         })}
                         {filteredMcq.length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No questions found</div>
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>No questions found</div>
                         )}
                       </div>
 
                       {/* Full-width pagination */}
                       {mcqTotalPages > 1 && (
-                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ padding: '8px 12px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                           <button onClick={() => setMcqProbPage(p => Math.max(1, p - 1))} disabled={mcqProbPage === 1}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: mcqProbPage === 1 ? '#cbd5e1' : '#475569', cursor: mcqProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: mcqProbPage === 1 ? PAGE_GRAY : PAGE_TEXT, cursor: mcqProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             {getVisiblePages(mcqProbPage, mcqTotalPages).map(p => (
                               <button key={p} onClick={() => setMcqProbPage(p)}
-                                style={{ width: 26, height: 26, border: `1px solid ${p === mcqProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === mcqProbPage ? '#ff7a00' : '#fff', color: p === mcqProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === mcqProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                                style={{ width: 26, height: 26, border: `1px solid ${p === mcqProbPage ? '#ff7a00' : PAGE_BORDER}`, borderRadius: 6, background: p === mcqProbPage ? '#ff7a00' : CARD_BG, color: p === mcqProbPage ? '#fff' : PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === mcqProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
                             ))}
-                            {mcqTotalPages > 5 && mcqProbPage < mcqTotalPages - 2 && <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
+                            {mcqTotalPages > 5 && mcqProbPage < mcqTotalPages - 2 && <span style={{ color: PAGE_GRAY, fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
                             {mcqTotalPages > 5 && mcqProbPage <= mcqTotalPages - 3 && (
                               <button onClick={() => setMcqProbPage(mcqTotalPages)}
-                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{mcqTotalPages}</button>
+                                style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{mcqTotalPages}</button>
                             )}
                           </div>
                           <button onClick={() => setMcqProbPage(p => Math.min(mcqTotalPages, p + 1))} disabled={mcqProbPage === mcqTotalPages}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: mcqProbPage === mcqTotalPages ? '#cbd5e1' : '#475569', cursor: mcqProbPage === mcqTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: mcqProbPage === mcqTotalPages ? PAGE_GRAY : PAGE_TEXT, cursor: mcqProbPage === mcqTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
                         </div>
                       )}
                     </div>
@@ -1353,19 +1367,19 @@ const StudentCompanyInterviewPage = () => {
                     {/* RIGHT: Question detail */}
                     {selectedQ ? (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: PAGE_BG }}>
 
                           {/* Q number + MCQ badge + bookmark */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                             <span style={{ fontSize: '1.1rem', color: '#ff7a00', fontWeight: 800 }}>Q{qIdx + 1}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: '1px solid #ff7a00', color: '#ff7a00' }}>MCQ</span>
-                              <FiBookmark size={16} color="#cbd5e1" style={{ cursor: 'pointer' }} />
+                              <FiBookmark size={16} color={PAGE_GRAY} style={{ cursor: 'pointer' }} />
                             </div>
                           </div>
 
                           {/* Question text */}
-                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
+                          <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
                             {selectedQ.question}
                           </div>
 
@@ -1380,11 +1394,11 @@ const StudentCompanyInterviewPage = () => {
                                 selectedQ.correctAnswer === oi ||
                                 selectedQ.correctAnswer === oi + 1
                               return (
-                                <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isCorrect ? '#16a34a' : '#e2e8f0'}`, background: isCorrect ? 'rgba(22,163,74,0.04)' : '#fff' }}>
-                                  <div style={{ width: 26, height: 26, borderRadius: 7, border: `1.5px solid ${isCorrect ? '#16a34a' : '#e2e8f0'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: isCorrect ? '#16a34a' : '#94a3b8', flexShrink: 0 }}>
+                                <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${isCorrect ? '#16a34a' : PAGE_BORDER}`, background: isCorrect ? 'rgba(22,163,74,0.04)' : CARD_BG }}>
+                                  <div style={{ width: 26, height: 26, borderRadius: 7, border: `1.5px solid ${isCorrect ? '#16a34a' : PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: isCorrect ? '#16a34a' : PAGE_GRAY, flexShrink: 0 }}>
                                     {letter}
                                   </div>
-                                  <span style={{ fontSize: '0.85rem', color: '#374151', flex: 1 }}>{optText}</span>
+                                  <span style={{ fontSize: '0.85rem', color: PAGE_TEXT, flex: 1 }}>{optText}</span>
                                   {isCorrect && <FiCheckCircle size={16} color="#16a34a" style={{ flexShrink: 0 }} />}
                                 </div>
                               )
@@ -1414,24 +1428,24 @@ const StudentCompanyInterviewPage = () => {
                         </div>
 
                         {/* Footer: ← Previous | Question X of N | Next → */}
-                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', flexShrink: 0 }}>
+                        <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: CARD_BG, flexShrink: 0 }}>
                           <button
                             onClick={() => qIdx > 0 && setSelectedMcqPreviewQIdx(qIdx - 1)}
                             disabled={qIdx === 0}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, color: qIdx === 0 ? '#cbd5e1' : '#64748b', padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, color: qIdx === 0 ? PAGE_GRAY : PAGE_TEXT, padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
                           >← Previous</button>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                          <span style={{ fontSize: '0.8rem', color: PAGE_GRAY, fontWeight: 500 }}>
                             Question {qIdx + 1} of {questions.length}
                           </span>
                           <button
                             onClick={() => qIdx < questions.length - 1 && setSelectedMcqPreviewQIdx(qIdx + 1)}
                             disabled={qIdx === questions.length - 1}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : '#f1f5f9', border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : '#cbd5e1', padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : PAGE_BORDER, border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : PAGE_GRAY, padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
                           >Next →</button>
                         </div>
                       </div>
                     ) : (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_GRAY, fontSize: '0.85rem', background: PAGE_BG }}>
                         Select a question to view details
                       </div>
                     )}
@@ -1452,27 +1466,27 @@ const StudentCompanyInterviewPage = () => {
               const chipColor = isHR ? '#7c3aed' : '#ff7a00'
               const chipBg = isHR ? 'rgba(124,58,237,0.08)' : 'rgba(255,122,0,0.08)'
               return (
-                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff', minHeight: 0 }}>
+                <Modal.Body style={{ padding: 0, flex: '1 1 auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: CARD_BG, minHeight: 0 }}>
 
-                  {/* Light header */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  {/* Header */}
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: '13px 20px', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <span style={{ fontSize: '1.05rem', fontWeight: 900, color: '#ff7a00', fontFamily: 'monospace', letterSpacing: -1 }}>&lt;/&gt;</span>
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1rem', lineHeight: 1 }}>{roundLabel}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
+                      <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1rem', lineHeight: 1 }}>{roundLabel}</div>
+                      <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 3 }}>{selectedCompany?.companyName} • {selectedCompany?.role}</div>
                     </div>
                     <button onClick={handleTakeQuiz} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1.5px solid #ff7a00', borderRadius: 8, color: '#ff7a00', padding: '7px 18px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                       ▷ Start Practice
                     </button>
-                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <FiX size={16} color="#64748b" />
+                    <button onClick={handleCloseRoundModal} style={{ width: 32, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <FiX size={16} color={PAGE_GRAY} />
                     </button>
                   </div>
 
                   {/* Stats bar */}
-                  <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
+                  <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 72 }}>
                     {[
                       { label: 'Total Questions', value: String(questions.length), icon: <FiList size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                       { label: 'Attempted', value: attempt ? String(questions.length) : '0', icon: <FiEdit2 size={19} color="#16a34a" />, iconBg: 'rgba(22,163,74,0.08)' },
@@ -1481,13 +1495,13 @@ const StudentCompanyInterviewPage = () => {
                       { label: 'Time Spent', value: '—', icon: <FiClock size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                       { label: 'Accuracy', value: attempt ? `${attempt.score}%` : '—', icon: <FiTarget size={19} color="#ff7a00" />, iconBg: 'rgba(255,122,0,0.08)' },
                     ].map((stat, si, arr) => (
-                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                      <div key={stat.label} style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 14px', borderRight: si < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none' }}>
                         <div style={{ width: 38, height: 38, borderRadius: 9, background: stat.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {stat.icon}
                         </div>
                         <div>
-                          <div style={{ fontSize: '0.58rem', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
-                          <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
+                          <div style={{ fontSize: '0.58rem', color: PAGE_GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{stat.label}</div>
+                          <div style={{ fontSize: '0.95rem', color: PAGE_TEXT, fontWeight: 800, lineHeight: 1 }}>{stat.value}</div>
                         </div>
                       </div>
                     ))}
@@ -1497,13 +1511,13 @@ const StudentCompanyInterviewPage = () => {
                   <div style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}>
 
                     {/* LEFT: Questions list */}
-                    <div style={{ width: 310, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                    <div style={{ width: 310, background: CARD_BG, borderRight: `1px solid ${PAGE_BORDER}`, display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
 
                       {/* Header + filter */}
-                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
+                      <div style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.82rem', flexShrink: 0 }}>Questions</span>
                         <div style={{ flex: 1 }} />
-                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: '#475569', cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
+                        <button style={{ display: 'flex', alignItems: 'center', gap: 3, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, padding: '0 9px', fontSize: '0.7rem', color: PAGE_GRAY, cursor: 'pointer', whiteSpace: 'nowrap', height: 28, flexShrink: 0 }}>
                           All Topics <FiChevronRight size={10} style={{ transform: 'rotate(90deg)', marginTop: 1 }} />
                         </button>
                       </div>
@@ -1518,47 +1532,47 @@ const StudentCompanyInterviewPage = () => {
                             <div
                               key={q._id}
                               onClick={() => setSelectedHrTrPreviewQIdx(idx)}
-                              style={{ padding: '9px 12px', borderBottom: '1px solid #f1f5f9', background: isActive ? 'rgba(255,122,0,0.04)' : '#fff', borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
-                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#fafafa' }}
-                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#fff' }}
+                              style={{ padding: '9px 12px', borderBottom: `1px solid ${PAGE_BORDER}`, background: isActive ? 'rgba(255,122,0,0.04)' : CARD_BG, borderLeft: `3px solid ${isActive ? '#ff7a00' : 'transparent'}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 9 }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = PAGE_BG }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = CARD_BG }}
                             >
-                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : '#f1f5f9', color: isActive ? '#fff' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: '50%', background: isActive ? '#ff7a00' : PAGE_BORDER, color: isActive ? '#fff' : PAGE_GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.63rem', fontWeight: 800, flexShrink: 0 }}>
                                 {String(displayNum).padStart(2, '0')}
                               </div>
-                              <span style={{ flex: 1, fontSize: '0.78rem', color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                              <span style={{ flex: 1, fontSize: '0.78rem', color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                                 {q.question || q.title || `Question ${idx + 1}`}
                               </span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
                                 <span style={{ fontSize: '0.5rem', fontWeight: 700, padding: '1px 5px', borderRadius: 8, background: chipBg, color: chipColor }}>{chipLabel}</span>
-                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : '#e2e8f0'}` }} />
-                                <FiBookmark size={12} color="#cbd5e1" />
+                                <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${isActive ? '#ff7a00' : PAGE_BORDER}` }} />
+                                <FiBookmark size={12} color={PAGE_GRAY} />
                               </div>
                             </div>
                           )
                         })}
                         {questions.length === 0 && (
-                          <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8', fontSize: '0.78rem' }}>No questions found</div>
+                          <div style={{ textAlign: 'center', padding: '30px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>No questions found</div>
                         )}
                       </div>
 
                       {/* Full-width pagination */}
                       {hrtrTotalPages > 1 && (
-                        <div style={{ padding: '8px 12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                        <div style={{ padding: '8px 12px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                           <button onClick={() => setHrTrProbPage(p => Math.max(1, p - 1))} disabled={hrTrProbPage === 1}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: hrTrProbPage === 1 ? '#cbd5e1' : '#475569', cursor: hrTrProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: hrTrProbPage === 1 ? PAGE_GRAY : PAGE_TEXT, cursor: hrTrProbPage === 1 ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>‹</button>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                             {getVisiblePages(hrTrProbPage, hrtrTotalPages).map(p => (
                               <button key={p} onClick={() => setHrTrProbPage(p)}
-                                style={{ width: 26, height: 26, border: `1px solid ${p === hrTrProbPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 6, background: p === hrTrProbPage ? '#ff7a00' : '#fff', color: p === hrTrProbPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === hrTrProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                                style={{ width: 26, height: 26, border: `1px solid ${p === hrTrProbPage ? '#ff7a00' : PAGE_BORDER}`, borderRadius: 6, background: p === hrTrProbPage ? '#ff7a00' : CARD_BG, color: p === hrTrProbPage ? '#fff' : PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', fontWeight: p === hrTrProbPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
                             ))}
-                            {hrtrTotalPages > 5 && hrTrProbPage < hrtrTotalPages - 2 && <span style={{ color: '#94a3b8', fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
+                            {hrtrTotalPages > 5 && hrTrProbPage < hrtrTotalPages - 2 && <span style={{ color: PAGE_GRAY, fontSize: '0.8rem', padding: '0 2px' }}>…</span>}
                             {hrtrTotalPages > 5 && hrTrProbPage <= hrtrTotalPages - 3 && (
                               <button onClick={() => setHrTrProbPage(hrtrTotalPages)}
-                                style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: '#475569', cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hrtrTotalPages}</button>
+                                style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: PAGE_TEXT, cursor: 'pointer', fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{hrtrTotalPages}</button>
                             )}
                           </div>
                           <button onClick={() => setHrTrProbPage(p => Math.min(hrtrTotalPages, p + 1))} disabled={hrTrProbPage === hrtrTotalPages}
-                            style={{ width: 26, height: 26, border: '1px solid #e2e8f0', borderRadius: 6, background: '#fff', color: hrTrProbPage === hrtrTotalPages ? '#cbd5e1' : '#475569', cursor: hrTrProbPage === hrtrTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
+                            style={{ width: 26, height: 26, border: `1px solid ${PAGE_BORDER}`, borderRadius: 6, background: CARD_BG, color: hrTrProbPage === hrtrTotalPages ? PAGE_GRAY : PAGE_TEXT, cursor: hrTrProbPage === hrtrTotalPages ? 'default' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>›</button>
                         </div>
                       )}
                     </div>
@@ -1566,39 +1580,39 @@ const StudentCompanyInterviewPage = () => {
                     {/* RIGHT: Question detail */}
                     {selectedQ ? (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: '#f8fafc' }}>
+                        <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', padding: '22px 28px', background: PAGE_BG }}>
 
                           {/* Q number + chip badge + bookmark */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                             <span style={{ fontSize: '1.1rem', color: '#ff7a00', fontWeight: 800 }}>Q{qIdx + 1}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '3px 10px', borderRadius: 4, border: `1px solid ${chipColor}`, color: chipColor }}>{chipLabel}</span>
-                              <FiBookmark size={16} color="#cbd5e1" style={{ cursor: 'pointer' }} />
+                              <FiBookmark size={16} color={PAGE_GRAY} style={{ cursor: 'pointer' }} />
                             </div>
                           </div>
 
                           {/* Question text */}
-                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
+                          <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '1rem', marginBottom: 20, lineHeight: 1.55 }}>
                             {selectedQ.question || selectedQ.title}
                           </div>
 
                           {/* Collapsible suggested answer */}
-                          <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+                          <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
                             <button
                               onClick={() => toggleAnswer(selectedQ._id)}
-                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fff', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: CARD_BG, border: 'none', cursor: 'pointer', textAlign: 'left' }}
                             >
-                              <FiEye size={15} color="#64748b" style={{ flexShrink: 0 }} />
-                              <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+                              <FiEye size={15} color={PAGE_GRAY} style={{ flexShrink: 0 }} />
+                              <span style={{ flex: 1, fontSize: '0.82rem', fontWeight: 600, color: PAGE_TEXT }}>
                                 {expandedAnswers[selectedQ._id] ? 'Hide Suggested Answer' : 'Show Suggested Answer'}
                               </span>
-                              <span style={{ fontSize: '0.85rem', color: '#94a3b8', transform: expandedAnswers[selectedQ._id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                              <span style={{ fontSize: '0.85rem', color: PAGE_GRAY, transform: expandedAnswers[selectedQ._id] ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
                             </button>
                             {expandedAnswers[selectedQ._id] && (
-                              <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 16px', background: '#fafafa' }}>
+                              <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 16px', background: PAGE_BG }}>
                                 <div style={{ marginBottom: 10 }}>
                                   <span style={{ fontWeight: 700, color: '#ff7a00', fontSize: '0.82rem' }}>Suggested: </span>
-                                  <span style={{ fontSize: '0.82rem', color: '#374151' }}>{selectedQ.expectedAnswer || selectedQ.explanation || 'Not provided'}</span>
+                                  <span style={{ fontSize: '0.82rem', color: PAGE_TEXT }}>{selectedQ.expectedAnswer || selectedQ.explanation || 'Not provided'}</span>
                                 </div>
                               </div>
                             )}
@@ -1652,24 +1666,24 @@ const StudentCompanyInterviewPage = () => {
                         </div>
 
                         {/* Footer: ← Previous | Question X of N | Next → */}
-                        <div style={{ borderTop: '1px solid #e2e8f0', padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', flexShrink: 0 }}>
+                        <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: CARD_BG, flexShrink: 0 }}>
                           <button
                             onClick={() => qIdx > 0 && setSelectedHrTrPreviewQIdx(qIdx - 1)}
                             disabled={qIdx === 0}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, color: qIdx === 0 ? '#cbd5e1' : '#64748b', padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, color: qIdx === 0 ? PAGE_GRAY : PAGE_TEXT, padding: '8px 18px', fontSize: '0.8rem', fontWeight: 600, cursor: qIdx === 0 ? 'default' : 'pointer' }}
                           >← Previous</button>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                          <span style={{ fontSize: '0.8rem', color: PAGE_GRAY, fontWeight: 500 }}>
                             Question {qIdx + 1} of {questions.length}
                           </span>
                           <button
                             onClick={() => qIdx < questions.length - 1 && setSelectedHrTrPreviewQIdx(qIdx + 1)}
                             disabled={qIdx === questions.length - 1}
-                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : '#f1f5f9', border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : '#cbd5e1', padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 6, background: qIdx < questions.length - 1 ? '#ff7a00' : PAGE_BORDER, border: 'none', borderRadius: 8, color: qIdx < questions.length - 1 ? '#fff' : PAGE_GRAY, padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700, cursor: qIdx < questions.length - 1 ? 'pointer' : 'default' }}
                           >Next →</button>
                         </div>
                       </div>
                     ) : (
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.85rem', background: '#f8fafc' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_GRAY, fontSize: '0.85rem', background: PAGE_BG }}>
                         Select a question to view details
                       </div>
                     )}

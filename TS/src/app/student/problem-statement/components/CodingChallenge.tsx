@@ -520,8 +520,8 @@ const ProblemStatement = () => {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             </div>
             <div>
-              <h4 style={{ fontWeight: 800, color: '#0f172a', margin: 0, fontSize: '1.3rem', lineHeight: 1.2 }}>Code Challenge</h4>
-              <p style={{ color: '#94a3b8', fontSize: '0.75rem', margin: 0, marginTop: 2 }}>Practice real-world programming problems and improve your coding skills.</p>
+              <h4 style={{ fontWeight: 800, color: 'var(--dash-text, #0f172a)', margin: 0, fontSize: '1.3rem', lineHeight: 1.2 }}>Code Challenge</h4>
+              <p style={{ color: 'var(--dash-gray, #94a3b8)', fontSize: '0.75rem', margin: 0, marginTop: 2 }}>Practice real-world programming problems and improve your coding skills.</p>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
@@ -542,7 +542,7 @@ const ProblemStatement = () => {
         </div>
 
         {/* ── Tabs ── */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: 22 }}>
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--dash-border, #e2e8f0)', marginBottom: 22 }}>
           {([
             { key: 'problemsList', label: 'All Problems' },
             { key: 'submission',   label: 'My Submissions' },
@@ -555,7 +555,7 @@ const ProblemStatement = () => {
               style={{
                 background: 'none', border: 'none', padding: '10px 22px', fontSize: '0.84rem',
                 fontWeight: activeTab === t.key ? 700 : 500,
-                color: activeTab === t.key ? '#ff7a00' : '#64748b',
+                color: activeTab === t.key ? '#ff7a00' : 'var(--dash-gray, #64748b)',
                 borderBottom: activeTab === t.key ? '2.5px solid #ff7a00' : '2.5px solid transparent',
                 cursor: 'pointer', marginBottom: -1, transition: 'all 0.15s',
               }}
@@ -584,9 +584,9 @@ const ProblemStatement = () => {
         {activeTab === 'submission' && <SubmissionList />}
 
         {(activeTab === 'bookmarked' || activeTab === 'contests') && (
-          <div style={{ textAlign: 'center', padding: '80px 0', color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--dash-gray, #94a3b8)' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🚧</div>
-            <div style={{ fontWeight: 700, color: '#475569', fontSize: '1rem', marginBottom: 6 }}>Coming Soon</div>
+            <div style={{ fontWeight: 700, color: 'var(--dash-text, #475569)', fontSize: '1rem', marginBottom: 6 }}>Coming Soon</div>
             <div style={{ fontSize: '0.82rem' }}>This section is under development.</div>
           </div>
         )}

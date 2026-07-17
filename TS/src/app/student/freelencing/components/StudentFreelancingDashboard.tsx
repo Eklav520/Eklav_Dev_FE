@@ -114,6 +114,14 @@ const isDeadlinePast = (d?: string | null) => {
   return new Date(d) < new Date()
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const getFreelancingTabFromPath = (pathname: string): 'available' | 'deadline-crossed' | 'enrolled' => {
   if (pathname.includes('/student/freelancing/my-tasks')) return 'enrolled'
   return 'available'
@@ -658,15 +666,15 @@ const StudentFreelancingDashboard: React.FC = () => {
       <div>
         {/* Search + Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px' }}>
-            <FaSearch style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }} />
-            <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search task..." style={{ border: 'none', outline: 'none', fontSize: 13, color: '#374151', background: 'none', width: '100%' }} />
+          <div style={{ flex: 1, minWidth: 200, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px' }}>
+            <FaSearch style={{ color: PAGE_GRAY, fontSize: 13, flexShrink: 0 }} />
+            <input value={taskSearch} onChange={e => setTaskSearch(e.target.value)} placeholder="Search task..." style={{ border: 'none', outline: 'none', fontSize: 13, color: PAGE_GRAY, background: 'none', width: '100%' }} />
           </div>
-          <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, color: '#374151', background: '#fff', outline: 'none' }}>
+          <select value={moduleFilter} onChange={e => setModuleFilter(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, fontSize: 13, color: PAGE_GRAY, background: CARD_BG, outline: 'none' }}>
             <option value="all">All Modules</option>
             {categories.map(c => <option key={c} value={c!}>{c}</option>)}
           </select>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13, color: '#374151', background: '#fff', outline: 'none' }}>
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, fontSize: 13, color: PAGE_GRAY, background: CARD_BG, outline: 'none' }}>
             <option value="all">All Status</option>
             <option value="approved">Approved</option>
             <option value="inprogress">In Progress</option>
@@ -675,29 +683,29 @@ const StudentFreelancingDashboard: React.FC = () => {
             <option value="upcoming">Upcoming</option>
           </select>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>View:</span>
+            <span style={{ fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>View:</span>
             <div style={{ width: 34, height: 34, borderRadius: 8, background: '#fff7f0', border: `1px solid ${ORANGE}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <FaThLarge style={{ color: ORANGE, fontSize: 14 }} />
             </div>
-            <div style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <FaFilter style={{ color: '#94a3b8', fontSize: 12 }} />
+            <div style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <FaFilter style={{ color: PAGE_GRAY, fontSize: 12 }} />
             </div>
           </div>
         </div>
 
         {/* Heading */}
         <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Tasks & Progress</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Complete tasks in order and submit for review.</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>Tasks & Progress</div>
+          <div style={{ fontSize: 12, color: PAGE_GRAY, marginTop: 2 }}>Complete tasks in order and submit for review.</div>
         </div>
 
         {filtered.length === 0 ? (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: 48, textAlign: 'center' }}>
+          <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: 48, textAlign: 'center' }}>
             <FaBriefcase style={{ fontSize: 40, color: '#cbd5e1', marginBottom: 12 }} />
-            <div style={{ fontWeight: 700, color: '#0f172a' }}>No tasks found</div>
+            <div style={{ fontWeight: 700, color: PAGE_TEXT }}>No tasks found</div>
           </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', overflow: 'hidden' }}>
+          <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, overflow: 'hidden' }}>
             {filtered.map((task, i) => {
               const status = classify(task)
               const progress = getProgress(task)
@@ -721,30 +729,30 @@ const StudentFreelancingDashboard: React.FC = () => {
                   gridTemplateColumns: '54px 1fr 140px 120px 110px 190px',
                   alignItems: 'center',
                   padding: '18px 24px',
-                  borderBottom: isLast ? 'none' : '1px solid #f8fafc',
-                  background: isActive ? '#fff8f5' : '#fff',
+                  borderBottom: isLast ? 'none' : `1px solid ${PAGE_BORDER}`,
+                  background: isActive ? '#fff8f5' : CARD_BG,
                 }}>
 
                   {/* Number + timeline line */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: circleColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: isUpcoming ? '#94a3b8' : '#fff', zIndex: 1 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: circleColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: isUpcoming ? PAGE_GRAY : '#fff', zIndex: 1 }}>
                       {isDone ? <FaCheckCircle style={{ fontSize: 16, color: '#fff' }} /> : i + 1}
                     </div>
                   </div>
 
                   {/* Task info */}
                   <div style={{ minWidth: 0, paddingRight: 24 }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>{task.title}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT, marginBottom: 3 }}>{task.title}</div>
                     {task.description && (
-                      <div style={{ fontSize: 12, color: '#94a3b8', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{stripHtml(task.description)}</div>
+                      <div style={{ fontSize: 12, color: PAGE_GRAY, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{stripHtml(task.description)}</div>
                     )}
                   </div>
 
                   {/* Date info */}
-                  <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: 16 }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>{isDone || isReview ? 'Submitted on' : 'Deadline'}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#374151', fontWeight: 600 }}>
-                      <FaCalendarAlt style={{ fontSize: 10, color: '#94a3b8' }} />
+                  <div style={{ borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 16 }}>
+                    <div style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600, marginBottom: 4 }}>{isDone || isReview ? 'Submitted on' : 'Deadline'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>
+                      <FaCalendarAlt style={{ fontSize: 10, color: PAGE_GRAY }} />
                       {isDone || isReview ? formatDate(submittedAt) : formatDate(task.deadline)}
                     </div>
                     {isActive && daysLeft && (
@@ -753,8 +761,8 @@ const StudentFreelancingDashboard: React.FC = () => {
                   </div>
 
                   {/* Status badge */}
-                  <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: 16 }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 6 }}>Status</div>
+                  <div style={{ borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 16 }}>
+                    <div style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600, marginBottom: 6 }}>Status</div>
                     {isDone && <span style={{ fontSize: 12, fontWeight: 700, color: '#22c55e', background: '#f0fdf4', borderRadius: 20, padding: '4px 12px' }}>Approved</span>}
                     {isActive && <span style={{ fontSize: 12, fontWeight: 700, color: ORANGE, background: '#fff7f0', border: `1px solid ${ORANGE}40`, borderRadius: 20, padding: '4px 12px' }}>In Progress</span>}
                     {isReview && <span style={{ fontSize: 12, fontWeight: 700, color: '#3b82f6', background: '#eff6ff', borderRadius: 20, padding: '4px 12px' }}>Under Review</span>}
@@ -763,19 +771,19 @@ const StudentFreelancingDashboard: React.FC = () => {
                   </div>
 
                   {/* Score / Progress */}
-                  <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: 16 }}>
+                  <div style={{ borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 16 }}>
                     {isDone || isReview ? (
                       <>
-                        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>Score</div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: score != null ? (score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444') : '#94a3b8' }}>
+                        <div style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600, marginBottom: 4 }}>Score</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: score != null ? (score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444') : PAGE_GRAY }}>
                           {score != null ? `${score} / 10` : '— / 10'}
                         </div>
                       </>
                     ) : (
                       <>
-                        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, marginBottom: 4 }}>Progress</div>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 5 }}>{progress}%</div>
-                        <div style={{ height: 5, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600, marginBottom: 4 }}>Progress</div>
+                        <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT, marginBottom: 5 }}>{progress}%</div>
+                        <div style={{ height: 5, background: PAGE_BORDER, borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${progress}%`, background: isActive ? ORANGE : '#cbd5e1', borderRadius: 3 }} />
                         </div>
                       </>
@@ -783,12 +791,12 @@ const StudentFreelancingDashboard: React.FC = () => {
                   </div>
 
                   {/* Action button */}
-                  <div style={{ borderLeft: '1px solid #f1f5f9', paddingLeft: 16, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+                  <div style={{ borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 16, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
                     {isDone && (
-                      <button onClick={() => { setFeedbackTask(task); setShowFeedbackModal(true) }} style={{ padding: '8px 16px', borderRadius: 9, border: '1.5px solid #22c55e', background: '#fff', color: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Feedback</button>
+                      <button onClick={() => { setFeedbackTask(task); setShowFeedbackModal(true) }} style={{ padding: '8px 16px', borderRadius: 9, border: '1.5px solid #22c55e', background: CARD_BG, color: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Feedback</button>
                     )}
                     {isReview && (
-                      <button onClick={() => openWorkflow(task)} style={{ padding: '8px 16px', borderRadius: 9, border: '1.5px solid #3b82f6', background: '#fff', color: '#3b82f6', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Submission</button>
+                      <button onClick={() => openWorkflow(task)} style={{ padding: '8px 16px', borderRadius: 9, border: '1.5px solid #3b82f6', background: CARD_BG, color: '#3b82f6', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>View Submission</button>
                     )}
                     {isRevision && (
                       <button onClick={() => openWorkflow(task)} style={{ padding: '8px 16px', borderRadius: 9, border: 'none', background: '#f59e0b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Resubmit</button>
@@ -797,7 +805,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                       <button onClick={() => openWorkflow(task)} style={{ padding: '8px 20px', borderRadius: 9, border: 'none', background: ORANGE, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>Continue Task</button>
                     )}
                     {isUpcoming && (
-                      <button disabled style={{ padding: '8px 20px', borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#fff', color: '#94a3b8', fontSize: 12, fontWeight: 700, cursor: 'not-allowed', whiteSpace: 'nowrap' }}>Start Task</button>
+                      <button disabled style={{ padding: '8px 20px', borderRadius: 9, border: `1.5px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_GRAY, fontSize: 12, fontWeight: 700, cursor: 'not-allowed', whiteSpace: 'nowrap' }}>Start Task</button>
                     )}
                   </div>
                 </div>
@@ -846,7 +854,7 @@ const StudentFreelancingDashboard: React.FC = () => {
     return (
       <div>
         {/* Sub-tab bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: 12, border: '1px solid #f1f5f9', padding: '6px 12px', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, padding: '6px 12px', marginBottom: 20 }}>
           <div style={{ display: 'flex', gap: 4 }}>
             {SUB_TABS.map(tab => {
               const key = tab.toLowerCase().replace(' ', '-').replace('my-', '') as typeof myInternshipSubTab
@@ -856,7 +864,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                 <button
                   key={tab}
                   onClick={() => setMyInternshipSubTab(k)}
-                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: active ? '#fff7f0' : 'transparent', color: active ? ORANGE : '#64748b', borderBottom: active ? `2px solid ${ORANGE}` : '2px solid transparent' }}
+                  style={{ padding: '7px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: active ? '#fff7f0' : 'transparent', color: active ? ORANGE : PAGE_GRAY, borderBottom: active ? `2px solid ${ORANGE}` : '2px solid transparent' }}
                 >
                   {tab}
                 </button>
@@ -864,18 +872,18 @@ const StudentFreelancingDashboard: React.FC = () => {
             })}
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px' }}>
-              <FaSearch style={{ color: '#94a3b8', fontSize: 12 }} />
-              <input value={overviewSearch} onChange={e => setOverviewSearch(e.target.value)} placeholder="Search internships..." style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: '#374151', width: 140 }} />
+            <div style={{ background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 12px' }}>
+              <FaSearch style={{ color: PAGE_GRAY, fontSize: 12 }} />
+              <input value={overviewSearch} onChange={e => setOverviewSearch(e.target.value)} placeholder="Search internships..." style={{ border: 'none', background: 'none', outline: 'none', fontSize: 12, color: PAGE_GRAY, width: 140 }} />
             </div>
-            <select value={overviewStatus} onChange={e => setOverviewStatus(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#374151', background: '#fff', outline: 'none' }}>
+            <select value={overviewStatus} onChange={e => setOverviewStatus(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, fontSize: 12, color: PAGE_GRAY, background: CARD_BG, outline: 'none' }}>
               <option value="all">Status (All)</option>
               <option value="inprogress">In Progress</option>
               <option value="review">Review Pending</option>
               <option value="approved">Completed</option>
               <option value="revision">Revision</option>
             </select>
-            <select value={overviewSort} onChange={e => setOverviewSort(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#374151', background: '#fff', outline: 'none' }}>
+            <select value={overviewSort} onChange={e => setOverviewSort(e.target.value)} style={{ padding: '7px 10px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, fontSize: 12, color: PAGE_GRAY, background: CARD_BG, outline: 'none' }}>
               <option value="newest">Sort: Newest</option>
               <option value="oldest">Sort: Oldest</option>
             </select>
@@ -885,14 +893,14 @@ const StudentFreelancingDashboard: React.FC = () => {
         {myInternshipSubTab === 'overview' && (
           <div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>My Enrolled Internships</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Track your progress and complete tasks on time.</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>My Enrolled Internships</div>
+              <div style={{ fontSize: 12, color: PAGE_GRAY, marginTop: 2 }}>Track your progress and complete tasks on time.</div>
             </div>
 
             {myTasks.length === 0 ? (
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: 48, textAlign: 'center' }}>
+              <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: 48, textAlign: 'center' }}>
                 <FaGraduationCap style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 12 }} />
-                <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>No enrollments yet</div>
+                <div style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 6 }}>No enrollments yet</div>
                 <button onClick={() => setActiveTab('available')} style={{ marginTop: 10, padding: '9px 20px', borderRadius: 10, border: 'none', background: ORANGE, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>Browse Internships</button>
               </div>
             ) : (() => {
@@ -917,14 +925,14 @@ const StudentFreelancingDashboard: React.FC = () => {
                   return overviewSort === 'oldest' ? da - db : db - da
                 })
               return filteredTasks.length === 0 ? (
-                <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: 48, textAlign: 'center' }}>
+                <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: 48, textAlign: 'center' }}>
                   <FaBriefcase style={{ fontSize: 40, color: '#cbd5e1', marginBottom: 12 }} />
-                  <div style={{ fontWeight: 700, color: '#0f172a' }}>No internships match your filters</div>
+                  <div style={{ fontWeight: 700, color: PAGE_TEXT }}>No internships match your filters</div>
                 </div>
               ) : (
               <div>
                 {filteredTasks.map(task => {
-                  const catStyle = CAT_META_LOCAL[task.category || ''] ?? { color: '#64748b', bg: '#f8fafc' }
+                  const catStyle = CAT_META_LOCAL[task.category || ''] ?? { color: PAGE_GRAY, bg: PAGE_BG }
                   const status = getStatusInfo(task)
                   const progress = getProgress(task)
                   const totalTasks = task.maxStudents ?? 20
@@ -935,30 +943,30 @@ const StudentFreelancingDashboard: React.FC = () => {
                   const taskScore = getScore(task)
 
                   return (
-                    <div key={task._id} style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 14, padding: '20px 22px', marginBottom: 14, display: 'flex', gap: 20, alignItems: 'stretch', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
+                    <div key={task._id} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '20px 22px', marginBottom: 14, display: 'flex', gap: 20, alignItems: 'stretch', boxShadow: '0 1px 6px rgba(0,0,0,0.04)' }}>
                       {/* Left: company icon + details */}
                       <div style={{ display: 'flex', gap: 14, flex: 1, minWidth: 0 }}>
                         <div style={{ width: 52, height: 52, borderRadius: 12, background: catStyle.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <FaBriefcase style={{ color: catStyle.color, fontSize: 22 }} />
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 3 }}>{task.title}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: PAGE_TEXT, marginBottom: 3 }}>{task.title}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                            <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Eklav Technologies</span>
-                            <span style={{ fontSize: 10, background: '#f1f5f9', color: '#64748b', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Remote</span>
+                            <span style={{ fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>Eklav Technologies</span>
+                            <span style={{ fontSize: 10, background: PAGE_BORDER, color: PAGE_GRAY, borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>Remote</span>
                           </div>
                           {task.description && (
-                            <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 10px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+                            <p style={{ fontSize: 12, color: PAGE_GRAY, margin: '0 0 10px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
                               {stripHtml(task.description)}
                             </p>
                           )}
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {task.deadline && task.startDate && (
-                              <span style={{ fontSize: 11, background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 20, padding: '3px 10px', color: '#64748b', fontWeight: 600 }}>
+                              <span style={{ fontSize: 11, background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, padding: '3px 10px', color: PAGE_GRAY, fontWeight: 600 }}>
                                 Duration: {Math.ceil((new Date(task.deadline).getTime() - new Date(task.startDate).getTime()) / (1000 * 60 * 60 * 24))} Days
                               </span>
                             )}
-                            <span style={{ fontSize: 11, background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: 20, padding: '3px 10px', color: '#64748b', fontWeight: 600 }}>
+                            <span style={{ fontSize: 11, background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, padding: '3px 10px', color: PAGE_GRAY, fontWeight: 600 }}>
                               Enrolled on: {task.startDate ? new Date(task.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                             </span>
                             {task.maxStudents != null && (
@@ -977,32 +985,32 @@ const StudentFreelancingDashboard: React.FC = () => {
                       </div>
 
                       {/* Center: Progress */}
-                      <div style={{ width: 190, flexShrink: 0, borderLeft: '1px solid #f1f5f9', paddingLeft: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Overall Progress</div>
-                        <div style={{ fontSize: 26, fontWeight: 900, color: '#0f172a', lineHeight: 1, marginBottom: 6 }}>{progress}%</div>
-                        <div style={{ height: 6, background: '#f1f5f9', borderRadius: 4, marginBottom: 6, overflow: 'hidden' }}>
+                      <div style={{ width: 190, flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', marginBottom: 4 }}>Overall Progress</div>
+                        <div style={{ fontSize: 26, fontWeight: 900, color: PAGE_TEXT, lineHeight: 1, marginBottom: 6 }}>{progress}%</div>
+                        <div style={{ height: 6, background: PAGE_BORDER, borderRadius: 4, marginBottom: 6, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${progress}%`, background: progress >= 80 ? '#22c55e' : progress >= 50 ? '#f59e0b' : ORANGE, borderRadius: 4, transition: 'width 0.3s' }} />
                         </div>
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{doneTasks} / {totalTasks} Tasks Completed</div>
+                        <div style={{ fontSize: 11, color: PAGE_GRAY }}>{doneTasks} / {totalTasks} Tasks Completed</div>
                       </div>
 
                       {/* Center: Stage + Submission */}
-                      <div style={{ width: 190, flexShrink: 0, borderLeft: '1px solid #f1f5f9', paddingLeft: 20 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Current Stage</div>
+                      <div style={{ width: 190, flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 20 }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', marginBottom: 4 }}>Current Stage</div>
                         <div style={{ fontSize: 13, fontWeight: 700, color: catStyle.color, marginBottom: 12 }}>{currentStage}</div>
                         {taskScore != null ? (
                           <>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>AI Score</div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', marginBottom: 4 }}>AI Score</div>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: 3 }}>
                               <span style={{ fontSize: 20, fontWeight: 900, color: taskScore >= 7 ? '#22c55e' : taskScore >= 5 ? '#f59e0b' : '#ef4444' }}>{taskScore}</span>
-                              <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}> / 10</span>
+                              <span style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600 }}> / 10</span>
                             </div>
                           </>
                         ) : (
                           <>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Next Submission</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#374151', fontWeight: 600 }}>
-                              <FaCalendarAlt style={{ fontSize: 10, color: '#94a3b8' }} />
+                            <div style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', marginBottom: 4 }}>Next Submission</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>
+                              <FaCalendarAlt style={{ fontSize: 10, color: PAGE_GRAY }} />
                               {task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                             </div>
                           </>
@@ -1010,13 +1018,13 @@ const StudentFreelancingDashboard: React.FC = () => {
                       </div>
 
                       {/* Right: Status + Actions */}
-                      <div style={{ width: 190, flexShrink: 0, borderLeft: '1px solid #f1f5f9', paddingLeft: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 12 }}>
+                      <div style={{ width: 190, flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 20, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 12 }}>
                         <div>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4 }}>Status</div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', marginBottom: 4 }}>Status</div>
                           <div style={{ fontSize: 15, fontWeight: 800, color: status.color, whiteSpace: 'nowrap' }}>{status.label}</div>
                         </div>
                         {task.mySubmission?.adminReviewStatus === 'rejected' ? (
-                          <button onClick={() => openWorkflow(task)} style={{ width: '100%', padding: '9px 0', borderRadius: 9, border: `1.5px solid ${status.color}`, background: '#fff', color: status.color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
+                          <button onClick={() => openWorkflow(task)} style={{ width: '100%', padding: '9px 0', borderRadius: 9, border: `1.5px solid ${status.color}`, background: CARD_BG, color: status.color, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
                             View Feedback
                           </button>
                         ) : task.mySubmission?.status !== 'completed' ? (
@@ -1032,7 +1040,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                   )
                 })}
 
-                <div style={{ textAlign: 'center', fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
+                <div style={{ textAlign: 'center', fontSize: 12, color: PAGE_GRAY, marginTop: 16 }}>
                   Showing {filteredTasks.length} of {myTasks.length} internship{myTasks.length !== 1 ? 's' : ''}
                 </div>
               </div>
@@ -1044,10 +1052,10 @@ const StudentFreelancingDashboard: React.FC = () => {
         {myInternshipSubTab === 'tasks' && renderMyTasksListView()}
 
         {(myInternshipSubTab === 'submissions' || myInternshipSubTab === 'feedback' || myInternshipSubTab === 'certificate') && (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: 48, textAlign: 'center' }}>
+          <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: 48, textAlign: 'center' }}>
             <FaBriefcase style={{ fontSize: 40, color: '#cbd5e1', marginBottom: 12 }} />
-            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>Coming Soon</div>
-            <div style={{ fontSize: 13, color: '#94a3b8' }}>This section is under development.</div>
+            <div style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 4 }}>Coming Soon</div>
+            <div style={{ fontSize: 13, color: PAGE_GRAY }}>This section is under development.</div>
           </div>
         )}
       </div>
@@ -1142,8 +1150,8 @@ const StudentFreelancingDashboard: React.FC = () => {
     const deadlinePast = isDeadlinePast(task.deadline)
     const full = (task.spotsLeft ?? 0) <= 0
     const notStarted = isBeforeStartDate(task.startDate)
-    const catMeta = CAT_META[task.category || ''] ?? { Icon: FaBriefcase, color: '#64748b', bg: '#f8fafc', label: task.category || 'General' }
-    const diffStyle = DIFF_COLOR[task.experience || ''] ?? { color: '#64748b', bg: '#f8fafc' }
+    const catMeta = CAT_META[task.category || ''] ?? { Icon: FaBriefcase, color: PAGE_GRAY, bg: PAGE_BG, label: task.category || 'General' }
+    const diffStyle = DIFF_COLOR[task.experience || ''] ?? { color: PAGE_GRAY, bg: PAGE_BG }
     const isNew = task.createdAt && (Date.now() - new Date(task.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
     const daysLeft = getDaysLeft(task.deadline)
 
@@ -1155,7 +1163,7 @@ const StudentFreelancingDashboard: React.FC = () => {
     return (
       <div
         key={task._id}
-        style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 14, padding: '18px 20px', display: 'flex', gap: 16, marginBottom: 12, transition: 'box-shadow 0.15s', fontFamily: "'Inter','Segoe UI',sans-serif" }}
+        style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 20px', display: 'flex', gap: 16, marginBottom: 12, transition: 'box-shadow 0.15s', fontFamily: "'Inter','Segoe UI',sans-serif" }}
         onMouseEnter={e => (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)'}
         onMouseLeave={e => (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'}
       >
@@ -1167,10 +1175,10 @@ const StudentFreelancingDashboard: React.FC = () => {
         {/* Center content */}
         <div style={{ flex: 1, minWidth: 0, maxWidth: 520 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{task.title}</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: PAGE_TEXT }}>{task.title}</span>
             {badge && <span style={{ fontSize: 10, fontWeight: 700, color: badge.color, background: badge.bg, borderRadius: 20, padding: '2px 8px' }}>{badge.text}</span>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#64748b', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: PAGE_GRAY, marginBottom: 8 }}>
             <span style={{ fontWeight: 600, color: catMeta.color }}>{catMeta.label}</span>
             <span>·</span>
             <FaMapMarkerAlt style={{ fontSize: 10 }} />
@@ -1182,14 +1190,14 @@ const StudentFreelancingDashboard: React.FC = () => {
           {(task.skills?.length ?? 0) > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {task.skills!.map(s => (
-                <span key={s} style={{ fontSize: 10, fontWeight: 600, background: '#f1f5f9', color: '#475569', borderRadius: 6, padding: '3px 8px', border: '1px solid #e2e8f0' }}>{s}</span>
+                <span key={s} style={{ fontSize: 10, fontWeight: 600, background: PAGE_BORDER, color: PAGE_TEXT, borderRadius: 6, padding: '3px 8px', border: `1px solid ${PAGE_BORDER}` }}>{s}</span>
               ))}
             </div>
           )}
         </div>
 
         {/* Meta column: 5 stat items with icon — two columns */}
-        <div style={{ flexShrink: 0, borderLeft: '1px solid #f1f5f9', paddingLeft: 20, display: 'flex', flexDirection: 'row', gap: 0 }}>
+        <div style={{ flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 20, display: 'flex', flexDirection: 'row', gap: 0 }}>
           {/* Column 1 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center', minWidth: 180, paddingRight: 16 }}>
             {[
@@ -1198,7 +1206,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                 value: task.startDate && task.deadline
                   ? `${Math.ceil((new Date(task.deadline).getTime() - new Date(task.startDate).getTime()) / (1000 * 60 * 60 * 24))} Days`
                   : '—',
-                valueColor: '#0f172a',
+                valueColor: PAGE_TEXT,
                 Icon: FaClock,
                 iconColor: '#6366f1',
                 iconBg: 'rgba(99,102,241,0.1)',
@@ -1206,7 +1214,7 @@ const StudentFreelancingDashboard: React.FC = () => {
               {
                 label: 'Seats',
                 value: `${task.enrolledCount ?? 0} / ${task.maxStudents ?? '—'}`,
-                valueColor: '#0f172a',
+                valueColor: PAGE_TEXT,
                 Icon: FaUsers,
                 iconColor: '#0ea5e9',
                 iconBg: 'rgba(14,165,233,0.1)',
@@ -1214,7 +1222,7 @@ const StudentFreelancingDashboard: React.FC = () => {
               {
                 label: 'Deadline',
                 value: task.deadline ? new Date(task.deadline).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
-                valueColor: daysLeft.overdue ? '#ef4444' : '#0f172a',
+                valueColor: daysLeft.overdue ? '#ef4444' : PAGE_TEXT,
                 Icon: FaCalendarAlt,
                 iconColor: daysLeft.overdue ? '#ef4444' : '#f59e0b',
                 iconBg: daysLeft.overdue ? 'rgba(239,68,68,0.1)' : 'rgba(245,158,11,0.1)',
@@ -1226,21 +1234,21 @@ const StudentFreelancingDashboard: React.FC = () => {
                     <Icon style={{ fontSize: 14, color: iconColor }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>{label}</div>
+                    <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 600 }}>{label}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: valueColor }}>{value}</div>
                   </div>
                 </div>
-                {idx < arr.length - 1 && <div style={{ borderBottom: '1px solid #f1f5f9', marginTop: 10 }} />}
+                {idx < arr.length - 1 && <div style={{ borderBottom: `1px solid ${PAGE_BORDER}`, marginTop: 10 }} />}
               </div>
             ))}
           </div>
           {/* Column 2 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center', minWidth: 180, borderLeft: '1px solid #f1f5f9', paddingLeft: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center', minWidth: 180, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 16 }}>
             {[
               {
                 label: 'Start Date',
                 value: task.startDate ? new Date(task.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—',
-                valueColor: '#0f172a',
+                valueColor: PAGE_TEXT,
                 Icon: FaCalendarAlt,
                 iconColor: '#22c55e',
                 iconBg: 'rgba(34,197,94,0.1)',
@@ -1263,7 +1271,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                     <Icon style={{ fontSize: 14, color: iconColor }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 600 }}>{label}</div>
+                    <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 600 }}>{label}</div>
                     {pill ? (
                       <span style={{ fontSize: 11, fontWeight: 700, color: valueColor, background: valueBg, borderRadius: 20, padding: '1px 8px', alignSelf: 'flex-start' }}>{value}</span>
                     ) : (
@@ -1271,14 +1279,14 @@ const StudentFreelancingDashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
-                {idx < arr.length - 1 && <div style={{ borderBottom: '1px solid #f1f5f9', marginTop: 10 }} />}
+                {idx < arr.length - 1 && <div style={{ borderBottom: `1px solid ${PAGE_BORDER}`, marginTop: 10 }} />}
               </div>
             ))}
           </div>
         </div>
 
         {/* Action column */}
-        <div style={{ flexShrink: 0, borderLeft: '1px solid #f1f5f9', paddingLeft: 20, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, minWidth: 140 }} onClick={e => e.stopPropagation()}>
+        <div style={{ flexShrink: 0, borderLeft: `1px solid ${PAGE_BORDER}`, paddingLeft: 20, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, minWidth: 140 }} onClick={e => e.stopPropagation()}>
           {enrolled ? (
             <button onClick={() => openWorkflow(task)} style={{ padding: '9px 0', borderRadius: 9, border: 'none', background: ORANGE, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
               Open Task
@@ -1288,12 +1296,12 @@ const StudentFreelancingDashboard: React.FC = () => {
               <button disabled style={{ padding: '9px 0', borderRadius: 9, border: '1.5px solid #22c55e', background: '#f0fdf4', color: '#22c55e', fontSize: 12, fontWeight: 800, cursor: 'default', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <FaCheckCircle style={{ fontSize: 13 }} /> Enrolled
               </button>
-              <button onClick={() => openTaskDetails(task)} style={{ padding: '8px 0', borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
+              <button onClick={() => openTaskDetails(task)} style={{ padding: '8px 0', borderRadius: 9, border: `1.5px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_GRAY, fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
                 View Details
               </button>
             </>
           ) : deadlinePast || full || notStarted ? (
-            <button disabled style={{ padding: '9px 0', borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#94a3b8', fontSize: 12, fontWeight: 700, cursor: 'not-allowed', width: '100%' }}>
+            <button disabled style={{ padding: '9px 0', borderRadius: 9, border: `1.5px solid ${PAGE_BORDER}`, background: PAGE_BG, color: PAGE_GRAY, fontSize: 12, fontWeight: 700, cursor: 'not-allowed', width: '100%' }}>
               {deadlinePast ? 'Closed' : notStarted ? 'Coming Soon' : 'Full'}
             </button>
           ) : (
@@ -1302,7 +1310,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                 {enrolling === task._id ? <Spinner animation="border" size="sm" /> : null}
                 Enroll Now
               </button>
-              <button onClick={() => openTaskDetails(task)} style={{ padding: '8px 0', borderRadius: 9, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
+              <button onClick={() => openTaskDetails(task)} style={{ padding: '8px 0', borderRadius: 9, border: `1.5px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_GRAY, fontSize: 12, fontWeight: 600, cursor: 'pointer', width: '100%' }}>
                 View Details
               </button>
             </>
@@ -1318,7 +1326,7 @@ const StudentFreelancingDashboard: React.FC = () => {
 
   return (
     <>
-      <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: '#f8fafc', minHeight: '100vh', padding: '0' }}>
+      <div style={{ fontFamily: "'Inter','Segoe UI',sans-serif", background: PAGE_BG, minHeight: '100vh', padding: '0' }}>
 
         <div style={{ padding: '20px 28px' }}>
 
@@ -1328,7 +1336,7 @@ const StudentFreelancingDashboard: React.FC = () => {
             {/* ── Left: Content ── */}
             <div>
               {/* ── Hero Banner ── */}
-              <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 14, padding: '0', display: 'flex', alignItems: 'stretch', gap: 0, overflow: 'hidden', marginBottom: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', minHeight: 130 }}>
+              <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '0', display: 'flex', alignItems: 'stretch', gap: 0, overflow: 'hidden', marginBottom: 16, boxShadow: '0 1px 6px rgba(0,0,0,0.04)', minHeight: 130 }}>
                 {/* Illustration */}
                 <div style={{ position: 'relative', width: 120, flexShrink: 0, alignSelf: 'stretch', background: 'linear-gradient(135deg, #fff7f0, #fff3e0)', borderRadius: '14px 0 0 14px', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'hidden' }}>
                   <img src={boyImg} alt="Internship" style={{ height: '100%', width: 'auto', objectFit: 'contain', display: 'block' }} />
@@ -1338,13 +1346,13 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.25, marginBottom: 10 }}>
                       <span style={{ color: ORANGE }}>Build your career</span>
-                      <span style={{ color: '#0f172a' }}> with</span>
+                      <span style={{ color: PAGE_TEXT }}> with</span>
                       <br />
-                      <span style={{ color: '#0f172a' }}>real industry internships</span>
+                      <span style={{ color: PAGE_TEXT }}>real industry internships</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                       {['Work on Live Projects', 'Learn from Industry Mentors', 'Earn Completion Certificates'].map(pt => (
-                        <div key={pt} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: '#374151', fontWeight: 500 }}>
+                        <div key={pt} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: PAGE_GRAY, fontWeight: 500 }}>
                           <FaCheckCircle style={{ color: '#22c55e', fontSize: 12, flexShrink: 0 }} />
                           {pt}
                         </div>
@@ -1353,7 +1361,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                   </div>
                 </div>
                 {/* Divider */}
-                <div style={{ width: 1, background: '#f1f5f9', margin: '16px 0 16px 20px', flexShrink: 0 }} />
+                <div style={{ width: 1, background: PAGE_BORDER, margin: '16px 0 16px 20px', flexShrink: 0 }} />
                 {/* KPI stats */}
                 <div style={{ display: 'flex', alignItems: 'center', flex: 1, justifyContent: 'space-evenly' }}>
                   {[
@@ -1363,12 +1371,12 @@ const StudentFreelancingDashboard: React.FC = () => {
                     { label: 'Under Review',     value: underReviewCount,      sub: 'Awaiting feedback', color: '#f59e0b', Icon: FaChartBar,      onClick: () => setActiveTab('enrolled')  },
                     { label: 'Completed',        value: completedCount,        sub: 'Well done!',        color: '#22c55e', Icon: FaCheckCircle,   onClick: () => setActiveTab('enrolled')  },
                   ].map(({ label, value, sub, color, Icon: KIcon, onClick }, idx, arr) => (
-                    <div key={label} style={{ padding: '0 8px', borderRight: idx < arr.length - 1 ? '1px solid #f1f5f9' : 'none', textAlign: 'center', flex: 1 }}>
+                    <div key={label} style={{ padding: '0 8px', borderRight: idx < arr.length - 1 ? `1px solid ${PAGE_BORDER}` : 'none', textAlign: 'center', flex: 1 }}>
                       <div style={{ width: 34, height: 34, borderRadius: '50%', background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 5px' }}>
                         <KIcon style={{ color, fontSize: 14 }} />
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{value}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, margin: '3px 0 4px' }}>{label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>{value}</div>
+                      <div style={{ fontSize: 11, color: PAGE_GRAY, fontWeight: 600, margin: '3px 0 4px' }}>{label}</div>
                       <button onClick={onClick} style={{ fontSize: 11, color, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>{sub}</button>
                     </div>
                   ))}
@@ -1376,7 +1384,7 @@ const StudentFreelancingDashboard: React.FC = () => {
               </div>
 
               {/* Tabs */}
-              <div style={{ display: 'flex', gap: 0, background: '#fff', borderRadius: 12, border: '1px solid #f1f5f9', padding: 4, marginBottom: 16, width: 'fit-content' }}>
+              <div style={{ display: 'flex', gap: 0, background: CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, padding: 4, marginBottom: 16, width: 'fit-content' }}>
                 {[
                   { key: 'available', label: 'All Internships', count: availableTasks.length },
                   { key: 'enrolled',  label: 'My Internship',   count: myTasks.length },
@@ -1388,13 +1396,13 @@ const StudentFreelancingDashboard: React.FC = () => {
                     style={{
                       padding: '8px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
                       background: activeTab === tab.key ? ORANGE : 'transparent',
-                      color: activeTab === tab.key ? '#fff' : '#64748b',
+                      color: activeTab === tab.key ? '#fff' : PAGE_GRAY,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                       lineHeight: 1,
                     }}
                   >
                     <span>{tab.label}</span>
-                    <span style={{ fontSize: 11, fontWeight: 800, background: activeTab === tab.key ? 'rgba(255,255,255,0.3)' : '#f1f5f9', color: activeTab === tab.key ? '#fff' : '#64748b', borderRadius: 20, padding: '2px 8px', lineHeight: 1.4, display: 'inline-flex', alignItems: 'center' }}>{tab.count}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, background: activeTab === tab.key ? 'rgba(255,255,255,0.3)' : PAGE_BORDER, color: activeTab === tab.key ? '#fff' : PAGE_GRAY, borderRadius: 20, padding: '2px 8px', lineHeight: 1.4, display: 'inline-flex', alignItems: 'center' }}>{tab.count}</span>
                   </button>
                 ))}
               </div>
@@ -1403,61 +1411,63 @@ const StudentFreelancingDashboard: React.FC = () => {
                 <>
                   {/* Search + Filters */}
                   <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: 200, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px' }}>
-                      <FaSearch style={{ color: '#94a3b8', fontSize: 13, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 200, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px' }}>
+                      <FaSearch style={{ color: PAGE_GRAY, fontSize: 13, flexShrink: 0 }} />
                       <input
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                         placeholder="Search internships, roles, skills..."
-                        style={{ border: 'none', outline: 'none', fontSize: 13, color: '#374151', background: 'transparent', width: '100%' }}
+                        style={{ border: 'none', outline: 'none', fontSize: 13, color: PAGE_GRAY, background: 'transparent', width: '100%' }}
                       />
                     </div>
-                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${categoryFilter !== 'all' ? ORANGE : '#e2e8f0'}`, background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
+                    <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${categoryFilter !== 'all' ? ORANGE : PAGE_BORDER}`, background: CARD_BG, fontSize: 12, color: PAGE_GRAY, cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
                       <option value="all">Category</option>
                       {uniqueCategories.map(cat => (
                         <option key={cat} value={cat}>{CATEGORY_LABELS[cat]?.replace(/^[^\s]+\s/, '') || cat}</option>
                       ))}
                     </select>
-                    <select value={durationFilter} onChange={e => setDurationFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${durationFilter !== 'all' ? ORANGE : '#e2e8f0'}`, background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
+                    <select value={durationFilter} onChange={e => setDurationFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${durationFilter !== 'all' ? ORANGE : PAGE_BORDER}`, background: CARD_BG, fontSize: 12, color: PAGE_GRAY, cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
                       <option value="all">Duration</option>
                       <option value="short">Short (≤ 1 week)</option>
                       <option value="medium">Medium (1–4 weeks)</option>
                       <option value="long">Long (&gt; 1 month)</option>
                     </select>
-                    <select value={difficultyFilter} onChange={e => setDifficultyFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${difficultyFilter !== 'all' ? ORANGE : '#e2e8f0'}`, background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
+                    <select value={difficultyFilter} onChange={e => setDifficultyFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${difficultyFilter !== 'all' ? ORANGE : PAGE_BORDER}`, background: CARD_BG, fontSize: 12, color: PAGE_GRAY, cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
                       <option value="all">Difficulty</option>
                       <option value="beginner">Beginner</option>
                       <option value="intermediate">Intermediate</option>
                       <option value="advanced">Advanced</option>
                     </select>
-                    <select value={sortFilter} onChange={e => setSortFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, color: '#374151', cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
+                    <select value={sortFilter} onChange={e => setSortFilter(e.target.value)} style={{ padding: '9px 12px', borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, fontSize: 12, color: PAGE_GRAY, cursor: 'pointer', fontWeight: 600, outline: 'none' }}>
                       <option value="newest">Sort by: Newest</option>
                       <option value="oldest">Sort by: Oldest</option>
                     </select>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 14px', borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, fontSize: 12, fontWeight: 700, color: PAGE_GRAY, cursor: 'pointer' }}>
                       <FaFilter style={{ fontSize: 11 }} /> Filters
                     </button>
                   </div>
 
-                  {/* Category pills */}
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-                    <button
-                      onClick={() => setCategoryFilter('all')}
-                      style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700, border: `1px solid ${categoryFilter === 'all' ? ORANGE : '#e2e8f0'}`, cursor: 'pointer', background: categoryFilter === 'all' ? ORANGE : '#fff', color: categoryFilter === 'all' ? '#fff' : '#374151' }}
-                    >All</button>
-                    {uniqueCategories.map(cat => {
-                      const meta = CAT_META[cat]
-                      return (
-                        <button
-                          key={cat}
-                          onClick={() => setCategoryFilter(cat)}
-                          style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: categoryFilter === cat ? `${meta?.color || ORANGE}15` : '#fff', color: categoryFilter === cat ? (meta?.color || ORANGE) : '#374151', border: `1px solid ${categoryFilter === cat ? (meta?.color || ORANGE) : '#e2e8f0'}` }}
-                        >
-                          {meta?.label || CATEGORY_LABELS[cat]?.replace(/^[^\s]+\s/, '') || cat}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  {/* Category pills — only when there's data to filter */}
+                  {tasks.length > 0 && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                      <button
+                        onClick={() => setCategoryFilter('all')}
+                        style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 700, border: `1px solid ${categoryFilter === 'all' ? ORANGE : PAGE_BORDER}`, cursor: 'pointer', background: categoryFilter === 'all' ? ORANGE : CARD_BG, color: categoryFilter === 'all' ? '#fff' : PAGE_GRAY }}
+                      >All</button>
+                      {uniqueCategories.map(cat => {
+                        const meta = CAT_META[cat]
+                        return (
+                          <button
+                            key={cat}
+                            onClick={() => setCategoryFilter(cat)}
+                            style={{ padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: categoryFilter === cat ? `${meta?.color || ORANGE}15` : CARD_BG, color: categoryFilter === cat ? (meta?.color || ORANGE) : PAGE_GRAY, border: `1px solid ${categoryFilter === cat ? (meta?.color || ORANGE) : PAGE_BORDER}` }}
+                          >
+                            {meta?.label || CATEGORY_LABELS[cat]?.replace(/^[^\s]+\s/, '') || cat}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -1465,15 +1475,15 @@ const StudentFreelancingDashboard: React.FC = () => {
               {loading ? (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 60, gap: 12 }}>
                   <Spinner animation="border" style={{ color: ORANGE }} />
-                  <span style={{ color: '#64748b' }}>Loading internships...</span>
+                  <span style={{ color: PAGE_GRAY }}>Loading internships...</span>
                 </div>
               ) : activeTab === 'enrolled' ? (
                 renderMyInternshipView()
               ) : displayTasks.length === 0 ? (
-                <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: 48, textAlign: 'center' }}>
+                <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: 48, textAlign: 'center' }}>
                   <FaBriefcase style={{ fontSize: 48, color: '#cbd5e1', marginBottom: 12 }} />
-                  <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>No internships found</div>
-                  <div style={{ fontSize: 13, color: '#94a3b8' }}>Try adjusting your filters</div>
+                  <div style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 6 }}>No internships found</div>
+                  <div style={{ fontSize: 13, color: PAGE_GRAY }}>Try adjusting your filters</div>
                 </div>
               ) : (
                 <div>
@@ -1483,9 +1493,9 @@ const StudentFreelancingDashboard: React.FC = () => {
                   {totalPages > 1 && (() => {
                     const btnStyle = (active: boolean, disabled?: boolean): React.CSSProperties => ({
                       width: 34, height: 34, borderRadius: 8,
-                      border: active ? 'none' : '1px solid #e2e8f0',
-                      background: active ? ORANGE : '#fff',
-                      color: active ? '#fff' : disabled ? '#cbd5e1' : '#374151',
+                      border: active ? 'none' : `1px solid ${PAGE_BORDER}`,
+                      background: active ? ORANGE : CARD_BG,
+                      color: active ? '#fff' : disabled ? '#cbd5e1' : PAGE_GRAY,
                       fontWeight: 700, fontSize: 13,
                       cursor: disabled ? 'default' : 'pointer',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -1507,7 +1517,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                         </button>
                         {pages.map((p, i) =>
                           p === '...'
-                            ? <span key={`ellipsis-${i}`} style={{ width: 34, textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>...</span>
+                            ? <span key={`ellipsis-${i}`} style={{ width: 34, textAlign: 'center', color: PAGE_GRAY, fontSize: 13 }}>...</span>
                             : <button key={p} style={btnStyle(p === currentPage)} onClick={() => setCurrentPage(p as number)}>{p}</button>
                         )}
                         <button style={{ ...btnStyle(false, currentPage === totalPages), width: 'auto', padding: '0 12px', gap: 4 }} disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
@@ -1524,23 +1534,23 @@ const StudentFreelancingDashboard: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
               {/* My Internship Journey */}
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: '18px 20px' }}>
+              <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: '18px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>My Internship Journey</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT }}>My Internship Journey</div>
                   <button style={{ fontSize: 11, color: ORANGE, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>View All</button>
                 </div>
                 <div style={{ position: 'relative' }}>
                   {JOURNEY_STEPS.map((step, i) => (
                     <div key={step.label} style={{ display: 'flex', gap: 10, paddingBottom: i < JOURNEY_STEPS.length - 1 ? 14 : 0, position: 'relative' }}>
                       {i < JOURNEY_STEPS.length - 1 && (
-                        <div style={{ position: 'absolute', left: 13, top: 28, width: 2, height: 'calc(100% - 6px)', background: step.done ? step.color + '50' : '#e2e8f0', borderRadius: 2 }} />
+                        <div style={{ position: 'absolute', left: 13, top: 28, width: 2, height: 'calc(100% - 6px)', background: step.done ? step.color + '50' : PAGE_BORDER, borderRadius: 2 }} />
                       )}
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: step.done ? step.color : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, boxShadow: step.done ? `0 0 0 3px ${step.color}25` : 'none' }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: step.done ? step.color : PAGE_BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1, boxShadow: step.done ? `0 0 0 3px ${step.color}25` : 'none' }}>
                         <step.Icon style={{ color: step.done ? '#fff' : '#cbd5e1', fontSize: 11 }} />
                       </div>
                       <div style={{ paddingTop: 2 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: step.done ? '#0f172a' : '#94a3b8', lineHeight: 1.2 }}>{step.label}</div>
-                        <div style={{ fontSize: 11, color: step.done ? '#64748b' : '#cbd5e1', marginTop: 2 }}>{step.sub}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: step.done ? PAGE_TEXT : PAGE_GRAY, lineHeight: 1.2 }}>{step.label}</div>
+                        <div style={{ fontSize: 11, color: step.done ? PAGE_GRAY : '#cbd5e1', marginTop: 2 }}>{step.sub}</div>
                       </div>
                     </div>
                   ))}
@@ -1548,13 +1558,13 @@ const StudentFreelancingDashboard: React.FC = () => {
               </div>
 
               {/* Upcoming Deadlines */}
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: '18px 20px' }}>
+              <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: '18px 20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Upcoming Deadlines</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT }}>Upcoming Deadlines</div>
                   <button style={{ fontSize: 11, color: ORANGE, fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer' }}>View Calendar</button>
                 </div>
                 {upcomingDeadlines.length === 0 ? (
-                  <div style={{ fontSize: 12, color: '#94a3b8', textAlign: 'center', padding: '12px 0' }}>No upcoming deadlines</div>
+                  <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center', padding: '12px 0' }}>No upcoming deadlines</div>
                 ) : upcomingDeadlines.map(t => {
                   const dl = getDaysLeft(t.deadline)
                   const d = new Date(t.deadline!)
@@ -1565,8 +1575,8 @@ const StudentFreelancingDashboard: React.FC = () => {
                         <div style={{ fontSize: 9, fontWeight: 700, color: ORANGE, textTransform: 'uppercase' }}>{d.toLocaleString('en', { month: 'short' })}</div>
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
-                        <div style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>Submission Deadline</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</div>
+                        <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 1 }}>Submission Deadline</div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: dl.overdue ? '#ef4444' : '#22c55e', marginTop: 2 }}>{dl.label}</div>
                       </div>
                     </div>
@@ -1575,8 +1585,8 @@ const StudentFreelancingDashboard: React.FC = () => {
               </div>
 
               {/* Quick Actions */}
-              <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #f1f5f9', padding: '18px 20px' }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 14 }}>Quick Actions</div>
+              <div style={{ background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, padding: '18px 20px' }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT, marginBottom: 14 }}>Quick Actions</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     { label: 'Browse Internships', Icon: FaBriefcase, color: '#3b82f6', bg: '#eff6ff', onClick: () => setActiveTab('available') },
@@ -1584,12 +1594,12 @@ const StudentFreelancingDashboard: React.FC = () => {
                     { label: 'My Feedback',        Icon: FaChartBar,  color: '#f59e0b', bg: '#fffbeb', onClick: () => { setActiveTab('enrolled'); setMyInternshipSubTab('feedback') } },
                     { label: 'My Certificates',    Icon: FaCertificate, color: '#22c55e', bg: '#f0fdf4', onClick: () => { setActiveTab('enrolled'); setMyInternshipSubTab('certificate') } },
                   ].map(({ label, Icon, color, bg, onClick }) => (
-                    <button key={label} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, border: '1px solid #f1f5f9', background: '#fafbfc', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                    <button key={label} onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Icon style={{ color, fontSize: 14 }} />
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>{label}</span>
-                      <FaArrowRight style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto' }} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: PAGE_GRAY }}>{label}</span>
+                      <FaArrowRight style={{ fontSize: 10, color: PAGE_GRAY, marginLeft: 'auto' }} />
                     </button>
                   ))}
                 </div>
@@ -1793,29 +1803,29 @@ const StudentFreelancingDashboard: React.FC = () => {
 
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10060, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflow: 'hidden' }} onClick={() => setShowFeedbackModal(false)}>
-            <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: CARD_BG, borderRadius: 18, width: '100%', maxWidth: 560, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }} onClick={e => e.stopPropagation()}>
 
               {/* Header */}
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
+              <div style={{ padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'flex-start', gap: 12, flexShrink: 0 }}>
                 <div style={{ width: 44, height: 44, borderRadius: 10, background: `${statusColor}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
                   <FaBriefcase style={{ color: statusColor, fontSize: 18 }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>{t.title}</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: PAGE_TEXT, marginBottom: 4 }}>{t.title}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Frontend Developer Internship</span>
-                    {taskXofY && <span style={{ fontSize: 11, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 20, padding: '2px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{taskXofY}</span>}
+                    <span style={{ fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>Frontend Developer Internship</span>
+                    {taskXofY && <span style={{ fontSize: 11, background: PAGE_BG, color: PAGE_GRAY, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, padding: '2px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{taskXofY}</span>}
                     <span style={{ fontSize: 12, fontWeight: 800, color: statusColor, background: `${statusColor}15`, border: `1.5px solid ${statusColor}40`, borderRadius: 20, padding: '3px 12px', whiteSpace: 'nowrap' }}>{statusLabel}</span>
                   </div>
                 </div>
-                <button onClick={() => setShowFeedbackModal(false)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#64748b', flexShrink: 0 }}>✕</button>
+                <button onClick={() => setShowFeedbackModal(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: PAGE_GRAY, flexShrink: 0 }}>✕</button>
               </div>
 
               {/* Dates bar */}
               {(submittedAt || reviewedAt) && (
-                <div style={{ padding: '10px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', gap: 0, background: '#fafafa', flexShrink: 0 }}>
-                  {submittedAt && <div style={{ fontSize: 12, color: '#64748b', flex: 1 }}><span style={{ fontWeight: 700, color: '#374151' }}>Submitted on: </span>{submittedAt}</div>}
-                  {reviewedAt  && <div style={{ fontSize: 12, color: '#64748b', flex: 1 }}><span style={{ fontWeight: 700, color: '#374151' }}>Reviewed on: </span>{reviewedAt}</div>}
+                <div style={{ padding: '10px 20px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', gap: 0, background: PAGE_BG, flexShrink: 0 }}>
+                  {submittedAt && <div style={{ fontSize: 12, color: PAGE_GRAY, flex: 1 }}><span style={{ fontWeight: 700, color: PAGE_GRAY }}>Submitted on: </span>{submittedAt}</div>}
+                  {reviewedAt  && <div style={{ fontSize: 12, color: PAGE_GRAY, flex: 1 }}><span style={{ fontWeight: 700, color: PAGE_GRAY }}>Reviewed on: </span>{reviewedAt}</div>}
                 </div>
               )}
 
@@ -1843,9 +1853,9 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
                       <FaRobot style={{ color: '#8b5cf6', fontSize: 14 }} />
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Mentor Feedback</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT }}>Mentor Feedback</span>
                     </div>
-                    <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.7, background: '#fafafa', borderRadius: 10, padding: '12px 14px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: 13, color: PAGE_GRAY, lineHeight: 1.7, background: PAGE_BG, borderRadius: 10, padding: '12px 14px', border: `1px solid ${PAGE_BORDER}` }}>
                       {sub.adminFeedback}
                     </div>
                   </div>
@@ -1856,9 +1866,9 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
                       <FaLayerGroup style={{ color: '#3b82f6', fontSize: 13 }} />
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Detailed Feedback</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT }}>Detailed Feedback</span>
                     </div>
-                    <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.7, background: '#f8fafc', borderRadius: 10, padding: '12px 14px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.7, background: PAGE_BG, borderRadius: 10, padding: '12px 14px', border: `1px solid ${PAGE_BORDER}` }}>
                       {ai.summary}
                     </div>
                   </div>
@@ -1872,7 +1882,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                       <span style={{ fontSize: 12, fontWeight: 800, color: '#22c55e' }}>What's Good</span>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
-                      {strengths.map((s, i) => <li key={i} style={{ fontSize: 12, color: '#374151', marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
+                      {strengths.map((s, i) => <li key={i} style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
                     </ul>
                   </div>
                 )}
@@ -1885,7 +1895,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                       <span style={{ fontSize: 12, fontWeight: 800, color: ORANGE }}>Improvements</span>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
-                      {improvements.map((s, i) => <li key={i} style={{ fontSize: 12, color: '#374151', marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
+                      {improvements.map((s, i) => <li key={i} style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
                     </ul>
                   </div>
                 )}
@@ -1898,7 +1908,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                       <span style={{ fontSize: 12, fontWeight: 800, color: '#3b82f6' }}>Recommendations</span>
                     </div>
                     <ul style={{ margin: 0, paddingLeft: 20, listStyle: 'disc' }}>
-                      {recommendations.map((s, i) => <li key={i} style={{ fontSize: 12, color: '#374151', marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
+                      {recommendations.map((s, i) => <li key={i} style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 4, lineHeight: 1.6 }}>{s}</li>)}
                     </ul>
                   </div>
                 )}
@@ -1907,21 +1917,21 @@ const StudentFreelancingDashboard: React.FC = () => {
                 {submissionAttachments.length > 0 && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 10 }}>
-                      <FaTags style={{ color: '#94a3b8', fontSize: 13 }} />
-                      <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>Attachments</span>
+                      <FaTags style={{ color: PAGE_GRAY, fontSize: 13 }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT }}>Attachments</span>
                     </div>
                     {submissionAttachments.map((att: any, i: number) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#f8fafc', borderRadius: 10, border: '1px solid #f1f5f9', padding: '10px 14px', marginBottom: 8 }}>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: PAGE_BG, borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, padding: '10px 14px', marginBottom: 8 }}>
                         {att.mimeType?.startsWith('image/') ? (
-                          <img src={att.fileUrl} alt={att.fileName} style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: '1px solid #e2e8f0', flexShrink: 0 }} />
+                          <img src={att.fileUrl} alt={att.fileName} style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover', border: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }} />
                         ) : (
                           <div style={{ width: 52, height: 52, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             <FaTags style={{ color: '#3b82f6', fontSize: 20 }} />
                           </div>
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.fileName}</div>
-                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>{formatSize(att.size)}</div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{att.fileName}</div>
+                          <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 2 }}>{formatSize(att.size)}</div>
                           <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: '#3b82f6', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
                             <FaChevronRight style={{ fontSize: 9 }} /> Download
                           </a>
@@ -1933,7 +1943,7 @@ const StudentFreelancingDashboard: React.FC = () => {
               </div>
 
               {/* Footer */}
-              <div style={{ padding: '14px 24px', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
+              <div style={{ padding: '14px 24px', borderTop: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
                 <button onClick={() => setShowFeedbackModal(false)} style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: ORANGE, color: '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                   Close
                 </button>
@@ -1970,20 +1980,20 @@ const StudentFreelancingDashboard: React.FC = () => {
 
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 10050, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflow: 'hidden' }} onClick={() => setShowTaskDetailsModal(false)}>
-            <div style={{ background: '#fff', borderRadius: 18, width: '100%', maxWidth: 720, height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ background: CARD_BG, borderRadius: 18, width: '100%', maxWidth: 720, height: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
 
               {/* Header */}
-              <div style={{ padding: '16px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '16px 24px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: '#fff7f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FaBriefcase style={{ color: ORANGE, fontSize: 16 }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Task Details</div>
-                    <div style={{ fontSize: 12, color: '#94a3b8' }}>Understand the task requirements and submit your best work.</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>Task Details</div>
+                    <div style={{ fontSize: 12, color: PAGE_GRAY }}>Understand the task requirements and submit your best work.</div>
                   </div>
                 </div>
-                <button onClick={() => setShowTaskDetailsModal(false)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#64748b' }}>✕</button>
+                <button onClick={() => setShowTaskDetailsModal(false)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: PAGE_GRAY }}>✕</button>
               </div>
 
               {/* Task info bar */}
@@ -1991,25 +2001,25 @@ const StudentFreelancingDashboard: React.FC = () => {
                 const taskIdx = myTasks.findIndex(task => task._id === t._id)
                 const taskXofY = taskIdx >= 0 ? `Task ${taskIdx + 1} of ${myTasks.length}` : null
                 return (
-                  <div style={{ padding: '14px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  <div style={{ padding: '14px 24px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                     <div style={{ width: 42, height: 42, borderRadius: 10, background: `${status.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <FaBriefcase style={{ color: status.color, fontSize: 17 }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT, marginBottom: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', alignItems: 'center' }}>
                         {t.category && <span style={{ fontSize: 11, background: '#eff6ff', color: '#3b82f6', borderRadius: 20, padding: '2px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>}
                         {t.experience && <span style={{ fontSize: 11, background: '#f0fdf4', color: '#22c55e', borderRadius: 20, padding: '2px 10px', fontWeight: 700, textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{t.experience}</span>}
-                        {taskXofY && <span style={{ fontSize: 11, background: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', borderRadius: 20, padding: '2px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{taskXofY}</span>}
+                        {taskXofY && <span style={{ fontSize: 11, background: PAGE_BG, color: PAGE_GRAY, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, padding: '2px 10px', fontWeight: 700, whiteSpace: 'nowrap' }}>{taskXofY}</span>}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 0, flexShrink: 0, alignItems: 'stretch', borderLeft: '1px solid #f1f5f9', marginLeft: 8 }}>
-                      <div style={{ textAlign: 'center', padding: '4px 20px', borderRight: '1px solid #f1f5f9' }}>
-                        <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.06em' }}>Status</div>
+                    <div style={{ display: 'flex', gap: 0, flexShrink: 0, alignItems: 'stretch', borderLeft: `1px solid ${PAGE_BORDER}`, marginLeft: 8 }}>
+                      <div style={{ textAlign: 'center', padding: '4px 20px', borderRight: `1px solid ${PAGE_BORDER}` }}>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.06em' }}>Status</div>
                         <span style={{ fontSize: 12, fontWeight: 800, color: status.color, background: `${status.color}15`, border: `1.5px solid ${status.color}40`, borderRadius: 20, padding: '4px 12px', display: 'inline-block', whiteSpace: 'nowrap' }}>{status.label}</span>
                       </div>
                       <div style={{ textAlign: 'center', padding: '4px 20px' }}>
-                        <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.06em' }}>Progress</div>
+                        <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.06em' }}>Progress</div>
                         <span style={{ fontSize: 18, fontWeight: 900, color: ORANGE }}>{progress}%</span>
                       </div>
                     </div>
@@ -2022,21 +2032,21 @@ const StudentFreelancingDashboard: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 230px', gap: 0 }}>
 
                 {/* Left */}
-                <div style={{ padding: '18px 24px', borderRight: '1px solid #f1f5f9', minWidth: 0 }}>
+                <div style={{ padding: '18px 24px', borderRight: `1px solid ${PAGE_BORDER}`, minWidth: 0 }}>
                   {t.description && (
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <FaAlignLeft style={{ color: '#94a3b8', fontSize: 12 }} /> Task Description
+                      <div style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <FaAlignLeft style={{ color: PAGE_GRAY, fontSize: 12 }} /> Task Description
                       </div>
-                      <div className="task-html-content" style={{ fontSize: 13, color: '#374151', lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word', overflowX: 'hidden' }} dangerouslySetInnerHTML={{ __html: t.description }} />
+                      <div className="task-html-content" style={{ fontSize: 13, color: PAGE_GRAY, lineHeight: 1.7, wordBreak: 'break-word', overflowWrap: 'break-word', overflowX: 'hidden' }} dangerouslySetInnerHTML={{ __html: t.description }} />
                     </div>
                   )}
                   {(t as any).acceptanceCriteria && (
                     <div style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <FaCheckCircle style={{ color: '#94a3b8', fontSize: 12 }} /> Acceptance Criteria
+                      <div style={{ fontSize: 13, fontWeight: 800, color: PAGE_TEXT, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <FaCheckCircle style={{ color: PAGE_GRAY, fontSize: 12 }} /> Acceptance Criteria
                       </div>
-                      <div className="task-html-content" style={{ fontSize: 13, color: '#374151', lineHeight: 1.8, wordBreak: 'break-word', overflowWrap: 'break-word', overflowX: 'hidden' }} dangerouslySetInnerHTML={{ __html: (t as any).acceptanceCriteria }} />
+                      <div className="task-html-content" style={{ fontSize: 13, color: PAGE_GRAY, lineHeight: 1.8, wordBreak: 'break-word', overflowWrap: 'break-word', overflowX: 'hidden' }} dangerouslySetInnerHTML={{ __html: (t as any).acceptanceCriteria }} />
                     </div>
                   )}
                   <div style={{ background: '#fff7f0', border: `1px solid ${ORANGE}30`, borderRadius: 10, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 8 }}>
@@ -2056,9 +2066,9 @@ const StudentFreelancingDashboard: React.FC = () => {
                     <div key={label} style={{ marginBottom: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                         <Icon style={{ fontSize: 15, color: iconColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>{label}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>{label}</span>
                       </div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', paddingLeft: 22 }}>{value}</div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: PAGE_TEXT, paddingLeft: 22 }}>{value}</div>
                       {extra && <div style={{ fontSize: 10, fontWeight: 700, color: extra.color, marginTop: 2, paddingLeft: 22 }}>{extra.label}</div>}
                     </div>
                   ))}
@@ -2067,7 +2077,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <FaShieldAlt style={{ fontSize: 15, color: '#ef4444', flexShrink: 0 }} />
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>NDA Required</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>NDA Required</span>
                     </div>
                     <div style={{ paddingLeft: 22 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, background: (t as any).ndaRequired ? '#fef2f2' : '#f0fdf4', color: (t as any).ndaRequired ? '#ef4444' : '#22c55e', borderRadius: 20, padding: '2px 10px', display: 'inline-block' }}>
@@ -2080,9 +2090,9 @@ const StudentFreelancingDashboard: React.FC = () => {
                   <div style={{ marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
                       <FaChartLine style={{ fontSize: 15, color: '#22c55e', flexShrink: 0 }} />
-                      <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Reward / Stipend</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Reward / Stipend</span>
                     </div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a', paddingLeft: 22 }}>₹{(t as any).amount ?? 0}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: PAGE_TEXT, paddingLeft: 22 }}>₹{(t as any).amount ?? 0}</div>
                   </div>
 
                   {/* Skills */}
@@ -2090,7 +2100,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                     <div style={{ marginBottom: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
                         <FaCode style={{ fontSize: 15, color: '#3b82f6', flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Skills Required</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Skills Required</span>
                       </div>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingLeft: 22 }}>
                         {t.skills.map(s => <span key={s} style={{ fontSize: 11, background: '#eff6ff', color: '#3b82f6', borderRadius: 20, padding: '2px 8px', fontWeight: 700 }}>{s}</span>)}
@@ -2103,13 +2113,13 @@ const StudentFreelancingDashboard: React.FC = () => {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <FaTags style={{ fontSize: 15, color: '#f59e0b', flexShrink: 0 }} />
-                        <span style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Attachment</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>Attachment</span>
                       </div>
                       <div style={{ paddingLeft: 18 }}>
                         {attachments.map((att, i) => (
                           att.mimeType?.startsWith('image/') ? (
                             <a key={i} href={att.fileUrl} target="_blank" rel="noopener noreferrer"
-                              style={{ display: 'block', position: 'relative', borderRadius: 8, overflow: 'hidden', border: '1px solid #f1f5f9', cursor: 'zoom-in' }}
+                              style={{ display: 'block', position: 'relative', borderRadius: 8, overflow: 'hidden', border: `1px solid ${PAGE_BORDER}`, cursor: 'zoom-in' }}
                               title="Click to open full size"
                               onMouseEnter={e => { const ov = e.currentTarget.querySelector('.att-overlay') as HTMLElement; if (ov) { ov.style.opacity = '1' } }}
                               onMouseLeave={e => { const ov = e.currentTarget.querySelector('.att-overlay') as HTMLElement; if (ov) { ov.style.opacity = '0' } }}>
@@ -2119,7 +2129,7 @@ const StudentFreelancingDashboard: React.FC = () => {
                               </div>
                             </a>
                           ) : (
-                            <a key={i} href={att.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: '#f8fafc', borderRadius: 8, border: '1px solid #f1f5f9', fontSize: 11, color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                            <a key={i} href={att.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: PAGE_BG, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, fontSize: 11, color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                               <FaTags style={{ fontSize: 11 }} /> {att.fileName}
                             </a>
                           )
@@ -2133,11 +2143,11 @@ const StudentFreelancingDashboard: React.FC = () => {
 
               {/* Footer */}
               {score != null && (
-                <div style={{ padding: '14px 24px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', borderRadius: 10, padding: '8px 16px', border: '1px solid #f1f5f9' }}>
-                    <FaChartLine style={{ color: '#94a3b8', fontSize: 12 }} />
-                    <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>AI Score</span>
-                    <span style={{ fontSize: 16, fontWeight: 900, color: score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444' }}>{score}<span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}> / 10</span></span>
+                <div style={{ padding: '14px 24px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: PAGE_BG, borderRadius: 10, padding: '8px 16px', border: `1px solid ${PAGE_BORDER}` }}>
+                    <FaChartLine style={{ color: PAGE_GRAY, fontSize: 12 }} />
+                    <span style={{ fontSize: 12, color: PAGE_GRAY, fontWeight: 600 }}>AI Score</span>
+                    <span style={{ fontSize: 16, fontWeight: 900, color: score >= 7 ? '#22c55e' : score >= 5 ? '#f59e0b' : '#ef4444' }}>{score}<span style={{ fontSize: 12, fontWeight: 600, color: PAGE_GRAY }}> / 10</span></span>
                   </div>
                 </div>
               )}

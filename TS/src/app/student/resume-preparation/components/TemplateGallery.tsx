@@ -161,15 +161,20 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
   })
 
   const ORANGE = '#ff7a00'
-  const TEXT   = '#0f172a'
-  const GRAY   = '#64748b'
-  const BORDER = '#e2e8f0'
+  // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+  // (light-mode values as fallback), so this page re-themes with the portal.
+  // MiniPreview (the paper resume mockup) intentionally stays fixed light.
+  const TEXT   = 'var(--dash-text, #0f172a)'
+  const GRAY   = 'var(--dash-gray, #64748b)'
+  const BORDER = 'var(--dash-border, #e2e8f0)'
+  const CARD_BG = 'var(--dash-card-bg, #ffffff)'
+  const PAGE_BG = 'var(--dash-page-bg, #f8fafc)'
 
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
 
       {/* ── Top header ── */}
-      <div style={{ background: '#fff', borderBottom: `1px solid ${BORDER}`, padding: '20px 28px 12px' }}>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '20px 28px 12px' }}>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: TEXT, margin: '0 0 2px' }}>Resume Preparation</h1>
         <p style={{ fontSize: '0.82rem', color: GRAY, margin: 0 }}>Choose a template, fill in your details and create your professional resume in minutes.</p>
       </div>
@@ -184,7 +189,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
             <h2 style={{ fontSize: '1rem', fontWeight: 800, color: TEXT, margin: 0 }}>Choose a Resume Template</h2>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '6px 16px', fontSize: '0.78rem', fontWeight: 600, color: GRAY, cursor: 'pointer' }}>
+              <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: CARD_BG, border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '6px 16px', fontSize: '0.78rem', fontWeight: 600, color: GRAY, cursor: 'pointer' }}>
                 <Lightbulb size={14} color="#f59e0b" /> Tips for a Great Resume
               </button>
               <button
@@ -214,7 +219,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
                 onClick={() => setActiveFilter(f)}
                 style={{
                   padding: '6px 16px', borderRadius: 20, border: `1.5px solid ${activeFilter === f ? ORANGE : BORDER}`,
-                  background: activeFilter === f ? `${ORANGE}0f` : '#fff',
+                  background: activeFilter === f ? `${ORANGE}0f` : CARD_BG,
                   color: activeFilter === f ? ORANGE : GRAY,
                   fontWeight: activeFilter === f ? 700 : 500, fontSize: '0.78rem', cursor: 'pointer', transition: 'all .15s',
                 }}
@@ -248,7 +253,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
                   onMouseLeave={() => setHovered(null)}
                   onClick={() => !isLocked && setSelectedKey(key)}
                   style={{
-                    background: '#fff',
+                    background: CARD_BG,
                     border: `1.5px solid ${isSelected ? ORANGE : isHov ? `${ORANGE}80` : BORDER}`,
                     borderRadius: 14,
                     overflow: 'hidden',
@@ -291,7 +296,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
                       style={{
                         width: '100%', padding: '7px', borderRadius: 8,
                         border: `1.5px solid ${isSelected ? ORANGE : isLocked ? BORDER : ORANGE}`,
-                        background: isSelected ? ORANGE : isHov ? `${ORANGE}10` : '#fff',
+                        background: isSelected ? ORANGE : isHov ? `${ORANGE}10` : CARD_BG,
                         color: isSelected ? '#fff' : isLocked ? GRAY : ORANGE,
                         fontWeight: 700, fontSize: '0.75rem',
                         cursor: isLocked ? 'not-allowed' : 'pointer',
@@ -313,7 +318,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
 
           {/* View More */}
           <div style={{ textAlign: 'center', marginTop: 24 }}>
-            <button style={{ background: '#fff', border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '9px 28px', fontSize: '0.82rem', fontWeight: 600, color: GRAY, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <button style={{ background: CARD_BG, border: `1.5px solid ${BORDER}`, borderRadius: 20, padding: '9px 28px', fontSize: '0.82rem', fontWeight: 600, color: GRAY, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               View More Templates <ChevronDown size={15} />
             </button>
           </div>
@@ -323,7 +328,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* How It Works */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: '0 0 14px' }}>How It Works</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {HOW_IT_WORKS.map((s, i) => (
@@ -341,13 +346,13 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
           </div>
 
           {/* Your Resume Progress */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: '0 0 14px' }}>Your Resume Progress</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
               {/* Donut */}
               <div style={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
                 <svg width="70" height="70">
-                  <circle cx="35" cy="35" r="28" fill="none" stroke="#f1f5f9" strokeWidth="7" />
+                  <circle cx="35" cy="35" r="28" fill="none" stroke={BORDER} strokeWidth="7" />
                   <circle cx="35" cy="35" r="28" fill="none" stroke="#7c3aed" strokeWidth="7"
                     strokeDasharray={`${(40 / 100) * 2 * Math.PI * 28} ${2 * Math.PI * 28}`}
                     strokeDashoffset={2 * Math.PI * 28 * 0.25} strokeLinecap="round" />
@@ -372,18 +377,18 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
                 ))}
               </div>
             </div>
-            <button style={{ width: '100%', padding: '9px', border: `1.5px solid ${BORDER}`, borderRadius: 10, background: '#fff', color: TEXT, fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <button style={{ width: '100%', padding: '9px', border: `1.5px solid ${BORDER}`, borderRadius: 10, background: CARD_BG, color: TEXT, fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               Continue Building <ArrowRight size={14} />
             </button>
           </div>
 
           {/* Resume Tips */}
-          <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 16, padding: '18px 20px' }}>
             <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT, margin: '0 0 14px' }}>Resume Tips</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {RESUME_TIPS.map((tip, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 24, height: 24, borderRadius: 6, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: 6, background: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
                     {RESUME_TIP_ICONS[i]}
                   </div>
                   <span style={{ fontSize: '0.72rem', color: GRAY, lineHeight: 1.5 }}>{tip}</span>

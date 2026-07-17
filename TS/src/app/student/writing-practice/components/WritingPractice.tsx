@@ -135,6 +135,15 @@ const WritingPractice: React.FC = () => {
   const PREMIUM_DEFAULT = 30
   const isTrial = status === 'pending'
 
+  // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+  // (light-mode values as fallback), so this page re-themes along with
+  // the rest of the portal without needing its own theme plumbing.
+  const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+  const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+  const PAGE_BORDER = 'var(--dash-border, #f1f5f9)'
+  const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+  const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
   const [started, setStarted] = useState(false)
   const [mode, setMode] = useState<ModeType>('essay')
   const [prompt, setPrompt] = useState('')
@@ -385,7 +394,7 @@ const WritingPractice: React.FC = () => {
   // ─── JSX ──────────────────────────────────────────────────────────────────
 
   return (
-    <Container fluid style={{ padding: '20px 24px', background: '#f8fafc', minHeight: '100vh' }}>
+    <Container fluid style={{ padding: '20px 24px', background: PAGE_BG, minHeight: '100vh' }}>
 
       {/* ════ START SCREEN ════ */}
       <div style={{ display: 'flex', gap: 20 }}>
@@ -460,18 +469,18 @@ const WritingPractice: React.FC = () => {
           {/* Choose a Writing Type */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>Choose a Writing Type</span>
+              <span style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT }}>Choose a Writing Type</span>
               <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
               {(Object.entries(MODES) as [ModeType, typeof MODES.essay][]).map(([key, cfg]) => (
-                <div key={key} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div key={key} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 14, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <cfg.Icon style={{ fontSize: '1.3rem', color: cfg.color }} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', marginBottom: 4 }}>{cfg.label}</div>
-                    <div style={{ fontSize: '0.77rem', color: '#64748b', lineHeight: 1.55 }}>{cfg.desc}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.9rem', color: PAGE_TEXT, marginBottom: 4 }}>{cfg.label}</div>
+                    <div style={{ fontSize: '0.77rem', color: PAGE_GRAY, lineHeight: 1.55 }}>{cfg.desc}</div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                     {cfg.tags.map(t => (
@@ -481,7 +490,7 @@ const WritingPractice: React.FC = () => {
                   <button
                     disabled={isLimitReached}
                     onClick={() => startWriting(key)}
-                    style={{ marginTop: 6, width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: cfg.color, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: isLimitReached ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: isLimitReached ? 0.5 : 1, transition: 'opacity 0.15s, box-shadow 0.15s', letterSpacing: '0.01em' }}
+                    style={{ marginTop: 'auto', width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: cfg.color, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: isLimitReached ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: isLimitReached ? 0.5 : 1, transition: 'opacity 0.15s, box-shadow 0.15s', letterSpacing: '0.01em' }}
                   >
                     Start Practice &nbsp;→
                   </button>
@@ -491,43 +500,44 @@ const WritingPractice: React.FC = () => {
           </div>
 
           {/* Recent Writing Practice */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
 
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 20px 12px' }}>
+            {/* Header — title, filter chips, and View All all on one row to keep this compact */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', gap: 16, flexWrap: 'wrap' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                   <span style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,122,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <FaEdit style={{ color: '#ff7a00', fontSize: '0.85rem' }} />
                   </span>
-                  <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>Recent Writing Practice</span>
+                  <span style={{ fontWeight: 700, fontSize: '1rem', color: PAGE_TEXT }}>Recent Writing Practice</span>
                 </div>
-                <div style={{ fontSize: '0.78rem', color: '#94a3b8', paddingLeft: 42 }}>Track your latest writing practice and performance.</div>
+                <div style={{ fontSize: '0.78rem', color: PAGE_GRAY, paddingLeft: 42 }}>Track your latest writing practice and performance.</div>
               </div>
-              <button style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #ff7a00', background: 'transparent', color: '#ff7a00', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
+
+              {/* Filter chips */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                {([
+                  { key: 'all',     label: 'All',             count: allAttempts.length },
+                  { key: 'essay',   label: 'Essay Writing',   count: essayCount },
+                  { key: 'email',   label: 'Email Writing',   count: emailCount },
+                  { key: 'summary', label: 'Summary Writing', count: summaryCount },
+                ] as { key: 'all' | ModeType; label: string; count: number }[]).map(f => {
+                  const active = historyFilter === f.key
+                  return (
+                    <button key={f.key} onClick={() => { setHistoryFilter(f.key); setHistoryPage(1) }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${active ? '#ff7a00' : PAGE_BORDER}`, background: active ? 'rgba(255,122,0,0.07)' : CARD_BG, color: active ? '#ff7a00' : PAGE_GRAY, fontSize: '0.78rem', fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                      {f.label}
+                      <span style={{ background: active ? '#ff7a00' : PAGE_BG, color: active ? '#fff' : PAGE_GRAY, borderRadius: 10, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 700 }}>
+                        {f.count}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button disabled style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid #e5e7eb', background: 'transparent', color: '#cbd5e1', fontSize: '0.78rem', fontWeight: 600, cursor: 'not-allowed', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
                 View All <span>→</span>
               </button>
-            </div>
-
-            {/* Filter tabs */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 20px 12px' }}>
-              {([
-                { key: 'all',     label: 'All',             count: allAttempts.length },
-                { key: 'essay',   label: 'Essay Writing',   count: essayCount },
-                { key: 'email',   label: 'Email Writing',   count: emailCount },
-                { key: 'summary', label: 'Summary Writing', count: summaryCount },
-              ] as { key: 'all' | ModeType; label: string; count: number }[]).map(f => {
-                const active = historyFilter === f.key
-                return (
-                  <button key={f.key} onClick={() => { setHistoryFilter(f.key); setHistoryPage(1) }}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 20, border: `1.5px solid ${active ? '#ff7a00' : '#e2e8f0'}`, background: active ? 'rgba(255,122,0,0.07)' : '#fff', color: active ? '#ff7a00' : '#64748b', fontSize: '0.78rem', fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                    {f.label}
-                    <span style={{ background: active ? '#ff7a00' : '#f1f5f9', color: active ? '#fff' : '#94a3b8', borderRadius: 10, padding: '1px 7px', fontSize: '0.68rem', fontWeight: 700 }}>
-                      {f.count}
-                    </span>
-                  </button>
-                )
-              })}
             </div>
 
             {pagedAttempts.length === 0 ? (
@@ -538,9 +548,9 @@ const WritingPractice: React.FC = () => {
               <>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#f8fafc', borderTop: '1px solid #edf2f7', borderBottom: '1px solid #edf2f7' }}>
-                      {['#', 'TYPE', 'TOPIC / TITLE', 'SCORE', 'DATE', 'ACTION'].map((h, hi) => (
-                        <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: '#94a3b8', textAlign: hi === 0 ? 'center' : 'left', whiteSpace: 'nowrap', letterSpacing: '0.04em' }}>{h}</th>
+                    <tr style={{ background: PAGE_BG, borderTop: '1px solid #edf2f7', borderBottom: '1px solid #edf2f7' }}>
+                      {['#', 'TYPE', 'TOPIC / TITLE', 'SCORE', 'DATE'].map((h, hi) => (
+                        <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: PAGE_GRAY, textAlign: hi === 0 ? 'center' : 'left', whiteSpace: 'nowrap', letterSpacing: '0.04em' }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -558,11 +568,11 @@ const WritingPractice: React.FC = () => {
                       const rowNum = (historyPage - 1) * rowsPerPage + i + 1
                       return (
                         <tr key={a._id ?? i} style={{ borderBottom: '1px solid #edf2f7', transition: 'background 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#fafafa')}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'var(--dash-page-bg, #fafafa)')}
                           onMouseLeave={e => (e.currentTarget.style.background = '')}>
                           {/* # */}
                           <td style={{ padding: '14px 16px', textAlign: 'center', width: 48 }}>
-                            <span style={{ fontSize: '0.82rem', color: '#94a3b8', fontWeight: 600 }}>{rowNum}</span>
+                            <span style={{ fontSize: '0.82rem', color: PAGE_GRAY, fontWeight: 600 }}>{rowNum}</span>
                           </td>
                           {/* TYPE */}
                           <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
@@ -570,12 +580,12 @@ const WritingPractice: React.FC = () => {
                               <span style={{ width: 32, height: 32, borderRadius: 8, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <cfg.Icon style={{ fontSize: '0.85rem', color: cfg.color }} />
                               </span>
-                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>{cfg.label}</span>
+                              <span style={{ fontSize: '0.82rem', fontWeight: 600, color: PAGE_TEXT }}>{cfg.label}</span>
                             </div>
                           </td>
                           {/* TOPIC / TITLE */}
                           <td style={{ padding: '14px 16px', maxWidth: 260 }}>
-                            <div style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 500, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+                            <div style={{ fontSize: '0.82rem', color: PAGE_TEXT, fontWeight: 500, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
                             <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 5, background: cfg.bg, color: cfg.color, fontSize: '0.68rem', fontWeight: 600 }}>{cfg.label}</span>
                           </td>
                           {/* SCORE */}
@@ -586,15 +596,8 @@ const WritingPractice: React.FC = () => {
                           </td>
                           {/* DATE */}
                           <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#374151', fontWeight: 500 }}>{dateStr}</div>
-                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: 2 }}>{timeStr}</div>
-                          </td>
-                          {/* ACTION */}
-                          <td style={{ padding: '14px 16px', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <button style={{ padding: '0', border: 'none', background: 'none', color: '#3b82f6', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>View Report</button>
-                              <button style={{ width: 28, height: 28, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, lineHeight: 1 }}>⋮</button>
-                            </div>
+                            <div style={{ fontSize: '0.8rem', color: PAGE_TEXT, fontWeight: 500 }}>{dateStr}</div>
+                            <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 2 }}>{timeStr}</div>
                           </td>
                         </tr>
                       )
@@ -603,12 +606,12 @@ const WritingPractice: React.FC = () => {
                 </table>
 
                 {/* Pagination */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #edf2f7', background: '#fafafa', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: '1px solid #edf2f7', background: PAGE_BG, flexWrap: 'wrap', gap: 8 }}>
                   {/* Left: rows per page */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Rows per page:</span>
+                    <span style={{ fontSize: '0.78rem', color: PAGE_GRAY }}>Rows per page:</span>
                     <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setHistoryPage(1) }}
-                      style={{ border: '1px solid #e2e8f0', borderRadius: 7, padding: '3px 8px', fontSize: '0.78rem', color: '#374151', background: '#fff', cursor: 'pointer', outline: 'none' }}>
+                      style={{ border: '1px solid #e2e8f0', borderRadius: 7, padding: '3px 8px', fontSize: '0.78rem', color: PAGE_TEXT, background: CARD_BG, cursor: 'pointer', outline: 'none' }}>
                       {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
@@ -616,7 +619,7 @@ const WritingPractice: React.FC = () => {
                   {/* Center: page buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <button onClick={() => setHistoryPage(p => Math.max(1, p - 1))} disabled={historyPage === 1}
-                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === 1 ? '#cbd5e1' : '#475569', cursor: historyPage === 1 ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: CARD_BG, color: historyPage === 1 ? '#cbd5e1' : PAGE_TEXT, cursor: historyPage === 1 ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
                     {Array.from({ length: historyTotalPages }, (_, i) => i + 1)
                       .filter(p => p === 1 || p === historyTotalPages || Math.abs(p - historyPage) <= 1)
                       .reduce<(number | '...')[]>((acc, p, idx, arr) => {
@@ -624,18 +627,18 @@ const WritingPractice: React.FC = () => {
                         acc.push(p); return acc
                       }, [])
                       .map((p, idx) => p === '...'
-                        ? <span key={`e${idx}`} style={{ padding: '0 4px', fontSize: '0.8rem', color: '#94a3b8' }}>...</span>
+                        ? <span key={`e${idx}`} style={{ padding: '0 4px', fontSize: '0.8rem', color: PAGE_GRAY }}>...</span>
                         : <button key={p} onClick={() => setHistoryPage(p as number)}
-                            style={{ width: 30, height: 30, border: `1px solid ${p === historyPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 7, background: p === historyPage ? '#ff7a00' : '#fff', color: p === historyPage ? '#fff' : '#475569', cursor: 'pointer', fontSize: '0.75rem', fontWeight: p === historyPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
+                            style={{ width: 30, height: 30, border: `1px solid ${p === historyPage ? '#ff7a00' : '#e2e8f0'}`, borderRadius: 7, background: p === historyPage ? '#ff7a00' : CARD_BG, color: p === historyPage ? '#fff' : PAGE_TEXT, cursor: 'pointer', fontSize: '0.75rem', fontWeight: p === historyPage ? 700 : 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{p}</button>
                       )}
                     <button onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))} disabled={historyPage === historyTotalPages}
-                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: '#fff', color: historyPage === historyTotalPages ? '#cbd5e1' : '#475569', cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+                      style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: CARD_BG, color: historyPage === historyTotalPages ? '#cbd5e1' : PAGE_TEXT, cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
                   </div>
 
                   {/* Right: go to page */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <style>{`#wp-goto-input { width:52px!important; border:1.5px solid #cbd5e1!important; border-radius:7px!important; padding:4px 8px!important; font-size:0.78rem!important; color:#111827!important; background:#f8fafc!important; text-align:center!important; outline:none!important; box-sizing:border-box!important; } #wp-goto-input::-webkit-outer-spin-button, #wp-goto-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }`}</style>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Go to page:</span>
+                    <style>{`#wp-goto-input { width:52px!important; border:1.5px solid #cbd5e1!important; border-radius:7px!important; padding:4px 8px!important; font-size:0.78rem!important; color:${PAGE_TEXT}!important; background:${PAGE_BG}!important; text-align:center!important; outline:none!important; box-sizing:border-box!important; } #wp-goto-input::-webkit-outer-spin-button, #wp-goto-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }`}</style>
+                    <span style={{ fontSize: '0.78rem', color: PAGE_GRAY }}>Go to page:</span>
                     <input id="wp-goto-input" type="number" min={1} max={historyTotalPages} value={goToPage}
                       onChange={e => setGoToPage(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') { const p = Math.min(historyTotalPages, Math.max(1, Number(goToPage))); if (!isNaN(p)) { setHistoryPage(p); setGoToPage('') } } }}
@@ -651,18 +654,18 @@ const WritingPractice: React.FC = () => {
         <div style={{ width: 310, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Writing Calendar */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid #edf2f7' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
                 <span style={{ fontSize: '0.9rem' }}>📅</span>
-                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Your Writing Calendar</span>
+                <span style={{ fontWeight: 700, fontSize: '0.9rem', color: PAGE_TEXT }}>Your Writing Calendar</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <button
                   style={navBtnStyle}
                   onClick={() => { const d = new Date(calYear, calMonth - 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
                 >‹</button>
-                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#374151' }}>{MONTH_NAMES[calMonth]} {calYear}</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: PAGE_TEXT }}>{MONTH_NAMES[calMonth]} {calYear}</span>
                 <button
                   style={navBtnStyle}
                   onClick={() => { const d = new Date(calYear, calMonth + 1); setCalYear(d.getFullYear()); setCalMonth(d.getMonth()) }}
@@ -673,7 +676,7 @@ const WritingPractice: React.FC = () => {
               {/* Day headers */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 2 }}>
                 {DAY_LABELS.map(d => (
-                  <div key={d} style={{ textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: '#94a3b8', padding: '2px 0' }}>{d}</div>
+                  <div key={d} style={{ textAlign: 'center', fontSize: '0.62rem', fontWeight: 700, color: PAGE_GRAY, padding: '2px 0' }}>{d}</div>
                 ))}
               </div>
               {/* Day cells */}
@@ -688,7 +691,7 @@ const WritingPractice: React.FC = () => {
                     : calYear < now.getFullYear() || (calYear === now.getFullYear() && calMonth < now.getMonth())
                   const isMissed = isPastDay && !isToday && score === undefined
                   const bgColor = isToday ? '#6c63ff' : dc ?? (isMissed ? '#dc2626' : 'transparent')
-                  const textColor = (isToday || dc || isMissed) ? '#fff' : '#374151'
+                  const textColor = (isToday || dc || isMissed) ? '#fff' : PAGE_TEXT
                   return (
                     <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2px 0' }}>
                       <span style={{
@@ -714,38 +717,38 @@ const WritingPractice: React.FC = () => {
               ].map(l => (
                 <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ width: 14, height: 14, borderRadius: '50%', background: l.color, display: 'inline-block', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.6rem', color: '#64748b' }}>{l.label}</span>
+                  <span style={{ fontSize: '0.6rem', color: PAGE_GRAY }}>{l.label}</span>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Writing Progress Card */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 18px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, padding: '18px 18px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.06)' }}>
 
             {/* Header */}
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>Your Writing Progress</div>
-              <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: PAGE_TEXT }}>Your Writing Progress</div>
+              <div style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginTop: 2 }}>
                 This Month · {history?.attemptsUsed ?? 0} sessions
               </div>
             </div>
 
             {/* Attempts row */}
-            <div style={{ background: '#f8fafc', borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
+            <div style={{ background: PAGE_BG, borderRadius: 12, padding: '12px 14px', marginBottom: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                   <FaBullseye style={{ color: '#ff6b00', fontSize: '0.85rem' }} />
-                  <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0f172a' }}>Attempts This Month</span>
+                  <span style={{ fontWeight: 700, fontSize: '0.8rem', color: PAGE_TEXT }}>Attempts This Month</span>
                 </div>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ff6b00', background: '#fff7f0', padding: '2px 8px', borderRadius: 20, border: '1px solid #fed7aa' }}>
                   {maxAllowedAttempts - Math.min(history?.attemptsUsed ?? 0, maxAllowedAttempts)} left
                 </span>
               </div>
-              <div style={{ height: 6, borderRadius: 3, background: '#e2e8f0', overflow: 'hidden', marginBottom: 4 }}>
+              <div style={{ height: 6, borderRadius: 3, background: PAGE_BORDER, overflow: 'hidden', marginBottom: 4 }}>
                 <div style={{ height: '100%', borderRadius: 3, background: isLimitReached ? '#dc2626' : '#ff6b00', width: `${history ? Math.min((history.attemptsUsed / maxAllowedAttempts) * 100, 100) : 0}%`, transition: 'width 0.5s' }} />
               </div>
-              <div style={{ textAlign: 'right', fontSize: '0.7rem', color: '#94a3b8' }}>
+              <div style={{ textAlign: 'right', fontSize: '0.7rem', color: PAGE_GRAY }}>
                 {Math.min(history?.attemptsUsed ?? 0, maxAllowedAttempts)} / {maxAllowedAttempts} used
               </div>
             </div>
@@ -765,8 +768,8 @@ const WritingPractice: React.FC = () => {
                     />
                   </svg>
                   <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{avgScore}%</div>
-                    <div style={{ fontSize: '0.57rem', color: '#94a3b8', marginTop: 2 }}>Avg Score</div>
+                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>{avgScore}%</div>
+                    <div style={{ fontSize: '0.57rem', color: PAGE_GRAY, marginTop: 2 }}>Avg Score</div>
                   </div>
                 </div>
                 {/* Trend */}
@@ -774,7 +777,7 @@ const WritingPractice: React.FC = () => {
                   <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#ff6b00', marginBottom: 4 }}>
                     {avgScore >= 80 ? 'Excellent!' : avgScore >= 60 ? 'Good Work!' : avgScore >= 40 ? 'Keep Going!' : 'Keep Practicing!'}
                   </div>
-                  <div style={{ fontSize: '0.73rem', color: '#64748b', lineHeight: 1.5 }}>
+                  <div style={{ fontSize: '0.73rem', color: PAGE_GRAY, lineHeight: 1.5 }}>
                     {history?.trend === 'IMPROVED' ? '↑ Improving this month'
                       : history?.trend === 'DROPPED' ? '↓ Needs more practice'
                       : history?.trend === 'FIRST'   ? '🎉 Great start!'
@@ -804,9 +807,9 @@ const WritingPractice: React.FC = () => {
                       <div style={{ width: 22, height: 22, borderRadius: 6, background: color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <BIcon style={{ fontSize: '0.62rem', color }} />
                       </div>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#374151' }}>{label}</span>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: PAGE_TEXT }}>{label}</span>
                     </div>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: value !== null ? color : '#94a3b8' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: value !== null ? color : PAGE_GRAY }}>
                       {value !== null ? `${value}%` : '—'}
                     </span>
                   </div>
@@ -818,15 +821,15 @@ const WritingPractice: React.FC = () => {
             </div>
 
             {/* Footer button */}
-            <button style={{ width: '100%', padding: '10px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+            <button style={{ width: '100%', padding: '10px', borderRadius: 10, border: '1px solid #e2e8f0', background: PAGE_BG, color: PAGE_TEXT, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
               View Detailed Feedback <span style={{ fontSize: '0.9rem', marginLeft: 2 }}>›</span>
             </button>
           </div>
 
           {/* Writing Tips */}
-          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+          <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px 12px', borderBottom: '1px solid #edf2f7' }}>
-              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Writing Tips</span>
+              <span style={{ fontWeight: 700, fontSize: '0.9rem', color: PAGE_TEXT }}>Writing Tips</span>
               <span style={{ fontSize: '0.8rem', color: '#ff7a00', fontWeight: 600, cursor: 'pointer' }}>View All →</span>
             </div>
             <div style={{ padding: '12px 14px 14px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -836,8 +839,8 @@ const WritingPractice: React.FC = () => {
                     <t.Icon style={{ fontSize: '0.95rem', color: t.iconColor }} />
                   </div>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a', marginBottom: 2 }}>{t.title}</div>
-                    <div style={{ fontSize: '0.74rem', color: '#64748b', lineHeight: 1.4 }}>{t.desc}</div>
+                    <div style={{ fontWeight: 700, fontSize: '0.82rem', color: PAGE_TEXT, marginBottom: 2 }}>{t.title}</div>
+                    <div style={{ fontSize: '0.74rem', color: PAGE_GRAY, lineHeight: 1.4 }}>{t.desc}</div>
                   </div>
                 </div>
               ))}

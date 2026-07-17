@@ -35,6 +35,14 @@ export interface Job {
 
 const PAGE_SIZE = 10
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const AVATAR_COLORS = [
   ['#4F46E5', '#EEF2FF'], ['#0891B2', '#ECFEFF'], ['#16A34A', '#F0FDF4'],
   ['#DC2626', '#FEF2F2'], ['#D97706', '#FFFBEB'], ['#7C3AED', '#F5F3FF'],
@@ -73,7 +81,7 @@ const JobRow = ({
 
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12,
+      background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12,
       padding: '22px 24px', display: 'flex', alignItems: 'flex-start',
       gap: 16, cursor: 'pointer', transition: 'box-shadow 0.15s',
     }}
@@ -94,20 +102,20 @@ const JobRow = ({
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Row 1: title + badge + time */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>{job.title}</span>
+          <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.9rem' }}>{job.title}</span>
           {badge && (
             <span style={{
               background: `${badgeColor}18`, color: badgeColor, border: `1px solid ${badgeColor}44`,
               borderRadius: 6, padding: '1px 7px', fontSize: '0.65rem', fontWeight: 700,
             }}>{badge}</span>
           )}
-          <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: '#94a3b8', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <span style={{ marginLeft: 'auto', fontSize: '0.68rem', color: PAGE_GRAY, whiteSpace: 'nowrap', flexShrink: 0 }}>
             <FiClock size={10} style={{ marginRight: 3 }} />{timeAgo(job.postedDate)}
           </span>
         </div>
 
         {/* Row 2: company + meta */}
-        <div style={{ fontSize: '0.75rem', color: '#475569', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600 }}>{job.company}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiMapPin size={11} />{job.location}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiBriefcase size={11} />{job.jobType}</span>
@@ -132,9 +140,9 @@ const JobRow = ({
           onClick={e => { e.stopPropagation(); onToggleSave(job._id) }}
           style={{
             background: saved ? 'rgba(255,122,0,0.1)' : 'none',
-            border: '1px solid #e2e8f0', borderRadius: 8,
+            border: `1px solid ${PAGE_BORDER}`, borderRadius: 8,
             width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', color: saved ? '#ff7a00' : '#94a3b8',
+            cursor: 'pointer', color: saved ? '#ff7a00' : PAGE_GRAY,
           }}
         >
           <FiBookmark size={14} fill={saved ? '#ff7a00' : 'none'} />
@@ -168,26 +176,26 @@ const RecommendedSection = ({
     <div style={{ marginTop: 28 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
-          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>Recommended for You</span>
-          <span style={{ fontSize: '0.7rem', color: '#94a3b8', marginLeft: 8 }}>Jobs matching your profile and interests</span>
+          <span style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.9rem' }}>Recommended for You</span>
+          <span style={{ fontSize: '0.7rem', color: PAGE_GRAY, marginLeft: 8 }}>Jobs matching your profile and interests</span>
         </div>
         {recTotal > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button onClick={() => setRecPage(p => Math.max(p - 1, 1))} disabled={recPage === 1}
-              style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: recPage === 1 ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recPage === 1 ? 'default' : 'pointer' }}>
+              style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: recPage === 1 ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recPage === 1 ? 'default' : 'pointer' }}>
               <FiChevronLeft size={12} />
             </button>
             {Array.from({ length: recTotal }, (_, i) => i + 1).map(n => (
               <button key={n} onClick={() => setRecPage(n)} style={{
                 width: 26, height: 26, borderRadius: 6,
-                border: `1px solid ${recPage === n ? '#ff7a00' : '#e2e8f0'}`,
-                background: recPage === n ? '#ff7a00' : '#fff',
-                color: recPage === n ? '#fff' : '#475569',
+                border: `1px solid ${recPage === n ? '#ff7a00' : PAGE_BORDER}`,
+                background: recPage === n ? '#ff7a00' : CARD_BG,
+                color: recPage === n ? '#fff' : PAGE_TEXT,
                 fontSize: '0.72rem', fontWeight: recPage === n ? 700 : 400, cursor: 'pointer',
               }}>{n}</button>
             ))}
             <button onClick={() => setRecPage(p => Math.min(p + 1, recTotal))} disabled={recPage === recTotal}
-              style={{ width: 26, height: 26, borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', color: recPage === recTotal ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recPage === recTotal ? 'default' : 'pointer' }}>
+              style={{ width: 26, height: 26, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: recPage === recTotal ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: recPage === recTotal ? 'default' : 'pointer' }}>
               <FiChevronRight size={12} />
             </button>
           </div>
@@ -200,21 +208,21 @@ const RecommendedSection = ({
             ? calcJobMatch(job.skills, `${job.title} ${job.highlights.join(' ')}`, userSkills)
             : 80 + (job.company.charCodeAt(0) % 18) // no skill profile yet — fall back to a stable placeholder
           return (
-            <div key={job._id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '14px 14px 10px', minWidth: 160, width: 170, flexShrink: 0 }}>
+            <div key={job._id} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px 14px 10px', minWidth: 160, width: 170, flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 34, height: 34, borderRadius: 8, background: bg, color: fg, fontWeight: 800, fontSize: '0.72rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {initials(job.company)}
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2 }}>{job.title.length > 16 ? job.title.slice(0, 16) + '…' : job.title}</div>
-                  <div style={{ fontSize: '0.62rem', color: '#64748b' }}>{job.company.split(' ')[0]}</div>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_TEXT, lineHeight: 1.2 }}>{job.title.length > 16 ? job.title.slice(0, 16) + '…' : job.title}</div>
+                  <div style={{ fontSize: '0.62rem', color: PAGE_GRAY }}>{job.company.split(' ')[0]}</div>
                 </div>
               </div>
-              <div style={{ fontSize: '0.62rem', color: '#64748b', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 3 }}>
+              <div style={{ fontSize: '0.62rem', color: PAGE_GRAY, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 3 }}>
                 <FiMapPin size={9} />{job.location.split(',')[0]}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={{ flex: 1, height: 4, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ flex: 1, height: 4, background: PAGE_BORDER, borderRadius: 4, overflow: 'hidden' }}>
                   <div style={{ width: `${match}%`, height: '100%', background: '#ff7a00', borderRadius: 4 }} />
                 </div>
                 <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#ff7a00' }}>{match}% Match</span>
@@ -246,7 +254,7 @@ const InterviewDetailsPageView = () => {
   const [userSkills, setUserSkills] = useState<string[]>([])
 
   // tabs
-  const [activeSubTab, setActiveSubTab] = useState<'all' | 'applied' | 'shortlisted' | 'interview' | 'offers' | 'saved' | 'live'>('all')
+  const [activeSubTab, setActiveSubTab] = useState<'adminPosted' | 'applied' | 'shortlisted' | 'interview' | 'offers' | 'saved' | 'live'>('live')
 
   // search / filters
   const [searchQ, setSearchQ] = useState('')
@@ -332,8 +340,8 @@ const InterviewDetailsPageView = () => {
   const UNDER_CONSTRUCTION_TABS = ['applied', 'shortlisted', 'interview', 'offers'] as const
 
   const SUB_TABS = [
-    { key: 'all',         label: 'All Jobs',       count: jobs.length,  live: false },
     { key: 'live',        label: 'External Jobs',  count: 0,            live: true  },
+    { key: 'adminPosted', label: 'Admin Posted',   count: jobs.length,  live: false },
     { key: 'applied',     label: 'Applied',         count: 0,            live: false },
     { key: 'shortlisted', label: 'Shortlisted',     count: 0,            live: false },
     { key: 'interview',   label: 'Interview',       count: 0,            live: false },
@@ -342,43 +350,43 @@ const InterviewDetailsPageView = () => {
   ] as const
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9' }}>
+    <div style={{ minHeight: '100vh', background: PAGE_BG }}>
 
       {/* ── Top bar ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 14 }}>
         <div>
-          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.15rem', lineHeight: 1 }}>All Jobs</div>
-          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>Explore opportunities and find the right role for your career.</div>
+          <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.15rem', lineHeight: 1 }}>All Jobs</div>
+          <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 2 }}>Explore opportunities and find the right role for your career.</div>
         </div>
 
         {/* Search */}
         <div style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}>
           <div style={{ width: 320, position: 'relative' }}>
-            <FiSearch size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <FiSearch size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
             <input
               placeholder="Search by job title, company, skills..."
               value={searchQ}
               onChange={e => setSearchQ(e.target.value)}
-              style={{ width: '100%', paddingLeft: 32, paddingRight: 12, height: 36, border: '1px solid #e2e8f0', borderRadius: 20, fontSize: '0.78rem', color: '#0f172a', outline: 'none', background: '#f8fafc', boxSizing: 'border-box' as const }}
+              style={{ width: '100%', paddingLeft: 32, paddingRight: 12, height: 36, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, fontSize: '0.78rem', color: PAGE_TEXT, outline: 'none', background: PAGE_BG, boxSizing: 'border-box' as const }}
             />
           </div>
           <div style={{ position: 'relative' }}>
-            <FiMapPin size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <FiMapPin size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
             <select
               value={locationQ}
               onChange={e => setLocationQ(e.target.value)}
-              style={{ paddingLeft: 28, paddingRight: 28, height: 36, border: '1px solid #e2e8f0', borderRadius: 20, fontSize: '0.78rem', color: '#0f172a', outline: 'none', background: '#f8fafc', appearance: 'none', cursor: 'pointer', minWidth: 130 }}
+              style={{ paddingLeft: 28, paddingRight: 28, height: 36, border: `1px solid ${PAGE_BORDER}`, borderRadius: 20, fontSize: '0.78rem', color: PAGE_TEXT, outline: 'none', background: PAGE_BG, appearance: 'none', cursor: 'pointer', minWidth: 130 }}
             >
               <option value="">All Locations</option>
               {locationOptions.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
-            <FiChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+            <FiChevronDown size={12} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY, pointerEvents: 'none' }} />
           </div>
         </div>
       </div>
 
       {/* ── Sub tabs ── */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0 24px', display: 'flex', gap: 0, overflowX: 'auto' }}>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, padding: '0 24px', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {SUB_TABS.map(t => {
           const locked = t.live && isPending
           const active = activeSubTab === t.key
@@ -390,7 +398,7 @@ const InterviewDetailsPageView = () => {
               style={{
                 background: 'none', border: 'none',
                 borderBottom: `2.5px solid ${active ? '#ff7a00' : 'transparent'}`,
-                color: active ? '#ff7a00' : locked ? '#cbd5e1' : '#64748b',
+                color: active ? '#ff7a00' : locked ? PAGE_GRAY : PAGE_GRAY,
                 fontWeight: active ? 700 : 500,
                 fontSize: '0.82rem', padding: '12px 16px',
                 cursor: locked ? 'not-allowed' : 'pointer',
@@ -404,12 +412,12 @@ const InterviewDetailsPageView = () => {
                 </span>
               )}
               {t.live && locked && (
-                <FaLock size={10} style={{ color: '#cbd5e1' }} />
+                <FaLock size={10} style={{ color: PAGE_GRAY }} />
               )}
               {!t.live && t.count > 0 && (
                 <span style={{
-                  background: active ? 'rgba(255,122,0,0.12)' : '#f1f5f9',
-                  color: active ? '#ff7a00' : '#64748b',
+                  background: active ? 'rgba(255,122,0,0.12)' : PAGE_BORDER,
+                  color: active ? '#ff7a00' : PAGE_GRAY,
                   borderRadius: 20, padding: '1px 7px', fontSize: '0.65rem', fontWeight: 700,
                 }}>{t.count}</span>
               )}
@@ -428,7 +436,15 @@ const InterviewDetailsPageView = () => {
       {/* ── Live jobs (ExternalJobBoard) ── */}
       {activeSubTab === 'live' && (
         <div style={{ padding: '20px 24px' }}>
-          <ExternalJobBoard />
+          {isPending ? (
+            <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+              <FaLock size={28} style={{ color: '#ff7a00', marginBottom: 12 }} />
+              <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '1rem', marginBottom: 6 }}>External jobs are locked</div>
+              <div style={{ fontSize: '0.85rem', color: PAGE_GRAY }}>Enroll to unlock live external job listings.</div>
+            </div>
+          ) : (
+            <ExternalJobBoard />
+          )}
         </div>
       )}
 
@@ -442,10 +458,10 @@ const InterviewDetailsPageView = () => {
           }}>
             <FiTool size={38} color="#ff7a00" />
           </div>
-          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.25rem', marginBottom: 8 }}>
+          <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.25rem', marginBottom: 8 }}>
             Under Construction
           </div>
-          <div style={{ fontSize: '0.85rem', color: '#64748b', maxWidth: 380, lineHeight: 1.6 }}>
+          <div style={{ fontSize: '0.85rem', color: PAGE_GRAY, maxWidth: 380, lineHeight: 1.6 }}>
             This section is currently being built. Check back soon — we're working hard to bring you this feature!
           </div>
           <div style={{
@@ -475,20 +491,20 @@ const InterviewDetailsPageView = () => {
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value)}
-                  style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 28px 5px 10px', fontSize: '0.75rem', color: '#475569', background: '#fff', outline: 'none', cursor: 'pointer', appearance: 'none' }}
+                  style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '5px 28px 5px 10px', fontSize: '0.75rem', color: PAGE_TEXT, background: CARD_BG, outline: 'none', cursor: 'pointer', appearance: 'none' }}
                 >
                   <option value="newest">Sort by: Newest First</option>
                   <option value="oldest">Sort by: Oldest First</option>
                 </select>
-                <FiChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                <FiChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY, pointerEvents: 'none' }} />
               </div>
               {/* View toggle */}
-              <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{ display: 'flex', border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, overflow: 'hidden' }}>
                 {(['list', 'grid'] as const).map(m => (
                   <button key={m} onClick={() => setViewMode(m)} style={{
                     width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: viewMode === m ? '#ff7a00' : '#fff', border: 'none',
-                    color: viewMode === m ? '#fff' : '#94a3b8', cursor: 'pointer',
+                    background: viewMode === m ? '#ff7a00' : CARD_BG, border: 'none',
+                    color: viewMode === m ? '#fff' : PAGE_GRAY, cursor: 'pointer',
                   }}>
                     {m === 'list' ? <FiList size={14} /> : <FiGrid size={14} />}
                   </button>
@@ -513,12 +529,12 @@ const InterviewDetailsPageView = () => {
 
           {/* Empty */}
           {!loading && !error && paginated.length === 0 && (
-            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
-              <FiBriefcase size={40} style={{ color: '#cbd5e1', marginBottom: 12 }} />
-              <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+            <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '48px 24px', textAlign: 'center' }}>
+              <FiBriefcase size={40} style={{ color: PAGE_GRAY, marginBottom: 12 }} />
+              <div style={{ fontWeight: 700, color: PAGE_TEXT, marginBottom: 6 }}>
                 {activeSubTab === 'saved' ? 'No marked jobs yet' : 'No jobs found'}
               </div>
-              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.8rem', color: PAGE_GRAY }}>
                 {activeSubTab === 'saved'
                   ? 'Jobs you mark as read will appear here'
                   : 'Try adjusting your filters or search terms'}
@@ -539,19 +555,19 @@ const InterviewDetailsPageView = () => {
                   const [fg, bg] = avatarColor(job.company)
                   return (
                     <div key={job._id} onClick={() => isApproved && setSelectedJob(job)}
-                      style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 200 }}>
+                      style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: 16, cursor: 'pointer', display: 'flex', flexDirection: 'column', minHeight: 200 }}>
                       {/* Header */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 9, background: bg, color: fg, fontWeight: 800, fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {initials(job.company)}
                         </div>
                         <div style={{ minWidth: 0 }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.title}</div>
-                          <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{job.company}</div>
+                          <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.85rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{job.title}</div>
+                          <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>{job.company}</div>
                         </div>
                       </div>
                       {/* Meta */}
-                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '0.7rem', color: PAGE_GRAY, display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiMapPin size={10} />{job.location}</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><FiBriefcase size={10} />{job.jobType}</span>
                       </div>
@@ -593,7 +609,7 @@ const InterviewDetailsPageView = () => {
               <button
                 onClick={() => setPage(p => Math.max(p - 1, 1))}
                 disabled={page === 1}
-                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: page === 1 ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page === 1 ? 'default' : 'pointer' }}
+                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: page === 1 ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page === 1 ? 'default' : 'pointer' }}
               >
                 <FiChevronLeft size={14} />
               </button>
@@ -607,22 +623,22 @@ const InterviewDetailsPageView = () => {
                 return (
                   <button key={n} onClick={() => setPage(n)} style={{
                     width: 32, height: 32, borderRadius: 8,
-                    border: `1px solid ${page === n ? '#ff7a00' : '#e2e8f0'}`,
-                    background: page === n ? '#ff7a00' : '#fff',
-                    color: page === n ? '#fff' : '#475569',
+                    border: `1px solid ${page === n ? '#ff7a00' : PAGE_BORDER}`,
+                    background: page === n ? '#ff7a00' : CARD_BG,
+                    color: page === n ? '#fff' : PAGE_TEXT,
                     fontWeight: page === n ? 700 : 400, fontSize: '0.82rem',
                     cursor: 'pointer',
                   }}>{n}</button>
                 )
               })}
-              {totalPages > 5 && page < totalPages - 2 && <span style={{ color: '#94a3b8', fontSize: '0.82rem' }}>...</span>}
+              {totalPages > 5 && page < totalPages - 2 && <span style={{ color: PAGE_GRAY, fontSize: '0.82rem' }}>...</span>}
               {totalPages > 5 && page < totalPages - 2 && (
-                <button onClick={() => setPage(totalPages)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#475569', fontSize: '0.82rem', cursor: 'pointer' }}>{totalPages}</button>
+                <button onClick={() => setPage(totalPages)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_TEXT, fontSize: '0.82rem', cursor: 'pointer' }}>{totalPages}</button>
               )}
               <button
                 onClick={() => setPage(p => Math.min(p + 1, totalPages))}
                 disabled={page === totalPages}
-                style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: page === totalPages ? '#cbd5e1' : '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page === totalPages ? 'default' : 'pointer' }}
+                style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: page === totalPages ? PAGE_GRAY : PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: page === totalPages ? 'default' : 'pointer' }}
               >
                 <FiChevronRight size={14} />
               </button>
@@ -642,7 +658,7 @@ const InterviewDetailsPageView = () => {
         </div>
 
         {/* ── Right: Filters sidebar ── */}
-        <div style={{ width: 260, flexShrink: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, position: 'sticky', top: 16, maxHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ width: 260, flexShrink: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, position: 'sticky', top: 16, maxHeight: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
           {/* Scrollable filter options */}
           <div className="filter-sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 16px 0' }}>
@@ -679,12 +695,12 @@ const InterviewDetailsPageView = () => {
           {/* Location */}
           <FilterSection title="Location">
             <div style={{ position: 'relative', marginBottom: 8 }}>
-              <FiSearch size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <FiSearch size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
               <input
                 placeholder="Search location"
                 value={locationQ}
                 onChange={e => setLocationQ(e.target.value)}
-                style={{ width: '100%', paddingLeft: 26, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: '#0f172a', outline: 'none', background: '#fff' }}
+                style={{ width: '100%', paddingLeft: 26, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: '0.75rem', color: PAGE_TEXT, outline: 'none', background: CARD_BG }}
               />
             </div>
             {locationOptions.map(l => {
@@ -696,12 +712,12 @@ const InterviewDetailsPageView = () => {
           {/* Skills */}
           <FilterSection title="Skills">
             <div style={{ position: 'relative', marginBottom: 8 }}>
-              <FiSearch size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <FiSearch size={11} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
               <input
                 placeholder="Search skills"
                 value={skillFilter}
                 onChange={e => setSkillFilter(e.target.value)}
-                style={{ width: '100%', paddingLeft: 26, height: 32, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: '#0f172a', outline: 'none', background: '#fff' }}
+                style={{ width: '100%', paddingLeft: 26, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: '0.75rem', color: PAGE_TEXT, outline: 'none', background: CARD_BG }}
               />
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -709,9 +725,9 @@ const InterviewDetailsPageView = () => {
                 const active = skillFilter === s
                 return (
                   <button key={s} onClick={() => setSkillFilter(active ? '' : s)} style={{
-                    background: active ? 'rgba(255,122,0,0.1)' : '#f8fafc',
-                    border: `1px solid ${active ? '#ff7a00' : '#e2e8f0'}`,
-                    color: active ? '#ff7a00' : '#475569',
+                    background: active ? 'rgba(255,122,0,0.1)' : PAGE_BG,
+                    border: `1px solid ${active ? '#ff7a00' : PAGE_BORDER}`,
+                    color: active ? '#ff7a00' : PAGE_GRAY,
                     borderRadius: 20, padding: '3px 10px', fontSize: '0.65rem', fontWeight: 600,
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                   }}>
@@ -728,7 +744,7 @@ const InterviewDetailsPageView = () => {
               <select
                 value={salaryRange}
                 onChange={e => setSalaryRange(e.target.value)}
-                style={{ width: '100%', height: 34, border: '1px solid #e2e8f0', borderRadius: 8, fontSize: '0.75rem', color: salaryRange ? '#0f172a' : '#94a3b8', outline: 'none', background: '#fff', paddingLeft: 10, paddingRight: 28, appearance: 'none', cursor: 'pointer' }}
+                style={{ width: '100%', height: 34, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: '0.75rem', color: salaryRange ? PAGE_TEXT : PAGE_GRAY, outline: 'none', background: CARD_BG, paddingLeft: 10, paddingRight: 28, appearance: 'none', cursor: 'pointer' }}
               >
                 <option value="">Select Range</option>
                 <option value="0-3">0 – 3 LPA</option>
@@ -737,18 +753,18 @@ const InterviewDetailsPageView = () => {
                 <option value="10-15">10 – 15 LPA</option>
                 <option value="15">15+ LPA</option>
               </select>
-              <FiChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              <FiChevronDown size={12} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY, pointerEvents: 'none' }} />
             </div>
           </FilterSection>
 
           </div>{/* end scrollable */}
 
           {/* Apply / Clear — pinned at bottom */}
-          <div style={{ padding: '12px 16px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, background: '#fff' }}>
+          <div style={{ padding: '12px 16px 16px', borderTop: `1px solid ${PAGE_BORDER}`, display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0, background: CARD_BG }}>
             <button style={{ width: '100%', background: '#ff7a00', border: 'none', borderRadius: 10, color: '#fff', padding: '10px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               <FiSliders size={13} /> Apply Filters
             </button>
-            <button onClick={clearFilters} style={{ width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, color: activeFilterCount > 0 ? '#ff7a00' : '#94a3b8', padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={clearFilters} style={{ width: '100%', background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, color: activeFilterCount > 0 ? '#ff7a00' : PAGE_GRAY, padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
               Clear Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
             </button>
           </div>
@@ -772,8 +788,8 @@ const InterviewDetailsPageView = () => {
 // ── tiny reusable sub-components ─────────────────────────────────────────────
 
 const FilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 14, marginBottom: 14 }}>
-    <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.78rem', marginBottom: 10 }}>{title}</div>
+  <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, paddingTop: 14, marginBottom: 14 }}>
+    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.78rem', marginBottom: 10 }}>{title}</div>
     {children}
   </div>
 )
@@ -784,8 +800,8 @@ const CheckRow = ({ label, count, checked, onChange }: { label: string; count: n
       onClick={onChange}
       style={{
         width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
-        border: `1.5px solid ${checked ? '#ff7a00' : '#cbd5e1'}`,
-        background: checked ? '#ff7a00' : '#fff',
+        border: `1.5px solid ${checked ? '#ff7a00' : PAGE_BORDER}`,
+        background: checked ? '#ff7a00' : CARD_BG,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
@@ -795,8 +811,8 @@ const CheckRow = ({ label, count, checked, onChange }: { label: string; count: n
         </svg>
       )}
     </div>
-    <span style={{ fontSize: '0.75rem', color: '#334155', flex: 1 }}>{label}</span>
-    <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 600 }}>{count}</span>
+    <span style={{ fontSize: '0.75rem', color: PAGE_TEXT, flex: 1 }}>{label}</span>
+    <span style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 600 }}>{count}</span>
   </label>
 )
 

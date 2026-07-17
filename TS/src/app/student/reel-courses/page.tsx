@@ -18,6 +18,14 @@ import reelsImg from "@/assets/images/Reels.png";
 
 const ORANGE = "#ff6b00";
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #ffffff)';
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)';
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)';
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)';
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)';
+
 /* ── keyword → icon + card background gradient ── */
 const COURSE_META = [
   { keys: ["react"],              Icon: FaReact,       color: "#61dafb", bg: "linear-gradient(160deg,#0c3d54,#061d2b)" },
@@ -175,23 +183,23 @@ export default function ReelCoursesPage() {
   const openReels = (id?: string) => { setSelectedReelId(id); setIsReelsOpen(true); };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", color: "#0f172a" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, color: PAGE_TEXT }}>
 
       {/* ── Header: Tech Bytes + Search + Filter ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 20px 12px" }}>
         <div style={{ flexShrink: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: "#0f172a", whiteSpace: "nowrap" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: PAGE_TEXT, whiteSpace: "nowrap" }}>
             Tech <span style={{ color: ORANGE }}>Bytes</span>
           </h1>
-          <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 1 }}>Bite-sized reels</div>
+          <div style={{ fontSize: 10, color: PAGE_GRAY, marginTop: 1 }}>Bite-sized reels</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 320, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px" }}>
-            <FaSearch style={{ color: "#94a3b8", fontSize: 13 }} />
-            <span style={{ fontSize: 13, color: "#94a3b8" }}>Search topics, technology…</span>
+          <div style={{ width: 320, background: CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px" }}>
+            <FaSearch style={{ color: PAGE_GRAY, fontSize: 13 }} />
+            <span style={{ fontSize: 13, color: PAGE_GRAY }}>Search topics, technology…</span>
           </div>
-          <div style={{ width: 42, height: 42, borderRadius: 10, background: "#f8fafc", border: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <FaFilter style={{ color: "#64748b", fontSize: 13 }} />
+          <div style={{ width: 42, height: 42, borderRadius: 10, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <FaFilter style={{ color: PAGE_GRAY, fontSize: 13 }} />
           </div>
         </div>
       </div>
@@ -202,9 +210,9 @@ export default function ReelCoursesPage() {
           {categories.map(cat => (
             <button key={cat} onClick={() => setActiveCategory(cat)} style={{
               padding: "6px 16px", borderRadius: 22,
-              border: activeCategory === cat ? "none" : "1px solid #e2e8f0",
-              background: activeCategory === cat ? ORANGE : "#f8fafc",
-              color: activeCategory === cat ? "#fff" : "#374151",
+              border: activeCategory === cat ? "none" : `1px solid ${PAGE_BORDER}`,
+              background: activeCategory === cat ? ORANGE : CARD_BG,
+              color: activeCategory === cat ? "#fff" : PAGE_TEXT,
               cursor: "pointer", fontSize: 12,
               fontWeight: activeCategory === cat ? 700 : 500,
               whiteSpace: "nowrap", outline: "none",
@@ -259,10 +267,10 @@ export default function ReelCoursesPage() {
 
       {/* ── Section Title ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 16px" }}>
-        <span style={{ fontWeight: 800, fontSize: 16, color: "#0f172a" }}>
+        <span style={{ fontWeight: 800, fontSize: 16, color: PAGE_TEXT }}>
           {activeCategory === "All" ? "All Reels" : activeCategory}
         </span>
-        <button style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: "5px 12px", fontSize: 11, color: "#64748b", cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+        <button style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: "5px 12px", fontSize: 11, color: PAGE_GRAY, cursor: "pointer", display: "flex", alignItems: "center", gap: 5 }}>
           Latest <FaChevronRight style={{ fontSize: 9, transform: "rotate(90deg)" }} />
         </button>
       </div>
@@ -272,7 +280,7 @@ export default function ReelCoursesPage() {
           <div style={{ width: 42, height: 42, border: `4px solid rgba(255,107,0,0.12)`, borderTop: `4px solid ${ORANGE}`, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
         </div>
       ) : displayed.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 48, color: "#94a3b8", fontSize: 13 }}>No reels available</div>
+        <div style={{ textAlign: "center", padding: 48, color: PAGE_GRAY, fontSize: 13 }}>No reels available</div>
       ) : (
         <div style={{ padding: "0 20px 40px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18 }}>
           {displayed.map((s, i) => (

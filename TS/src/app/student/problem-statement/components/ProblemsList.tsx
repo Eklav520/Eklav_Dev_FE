@@ -51,6 +51,14 @@ const fmtDate = (iso: string) => {
 
 const PAGE_SIZE = 20
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this list re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 type Props = {
   problems: Problem[]
   selectedId?: number
@@ -117,15 +125,15 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
   const resetFilters = () => { setSearch(''); setDiffFilter('All'); setStatusFilter('all'); setPage(1) }
 
   return (
-    <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start', background: '#f8fafc', borderRadius: 16, padding: '20px 20px 20px 20px', margin: '0 -8px' }}>
+    <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start', background: PAGE_BG, borderRadius: 16, padding: '20px 20px 20px 20px', margin: '0 -8px' }}>
 
       {/* ── LEFT: FILTER SIDEBAR ── */}
       <div style={{ width: 270, flexShrink: 0, paddingRight: 18 }}>
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
 
           {/* Filter by Level */}
           <div style={{ padding: '14px 18px 12px' }}>
-            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>Filter by Level</div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: PAGE_TEXT, marginBottom: 12 }}>Filter by Level</div>
             {([['Easy', easyCnt, '#16a34a'], ['Medium', medCnt, '#f59e0b'], ['Hard', hardCnt, '#dc2626']] as [string, number, string][]).map(([diff, count, color]) => (
               <div
                 key={diff}
@@ -138,32 +146,32 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
               >
                 <span style={{ width: 9, height: 9, borderRadius: '50%', background: color, flexShrink: 0 }} />
                 <span style={{ flex: 1, fontSize: '0.82rem', color: color, fontWeight: diffFilter === diff ? 700 : 500 }}>{diff}</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>{count.toLocaleString()}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: PAGE_GRAY }}>{count.toLocaleString()}</span>
               </div>
             ))}
           </div>
 
-          <div style={{ height: 1, background: '#edf2f7' }} />
+          <div style={{ height: 1, background: PAGE_BORDER }} />
 
           {/* Search Problem */}
           <div style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: 10 }}>Search Problem</div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_GRAY, marginBottom: 10 }}>Search Problem</div>
             <div style={{ position: 'relative' }}>
-              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
               <input
                 placeholder="Search problems..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', height: 36, border: '1px solid #e2e8f0', borderRadius: 8, paddingLeft: 32, paddingRight: 10, fontSize: '0.8rem', color: '#0f172a', outline: 'none', background: '#f8fafc' }}
+                style={{ width: '100%', height: 36, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, paddingLeft: 32, paddingRight: 10, fontSize: '0.8rem', color: PAGE_TEXT, outline: 'none', background: PAGE_BG }}
               />
             </div>
           </div>
 
-          <div style={{ height: 1, background: '#edf2f7' }} />
+          <div style={{ height: 1, background: PAGE_BORDER }} />
 
           {/* Status */}
           <div style={{ padding: '16px 18px' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: 12 }}>Status</div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_GRAY, marginBottom: 12 }}>Status</div>
             {([
               { val: 'not-attempted', label: 'Not Attempted', color: '#94a3b8' },
               { val: 'attempted',     label: 'Attempted',     color: '#f59e0b' },
@@ -176,7 +184,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                   <div style={{
                     width: 16, height: 16, borderRadius: 4, flexShrink: 0,
                     border: checked ? `2px solid ${color}` : '2px solid #d1d5db',
-                    background: checked ? color : '#fff',
+                    background: checked ? color : CARD_BG,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.15s',
                   }}>
@@ -186,19 +194,19 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                       </svg>
                     )}
                   </div>
-                  <span style={{ fontSize: '0.82rem', color: '#374151' }}>{label}</span>
+                  <span style={{ fontSize: '0.82rem', color: PAGE_TEXT }}>{label}</span>
                 </div>
               )
             })}
           </div>
 
-          <div style={{ height: 1, background: '#edf2f7' }} />
+          <div style={{ height: 1, background: PAGE_BORDER }} />
 
           {/* Reset */}
           <div style={{ padding: '12px 18px' }}>
             <button
               onClick={resetFilters}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#64748b', fontSize: '0.78rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: PAGE_GRAY, fontSize: '0.78rem', cursor: 'pointer', padding: 0, fontWeight: 500 }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
               Reset Filters
@@ -219,32 +227,32 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
         )}
 
         {/* Table */}
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
 
           {/* Table title + sort — aligned with sidebar "Filter by Level" and panel "My Submissions" */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px', borderBottom: '1px solid #edf2f7' }}>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>
-              All Problems <span style={{ color: '#94a3b8', fontWeight: 500, fontSize: '0.82rem' }}>({filtered.length.toLocaleString()})</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: PAGE_TEXT }}>
+              All Problems <span style={{ color: PAGE_GRAY, fontWeight: 500, fontSize: '0.82rem' }}>({filtered.length.toLocaleString()})</span>
             </div>
-            <select style={{ height: 30, border: '1px solid #e2e8f0', borderRadius: 7, padding: '0 10px', fontSize: '0.72rem', color: '#475569', background: '#f8fafc', outline: 'none', cursor: 'pointer' }}>
+            <select style={{ height: 30, border: `1px solid ${PAGE_BORDER}`, borderRadius: 7, padding: '0 10px', fontSize: '0.72rem', color: PAGE_TEXT, background: PAGE_BG, outline: 'none', cursor: 'pointer' }}>
               <option>Sort by: Newest First</option>
               <option>Sort by: Difficulty</option>
             </select>
           </div>
 
           {/* Column headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) 80px 95px 75px 110px 110px', padding: '8px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) 80px 95px 75px 110px 110px', padding: '8px 16px', background: PAGE_BG, borderBottom: `1px solid ${PAGE_BORDER}`, alignItems: 'center' }}>
             <div />
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Problem</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Level</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Acceptance</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Solves</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Status</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Action</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Problem</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Level</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Acceptance</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Solves</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Status</div>
+            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Action</div>
           </div>
 
           {visible.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '36px 0', color: '#94a3b8', fontSize: '0.82rem' }}>No problems found</div>
+            <div style={{ textAlign: 'center', padding: '36px 0', color: PAGE_GRAY, fontSize: '0.82rem' }}>No problems found</div>
           ) : visible.map((p, idx) => {
             const globalIdx  = start + idx
             const isLocked   = isPending && globalIdx >= FREE_PROBLEMS_LIMIT
@@ -253,7 +261,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
             const isBookmark = bookmarked.has(p.id)
 
             const actionBtn = status === 'solved'
-              ? { label: 'Solve Again', bg: '#fff',    color: '#ff7a00', border: '1.5px solid #ff7a00' }
+              ? { label: 'Solve Again', bg: CARD_BG,   color: '#ff7a00', border: '1.5px solid #ff7a00' }
               : status === 'attempted'
               ? { label: 'Continue',    bg: '#ff7a00', color: '#fff',    border: '1.5px solid #ff7a00' }
               : { label: 'Solve Now',   bg: '#ff7a00', color: '#fff',    border: '1.5px solid #ff7a00' }
@@ -269,33 +277,33 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                 key={p._id}
                 style={{
                   display: 'grid', gridTemplateColumns: '32px minmax(0,1fr) 80px 95px 75px 110px 110px',
-                  padding: '10px 16px', borderBottom: '1px solid #f1f5f9', alignItems: 'center',
-                  background: isActive ? 'rgba(255,122,0,0.03)' : '#fff',
+                  padding: '10px 16px', borderBottom: `1px solid ${PAGE_BORDER}`, alignItems: 'center',
+                  background: isActive ? 'rgba(255,122,0,0.03)' : CARD_BG,
                   opacity: isLocked ? 0.4 : 1,
                   transition: 'background 0.12s',
                 }}
-                onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = '#f8fafc' }}
-                onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(255,122,0,0.03)' : '#fff' }}
+                onMouseEnter={e => { if (!isLocked) e.currentTarget.style.background = PAGE_BG }}
+                onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(255,122,0,0.03)' : CARD_BG }}
               >
                 {/* Bookmark */}
                 <div
                   onClick={e => { e.stopPropagation(); setBookmarked(prev => { const n = new Set(prev); n.has(p.id) ? n.delete(p.id) : n.add(p.id); return n }) }}
-                  style={{ cursor: 'pointer', color: isBookmark ? '#f59e0b' : '#d1d5db', display: 'flex', alignItems: 'center' }}
+                  style={{ cursor: 'pointer', color: isBookmark ? '#f59e0b' : PAGE_GRAY, display: 'flex', alignItems: 'center' }}
                 >
                   {isBookmark ? <BookmarkFill size={12} /> : <Bookmark size={12} />}
                 </div>
 
                 {/* Problem title + tags */}
                 <div onClick={() => !isLocked && onSelect(p)} style={{ cursor: isLocked ? 'not-allowed' : 'pointer', paddingRight: 8 }}>
-                  {isLocked && <LockFill size={10} style={{ color: '#94a3b8', marginRight: 5 }} />}
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    <span style={{ color: '#94a3b8', fontWeight: 400, marginRight: 4 }}>{p.id}.</span>
+                  {isLocked && <LockFill size={10} style={{ color: PAGE_GRAY, marginRight: 5 }} />}
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: PAGE_TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ color: PAGE_GRAY, fontWeight: 400, marginRight: 4 }}>{p.id}.</span>
                     {p.title}
                   </div>
                   <div style={{ display: 'flex', gap: 6, marginTop: 3 }}>
-                    <span style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 500 }}>{tag1}</span>
-                    <span style={{ fontSize: '0.62rem', color: '#94a3b8' }}>•</span>
-                    <span style={{ fontSize: '0.62rem', color: '#94a3b8', fontWeight: 500 }}>{tag2}</span>
+                    <span style={{ fontSize: '0.62rem', color: PAGE_GRAY, fontWeight: 500 }}>{tag1}</span>
+                    <span style={{ fontSize: '0.62rem', color: PAGE_GRAY }}>•</span>
+                    <span style={{ fontSize: '0.62rem', color: PAGE_GRAY, fontWeight: 500 }}>{tag2}</span>
                   </div>
                 </div>
 
@@ -307,13 +315,13 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                 </div>
 
                 {/* Acceptance */}
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#475569' }}>{acceptance}</div>
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: PAGE_GRAY }}>{acceptance}</div>
 
                 {/* Solves */}
-                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#475569' }}>{solves}</div>
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', color: PAGE_GRAY }}>{solves}</div>
 
                 {/* Status */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: '0.72rem', color: status === 'solved' ? '#22c55e' : status === 'attempted' ? '#f59e0b' : '#94a3b8' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: '0.72rem', color: status === 'solved' ? '#22c55e' : status === 'attempted' ? '#f59e0b' : PAGE_GRAY }}>
                   {status === 'solved' ? (
                     <span style={{ width: 16, height: 16, borderRadius: '50%', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5L8 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -323,7 +331,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                       <svg width="7" height="7" viewBox="0 0 7 7" fill="none"><circle cx="3.5" cy="3.5" r="2" fill="#fff"/></svg>
                     </span>
                   ) : (
-                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: '1.5px solid #cbd5e1', background: 'transparent', flexShrink: 0 }} />
+                    <span style={{ width: 16, height: 16, borderRadius: '50%', border: `1.5px solid ${PAGE_BORDER}`, background: 'transparent', flexShrink: 0 }} />
                   )}
                   {status === 'solved' ? 'Solved' : status === 'attempted' ? 'Attempted' : 'Not Attempted'}
                 </div>
@@ -343,7 +351,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
 
         {/* Pagination — inside the table card so the top border connects cleanly */}
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, padding: '14px 0', background: '#fff', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, padding: '14px 0', background: CARD_BG, borderTop: `1px solid ${PAGE_BORDER}` }}>
 
             {/* Prev */}
             <button
@@ -352,8 +360,8 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 34, height: 34, borderRadius: 8,
-                border: '1px solid #e2e8f0', background: page === 1 ? '#f8fafc' : '#fff',
-                color: page === 1 ? '#cbd5e1' : '#475569',
+                border: `1px solid ${PAGE_BORDER}`, background: page === 1 ? PAGE_BG : CARD_BG,
+                color: page === 1 ? PAGE_GRAY : PAGE_TEXT,
                 cursor: page === 1 ? 'default' : 'pointer', transition: 'all 0.15s',
               }}
             >
@@ -375,7 +383,7 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
               return [...new Set(range)].map((pg, i) => pg < 0 ? (
                 <span key={`ellipsis-${i}`} style={{
                   width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '0.82rem', color: '#94a3b8', letterSpacing: '0.1em', userSelect: 'none',
+                  fontSize: '0.82rem', color: PAGE_GRAY, letterSpacing: '0.1em', userSelect: 'none',
                 }}>···</span>
               ) : (
                 <button
@@ -383,9 +391,9 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
                   onClick={() => setPage(pg)}
                   style={{
                     width: 34, height: 34, borderRadius: 8, cursor: 'pointer',
-                    border: page === pg ? 'none' : '1px solid #e2e8f0',
-                    background: page === pg ? '#ff7a00' : '#fff',
-                    color: page === pg ? '#fff' : '#374151',
+                    border: page === pg ? 'none' : `1px solid ${PAGE_BORDER}`,
+                    background: page === pg ? '#ff7a00' : CARD_BG,
+                    color: page === pg ? '#fff' : PAGE_TEXT,
                     fontWeight: page === pg ? 700 : 400,
                     fontSize: '0.82rem',
                     boxShadow: page === pg ? '0 2px 8px rgba(255,122,0,0.3)' : 'none',
@@ -402,8 +410,8 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: 34, height: 34, borderRadius: 8,
-                border: '1px solid #e2e8f0', background: page === totalPages ? '#f8fafc' : '#fff',
-                color: page === totalPages ? '#cbd5e1' : '#475569',
+                border: `1px solid ${PAGE_BORDER}`, background: page === totalPages ? PAGE_BG : CARD_BG,
+                color: page === totalPages ? PAGE_GRAY : PAGE_TEXT,
                 cursor: page === totalPages ? 'default' : 'pointer', transition: 'all 0.15s',
               }}
             >

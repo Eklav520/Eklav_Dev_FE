@@ -23,6 +23,12 @@ interface Props {
   }
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this re-themes with the portal.
+const PAGE_BG   = 'var(--dash-page-bg, #f8fafc)'
+const PAGE_TEXT = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY = 'var(--dash-gray, #64748b)'
+
 const MAX_MONTHLY = 5
 const TRIAL_MAX = 2
 const MAX_FILE_SIZE = 3 * 1024 * 1024 // 3MB
@@ -273,7 +279,7 @@ const remaining =
 
         <div className="d-flex justify-content-between align-items-center mb-3">
 
-          <h5 className="fw-semibold mb-0" style={{ color: '#0f172a', fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <h5 className="fw-semibold mb-0" style={{ color: PAGE_TEXT, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
             <FaUpload size={13} style={{ color: '#ff7a00' }} /> Upload Latest Resume
           </h5>
 
@@ -310,10 +316,10 @@ const remaining =
 
         <style>{`
           .resume-file-input::file-selector-button {
-            background: #f1f5f9 !important;
+            background: ${PAGE_BG} !important;
             border: none !important;
             border-right: 1.5px solid #e2e8f0 !important;
-            color: #0f172a !important;
+            color: ${PAGE_TEXT} !important;
             font-weight: 600;
             padding: 0.5rem 1rem;
             cursor: pointer;
@@ -323,7 +329,7 @@ const remaining =
           .resume-file-input:hover::file-selector-button,
           .resume-file-input::file-selector-button:hover {
             background: #e2e8f0 !important;
-            color: #0f172a !important;
+            color: ${PAGE_TEXT} !important;
           }
         `}</style>
         <Form.Control
@@ -334,15 +340,15 @@ const remaining =
           style={{
             borderRadius: '8px',
             border: '1.5px solid #e2e8f0',
-            backgroundColor: '#f8fafc',
-            color: '#0f172a',
+            backgroundColor: PAGE_BG,
+            color: PAGE_TEXT,
           }}
           disabled={uploading || remaining <= 0}
           onChange={handleFileChange}
         />
 
 
-        <div className="small mt-1" style={{ color: '#64748b' }}>
+        <div className="small mt-1" style={{ color: PAGE_GRAY }}>
           Max file size: 3 MB (PDF, DOC, DOCX)
         </div>
 

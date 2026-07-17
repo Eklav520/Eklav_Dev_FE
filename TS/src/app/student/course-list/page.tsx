@@ -8,6 +8,14 @@ import {
 } from 'react-icons/fa'
 import { BsCheckCircleFill, BsLightningFill } from 'react-icons/bs'
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type EnrolledCourse = {
@@ -78,14 +86,14 @@ const Stars = ({ rating, count }: { rating: number; count: number }) => {
 const StatCard = ({ icon, value, label, sub, iconBg }: {
   icon: React.ReactNode; value: string; label: string; sub: string; iconBg: string
 }) => (
-  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+  <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
     <div style={{ width: 46, height: 46, borderRadius: 12, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       {icon}
     </div>
     <div>
-      <div style={{ fontWeight: 800, fontSize: '1.3rem', color: '#0f172a', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#0f172a', lineHeight: 1.4 }}>{label}</div>
-      <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{sub}</div>
+      <div style={{ fontWeight: 800, fontSize: '1.3rem', color: PAGE_TEXT, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontWeight: 600, fontSize: '0.78rem', color: PAGE_TEXT, lineHeight: 1.4 }}>{label}</div>
+      <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>{sub}</div>
     </div>
   </div>
 )
@@ -116,7 +124,7 @@ const CourseRow = ({ course }: { course: EnrolledCourse }) => {
   const progressColor = isCompleted ? '#16a34a' : '#ff7a00'
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'box-shadow 0.15s' }}
+    <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 20, transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
 
@@ -137,11 +145,11 @@ const CourseRow = ({ course }: { course: EnrolledCourse }) => {
 
       {/* Course Info — flex:1 fills all remaining space */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.93rem', margin: '0 0 4px', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+        <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.93rem', margin: '0 0 4px', lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
           {course.name}
         </h6>
         {course.shortDescription && (
-          <p style={{ fontSize: '0.73rem', color: '#64748b', margin: '0 0 8px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+          <p style={{ fontSize: '0.73rem', color: PAGE_GRAY, margin: '0 0 8px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
             {course.shortDescription.replace(/<[^>]*>/g, '')}
           </p>
         )}
@@ -161,33 +169,33 @@ const CourseRow = ({ course }: { course: EnrolledCourse }) => {
       </div>
 
       {/* Divider */}
-      <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0 }} />
+      <div style={{ width: 1, background: PAGE_BORDER, alignSelf: 'stretch', flexShrink: 0 }} />
 
       {/* Progress — fixed width */}
       <div style={{ width: 210, minWidth: 210, flexShrink: 0 }}>
-        <div style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Progress</div>
+        <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Progress</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: showHours ? 2 : 4 }}>
           <span style={{ fontSize: '1.6rem', fontWeight: 800, color: progressColor, lineHeight: 1 }}>{pct}%</span>
         </div>
         {showHours && (
-          <div style={{ fontSize: '0.71rem', color: '#64748b', marginBottom: 5 }}>
+          <div style={{ fontSize: '0.71rem', color: PAGE_GRAY, marginBottom: 5 }}>
             {fmtHrs(hoursWatched)} / {fmtHrs(hoursTotal)}
           </div>
         )}
         {!showHours && (
-          <div style={{ fontSize: '0.71rem', color: '#64748b', marginBottom: 5 }}>{course.totalLectures} lectures total</div>
+          <div style={{ fontSize: '0.71rem', color: PAGE_GRAY, marginBottom: 5 }}>{course.totalLectures} lectures total</div>
         )}
         {/* Progress bar */}
-        <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+        <div style={{ height: 5, background: PAGE_BORDER, borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
           <div style={{ height: '100%', width: `${pct}%`, background: progressColor, borderRadius: 99, transition: 'width 0.4s ease' }} />
         </div>
         {lastAccessed && (
-          <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Last accessed: <strong style={{ color: '#64748b' }}>{lastAccessed}</strong></div>
+          <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>Last accessed: <strong style={{ color: PAGE_GRAY }}>{lastAccessed}</strong></div>
         )}
       </div>
 
       {/* Divider */}
-      <div style={{ width: 1, background: '#e2e8f0', alignSelf: 'stretch', flexShrink: 0 }} />
+      <div style={{ width: 1, background: PAGE_BORDER, alignSelf: 'stretch', flexShrink: 0 }} />
 
       {/* Actions — single button only */}
       <div style={{ flexShrink: 0, minWidth: 170 }}>
@@ -232,7 +240,7 @@ const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
   const progressColor = isCompleted ? '#16a34a' : '#ff7a00'
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.15s' }}
+    <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
 
@@ -246,14 +254,14 @@ const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
             {course.badge}
           </span>
         )}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, background: '#f1f5f9' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 4, background: PAGE_BORDER }}>
           <div style={{ height: '100%', width: `${pct}%`, background: progressColor, transition: 'width 0.4s ease' }} />
         </div>
       </div>
 
       {/* Body */}
       <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', flex: 1, gap: 8 }}>
-        <h6 style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', margin: 0, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+        <h6 style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', margin: 0, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
           {course.name}
         </h6>
 
@@ -276,19 +284,19 @@ const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
         {/* Progress info */}
         <div style={{ marginTop: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-            <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Progress</span>
+            <span style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Progress</span>
             <span style={{ fontWeight: 800, fontSize: '1rem', color: progressColor }}>{pct}%</span>
           </div>
-          <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
+          <div style={{ height: 5, background: PAGE_BORDER, borderRadius: 99, overflow: 'hidden', marginBottom: 5 }}>
             <div style={{ height: '100%', width: `${pct}%`, background: progressColor, borderRadius: 99 }} />
           </div>
           {showHours ? (
-            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{fmtHrs(hoursWatched)} / {fmtHrs(hoursTotal)}</div>
+            <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>{fmtHrs(hoursWatched)} / {fmtHrs(hoursTotal)}</div>
           ) : (
-            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{course.totalLectures} lectures</div>
+            <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>{course.totalLectures} lectures</div>
           )}
           {lastAccessed && (
-            <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: 3 }}>Last: <strong style={{ color: '#64748b' }}>{lastAccessed}</strong></div>
+            <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 3 }}>Last: <strong style={{ color: PAGE_GRAY }}>{lastAccessed}</strong></div>
           )}
         </div>
 
@@ -391,7 +399,7 @@ const CourseListPage = () => {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ textAlign: 'center' }}>
         <div className="spinner-border" role="status" style={{ width: 48, height: 48, color: '#ff7a00' }} />
-        <p style={{ marginTop: 16, color: '#64748b' }}>Loading your courses...</p>
+        <p style={{ marginTop: 16, color: PAGE_GRAY }}>Loading your courses...</p>
       </div>
     </div>
   )
@@ -422,8 +430,8 @@ const CourseListPage = () => {
 
         {/* ── Header ── */}
         <div style={{ marginBottom: 20 }}>
-          <h4 style={{ fontWeight: 800, color: '#0f172a', margin: 0 }}>My Enrolled Courses</h4>
-          <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '4px 0 0' }}>Continue your learning journey</p>
+          <h4 style={{ fontWeight: 800, color: PAGE_TEXT, margin: 0 }}>My Enrolled Courses</h4>
+          <p style={{ color: PAGE_GRAY, fontSize: '0.85rem', margin: '4px 0 0' }}>Continue your learning journey</p>
         </div>
 
         {/* ── Tabs + Controls ── */}
@@ -433,14 +441,14 @@ const CourseListPage = () => {
             {tabs.map(tab => (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
                 style={{
-                  border: activeTab === tab.key ? 'none' : '1.5px solid #e2e8f0',
+                  border: activeTab === tab.key ? 'none' : `1.5px solid ${PAGE_BORDER}`,
                   borderRadius: 8,
                   padding: '7px 16px',
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  background: activeTab === tab.key ? '#ff7a00' : '#fff',
-                  color: activeTab === tab.key ? '#fff' : '#475569',
+                  background: activeTab === tab.key ? '#ff7a00' : CARD_BG,
+                  color: activeTab === tab.key ? '#fff' : PAGE_TEXT,
                   transition: 'all 0.15s',
                 }}>
                 {tab.label}
@@ -452,28 +460,28 @@ const CourseListPage = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* Search */}
             <div style={{ position: 'relative' }}>
-              <FaSearch size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <FaSearch size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
               <input
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
                 placeholder="Search courses..."
-                style={{ border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '7px 12px 7px 30px', fontSize: '0.8rem', color: '#334155', background: '#fff', outline: 'none', width: 200 }}
+                style={{ border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 12px 7px 30px', fontSize: '0.8rem', color: PAGE_TEXT, background: CARD_BG, outline: 'none', width: 200 }}
               />
             </div>
             {/* View toggle */}
-            <div style={{ display: 'flex', border: '1.5px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, overflow: 'hidden' }}>
               {([['grid', <FaThLarge size={13} />], ['list', <FaList size={13} />]] as [string, React.ReactNode][]).map(([mode, icon]) => (
                 <button key={mode} onClick={() => setViewMode(mode as any)}
-                  style={{ padding: '7px 11px', border: 'none', background: viewMode === mode ? '#ff7a00' : '#fff', color: viewMode === mode ? '#fff' : '#94a3b8', cursor: 'pointer' }}>
+                  style={{ padding: '7px 11px', border: 'none', background: viewMode === mode ? '#ff7a00' : CARD_BG, color: viewMode === mode ? '#fff' : PAGE_GRAY, cursor: 'pointer' }}>
                   {icon}
                 </button>
               ))}
             </div>
             {/* Sort */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#475569' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: PAGE_TEXT }}>
               <span style={{ fontWeight: 600 }}>Sort by:</span>
               <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-                style={{ border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '6px 28px 6px 10px', fontSize: '0.8rem', color: '#334155', background: '#fff', cursor: 'pointer', outline: 'none', appearance: 'none' }}>
+                style={{ border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '6px 28px 6px 10px', fontSize: '0.8rem', color: PAGE_TEXT, background: CARD_BG, cursor: 'pointer', outline: 'none', appearance: 'none' }}>
                 {['Recent Access', 'Newest', 'Progress', 'Alphabetical'].map(o => <option key={o}>{o}</option>)}
               </select>
             </div>
@@ -521,9 +529,9 @@ const CourseListPage = () => {
 
         {/* ── Course List ── */}
         {filteredCourses.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: '64px 0', color: PAGE_GRAY }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
-            <h5 style={{ color: '#475569', marginBottom: 8 }}>
+            <h5 style={{ color: PAGE_TEXT, marginBottom: 8 }}>
               {searchTerm ? 'No courses match your search' : activeTab === 'wishlist' ? 'Your wishlist is empty' : 'No courses here yet'}
             </h5>
             <p style={{ fontSize: '0.85rem' }}>

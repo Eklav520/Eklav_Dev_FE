@@ -93,6 +93,15 @@ function getDescription(title: string): string {
   return 'Practice questions to improve your aptitude skills.'
 }
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback). The category cards and both modals
+// below use their own fixed dark designs and do NOT use these.
+const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const DIFF_BADGES = [
   { label: 'Easy',   bg: 'rgba(22,163,74,0.15)',   color: '#4ade80' },
   { label: 'Medium', bg: 'rgba(234,179,8,0.15)',    color: '#fbbf24' },
@@ -383,10 +392,10 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
       {/* ── Section header ── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h5 style={{ fontWeight: 800, color: '#0f172a', margin: '0 0 4px', fontSize: '1.05rem' }}>
+          <h5 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 4px', fontSize: '1.05rem' }}>
             Practice Quiz Topics
           </h5>
-          <p style={{ color: '#64748b', fontSize: '0.78rem', margin: 0 }}>
+          <p style={{ color: PAGE_GRAY, fontSize: '0.78rem', margin: 0 }}>
             Choose a topic to practice and improve your aptitude skills.
           </p>
         </div>
@@ -396,15 +405,15 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
             onChange={e => setDiffFilter(e.target.value)}
             style={{
               appearance: 'none',
-              background: '#fff', border: '1.5px solid #e2e8f0',
+              background: CARD_BG, border: `1.5px solid ${PAGE_BORDER}`,
               borderRadius: 9, padding: '7px 32px 7px 12px',
-              fontSize: '0.78rem', color: '#475569', fontWeight: 600,
+              fontSize: '0.78rem', color: PAGE_TEXT, fontWeight: 600,
               cursor: 'pointer', outline: 'none',
             }}
           >
             {['All', 'Easy', 'Medium', 'Hard'].map(d => <option key={d}>{d === 'All' ? 'Filter by Difficulty' : d}</option>)}
           </select>
-          <FiChevronDown size={14} color="#94a3b8" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <FiChevronDown size={14} color={PAGE_GRAY} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
       </div>
 
@@ -440,15 +449,15 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
         {selectedCategory && (
           <div style={{
             width: 272, flexShrink: 0,
-            background: '#fff',
-            border: '1px solid #e8edf4',
+            background: CARD_BG,
+            border: `1px solid ${PAGE_BORDER}`,
             borderRadius: 16,
             overflow: 'hidden',
             boxShadow: '0 4px 24px rgba(15,23,42,0.07)',
           }}>
             {/* Panel header */}
-            <div style={{ padding: '18px 20px 14px', background: 'linear-gradient(135deg, #fafbfc 0%, #fff 100%)' }}>
-              <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.92rem', letterSpacing: '-0.01em', marginBottom: 4 }}>
+            <div style={{ padding: '18px 20px 14px', background: CARD_BG }}>
+              <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.92rem', letterSpacing: '-0.01em', marginBottom: 4 }}>
                 Topics in {selectedCategory.title}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -459,7 +468,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
               </div>
             </div>
 
-            <div style={{ height: 1, background: 'linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%)' }} />
+            <div style={{ height: 1, background: PAGE_BORDER }} />
 
             {/* Topic list */}
             <div style={{ maxHeight: 430, overflowY: 'auto', padding: '8px 0' }}>
@@ -479,7 +488,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                       transition: 'background 0.12s',
                       borderRadius: 0,
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = PAGE_BG }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >
                     {/* Avatar */}
@@ -497,13 +506,13 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                     {/* Text */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontWeight: 600, color: '#1e293b', fontSize: '0.8rem',
+                        fontWeight: 600, color: PAGE_TEXT, fontSize: '0.8rem',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         lineHeight: 1.3, marginBottom: 2,
                       }}>
                         {item.topic}
                       </div>
-                      <div style={{ fontSize: '0.65rem', color: '#94a3b8', fontWeight: 500 }}>
+                      <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, fontWeight: 500 }}>
                         {(item.questions?.length ?? 0).toLocaleString()} Questions
                       </div>
                     </div>
@@ -511,17 +520,17 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                     {/* Arrow */}
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                      background: '#f1f5f9',
+                      background: PAGE_BG,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <FiChevronRight size={12} color="#94a3b8" />
+                      <FiChevronRight size={12} color={PAGE_GRAY} />
                     </div>
                   </div>
                 )
               })}
             </div>
 
-            <div style={{ height: 1, background: '#f1f5f9' }} />
+            <div style={{ height: 1, background: PAGE_BORDER }} />
 
             {/* View all button */}
             <div style={{ padding: '14px 20px' }}>
@@ -548,7 +557,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
       {/* ── Bottom Banner ── */}
       <div style={{
         marginTop: 20,
-        background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14,
+        background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14,
         padding: '16px 24px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
       }}>
@@ -557,13 +566,13 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
             🤖
           </div>
           <div>
-            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem' }}>Not sure where to start?</div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: 2 }}>Take a short assessment and get personalized topic recommendations.</div>
+            <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem' }}>Not sure where to start?</div>
+            <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 2 }}>Take a short assessment and get personalized topic recommendations.</div>
           </div>
         </div>
         <button disabled style={{
-          background: '#f1f5f9', border: '1.5px solid #e2e8f0', borderRadius: 9,
-          color: '#94a3b8', fontWeight: 700, fontSize: '0.78rem',
+          background: PAGE_BG, border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 9,
+          color: PAGE_GRAY, fontWeight: 700, fontSize: '0.78rem',
           padding: '9px 18px', cursor: 'not-allowed', whiteSpace: 'nowrap',
           display: 'flex', alignItems: 'center', gap: 6,
           flexShrink: 0, opacity: 0.6,
@@ -652,21 +661,21 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
         }
 
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#f1f5f9', display: 'flex', flexDirection: 'column', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: PAGE_BG, display: 'flex', flexDirection: 'column', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
             <style>{`.tp-scroll::-webkit-scrollbar{display:none}.tp-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
 
             {/* ── Header ── */}
-            <div style={{ height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>{previewTopic.topic} — Preparation</div>
-              <button onClick={handleClose} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: '#64748b' }}>×</button>
+            <div style={{ height: 52, background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', flexShrink: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: PAGE_TEXT }}>{previewTopic.topic} — Preparation</div>
+              <button onClick={handleClose} style={{ width: 32, height: 32, borderRadius: '50%', border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, color: PAGE_GRAY }}>×</button>
             </div>
 
             {/* ── Body ── */}
             <div style={{ flex: 1, display: 'flex', gap: 12, padding: '12px 16px', overflow: 'hidden' }}>
 
               {/* ── LEFT BOX: Topics (wider) ── */}
-              <div style={{ width: 290, background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
-                <div style={{ padding: '14px 16px 10px', fontWeight: 800, fontSize: '0.88rem', color: '#0f172a', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>Topics</div>
+              <div style={{ width: 290, background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+                <div style={{ padding: '14px 16px 10px', fontWeight: 800, fontSize: '0.88rem', color: PAGE_TEXT, borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>Topics</div>
 
                 <div className="tp-scroll" style={{ flex: 1, overflowY: 'auto' }}>
                   {selectedCategory?.items.map((item, idx) => {
@@ -675,7 +684,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                     const initials = item.topic.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
                     const pct = getProgressPct(item)
                     const offset = CIRC * (1 - pct / 100)
-                    const progressColor = pct === 100 ? '#16a34a' : pct > 0 ? '#ff7a00' : '#e2e8f0'
+                    const progressColor = pct === 100 ? '#16a34a' : pct > 0 ? '#ff7a00' : PAGE_BORDER
                     return (
                       <div key={item._id} onClick={() => {
                         // save current topic progress before switching
@@ -690,48 +699,48 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                         style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderLeft: isActive ? '3px solid #ff7a00' : '3px solid transparent', background: isActive ? 'rgba(255,122,0,0.05)' : 'transparent', transition: 'all 0.15s' }}>
                         <div style={{ width: 32, height: 32, borderRadius: 8, background: tc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.62rem', fontWeight: 800, color: tc.color, flexShrink: 0 }}>{initials}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.78rem', fontWeight: isActive ? 700 : 600, color: isActive ? '#ff7a00' : '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.topic}</div>
-                          <div style={{ fontSize: '0.64rem', color: '#94a3b8', marginTop: 1 }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: isActive ? 700 : 600, color: isActive ? '#ff7a00' : PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.topic}</div>
+                          <div style={{ fontSize: '0.64rem', color: PAGE_GRAY, marginTop: 1 }}>
                             {Math.min(topicProgress[item._id] ?? 0, item.questions?.length ?? 0)} / {item.questions?.length ?? 0}
                           </div>
                         </div>
                         <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
                           <svg width="32" height="32" viewBox="0 0 32 32">
-                            <circle cx="16" cy="16" r="13" fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                            <circle cx="16" cy="16" r="13" fill="none" stroke={PAGE_BORDER} strokeWidth="3" />
                             <circle cx="16" cy="16" r="13" fill="none" stroke={progressColor} strokeWidth="3"
                               strokeDasharray={`${CIRC * 13 / 11}`}
                               strokeDashoffset={`${(CIRC * 13 / 11) * (1 - pct / 100)}`}
                               strokeLinecap="round" transform="rotate(-90 16 16)" style={{ transition: 'stroke-dashoffset 0.4s ease' }} />
                           </svg>
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', fontWeight: 700, color: pct > 0 ? progressColor : '#94a3b8' }}>{pct}%</div>
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.48rem', fontWeight: 700, color: pct > 0 ? progressColor : PAGE_GRAY }}>{pct}%</div>
                         </div>
                       </div>
                     )
                   })}
                 </div>
 
-                <div style={{ padding: '10px 14px', borderTop: '1px solid #f1f5f9', flexShrink: 0 }}>
-                  <button style={{ width: '100%', padding: '8px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#475569', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <div style={{ padding: '10px 14px', borderTop: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                  <button style={{ width: '100%', padding: '8px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, color: PAGE_TEXT, fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                     <FiBarChart2 size={13} /> Topic Summary
                   </button>
                 </div>
               </div>
 
               {/* ── RIGHT BOX: Questions (10 per page) ── */}
-              <div style={{ flex: 1, background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ flex: 1, background: CARD_BG, borderRadius: 14, border: `1px solid ${PAGE_BORDER}`, boxShadow: '0 1px 6px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
                 {/* Top bar */}
-                <div style={{ borderBottom: '1px solid #f1f5f9', padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ borderBottom: `1px solid ${PAGE_BORDER}`, padding: '10px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#64748b' }}>Questions</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: PAGE_GRAY }}>Questions</span>
                     <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#ff7a00' }}>{pageStart + 1}–{pageEnd} / {total}</span>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}>Page {page + 1} of {totalPages}</span>
+                    <span style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginLeft: 4 }}>Page {page + 1} of {totalPages}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.75rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, fontSize: '0.75rem', fontWeight: 600, color: PAGE_TEXT, cursor: 'pointer' }}>
                       <FiBookOpen size={13} /> Bookmark
                     </button>
-                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', fontSize: '0.75rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
+                    <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, fontSize: '0.75rem', fontWeight: 600, color: PAGE_TEXT, cursor: 'pointer' }}>
                       <FiGrid size={13} /> Grid View
                     </button>
                   </div>
@@ -744,14 +753,14 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                     const qCorrectKey = q.correctOptionKey?.toUpperCase()
                     const isExpanded = expandedExpQ === globalIdx
                     return (
-                      <div key={q._id ?? globalIdx} style={{ marginBottom: 20, borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', background: '#fff' }}>
-                        <div style={{ padding: '14px 18px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      <div key={q._id ?? globalIdx} style={{ marginBottom: 20, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, overflow: 'hidden', background: CARD_BG }}>
+                        <div style={{ padding: '14px 18px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                           <span style={{ background: '#ff7a00', color: '#fff', fontWeight: 800, fontSize: '0.72rem', padding: '3px 9px', borderRadius: 6, flexShrink: 0, marginTop: 2 }}>Q{globalIdx + 1}</span>
-                          <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem', lineHeight: 1.55, flex: 1 }}>{q.question}</div>
+                          <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.9rem', lineHeight: 1.55, flex: 1 }}>{q.question}</div>
                         </div>
                         {q.questionType === 'image' && q.questionImageUrl && (
                           <div style={{ textAlign: 'center', padding: '12px 18px 0' }}>
-                            <img src={q.questionImageUrl} alt={`Q${globalIdx + 1}`} style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, border: '1px solid #e2e8f0' }} />
+                            <img src={q.questionImageUrl} alt={`Q${globalIdx + 1}`} style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, border: `1px solid ${PAGE_BORDER}` }} />
                           </div>
                         )}
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '12px 18px' }}>
@@ -760,13 +769,13 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                             if (!opt) return null
                             const isCorrect = k === qCorrectKey
                             return (
-                              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, border: isCorrect ? '1.5px solid #16a34a' : '1.5px solid #e2e8f0', background: isCorrect ? 'rgba(22,163,74,0.06)' : '#fafafa' }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isCorrect ? '#16a34a' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8, border: isCorrect ? '1.5px solid #16a34a' : `1.5px solid ${PAGE_BORDER}`, background: isCorrect ? 'rgba(22,163,74,0.06)' : PAGE_BG }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: isCorrect ? '#16a34a' : PAGE_BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                   {isCorrect
                                     ? <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5l3 3L10 1" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                                    : <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#64748b' }}>{k}</span>}
+                                    : <span style={{ fontSize: '0.62rem', fontWeight: 700, color: PAGE_GRAY }}>{k}</span>}
                                 </div>
-                                <span style={{ fontSize: '0.8rem', color: isCorrect ? '#15803d' : '#374151', fontWeight: isCorrect ? 600 : 400 }}>{opt}</span>
+                                <span style={{ fontSize: '0.8rem', color: isCorrect ? '#15803d' : PAGE_TEXT, fontWeight: isCorrect ? 600 : 400 }}>{opt}</span>
                               </div>
                             )
                           })}
@@ -803,25 +812,25 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                       </div>
                     )
                   }) : (
-                    <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No questions available.</div>
+                    <div style={{ padding: 40, textAlign: 'center', color: PAGE_GRAY }}>No questions available.</div>
                   )}
                 </div>
 
                 {/* ── Footer: page navigation ── */}
-                <div style={{ borderTop: '1px solid #f1f5f9', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+                <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                   <button onClick={() => goToPage(Math.max(0, page - 1))}
                     disabled={isFirstPage}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: isFirstPage ? '#f8fafc' : '#fff', color: isFirstPage ? '#cbd5e1' : '#374151', fontWeight: 600, fontSize: '0.82rem', cursor: isFirstPage ? 'not-allowed' : 'pointer' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: isFirstPage ? PAGE_BG : CARD_BG, color: isFirstPage ? PAGE_GRAY : PAGE_TEXT, fontWeight: 600, fontSize: '0.82rem', cursor: isFirstPage ? 'not-allowed' : 'pointer' }}>
                     ← Previous
                   </button>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     {buildPageWindow().map((item, idx) =>
                       item === '...'
-                        ? <span key={`d${idx}`} style={{ width: 32, textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>···</span>
+                        ? <span key={`d${idx}`} style={{ width: 32, textAlign: 'center', fontSize: '0.8rem', color: PAGE_GRAY }}>···</span>
                         : (
                           <button key={item} onClick={() => goToPage(item as number)}
-                            style={{ width: 32, height: 32, borderRadius: 8, border: item === page ? 'none' : '1px solid #e2e8f0', background: item === page ? '#ff7a00' : '#fff', color: item === page ? '#fff' : '#374151', fontWeight: item === page ? 700 : 500, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.15s' }}>
+                            style={{ width: 32, height: 32, borderRadius: 8, border: item === page ? 'none' : `1px solid ${PAGE_BORDER}`, background: item === page ? '#ff7a00' : CARD_BG, color: item === page ? '#fff' : PAGE_TEXT, fontWeight: item === page ? 700 : 500, fontSize: '0.78rem', cursor: 'pointer', transition: 'all 0.15s' }}>
                             {(item as number) + 1}
                           </button>
                         )
@@ -831,7 +840,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => goToPage(Math.min(totalPages - 1, page + 1))}
                       disabled={isLastPage}
-                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: isLastPage ? '#f8fafc' : '#fff', color: isLastPage ? '#cbd5e1' : '#374151', fontWeight: 600, fontSize: '0.82rem', cursor: isLastPage ? 'not-allowed' : 'pointer' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: isLastPage ? PAGE_BG : CARD_BG, color: isLastPage ? PAGE_GRAY : PAGE_TEXT, fontWeight: 600, fontSize: '0.82rem', cursor: isLastPage ? 'not-allowed' : 'pointer' }}>
                       Next →
                     </button>
                     <button onClick={() => {

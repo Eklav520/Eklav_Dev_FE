@@ -9,12 +9,15 @@ import { BsTrophyFill, BsFire } from 'react-icons/bs'
 import { RiMoonLine } from 'react-icons/ri'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+// These read from CSS custom properties (set by StudentLayout based on the
+// light/dark toggle) with light-mode values as the fallback, so the whole
+// page re-themes without every inline style block needing to change.
 const ORANGE = '#ff7a00'
-const BORDER = '#e2e8f0'
-const PAGE_BG = '#f8fafc'
-const CARD_BG = '#ffffff'
-const TEXT = '#0f172a'
-const GRAY = '#64748b'
+const BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_BG = 'var(--dash-page-bg, #f8fafc)'
+const CARD_BG = 'var(--dash-card-bg, #ffffff)'
+const TEXT = 'var(--dash-text, #0f172a)'
+const GRAY = 'var(--dash-gray, #64748b)'
 const GREEN = '#10b981'
 const CARD_SHADOW = '0 1px 4px rgba(0,0,0,0.07)'
 
@@ -120,7 +123,7 @@ const StatCard = ({ iconBg, icon, label, value, customValue, sub }: {
   iconBg: string; icon: React.ReactNode; label: string
   value: string | null; customValue?: React.ReactNode; sub?: React.ReactNode
 }) => (
-  <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 13 }}>
+  <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 13 }}>
     <div style={{ width: 46, height: 46, background: iconBg, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       {icon}
     </div>
@@ -429,8 +432,8 @@ const StudentDashboardUpdated: React.FC = () => {
         .sd-ann-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
         .sd-ann-row:last-child { border-bottom: none; }
         .sd-course-row { margin-bottom: 12px; }
-        .sd-badge-card { background: #f8fafc; border: 1px solid ${BORDER}; border-radius: 10px; padding: 12px; text-align: center; flex: 1; }
-        .sd-notif-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; background: #fff; border: 1px solid ${BORDER}; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity 0.15s, transform 0.15s; overflow: hidden; }
+        .sd-badge-card { background: ${PAGE_BG}; border: 1px solid ${BORDER}; border-radius: 10px; padding: 12px; text-align: center; flex: 1; }
+        .sd-notif-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; background: ${CARD_BG}; border: 1px solid ${BORDER}; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity 0.15s, transform 0.15s; overflow: hidden; }
         .sd-notif-wrap:hover .sd-notif-dropdown { opacity: 1; pointer-events: auto; transform: translateY(0); }
       `}</style>
 
@@ -447,7 +450,7 @@ const StudentDashboardUpdated: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           {/* Bell — hover notification dropdown */}
           <div style={{ position: 'relative' }} className="sd-notif-wrap">
-            <button style={{ width: 40, height: 40, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: GRAY }}>
+            <button style={{ width: 40, height: 40, background: PAGE_BG, border: `1px solid ${BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: GRAY }}>
               <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -495,7 +498,7 @@ const StudentDashboardUpdated: React.FC = () => {
             </div>
           </div>
           {/* Rank + Avg Study */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 10, padding: '0 12px', height: 40 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: PAGE_BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '0 12px', height: 40 }}>
             <BsTrophyFill size={14} color={ORANGE} />
             <span style={{ fontSize: '0.75rem', color: GRAY, fontWeight: 500 }}>Rank</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 800, color: TEXT }}>{overallRank || '—'}</span>
@@ -513,7 +516,7 @@ const StudentDashboardUpdated: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr 1fr', gap: 12, padding: '14px 28px 16px', background: CARD_BG, borderBottom: `1px solid ${BORDER}` }}>
 
         {/* Profile Completed */}
-        <div style={{ background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 250 }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 250 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             <svg width="74" height="74">
               <circle cx="37" cy="37" r="30" fill="none" stroke="#f1f5f9" strokeWidth="7" />
@@ -892,9 +895,9 @@ const StudentDashboardUpdated: React.FC = () => {
             <CardHeader title="Code Challenges" />
             <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
               {[
-                { label: 'Total',     value: totalProblems,                              bg: '#f8fafc', border: BORDER,      color: TEXT  },
+                { label: 'Total',     value: totalProblems,                              bg: PAGE_BG, border: BORDER,      color: TEXT  },
                 { label: 'Completed', value: completedChallenges,                        bg: '#f0fdf4', border: '#bbf7d0',   color: GREEN },
-                { label: 'Remaining', value: Math.max(totalProblems - completedChallenges, 0), bg: '#f8fafc', border: BORDER, color: TEXT },
+                { label: 'Remaining', value: Math.max(totalProblems - completedChallenges, 0), bg: PAGE_BG, border: BORDER, color: TEXT },
               ].map(s => (
                 <div key={s.label} style={{ flex: 1, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1.1 }}>{s.value}</div>
@@ -965,7 +968,7 @@ const StudentDashboardUpdated: React.FC = () => {
                     <button key={f.key} onClick={() => { setTsFilter(f.key); setHistoryMonth('') }} style={{
                       border: 'none', cursor: 'pointer', borderRadius: 6, padding: '5px 12px',
                       fontSize: '0.72rem', fontWeight: 600,
-                      background: tsFilter === f.key ? '#fff' : 'transparent',
+                      background: tsFilter === f.key ? CARD_BG : 'transparent',
                       color: tsFilter === f.key ? ORANGE : GRAY,
                       boxShadow: tsFilter === f.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                       transition: 'all 0.15s',
@@ -982,7 +985,7 @@ const StudentDashboardUpdated: React.FC = () => {
                       border: `1.5px solid ${tsFilter === 'history' ? ORANGE : BORDER}`,
                       borderRadius: 8, padding: '5px 28px 5px 10px', fontSize: '0.72rem',
                       fontWeight: 600, color: tsFilter === 'history' ? ORANGE : GRAY,
-                      background: tsFilter === 'history' ? '#fff7ed' : '#fff',
+                      background: tsFilter === 'history' ? '#fff7ed' : CARD_BG,
                       appearance: 'none', cursor: 'pointer', outline: 'none',
                       minWidth: 110,
                     }}
@@ -1052,7 +1055,7 @@ const StudentDashboardUpdated: React.FC = () => {
                         style={{
                           padding: '5px 8px', borderRadius: 7,
                           border: `1.5px solid ${isSelected ? ORANGE : isActive ? BORDER : '#f1f5f9'}`,
-                          background: isSelected ? '#fff7ed' : isActive ? '#fff' : '#fafafa',
+                          background: isSelected ? '#fff7ed' : isActive ? CARD_BG : PAGE_BG,
                           cursor: isActive ? 'pointer' : 'default',
                           transition: 'all 0.15s',
                         }}
@@ -1087,13 +1090,13 @@ const StudentDashboardUpdated: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
               {[
                 { label: 'Today',       value: fmtH(todayHours),  color: ORANGE, bg: `${ORANGE}10` },
-                { label: 'This Week',   value: fmtH(weeklyTotal), color: TEXT,   bg: '#f8fafc' },
+                { label: 'This Week',   value: fmtH(weeklyTotal), color: TEXT,   bg: PAGE_BG },
                 { label: tsFilter === 'history' ? historyLabel.split(' ')[0] : 'This Month',
                                         value: tsFilter === 'history' ? fmtH(historyTotal) : fmtH(monthlyTotal),
-                                                                   color: TEXT,   bg: '#f8fafc' },
+                                                                   color: TEXT,   bg: PAGE_BG },
                 { label: 'Active Days', value: String(tsFilter === 'history' ? historyRecords.filter(r => r.hours > 0).length : presentDays.length),
                                                                    color: GREEN,  bg: '#f0fdf4' },
-                { label: 'Daily Avg',   value: fmtH(avgPerDay),   color: TEXT,   bg: '#f8fafc' },
+                { label: 'Daily Avg',   value: fmtH(avgPerDay),   color: TEXT,   bg: PAGE_BG },
               ].map(s => (
                 <div key={s.label} style={{ textAlign: 'center', background: s.bg, borderRadius: 8, padding: '9px 6px' }}>
                   <div style={{ fontSize: '0.88rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
@@ -1131,7 +1134,7 @@ const StudentDashboardUpdated: React.FC = () => {
                       {/* 3 stat boxes */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
                         {[
-                          { label: 'Total Attempts', value: resumeData.attempts?.length ?? 0, color: TEXT,   bg: '#f8fafc' },
+                          { label: 'Total Attempts', value: resumeData.attempts?.length ?? 0, color: TEXT,   bg: PAGE_BG },
                           { label: 'Used / Month',   value: `${resumeData.used}/${resumeData.limit}`,        color: ORANGE, bg: `${ORANGE}10` },
                           { label: 'Remaining',      value: resumeData.remaining ?? resumeData.limit,        color: GREEN,  bg: '#f0fdf4' },
                         ].map(s => (
@@ -1182,7 +1185,7 @@ const StudentDashboardUpdated: React.FC = () => {
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '6px 10px', borderRadius: 8, cursor: depleted ? 'default' : 'pointer',
                           border: `1.5px solid ${selectedTopic === topic ? ORANGE : depleted ? '#f1f5f9' : BORDER}`,
-                          background: selectedTopic === topic ? `${ORANGE}10` : depleted ? '#fafafa' : '#fff',
+                          background: selectedTopic === topic ? `${ORANGE}10` : depleted ? PAGE_BG : CARD_BG,
                           transition: 'all 0.15s',
                           opacity: depleted ? 0.6 : 1,
                         }}
@@ -1330,7 +1333,7 @@ const StudentDashboardUpdated: React.FC = () => {
         const bg = `linear-gradient(135deg, ${color}, ${color}bb)`
         return (
           <div onClick={() => setAchModal(null)} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15,23,42,0.65)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', background: '#fff', borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 100px rgba(0,0,0,0.30)' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: 680, maxHeight: '90vh', background: CARD_BG, borderRadius: 24, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 32px 100px rgba(0,0,0,0.30)' }}>
 
               {/* ── Banner ── */}
               <div style={{ background: bg, padding: '28px 32px 24px', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
@@ -1373,7 +1376,7 @@ const StudentDashboardUpdated: React.FC = () => {
               </div>
 
               {/* ── Footer ── */}
-              <div style={{ padding: '14px 32px', borderTop: '1px solid #f1f5f9', background: '#fafafa', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ padding: '14px 32px', borderTop: `1px solid ${BORDER}`, background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div style={{ fontSize: '0.78rem', color: GRAY }}>
                   {(achModal.likes?.length > 0) && <span>❤️ {achModal.likes.length} {achModal.likes.length === 1 ? 'like' : 'likes'}</span>}
                 </div>

@@ -12,6 +12,14 @@ interface Props {
 
 const ORANGE = "#ff6b00"
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #ffffff)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 /* ── category + author metadata per book id ── */
 const BOOK_META: Record<string, { category: string; author: string; catColor: string; catBg: string }> = {
   c:           { category: "Programming",    author: "Brian Kernighan",    catColor: "#3b82f6", catBg: "#eff6ff" },
@@ -46,7 +54,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
   })
 
   return (
-    <div style={{ minHeight: "100vh", background: "#fff", padding: "0 0 40px" }}>
+    <div style={{ minHeight: "100vh", background: PAGE_BG, padding: "0 0 40px" }}>
 
       {/* ── Hero Banner ── */}
       <div style={{
@@ -119,9 +127,9 @@ const BookLibrary = ({ onSelectBook }: Props) => {
                 onClick={() => setActiveCategory(cat)}
                 style={{
                   padding: "6px 18px", borderRadius: 22,
-                  border: activeCategory === cat ? "none" : "1px solid #e2e8f0",
-                  background: activeCategory === cat ? ORANGE : "#f8fafc",
-                  color: activeCategory === cat ? "#fff" : "#374151",
+                  border: activeCategory === cat ? "none" : `1px solid ${PAGE_BORDER}`,
+                  background: activeCategory === cat ? ORANGE : CARD_BG,
+                  color: activeCategory === cat ? "#fff" : PAGE_TEXT,
                   cursor: "pointer", fontSize: 12.5,
                   fontWeight: activeCategory === cat ? 700 : 500,
                   whiteSpace: "nowrap", outline: "none",
@@ -134,27 +142,27 @@ const BookLibrary = ({ onSelectBook }: Props) => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <div style={{ width: 260, background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0", display: "flex", alignItems: "center", gap: 8, padding: "9px 14px" }}>
-            <FaSearch style={{ color: "#94a3b8", fontSize: 13, flexShrink: 0 }} />
+          <div style={{ width: 260, background: CARD_BG, borderRadius: 12, border: `1px solid ${PAGE_BORDER}`, display: "flex", alignItems: "center", gap: 8, padding: "9px 14px" }}>
+            <FaSearch style={{ color: PAGE_GRAY, fontSize: 13, flexShrink: 0 }} />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search books..."
-              style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: "#374151", width: "100%" }}
+              style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: PAGE_TEXT, width: "100%" }}
             />
           </div>
-          <button style={{ display: "flex", alignItems: "center", gap: 7, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "9px 16px", fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
-            <FaFilter style={{ fontSize: 12, color: "#64748b" }} /> Filter
+          <button style={{ display: "flex", alignItems: "center", gap: 7, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: "9px 16px", fontSize: 13, color: PAGE_TEXT, cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
+            <FaFilter style={{ fontSize: 12, color: PAGE_GRAY }} /> Filter
           </button>
         </div>
       </div>
 
       {/* ── Divider ── */}
-      <div style={{ height: 1, background: "#f1f5f9", margin: "0 24px 20px" }} />
+      <div style={{ height: 1, background: PAGE_BORDER, margin: "0 24px 20px" }} />
 
       {/* ── Grid ── */}
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>
+        <div style={{ textAlign: "center", padding: 60, color: PAGE_GRAY }}>
           <FaBook style={{ fontSize: 32, marginBottom: 12, color: "#cbd5e1" }} />
           <div style={{ fontWeight: 600 }}>No books found</div>
         </div>
@@ -166,9 +174,9 @@ const BookLibrary = ({ onSelectBook }: Props) => {
               <div
                 key={book.id}
                 style={{
-                  background: "#fff",
+                  background: CARD_BG,
                   borderRadius: 16,
-                  border: "1px solid #f1f5f9",
+                  border: `1px solid ${PAGE_BORDER}`,
                   boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
                   overflow: "hidden",
                   display: "flex",
@@ -185,7 +193,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
                 }}
               >
                 {/* Book cover */}
-                <div style={{ height: 280, overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ height: 280, overflow: "hidden", background: PAGE_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <img
                     src={book.image}
                     alt={book.title}
@@ -195,10 +203,10 @@ const BookLibrary = ({ onSelectBook }: Props) => {
 
                 {/* Info */}
                 <div style={{ padding: "14px 14px 16px", display: "flex", flexDirection: "column", flex: 1 }}>
-                  <div style={{ fontWeight: 800, fontSize: 16, color: "#0f172a", marginBottom: 4, lineHeight: 1.35 }}>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: PAGE_TEXT, marginBottom: 4, lineHeight: 1.35 }}>
                     {book.title}
                   </div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 10 }}>{meta.author}</div>
+                  <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 10 }}>{meta.author}</div>
 
                   <div style={{ marginBottom: 12 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: meta.catColor, background: meta.catBg, borderRadius: 20, padding: "3px 10px" }}>
@@ -211,7 +219,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
                     style={{
                       marginTop: "auto",
                       width: "100%",
-                      background: "#fff",
+                      background: CARD_BG,
                       color: ORANGE,
                       border: `1.5px solid ${ORANGE}`,
                       borderRadius: 10,
@@ -229,7 +237,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
                       ;(e.currentTarget as HTMLButtonElement).style.color = "#fff"
                     }}
                     onMouseLeave={e => {
-                      (e.currentTarget as HTMLButtonElement).style.background = "#fff"
+                      (e.currentTarget as HTMLButtonElement).style.background = CARD_BG
                       ;(e.currentTarget as HTMLButtonElement).style.color = ORANGE
                     }}
                   >

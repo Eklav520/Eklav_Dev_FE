@@ -21,6 +21,14 @@ const BORDER = '#e2e8f0'
 const TEXT   = '#0f172a'
 const GRAY   = '#64748b'
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this page re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)'
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+
 const schema = yup.object().shape({
   fullName:     yup.string().required('Full name is required'),
   phoneNo:      yup.string().required('Phone number is required'),
@@ -46,13 +54,13 @@ type ProfileResponse = {
 /* ── tiny helpers ── */
 function SectionCard({ icon, title, action, children, mb = 16, style }: { icon: React.ReactNode; title: string; action?: React.ReactNode; children: React.ReactNode; mb?: number; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: 20, marginBottom: mb, boxSizing: 'border-box', ...style }}>
+    <div style={{ background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, padding: 20, marginBottom: mb, boxSizing: 'border-box', ...style }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {icon}
           </div>
-          <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>{title}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: PAGE_TEXT }}>{title}</span>
         </div>
         {action}
       </div>
@@ -62,16 +70,16 @@ function SectionCard({ icon, title, action, children, mb = 16, style }: { icon: 
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label style={{ fontSize: 12, fontWeight: 600, color: GRAY, marginBottom: 6, display: 'block' }}>{children}</label>
+  return <label style={{ fontSize: 12, fontWeight: 600, color: PAGE_GRAY, marginBottom: 6, display: 'block' }}>{children}</label>
 }
 
 function Input({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      style={{ width: '100%', border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: TEXT, background: WHITE, outline: 'none', transition: 'border-color .15s', ...style }}
+      style={{ width: '100%', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG, outline: 'none', transition: 'border-color .15s', ...style }}
       onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}
-      onBlur={e  => (e.currentTarget.style.borderColor = BORDER)}
+      onBlur={e  => (e.currentTarget.style.borderColor = PAGE_BORDER as string)}
     />
   )
 }
@@ -80,9 +88,9 @@ function Select({ style, ...props }: React.SelectHTMLAttributes<HTMLSelectElemen
   return (
     <select
       {...props}
-      style={{ width: '100%', border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: TEXT, background: WHITE, outline: 'none', transition: 'border-color .15s', appearance: 'none', ...style }}
+      style={{ width: '100%', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '9px 12px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG, outline: 'none', transition: 'border-color .15s', appearance: 'none', ...style }}
       onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}
-      onBlur={e  => (e.currentTarget.style.borderColor = BORDER)}
+      onBlur={e  => (e.currentTarget.style.borderColor = PAGE_BORDER as string)}
     />
   )
 }
@@ -280,17 +288,17 @@ const EditProfile = () => {
   const resumeFileName = resumeFile?.name || (serverResumePath ? serverResumePath.split('/').pop() : null)
 
   return (
-    <div className="edit-profile-light" style={{ background: BG, minHeight: '100vh', padding: '20px 24px' }}>
+    <div className="edit-profile-light" style={{ background: PAGE_BG, minHeight: '100vh', padding: '20px 24px' }}>
 
       {/* ── Page Header ── */}
-      <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: '16px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, padding: '16px 24px', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 44, height: 44, borderRadius: 12, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <BsPersonFill style={{ fontSize: 22, color: ORANGE }} />
           </div>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 800, color: TEXT, margin: 0 }}>Update Your Profile</h2>
-            <p style={{ fontSize: 12, color: GRAY, margin: 0 }}>Keep your profile updated to get better opportunities and recommendations.</p>
+            <h2 style={{ fontSize: 18, fontWeight: 800, color: PAGE_TEXT, margin: 0 }}>Update Your Profile</h2>
+            <p style={{ fontSize: 12, color: PAGE_GRAY, margin: 0 }}>Keep your profile updated to get better opportunities and recommendations.</p>
           </div>
         </div>
         <button style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, background: WHITE, color: ORANGE, padding: '8px 16px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -307,8 +315,8 @@ const EditProfile = () => {
           {/* Profile Picture + Personal Info */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 16, alignItems: 'stretch' }}>
             {/* Profile Pic */}
-            <div style={{ width: 230, flexShrink: 0, background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: '20px 22px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: TEXT, alignSelf: 'flex-start' }}>Profile Picture</span>
+            <div style={{ width: 230, flexShrink: 0, background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, padding: '20px 22px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT, alignSelf: 'flex-start' }}>Profile Picture</span>
               <div style={{ position: 'relative', marginTop: 4 }}>
                 <img
                   src={profileImg}
@@ -321,7 +329,7 @@ const EditProfile = () => {
                   <input className="d-none" type="file" accept="image/*" onChange={onImageChange} />
                 </label>
               </div>
-              <div style={{ fontSize: 10.5, color: '#94a3b8', lineHeight: 1.6 }}>JPG, PNG or WEBP<br />Max size: 5MB</div>
+              <div style={{ fontSize: 10.5, color: PAGE_GRAY, lineHeight: 1.6 }}>JPG, PNG or WEBP<br />Max size: 5MB</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, color: ORANGE, background: WHITE, borderRadius: 9, padding: '8px 0', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', width: '100%', justifyContent: 'center', whiteSpace: 'nowrap' }}>
                 <BsUpload style={{ fontSize: 13 }} /> Change Photo
                 <input className="d-none" type="file" accept="image/*" onChange={onImageChange} />
@@ -345,7 +353,7 @@ const EditProfile = () => {
                 </div>
                 <div>
                   <FieldLabel>Email Address *</FieldLabel>
-                  <IconInput icon={<BsEnvelope />} value={profileEmail} readOnly style={{ background: '#f8fafc', color: GRAY, cursor: 'not-allowed' }} />
+                  <IconInput icon={<BsEnvelope />} value={profileEmail} readOnly style={{ background: PAGE_BG, color: PAGE_GRAY, cursor: 'not-allowed' }} />
                 </div>
                 <div>
                   <FieldLabel>Phone Number *</FieldLabel>
@@ -388,21 +396,21 @@ const EditProfile = () => {
                   />
                   {collegeQuery && (
                     <button type="button" onClick={() => { setCollegeQuery(''); setValue('college', '') }}
-                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: GRAY, cursor: 'pointer', display: 'flex' }}>
+                      style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: PAGE_GRAY, cursor: 'pointer', display: 'flex' }}>
                       <BsX />
                     </button>
                   )}
                   {showCollegeList && collegeQuery.trim().length >= 1 && (
-                    <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 10, marginTop: 4, padding: 0, listStyle: 'none', zIndex: 1000, maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,.10)' }}>
+                    <ul style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, marginTop: 4, padding: 0, listStyle: 'none', zIndex: 1000, maxHeight: 220, overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,.10)' }}>
                       {collegeResults.length > 0 ? collegeResults.map(c => (
                         <li key={c._id} onMouseDown={e => { e.preventDefault(); const disp = `${c.name}, ${c.address}, ${c.pincode}`; setCollegeQuery(disp); setValue('college', disp); setShowCollegeList(false) }}
-                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${BORDER}` }}
+                          style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${PAGE_BORDER}` }}
                           onMouseEnter={e => (e.currentTarget.style.background = '#fff7ed')}
-                          onMouseLeave={e => (e.currentTarget.style.background = WHITE)}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{c.name}</div>
-                          <div style={{ fontSize: 11, color: GRAY }}>{c.address}, {c.pincode}</div>
+                          onMouseLeave={e => (e.currentTarget.style.background = CARD_BG)}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: PAGE_TEXT }}>{c.name}</div>
+                          <div style={{ fontSize: 11, color: PAGE_GRAY }}>{c.address}, {c.pincode}</div>
                         </li>
-                      )) : <li style={{ padding: '10px 14px', color: GRAY, fontSize: 13, textAlign: 'center' }}>No colleges found</li>}
+                      )) : <li style={{ padding: '10px 14px', color: PAGE_GRAY, fontSize: 13, textAlign: 'center' }}>No colleges found</li>}
                     </ul>
                   )}
                 </div>
@@ -428,15 +436,15 @@ const EditProfile = () => {
 
           {/* About Me */}
           <SectionCard icon={<BsFileText style={{ color: ORANGE, fontSize: 16 }} />} title="About Me"
-            action={<span style={{ fontSize: 12, color: GRAY }}>{(wAbout || '').length} / 500</span>}>
+            action={<span style={{ fontSize: 12, color: PAGE_GRAY }}>{(wAbout || '').length} / 500</span>}>
             <textarea
               rows={6}
               maxLength={500}
               placeholder="Tell us about yourself, your interests, and career goals..."
               {...register('about')}
-              style={{ width: '100%', border: `1.5px solid ${BORDER}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: TEXT, background: WHITE, outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'inherit' }}
+              style={{ width: '100%', border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 14px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG, outline: 'none', resize: 'vertical', lineHeight: 1.6, fontFamily: 'inherit' }}
               onFocus={e => (e.currentTarget.style.borderColor = ORANGE)}
-              onBlur={e  => (e.currentTarget.style.borderColor = BORDER)}
+              onBlur={e  => (e.currentTarget.style.borderColor = PAGE_BORDER as string)}
             />
           </SectionCard>
 
@@ -466,9 +474,9 @@ const EditProfile = () => {
                       </button>
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 10, border: `1px solid ${BORDER}` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: PAGE_BG, borderRadius: 10, border: `1px solid ${PAGE_BORDER}` }}>
                       <BsStarFill style={{ color: ORANGE, fontSize: 13, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 13, color: TEXT }}>{field || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Empty — click edit</span>}</span>
+                      <span style={{ flex: 1, fontSize: 13, color: PAGE_TEXT }}>{field || <span style={{ color: PAGE_GRAY, fontStyle: 'italic' }}>Empty — click edit</span>}</span>
                       <button type="button" onClick={() => setEditingAchIdx(idx)}
                         style={{ background: 'none', border: 'none', color: ORANGE, cursor: 'pointer', padding: 4, display: 'flex' }}><BsPencil /></button>
                       <button type="button" onClick={() => { const u = achievementFields.filter((_, i) => i !== idx); setAchievementFields(u); setValue('achievements', u) }}
@@ -478,7 +486,7 @@ const EditProfile = () => {
                 </div>
               ))}
               {achievementFields.length === 0 && (
-                <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12.5, padding: '12px 0' }}>No achievements added yet.</div>
+                <div style={{ textAlign: 'center', color: PAGE_GRAY, fontSize: 12.5, padding: '12px 0' }}>No achievements added yet.</div>
               )}
             </div>
           </SectionCard>
@@ -513,15 +521,15 @@ const EditProfile = () => {
                         </button>
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 10, border: `1px solid ${BORDER}` }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '10px 12px', background: PAGE_BG, borderRadius: 10, border: `1px solid ${PAGE_BORDER}` }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {field ? (
                             <>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: TEXT, lineHeight: 1.4 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: PAGE_TEXT, lineHeight: 1.4 }}>
                                 {field.split(',')[0]?.trim() || field}
                               </div>
                               {field.includes(',') && (
-                                <div style={{ fontSize: 11.5, color: GRAY, marginTop: 2 }}>{field.split(',').slice(1).join(',').trim()}</div>
+                                <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginTop: 2 }}>{field.split(',').slice(1).join(',').trim()}</div>
                               )}
                               {/* year badge */}
                               {/\d{4}/.test(field) && (() => {
@@ -530,7 +538,7 @@ const EditProfile = () => {
                               })()}
                             </>
                           ) : (
-                            <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>Empty — click edit to fill in</span>
+                            <span style={{ fontSize: 12, color: PAGE_GRAY, fontStyle: 'italic' }}>Empty — click edit to fill in</span>
                           )}
                         </div>
                         <button type="button" onClick={() => setEditingEduIdx(idx)}
@@ -544,14 +552,14 @@ const EditProfile = () => {
                   </div>
                 ))}
                 {educationFields.length === 0 && (
-                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12.5, padding: '20px 0' }}>No education added yet.</div>
+                  <div style={{ textAlign: 'center', color: PAGE_GRAY, fontSize: 12.5, padding: '20px 0' }}>No education added yet.</div>
                 )}
               </div>
             </SectionCard>
 
             {/* Skills */}
             <SectionCard icon={<BsStarFill style={{ color: ORANGE, fontSize: 15 }} />} title="Skills" mb={0}
-              action={<span style={{ fontSize: 11, color: GRAY }}>{skills.length}/50 skills</span>}
+              action={<span style={{ fontSize: 11, color: PAGE_GRAY }}>{skills.length}/50 skills</span>}
               style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
               {/* Skills content */}
@@ -583,7 +591,7 @@ const EditProfile = () => {
                     </button>
                   </span>
                 ))}
-                {skills.length === 0 && <span style={{ fontSize: 12.5, color: '#94a3b8', fontStyle: 'italic' }}>No skills added yet. Type above and press Enter.</span>}
+                {skills.length === 0 && <span style={{ fontSize: 12.5, color: PAGE_GRAY, fontStyle: 'italic' }}>No skills added yet. Type above and press Enter.</span>}
               </div>
               {errors?.skills && <div style={{ color: '#ef4444', fontSize: 12, marginTop: 6 }}>{String(errors.skills.message || '')}</div>}
             </SectionCard>
@@ -592,7 +600,7 @@ const EditProfile = () => {
           {/* Documents — full width */}
           <SectionCard icon={<BsFileEarmarkPdf style={{ color: ORANGE, fontSize: 16 }} />} title="Documents">
               {/* Tabs */}
-              <div style={{ display: 'flex', borderBottom: `2px solid ${BORDER}`, marginBottom: 16 }}>
+              <div style={{ display: 'flex', borderBottom: `2px solid ${PAGE_BORDER}`, marginBottom: 16 }}>
                 {(['resume', 'certifications'] as const).map(tab => {
                   const isActive = docTab === tab
                   const label = tab === 'resume' ? 'Resume Upload' : `Certification Upload${certEntries.length > 0 ? ` (${certEntries.length})` : ''}`
@@ -600,7 +608,7 @@ const EditProfile = () => {
                     <button key={tab} type="button" onClick={() => setDocTab(tab)} style={{
                       background: 'none', border: 'none', borderBottom: isActive ? `2.5px solid ${ORANGE}` : '2.5px solid transparent',
                       marginBottom: -2, padding: '8px 16px', fontSize: 13, fontWeight: isActive ? 700 : 500,
-                      color: isActive ? ORANGE : GRAY, cursor: 'pointer', transition: 'all .15s'
+                      color: isActive ? ORANGE : PAGE_GRAY, cursor: 'pointer', transition: 'all .15s'
                     }}>{label}</button>
                   )
                 })}
@@ -610,19 +618,19 @@ const EditProfile = () => {
               {docTab === 'resume' && (
                 <div>
                   {resumeFileName ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: '#f8fafc', borderRadius: 10, border: `1px solid ${BORDER}`, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', background: PAGE_BG, borderRadius: 10, border: `1px solid ${PAGE_BORDER}`, marginBottom: 10 }}>
                       <BsFileEarmarkPdf style={{ color: '#ef4444', fontSize: 18, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 12.5, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resumeFileName}</span>
+                      <span style={{ flex: 1, fontSize: 12.5, color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resumeFileName}</span>
                       {serverResumePath && <a href={serverResumePath} target="_blank" rel="noreferrer" style={{ color: ORANGE, display: 'flex' }}><BsEye /></a>}
                       <button type="button" onClick={() => { setResumeFile(null); setServerResumePath(null) }}
                         style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex' }}><BsTrash /></button>
                     </div>
                   ) : (
-                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, border: `1.5px dashed ${BORDER}`, borderRadius: 12, padding: '28px 12px', cursor: 'pointer', textAlign: 'center' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, border: `1.5px dashed ${PAGE_BORDER}`, borderRadius: 12, padding: '28px 12px', cursor: 'pointer', textAlign: 'center' }}>
                       <BsCloudUpload style={{ fontSize: 30, color: ORANGE }} />
-                      <span style={{ fontSize: 13, color: GRAY }}>Drag & drop your resume here or</span>
+                      <span style={{ fontSize: 13, color: PAGE_GRAY }}>Drag & drop your resume here or</span>
                       <span style={{ fontSize: 13, fontWeight: 700, color: ORANGE }}>Choose File</span>
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>PDF, DOC, DOCX (Max 10MB)</span>
+                      <span style={{ fontSize: 11, color: PAGE_GRAY }}>PDF, DOC, DOCX (Max 10MB)</span>
                       <input type="file" className="d-none" accept=".pdf,.doc,.docx" onChange={onResumeChange} />
                     </label>
                   )}
@@ -635,7 +643,7 @@ const EditProfile = () => {
                   {/* Cert entries list */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: certEntries.length > 0 ? 12 : 0 }}>
                     {certEntries.map((entry, i) => (
-                      <div key={i} style={{ border: `1.5px solid ${BORDER}`, borderRadius: 12, padding: '12px 14px', background: '#fafafa' }}>
+                      <div key={i} style={{ border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '12px 14px', background: PAGE_BG }}>
                         {/* Name row */}
                         <div style={{ marginBottom: 8 }}>
                           <FieldLabel>Certification Name *</FieldLabel>
@@ -648,9 +656,9 @@ const EditProfile = () => {
                         {/* File row */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {entry.file || entry.serverPath ? (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: WHITE, borderRadius: 9, border: `1px solid #e9d5ff` }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: CARD_BG, borderRadius: 9, border: `1px solid #e9d5ff` }}>
                               <FaCertificate style={{ color: '#7c3aed', fontSize: 14, flexShrink: 0 }} />
-                              <span style={{ flex: 1, fontSize: 12, color: TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ flex: 1, fontSize: 12, color: PAGE_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {entry.file ? entry.file.name : 'Uploaded file'}
                               </span>
                               {entry.serverPath && !entry.file && (
@@ -663,10 +671,10 @@ const EditProfile = () => {
                               </label>
                             </div>
                           ) : (
-                            <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1.5px dashed #e9d5ff`, borderRadius: 9, cursor: 'pointer', background: WHITE }}>
+                            <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: `1.5px dashed #e9d5ff`, borderRadius: 9, cursor: 'pointer', background: CARD_BG }}>
                               <BsUpload style={{ color: '#7c3aed', fontSize: 14 }} />
-                              <span style={{ fontSize: 12.5, color: GRAY }}>Upload certificate file</span>
-                              <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>PDF, PNG, JPG, DOC</span>
+                              <span style={{ fontSize: 12.5, color: PAGE_GRAY }}>Upload certificate file</span>
+                              <span style={{ fontSize: 11, color: PAGE_GRAY, marginLeft: 'auto' }}>PDF, PNG, JPG, DOC</span>
                               <input type="file" className="d-none" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
                                 onChange={e => { if (e.target.files?.[0]) { const u = [...certEntries]; u[i] = { ...u[i], file: e.target.files![0] }; setCertEntries(u) } }} />
                             </label>
@@ -683,7 +691,7 @@ const EditProfile = () => {
                   {/* Add Certification button */}
                   <button type="button"
                     onClick={() => setCertEntries([...certEntries, { name: '', file: null, serverPath: null }])}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1.5px dashed ${BORDER}`, borderRadius: 12, padding: '12px 0', background: WHITE, color: ORANGE, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, border: `1.5px dashed ${PAGE_BORDER}`, borderRadius: 12, padding: '12px 0', background: CARD_BG, color: ORANGE, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                     <BsPlus style={{ fontSize: 18 }} /> Add Certification
                   </button>
                 </div>
@@ -693,7 +701,7 @@ const EditProfile = () => {
           {/* ── Footer actions ── */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
             <button type="button" onClick={() => window.location.reload()}
-              style={{ border: `1.5px solid ${BORDER}`, background: WHITE, color: GRAY, borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ border: `1.5px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_GRAY, borderRadius: 10, padding: '10px 24px', fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>
               Reset Changes
             </button>
             <button type="submit" disabled={isSaving}
@@ -708,12 +716,12 @@ const EditProfile = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Profile Completion */}
-          <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: '18px 18px' }}>
+          <div style={{ background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, padding: '18px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
               <div style={{ width: 30, height: 30, borderRadius: 9, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <BsStarFill style={{ color: ORANGE, fontSize: 14 }} />
               </div>
-              <span style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>Profile Completion</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: PAGE_TEXT }}>Profile Completion</span>
             </div>
             {/* Circle — green fill + orange leading dot */}
             {(() => {
@@ -726,7 +734,7 @@ const EditProfile = () => {
               return (
             <div style={{ display: 'flex', justifyContent: 'center', position: 'relative', width: 124, margin: '0 auto 16px' }}>
               <svg width="124" height="124" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx={CX} cy={CY} r={R2} fill="none" stroke="#eef2f7" strokeWidth={SW} />
+                <circle cx={CX} cy={CY} r={R2} fill="none" stroke={PAGE_BORDER} strokeWidth={SW} />
                 {pct > 0 && (
                   <circle cx={CX} cy={CY} r={R2} fill="none" stroke="#22c55e" strokeWidth={SW} strokeLinecap="round"
                     strokeDasharray={C} strokeDashoffset={greenOffset}
@@ -740,8 +748,8 @@ const EditProfile = () => {
                 )}
               </svg>
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: TEXT, lineHeight: 1 }}>{pct}%</div>
-                <div style={{ fontSize: 10, color: GRAY, fontWeight: 600, marginTop: 2 }}>Complete</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: PAGE_TEXT, lineHeight: 1 }}>{pct}%</div>
+                <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 600, marginTop: 2 }}>Complete</div>
               </div>
             </div>
               )
@@ -753,7 +761,7 @@ const EditProfile = () => {
                   {s.done
                     ? <BsCheckCircleFill style={{ color: '#22c55e', fontSize: 14, flexShrink: 0 }} />
                     : <BsCircle         style={{ color: '#d1d5db', fontSize: 14, flexShrink: 0 }} />}
-                  <span style={{ fontSize: 12.5, color: s.done ? TEXT : '#9ca3af', fontWeight: s.done ? 700 : 400 }}>{s.label}</span>
+                  <span style={{ fontSize: 12.5, color: s.done ? PAGE_TEXT : '#9ca3af', fontWeight: s.done ? 700 : 400 }}>{s.label}</span>
                 </div>
               ))}
             </div>
@@ -765,34 +773,34 @@ const EditProfile = () => {
           </div>
 
           {/* Profile Preview */}
-          <div style={{ background: WHITE, borderRadius: 16, border: `1px solid ${BORDER}`, padding: 20 }}>
+          <div style={{ background: CARD_BG, borderRadius: 16, border: `1px solid ${PAGE_BORDER}`, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <BsEye style={{ color: ORANGE, fontSize: 16 }} />
               </div>
-              <span style={{ fontSize: 15, fontWeight: 700, color: TEXT }}>Profile Preview</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: PAGE_TEXT }}>Profile Preview</span>
             </div>
-            <p style={{ fontSize: 11.5, color: GRAY, marginBottom: 14 }}>This is how others will see your profile</p>
+            <p style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 14 }}>This is how others will see your profile</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <img src={profileImg} alt="" onError={e => (e.currentTarget.src = fallbackUrl)}
                 style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${ORANGE}` }} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 14, color: TEXT, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT, display: 'flex', alignItems: 'center', gap: 5 }}>
                   {wName || 'Your Name'}
                   <span style={{ fontSize: 14, color: ORANGE }}>⭐</span>
                 </div>
-                <div style={{ fontSize: 11.5, color: GRAY }}>{wDept ? wDept.split(' ').slice(0,3).join(' ') : 'Your Department'}</div>
-                {wCollege && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{wCollege.split(',')[0]}</div>}
+                <div style={{ fontSize: 11.5, color: PAGE_GRAY }}>{wDept ? wDept.split(' ').slice(0,3).join(' ') : 'Your Department'}</div>
+                {wCollege && <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 1 }}>{wCollege.split(',')[0]}</div>}
               </div>
             </div>
             {skills.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
                 {skills.slice(0, 4).map(s => (
-                  <span key={s} style={{ background: '#f1f5f9', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: GRAY }}>{s}</span>
+                  <span key={s} style={{ background: PAGE_BG, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600, color: PAGE_GRAY }}>{s}</span>
                 ))}
               </div>
             )}
-            {wAbout && <p style={{ fontSize: 12, color: GRAY, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{wAbout}</p>}
+            {wAbout && <p style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.6, marginBottom: 12, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{wAbout}</p>}
             <button type="button" style={{ width: '100%', border: `1.5px solid ${ORANGE}`, background: WHITE, color: ORANGE, borderRadius: 10, padding: '8px 0', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
               View Full Profile <BsArrowRight />
             </button>
@@ -801,19 +809,19 @@ const EditProfile = () => {
         </div>
       </div>
 
-      {/* force light theme — override any Bootstrap dark-mode leakage */}
+      {/* neutralize Bootstrap's own dark-mode leakage — but still follow the portal's --dash-* theme vars */}
       <style>{`
         .edit-profile-light input,
         .edit-profile-light select,
         .edit-profile-light textarea {
-          background-color: #ffffff !important;
-          color: #0f172a !important;
-          border-color: #e2e8f0 !important;
+          background-color: ${CARD_BG} !important;
+          color: ${PAGE_TEXT} !important;
+          border-color: ${PAGE_BORDER} !important;
         }
         .edit-profile-light input:disabled,
         .edit-profile-light select:disabled {
-          background-color: #f8fafc !important;
-          color: #64748b !important;
+          background-color: ${PAGE_BG} !important;
+          color: ${PAGE_GRAY} !important;
         }
       `}</style>
 

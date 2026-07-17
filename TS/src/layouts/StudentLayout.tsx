@@ -9,10 +9,12 @@ import { useAuthContext } from '@/context/useAuthContext'
 import useViewPort from '@/hooks/useViewPort'
 import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
 import { ChildrenType } from '@/types/component-props'
-import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown } from 'react-icons/fi'
+import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown, FiSun, FiMoon } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import logoWhite from '@/assets/images/logo_white.png'
+import logoBlack from '@/assets/images/logo_black.png'
 import logoIcon from '@/assets/images/logo-mobile-light.svg'
+import logoIconDark from '@/assets/images/logo-mobile.svg'
 
 const ordinal = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd']
@@ -31,6 +33,9 @@ const SIDEBAR_ACTIVE_TEXT = '#ffffff'
 const ACCENT         = '#ff7a00'
 const TOP_NAV_BG     = '#ffffff'
 const MAIN_BG        = '#f1f5f9'
+const TOP_NAV_BG_DARK = '#111827'
+const MAIN_BG_DARK    = '#0b1220'
+const THEME_STORAGE_KEY = 'student-theme'
 
 type MenuItemTypeLocal = {
   key: string
@@ -55,6 +60,31 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [isHovering, setIsHovering] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof window === 'undefined') return 'light'
+    return (localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark') || 'light'
+  })
+  const isDark = theme === 'dark'
+  const topNavBg = isDark ? TOP_NAV_BG_DARK : TOP_NAV_BG
+  const mainBg = isDark ? MAIN_BG_DARK : MAIN_BG
+  const textPrimary = isDark ? '#f1f5f9' : '#0f172a'
+  const textSecondary = isDark ? '#94a3b8' : '#64748b'
+  const navBorder = isDark ? '#1f2937' : '#e2e8f0'
+  const cardBg = isDark ? '#1a2332' : '#fff'
+  const iconBtnBg = isDark ? '#1f2937' : '#f1f5f9'
+
+  // Sidebar inverts relative to the main theme: dark mode → light/white sidebar,
+  // light mode → the original dark sidebar.
+  const sidebarBg = isDark ? '#ffffff' : SIDEBAR_BG
+  const sidebarText = isDark ? '#475569' : SIDEBAR_TEXT
+  const sidebarHover = isDark ? '#f1f5f9' : SIDEBAR_HOVER
+  const sidebarActiveText = isDark ? '#0f172a' : SIDEBAR_ACTIVE_TEXT
+  const sidebarBorder = isDark ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'
+  const sidebarNameColor = isDark ? '#0f172a' : '#ffffff'
+  const sidebarLogo = isDark ? logoBlack : logoWhite
+  const sidebarLogoIcon = isDark ? logoIconDark : logoIcon
+
+  useEffect(() => { localStorage.setItem(THEME_STORAGE_KEY, theme) }, [theme])
   const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
   const [featureRules, setFeatureRules] = useState<{ feature: string; denyYears?: string[]; denyBranches?: string[] }[]>([])
   const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
@@ -82,17 +112,37 @@ const StudentLayout = ({ children }: ChildrenType) => {
     return `B.Tech${batch} ${ordinal(clampedYear)} Year`
   })()
 
-  // Force light background
+  // Sync body background with the active theme
   useEffect(() => {
     const prev = document.body.style.background
-    document.body.style.background = MAIN_BG
-    document.body.style.backgroundColor = MAIN_BG
-    document.documentElement.style.background = MAIN_BG
+    document.body.style.background = mainBg
+    document.body.style.backgroundColor = mainBg
+    document.documentElement.style.background = mainBg
     return () => {
       document.body.style.background = prev
       document.body.style.backgroundColor = prev
     }
-  }, [])
+  }, [mainBg])
+
+  // Push theme colors out as CSS custom properties so page content (which
+  // reads --dash-* vars with light-mode fallbacks, e.g. the dashboard page)
+  // re-themes along with the nav shell without per-page prop drilling.
+  useEffect(() => {
+    const root = document.documentElement
+    if (isDark) {
+      root.style.setProperty('--dash-page-bg', '#0b1220')
+      root.style.setProperty('--dash-card-bg', '#141b2a')
+      root.style.setProperty('--dash-border', '#232f42')
+      root.style.setProperty('--dash-text', '#f1f5f9')
+      root.style.setProperty('--dash-gray', '#94a3b8')
+    } else {
+      root.style.removeProperty('--dash-page-bg')
+      root.style.removeProperty('--dash-card-bg')
+      root.style.removeProperty('--dash-border')
+      root.style.removeProperty('--dash-text')
+      root.style.removeProperty('--dash-gray')
+    }
+  }, [isDark])
 
   useEffect(() => {
     if (isMainDomain) return
@@ -138,24 +188,24 @@ const StudentLayout = ({ children }: ChildrenType) => {
         alignItems: 'center',
         justifyContent: expanded ? 'space-between' : 'center',
         padding: expanded ? '0 14px 0 16px' : '0',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        borderBottom: `1px solid ${sidebarBorder}`,
         flexShrink: 0,
       }}>
         {expanded ? (
           <>
             <Link to="/student/dashboard" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, overflow: 'hidden' }}>
-              <img src={logoWhite} alt="Eklav" style={{ height: 32, objectFit: 'contain', flexShrink: 0 }} />
+              <img src={sidebarLogo} alt="Eklav" style={{ height: 32, objectFit: 'contain', flexShrink: 0 }} />
             </Link>
             {isDesktop && (
-              <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 6, borderRadius: 6, flexShrink: 0 }}>
+              <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: sidebarText, cursor: 'pointer', padding: 6, borderRadius: 6, flexShrink: 0 }}>
                 <FiMenu size={17} />
               </button>
             )}
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-            <img src={logoIcon} alt="Eklav" style={{ height: 22, objectFit: 'contain', marginTop: 8 }} />
-            <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
+            <img src={sidebarLogoIcon} alt="Eklav" style={{ height: 22, objectFit: 'contain', marginTop: 8 }} />
+            <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: sidebarText, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
               <FiMenu size={16} />
             </button>
           </div>
@@ -183,6 +233,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
           allowedNavKeys={allowedNavKeys}
           featureRules={featureRules}
           batchNavRules={batchNavRules}
+          sidebarText={sidebarText}
+          sidebarHover={sidebarHover}
+          sidebarActiveText={sidebarActiveText}
         />
       </nav>
 
@@ -231,7 +284,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
       {/* User footer */}
       <div style={{
         padding: expanded ? '12px 16px' : '10px 0',
-        borderTop: '1px solid rgba(255,255,255,0.08)',
+        borderTop: `1px solid ${sidebarBorder}`,
         display: 'flex', alignItems: 'center',
         justifyContent: expanded ? 'flex-start' : 'center',
         gap: 10, flexShrink: 0,
@@ -259,10 +312,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
         {expanded && (
           <>
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
-              <div style={{ fontSize: '0.68rem', color: SIDEBAR_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
+              <div style={{ fontSize: '0.82rem', color: sidebarNameColor, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+              <div style={{ fontSize: '0.68rem', color: sidebarText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
             </div>
-            <button onClick={() => removeSession()} title="Logout" style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4 }}>
+            <button onClick={() => removeSession()} title="Logout" style={{ background: 'transparent', border: 'none', color: sidebarText, cursor: 'pointer', padding: 4 }}>
               <FiLogOut size={15} />
             </button>
           </>
@@ -272,7 +325,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: MAIN_BG, backgroundColor: MAIN_BG }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: mainBg, backgroundColor: mainBg }}>
 
       {/* Desktop sidebar */}
       {isDesktop && (
@@ -282,9 +335,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
           style={{
             position: 'fixed', top: 0, left: 0, bottom: 0,
             width: sidebarWidth,
-            background: SIDEBAR_BG,
+            background: sidebarBg,
             zIndex: 1020,
-            transition: 'width 0.22s ease',
+            transition: 'width 0.22s ease, background 0.2s ease',
             overflow: 'hidden',
           }}
         >
@@ -296,7 +349,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
       {!isDesktop && mobileOpen && (
         <>
           <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1019 }} />
-          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 260, background: SIDEBAR_BG, zIndex: 1020 }}>
+          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 260, background: sidebarBg, zIndex: 1020 }}>
             <SidebarContent expanded={true} />
           </aside>
         </>
@@ -310,13 +363,13 @@ const StudentLayout = ({ children }: ChildrenType) => {
         flexDirection: 'column',
         overflow: 'hidden',
         transition: 'margin-left 0.22s ease',
-        background: MAIN_BG,
+        background: mainBg,
       }}>
         {/* Sticky top navbar */}
         <header style={{
           height: 64,
-          background: TOP_NAV_BG,
-          borderBottom: '1px solid #e2e8f0',
+          background: topNavBg,
+          borderBottom: `1px solid ${navBorder}`,
           display: 'flex',
           alignItems: 'center',
           padding: '0 24px',
@@ -328,20 +381,29 @@ const StudentLayout = ({ children }: ChildrenType) => {
           boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
         }}>
           {!isDesktop && (
-            <button onClick={() => setMobileOpen(p => !p)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#334155' }}>
+            <button onClick={() => setMobileOpen(p => !p)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: textPrimary }}>
               <FiMenu size={20} />
             </button>
           )}
 
           {/* Page title */}
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a' }}>Student Portal</div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{currentPageLabel}</div>
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: textPrimary }}>Student Portal</div>
+            <div style={{ fontSize: '0.72rem', color: textSecondary }}>{currentPageLabel}</div>
           </div>
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <button style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}>
+            {/* Theme toggle */}
+            <button
+              onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+              title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              style={{ background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: isDark ? '#facc15' : '#475569' }}
+            >
+              {isDark ? <FiSun size={16} /> : <FiMoon size={16} />}
+            </button>
+
+            <button style={{ background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary }}>
               <FiBell size={16} />
             </button>
 
@@ -349,7 +411,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             <div style={{ position: 'relative' }}>
               <div
                 onClick={() => setUserDropdownOpen(p => !p)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 10px 5px 5px', borderRadius: 40, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', userSelect: 'none' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 10px 5px 5px', borderRadius: 40, border: `1px solid ${navBorder}`, background: cardBg, cursor: 'pointer', userSelect: 'none' }}
               >
                 {/* Avatar */}
                 <div style={{ position: 'relative', width: 32, height: 32, flexShrink: 0 }}>
@@ -372,8 +434,8 @@ const StudentLayout = ({ children }: ChildrenType) => {
                 </div>
                 {/* Name + subtitle */}
                 <div style={{ lineHeight: 1.3 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>{userName}</div>
-                  <div style={{ fontSize: '0.65rem', color: '#64748b', whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: textPrimary, whiteSpace: 'nowrap' }}>{userName}</div>
+                  <div style={{ fontSize: '0.65rem', color: textSecondary, whiteSpace: 'nowrap' }}>{profileSubtitle}</div>
                 </div>
                 <FiChevronDown size={14} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: userDropdownOpen ? 'rotate(180deg)' : 'none' }} />
               </div>
@@ -385,15 +447,15 @@ const StudentLayout = ({ children }: ChildrenType) => {
                   <div onClick={() => setUserDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
                   <div style={{
                     position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-                    minWidth: 180, background: '#fff',
-                    border: '1px solid #e2e8f0', borderRadius: 10,
+                    minWidth: 180, background: cardBg,
+                    border: `1px solid ${navBorder}`, borderRadius: 10,
                     boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
                     zIndex: 200, overflow: 'hidden',
                   }}>
                     {/* User info header */}
-                    <div style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{userName}</div>
-                      <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 2 }}>{profileSubtitle}</div>
+                    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${navBorder}` }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: textPrimary }}>{userName}</div>
+                      <div style={{ fontSize: '0.65rem', color: textSecondary, marginTop: 2 }}>{profileSubtitle}</div>
                     </div>
 
                     {/* Menu items */}
@@ -421,7 +483,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
         </header>
 
         {/* Scrollable content */}
-        <main style={{ flex: 1, overflowY: 'auto', padding: 20, background: MAIN_BG }}>
+        <main style={{ flex: 1, overflowY: 'auto', padding: 20, background: mainBg }}>
           <Suspense fallback={<Preloader />}>
             {children}
           </Suspense>
@@ -447,6 +509,9 @@ const VerticalMenu = ({
   allowedNavKeys,
   featureRules = [],
   batchNavRules = {},
+  sidebarText = SIDEBAR_TEXT,
+  sidebarHover = SIDEBAR_HOVER,
+  sidebarActiveText = SIDEBAR_ACTIVE_TEXT,
 }: {
   isCollapsed: boolean
   onItemClick?: () => void
@@ -454,6 +519,9 @@ const VerticalMenu = ({
   allowedNavKeys?: string[] | null
   featureRules?: FeatureRule[]
   batchNavRules?: Record<string, string[]>
+  sidebarText?: string
+  sidebarHover?: string
+  sidebarActiveText?: string
 }) => {
   const { pathname } = useLocation()
   const { user } = useAuthContext()
@@ -542,15 +610,15 @@ const VerticalMenu = ({
               justifyContent: isCollapsed ? 'center' : 'space-between',
               background: active ? SIDEBAR_ACTIVE : 'transparent',
               border: 'none',
-              color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+              color: active ? sidebarActiveText : sidebarText,
               cursor: 'pointer', transition: 'all 0.15s',
               borderRadius: 8, fontSize: '0.85rem', fontWeight: active ? 600 : 400,
             }}
-            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = sidebarHover }}
             onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? 0 : 10 }}>
-              {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
+              {Icon && <Icon size={iconSize} color={active ? ACCENT : sidebarText} style={{ flexShrink: 0 }} />}
               {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label}</span>}
             </div>
             {!isCollapsed && (
@@ -581,18 +649,18 @@ const VerticalMenu = ({
           gap: isCollapsed ? 0 : 10,
           textDecoration: 'none', borderRadius: 8,
           background: active ? SIDEBAR_ACTIVE : 'transparent',
-          color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+          color: active ? sidebarActiveText : sidebarText,
           fontSize: '0.85rem', fontWeight: active ? 600 : 400,
           transition: 'background 0.15s, color 0.15s',
           position: 'relative', whiteSpace: 'nowrap', overflow: 'hidden',
         }}
-        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = sidebarHover }}
         onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
         {active && (
           <div style={{ position: 'absolute', left: 0, top: '20%', width: 3, height: '60%', background: ACCENT, borderRadius: '0 3px 3px 0' }} />
         )}
-        {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
+        {Icon && <Icon size={iconSize} color={active ? ACCENT : sidebarText} style={{ flexShrink: 0 }} />}
         {!isCollapsed && node.label}
       </Link>
     )

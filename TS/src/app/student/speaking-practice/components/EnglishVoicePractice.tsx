@@ -736,6 +736,15 @@ const EnglishVoicePractice: React.FC = () => {
 
   const ORANGE = '#ff7a00'
 
+  // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+  // (light-mode values as fallback), so this page re-themes along with
+  // the rest of the portal without needing its own theme plumbing.
+  const PAGE_BG = 'var(--dash-page-bg, #f8fafc)'
+  const CARD_BG = 'var(--dash-card-bg, #ffffff)'
+  const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
+  const PAGE_TEXT = 'var(--dash-text, #0f172a)'
+  const PAGE_GRAY = 'var(--dash-gray, #64748b)'
+
   type Topic = { icon: React.ReactNode; title: string; desc: string; level: string; iconBg: string; iconColor: string }
   const TOPICS: Topic[] = [
     { icon: <FaUser />,       title: 'Self Introduction',     desc: 'Introduce yourself and your background.',              level: 'Easy',   iconBg: '#fed7aa', iconColor: '#ea580c' },
@@ -858,11 +867,11 @@ const EnglishVoicePractice: React.FC = () => {
   ]
 
   return (
-    <div style={{ background: '#f8fafc', minHeight: '100vh', fontFamily: 'inherit' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: 'inherit' }}>
 
       {/* ── SESSION MODAL (full screen) ── */}
       {showSessionModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#fff', display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: CARD_BG, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
           {/* ── Header ── */}
           <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -872,7 +881,7 @@ const EnglishVoicePractice: React.FC = () => {
                 <FaMicrophone />
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a', lineHeight: 1.2 }}>Speaking with Eklav</div>
+                <div style={{ fontWeight: 800, fontSize: 14, color: PAGE_TEXT, lineHeight: 1.2 }}>Speaking with Eklav</div>
                 <div style={{ fontSize: 11, color: '#94a3b8' }}>Have a natural conversation and improve your communication skills</div>
               </div>
             </div>
@@ -880,15 +889,15 @@ const EnglishVoicePractice: React.FC = () => {
             {/* Center: voice + timer + start/pause/stop */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'default', color: '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
+                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'default', color: PAGE_TEXT, border: 'none', borderRight: '1px solid #e2e8f0' }}>
                   <FaMicrophone style={{ fontSize: 10 }} /> Voice
                 </button>
                 <button onClick={() => { setVoiceGender('male'); setSelectedVoiceName('') }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : '#374151', border: 'none', borderRight: '1px solid #e2e8f0' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : PAGE_TEXT, border: 'none', borderRight: '1px solid #e2e8f0' }}>
                   <FaMale style={{ fontSize: 10 }} /> Male Voice
                 </button>
                 <button onClick={() => { setVoiceGender('female'); setSelectedVoiceName('') }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : '#f8fafc', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : '#374151', border: 'none' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : PAGE_TEXT, border: 'none' }}>
                   <FaFemale style={{ fontSize: 10 }} /> Female Voice
                 </button>
               </div>
@@ -897,7 +906,7 @@ const EnglishVoicePractice: React.FC = () => {
                 <select
                   value={selectedVoiceName}
                   onChange={e => setSelectedVoiceName(e.target.value)}
-                  style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: selectedVoiceName ? ORANGE : '#374151', background: '#f8fafc', cursor: 'pointer', outline: 'none', maxWidth: 180 }}
+                  style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: selectedVoiceName ? ORANGE : PAGE_TEXT, background: PAGE_BG, cursor: 'pointer', outline: 'none', maxWidth: 180 }}
                 >
                   <option value=''>Auto ({voiceGender})</option>
                   {voices
@@ -908,9 +917,9 @@ const EnglishVoicePractice: React.FC = () => {
                   }
                 </select>
               )}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
-                <FaClock style={{ color: '#374151', fontSize: 12 }} />
-                <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: '#0f172a' }}>Time Left: {formatTime(timeLeft)}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: PAGE_BG, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
+                <FaClock style={{ color: PAGE_TEXT, fontSize: 12 }} />
+                <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: PAGE_TEXT }}>Time Left: {formatTime(timeLeft)}</span>
               </div>
 
               {/* Start → Pause / Resume */}
@@ -926,7 +935,7 @@ const EnglishVoicePractice: React.FC = () => {
                 </button>
               ) : (
                 <button onClick={handlePause}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 14px', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: '#374151' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 14px', background: CARD_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: PAGE_TEXT }}>
                   <FaPause style={{ fontSize: 9 }} /> Pause
                 </button>
               )}
@@ -934,7 +943,7 @@ const EnglishVoicePractice: React.FC = () => {
               {/* Stop — ends conversation & generates feedback */}
               {sessionStarted && !sessionEnded && (
                 <button onClick={handleEndSession}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #ef4444', borderRadius: 8, padding: '5px 14px', background: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#ef4444' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #ef4444', borderRadius: 8, padding: '5px 14px', background: CARD_BG, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#ef4444' }}>
                   <FaStop style={{ fontSize: 9 }} /> Stop
                 </button>
               )}
@@ -981,10 +990,10 @@ const EnglishVoicePractice: React.FC = () => {
           `}</style>
 
           {/* ── Outer wrapper ── */}
-          <div style={{ flex: 1, display: 'flex', minHeight: 0, margin: '12px 60px', background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
+          <div style={{ flex: 1, display: 'flex', minHeight: 0, margin: '12px 60px', background: CARD_BG, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
 
           {/* ── LEFT: videos stacked ── */}
-          <div style={{ width: '42%', flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', background: '#f1f5f9', gap: 6, padding: 8, alignSelf: 'stretch' }}>
+          <div style={{ width: '42%', flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e2e8f0', background: PAGE_BG, gap: 6, padding: 8, alignSelf: 'stretch' }}>
           {/* ── Video panels ── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
 
@@ -997,7 +1006,7 @@ const EnglishVoicePractice: React.FC = () => {
                 style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
                 title="Change background">🎨</button>
               {showAiBgPicker && (
-                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 20, background: '#fff', borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 20, background: CARD_BG, borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
                   {BG_OPTIONS.map(o => (
                     <button key={o.id} onClick={() => { setAiBgStyle(o.style); setShowAiBgPicker(false) }} title={o.label}
                       style={{ width: 32, height: 32, borderRadius: 8, background: o.style, border: aiBgStyle === o.style ? `3px solid ${ORANGE}` : '2px solid #e2e8f0', cursor: 'pointer' }} />
@@ -1050,7 +1059,7 @@ const EnglishVoicePractice: React.FC = () => {
                 style={{ position: 'absolute', top: 10, right: 10, zIndex: 10, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
                 title="Change virtual background">🎨</button>
               {showYouBgPicker && (
-                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 30, background: '#fff', borderRadius: 14, padding: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.28)', width: 210 }}>
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 30, background: CARD_BG, borderRadius: 14, padding: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.28)', width: 210 }}>
                   {/* Color section */}
                   <div style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', letterSpacing: '0.06em', marginBottom: 6 }}>COLORS</div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
@@ -1096,7 +1105,7 @@ const EnglishVoicePractice: React.FC = () => {
           </div>{/* end left panel */}
 
           {/* ── RIGHT: Conversation / Feedback ── */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: '#fff' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, background: CARD_BG }}>
 
             {/* Tab bar */}
             <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
@@ -1109,7 +1118,7 @@ const EnglishVoicePractice: React.FC = () => {
             </div>
 
             {/* Chat / Feedback body */}
-            <div ref={chatBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', background: '#f8fafc' }}>
+            <div ref={chatBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', background: PAGE_BG }}>
               {activeSessionTab === 'conversation' ? (
                 <>
                   {messages.length === 0 && !isTyping && (
@@ -1135,7 +1144,7 @@ const EnglishVoicePractice: React.FC = () => {
                           <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, textAlign: m.sender === 'user' ? 'right' : 'left' }}>
                             {m.sender === 'user' ? 'You' : 'AI Coach'} · {time}
                           </div>
-                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: '#0f172a', lineHeight: 1.65 }}>
+                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: PAGE_TEXT, lineHeight: 1.65 }}>
                             {m.type === 'correction' && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
                                 <FaCheck /> Improved
@@ -1164,7 +1173,7 @@ const EnglishVoicePractice: React.FC = () => {
                       <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13 }}>
                         <FaRobot />
                       </div>
-                      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '14px 14px 14px 4px', padding: '9px 14px', display: 'flex', gap: 4 }}>
+                      <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: '14px 14px 14px 4px', padding: '9px 14px', display: 'flex', gap: 4 }}>
                         {[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8', animation: `bounce 1.2s infinite ${j * 0.2}s` }} />)}
                       </div>
                     </div>
@@ -1175,13 +1184,13 @@ const EnglishVoicePractice: React.FC = () => {
                   {!feedback && !isLoadingFeedback ? (
                     <div style={{ textAlign: 'center', color: '#94a3b8', padding: '48px 0' }}>
                       <div style={{ fontSize: 36, marginBottom: 10, display: 'flex', justifyContent: 'center', opacity: 0.4 }}><FaFileAlt /></div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#64748b' }}>No Feedback Yet</div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: PAGE_GRAY }}>No Feedback Yet</div>
                       <div style={{ fontSize: 12, marginTop: 6, color: '#94a3b8' }}>Complete the session to see your analysis</div>
                     </div>
                   ) : isLoadingFeedback ? (
                     <div style={{ textAlign: 'center', padding: '48px 0' }}>
                       <Spinner animation="border" style={{ color: ORANGE }} />
-                      <div style={{ marginTop: 12, color: '#64748b', fontSize: 13, fontWeight: 500 }}>Analyzing your session...</div>
+                      <div style={{ marginTop: 12, color: PAGE_GRAY, fontSize: 13, fontWeight: 500 }}>Analyzing your session...</div>
                       <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>This may take a few seconds</div>
                     </div>
                   ) : (() => {
@@ -1242,14 +1251,14 @@ const EnglishVoicePractice: React.FC = () => {
 
                         {/* Header */}
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>Performance Summary</div>
+                          <div style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>Performance Summary</div>
                           <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
                             Your overall interview performance <FaInfoCircle style={{ fontSize: 11 }} />
                           </div>
                         </div>
 
                         {/* Score + metrics row */}
-                        <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px', display: 'flex', gap: 12, alignItems: 'stretch' }}>
+                        <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 14, padding: '16px', display: 'flex', gap: 12, alignItems: 'stretch' }}>
 
                           {/* Overall circle */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingRight: 16, borderRight: '1px solid #e2e8f0', flexShrink: 0 }}>
@@ -1266,12 +1275,12 @@ const EnglishVoicePractice: React.FC = () => {
                               </div>
                             </div>
                             <div>
-                              <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', marginBottom: 6 }}>Session Score</div>
+                              <div style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT, marginBottom: 6 }}>Session Score</div>
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: `${overallColor}12`, border: `1px solid ${overallColor}30`, borderRadius: 20, padding: '3px 10px', marginBottom: 8 }}>
                                 <FaStar style={{ color: overallColor, fontSize: 10 }} />
                                 <span style={{ fontSize: 11, fontWeight: 700, color: overallColor }}>{overallGrade}</span>
                               </div>
-                              <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5, maxWidth: 130 }}>{overallMsg}</div>
+                              <div style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.5, maxWidth: 130 }}>{overallMsg}</div>
                             </div>
                           </div>
 
@@ -1282,7 +1291,7 @@ const EnglishVoicePractice: React.FC = () => {
                                 <div style={{ width: 34, height: 34, borderRadius: 10, background: m.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.iconColor, fontSize: 14, flexShrink: 0 }}>
                                   {m.icon}
                                 </div>
-                                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{m.label}</span>
+                                <span style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT }}>{m.label}</span>
                               </div>
                               <div style={{ fontSize: 22, fontWeight: 900, color: scoreColor(m.score), lineHeight: 1, marginBottom: 6 }}>
                                 {m.score}<span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>/10</span>
@@ -1299,48 +1308,48 @@ const EnglishVoicePractice: React.FC = () => {
 
                         {/* Insights row */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <FaBullseye style={{ color: '#7c3aed', fontSize: 14 }} />
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 12, color: '#7c3aed' }}>Focus Areas</div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{focusAreas.length > 0 ? focusAreas.join(', ') : 'All areas good!'}</div>
+                              <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 2 }}>{focusAreas.length > 0 ? focusAreas.join(', ') : 'All areas good!'}</div>
                             </div>
                           </div>
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <FaChartLine style={{ color: '#2563eb', fontSize: 14 }} />
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 12, color: '#2563eb' }}>Keep It Up</div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{goodAreas.length > 0 ? `Your ${goodAreas.join(', ')} ${goodAreas.length > 1 ? 'are' : 'is'} Good!` : 'Practice more!'}</div>
+                              <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 2 }}>{goodAreas.length > 0 ? `Your ${goodAreas.join(', ')} ${goodAreas.length > 1 ? 'are' : 'is'} Good!` : 'Practice more!'}</div>
                             </div>
                           </div>
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <FaClock style={{ color: '#16a34a', fontSize: 14 }} />
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 12, color: '#16a34a' }}>Practice Regularly</div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Consistency leads to improvement</div>
+                              <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 2 }}>Consistency leads to improvement</div>
                             </div>
                           </div>
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 12px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                             <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               <FaStar style={{ color: '#ca8a04', fontSize: 14 }} />
                             </div>
                             <div>
                               <div style={{ fontWeight: 700, fontSize: 12, color: '#ca8a04' }}>Next Goal</div>
-                              <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Aim for {nextGoal} in your next session</div>
+                              <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 2 }}>Aim for {nextGoal} in your next session</div>
                             </div>
                           </div>
                         </div>
 
                         {/* Improvement tips */}
                         {tips.length > 0 && (
-                          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                               <div style={{ width: 26, height: 26, borderRadius: 8, background: `${ORANGE}18`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <FaLightbulb style={{ color: ORANGE, fontSize: 13 }} />
                               </div>
@@ -1353,10 +1362,10 @@ const EnglishVoicePractice: React.FC = () => {
                                 const title = hasTitle ? tip.slice(0, colonIdx).trim() : null
                                 const body = hasTitle ? tip.slice(colonIdx + 1).trim() : tip
                                 return (
-                                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: '#f8fafc', borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+                                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: PAGE_BG, borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
                                     <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: ORANGE, color: '#fff', fontWeight: 700, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1 }}>{i + 1}</span>
-                                    <span style={{ fontSize: 12.5, color: '#374151', lineHeight: 1.6 }}>
-                                      {title && <strong style={{ color: '#1e293b' }}>{title}: </strong>}
+                                    <span style={{ fontSize: 12.5, color: PAGE_TEXT, lineHeight: 1.6 }}>
+                                      {title && <strong style={{ color: PAGE_TEXT }}>{title}: </strong>}
                                       {body}
                                     </span>
                                   </div>
@@ -1373,7 +1382,7 @@ const EnglishVoicePractice: React.FC = () => {
             </div>
 
             {/* ── Mic bar ── */}
-            <div style={{ background: '#fff', borderTop: '1px solid #e2e8f0', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, minHeight: 44 }}>
+            <div style={{ background: CARD_BG, borderTop: '1px solid #e2e8f0', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, minHeight: 44 }}>
               <div style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>
                 {isPaused ? 'Session paused...' : sessionEnded ? 'Session ended' : !sessionStarted ? 'Click the mic and start speaking...' : isListening ? 'Listening...' : 'Speaking...'}
               </div>
@@ -1407,11 +1416,11 @@ const EnglishVoicePractice: React.FC = () => {
                 <FaMicrophone />
               </div>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}>Speaking Practice With AI</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Improve your spoken English through real conversations and get AI-powered feedback.</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT }}>Speaking Practice With AI</div>
+                <div style={{ fontSize: 12, color: PAGE_GRAY }}>Improve your spoken English through real conversations and get AI-powered feedback.</div>
               </div>
             </div>
-            <button onClick={() => setShowHowItWorks(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: '#fff', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowHowItWorks(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: CARD_BG, color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
               <FaInfoCircle /> How it works?
             </button>
           </div>
@@ -1419,13 +1428,14 @@ const EnglishVoicePractice: React.FC = () => {
           {/* Hero banner */}
           <div style={{ background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 60%, #f472b6 100%)', borderRadius: 20, padding: '28px 32px', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 200 }}>
             <div style={{ maxWidth: 480, position: 'relative', zIndex: 2 }}>
-              <h2 style={{ fontSize: 28, fontWeight: 900, color: '#0f172a', margin: '0 0 8px', lineHeight: 1.2 }}>Practice. Speak. Improve.</h2>
+              {/* Fixed dark text — this banner's pink background never changes with theme */}
+              <h2 style={{ fontSize: 28, fontWeight: 900, color: '#1e293b', margin: '0 0 8px', lineHeight: 1.2 }}>Practice. Speak. Improve.</h2>
               <p style={{ fontSize: 13.5, color: '#475569', margin: '0 0 16px', lineHeight: 1.6 }}>Have real conversations with our AI coach and enhance your fluency, pronunciation and confidence.</p>
               <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
                 {HERO_FEATURES.map(f => (
                   <div key={f.label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: f.color, fontSize: 17, boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>{f.icon}</div>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textAlign: 'center' }}>{f.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: PAGE_GRAY, textAlign: 'center' }}>{f.label}</span>
                   </div>
                 ))}
               </div>
@@ -1453,8 +1463,8 @@ const EnglishVoicePractice: React.FC = () => {
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Practice Topics</div>
-                <div style={{ fontSize: 12, color: '#64748b' }}>Choose a topic and start speaking with AI</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>Practice Topics</div>
+                <div style={{ fontSize: 12, color: PAGE_GRAY }}>Choose a topic and start speaking with AI</div>
               </div>
               <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                 View All Topics <FaChevronRight style={{ fontSize: 11 }} />
@@ -1463,10 +1473,10 @@ const EnglishVoicePractice: React.FC = () => {
             <div style={{ position: 'relative' }}>
               <div ref={topicsScrollRef} style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 {TOPICS.map((t, i) => (
-                  <div key={i} style={{ flexShrink: 0, width: 175, background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '16px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                  <div key={i} style={{ flexShrink: 0, width: 175, background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '16px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                     <div style={{ width: 42, height: 42, borderRadius: 12, background: t.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.iconColor, fontSize: 19, marginBottom: 10 }}>{t.icon}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 4 }}>{t.title}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', lineHeight: 1.45, marginBottom: 12, minHeight: 32 }}>{t.desc}</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: PAGE_TEXT, marginBottom: 4 }}>{t.title}</div>
+                    <div style={{ fontSize: 11, color: PAGE_GRAY, lineHeight: 1.45, marginBottom: 12, minHeight: 32 }}>{t.desc}</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 10, color: '#94a3b8' }}>5 Questions</span>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: LEVEL_COLOR[t.level] }}>
@@ -1478,7 +1488,7 @@ const EnglishVoicePractice: React.FC = () => {
                 ))}
               </div>
               {/* Right scroll arrow */}
-              <button onClick={scrollTopics} style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: '#fff', border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#374151', zIndex: 2 }}>
+              <button onClick={scrollTopics} style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_TEXT, zIndex: 2 }}>
                 <FaChevronRight style={{ fontSize: 12 }} />
               </button>
             </div>
@@ -1487,16 +1497,16 @@ const EnglishVoicePractice: React.FC = () => {
           {/* Quick Actions + Recent Sessions */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             {/* Quick Actions */}
-            <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 2 }}>Quick Actions</div>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Jump into practice or explore more</div>
+            <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT, marginBottom: 2 }}>Quick Actions</div>
+              <div style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 16 }}>Jump into practice or explore more</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 {QUICK_ACTIONS.map((a, i) => (
-                  <div key={i} style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '18px 12px', textAlign: 'center' }}>
+                  <div key={i} style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '18px 12px', textAlign: 'center' }}>
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: a.iconBg, border: `2px solid ${a.borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.iconColor, fontSize: 24, margin: '0 auto 12px' }}>{a.icon}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', marginBottom: 5 }}>{a.title}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 14, lineHeight: 1.45 }}>{a.desc}</div>
-                    <button style={{ border: `1.5px solid ${a.btnColor}`, background: '#fff', color: a.btnColor, borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'default', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT, marginBottom: 5 }}>{a.title}</div>
+                    <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 14, lineHeight: 1.45 }}>{a.desc}</div>
+                    <button style={{ border: `1.5px solid ${a.btnColor}`, background: CARD_BG, color: a.btnColor, borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'default', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                       {a.btnLabel} <FaChevronRight style={{ fontSize: 10 }} />
                     </button>
                   </div>
@@ -1505,9 +1515,9 @@ const EnglishVoicePractice: React.FC = () => {
             </div>
 
             {/* Recent Sessions */}
-            <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+            <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Recent Sessions</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Recent Sessions</div>
                 <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
                   View All <FaChevronRight style={{ fontSize: 10 }} />
                 </button>
@@ -1517,14 +1527,14 @@ const EnglishVoicePractice: React.FC = () => {
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < RECENT_SESSIONS.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.iconColor, fontSize: 16, flexShrink: 0 }}>{s.icon}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{s.title}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: PAGE_TEXT }}>{s.title}</div>
                       <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{s.time}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: s.up ? '#22c55e' : '#ef4444', minWidth: 42 }}>
                         <FaArrowUp style={{ fontSize: 9 }} /> {s.score}%
                       </span>
-                      <button style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', fontSize: 10 }}>
+                      <button style={{ width: 30, height: 30, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_GRAY, fontSize: 10 }}>
                         <FaPlay />
                       </button>
                     </div>
@@ -1539,8 +1549,8 @@ const EnglishVoicePractice: React.FC = () => {
         <div style={{ width: 280, flexShrink: 0, padding: '20px 20px 20px 0', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
           {/* Your Speaking Progress */}
-          <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', marginBottom: 4 }}>Your Speaking Progress</div>
+          <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT, marginBottom: 4 }}>Your Speaking Progress</div>
             <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>This Month · {history?.attemptsUsed ?? 0} session{history?.attemptsUsed !== 1 ? 's' : ''}</div>
 
             {/* Attempts left bar */}
@@ -1551,9 +1561,9 @@ const EnglishVoicePractice: React.FC = () => {
               const usedPct = Math.round((used / limit) * 100)
               const isLow = remaining <= 5
               return (
-                <div style={{ background: '#f8fafc', borderRadius: 10, padding: '10px 12px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
+                <div style={{ background: PAGE_BG, borderRadius: 10, padding: '10px 12px', marginBottom: 14, border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: '#374151' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: PAGE_TEXT }}>
                       <FaBullseye style={{ color: isLow ? '#ef4444' : ORANGE, fontSize: 11 }} />
                       Attempts This Month
                     </div>
@@ -1572,7 +1582,7 @@ const EnglishVoicePractice: React.FC = () => {
             {!history || history.attemptsUsed === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8' }}>
                 <FaMicrophone style={{ fontSize: 28, marginBottom: 8, color: '#cbd5e1' }} />
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>No sessions yet</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: PAGE_GRAY }}>No sessions yet</div>
                 <div style={{ fontSize: 11, marginTop: 4 }}>Start speaking to see your progress</div>
               </div>
             ) : (
@@ -1587,15 +1597,15 @@ const EnglishVoicePractice: React.FC = () => {
                         strokeDasharray={`16 ${C - 16}`} strokeDashoffset={greenOffset + 8} />
                     </svg>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a' }}>{overallPct}%</div>
-                      <div style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>Avg Score</div>
+                      <div style={{ fontSize: 22, fontWeight: 900, color: PAGE_TEXT }}>{overallPct}%</div>
+                      <div style={{ fontSize: 10, color: PAGE_GRAY, fontWeight: 600 }}>Avg Score</div>
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: overallPct >= 70 ? '#22c55e' : ORANGE }}>
                       {overallPct >= 80 ? 'Excellent!' : overallPct >= 60 ? 'Great Progress!' : 'Keep Practicing!'}
                     </div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>
+                    <div style={{ fontSize: 11, color: PAGE_GRAY, marginTop: 3 }}>
                       {history?.trend === 'IMPROVED' ? '↑ Improving this month' :
                        history?.trend === 'DROPPED'  ? '↓ Keep going, you can do it!' :
                        history?.trend === 'SAME'     ? '→ Consistent performance' :
@@ -1612,9 +1622,9 @@ const EnglishVoicePractice: React.FC = () => {
                         <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9333ea', fontSize: 10 }}>
                           <FaStar />
                         </div>
-                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>Best Score</span>
+                        <span style={{ fontSize: 12, color: PAGE_TEXT, fontWeight: 500 }}>Best Score</span>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{history.highestScore}%</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT }}>{history.highestScore}%</span>
                     </div>
                     <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${history.highestScore}%`, background: '#9333ea', borderRadius: 3, transition: 'width 0.8s ease' }} />
@@ -1629,9 +1639,9 @@ const EnglishVoicePractice: React.FC = () => {
                         <div style={{ width: 22, height: 22, borderRadius: '50%', background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, fontSize: 10 }}>
                           <FaBolt />
                         </div>
-                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{s.label}</span>
+                        <span style={{ fontSize: 12, color: PAGE_TEXT, fontWeight: 500 }}>{s.label}</span>
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{s.pct > 0 ? `${s.pct}%` : '—'}</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT }}>{s.pct > 0 ? `${s.pct}%` : '—'}</span>
                     </div>
                     <div style={{ height: 6, background: '#f1f5f9', borderRadius: 3, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${s.pct}%`, background: s.color, borderRadius: 3, transition: 'width 0.8s ease' }} />
@@ -1649,9 +1659,9 @@ const EnglishVoicePractice: React.FC = () => {
           </div>
 
           {/* Tips to Improve */}
-          <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
+          <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: '#0f172a' }}>Tips to Improve</div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Tips to Improve</div>
               <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View Tips <FaChevronRight style={{ fontSize: 10 }} /></button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
@@ -1660,7 +1670,7 @@ const EnglishVoicePractice: React.FC = () => {
                   <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13, flexShrink: 0 }}>
                     <FaLightbulb />
                   </div>
-                  <span style={{ fontSize: 12, color: '#374151', lineHeight: 1.5, paddingTop: 6 }}>{tip}</span>
+                  <span style={{ fontSize: 12, color: PAGE_TEXT, lineHeight: 1.5, paddingTop: 6 }}>{tip}</span>
                 </div>
               ))}
             </div>
@@ -1677,18 +1687,18 @@ const EnglishVoicePractice: React.FC = () => {
       {/* ── How It Works Modal ── */}
       {showHowItWorks && (
         <div onClick={() => setShowHowItWorks(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 24, width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', fontFamily: '"Segoe UI", sans-serif' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: CARD_BG, borderRadius: 24, width: '100%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.18)', fontFamily: '"Segoe UI", sans-serif' }}>
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '28px 32px 0' }}>
               <div style={{ textAlign: 'center', flex: 1 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <div style={{ fontSize: 22, fontWeight: 900, color: PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                   <FaStar style={{ color: '#f59e0b', fontSize: 16 }} /> How It Works <FaStar style={{ color: '#f59e0b', fontSize: 16 }} />
                 </div>
-                <p style={{ fontSize: 13, color: '#64748b', margin: '6px 0 0' }}>Your AI speaking coach is here to help you speak with confidence.</p>
+                <p style={{ fontSize: 13, color: PAGE_GRAY, margin: '6px 0 0' }}>Your AI speaking coach is here to help you speak with confidence.</p>
                 <div style={{ width: 40, height: 3, background: ORANGE, borderRadius: 4, margin: '10px auto 0' }} />
               </div>
-              <button onClick={() => setShowHowItWorks(false)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#64748b', flexShrink: 0 }}>✕</button>
+              <button onClick={() => setShowHowItWorks(false)} style={{ width: 32, height: 32, borderRadius: '50%', border: '1px solid #e2e8f0', background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: PAGE_GRAY, flexShrink: 0 }}>✕</button>
             </div>
 
             {/* Body */}
@@ -1701,7 +1711,7 @@ const EnglishVoicePractice: React.FC = () => {
                     <FaRobot style={{ color: '#fff', fontSize: 12 }} />
                   </div>
                   <div style={{ fontWeight: 700, fontSize: 12, color: '#0f172a' }}>Your Personal AI Coach</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 4 }}>Practice anytime, get instant feedback and improve every day.</div>
+                  <div style={{ fontSize: 11, color: '#78350f', marginTop: 4 }}>Practice anytime, get instant feedback and improve every day.</div>
                 </div>
               </div>
 
@@ -1719,11 +1729,11 @@ const EnglishVoicePractice: React.FC = () => {
                       {step.icon}
                     </div>
                     <div style={{ flex: 1, paddingTop: 2 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ background: step.color, color: '#fff', borderRadius: 6, fontSize: 10, fontWeight: 800, padding: '1px 6px' }}>{step.num}</span>
                         {step.title}
                       </div>
-                      <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 3, lineHeight: 1.6 }}>{step.desc}</div>
+                      <div style={{ fontSize: 12.5, color: PAGE_GRAY, marginTop: 3, lineHeight: 1.6 }}>{step.desc}</div>
                     </div>
                   </div>
                 ))}
@@ -1736,7 +1746,7 @@ const EnglishVoicePractice: React.FC = () => {
                 <FaLightbulb style={{ color: ORANGE, fontSize: 20, flexShrink: 0 }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>Consistent practice leads to confidence!</div>
-                  <div style={{ fontSize: 12, color: '#64748b' }}>Just 10 minutes daily can help you see a big improvement.</div>
+                  <div style={{ fontSize: 12, color: '#78350f' }}>Just 10 minutes daily can help you see a big improvement.</div>
                 </div>
               </div>
               <button onClick={() => setShowHowItWorks(false)}

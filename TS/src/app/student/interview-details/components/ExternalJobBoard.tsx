@@ -39,6 +39,14 @@ const CATEGORIES = [
   { id: "freelance",  label: "Freelance",    icon: <FaHandshake />,    color: "#d97706" },
 ];
 
+// Reads the same --dash-* CSS vars StudentLayout sets for dark mode
+// (light-mode values as fallback), so this board re-themes with the portal.
+const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)';
+const CARD_BG     = 'var(--dash-card-bg, #ffffff)';
+const PAGE_BORDER = 'var(--dash-border, #e2e8f0)';
+const PAGE_TEXT   = 'var(--dash-text, #0f172a)';
+const PAGE_GRAY   = 'var(--dash-gray, #64748b)';
+
 const TYPE_LABEL: Record<string, string> = {
   FULLTIME: "Full-time", PARTTIME: "Part-time",
   CONTRACTOR: "Contract", INTERN: "Internship",
@@ -115,7 +123,7 @@ const ExtJobCard: React.FC<{ job: ExternalJob; score: number; matchTooltip: stri
         </div>
 
         {/* Row 2: company + meta */}
-        <div style={{ fontSize: "0.75rem", color: "#475569", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: "0.75rem", color: PAGE_GRAY, marginBottom: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 600 }}>{job.company}</span>
           {job.location && <span style={{ display: "flex", alignItems: "center", gap: 3 }}><FaMapMarkerAlt size={10} />{job.location}</span>}
           <span style={{ display: "flex", alignItems: "center", gap: 3 }}><FaBriefcase size={10} />{TYPE_LABEL[job.employmentType] || job.employmentType}</span>
@@ -133,21 +141,21 @@ const ExtJobCard: React.FC<{ job: ExternalJob; score: number; matchTooltip: stri
       </div>
 
       {/* Divider */}
-      <div style={{ alignSelf: "stretch", width: 1, background: "#e2e8f0", flexShrink: 0 }} />
+      <div style={{ alignSelf: "stretch", width: 1, background: PAGE_BORDER, flexShrink: 0 }} />
 
       {/* Right panel: time+bookmark on top, match ring+apply below */}
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 14, flexShrink: 0, minWidth: 190, alignSelf: "center" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           {job.postedAt ? (
-            <span style={{ fontSize: "0.68rem", color: "#94a3b8", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+            <span style={{ fontSize: "0.68rem", color: PAGE_GRAY, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
               <FaClock size={10} />{timeAgo(job.postedAt)}
             </span>
           ) : <span />}
           <button
             onClick={e => { e.stopPropagation(); onToggleSave(job.id); }}
-            style={{ background: saved ? "rgba(255,122,0,0.1)" : "none", border: "1px solid #e2e8f0", borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: saved ? "#ff7a00" : "#94a3b8", flexShrink: 0 }}
+            style={{ background: saved ? "rgba(255,122,0,0.1)" : "none", border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: saved ? "#ff7a00" : PAGE_GRAY, flexShrink: 0 }}
           >
-            {saved ? <FaBookmark size={13} color="#ff7a00" /> : <FaRegBookmark size={13} color="#94a3b8" />}
+            {saved ? <FaBookmark size={13} color="#ff7a00" /> : <FaRegBookmark size={13} color={PAGE_GRAY} />}
           </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
@@ -252,7 +260,7 @@ const ExternalJobBoard: React.FC = () => {
   const [page, setPage] = useState(1);
 
   const [jobs, setJobs] = useState<ExternalJob[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [hasMore, setHasMore] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
@@ -314,7 +322,7 @@ const ExternalJobBoard: React.FC = () => {
   useEffect(() => {
     setPage(1);
     fetchJobs(category, searchQuery, locationQuery, 1);
-  }, [category]);
+  }, [category, fetchJobs]);
 
   const handleSearch = () => {
     setPage(1);
@@ -414,7 +422,7 @@ const ExternalJobBoard: React.FC = () => {
                 <select
                   value={matchSort}
                   onChange={e => setMatchSort(e.target.value as typeof matchSort)}
-                  style={{ border: "1.5px solid #e2e8f0", borderRadius: 20, padding: "0.3rem 0.65rem", fontSize: "0.75rem", fontWeight: 600, color: "#475569", background: "#fff", cursor: "pointer", outline: "none" }}
+                  style={{ border: `1.5px solid ${PAGE_BORDER}`, borderRadius: 20, padding: "0.3rem 0.65rem", fontSize: "0.75rem", fontWeight: 600, color: PAGE_GRAY, background: CARD_BG, cursor: "pointer", outline: "none" }}
                 >
                   <option value="none">Default</option>
                   <option value="high-low">Match: High → Low</option>
@@ -481,7 +489,7 @@ const ExternalJobBoard: React.FC = () => {
 
         {/* ── Right: filter sidebar ── */}
         <div style={{
-          width: 260, flexShrink: 0, background: "#fff", border: "1px solid #e2e8f0",
+          width: 260, flexShrink: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`,
           borderRadius: 14, position: "sticky", top: 16,
           maxHeight: "calc(100vh - 120px)", display: "flex", flexDirection: "column", overflow: "hidden",
         }}>
@@ -512,24 +520,24 @@ const ExternalJobBoard: React.FC = () => {
             {/* Location */}
             <ExtFilterSection title="Location">
               <div style={{ position: "relative" }}>
-                <FiSearchIcon size={11} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                <FiSearchIcon size={11} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: PAGE_GRAY }} />
                 <input placeholder="Search location" value={sideLocQ} onChange={e => setSideLocQ(e.target.value)}
-                  style={{ width: "100%", paddingLeft: 26, height: 32, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: "0.75rem", color: "#0f172a", outline: "none", background: "#fff" }} />
+                  style={{ width: "100%", paddingLeft: 26, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: "0.75rem", color: PAGE_TEXT, outline: "none", background: CARD_BG }} />
               </div>
             </ExtFilterSection>
 
             {/* Skills */}
             <ExtFilterSection title="Skills">
               <div style={{ position: "relative", marginBottom: 8 }}>
-                <FiSearchIcon size={11} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                <FiSearchIcon size={11} style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: PAGE_GRAY }} />
                 <input placeholder="Search skills" value={sideSkillQ} onChange={e => setSideSkillQ(e.target.value)}
-                  style={{ width: "100%", paddingLeft: 26, height: 32, border: "1px solid #e2e8f0", borderRadius: 8, fontSize: "0.75rem", color: "#0f172a", outline: "none", background: "#fff" }} />
+                  style={{ width: "100%", paddingLeft: 26, height: 32, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, fontSize: "0.75rem", color: PAGE_TEXT, outline: "none", background: CARD_BG }} />
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {extSkillOptions.map(s => {
                   const active = sideSkillQ === s;
                   return (
-                    <button key={s} onClick={() => setSideSkillQ(active ? "" : s)} style={{ background: active ? "rgba(255,122,0,0.1)" : "#f8fafc", border: `1px solid ${active ? "#ff7a00" : "#e2e8f0"}`, color: active ? "#ff7a00" : "#475569", borderRadius: 20, padding: "2px 9px", fontSize: "0.62rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}>
+                    <button key={s} onClick={() => setSideSkillQ(active ? "" : s)} style={{ background: active ? "rgba(255,122,0,0.1)" : PAGE_BG, border: `1px solid ${active ? "#ff7a00" : PAGE_BORDER}`, color: active ? "#ff7a00" : PAGE_GRAY, borderRadius: 20, padding: "2px 9px", fontSize: "0.62rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}>
                       {s}{active && <FiX size={9} />}
                     </button>
                   );
@@ -539,11 +547,11 @@ const ExternalJobBoard: React.FC = () => {
           </div>
 
           {/* Apply / Clear — always pinned at bottom */}
-          <div style={{ padding: "12px 16px 16px", borderTop: "1px solid #f1f5f9", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: "#fff" }}>
+          <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${PAGE_BORDER}`, display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, background: CARD_BG }}>
             <button style={{ width: "100%", background: "#ff7a00", border: "none", borderRadius: 10, color: "#fff", padding: "10px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               <FiSliders size={13} /> Apply Filters
             </button>
-            <button onClick={clearSideFilters} style={{ width: "100%", background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, color: activeSideFilterCount > 0 ? "#ff7a00" : "#94a3b8", padding: "9px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={clearSideFilters} style={{ width: "100%", background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, color: activeSideFilterCount > 0 ? "#ff7a00" : PAGE_GRAY, padding: "9px", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}>
               Clear Filters {activeSideFilterCount > 0 && `(${activeSideFilterCount})`}
             </button>
           </div>
@@ -562,18 +570,18 @@ const ExternalJobBoard: React.FC = () => {
 
         /* Category bar */
         .ext-cat-bar { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
-        .ext-cat-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 1rem; border-radius: 25px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .ext-cat-btn:hover { border-color: #cbd5e1; color: #0f172a; background: #f8fafc; }
-        .ext-cat-btn.active { border-color: var(--cat-color, #ff7a00); color: var(--cat-color, #ff7a00); background: color-mix(in srgb, var(--cat-color, #ff7a00) 8%, #fff); }
+        .ext-cat-btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 1rem; border-radius: 25px; border: 1.5px solid var(--dash-border, #e2e8f0); background: var(--dash-card-bg, #fff); color: var(--dash-gray, #475569); font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .ext-cat-btn:hover { border-color: var(--dash-gray, #cbd5e1); color: var(--dash-text, #0f172a); background: var(--dash-page-bg, #f8fafc); }
+        .ext-cat-btn.active { border-color: var(--cat-color, #ff7a00); color: var(--cat-color, #ff7a00); background: color-mix(in srgb, var(--cat-color, #ff7a00) 8%, var(--dash-card-bg, #fff)); }
         .ext-cat-icon { font-size: 0.85rem; }
 
         /* Search bar */
         .ext-search-bar { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
-        .ext-search-input-wrap { flex: 1; min-width: 200px; display: flex; align-items: center; background: #fff; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 0 1rem; gap: 0.6rem; }
+        .ext-search-input-wrap { flex: 1; min-width: 200px; display: flex; align-items: center; background: var(--dash-card-bg, #fff); border: 1.5px solid var(--dash-border, #e2e8f0); border-radius: 10px; padding: 0 1rem; gap: 0.6rem; }
         .ext-search-input-wrap:focus-within { border-color: #ff7a00; box-shadow: 0 0 0 3px rgba(255,122,0,0.08); }
-        .ext-search-icon { color: #94a3b8; flex-shrink: 0; font-size: 0.85rem; }
-        .ext-search-input { flex: 1; background: transparent; border: none; outline: none; color: #0f172a; font-size: 0.88rem; padding: 0.65rem 0; }
-        .ext-search-input::placeholder { color: #94a3b8; }
+        .ext-search-icon { color: var(--dash-gray, #94a3b8); flex-shrink: 0; font-size: 0.85rem; }
+        .ext-search-input { flex: 1; background: transparent; border: none; outline: none; color: var(--dash-text, #0f172a); font-size: 0.88rem; padding: 0.65rem 0; }
+        .ext-search-input::placeholder { color: var(--dash-gray, #94a3b8); }
         .ext-search-btn { background: #ff7a00; border: none; color: #fff; font-weight: 700; padding: 0.65rem 1.75rem; border-radius: 10px; font-size: 0.9rem; cursor: pointer; transition: all 0.25s; white-space: nowrap; }
         .ext-search-btn:hover:not(:disabled) { background: #e86d00; box-shadow: 0 4px 14px rgba(255,122,0,0.3); }
         .ext-search-btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -583,8 +591,8 @@ const ExternalJobBoard: React.FC = () => {
         .ext-setup-notice a { color: #ff7a00; font-weight: 700; }
         .ext-setup-notice code { background: rgba(0,0,0,0.06); border-radius: 4px; padding: 0.1rem 0.3rem; font-size: 0.8rem; }
         .ext-error { background: #fef2f2; border: 1px solid #fca5a5; border-radius: 10px; padding: 0.75rem 1rem; color: #dc2626; font-size: 0.85rem; margin-bottom: 1rem; }
-        .ext-results-info { font-size: 0.82rem; color: #64748b; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-        .ext-more-hint { color: #94a3b8; }
+        .ext-results-info { font-size: 0.82rem; color: var(--dash-gray, #64748b); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .ext-more-hint { color: var(--dash-gray, #94a3b8); }
         .ext-source-pills { display: flex; gap: 0.4rem; flex-wrap: wrap; }
         .ext-source-pill { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 20px; }
         .ext-source-badge { font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -596,88 +604,88 @@ const ExternalJobBoard: React.FC = () => {
         /* Loading overlay */
         .ext-list-wrap { position: relative; min-height: 200px; }
         .ext-loading-overlay { position: absolute; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(241,245,249,0.8); backdrop-filter: blur(3px); border-radius: 12px; min-height: 220px; }
-        .ext-loading-spinner-box { display: flex; flex-direction: column; align-items: center; gap: 1rem; color: #64748b; font-size: 0.88rem; }
+        .ext-loading-spinner-box { display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--dash-gray, #64748b); font-size: 0.88rem; }
         .ext-job-list--faded { opacity: 0.25; pointer-events: none; filter: blur(1px); transition: opacity 0.2s, filter 0.2s; }
 
         /* Job cards */
         .ext-job-list { display: flex; flex-direction: column; gap: 0.75rem; transition: opacity 0.2s; }
-        .ext-job-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; transition: box-shadow 0.15s; }
+        .ext-job-card { background: var(--dash-card-bg, #fff); border: 1px solid var(--dash-border, #e2e8f0); border-radius: 12px; padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; cursor: pointer; transition: box-shadow 0.15s; }
         .ext-job-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
 
-        .ext-job-logo { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: #f1f5f9; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: center; }
+        .ext-job-logo { width: 46px; height: 46px; border-radius: 10px; overflow: hidden; flex-shrink: 0; background: var(--dash-page-bg, #f1f5f9); border: 1px solid var(--dash-border, #e2e8f0); display: flex; align-items: center; justify-content: center; }
         .ext-job-logo img { width: 100%; height: 100%; object-fit: contain; }
         .ext-logo-fallback { font-size: 0.9rem; font-weight: 800; color: #ff7a00; }
         .ext-logo-lg { font-size: 1.2rem; width: 56px; height: 56px; border-radius: 12px; }
 
         .ext-job-body { flex: 1; min-width: 0; }
         .ext-job-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 4px; }
-        .ext-job-title { font-size: 0.9rem; font-weight: 700; color: #0f172a; line-height: 1.3; margin-bottom: 2px; }
-        .ext-job-company { font-size: 0.78rem; color: #475569; display: flex; align-items: center; font-weight: 600; }
+        .ext-job-title { font-size: 0.9rem; font-weight: 700; color: var(--dash-text, #0f172a); line-height: 1.3; margin-bottom: 2px; }
+        .ext-job-company { font-size: 0.78rem; color: var(--dash-gray, #475569); display: flex; align-items: center; font-weight: 600; }
 
-        .ext-job-meta { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.75rem; color: #64748b; margin-bottom: 8px; align-items: center; }
+        .ext-job-meta { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.75rem; color: var(--dash-gray, #64748b); margin-bottom: 8px; align-items: center; }
         .ext-job-meta svg { margin-right: 3px; opacity: 0.7; }
         .ext-salary { color: #16a34a; font-weight: 600; }
 
         /* Badges */
         .ext-badge { display: inline-flex; align-items: center; padding: 0.18rem 0.55rem; border-radius: 20px; font-size: 0.68rem; font-weight: 700; }
         .ext-badge-remote { background: rgba(8,145,178,0.08); color: #0891b2; border: 1px solid rgba(8,145,178,0.2); }
-        .ext-badge-type { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+        .ext-badge-type { background: var(--dash-page-bg, #f1f5f9); color: var(--dash-gray, #475569); border: 1px solid var(--dash-border, #e2e8f0); }
 
         /* Skills */
         .ext-skills-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
         .ext-skill-tag { background: rgba(255,122,0,0.06); color: #c05c00; border: 1px solid rgba(255,122,0,0.2); border-radius: 20px; padding: 2px 9px; font-size: 0.65rem; font-weight: 600; }
-        .ext-skill-more { color: #94a3b8; font-size: 0.68rem; padding: 2px 6px; }
+        .ext-skill-more { color: var(--dash-gray, #94a3b8); font-size: 0.68rem; padding: 2px 6px; }
 
         /* Match filter bar */
-        .ext-match-filter-bar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.6rem 1rem; background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; }
-        .ext-match-filter-label { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 0.25rem; white-space: nowrap; }
-        .ext-match-filter-btn { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem; border-radius: 20px; border: 1.5px solid #e2e8f0; background: #fff; color: #475569; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        .ext-match-filter-bar { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem; padding: 0.6rem 1rem; background: var(--dash-card-bg, #fff); border: 1px solid var(--dash-border, #e2e8f0); border-radius: 10px; }
+        .ext-match-filter-label { font-size: 0.72rem; font-weight: 700; color: var(--dash-gray, #94a3b8); text-transform: uppercase; letter-spacing: 0.06em; margin-right: 0.25rem; white-space: nowrap; }
+        .ext-match-filter-btn { display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.75rem; border-radius: 20px; border: 1.5px solid var(--dash-border, #e2e8f0); background: var(--dash-card-bg, #fff); color: var(--dash-gray, #475569); font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .ext-match-filter-btn:hover { border-color: var(--mf-color); color: var(--mf-color); }
-        .ext-match-filter-btn.active { border-color: var(--mf-color); color: var(--mf-color); background: color-mix(in srgb, var(--mf-color) 8%, #fff); }
+        .ext-match-filter-btn.active { border-color: var(--mf-color); color: var(--mf-color); background: color-mix(in srgb, var(--mf-color) 8%, var(--dash-card-bg, #fff)); }
         .ext-mf-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mf-color); flex-shrink: 0; }
-        .ext-mf-count { background: #f1f5f9; color: #475569; border-radius: 10px; padding: 0.05rem 0.45rem; font-size: 0.68rem; font-weight: 700; }
+        .ext-mf-count { background: var(--dash-page-bg, #f1f5f9); color: var(--dash-gray, #475569); border-radius: 10px; padding: 0.05rem 0.45rem; font-size: 0.68rem; font-weight: 700; }
         .ext-clear-filter-btn { background: none; border: none; color: #ff7a00; font-size: 0.82rem; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0; }
 
         /* Match ring */
         .ext-match-ring { position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .ext-match-pct { position: absolute; font-size: 0.58rem; font-weight: 800; line-height: 1; color: #0f172a; }
+        .ext-match-pct { position: absolute; font-size: 0.58rem; font-weight: 800; line-height: 1; color: var(--dash-text, #0f172a); }
 
         /* Actions */
         .ext-job-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
         .ext-apply-btn { background: #ff7a00; border: none; color: #fff; font-size: 0.78rem; font-weight: 700; padding: 7px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 4px; }
         .ext-apply-btn:hover { background: #e86d00; box-shadow: 0 4px 12px rgba(255,122,0,0.3); }
-        .ext-view-btn { background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 0.75rem; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .ext-view-btn { background: var(--dash-card-bg, #fff); border: 1px solid var(--dash-border, #e2e8f0); color: var(--dash-gray, #475569); font-size: 0.75rem; font-weight: 600; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
         .ext-view-btn:hover { border-color: #ff7a00; color: #ff7a00; }
 
         /* Pagination */
         .ext-pagination { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; padding: 1rem 0; }
-        .ext-page-btn { display: flex; align-items: center; gap: 0.4rem; background: #fff; border: 1px solid #e2e8f0; color: #475569; font-size: 0.82rem; font-weight: 600; padding: 0.45rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .ext-page-btn { display: flex; align-items: center; gap: 0.4rem; background: var(--dash-card-bg, #fff); border: 1px solid var(--dash-border, #e2e8f0); color: var(--dash-gray, #475569); font-size: 0.82rem; font-weight: 600; padding: 0.45rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
         .ext-page-btn:hover:not(:disabled) { border-color: #ff7a00; color: #ff7a00; }
         .ext-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .ext-page-num { font-size: 0.82rem; color: #64748b; font-weight: 600; min-width: 60px; text-align: center; }
+        .ext-page-num { font-size: 0.82rem; color: var(--dash-gray, #64748b); font-weight: 600; min-width: 60px; text-align: center; }
 
         /* Empty */
-        .ext-empty { text-align: center; padding: 4rem 0; color: #94a3b8; font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
+        .ext-empty { text-align: center; padding: 4rem 0; color: var(--dash-gray, #94a3b8); font-size: 0.9rem; display: flex; flex-direction: column; align-items: center; }
 
         /* Detail drawer */
         .ext-drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 1rem; animation: extFadeIn 0.18s ease; }
         @keyframes extFadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .ext-drawer { width: min(780px, 96vw); max-height: 90vh; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: extSlideUp 0.22s ease; }
+        .ext-drawer { width: min(780px, 96vw); max-height: 90vh; background: var(--dash-card-bg, #fff); border: 1px solid var(--dash-border, #e2e8f0); border-radius: 20px; overflow: hidden; display: flex; flex-direction: column; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.15); animation: extSlideUp 0.22s ease; }
         @keyframes extSlideUp { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .ext-drawer-close { position: absolute; top: 1rem; right: 1rem; background: #f1f5f9; border: 1px solid #e2e8f0; color: #64748b; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; z-index: 2; }
+        .ext-drawer-close { position: absolute; top: 1rem; right: 1rem; background: var(--dash-page-bg, #f1f5f9); border: 1px solid var(--dash-border, #e2e8f0); color: var(--dash-gray, #64748b); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; z-index: 2; }
         .ext-drawer-close:hover { background: #fef2f2; border-color: #fca5a5; color: #dc2626; }
-        .ext-drawer-header { display: flex; gap: 1.25rem; align-items: center; padding: 1.5rem 2rem 1.25rem; border-bottom: 1px solid #f1f5f9; background: #fff; flex-shrink: 0; }
-        .ext-drawer-title { font-size: 1.15rem; font-weight: 800; color: #0f172a; line-height: 1.3; margin-bottom: 4px; }
-        .ext-drawer-company { font-size: 0.85rem; color: #64748b; font-weight: 500; }
+        .ext-drawer-header { display: flex; gap: 1.25rem; align-items: center; padding: 1.5rem 2rem 1.25rem; border-bottom: 1px solid var(--dash-border, #f1f5f9); background: var(--dash-card-bg, #fff); flex-shrink: 0; }
+        .ext-drawer-title { font-size: 1.15rem; font-weight: 800; color: var(--dash-text, #0f172a); line-height: 1.3; margin-bottom: 4px; }
+        .ext-drawer-company { font-size: 0.85rem; color: var(--dash-gray, #64748b); font-weight: 500; }
         .ext-drawer-body { overflow-y: auto; flex: 1; padding: 1.5rem 2rem; }
         .ext-drawer-body::-webkit-scrollbar { width: 4px; }
-        .ext-drawer-body::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
-        .ext-drawer-meta { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.82rem; color: #64748b; margin-bottom: 1.5rem; align-items: center; padding-bottom: 1.25rem; border-bottom: 1px solid #f1f5f9; }
+        .ext-drawer-body::-webkit-scrollbar-thumb { background: var(--dash-border, #e2e8f0); border-radius: 2px; }
+        .ext-drawer-meta { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.82rem; color: var(--dash-gray, #64748b); margin-bottom: 1.5rem; align-items: center; padding-bottom: 1.25rem; border-bottom: 1px solid var(--dash-border, #f1f5f9); }
         .ext-drawer-meta svg { opacity: 0.7; }
         .ext-section-label { font-size: 0.72rem; font-weight: 700; color: #ff7a00; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.6rem; }
-        .ext-highlight-list { padding-left: 1.25rem; margin: 0; color: #475569; font-size: 0.85rem; line-height: 1.7; }
-        .ext-description { color: #64748b; font-size: 0.85rem; line-height: 1.8; white-space: pre-line; }
-        .ext-drawer-footer { padding: 1rem 2rem 1.5rem; flex-shrink: 0; border-top: 1px solid #f1f5f9; background: #fff; }
+        .ext-highlight-list { padding-left: 1.25rem; margin: 0; color: var(--dash-gray, #475569); font-size: 0.85rem; line-height: 1.7; }
+        .ext-description { color: var(--dash-gray, #64748b); font-size: 0.85rem; line-height: 1.8; white-space: pre-line; }
+        .ext-drawer-footer { padding: 1rem 2rem 1.5rem; flex-shrink: 0; border-top: 1px solid var(--dash-border, #f1f5f9); background: var(--dash-card-bg, #fff); }
         .ext-apply-full-btn { display: flex; align-items: center; justify-content: center; background: #ff7a00; color: #fff; font-weight: 700; padding: 0.9rem; border-radius: 12px; font-size: 0.95rem; text-decoration: none; transition: all 0.25s; }
         .ext-apply-full-btn:hover { background: #e86d00; box-shadow: 0 6px 20px rgba(255,122,0,0.3); color: #fff; }
 
@@ -693,19 +701,19 @@ const ExternalJobBoard: React.FC = () => {
 
 // ── sidebar sub-components ────────────────────────────────────────────────────
 const ExtFilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ borderTop: "1px solid #f1f5f9", paddingTop: 12, marginBottom: 12 }}>
-    <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.78rem", marginBottom: 8 }}>{title}</div>
+  <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, paddingTop: 12, marginBottom: 12 }}>
+    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: "0.78rem", marginBottom: 8 }}>{title}</div>
     {children}
   </div>
 );
 
 const ExtCheckRow = ({ label, count, checked, onChange }: { label: string; count: number; checked: boolean; onChange: () => void }) => (
   <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 6, userSelect: "none" }}>
-    <div onClick={onChange} style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: "pointer", border: `1.5px solid ${checked ? "#ff7a00" : "#cbd5e1"}`, background: checked ? "#ff7a00" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div onClick={onChange} style={{ width: 16, height: 16, borderRadius: 4, flexShrink: 0, cursor: "pointer", border: `1.5px solid ${checked ? "#ff7a00" : PAGE_BORDER}`, background: checked ? "#ff7a00" : CARD_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {checked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
     </div>
-    <span style={{ fontSize: "0.75rem", color: "#334155", flex: 1 }}>{label}</span>
-    <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 600 }}>{count}</span>
+    <span style={{ fontSize: "0.75rem", color: PAGE_TEXT, flex: 1 }}>{label}</span>
+    <span style={{ fontSize: "0.68rem", color: PAGE_GRAY, fontWeight: 600 }}>{count}</span>
   </label>
 );
 
