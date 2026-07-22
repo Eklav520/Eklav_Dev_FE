@@ -56,6 +56,8 @@ const HRManagePipelinePage = () => {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [showPreview, setShowPreview] = useState(false)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const fetchAll = () => {
     if (!baseURL || !token) return
@@ -88,6 +90,17 @@ const HRManagePipelinePage = () => {
     if (target < 0 || target >= stages.length) return
     const next = [...stages]
     ;[next[index], next[target]] = [next[target], next[index]]
+    setStages(next)
+    setReordered(true)
+  }
+
+  // Drag-and-drop reorder — moves the dragged stage to sit right before the
+  // row it's dropped on, shifting everything between the two positions.
+  const reorderStage = (from: number, to: number) => {
+    if (from === to) return
+    const next = [...stages]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
     setStages(next)
     setReordered(true)
   }
@@ -226,9 +239,30 @@ const HRManagePipelinePage = () => {
               </thead>
               <tbody>
                 {stages.map((s, i) => (
-                  <tr key={s._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr
+                    key={s._id}
+                    draggable
+                    onDragStart={() => setDragIndex(i)}
+                    onDragOver={e => { e.preventDefault(); if (dragIndex !== null && dragIndex !== i) setDragOverIndex(i) }}
+                    onDragLeave={() => setDragOverIndex(prev => (prev === i ? null : prev))}
+                    onDrop={e => {
+                      e.preventDefault()
+                      if (dragIndex !== null) reorderStage(dragIndex, i)
+                      setDragIndex(null)
+                      setDragOverIndex(null)
+                    }}
+                    onDragEnd={() => { setDragIndex(null); setDragOverIndex(null) }}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      background: dragOverIndex === i ? '#eef2ff' : dragIndex === i ? '#f8fafc' : 'transparent',
+                      opacity: dragIndex === i ? 0.5 : 1,
+                      borderTop: dragOverIndex === i ? `2px solid ${ACCENT}` : '1px solid transparent',
+                      transition: 'background 0.1s',
+                    }}
+                  >
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ cursor: 'grab', color: '#cbd5e1', display: 'flex' }} title="Drag to reorder"><FiMove size={13}/></span>
                         <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>{i + 1}</span>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <button onClick={() => moveStage(i, -1)} disabled={i === 0} style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#e2e8f0' : '#94a3b8', padding: 0, lineHeight: 0 }}><FiArrowUp size={11}/></button>
@@ -260,7 +294,7 @@ const HRManagePipelinePage = () => {
             <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display: 'block', marginBottom: 14 }}>Pipeline Settings</span>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
               {[
-                { icon: <FiMove size={14}/>, title: 'Reorder Stages', hint: 'Use the ↑↓ arrows in the table to reorder pipeline stages' },
+                { icon: <FiMove size={14}/>, title: 'Reorder Stages', hint: 'Drag a row, or use the ↑↓ arrows, to reorder pipeline stages' },
                 { icon: <FiEdit2 size={14}/>, title: 'Edit Stage', hint: 'Update stage details and configuration' },
                 { icon: <FiCopy size={14}/>, title: 'Duplicate Stage', hint: 'Create a copy of an existing stage' },
                 { icon: <FiTrash2 size={14}/>, title: 'Delete Stage', hint: 'Remove a stage from the pipeline' },

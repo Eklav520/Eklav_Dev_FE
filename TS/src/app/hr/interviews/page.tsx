@@ -167,6 +167,17 @@ const HRInterviewsPage = () => {
   const [interviewerSearch, setInterviewerSearch] = useState('')
   const [loadError, setLoadError] = useState('')
   const [linkCopied, setLinkCopied] = useState(false)
+  const [pipelineStageNames, setPipelineStageNames] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!baseURL || !token) return
+    fetch(`${baseURL}/pipeline-stages`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => setPipelineStageNames(Array.isArray(data)
+        ? [...data].sort((a: any, b: any) => a.order - b.order).map((s: any) => s.name)
+        : []))
+      .catch(() => setPipelineStageNames([]))
+  }, [baseURL, token])
 
   const copyMeetingLink = (link: string) => {
     navigator.clipboard.writeText(link).then(() => {
@@ -387,13 +398,13 @@ const HRInterviewsPage = () => {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '20%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '15%' }} />
+                <col style={{ width: '17%' }} />
+                <col style={{ width: '13%' }} />
                 <col style={{ width: '14%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '26%' }} />
                 <col style={{ width: '9%' }} />
+                <col style={{ width: '8%' }} />
               </colgroup>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
@@ -450,10 +461,33 @@ const HRInterviewsPage = () => {
                       </td>
                       <td style={{ padding: '14px 10px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{ flex: 1, height: 5, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${(r.currentStageIndex / r.totalStages) * 100}%`, background: GREEN, borderRadius: 4 }} />
-                          </div>
-                          <span style={{ fontSize: '0.68rem', color: GRAY, flexShrink: 0 }}>{r.currentStageIndex}/{r.totalStages}</span>
+                          {Array.from({ length: r.totalStages }, (_, i) => {
+                            const stageNum = i + 1
+                            const stageName = pipelineStageNames[i] || ''
+                            const isDone = stageNum < r.currentStageIndex
+                            const isCurrent = stageNum === r.currentStageIndex
+                            return (
+                              <div
+                                key={i}
+                                title={stageName || `Stage ${stageNum}`}
+                                style={{
+                                  position: 'relative', width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '0.64rem', fontWeight: 700,
+                                  background: isDone ? '#ecfdf5' : isCurrent ? '#fff' : '#f1f5f9',
+                                  color: isDone ? GREEN : isCurrent ? ORANGE : '#94a3b8',
+                                  border: `1.5px solid ${isDone ? GREEN : isCurrent ? ORANGE : '#e2e8f0'}`,
+                                }}
+                              >
+                                {stageName.charAt(0).toUpperCase() || String(stageNum)}
+                                {isDone && (
+                                  <span style={{ position: 'absolute', top: -4, right: -4, width: 12, height: 12, borderRadius: '50%', background: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff' }}>
+                                    <FiCheckCircle size={8} color="#fff" />
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          })}
                         </div>
                       </td>
                       <td style={{ padding: '14px 10px' }}>

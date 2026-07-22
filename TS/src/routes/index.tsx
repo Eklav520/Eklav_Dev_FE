@@ -1113,6 +1113,7 @@ const HRPipelinePage = lazy(() => import('@/app/hr/pipeline/page'))
 const HRManagePipelinePage = lazy(() => import('@/app/hr/pipeline/manage/page'))
 const HRAddStagePage = lazy(() => import('@/app/hr/pipeline/stages/create/page'))
 const HRInterviewsPage = lazy(() => import('@/app/hr/interviews/page'))
+const HRAssessmentsPage = lazy(() => import('@/app/hr/assessments/page'))
 const HRTeamPage = lazy(() => import('@/app/hr/team/page'))
 const HRMyInterviewsPage = lazy(() => import('@/app/hr/my-interviews/page'))
 const HRFeedbackGivenPage = lazy(() => import('@/app/hr/my-interviews/feedback/page'))
@@ -1142,6 +1143,7 @@ export const hrRoutes: RoutesProps[] = [
   { path: '/hr/pipeline/manage',        name: 'HR Manage Pipeline', element: <HRManagePipelinePage /> },
   { path: '/hr/pipeline/stages/create', name: 'HR Add Stage',       element: <HRAddStagePage /> },
   { path: '/hr/interviews', name: 'HR Interviews',    element: <HRInterviewsPage /> },
+  { path: '/hr/assessments', name: 'HR Assessments',  element: <HRAssessmentsPage /> },
   { path: '/hr/team',       name: 'HR Team Members',  element: <HRTeamPage /> },
   { path: '/hr/my-interviews',           name: 'HR My Interviews Dashboard', element: <HRMyInterviewsPage /> },
   { path: '/hr/my-interviews/feedback',  name: 'HR Feedback Given',          element: <HRFeedbackGivenPage /> },

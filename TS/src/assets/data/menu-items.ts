@@ -1635,9 +1635,9 @@ export const HR_MENU_ITEMS: MenuItemType[] = [
   // { key: 'hr-reports',         label: 'Reports & Analytics',icon: BsGraphUp,              url: '/hr/reports',            parentKey: 'hr' },
   // { key: 'hr-communication',   label: 'Communication',      icon: BsChatDots,             url: '/hr/communication',      parentKey: 'hr' },
   // { key: 'hr-offer-onboarding',label: 'Offer & Onboarding', icon: MdOutlineLocalOffer,    url: '/hr/offer-onboarding',   parentKey: 'hr' },
-  { key: 'hr-company-profile', label: 'Company Profile',    icon: BsInfoSquareFill,       url: '/hr/company-profile',    parentKey: 'hr' },
   { key: 'hr-team',            label: 'Team Members',       icon: HiOutlineUserGroup,     url: '/hr/team',               parentKey: 'hr' },
   { key: 'hr-settings',        label: 'Settings',           icon: BsGear,                 url: '/hr/settings',           parentKey: 'hr' },
+  { key: 'hr-company-profile', label: 'Company Profile',    icon: BsInfoSquareFill,       url: '/hr/company-profile',    parentKey: 'hr' },
 ]
 
 export const ADMIN_MENU_ITEMS: MenuItemType[] = [
