@@ -600,8 +600,8 @@ const ProblemStatement = () => {
             {/* ── LEFT: Problem Description ── */}
             <div style={{ width: 420, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #2d2d2d', height: '100%', overflow: 'hidden', background: '#1e1e1e' }}>
 
-              {/* Back button */}
-              <div style={{ padding: '10px 16px', borderBottom: '1px solid #2d2d2d', flexShrink: 0, background: '#252526' }}>
+              {/* Back button — height matches the right panel's toolbar exactly */}
+              <div style={{ height: 48, padding: '0 16px', display: 'flex', alignItems: 'center', borderBottom: '1px solid #2d2d2d', flexShrink: 0, background: '#252526', boxSizing: 'border-box' }}>
                 <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, padding: 0 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                   Back to Problems
@@ -670,14 +670,6 @@ const ProblemStatement = () => {
                             </div>
                           </div>
                         ))}
-                        <div style={{ marginTop: 8, paddingBottom: 16 }}>
-                          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 8 }}>Constraints:</div>
-                          <ul style={{ paddingLeft: 16, margin: 0 }}>
-                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: 4, fontFamily: 'monospace' }}>2 &lt;= nums.length &lt;= 10⁴</li>
-                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', marginBottom: 4, fontFamily: 'monospace' }}>-10⁹ &lt;= nums[i] &lt;= 10⁹</li>
-                            <li style={{ fontSize: '0.72rem', color: '#9ca3af', fontFamily: 'monospace' }}>Only one valid answer exists.</li>
-                          </ul>
-                        </div>
                       </div>
 
                       {/* Comments overlay — slides over blurred description */}
@@ -700,8 +692,8 @@ const ProblemStatement = () => {
                 })()}
               </div>
 
-              {/* Bottom tabs */}
-              <div style={{ borderTop: '1px solid #2d2d2d', display: 'flex', flexShrink: 0, background: '#252526' }}>
+              {/* Bottom tabs — height matches the right panel's action bar exactly */}
+              <div style={{ height: 46, borderTop: '1px solid #2d2d2d', display: 'flex', flexShrink: 0, background: '#252526', boxSizing: 'border-box' }}>
                 {([
                   { key: 'description', icon: <FiFileText size={13}/>, label: 'Description' },
                   { key: 'discussion',  icon: <FiMessageCircle size={13}/>, label: 'Comments' },
@@ -711,11 +703,11 @@ const ProblemStatement = () => {
                     key={t.key}
                     onClick={() => setModalDescTab(modalDescTab === t.key && t.key !== 'description' ? 'description' : t.key)}
                     style={{
-                      flex: 1, padding: '10px 0', background: 'none', border: 'none',
+                      flex: 1, height: '100%', padding: 0, background: 'none', border: 'none',
                       borderBottom: modalDescTab === t.key ? '2.5px solid #ff7a00' : '2.5px solid transparent',
                       color: modalDescTab === t.key ? '#ff7a00' : '#9ca3af',
                       fontWeight: modalDescTab === t.key ? 700 : 400,
-                      fontSize: '0.75rem', cursor: 'pointer', marginBottom: -1,
+                      fontSize: '0.75rem', cursor: 'pointer', marginBottom: -1, boxSizing: 'border-box',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
                     }}
                   >{t.icon}{t.label}</button>
@@ -726,13 +718,13 @@ const ProblemStatement = () => {
             {/* ── RIGHT: Code Editor ── */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', background: '#1e1e1e' }}>
 
-              {/* Toolbar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', borderBottom: '1px solid #2d2d2d', background: '#252526', flexShrink: 0 }}>
+              {/* Toolbar — height matches the left panel's back-button bar exactly */}
+              <div style={{ height: 48, display: 'flex', alignItems: 'center', gap: 10, padding: '0 16px', borderBottom: '1px solid #2d2d2d', background: '#252526', flexShrink: 0, boxSizing: 'border-box' }}>
 
                 <div style={{ flex: 1 }} />
 
                 {/* Language dropdown */}
-                <Dropdown>
+                <Dropdown style={{ display: 'flex', alignItems: 'center', height: 36, marginTop: 6 }}>
                   <Dropdown.Toggle
                     className="coding-toolbar-btn"
                     bsPrefix="btn"
@@ -778,8 +770,8 @@ const ProblemStatement = () => {
                 <CodeEditor language={language} value={code} onChange={setCode} />
               </div>
 
-              {/* Action bar */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderTop: '1px solid #2d2d2d', background: '#252526', flexShrink: 0 }}>
+              {/* Action bar — height matches the left panel's bottom tabs exactly */}
+              <div style={{ height: 46, display: 'flex', alignItems: 'center', gap: 6, padding: '0 16px', borderTop: '1px solid #2d2d2d', background: '#252526', flexShrink: 0, boxSizing: 'border-box' }}>
                 <button onClick={handleRun} disabled={loading}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 7, border: '1px solid #444', background: '#3c3c3c', color: loading ? '#888' : '#d4d4d4', fontSize: '0.75rem', fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer' }}>
                   {loading ? <span className="spinner-border spinner-border-sm" style={{ width: 12, height: 12, borderColor: '#888', borderTopColor: '#888' }} /> : (

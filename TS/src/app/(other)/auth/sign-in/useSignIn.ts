@@ -67,6 +67,19 @@ const redirectUser = (role: string) => {
       navigate('/hr/dashboard', { replace: true })
       break
 
+    case 'hrinterviewer':
+    case 'hrroundinterviewer':
+      navigate('/hr/my-interviews', { replace: true })
+      break
+
+    case 'hiringmanager':
+      navigate('/hr/hiring-manager/dashboard', { replace: true })
+      break
+
+    case 'hroperations':
+      navigate('/hr/operations', { replace: true })
+      break
+
     default:
       navigate('/auth/sign-in', { replace: true })
   }

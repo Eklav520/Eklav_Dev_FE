@@ -1,7 +1,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { IconType } from 'react-icons'
-import { FiMenu, FiLogOut, FiBell } from 'react-icons/fi'
+import { FiMenu, FiLogOut, FiBell, FiChevronDown } from 'react-icons/fi'
 
 import { HR_MENU_ITEMS } from '@/assets/data/menu-items'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -18,29 +18,38 @@ type MenuItemTypeLocal = {
   [k: string]: any
 }
 
-const SIDEBAR_BG = '#0f1a2e'
-const SIDEBAR_ACTIVE = '#1e3a5f'
+const SIDEBAR_BG = '#0d1117'
+const SIDEBAR_ACTIVE = 'rgba(255,122,0,0.15)'
 const SIDEBAR_HOVER = '#162440'
 const SIDEBAR_TEXT = '#c8d6e8'
 const SIDEBAR_ACTIVE_TEXT = '#ffffff'
-const ACCENT = '#3b82f6'
+const ACCENT = '#ff7a00'
 const TOP_NAV_BG = '#ffffff'
 const MAIN_BG = '#f1f5f9'
 
 const HRLayout = ({ children }: ChildrenType) => {
   const { width } = useViewPort()
   const isDesktop = width >= 1200
-  const { user, removeSession } = useAuthContext()
+  const { user, removeSession, refreshUser } = useAuthContext()
   const location = useLocation()
+  const visibleMenuItems = (HR_MENU_ITEMS as MenuItemTypeLocal[]).filter(m => m.key !== 'hr-my-interviews')
 
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const [isHovering, setIsHovering] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
   const isSidebarExpanded = !isCollapsed || isHovering
   const sidebarWidth = isSidebarExpanded ? '260px' : '72px'
 
-  const userName = (user as any)?.name || (user as any)?.fullName || 'HR'
+  // Pull the latest name/email from the profile API on mount
+  useEffect(() => {
+    refreshUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const userName = (user as any)?.fullName || (user as any)?.name || 'HR'
+  const userEmail = (user as any)?.email || ''
   const initials = userName.slice(0, 2).toUpperCase()
 
   // Force light background — the global CSS sets body to black for the dark theme
@@ -147,7 +156,7 @@ const HRLayout = ({ children }: ChildrenType) => {
       {expanded && (
         <div style={{ padding: '12px 16px 8px', flexShrink: 0 }}>
           <div style={{
-            background: 'rgba(59,130,246,0.15)', borderRadius: 6,
+            background: 'rgba(255,122,0,0.15)', borderRadius: 6,
             padding: '6px 10px', display: 'inline-flex', alignItems: 'center', gap: 6,
           }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT }} />
@@ -164,7 +173,7 @@ const HRLayout = ({ children }: ChildrenType) => {
         display: 'flex', flexDirection: 'column',
         justifyContent: expanded ? 'flex-start' : 'space-evenly',
       }}>
-        {renderMenuItems(HR_MENU_ITEMS as MenuItemTypeLocal[], expanded)}
+        {renderMenuItems(visibleMenuItems, expanded)}
       </nav>
 
       {/* User footer */}
@@ -179,7 +188,7 @@ const HRLayout = ({ children }: ChildrenType) => {
       }}>
         <div style={{
           width: 34, height: 34, borderRadius: '50%',
-          background: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
+          background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontWeight: 700, fontSize: '0.8rem', flexShrink: 0,
         }}>
@@ -191,7 +200,9 @@ const HRLayout = ({ children }: ChildrenType) => {
               <div style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {userName}
               </div>
-              <div style={{ fontSize: '0.72rem', color: SIDEBAR_TEXT }}>HR Recruiter</div>
+              <div style={{ fontSize: '0.72rem', color: SIDEBAR_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail || 'HR Recruiter'}
+              </div>
             </div>
             <button
               onClick={() => removeSession()}
@@ -283,7 +294,7 @@ const HRLayout = ({ children }: ChildrenType) => {
               HR Portal
             </div>
             <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-              {HR_MENU_ITEMS.find(m => isActive(m.url))?.label || 'Dashboard'}
+              {visibleMenuItems.find(m => isActive(m.url))?.label || 'Dashboard'}
             </div>
           </div>
 
@@ -296,13 +307,61 @@ const HRLayout = ({ children }: ChildrenType) => {
             }}>
               <FiBell size={16} />
             </button>
-            <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #60a5fa)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: '0.78rem',
-            }}>
-              {initials}
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setUserDropdownOpen(p => !p)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '5px 10px 5px 5px', borderRadius: 40,
+                  border: '1px solid #e2e8f0', background: '#fff',
+                  cursor: 'pointer', userSelect: 'none',
+                }}
+              >
+                <div style={{
+                  width: 34, height: 34, borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontWeight: 700, fontSize: '0.78rem', flexShrink: 0,
+                }}>
+                  {initials}
+                </div>
+                <div style={{ textAlign: 'left', maxWidth: 140 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userName}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {userEmail}
+                  </div>
+                </div>
+                <FiChevronDown size={14} color="#94a3b8" style={{ transition: 'transform 0.2s', transform: userDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+              </div>
+
+              {userDropdownOpen && (
+                <>
+                  <div onClick={() => setUserDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0, minWidth: 180,
+                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 200, overflow: 'hidden',
+                  }}>
+                    <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{userName}</div>
+                      <div style={{ fontSize: '0.65rem', color: '#64748b', marginTop: 2 }}>{userEmail}</div>
+                    </div>
+                    <div style={{ padding: '4px 0' }}>
+                      <button
+                        onClick={() => { setUserDropdownOpen(false); removeSession() }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', color: '#ef4444', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                      >
+                        <FiLogOut size={14} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </header>

@@ -1144,7 +1144,7 @@ const EnglishVoicePractice: React.FC = () => {
                           <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 3, textAlign: m.sender === 'user' ? 'right' : 'left' }}>
                             {m.sender === 'user' ? 'You' : 'AI Coach'} · {time}
                           </div>
-                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: PAGE_TEXT, lineHeight: 1.65 }}>
+                          <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: '#0f172a', lineHeight: 1.65 }}>
                             {m.type === 'correction' && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
                                 <FaCheck /> Improved

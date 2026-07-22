@@ -394,12 +394,13 @@ const TodayExamCard = ({ data, onStart }: { data: TodayExamData | null; onStart:
 
 // ─── Practice Topic Card ──────────────────────────────────────────────────────
 
-const TopicCard = ({ topic, liveProgress }: { topic: PracticeTopic; liveProgress?: CategoryProgressEntry }) => {
+const TopicCard = ({ topic, liveProgress, onClick }: { topic: PracticeTopic; liveProgress?: CategoryProgressEntry; onClick?: (title: string) => void }) => {
   const progress = liveProgress ? liveProgress.progress : topic.progress
   const totalQ = liveProgress ? liveProgress.total || topic.totalQuestions : topic.totalQuestions
   const viewed = liveProgress ? liveProgress.viewed : 0
   return (
     <div
+      onClick={() => onClick?.(topic.title)}
       style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '14px 14px', display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
       onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)')}
       onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
@@ -433,7 +434,7 @@ const TopicCard = ({ topic, liveProgress }: { topic: PracticeTopic; liveProgress
 const TOPICS_PER_PAGE = 9
 
 const OverviewTab = ({
-  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData, categoryProgress, dynamicTopics,
+  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData, categoryProgress, dynamicTopics, onTopicClick,
 }: {
   todayData: TodayExamData | null
   calendarDays: CalendarDay[]
@@ -444,6 +445,7 @@ const OverviewTab = ({
   weeklyData: number[]
   categoryProgress: Record<string, CategoryProgressEntry>
   dynamicTopics: PracticeTopic[]
+  onTopicClick: (title: string) => void
 }) => {
   const [topicPage, setTopicPage] = useState(0)
   const totalPages = Math.max(1, Math.ceil(dynamicTopics.length / TOPICS_PER_PAGE))
@@ -494,7 +496,7 @@ const OverviewTab = ({
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
           {visibleTopics.map(t => (
-            <TopicCard key={t.id} topic={t} liveProgress={categoryProgress[t.title]} />
+            <TopicCard key={t.id} topic={t} liveProgress={categoryProgress[t.title]} onClick={onTopicClick} />
           ))}
         </div>
       </div>
@@ -546,6 +548,7 @@ const AptitudePage = () => {
   const token = user?.token
 
   const [activeTab, setActiveTab] = useState<NavTab>('overview')
+  const [pendingTopicTitle, setPendingTopicTitle] = useState<string | null>(null)
   const [todayData, setTodayData] = useState<TodayExamData | null>(null)
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([])
   const [calendarStats, setCalendarStats] = useState<CalendarStats | null>(null)
@@ -723,11 +726,12 @@ const AptitudePage = () => {
             weeklyData={weeklyData}
             categoryProgress={categoryProgress}
             dynamicTopics={dynamicTopics}
+            onTopicClick={title => { setPendingTopicTitle(title); setActiveTab('practice') }}
           />
         )}
 
         {activeTab === 'daily' && <DailyExam />}
-        {activeTab === 'practice' && <Bookmark onStatsUpdate={setPracticeTotal} />}
+        {activeTab === 'practice' && <Bookmark onStatsUpdate={setPracticeTotal} initialCategoryTitle={pendingTopicTitle} />}
 
 
       </div>

@@ -27,6 +27,7 @@ export interface Job {
   expiryDate: string
   isExpired: boolean
   isRead: boolean
+  isApplied?: boolean
   tag?: string
   attachments?: Array<{ fileName?: string; fileUrl?: string; mimeType?: string; size?: number }>
 }
@@ -775,7 +776,14 @@ const InterviewDetailsPageView = () => {
         show={!!selectedJob}
         onHide={() => setSelectedJob(null)}
         job={selectedJob}
-        onMarkedAsRead={(id) => setJobs(prev => prev.map(j => j._id === id ? { ...j, isRead: true } : j))}
+        onMarkedAsRead={(id) => {
+          setJobs(prev => prev.map(j => j._id === id ? { ...j, isRead: true } : j))
+          setSelectedJob(prev => prev && prev._id === id ? { ...prev, isRead: true } : prev)
+        }}
+        onApplied={(id) => {
+          setJobs(prev => prev.map(j => j._id === id ? { ...j, isApplied: true } : j))
+          setSelectedJob(prev => prev && prev._id === id ? { ...prev, isApplied: true } : prev)
+        }}
         jobs={filtered}
         onSelectJob={setSelectedJob}
         savedIds={savedIds}

@@ -60,10 +60,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [isHovering, setIsHovering] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userDropdownOpen, setUserDropdownOpen] = useState(false)
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light'
-    return (localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark') || 'light'
-  })
+  // Theme toggle is temporarily disabled (button hidden below) — force light
+  // mode regardless of a stale 'dark' value from before it was hidden, so
+  // nobody gets stuck in dark mode with no UI to switch back.
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const isDark = theme === 'dark'
   const topNavBg = isDark ? TOP_NAV_BG_DARK : TOP_NAV_BG
   const mainBg = isDark ? MAIN_BG_DARK : MAIN_BG
@@ -394,7 +394,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Theme toggle */}
+            {/* Theme toggle — temporarily disabled, will re-enable later */}
             <button
               onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
               title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -402,6 +402,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
             >
               {isDark ? <FiSun size={16} /> : <FiMoon size={16} />}
             </button>
+            
 
             <button style={{ background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary }}>
               <FiBell size={16} />

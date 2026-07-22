@@ -71,6 +71,7 @@ const SignIn = lazy(() => import('@/app/(other)/auth/sign-in/page'))
 const SignUp = lazy(() => import('@/app/(other)/auth/sign-up/page'))
 const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/page'))
 const DeleteAccountPublic = lazy(() => import('@/app/delete-account/page'))
+const HRAcceptInvitePage = lazy(() => import('@/app/hr/accept-invite/page'))
 
 //Instructor
 const InstructorDashboard = lazy(() => import('@/app/eklavadmin/dashboard/page'))
@@ -497,6 +498,11 @@ export const authRoutes: RoutesProps[] = [
     path: '/delete-account',
     name: 'Delete Account',
     element: <DeleteAccountPublic />,
+  },
+  {
+    path: '/hr/accept-invite/:token',
+    name: 'HR Accept Invite',
+    element: <HRAcceptInvitePage />,
   },
   {
     path: '/auth/sign-in',
@@ -1101,10 +1107,60 @@ export const adminRoutes: RoutesProps[] = [
 // ── HR Routes ──────────────────────────────────────────────
 const HRDashboard = lazy(() => import('@/app/hr/dashboard/page'))
 const HRJobsPage  = lazy(() => import('@/app/hr/jobs/page'))
+const HRCreateJobPage = lazy(() => import('@/app/hr/jobs/create/page'))
+const HRCandidatesPage = lazy(() => import('@/app/hr/candidates/page'))
+const HRPipelinePage = lazy(() => import('@/app/hr/pipeline/page'))
+const HRManagePipelinePage = lazy(() => import('@/app/hr/pipeline/manage/page'))
+const HRAddStagePage = lazy(() => import('@/app/hr/pipeline/stages/create/page'))
+const HRInterviewsPage = lazy(() => import('@/app/hr/interviews/page'))
+const HRTeamPage = lazy(() => import('@/app/hr/team/page'))
+const HRMyInterviewsPage = lazy(() => import('@/app/hr/my-interviews/page'))
+const HRFeedbackGivenPage = lazy(() => import('@/app/hr/my-interviews/feedback/page'))
+const HRFeedbackFormPage = lazy(() => import('@/app/hr/my-interviews/feedback-form/page'))
+const HRSchedulePage = lazy(() => import('@/app/hr/my-interviews/schedule/page'))
+const HRInterviewerCandidatesComingSoon = lazy(() => import('@/app/hr/my-interviews/candidates/page'))
+const HRReportsComingSoon = lazy(() => import('@/app/hr/my-interviews/reports/page'))
+const HRDocumentsComingSoon = lazy(() => import('@/app/hr/my-interviews/documents/page'))
+const HRInterviewerSettingsComingSoon = lazy(() => import('@/app/hr/my-interviews/settings/page'))
+const HRSettingsPage = lazy(() => import('@/app/hr/settings/page'))
+const HRCompanyProfilePage = lazy(() => import('@/app/hr/company-profile/page'))
+const HRApprovalsPage = lazy(() => import('@/app/hr/approvals/page'))
+const HROperationsPage = lazy(() => import('@/app/hr/operations/page'))
+const HMDashboardPage = lazy(() => import('@/app/hr/hiring-manager/dashboard/page'))
+const HMJobsComingSoon = lazy(() => import('@/app/hr/hiring-manager/jobs/page'))
+const HMCandidatesComingSoon = lazy(() => import('@/app/hr/hiring-manager/candidates/page'))
+const HMFeedbackComingSoon = lazy(() => import('@/app/hr/hiring-manager/feedback/page'))
+const HMReportsComingSoon = lazy(() => import('@/app/hr/hiring-manager/reports/page'))
+const HMProfileComingSoon = lazy(() => import('@/app/hr/hiring-manager/profile/page'))
 
 export const hrRoutes: RoutesProps[] = [
-  { path: '/hr/dashboard', name: 'HR Dashboard', element: <HRDashboard /> },
-  { path: '/hr/jobs',      name: 'HR Jobs',      element: <HRJobsPage /> },
+  { path: '/hr/dashboard',   name: 'HR Dashboard',    element: <HRDashboard /> },
+  { path: '/hr/jobs',        name: 'HR Jobs',         element: <HRJobsPage /> },
+  { path: '/hr/jobs/create', name: 'HR Create Job',   element: <HRCreateJobPage /> },
+  { path: '/hr/candidates',  name: 'HR Candidates',   element: <HRCandidatesPage /> },
+  { path: '/hr/pipeline',    name: 'HR Pipeline',     element: <HRPipelinePage /> },
+  { path: '/hr/pipeline/manage',        name: 'HR Manage Pipeline', element: <HRManagePipelinePage /> },
+  { path: '/hr/pipeline/stages/create', name: 'HR Add Stage',       element: <HRAddStagePage /> },
+  { path: '/hr/interviews', name: 'HR Interviews',    element: <HRInterviewsPage /> },
+  { path: '/hr/team',       name: 'HR Team Members',  element: <HRTeamPage /> },
+  { path: '/hr/my-interviews',           name: 'HR My Interviews Dashboard', element: <HRMyInterviewsPage /> },
+  { path: '/hr/my-interviews/feedback',  name: 'HR Feedback Given',          element: <HRFeedbackGivenPage /> },
+  { path: '/hr/my-interviews/feedback-form/:interviewId', name: 'HR Feedback Form', element: <HRFeedbackFormPage /> },
+  { path: '/hr/my-interviews/schedule',  name: 'HR Interviewer Schedule',    element: <HRSchedulePage /> },
+  { path: '/hr/my-interviews/candidates', name: 'HR Interviewer Candidates', element: <HRInterviewerCandidatesComingSoon /> },
+  { path: '/hr/my-interviews/reports',   name: 'HR Interviewer Reports',     element: <HRReportsComingSoon /> },
+  { path: '/hr/my-interviews/documents', name: 'HR Interviewer Documents',   element: <HRDocumentsComingSoon /> },
+  { path: '/hr/my-interviews/settings',  name: 'HR Interviewer Settings',    element: <HRInterviewerSettingsComingSoon /> },
+  { path: '/hr/settings',   name: 'HR Settings',       element: <HRSettingsPage /> },
+  { path: '/hr/company-profile', name: 'HR Company Profile', element: <HRCompanyProfilePage /> },
+  { path: '/hr/approvals',  name: 'HR Approvals',      element: <HRApprovalsPage /> },
+  { path: '/hr/operations', name: 'HR Operations',     element: <HROperationsPage /> },
+  { path: '/hr/hiring-manager/dashboard',  name: 'Hiring Manager Dashboard',  element: <HMDashboardPage /> },
+  { path: '/hr/hiring-manager/jobs',       name: 'Hiring Manager My Jobs',    element: <HMJobsComingSoon /> },
+  { path: '/hr/hiring-manager/candidates', name: 'Hiring Manager Candidates', element: <HMCandidatesComingSoon /> },
+  { path: '/hr/hiring-manager/feedback',   name: 'Hiring Manager Feedback',   element: <HMFeedbackComingSoon /> },
+  { path: '/hr/hiring-manager/reports',    name: 'Hiring Manager Reports',    element: <HMReportsComingSoon /> },
+  { path: '/hr/hiring-manager/profile',    name: 'Hiring Manager Profile',    element: <HMProfileComingSoon /> },
 ]
 
 export const appRoutes = [...initialRoutes, ...demosRoutes, ...otherRoutes, ...pagesRoutes, ...helpRoutes,]

@@ -22,6 +22,7 @@ export interface Job {
   expiryDate: string
   isExpired: boolean
   isRead: boolean
+  isApplied?: boolean
   tag?: string
   attachments?: Array<{ fileName?: string; fileUrl?: string; mimeType?: string; size?: number }>
 }
@@ -31,6 +32,7 @@ interface Props {
   onHide: () => void
   job: Job | null
   onMarkedAsRead: (jobId: string) => void
+  onApplied?: (jobId: string) => void
   jobs?: Job[]
   onSelectJob?: (j: Job) => void
   savedIds?: Set<string>
@@ -69,7 +71,7 @@ type Tab = typeof TABS[number]
 
 // ── component ─────────────────────────────────────────────────────────────────
 const JobDetailsModal: React.FC<Props> = ({
-  show, onHide, job, onMarkedAsRead,
+  show, onHide, job, onMarkedAsRead, onApplied,
   jobs = [], onSelectJob, savedIds = new Set(), onToggleSave,
 }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -78,10 +80,12 @@ const JobDetailsModal: React.FC<Props> = ({
 
   const [activeTab, setActiveTab] = useState<Tab>('Job Details')
   const [markLoading, setMarkLoading] = useState(false)
+  const [applyLoading, setApplyLoading] = useState(false)
+  const [applyError, setApplyError] = useState('')
   const centerRef = useRef<HTMLDivElement>(null)
 
   // reset tab on job change
-  useEffect(() => { setActiveTab('Job Details') }, [job?._id])
+  useEffect(() => { setActiveTab('Job Details'); setApplyError('') }, [job?._id])
 
   // block body scroll while open
   useEffect(() => {
@@ -114,6 +118,65 @@ const JobDetailsModal: React.FC<Props> = ({
       })
       if (res.ok) onMarkedAsRead(job._id)
     } catch { /* noop */ } finally { setMarkLoading(false) }
+  }
+
+  const handleApply = async () => {
+    if (job.isApplied || applyLoading || isExpired || !token) return
+    try {
+      setApplyLoading(true)
+      setApplyError('')
+
+      // Pull the student's own profile (name, phone, skills, experience,
+      // college, resume, rank score) rather than relying on the cached
+      // session user or the job's own required-skills list — those aren't
+      // the applicant's actual data.
+      let displayName = (user as any)?.fullName || (user as any)?.username
+      let profilePhone = ''
+      let profileSkills: string[] = []
+      let profileExperience = ''
+      let profileLocation = ''
+      let profileResume = ''
+      let profileScore: number | null = null
+      try {
+        const profileRes = await fetch(`${baseURL}/profile`, { headers: { Authorization: `Bearer ${token}` } })
+        if (profileRes.ok) {
+          const profileData = await profileRes.json()
+          const profile = profileData.user ?? profileData
+          displayName = displayName || profile?.fullName || profile?.username
+          profilePhone = profile?.phoneNo || ''
+          profileSkills = Array.isArray(profile?.skills) ? profile.skills : []
+          profileExperience = profile?.experience || ''
+          profileLocation = profile?.college || ''
+          profileResume = profile?.resume || ''
+          profileScore = typeof profile?.rankScore === 'number' ? profile.rankScore : null
+        }
+      } catch { /* fall through to defaults below */ }
+      displayName = displayName || (user?.email ? user.email.split('@')[0] : 'Student')
+
+      const res = await fetch(`${baseURL}/jobs/${job._id}/apply`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: displayName,
+          email: user?.email || '',
+          phone: profilePhone,
+          skills: profileSkills,
+          experience: profileExperience,
+          location: profileLocation,
+          resumeUrl: profileResume,
+          score: profileScore,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Failed to apply')
+      }
+      onApplied?.(job._id)
+    } catch (e: any) {
+      setApplyError(e?.message || 'Failed to apply')
+    } finally {
+      setApplyLoading(false)
+    }
   }
 
   const handleShare = () => {
@@ -293,25 +356,43 @@ const JobDetailsModal: React.FC<Props> = ({
                   onClick={handleMarkRead}
                   disabled={job.isRead || markLoading || isExpired}
                   style={{
-                    background: isExpired ? '#94a3b8' : job.isRead ? '#16a34a' : '#ff7a00',
-                    border: 'none', borderRadius: 8, color: '#fff',
-                    padding: '8px 20px', fontWeight: 700, fontSize: '0.85rem',
+                    background: '#fff',
+                    border: '1px solid #e2e8f0', borderRadius: 8, color: job.isRead ? '#16a34a' : '#475569',
+                    padding: '8px 16px', fontWeight: 600, fontSize: '0.82rem',
                     cursor: (job.isRead || isExpired) ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
                     opacity: markLoading ? 0.7 : 1,
+                  }}
+                >
+                  {markLoading ? 'Marking…' : job.isRead ? '✓ Marked' : 'Mark As Read'}
+                </button>
+                <button
+                  onClick={handleApply}
+                  disabled={job.isApplied || applyLoading || isExpired}
+                  style={{
+                    background: isExpired ? '#94a3b8' : job.isApplied ? '#16a34a' : '#ff7a00',
+                    border: 'none', borderRadius: 8, color: '#fff',
+                    padding: '8px 20px', fontWeight: 700, fontSize: '0.85rem',
+                    cursor: (job.isApplied || isExpired) ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
+                    opacity: applyLoading ? 0.7 : 1,
                     transition: 'background 0.3s',
                   }}
                 >
                   {isExpired
                     ? 'Expired'
-                    : markLoading
-                    ? 'Marking…'
-                    : job.isRead
-                    ? '✓ Marked'
-                    : 'Mark As Read'}
+                    : applyLoading
+                    ? 'Applying…'
+                    : job.isApplied
+                    ? '✓ Applied'
+                    : 'Apply Now'}
                 </button>
               </div>
             </div>
+
+            {applyError && (
+              <div style={{ marginBottom: 10, fontSize: '0.78rem', color: '#dc2626' }}>{applyError}</div>
+            )}
 
             {/* Meta row */}
             <div style={{ display: 'flex', gap: 16, fontSize: '0.75rem', color: '#64748b', marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>

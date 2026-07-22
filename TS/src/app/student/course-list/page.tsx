@@ -98,9 +98,38 @@ const StatCard = ({ icon, value, label, sub, iconBg }: {
   </div>
 )
 
+// ─── Rate This Course (interactive) ────────────────────────────────────────
+
+const RateStars = ({ value, onChange, size = 13 }: { value: number; onChange: (r: number) => void; size?: number }) => {
+  const [hover, setHover] = useState(0)
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }} onMouseLeave={() => setHover(0)}>
+      {[1, 2, 3, 4, 5].map(n => (
+        <span
+          key={n}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onChange(n) }}
+          onMouseEnter={() => setHover(n)}
+          style={{ cursor: 'pointer', display: 'flex', lineHeight: 0 }}
+        >
+          {(hover || value) >= n ? <FaStar size={size} color="#f59e0b" /> : <FaRegStar size={size} color="#f59e0b" />}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+const RateThisCourse = ({ userRating, onRate }: { userRating?: number; onRate: (r: number) => void }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }} onClick={e => e.stopPropagation()}>
+    <span style={{ fontSize: '0.68rem', color: PAGE_GRAY, fontWeight: 600 }}>
+      {userRating ? 'Your rating:' : 'Rate this course:'}
+    </span>
+    <RateStars value={userRating || 0} onChange={onRate} />
+  </div>
+)
+
 // ─── Course Row ─────────────────────────────────────────────────────────────
 
-const CourseRow = ({ course }: { course: EnrolledCourse }) => {
+const CourseRow = ({ course, onRate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const pct = Math.round(course.completedLectures)
   const isCompleted = pct >= 100
@@ -192,6 +221,7 @@ const CourseRow = ({ course }: { course: EnrolledCourse }) => {
         {lastAccessed && (
           <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>Last accessed: <strong style={{ color: PAGE_GRAY }}>{lastAccessed}</strong></div>
         )}
+        <RateThisCourse userRating={course.userRating} onRate={r => onRate(course._id, r)} />
       </div>
 
       {/* Divider */}
@@ -220,7 +250,7 @@ const CourseRow = ({ course }: { course: EnrolledCourse }) => {
 
 // ─── Course Grid Card ────────────────────────────────────────────────────────
 
-const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
+const CourseGridCard = ({ course, onRate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const pct = Math.round(course.completedLectures)
   const isCompleted = pct >= 100
@@ -298,6 +328,7 @@ const CourseGridCard = ({ course }: { course: EnrolledCourse }) => {
           {lastAccessed && (
             <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 3 }}>Last: <strong style={{ color: PAGE_GRAY }}>{lastAccessed}</strong></div>
           )}
+          <RateThisCourse userRating={course.userRating} onRate={r => onRate(course._id, r)} />
         </div>
 
         {/* Button */}
@@ -355,7 +386,7 @@ const CourseListPage = () => {
       const ratingsData = ratingsRes.ok ? await ratingsRes.json() : []
 
       const ratingsMap: Record<string, number> = {}
-      ratingsData.forEach((r: any) => { ratingsMap[r.courseId] = r.rating })
+      ratingsData.forEach((r: any) => { ratingsMap[r.courseId?._id || r.courseId] = r.rating })
 
       const formatted: EnrolledCourse[] = enrolledData
         .filter((e: any) => e.courseId)
@@ -394,6 +425,29 @@ const CourseListPage = () => {
   }
 
   useEffect(() => { if (token) fetchEnrolledCourses() }, [token])
+
+  const handleRate = async (courseId: string, rating: number) => {
+    const prev = enrolledCourses
+    setEnrolledCourses(cs => cs.map(c => c._id === courseId ? { ...c, userRating: rating } : c))
+    try {
+      const res = await fetch(`${baseURL}/courses/${courseId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rating }),
+      })
+      if (!res.ok) throw new Error('Failed to submit rating')
+
+      const ratingsRes = await fetch(`${baseURL}/courses/${courseId}/ratings`)
+      if (ratingsRes.ok) {
+        const { averageRating, ratingCount } = await ratingsRes.json()
+        setEnrolledCourses(cs => cs.map(c => c._id === courseId
+          ? { ...c, courseRating: { averageRating, totalRatings: ratingCount } }
+          : c))
+      }
+    } catch {
+      setEnrolledCourses(prev)
+    }
+  }
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -547,13 +601,13 @@ const CourseListPage = () => {
         ) : viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
             {filteredCourses.map(course => (
-              <CourseGridCard key={course._id} course={course} />
+              <CourseGridCard key={course._id} course={course} onRate={handleRate} />
             ))}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filteredCourses.map(course => (
-              <CourseRow key={course._id} course={course} />
+              <CourseRow key={course._id} course={course} onRate={handleRate} />
             ))}
           </div>
         )}

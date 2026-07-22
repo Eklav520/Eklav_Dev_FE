@@ -30,6 +30,7 @@ type Category = {
 
 type Props = {
   onStatsUpdate?: (total: number) => void
+  initialCategoryTitle?: string | null
 }
 
 const COUNT = 20
@@ -252,7 +253,7 @@ const TOPIC_COLORS = [
   { bg: 'rgba(192,132,252,0.18)', color: '#c084fc' },
 ]
 
-const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
+const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -293,7 +294,12 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate }) => {
         const data = await res.json()
         const cats: Category[] = data.data || []
         setCategories(cats)
-        if (cats.length > 0) setSelectedCategory(cats[0])
+        if (cats.length > 0) {
+          const match = initialCategoryTitle
+            ? cats.find(c => c.title.toLowerCase() === initialCategoryTitle.toLowerCase())
+            : null
+          setSelectedCategory(match || cats[0])
+        }
         const total = cats.reduce((s, c) => s + c.items.reduce((si, i) => si + (i.questions?.length ?? 0), 0), 0)
         onStatsUpdate?.(total)
       } catch (err) {

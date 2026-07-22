@@ -39,6 +39,27 @@ const RoleRedirect = () => {
     return <Navigate to="/hr/dashboard" replace />
   }
 
+  // 🎤 Technical Interviewer (team member with a login-capable account)
+  if (user.role === 'hrInterviewer') {
+    return <Navigate to="/hr/my-interviews" replace />
+  }
+
+  // 🗣️ HR Interviewer — same interview/feedback mechanics as Technical
+  // Interviewer, just a separate assigned-interview queue.
+  if (user.role === 'hrRoundInterviewer') {
+    return <Navigate to="/hr/my-interviews" replace />
+  }
+
+  // ✅ Hiring Manager (approves Shortlist/Hire recommendations)
+  if (user.role === 'hiringManager') {
+    return <Navigate to="/hr/hiring-manager/dashboard" replace />
+  }
+
+  // 📋 HR Operations (post-offer processing: offers, onboarding, documents)
+  if (user.role === 'hrOperations') {
+    return <Navigate to="/hr/operations" replace />
+  }
+
   // 🚨 Unknown role fallback
   return <Navigate to="/auth/sign-in" replace />
 }

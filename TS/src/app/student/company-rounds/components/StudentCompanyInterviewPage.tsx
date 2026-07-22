@@ -250,7 +250,7 @@ const InfoBox = ({ icon, label, value }: { icon: React.ReactNode; label: string;
     <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,122,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{icon}</div>
     <div>
       <div style={{ fontSize: '0.6rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>{label}</div>
-      <div style={{ fontSize: '0.78rem', color: '#0f172a', fontWeight: 600, marginTop: 1 }}>{value}</div>
+      <div style={{ fontSize: '0.78rem', color: PAGE_TEXT, fontWeight: 600, marginTop: 1 }}>{value}</div>
     </div>
   </div>
 )
@@ -262,7 +262,7 @@ const StatRow = ({ icon, label, value }: { icon: React.ReactNode; label: string;
     </div>
     <div>
       <div style={{ fontSize: '0.6rem', color: '#94a3b8', lineHeight: 1, marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: '0.75rem', color: '#0f172a', fontWeight: 700, lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: '0.75rem', color: PAGE_TEXT, fontWeight: 700, lineHeight: 1 }}>{value}</div>
     </div>
   </div>
 )

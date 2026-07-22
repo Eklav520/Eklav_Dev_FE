@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, type RouteProps } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, type RouteProps } from 'react-router-dom'
 import {
   adminRoutes,
   appRoutes,
@@ -20,9 +20,25 @@ import OtherLayout from '@/layouts/OtherLayout'
 import TutorLayout from '@/layouts/TutorLayout'
 import InstituteAdminLayout from '@/layouts/InstituteAdminLayout'
 import HRLayout from '@/layouts/HRLayout'
+import InterviewerLayout from '@/layouts/InterviewerLayout'
+import { ChildrenType } from '@/types/component-props'
 
 import { useAuthContext } from '@/context/useAuthContext'
 import ProtectedRoute from './ProtectedRoute'
+
+// hrAdmin (Talent Acquisition) gets the full HR console; every other
+// login-capable team member role — Technical Interviewer, HR Interviewer,
+// Hiring Manager, HR Operations — shares the same scoped layout, which
+// adapts its own nav based on the role.
+const TEAM_MEMBER_ROLES = ['hrInterviewer', 'hrRoundInterviewer', 'hiringManager', 'hrOperations']
+const HRAreaLayout = ({ children, ...rest }: ChildrenType) => {
+  const { user } = useAuthContext()
+  const role = (user as any)?.role
+  if (TEAM_MEMBER_ROLES.includes(role)) {
+    return <InterviewerLayout>{children}</InterviewerLayout>
+  }
+  return <HRLayout {...rest}>{children}</HRLayout>
+}
 
 const AppRouter = (props: RouteProps) => {
 
@@ -151,20 +167,27 @@ const AppRouter = (props: RouteProps) => {
         />
       ))}
 
-      {/* HR Routes */}
-      {(hrRoutes || []).map((route, idx) => (
-        <Route
-          key={idx + route.name}
-          path={route.path}
-          element={
-            <ProtectedRoute allowedRoles={['hrAdmin']}>
-              <HRLayout {...props}>
-                {route.element}
-              </HRLayout>
-            </ProtectedRoute>
-          }
-        />
-      ))}
+      {/* HR Routes — nested under one persistent layout instance via <Outlet/>,
+          so switching between HR pages doesn't unmount/remount the sidebar
+          (which looked like a full page refresh). */}
+      <Route
+        path="/hr/*"
+        element={
+          <ProtectedRoute allowedRoles={['hrAdmin', 'hrInterviewer', 'hrRoundInterviewer', 'hiringManager', 'hrOperations']}>
+            <HRAreaLayout {...props}>
+              <Outlet />
+            </HRAreaLayout>
+          </ProtectedRoute>
+        }
+      >
+        {(hrRoutes || []).map((route, idx) => (
+          <Route
+            key={idx + route.name}
+            path={(route.path || '').replace(/^\/hr\//, '')}
+            element={route.element}
+          />
+        ))}
+      </Route>
 
       {/* System Admin */}
       {(adminRoutes || []).map((route, idx) => (
