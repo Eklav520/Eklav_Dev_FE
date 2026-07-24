@@ -22,6 +22,18 @@ const ordinal = (n: number) => {
   return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
+const timeAgo = (dateStr: string) => {
+  if (!dateStr) return ''
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
+}
+
 const ChatBox = lazy(() => import('@/layouts/ChatBox'))
 
 // ── Theme constants (matches HRLayout pattern, orange accent) ──────────────
@@ -88,6 +100,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [allowedNavKeys, setAllowedNavKeys] = useState<string[] | null>(null)
   const [featureRules, setFeatureRules] = useState<{ feature: string; denyYears?: string[]; denyBranches?: string[] }[]>([])
   const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
+  const [announcements, setAnnouncements] = useState<any[]>([])
+  const [hrJobs, setHrJobs] = useState<any[]>([])
+  const [notifOpen, setNotifOpen] = useState(false)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const hostname = window.location.hostname
@@ -158,6 +173,24 @@ const StudentLayout = ({ children }: ChildrenType) => {
       })
       .catch(() => {})
   }, [isMainDomain, hostname, baseURL])
+
+  // Notification bell — announcements + latest jobs, shared across every
+  // student page (not just the dashboard) since the bell lives in this layout.
+  useEffect(() => {
+    const token = user?.token
+    if (!baseURL || !token) return
+    const h = { Authorization: `Bearer ${token}` }
+    Promise.allSettled([
+      fetch(`${baseURL}/api/institute/announcements`, { headers: h }).then(r => r.json()),
+      fetch(`${baseURL}/jobs/student`, { headers: h }).then(r => r.json()),
+    ]).then(([annR, jobR]) => {
+      if (annR.status === 'fulfilled') setAnnouncements((annR.value?.data || []).slice(0, 3))
+      if (jobR.status === 'fulfilled') {
+        const raw: any[] = Array.isArray(jobR.value) ? jobR.value : (jobR.value?.data || jobR.value?.jobs || [])
+        setHrJobs(raw.filter((j: any) => !j.isExpired).slice(0, 3))
+      }
+    }).catch(() => {})
+  }, [baseURL, user?.token])
 
   // Close mobile on route change
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
@@ -404,9 +437,59 @@ const StudentLayout = ({ children }: ChildrenType) => {
             </button>
             
 
-            <button style={{ background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary }}>
-              <FiBell size={16} />
-            </button>
+            {/* Notification bell — announcements + latest jobs */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setNotifOpen(p => !p)}
+                style={{ position: 'relative', background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary }}
+              >
+                <FiBell size={16} />
+                {(announcements.length + hrJobs.length) > 0 && (
+                  <span style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', color: '#fff', fontSize: '0.58rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
+                    {Math.min(announcements.length + hrJobs.length, 9)}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <>
+                  <div onClick={() => setNotifOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                  <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 300, background: cardBg, border: `1px solid ${navBorder}`, borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 200, overflow: 'hidden', maxHeight: 360, overflowY: 'auto' }}>
+                    {announcements.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 14px 4px' }}>Announcements</div>
+                        {announcements.map((a, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${navBorder}` }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ff7a00', flexShrink: 0, marginTop: 5 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
+                              <div style={{ fontSize: '0.65rem', color: textSecondary }}>{a.description?.replace(/<[^>]+>/g, '').slice(0, 45)}...</div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {hrJobs.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 14px 4px' }}>Latest Jobs</div>
+                        {hrJobs.map((job, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${navBorder}` }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
+                              <div style={{ fontSize: '0.65rem', color: textSecondary }}>{job.company}{job.location ? ` · ${job.location.trim()}` : ''}</div>
+                            </div>
+                            <div style={{ fontSize: '0.6rem', color: '#94a3b8', flexShrink: 0 }}>{timeAgo(job.postedDate)}</div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {announcements.length === 0 && hrJobs.length === 0 && (
+                      <div style={{ padding: '20px 14px', fontSize: '0.78rem', color: textSecondary, textAlign: 'center' }}>No new notifications</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* User pill + dropdown */}
             <div style={{ position: 'relative' }}>

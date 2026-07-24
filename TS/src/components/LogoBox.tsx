@@ -54,10 +54,11 @@ const LogoBox = ({ height, width, role, tenant: tenantProp, alwaysDark = false }
 
   const isDefaultEklav = tenantName.toLowerCase() === "eklav"
 
-  // 🔹 Safe name split
+  // 🔹 Safe name split — preserve the tenant name's casing as stored in the
+  // DB (only the very first letter is forced uppercase for the brand mark).
   const firstPart =
     tenantName.length > 1
-      ? tenantName.charAt(0).toUpperCase() + tenantName.charAt(1).toLowerCase()
+      ? tenantName.charAt(0).toUpperCase() + tenantName.charAt(1)
       : tenantName.charAt(0).toUpperCase()
 
   const restPart = tenantName.slice(2)

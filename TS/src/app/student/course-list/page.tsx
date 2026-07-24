@@ -356,6 +356,7 @@ const CourseListPage = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
   const [sortBy, setSortBy] = useState('Recent Access')
   const [searchTerm, setSearchTerm] = useState('')
+  const [myRank, setMyRank] = useState<{ rank: number | null; total: number } | null>(null)
 
   const inProgressCourses = enrolledCourses.filter(c => c.completedLectures > 0 && c.completedLectures < 100)
   const completedCourses = enrolledCourses.filter(c => c.completedLectures >= 100)
@@ -377,13 +378,18 @@ const CourseListPage = () => {
 
   const fetchEnrolledCourses = async () => {
     try {
-      const [enrollRes, ratingsRes] = await Promise.all([
+      const [enrollRes, ratingsRes, rankRes] = await Promise.all([
         fetch(`${baseURL}/enrollments/me`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${baseURL}/courses/ratings/my-ratings`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${baseURL}/courses/my-course-rank`, { headers: { Authorization: `Bearer ${token}` } }),
       ])
       if (!enrollRes.ok) throw new Error('Failed to fetch enrollments')
       const enrolledData = await enrollRes.json()
       const ratingsData = ratingsRes.ok ? await ratingsRes.json() : []
+      if (rankRes.ok) {
+        const rankData = await rankRes.json()
+        setMyRank({ rank: rankData.rank ?? null, total: rankData.total ?? 0 })
+      }
 
       const ratingsMap: Record<string, number> = {}
       ratingsData.forEach((r: any) => { ratingsMap[r.courseId?._id || r.courseId] = r.rating })
@@ -469,11 +475,13 @@ const CourseListPage = () => {
     </div>
   )
 
+  // Counts live only in the Stats Row cards below — the tabs themselves
+  // don't repeat them, to avoid showing the same numbers twice on screen.
   const tabs = [
-    { key: 'all', label: `All Courses (${enrolledCourses.length})` },
-    { key: 'inprogress', label: `In Progress (${inProgressCourses.length})` },
-    { key: 'completed', label: `Completed (${completedCourses.length})` },
-    { key: 'wishlist', label: 'Wishlist (0)' },
+    { key: 'all', label: 'All Courses' },
+    { key: 'inprogress', label: 'In Progress' },
+    { key: 'completed', label: 'Completed' },
+    { key: 'wishlist', label: 'Wishlist' },
   ] as const
 
   return (
@@ -574,9 +582,9 @@ const CourseListPage = () => {
           />
           <StatCard
             icon={<FaTrophy size={20} color="#eab308" />}
-            value="—"
+            value={myRank?.rank ? `#${myRank.rank}` : '—'}
             label="Your Rank"
-            sub="Keep going!"
+            sub={myRank?.rank ? `Out of ${myRank.total} · by time & completions` : 'Enroll & learn to get ranked!'}
             iconBg="rgba(234,179,8,0.1)"
           />
         </div>

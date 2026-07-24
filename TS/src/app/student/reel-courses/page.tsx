@@ -204,25 +204,6 @@ export default function ReelCoursesPage() {
         </div>
       </div>
 
-      {/* ── Category Pills ── */}
-      <div style={{ overflowX: "auto", padding: "4px 20px 14px" }}>
-        <div style={{ display: "flex", gap: 8, width: "max-content" }}>
-          {categories.map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)} style={{
-              padding: "6px 16px", borderRadius: 22,
-              border: activeCategory === cat ? "none" : `1px solid ${PAGE_BORDER}`,
-              background: activeCategory === cat ? ORANGE : CARD_BG,
-              color: activeCategory === cat ? "#fff" : PAGE_TEXT,
-              cursor: "pointer", fontSize: 12,
-              fontWeight: activeCategory === cat ? 700 : 500,
-              whiteSpace: "nowrap", outline: "none",
-            }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* ── Hero Banner ── */}
       <div style={{ margin: "0 20px 22px", borderRadius: 22, overflow: "hidden", position: "relative", minHeight: 190,
         background: "linear-gradient(120deg, #fffaf5 0%, #fff3e0 55%, #ffe0b2 100%)" }}>
@@ -264,6 +245,25 @@ export default function ReelCoursesPage() {
           <span><strong style={{ color: ORANGE }}>Trial access:</strong> 1 free course. Enroll to unlock all.</span>
         </div>
       )}
+
+      {/* ── Category Pills ── */}
+      <div style={{ overflowX: "auto", overflowY: "hidden", padding: "4px 20px 14px" }}>
+        <div style={{ display: "flex", gap: 8, width: "max-content" }}>
+          {categories.map(cat => (
+            <button key={cat} onClick={() => setActiveCategory(cat)} style={{
+              padding: "6px 16px", borderRadius: 22,
+              border: activeCategory === cat ? "none" : `1px solid ${PAGE_BORDER}`,
+              background: activeCategory === cat ? ORANGE : CARD_BG,
+              color: activeCategory === cat ? "#fff" : PAGE_TEXT,
+              cursor: "pointer", fontSize: 12,
+              fontWeight: activeCategory === cat ? 700 : 500,
+              whiteSpace: "nowrap", outline: "none",
+            }}>
+              {cat}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* ── Section Title ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 20px 16px" }}>

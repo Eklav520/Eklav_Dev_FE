@@ -353,6 +353,9 @@ const StudentCompanyInterviewPage = () => {
         const fetched = data.data || []
         setCompanies(fetched)
         if (!freeCompanyIdRef.current && fetched.length > 0) freeCompanyIdRef.current = fetched[0]._id
+        // Default to the first company in the list on initial load so the
+        // detail panel isn't empty before the student clicks anything.
+        if (!hasLoadedOnce && fetched.length > 0) setSelectedCompany(fetched[0])
         setTotalPages(Math.max(1, data.pagination?.pages || 1))
         setTotalCompanies(data.pagination?.total ?? fetched.length)
       } catch (err: any) {
@@ -582,16 +585,11 @@ const StudentCompanyInterviewPage = () => {
           </div>
           <div style={{
             background: 'rgba(255,122,0,0.05)', border: '1px solid rgba(255,122,0,0.18)',
-            borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'flex-start', gap: 10,
+            borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10,
             maxWidth: 300, flexShrink: 0,
           }}>
             <FiZap size={18} color="#ff7a00" style={{ flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
-              <div style={{ fontSize: '0.68rem', color: PAGE_GRAY, marginTop: 2, lineHeight: 1.5 }}>
-                Practice company based mock interviews and track your performance.
-              </div>
-            </div>
+            <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
           </div>
         </div>
 

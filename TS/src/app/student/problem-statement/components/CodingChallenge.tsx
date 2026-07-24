@@ -257,7 +257,7 @@ const ProblemStatement = () => {
 
   if (loadingProblems) {
     return (
-      <Container className="p-5 text-center text-muted">
+      <Container className="p-5 text-center">
         <div
           className="spinner-border"
           role="status"
@@ -265,7 +265,7 @@ const ProblemStatement = () => {
         >
           <span className="visually-hidden">Loading problem...</span>
         </div>
-        <p className="mt-2">Loading problem statement…</p>
+        <p className="mt-2" style={{ color: '#64748b' }}>Loading problem statement…</p>
       </Container>
     )
   }

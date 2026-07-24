@@ -123,12 +123,12 @@ const StatCard = ({ iconBg, icon, label, value, customValue, sub }: {
   iconBg: string; icon: React.ReactNode; label: string
   value: string | null; customValue?: React.ReactNode; sub?: React.ReactNode
 }) => (
-  <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 13 }}>
+  <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 20px', display: 'flex', alignItems: 'center', gap: 14, height: '100%', boxSizing: 'border-box', minWidth: 0 }}>
     <div style={{ width: 46, height: 46, background: iconBg, borderRadius: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       {icon}
     </div>
-    <div>
-      <div style={{ fontSize: '0.71rem', color: GRAY, marginBottom: 3, fontWeight: 500 }}>{label}</div>
+    <div style={{ minWidth: 0 }}>
+      <div style={{ fontSize: '0.71rem', color: GRAY, marginBottom: 3, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
       {customValue || (
         <div style={{ fontSize: '1.9rem', fontWeight: 800, color: TEXT, lineHeight: 1.1, marginBottom: 4, whiteSpace: 'nowrap' }}>{value}</div>
       )}
@@ -414,7 +414,7 @@ const StudentDashboardUpdated: React.FC = () => {
   }
 
   return (
-    <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif', overflowX: 'hidden' }}>
       <style>{`
         .sd-tab-btn { background: none; border: none; cursor: pointer; padding: 8px 16px; font-size: 0.82rem; font-weight: 500; color: ${GRAY}; border-bottom: 2px solid transparent; transition: all 0.15s; }
         .sd-tab-btn.active { color: ${ORANGE}; border-bottom-color: ${ORANGE}; font-weight: 700; }
@@ -433,70 +433,43 @@ const StudentDashboardUpdated: React.FC = () => {
         .sd-ann-row:last-child { border-bottom: none; }
         .sd-course-row { margin-bottom: 12px; }
         .sd-badge-card { background: ${PAGE_BG}; border: 1px solid ${BORDER}; border-radius: 10px; padding: 12px; text-align: center; flex: 1; }
-        .sd-notif-dropdown { position: absolute; top: calc(100% + 8px); right: 0; width: 300px; background: ${CARD_BG}; border: 1px solid ${BORDER}; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200; opacity: 0; pointer-events: none; transform: translateY(-6px); transition: opacity 0.15s, transform 0.15s; overflow: hidden; }
-        .sd-notif-wrap:hover .sd-notif-dropdown { opacity: 1; pointer-events: auto; transform: translateY(0); }
       `}</style>
 
       {/* ── HEADER ── */}
-      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '18px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: TEXT }}>
-            {getGreeting()}, {firstName}! 👋
-          </h1>
-          <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: GRAY }}>
-            Let's learn, practice and achieve your career goals today.
-          </p>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '18px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, color: TEXT, whiteSpace: 'nowrap' }}>
+              {getGreeting()}, {firstName}! 👋
+            </h1>
+            <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: GRAY, whiteSpace: 'nowrap' }}>
+              Let's learn, practice and achieve your career goals today.
+            </p>
+          </div>
+
+          {/* Profile Completed — compact, beside the greeting */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff7ed', border: `1px solid ${ORANGE}33`, borderRadius: 10, padding: '6px 14px 6px 8px', flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
+              <svg width="34" height="34">
+                <circle cx="17" cy="17" r="14" fill="none" stroke="#fde8cc" strokeWidth="4" />
+                <circle cx="17" cy="17" r="14" fill="none" stroke={ORANGE} strokeWidth="4"
+                  strokeDasharray={`${(completion / 100) * 2 * Math.PI * 14} ${2 * Math.PI * 14}`}
+                  strokeDashoffset={2 * Math.PI * 14 * 0.25} strokeLinecap="round" />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '0.56rem', fontWeight: 800, color: TEXT }}>{completion}%</span>
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.76rem', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap' }}>Profile Completed</div>
+              <div style={{ fontSize: '0.66rem', color: GRAY, whiteSpace: 'nowrap' }}>Complete it to unlock recommendations</div>
+            </div>
+            <Link to="/student/edit-profile" style={{ fontSize: '0.72rem', fontWeight: 700, color: ORANGE, textDecoration: 'none', whiteSpace: 'nowrap', marginLeft: 2 }}>
+              Complete →
+            </Link>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {/* Bell — hover notification dropdown */}
-          <div style={{ position: 'relative' }} className="sd-notif-wrap">
-            <button style={{ width: 40, height: 40, background: PAGE_BG, border: `1px solid ${BORDER}`, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: GRAY }}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-            </button>
-            {(announcements.length + hrJobs.length) > 0 && (
-              <div style={{ position: 'absolute', top: -5, right: -5, width: 18, height: 18, background: '#ef4444', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#fff', fontWeight: 700, border: '2px solid #fff' }}>
-                {Math.min(announcements.length + hrJobs.length, 9)}
-              </div>
-            )}
-            {/* Dropdown — visible on hover via CSS */}
-            <div className="sd-notif-dropdown">
-              {announcements.length > 0 && (
-                <>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 14px 4px' }}>Announcements</div>
-                  {announcements.map((a, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${BORDER}` }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: ORANGE, flexShrink: 0, marginTop: 5 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                        <div style={{ fontSize: '0.65rem', color: GRAY }}>{a.description?.replace(/<[^>]+>/g, '').slice(0, 45)}...</div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-              {hrJobs.length > 0 && (
-                <>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: GRAY, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 14px 4px' }}>Latest Jobs</div>
-                  {hrJobs.map((job, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${BORDER}` }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                        <div style={{ fontSize: '0.65rem', color: GRAY }}>{job.company}{job.location ? ` · ${job.location.trim()}` : ''}</div>
-                      </div>
-                      <div style={{ fontSize: '0.6rem', color: '#94a3b8', flexShrink: 0 }}>{timeAgo(job.postedDate)}</div>
-                    </div>
-                  ))}
-                </>
-              )}
-              {announcements.length === 0 && hrJobs.length === 0 && (
-                <div style={{ padding: '20px 14px', fontSize: '0.78rem', color: GRAY, textAlign: 'center' }}>No new notifications</div>
-              )}
-            </div>
-          </div>
           {/* Rank + Avg Study */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: PAGE_BG, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '0 12px', height: 40 }}>
             <BsTrophyFill size={14} color={ORANGE} />
@@ -513,30 +486,7 @@ const StudentDashboardUpdated: React.FC = () => {
       </div>
 
       {/* ── STATS ROW ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr 1fr 1fr', gap: 12, padding: '14px 28px 16px', background: CARD_BG, borderBottom: `1px solid ${BORDER}` }}>
-
-        {/* Profile Completed */}
-        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, minWidth: 250 }}>
-          <div style={{ position: 'relative', flexShrink: 0 }}>
-            <svg width="74" height="74">
-              <circle cx="37" cy="37" r="30" fill="none" stroke="#f1f5f9" strokeWidth="7" />
-              <circle cx="37" cy="37" r="30" fill="none" stroke={ORANGE} strokeWidth="7"
-                strokeDasharray={`${(completion / 100) * 2 * Math.PI * 30} ${2 * Math.PI * 30}`}
-                strokeDashoffset={2 * Math.PI * 30 * 0.25} strokeLinecap="round" />
-            </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: TEXT }}>{completion}%</span>
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: TEXT, marginBottom: 2 }}>Profile Completed</div>
-            <div style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, marginBottom: 2 }}>Almost there!</div>
-            <div style={{ fontSize: '0.67rem', color: GRAY, marginBottom: 9, lineHeight: 1.45 }}>Complete your profile to unlock<br/>personalized recommendations.</div>
-            <Link to="/student/edit-profile" style={{ background: '#fff7ed', border: `1px solid ${ORANGE}55`, color: ORANGE, borderRadius: 7, padding: '5px 12px', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              Complete Profile →
-            </Link>
-          </div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', alignItems: 'stretch', gap: 14, padding: '16px 28px 20px', background: CARD_BG, borderBottom: `1px solid ${BORDER}` }}>
 
         {/* Available Courses */}
         <StatCard
