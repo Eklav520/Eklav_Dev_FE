@@ -23,6 +23,7 @@ interface AssessmentScores {
 
 interface Student {
   _id: string
+  userId?: string
   fullName: string
   profileImage?: string
   college?: string
@@ -564,6 +565,18 @@ const StudentListPage: React.FC = () => {
   const [contactMessage, setContactMessage] = useState('')
   const [isSendingContact, setIsSendingContact] = useState(false)
 
+  // Bulk promotional messaging (email / in-app / WhatsApp) ──────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [showMessageModal, setShowMessageModal] = useState(false)
+  const [messageTargets, setMessageTargets] = useState<Student[]>([])
+  const [messageSubject, setMessageSubject] = useState('')
+  const [messageBody, setMessageBody] = useState('')
+  const [messageType, setMessageType] = useState<'custom' | 'subscription' | 'job'>('custom')
+  const [messageChannels, setMessageChannels] = useState<{ email: boolean; inApp: boolean }>({ email: true, inApp: true })
+  const [subscriptionPlans, setSubscriptionPlans] = useState<{ key: string; label: string; priceRupees: number }[]>([])
+  const [latestJobs, setLatestJobs] = useState<{ _id: string; title: string; company?: string; location?: string; salary?: string }[]>([])
+  const [sendResult, setSendResult] = useState<{ emailSent: number; emailFailed: number } | null>(null)
+
   // User audit: non-students + students without profile
   const [auditData, setAuditData] = useState<{
     nonStudents: { _id: string; name: string; email: string; role: string; status: string; createdAt: string }[]
@@ -742,13 +755,24 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
     XLSX.writeFile(workbook, fileName)
   }
 
-  // Send Contact Message
+  // Send Contact Message (kept for the single-student "phone icon" flow —
+  // delegates to the same bulk-send endpoint with a single target)
   const handleSendContact = async () => {
     if (!selectedStudent || !contactMessage.trim()) return
     setIsSendingContact(true)
     try {
-      // Here you can integrate with your email/SMS service
-      console.log(`Sending to ${selectedStudent.email}: ${contactMessage}`)
+      const res = await fetch(`${baseURL}/admin/student-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+        body: JSON.stringify({
+          studentIds: [selectedStudent.userId || selectedStudent._id],
+          subject: 'Message from Eklav',
+          body: contactMessage,
+          channels: ['email', 'in-app'],
+          messageType: 'custom',
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to send message')
       alert(`Message sent to ${selectedStudent.fullName}`)
       setContactMessage('')
       setShowContactModal(false)
@@ -758,6 +782,116 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
     } finally {
       setIsSendingContact(false)
     }
+  }
+
+  // ── Bulk promotional messaging ──────────────────────────────────────────
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllVisible = (visible: Student[]) => {
+    setSelectedIds(prev => {
+      const allSelected = visible.length > 0 && visible.every(s => prev.has(s._id))
+      if (allSelected) {
+        const next = new Set(prev)
+        visible.forEach(s => next.delete(s._id))
+        return next
+      }
+      const next = new Set(prev)
+      visible.forEach(s => next.add(s._id))
+      return next
+    })
+  }
+
+  const fetchSubscriptionPlans = async () => {
+    try {
+      const res = await fetch(`${baseURL}/admin/promo/subscription-plans`, { headers: { Authorization: `Bearer ${user?.token}` } })
+      const data = await res.json()
+      if (data.success) setSubscriptionPlans(data.plans)
+    } catch { /* silent — quick-fill just won't populate */ }
+  }
+
+  const fetchLatestJobs = async () => {
+    try {
+      const res = await fetch(`${baseURL}/jobs/student`, { headers: { Authorization: `Bearer ${user?.token}` } })
+      const data = await res.json()
+      if (data.success) setLatestJobs((data.data || []).slice(0, 8))
+    } catch { /* silent */ }
+  }
+
+  const openMessageModal = (targets: Student[]) => {
+    setMessageTargets(targets)
+    setMessageType('custom')
+    setMessageSubject('')
+    setMessageBody('')
+    setSendResult(null)
+    setShowMessageModal(true)
+    fetchSubscriptionPlans()
+    fetchLatestJobs()
+  }
+
+  const applySubscriptionTemplate = (plan: { key: string; label: string; priceRupees: number }) => {
+    setMessageType('subscription')
+    setMessageSubject(`🎉 Special Offer: ${plan.label}`)
+    setMessageBody(`We have an exciting offer on our ${plan.label} plan — just ₹${plan.priceRupees}!\n\nUpgrade now to unlock premium courses, mock interviews, and placement support.\n\nDon't miss out — subscribe today!`)
+  }
+
+  const applyJobTemplate = (job: { title: string; company?: string; location?: string; salary?: string }) => {
+    setMessageType('job')
+    setMessageSubject(`💼 New Job Opening: ${job.title}`)
+    setMessageBody(`A new opportunity is live on Eklav!\n\n${job.title}${job.company ? ` at ${job.company}` : ''}${job.location ? `\nLocation: ${job.location}` : ''}${job.salary ? `\nSalary: ${job.salary}` : ''}\n\nApply now before it closes!`)
+  }
+
+  const handleSendBulkMessage = async () => {
+    if (messageTargets.length === 0 || !messageSubject.trim() || !messageBody.trim()) return
+    setIsSendingContact(true)
+    setSendResult(null)
+    try {
+      const channels = [
+        ...(messageChannels.email ? ['email'] : []),
+        ...(messageChannels.inApp ? ['in-app'] : []),
+      ]
+      const res = await fetch(`${baseURL}/admin/student-messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+        body: JSON.stringify({
+          studentIds: messageTargets.map(s => s.userId || s._id),
+          subject: messageSubject,
+          body: messageBody,
+          channels,
+          messageType,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to send message')
+      const data = await res.json()
+      setSendResult({ emailSent: data.emailSent, emailFailed: data.emailFailed })
+    } catch (error) {
+      console.error('Error sending bulk message:', error)
+      alert('Failed to send message')
+    } finally {
+      setIsSendingContact(false)
+    }
+  }
+
+  // Normalizes whatever format phoneNo happens to be stored in (bare 10-digit,
+  // leading-0 local format, already-prefixed with country code, etc.) into
+  // the digits-only "<countrycode><number>" wa.me expects — a raw 10-digit
+  // number without a country code silently opens the wrong/no chat.
+  const normalizeWhatsAppNumber = (raw: string) => {
+    let digits = (raw || '').replace(/[^0-9]/g, '')
+    digits = digits.replace(/^0+/, '') // strip a locally-dialled leading 0
+    if (digits.length === 10) digits = `91${digits}` // bare local number — assume India
+    return digits
+  }
+
+  const openWhatsApp = (student: Student) => {
+    const phone = normalizeWhatsAppNumber(student.phoneNo)
+    if (!phone) { alert(`No phone number on file for ${student.fullName}`); return }
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(`${messageSubject}\n\n${messageBody}`)}`, '_blank')
   }
 
   if (loading) {
@@ -805,6 +939,17 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
             </p>
           </div>
           <div className="d-flex gap-2 flex-wrap">
+            {selectedIds.size > 0 && (
+              <Button
+                variant="orange"
+                size="sm"
+                className="btn-orange"
+                onClick={() => openMessageModal(students.filter(s => selectedIds.has(s._id)))}
+              >
+                <FaRegEnvelope className="me-2" />
+                Message Selected ({selectedIds.size})
+              </Button>
+            )}
             <Button
               variant="outline-secondary"
               size="sm"
@@ -1085,7 +1230,14 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
               <table className="table table-dark table-hover mb-0 align-middle">
                 <thead style={{ borderBottom: '2px solid #3a3a3a' }}>
                   <tr>
-                    <th className="text-muted ps-3" style={{ width: 50 }}>#</th>
+                    <th className="ps-3" style={{ width: 36 }}>
+                      <Form.Check
+                        type="checkbox"
+                        checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedIds.has(s._id))}
+                        onChange={() => toggleSelectAllVisible(paginatedStudents)}
+                      />
+                    </th>
+                    <th className="text-muted" style={{ width: 50 }}>#</th>
                     <th
                       className="text-muted sortable-th"
                       onClick={() => handleSortColumn('name')}
@@ -1128,7 +1280,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                 <tbody>
                   {paginatedStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="text-center text-muted py-5">
+                      <td colSpan={9} className="text-center text-muted py-5">
                         <FaUserGraduate size={32} className="mb-3 d-block mx-auto opacity-25" />
                         No students found matching your filters
                       </td>
@@ -1136,7 +1288,14 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                   ) : (
                     paginatedStudents.map((student, idx) => (
                       <tr key={student._id} style={{ borderBottom: '1px solid #2a2a2a' }}>
-                        <td className="text-muted ps-3 small">
+                        <td className="ps-3" onClick={e => e.stopPropagation()}>
+                          <Form.Check
+                            type="checkbox"
+                            checked={selectedIds.has(student._id)}
+                            onChange={() => toggleSelect(student._id)}
+                          />
+                        </td>
+                        <td className="text-muted small">
                           {(currentPage - 1) * studentsPerPage + idx + 1}
                         </td>
                         <td>
@@ -1318,6 +1477,129 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
               Send Message
             </Button>
           </div>
+        </Modal.Body>
+      </Modal>
+
+      {/* Bulk Promotional Message Modal */}
+      <Modal show={showMessageModal} onHide={() => setShowMessageModal(false)} centered size="lg" className="contact-modal">
+        <div className="modal-hero-header position-relative overflow-hidden rounded-top-3" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' }}>
+          <div className="position-absolute top-0 end-0 p-3">
+            <button type="button" className="btn-close btn-close-white opacity-75" onClick={() => setShowMessageModal(false)} aria-label="Close" />
+          </div>
+          <div className="p-4 pb-3">
+            <h6 className="text-white fw-bold mb-0">Message {messageTargets.length} Student{messageTargets.length !== 1 ? 's' : ''}</h6>
+            <small className="text-white-50">Promote a subscription offer, a new job, or send a custom message</small>
+          </div>
+        </div>
+        <Modal.Body className="modal-body-dark p-4">
+          {sendResult ? (
+            <div className="text-center py-3">
+              <FaCheckCircle size={36} className="text-success mb-3" />
+              <h6 className="text-white">Message sent</h6>
+              <p className="text-muted small mb-3">
+                Email: {sendResult.emailSent} sent{sendResult.emailFailed > 0 ? `, ${sendResult.emailFailed} failed` : ''}. In-app notification delivered to all selected students.
+              </p>
+              <p className="text-muted small mb-4">
+                For WhatsApp, use the per-student buttons below — each opens a pre-filled chat you send manually.
+              </p>
+              <div className="d-flex flex-wrap gap-2 justify-content-center mb-3">
+                {messageTargets.filter(s => s.phoneNo).map(s => (
+                  <Button key={s._id} size="sm" variant="outline-success" title={`+${normalizeWhatsAppNumber(s.phoneNo)}`} onClick={() => openWhatsApp(s)}>
+                    WhatsApp {s.fullName.split(' ')[0]} ({s.phoneNo})
+                  </Button>
+                ))}
+              </div>
+              <Button size="sm" variant="outline-secondary" onClick={() => setShowMessageModal(false)}>Close</Button>
+            </div>
+          ) : (
+            <>
+              {/* Quick-fill templates */}
+              <div className="mb-3">
+                <div className="text-muted small fw-semibold mb-2">Quick fill</div>
+                <div className="d-flex flex-wrap gap-2">
+                  {subscriptionPlans.map(plan => (
+                    <Button key={plan.key} size="sm" variant={messageType === 'subscription' ? 'orange' : 'outline-secondary'}
+                      className={messageType === 'subscription' ? 'btn-orange' : ''}
+                      onClick={() => applySubscriptionTemplate(plan)}>
+                      🎉 {plan.label} — ₹{plan.priceRupees}
+                    </Button>
+                  ))}
+                  {latestJobs.slice(0, 4).map(job => (
+                    <Button key={job._id} size="sm" variant={messageType === 'job' ? 'orange' : 'outline-secondary'}
+                      className={messageType === 'job' ? 'btn-orange' : ''}
+                      onClick={() => applyJobTemplate(job)}>
+                      💼 {job.title}
+                    </Button>
+                  ))}
+                  <Button size="sm" variant={messageType === 'custom' ? 'orange' : 'outline-secondary'}
+                    className={messageType === 'custom' ? 'btn-orange' : ''}
+                    onClick={() => { setMessageType('custom'); setMessageSubject(''); setMessageBody('') }}>
+                    ✏️ Custom
+                  </Button>
+                </div>
+              </div>
+
+              <Form.Control
+                placeholder="Subject"
+                value={messageSubject}
+                onChange={e => setMessageSubject(e.target.value)}
+                className="modal-textarea mb-2"
+              />
+              <Form.Control
+                as="textarea"
+                rows={5}
+                placeholder="Type your message..."
+                value={messageBody}
+                onChange={e => setMessageBody(e.target.value)}
+                className="modal-textarea mb-3"
+              />
+
+              <div className="d-flex align-items-center gap-4 mb-3">
+                <Form.Check
+                  type="checkbox"
+                  label="Email"
+                  checked={messageChannels.email}
+                  onChange={e => setMessageChannels(c => ({ ...c, email: e.target.checked }))}
+                  className="text-white"
+                />
+                <Form.Check
+                  type="checkbox"
+                  label="In-app notification"
+                  checked={messageChannels.inApp}
+                  onChange={e => setMessageChannels(c => ({ ...c, inApp: e.target.checked }))}
+                  className="text-white"
+                />
+              </div>
+
+              {messageTargets.some(s => s.phoneNo) && (
+                <div className="mb-3">
+                  <div className="text-muted small fw-semibold mb-2">WhatsApp (opens one chat per student, sent manually)</div>
+                  <div className="d-flex flex-wrap gap-2">
+                    {messageTargets.filter(s => s.phoneNo).map(s => (
+                      <Button key={s._id} size="sm" variant="outline-success" disabled={!messageSubject.trim() && !messageBody.trim()} onClick={() => openWhatsApp(s)}>
+                        WhatsApp {s.fullName.split(' ')[0]}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="d-flex gap-2 justify-content-end">
+                <Button variant="outline-secondary" size="sm" onClick={() => setShowMessageModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="btn-orange"
+                  onClick={handleSendBulkMessage}
+                  disabled={isSendingContact || !messageSubject.trim() || !messageBody.trim() || (!messageChannels.email && !messageChannels.inApp)}
+                >
+                  {isSendingContact ? <FaSpinner className="spinner me-1" size={12} /> : null}
+                  Send to {messageTargets.length} student{messageTargets.length !== 1 ? 's' : ''}
+                </Button>
+              </div>
+            </>
+          )}
         </Modal.Body>
       </Modal>
 

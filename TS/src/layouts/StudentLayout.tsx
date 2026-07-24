@@ -9,7 +9,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import useViewPort from '@/hooks/useViewPort'
 import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
 import { ChildrenType } from '@/types/component-props'
-import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown, FiSun, FiMoon } from 'react-icons/fi'
+import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiBell, FiChevronDown, FiSun, FiMoon, FiLifeBuoy } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import logoWhite from '@/assets/images/logo_white.png'
 import logoBlack from '@/assets/images/logo_black.png'
@@ -102,6 +102,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [batchNavRules, setBatchNavRules] = useState<Record<string, string[]>>({})
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [hrJobs, setHrJobs] = useState<any[]>([])
+  const [adminMessages, setAdminMessages] = useState<any[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -183,12 +184,14 @@ const StudentLayout = ({ children }: ChildrenType) => {
     Promise.allSettled([
       fetch(`${baseURL}/api/institute/announcements`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/jobs/student`, { headers: h }).then(r => r.json()),
-    ]).then(([annR, jobR]) => {
+      fetch(`${baseURL}/students/my-messages`, { headers: h }).then(r => r.json()),
+    ]).then(([annR, jobR, msgR]) => {
       if (annR.status === 'fulfilled') setAnnouncements((annR.value?.data || []).slice(0, 3))
       if (jobR.status === 'fulfilled') {
         const raw: any[] = Array.isArray(jobR.value) ? jobR.value : (jobR.value?.data || jobR.value?.jobs || [])
         setHrJobs(raw.filter((j: any) => !j.isExpired).slice(0, 3))
       }
+      if (msgR.status === 'fulfilled') setAdminMessages((msgR.value?.messages || []).slice(0, 3))
     }).catch(() => {})
   }, [baseURL, user?.token])
 
@@ -444,9 +447,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
                 style={{ position: 'relative', background: iconBtnBg, border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: textSecondary }}
               >
                 <FiBell size={16} />
-                {(announcements.length + hrJobs.length) > 0 && (
+                {(announcements.length + hrJobs.length + adminMessages.length) > 0 && (
                   <span style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: '#ef4444', color: '#fff', fontSize: '0.58rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #fff' }}>
-                    {Math.min(announcements.length + hrJobs.length, 9)}
+                    {Math.min(announcements.length + hrJobs.length + adminMessages.length, 9)}
                   </span>
                 )}
               </button>
@@ -483,7 +486,21 @@ const StudentLayout = ({ children }: ChildrenType) => {
                         ))}
                       </>
                     )}
-                    {announcements.length === 0 && hrJobs.length === 0 && (
+                    {adminMessages.length > 0 && (
+                      <>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '8px 14px 4px' }}>Messages</div>
+                        {adminMessages.map((m, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 14px', borderBottom: `1px solid ${navBorder}` }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: m.isRead ? '#cbd5e1' : '#22c55e', flexShrink: 0, marginTop: 5 }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.75rem', fontWeight: m.isRead ? 500 : 700, color: textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.subject}</div>
+                              <div style={{ fontSize: '0.65rem', color: textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.body}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                    {announcements.length === 0 && hrJobs.length === 0 && adminMessages.length === 0 && (
                       <div style={{ padding: '20px 14px', fontSize: '0.78rem', color: textSecondary, textAlign: 'center' }}>No new notifications</div>
                     )}
                   </div>
@@ -544,6 +561,21 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
                     {/* Menu items */}
                     <div style={{ padding: '4px 0' }}>
+                      <Link
+                        to="/student/raise-ticket"
+                        onClick={() => setUserDropdownOpen(false)}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                          padding: '9px 14px', background: 'none', border: 'none',
+                          color: textPrimary, fontSize: '0.82rem', fontWeight: 600,
+                          cursor: 'pointer', textAlign: 'left', textDecoration: 'none',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = iconBtnBg }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                      >
+                        <FiLifeBuoy size={14} />
+                        Raise Ticket
+                      </Link>
                       <button
                         onClick={() => { setUserDropdownOpen(false); removeSession() }}
                         style={{

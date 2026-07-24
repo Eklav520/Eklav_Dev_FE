@@ -353,7 +353,6 @@ const WritingPractice: React.FC = () => {
   const [historyFilter, setHistoryFilter] = useState<'all' | ModeType>('all')
   const [historyPage, setHistoryPage] = useState(1)
   const [rowsPerPage, setRowsPerPage] = useState(10)
-  const [goToPage, setGoToPage] = useState('')
 
   const allAttempts = [...rawAttempts].reverse()
   const filteredAttempts = historyFilter === 'all' ? allAttempts : allAttempts.filter(a => a.mode === historyFilter)
@@ -633,16 +632,6 @@ const WritingPractice: React.FC = () => {
                       )}
                     <button onClick={() => setHistoryPage(p => Math.min(historyTotalPages, p + 1))} disabled={historyPage === historyTotalPages}
                       style={{ width: 30, height: 30, border: '1px solid #e2e8f0', borderRadius: 7, background: CARD_BG, color: historyPage === historyTotalPages ? '#cbd5e1' : PAGE_TEXT, cursor: historyPage === historyTotalPages ? 'default' : 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-                  </div>
-
-                  {/* Right: go to page */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <style>{`#wp-goto-input { width:52px!important; border:1.5px solid #cbd5e1!important; border-radius:7px!important; padding:4px 8px!important; font-size:0.78rem!important; color:${PAGE_TEXT}!important; background:${PAGE_BG}!important; text-align:center!important; outline:none!important; box-sizing:border-box!important; } #wp-goto-input::-webkit-outer-spin-button, #wp-goto-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }`}</style>
-                    <span style={{ fontSize: '0.78rem', color: PAGE_GRAY }}>Go to page:</span>
-                    <input id="wp-goto-input" type="number" min={1} max={historyTotalPages} value={goToPage}
-                      onChange={e => setGoToPage(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { const p = Math.min(historyTotalPages, Math.max(1, Number(goToPage))); if (!isNaN(p)) { setHistoryPage(p); setGoToPage('') } } }}
-                    />
                   </div>
                 </div>
               </>

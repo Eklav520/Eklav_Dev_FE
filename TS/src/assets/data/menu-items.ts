@@ -33,6 +33,7 @@ import {
   BsGridFill,
   BsHouse,
   BsBellFill,
+  BsTicketPerforated,
   BsInfoSquareFill,
   BsLightbulb,
   BsLightningCharge,
@@ -246,6 +247,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     label: 'Students List',
     icon: BsPeople,
     url: '/eklavadmin/student-list',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'ticketManagement',
+    label: 'Ticket Management',
+    icon: BsTicketPerforated,
+    url: '/eklavadmin/ticket-management',
     parentKey: 'eklavadmin',
   },
   {
