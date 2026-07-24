@@ -10,7 +10,7 @@ import {
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
   FaChevronRight, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
-  FaSpellCheck, FaTachometerAlt, FaFont,
+  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
 
@@ -83,6 +83,36 @@ const EnglishVoicePractice: React.FC = () => {
   const audioCtxRef = useRef<AudioContext | null>(null)
   const micCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [micWarning, setMicWarning] = useState<'muted' | 'low' | null>(null)
+  const [showMicMutePopup, setShowMicMutePopup] = useState(false)
+  const micMutePopupDismissedRef = useRef(false)
+
+  // Surface the popup automatically the moment a system-level mute is
+  // detected (Google Meet does the same) — the student shouldn't have to
+  // notice a small badge and click it themselves. Closing it (✕) suppresses
+  // it for the rest of this muted stretch; it reappears next time the mic
+  // toggles from unmuted back to muted.
+  useEffect(() => {
+    if (micWarning === 'muted') {
+      if (!micMutePopupDismissedRef.current) setShowMicMutePopup(true)
+    } else {
+      micMutePopupDismissedRef.current = false
+      setShowMicMutePopup(false)
+    }
+  }, [micWarning])
+
+  // Deep-links into the OS sound settings where possible. Browsers can't
+  // silently flip a hardware/OS mute switch, but on Windows the `ms-settings:`
+  // URI opens the Settings app directly to the Sound page (Chrome/Edge prompt
+  // once to allow it, then remember the choice). Other platforms have no
+  // equivalent URI, so we just point the user to where to look.
+  const openSoundSettings = () => {
+    const ua = navigator.userAgent
+    if (ua.includes('Windows')) {
+      window.location.href = 'ms-settings:sound'
+    } else if (ua.includes('Mac')) {
+      window.location.href = 'x-apple.systempreferences:com.apple.preference.sound'
+    }
+  }
 
   const MAX_NO_RESPONSE = 3
   const SILENCE_TIMEOUT = 6000
@@ -326,6 +356,7 @@ const EnglishVoicePractice: React.FC = () => {
   }
 
   const startMicMonitor = async () => {
+    if (micCheckRef.current) return // already running — avoid a duplicate stream/interval
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const ctx = new AudioContext()
@@ -764,6 +795,10 @@ const EnglishVoicePractice: React.FC = () => {
     setShowSessionModal(true)
     setActiveSessionTab('conversation')
     setTimeout(() => startWebcam(), 100)
+    // Start mic monitoring as soon as the preview is up, not only once the
+    // session actually begins — the mute banner should be visible on this
+    // pre-start screen too, since that's when a muted mic is easiest to miss.
+    startMicMonitor()
   }
 
   const handleCloseSession = () => {
@@ -1386,10 +1421,55 @@ const EnglishVoicePractice: React.FC = () => {
               <div style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>
                 {isPaused ? 'Session paused...' : sessionEnded ? 'Session ended' : !sessionStarted ? 'Click the mic and start speaking...' : isListening ? 'Listening...' : 'Speaking...'}
               </div>
-              <button onClick={handleMicClick} disabled={isPaused && !sessionEnded}
-                style={{ width: 36, height: 36, borderRadius: '50%', background: sessionEnded ? '#22c55e' : isListening ? '#ef4444' : ORANGE, border: 'none', cursor: (isPaused && !sessionEnded) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, boxShadow: `0 3px 12px ${isListening ? '#ef444455' : ORANGE + '55'}`, transition: 'all .2s', opacity: (isPaused && !sessionEnded) ? 0.5 : 1, flexShrink: 0 }}>
-                {sessionEnded ? <FaSyncAlt /> : isListening ? <FaStop /> : <FaMicrophone />}
-              </button>
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                {/* Popup — appears anchored above the mic button, Meet-style,
+                    with a small pointer triangle connecting the two. */}
+                {showMicMutePopup && micWarning === 'muted' && (
+                  <>
+                    <div onClick={() => { setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                    <div style={{ position: 'absolute', bottom: 'calc(100% + 14px)', right: -20, width: 280, background: '#3c4043', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', padding: '14px 16px', zIndex: 50, textAlign: 'left' }}>
+                      <button
+                        onClick={() => { setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }}
+                        style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: '#9aa0a6', cursor: 'pointer', padding: 2, display: 'flex' }}
+                      >
+                        <FaTimes size={13} />
+                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingRight: 18 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fbbc04', color: '#202124', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 900 }}>
+                          !
+                        </div>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>Microphone muted by system</span>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: '#dadce0', margin: '0 0 10px', lineHeight: 1.5 }}>
+                        Go to your computer's settings to unmute your mic and increase its level
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => { openSoundSettings(); setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }}
+                          style={{ background: 'none', border: 'none', color: '#8ab4f8', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 2px' }}
+                        >
+                          Open Sound Settings
+                        </button>
+                      </div>
+                      {/* Pointer triangle */}
+                      <div style={{ position: 'absolute', top: '100%', right: 26, width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '8px solid #3c4043' }} />
+                    </div>
+                  </>
+                )}
+                <button onClick={handleMicClick} disabled={isPaused && !sessionEnded}
+                  style={{ width: 36, height: 36, borderRadius: '50%', background: sessionEnded ? '#22c55e' : isListening ? '#ef4444' : ORANGE, border: 'none', cursor: (isPaused && !sessionEnded) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 15, boxShadow: `0 3px 12px ${isListening ? '#ef444455' : ORANGE + '55'}`, transition: 'all .2s', opacity: (isPaused && !sessionEnded) ? 0.5 : 1 }}>
+                  {sessionEnded ? <FaSyncAlt /> : isListening ? <FaStop /> : <FaMicrophone />}
+                </button>
+                {/* Small warning badge on the mic button itself */}
+                {micWarning === 'muted' && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setShowMicMutePopup(p => !p); micMutePopupDismissedRef.current = false }}
+                    style={{ position: 'absolute', top: -3, right: -3, width: 16, height: 16, borderRadius: '50%', background: '#fbbc04', color: '#202124', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, cursor: 'pointer', padding: 0 }}
+                  >
+                    !
+                  </button>
+                )}
+              </div>
               {micWarning && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#ef4444', fontWeight: 600 }}>
                   <FaExclamationTriangle /> {micWarning === 'muted' ? 'Mic muted' : 'Mic low'}
