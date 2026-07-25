@@ -313,10 +313,10 @@ const CourseCertificate: React.FC<Props> = ({ studentName, courseName, courseId,
               <div style={{ marginTop: 18, fontSize: 13, color: '#334155', fontFamily: "'Segoe UI', Arial, sans-serif" }}>This is to certify that</div>
 
               <div style={{
-                marginTop: 8, fontSize: 46, color: '#ff7a00', lineHeight: 1,
+                marginTop: 8, fontSize: 66, color: '#ff7a00', lineHeight: 1,
                 fontFamily: fontsReady ? "'Great Vibes', cursive" : "'Segoe UI', Arial, sans-serif",
                 fontStyle: fontsReady ? 'normal' : 'italic',
-                borderBottom: '1px dotted #cbd5e1', paddingBottom: 6, minWidth: 320, textAlign: 'center',
+                borderBottom: '1px dotted #cbd5e1', paddingBottom: 10, minWidth: 320, textAlign: 'center',
               }}>
                 {studentName}
               </div>
