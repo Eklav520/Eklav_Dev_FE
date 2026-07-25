@@ -257,6 +257,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
+    key: 'successStories',
+    label: 'Success Stories',
+    icon: BsLightbulb,
+    url: '/eklavadmin/success-stories',
+    parentKey: 'eklavadmin',
+  },
+  {
     key: 'courses',
     label: 'Courses Details',
     icon: BsBook,

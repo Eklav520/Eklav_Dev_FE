@@ -169,6 +169,76 @@ const StudentDashboardUpdated: React.FC = () => {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
   })
 
+  // Success story widget
+  const [myStory, setMyStory] = useState<{ status: string } | null | undefined>(undefined) // undefined = not fetched yet
+  const [showStoryModal, setShowStoryModal] = useState(false)
+  const [storyText, setStoryText] = useState('')
+  const [storyRating, setStoryRating] = useState(0)
+  const [storyHoverRating, setStoryHoverRating] = useState(0)
+  const [submittingStory, setSubmittingStory] = useState(false)
+  const [storyError, setStoryError] = useState('')
+  const [improvingStory, setImprovingStory] = useState(false)
+  const [preImproveText, setPreImproveText] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!user?.token) return
+    fetch(`${baseURL}/success-stories/mine`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then(r => r.json())
+      .then(data => setMyStory(data?.story || null))
+      .catch(() => setMyStory(null))
+  }, [user?.token, baseURL])
+
+  const handleSubmitStory = async () => {
+    setStoryError('')
+    if (!storyText.trim() || storyRating === 0) {
+      setStoryError('Please share your story and pick a star rating.')
+      return
+    }
+    setSubmittingStory(true)
+    try {
+      const res = await fetch(`${baseURL}/success-stories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+        body: JSON.stringify({ story: storyText, rating: storyRating }),
+      })
+      if (!res.ok) throw new Error('Failed to submit')
+      const data = await res.json()
+      setMyStory(data.story)
+      setShowStoryModal(false)
+      setStoryText('')
+      setStoryRating(0)
+      setPreImproveText(null)
+    } catch {
+      setStoryError('Failed to submit your story. Please try again.')
+    } finally {
+      setSubmittingStory(false)
+    }
+  }
+
+  const handleImproveStory = async () => {
+    if (!storyText.trim()) {
+      setStoryError('Write a bit about your experience first — then AI can help polish it.')
+      return
+    }
+    setStoryError('')
+    setImprovingStory(true)
+    try {
+      const res = await fetch(`${baseURL}/success-stories/improve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+        body: JSON.stringify({ text: storyText }),
+      })
+      if (!res.ok) throw new Error('Failed to improve')
+      const data = await res.json()
+      setPreImproveText(storyText)
+      setStoryText(data.improved)
+    } catch {
+      setStoryError('Could not improve the story right now. Please try again.')
+    } finally {
+      setImprovingStory(false)
+    }
+  }
+
   useEffect(() => {
     if (!user?.token) return
     const h = { Authorization: `Bearer ${user.token}` }
@@ -578,6 +648,36 @@ const StudentDashboardUpdated: React.FC = () => {
           }
         />
       </div>
+
+      {/* ── SUCCESS STORY PROMPT ── */}
+      {myStory !== undefined && (
+        <div style={{ margin: '18px 28px 0', background: 'linear-gradient(135deg, #fff7ed, #fef3e2)', border: `1px solid ${ORANGE}33`, borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: `1px solid ${ORANGE}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ORANGE, fontSize: '1.2rem' }}>
+              🌟
+            </div>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: TEXT }}>
+                {!myStory ? 'Share Your Success Story' : myStory.status === 'Pending' ? 'Your story is under review' : myStory.status === 'Approved' ? 'Your story is live on our website! 🎉' : 'Thanks for sharing your story'}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: GRAY }}>
+                {!myStory
+                  ? 'Tell us how Eklav has helped you — approved stories get featured on our homepage.'
+                  : myStory.status === 'Pending'
+                  ? 'Our team is reviewing it — we will feature it once approved.'
+                  : myStory.status === 'Approved'
+                  ? 'Check it out on the Eklav homepage under "Empowering Every Student".'
+                  : 'You can always submit another story later.'}
+              </div>
+            </div>
+          </div>
+          {!myStory && (
+            <button onClick={() => setShowStoryModal(true)} className="sd-btn-orange" style={{ width: 'auto', padding: '10px 20px', flexShrink: 0 }}>
+              Share Your Story
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── MAIN BODY — ROW LAYOUT ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 28px' }}>
@@ -1336,6 +1436,76 @@ const StudentDashboardUpdated: React.FC = () => {
           </div>
         )
       })()}
+
+      {/* ── Share Success Story Modal ── */}
+      {showStoryModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }} onClick={() => setShowStoryModal(false)}>
+          <div style={{ background: CARD_BG, borderRadius: 14, width: 480, maxWidth: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '18px 22px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '1rem', fontWeight: 700, color: TEXT }}>Share Your Success Story</span>
+              <button onClick={() => setShowStoryModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: GRAY, fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ padding: 22 }}>
+              {storyError && <div style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', padding: '9px 12px', borderRadius: 8, marginBottom: 14 }}>{storyError}</div>}
+
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: TEXT, marginBottom: 8 }}>Your Rating</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16 }} onMouseLeave={() => setStoryHoverRating(0)}>
+                {[1, 2, 3, 4, 5].map(n => (
+                  <span
+                    key={n}
+                    onClick={() => setStoryRating(n)}
+                    onMouseEnter={() => setStoryHoverRating(n)}
+                    style={{ cursor: 'pointer', fontSize: '1.6rem', color: (storyHoverRating || storyRating) >= n ? '#f59e0b' : BORDER, lineHeight: 1 }}
+                  >★</span>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: TEXT }}>Your Story</label>
+                <button
+                  onClick={handleImproveStory}
+                  disabled={improvingStory}
+                  title="Ask AI to polish the wording — keeps your facts, just improves clarity and flow"
+                  style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: ORANGE, fontSize: '0.76rem', fontWeight: 700, cursor: improvingStory ? 'default' : 'pointer', opacity: improvingStory ? 0.6 : 1 }}
+                >
+                  ✨ {improvingStory ? 'Improving…' : 'Improve with AI'}
+                </button>
+              </div>
+              <textarea
+                value={storyText}
+                onChange={e => { setStoryText(e.target.value); setPreImproveText(null) }}
+                placeholder="Tell us how Eklav helped you — a skill you learned, a job you landed, a habit you built..."
+                rows={5}
+                style={{ width: '100%', border: `1px solid ${BORDER}`, borderRadius: 8, padding: 12, fontSize: '0.85rem', color: TEXT, background: PAGE_BG, outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+              {preImproveText !== null && (
+                <div style={{ marginTop: 6, fontSize: '0.72rem', color: GRAY }}>
+                  Polished by AI —{' '}
+                  <span
+                    onClick={() => { setStoryText(preImproveText); setPreImproveText(null) }}
+                    style={{ color: ORANGE, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    Undo
+                  </span>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+                <button onClick={() => setShowStoryModal(false)} style={{ height: 38, padding: '0 16px', borderRadius: 8, border: `1px solid ${BORDER}`, background: CARD_BG, color: TEXT, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitStory}
+                  disabled={submittingStory}
+                  style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: ORANGE, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: submittingStory ? 'default' : 'pointer', opacity: submittingStory ? 0.7 : 1 }}
+                >
+                  {submittingStory ? 'Submitting…' : 'Submit Story'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )

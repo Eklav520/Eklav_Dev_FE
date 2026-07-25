@@ -88,6 +88,7 @@ const Quiz = lazy(() => import('@/app/eklavadmin/quiz/page'))
 const Earnings = lazy(() => import('@/app/eklavadmin/earning/page'))
 const StudentsList = lazy(() => import('@/app/eklavadmin/student-list/page'))
 const TicketManagement = lazy(() => import('@/app/eklavadmin/ticket-management/page'))
+const SuccessStories = lazy(() => import('@/app/eklavadmin/success-stories/page'))
 const Orders = lazy(() => import('@/app/eklavadmin/order/page'))
 const InstructorReviews = lazy(() => import('@/app/eklavadmin/review/page'))
 const Payout = lazy(() => import('@/app/eklavadmin/payout/page'))
@@ -600,6 +601,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     path: '/eklavadmin/ticket-management',
     name: 'Ticket Management',
     element: <TicketManagement />,
+  },
+  {
+    path: '/eklavadmin/success-stories',
+    name: 'Success Stories',
+    element: <SuccessStories />,
   },
   {
     path: '/eklavadmin/student-quiz-result',

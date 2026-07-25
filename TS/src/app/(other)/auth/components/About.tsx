@@ -144,6 +144,114 @@ const CourseMarquee = () => {
   );
 };
 
+/* ── Success Stories ── */
+type PublicStory = { _id: string; studentName: string; story: string; rating: number };
+
+const StoryStars = ({ rating }: { rating: number }) => (
+  <div style={{ display: "flex", gap: 3 }}>
+    {[1, 2, 3, 4, 5].map((n) => (
+      <span key={n} style={{ color: n <= rating ? "#fbbf24" : "rgba(255,255,255,0.18)", fontSize: "0.9rem" }}>★</span>
+    ))}
+  </div>
+);
+
+const SuccessStoriesSection = () => {
+  const baseURL = import.meta.env.VITE_API_BASE_URL;
+  const [stories, setStories] = useState<PublicStory[]>([]);
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    fetch(`${baseURL}/success-stories/public`)
+      .then((r) => (r.ok ? r.json() : { stories: [] }))
+      .then((data) => setStories(Array.isArray(data?.stories) ? data.stories : []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (stories.length < 2) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % stories.length), 5000);
+    return () => clearInterval(t);
+  }, [stories.length]);
+
+  if (stories.length === 0) return null;
+  const s = stories[idx];
+
+  return (
+    <div style={{ marginTop: "3rem", width: "100%", maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
+      <div className="neo-section-badge" style={{ marginBottom: "1rem" }}>SUCCESS STORIES</div>
+
+      <div style={{ position: "relative" }}>
+        <div
+          key={s._id}
+          style={{
+            background: "rgba(255,255,255,0.045)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            borderRadius: 16,
+            padding: "1.8rem",
+            backdropFilter: "blur(6px)",
+            textAlign: "center",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <StoryStars rating={s.rating} />
+          </div>
+          <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.94rem", lineHeight: 1.8, margin: "1rem 0 1.3rem" }}>
+            "{s.story}"
+          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#ff7a00,#ff944d)",
+              display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.82rem", flexShrink: 0,
+            }}>
+              {s.studentName?.charAt(0)?.toUpperCase() || "S"}
+            </div>
+            <span style={{ color: "#fff", fontWeight: 600, fontSize: "0.88rem" }}>{s.studentName}</span>
+          </div>
+        </div>
+
+        {stories.length > 1 && (
+          <>
+            <button
+              onClick={() => setIdx((i) => (i - 1 + stories.length) % stories.length)}
+              aria-label="Previous story"
+              style={{
+                position: "absolute", top: "50%", left: -18, transform: "translateY(-50%)",
+                width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(15,15,20,0.85)", color: "#fff", cursor: "pointer", fontSize: "1rem",
+              }}
+            >&#8249;</button>
+            <button
+              onClick={() => setIdx((i) => (i + 1) % stories.length)}
+              aria-label="Next story"
+              style={{
+                position: "absolute", top: "50%", right: -18, transform: "translateY(-50%)",
+                width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(15,15,20,0.85)", color: "#fff", cursor: "pointer", fontSize: "1rem",
+              }}
+            >&#8250;</button>
+          </>
+        )}
+      </div>
+
+      {stories.length > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: "1rem" }}>
+          {stories.map((story, i) => (
+            <button
+              key={story._id}
+              onClick={() => setIdx(i)}
+              aria-label={`Go to story ${i + 1}`}
+              style={{
+                width: i === idx ? 20 : 7, height: 7, borderRadius: 4, border: "none", padding: 0,
+                background: i === idx ? "#ff7a00" : "rgba(255,255,255,0.25)", cursor: "pointer", transition: "all 0.2s",
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ── Typewriter ── */
 const TypewriterText = ({ text }: { text: string }) => {
   const [displayed, setDisplayed] = useState('');
@@ -382,15 +490,12 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
             <div className="mission-corner mission-tr" />
             <div className="mission-corner mission-bl" />
             <div className="mission-corner mission-br" />
-            <div className="neo-section-badge" style={{ marginBottom: "1rem" }}>OUR MISSION</div>
-            <h2 className="neo-section-title">Empowering Every Student</h2>
-            <p className="mission-text-neo">
-              Our goal is to build a powerful digital learning ecosystem where students can learn skills,
-              practice with AI, prepare for interviews, and gain real project experience — all within a
-              single platform.
-            </p>
+
+            <SuccessStoriesSection />
+
             <button
               className="neo-cta-btn"
+              style={{ marginTop: "2.5rem" }}
               onClick={() => onStartJourneyClick ? onStartJourneyClick() : navigate("/auth/sign-in")}
             >
               <span>Begin Your Mission</span>
