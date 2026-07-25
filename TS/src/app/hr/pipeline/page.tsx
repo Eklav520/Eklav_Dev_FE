@@ -17,6 +17,7 @@ const TEAL   = '#14b8a6'
 const RED    = '#ef4444'
 const GRAY   = '#64748b'
 const BORDER = '#e2e8f0'
+const ACCENT = '#f2622f' // coral — matches /hr/jobs & /hr/candidates: primary buttons, active states, links
 
 const STAGE_COLOR_PALETTE = [BLUE, ORANGE, PURPLE, CYAN, TEAL, GREEN, '#f43f5e', '#a855f7']
 
@@ -324,7 +325,7 @@ const HRPipelinePage = () => {
           <button onClick={() => navigate('/hr/pipeline/manage')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
             <FiSettings size={13}/> Manage Pipeline
           </button>
-          <button title="Board view" style={{ width: 32, height: 32, background: '#eff6ff', border: `1px solid #bfdbfe`, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: BLUE, cursor: 'default' }}>
+          <button title="Board view" style={{ width: 32, height: 32, background: '#fef1ec', border: `1px solid #fbd0bb`, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ACCENT, cursor: 'default' }}>
             <FiGrid size={14}/>
           </button>
           <button onClick={exportCsv} title="Export CSV" style={{ width: 32, height: 32, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#475569', cursor: 'pointer' }}>
@@ -432,7 +433,7 @@ const HRPipelinePage = () => {
                     )
                   })}
                   {!showAll && cards.length > 4 && (
-                    <button onClick={() => setExpanded(p => ({ ...p, [stage.name]: true }))} style={{ background: 'none', border: 'none', color: BLUE, fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer', padding: '4px 0', textAlign: 'left' }}>
+                    <button onClick={() => setExpanded(p => ({ ...p, [stage.name]: true }))} style={{ background: 'none', border: 'none', color: ACCENT, fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer', padding: '4px 0', textAlign: 'left' }}>
                       + {cards.length - 4} more
                     </button>
                   )}
@@ -472,7 +473,7 @@ const HRPipelinePage = () => {
                     <span style={{ fontWeight: 700, color: '#0f172a' }}>{c.pct}%</span>
                   </div>
                   <div style={{ height: 4, background: '#f1f5f9', borderRadius: 3 }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, c.pct)}%`, background: BLUE, borderRadius: 3 }}/>
+                    <div style={{ height: '100%', width: `${Math.min(100, c.pct)}%`, background: ACCENT, borderRadius: 3 }}/>
                   </div>
                 </div>
               ))}
@@ -491,7 +492,7 @@ const HRPipelinePage = () => {
                 </div>
               ))}
             </div>
-            <div onClick={() => navigate('/hr/jobs')} style={{ marginTop: 12, fontSize: '0.76rem', color: BLUE, fontWeight: 600, cursor: 'pointer' }}>
+            <div onClick={() => navigate('/hr/jobs')} style={{ marginTop: 12, fontSize: '0.76rem', color: ACCENT, fontWeight: 600, cursor: 'pointer' }}>
               View all jobs
             </div>
           </div>
@@ -522,7 +523,7 @@ const HRPipelinePage = () => {
         </div>
         <div style={{ borderTop: `1px solid ${BORDER}`, marginTop: 16, paddingTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '0.76rem', color: GRAY }}>Overall conversion rate from {stageNames[0] || 'Applied'} to {stageNames[stageNames.length - 1] || 'Hired'}</span>
-          <span style={{ background: '#eff6ff', color: BLUE, fontSize: '0.74rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{overallConversion}%</span>
+          <span style={{ background: '#fef1ec', color: ACCENT, fontSize: '0.74rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{overallConversion}%</span>
         </div>
       </div>
 
@@ -640,7 +641,7 @@ const HRPipelinePage = () => {
               <button onClick={() => { setShowAdd(false); setAddError('') }} style={{ height: 38, padding: '0 16px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', color: '#334155', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleAddCandidate} disabled={adding} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: adding ? 'default' : 'pointer', opacity: adding ? 0.7 : 1 }}>
+              <button onClick={handleAddCandidate} disabled={adding} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: adding ? 'default' : 'pointer', opacity: adding ? 0.7 : 1 }}>
                 {adding ? 'Adding…' : 'Add Candidate'}
               </button>
             </div>

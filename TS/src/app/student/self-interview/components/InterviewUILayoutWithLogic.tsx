@@ -1427,7 +1427,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
           {/* LEFT: Video Panel */}
-          <div className="ai-interview-video-panel" style={{ width: '28%', flexShrink: 0, background: '#0a0d14', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e2432', position: 'relative' }}>
+          <div className="ai-interview-video-panel" style={{ width: '32%', flexShrink: 0, background: '#0a0d14', display: 'flex', flexDirection: 'column', borderRight: '1px solid #1e2432', position: 'relative' }}>
             {/* LIVE badge */}
             <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 10, display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(220,38,38,0.9)', borderRadius: 5, padding: '3px 8px' }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#fff' }} />
@@ -1659,7 +1659,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
           </div>
 
           {/* RIGHT: Feedback Panel */}
-          <div style={{ width: '24%', flexShrink: 0, background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ width: '20%', flexShrink: 0, background: '#fff', borderLeft: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <FaStar color="#f59e0b" size={13} />
               <span style={{ fontWeight: 700, fontSize: 14, color: '#1e293b' }}>Feedback</span>

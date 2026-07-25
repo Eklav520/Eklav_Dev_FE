@@ -13,6 +13,7 @@ const RED    = '#ef4444'
 const PURPLE = '#8b5cf6'
 const GRAY   = '#64748b'
 const BORDER = '#e2e8f0'
+const ACCENT = '#f2622f' // coral — matches /hr/jobs, /hr/candidates, /hr/pipeline & /hr/interviews
 
 const ACCESS_LEVELS = ['Full Access', 'Interview Only', 'Limited Access', 'View Only'] as const
 type AccessLevel = typeof ACCESS_LEVELS[number]
@@ -296,7 +297,7 @@ const HRSettingsPage = () => {
           </button>
           <button
             onClick={() => { setShowAdd(true); setForm(emptyForm); setSaveError(''); setInviteLink('') }}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
           >
             <FiPlus size={15}/> Add Team Member
           </button>
@@ -310,7 +311,7 @@ const HRSettingsPage = () => {
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
-          { label: 'Total Team Members', value: total, sub: 'Active', icon: <FiShield size={17}/>, ic: PURPLE, bg: '#f5f3ff' },
+          { label: 'Total Team Members', value: total, sub: 'Active', icon: <FiShield size={17}/>, ic: ACCENT, bg: '#fef1ec' },
           { label: 'With Access', value: activeCount, sub: total ? `${Math.round(activeCount / total * 100)}%` : '0%', icon: <FiCheckCircle size={17}/>, ic: GREEN, bg: '#ecfdf5', subColor: GREEN },
           { label: 'Pending Invites', value: pendingCount, sub: 'Awaiting', icon: <FiClock size={17}/>, ic: ORANGE, bg: '#fff7ed', subColor: ORANGE },
           { label: 'Inactive Members', value: inactiveCount, sub: 'Inactive', icon: <FiX size={17}/>, ic: RED, bg: '#fef2f2' },
@@ -338,8 +339,8 @@ const HRSettingsPage = () => {
             style={{
               background: 'none', border: 'none', cursor: 'pointer',
               padding: '10px 16px', fontSize: '0.82rem', fontWeight: activeTopTab === tab ? 600 : 400,
-              color: activeTopTab === tab ? BLUE : GRAY,
-              borderBottom: activeTopTab === tab ? `2px solid ${BLUE}` : '2px solid transparent',
+              color: activeTopTab === tab ? ACCENT : GRAY,
+              borderBottom: activeTopTab === tab ? `2px solid ${ACCENT}` : '2px solid transparent',
               marginBottom: -1, whiteSpace: 'nowrap',
             }}
           >
@@ -501,7 +502,7 @@ const HRSettingsPage = () => {
                   {Array.from({ length: pageCount }, (_, i) => i + 1).slice(0, 5).map(p => (
                     <button key={p} onClick={() => setPage(p)} style={{
                       width: 26, height: 26, border: p === page ? 'none' : `1px solid ${BORDER}`, borderRadius: 6,
-                      background: p === page ? BLUE : '#fff', color: p === page ? '#fff' : GRAY,
+                      background: p === page ? ACCENT : '#fff', color: p === page ? '#fff' : GRAY,
                       fontSize: '0.74rem', fontWeight: p === page ? 700 : 400, cursor: 'pointer',
                     }}>{p}</button>
                   ))}
@@ -537,8 +538,8 @@ const HRSettingsPage = () => {
                     style={{
                       background: 'none', border: 'none', cursor: 'pointer', padding: '10px 6px', marginRight: 16,
                       fontSize: '0.78rem', fontWeight: detailTab === tab ? 600 : 400,
-                      color: detailTab === tab ? BLUE : GRAY,
-                      borderBottom: detailTab === tab ? `2px solid ${BLUE}` : '2px solid transparent', marginBottom: -1,
+                      color: detailTab === tab ? ACCENT : GRAY,
+                      borderBottom: detailTab === tab ? `2px solid ${ACCENT}` : '2px solid transparent', marginBottom: -1,
                     }}
                   >
                     {tab}
@@ -705,11 +706,11 @@ const HRSettingsPage = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '8px 10px' }}>
                   <span style={{ fontSize: '0.76rem', color: '#334155', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{inviteLink}</span>
-                  <button onClick={() => navigator.clipboard?.writeText(inviteLink)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: BLUE, display: 'flex', flexShrink: 0 }} title="Copy link">
+                  <button onClick={() => navigator.clipboard?.writeText(inviteLink)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: ACCENT, display: 'flex', flexShrink: 0 }} title="Copy link">
                     <FiCopy size={14}/>
                   </button>
                 </div>
-                <button onClick={() => setShowAdd(false)} style={{ height: 38, borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => setShowAdd(false)} style={{ height: 38, borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
                   Done
                 </button>
               </div>
@@ -756,7 +757,7 @@ const HRSettingsPage = () => {
                   <button onClick={() => setShowAdd(false)} style={{ height: 38, padding: '0 16px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', color: '#334155', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
                     Cancel
                   </button>
-                  <button onClick={handleAddMember} disabled={saving} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  <button onClick={handleAddMember} disabled={saving} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                     {saving ? 'Sending Invite…' : 'Send Invitation'}
                   </button>
                 </div>

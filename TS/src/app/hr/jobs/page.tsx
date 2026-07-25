@@ -3,8 +3,6 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { FiSearch, FiBell, FiPlus, FiCalendar, FiFilter, FiChevronDown, FiEye, FiMoreVertical, FiChevronRight, FiChevronsRight, FiChevronLeft, FiChevronsLeft, FiX, FiTrash2, FiCheckCircle, FiEdit2, FiTrendingUp } from 'react-icons/fi'
 import { BsBriefcase } from 'react-icons/bs'
-import { MdOutlinePause, MdOutlineCheckCircle } from 'react-icons/md'
-import { AiOutlineClockCircle } from 'react-icons/ai'
 import { useAuthContext } from '@/context/useAuthContext'
 
 // ─── Palette ────────────────────────────────────────────────────────────────
@@ -160,39 +158,14 @@ const HRJobsPage = () => {
   const { user } = useAuthContext()
   const token = (user as any)?.token as string | undefined
 
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    if (typeof document === 'undefined') return false
-    const attr = document.documentElement.getAttribute('data-bs-theme')
-    if (attr) return attr === 'dark'
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
-  useEffect(() => {
-    const root = document.documentElement
-    const mo = new MutationObserver((mutations) => {
-      for (const m of mutations) {
-        if (m.type === 'attributes' && m.attributeName === 'data-bs-theme') {
-          setIsDarkMode(root.getAttribute('data-bs-theme') === 'dark')
-        }
-      }
-    })
-    mo.observe(root, { attributes: true, attributeFilter: ['data-bs-theme'] })
-    const mm = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')
-    const onMedia = (e: MediaQueryListEvent | MediaQueryList) => {
-      if (!root.getAttribute('data-bs-theme')) setIsDarkMode(Boolean((e as MediaQueryList).matches))
-    }
-    if (mm) {
-      if (typeof mm.addEventListener === 'function') mm.addEventListener('change', onMedia as any)
-      else if (typeof (mm as any).addListener === 'function') (mm as any).addListener(onMedia)
-    }
-    return () => {
-      mo.disconnect()
-      if (mm) {
-        if (typeof mm.removeEventListener === 'function') mm.removeEventListener('change', onMedia as any)
-        else if (typeof (mm as any).removeListener === 'function') (mm as any).removeListener(onMedia)
-      }
-    }
-  }, [])
-  const T = isDarkMode ? DARK : LIGHT
+  // HR pages don't have a real light/dark toggle (no `data-bs-theme`
+  // attribute is ever set here, unlike the student area), so the previous
+  // OS-preference fallback silently switched this page to the dark palette
+  // whenever the browser/OS was set to dark mode — while the surrounding HR
+  // layout stayed light, producing dark cards on a white page. HR is
+  // light-only for now, so just force it.
+  const isDarkMode = false
+  const T = LIGHT
 
   const [jobs, setJobs] = useState<Job[]>([])
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -456,53 +429,35 @@ const HRJobsPage = () => {
         <div style={{ background: isDarkMode ? 'rgba(220,38,38,0.15)' : '#fef2f2', color: isDarkMode ? '#fca5a5' : '#dc2626', fontSize: '0.82rem', padding: '10px 14px', borderRadius: 8, marginBottom: 16 }}>{actionError}</div>
       )}
 
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'Total Jobs',   value: total,             sub: 'All time',                    icon: <BsBriefcase size={20}/>,          ic: ACCENT, bg: isDarkMode ? 'rgba(242,98,47,0.16)' : '#fef1ec' },
-          { label: 'Active Jobs',  value: counts.Active,     sub: OVERVIEW[0].pct + ' of total',  icon: <MdOutlineCheckCircle size={20}/>, ic: GREEN,  bg: isDarkMode ? 'rgba(16,185,129,0.16)' : '#ecfdf5', subColor: GREEN  },
-          { label: 'Draft Jobs',   value: counts.Draft,      sub: OVERVIEW[1].pct + ' of total',  icon: <AiOutlineClockCircle size={20}/>, ic: ORANGE, bg: isDarkMode ? 'rgba(245,158,11,0.16)' : '#fff7ed', subColor: ORANGE },
-          { label: 'On Hold',      value: counts['On Hold'], sub: OVERVIEW[2].pct + ' of total',  icon: <MdOutlinePause size={20}/>,       ic: RED,    bg: isDarkMode ? 'rgba(239,68,68,0.16)' : '#fef2f2', subColor: RED    },
-          { label: 'Closed Jobs',  value: counts.Closed,     sub: OVERVIEW[3].pct + ' of total',  icon: <MdOutlineCheckCircle size={20}/>, ic: T.muted,   bg: T.track, subColor: T.muted   },
-        ].map(s => (
-          <div key={s.label} style={{ ...cardStyle, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.ic, flexShrink: 0 }}>
-              {s.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: '0.75rem', color: T.muted, marginBottom: 2 }}>{s.label}</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: T.text, lineHeight: 1.1 }}>{s.value}</div>
-              <div style={{ fontSize: '0.72rem', color: (s as any).subColor || T.muted, fontWeight: 500, marginTop: 2 }}>{s.sub}</div>
-            </div>
-          </div>
+      {/* Status tabs — standalone full-width bar above the content, matching
+          the tab treatment on /hr/settings (Team Access & Permissions etc.)
+          instead of being squeezed inside the table card's own header row. */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${T.border}`, marginBottom: 16, flexWrap: 'wrap' }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '10px 16px', fontSize: '0.82rem', fontWeight: activeTab === tab.key ? 600 : 400,
+              color: activeTab === tab.key ? ACCENT : T.muted,
+              borderBottom: activeTab === tab.key ? `2px solid ${ACCENT}` : '2px solid transparent',
+              marginBottom: -1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tab.label}
+          </button>
         ))}
       </div>
 
       {/* Main content: table + sidebar */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'stretch' }}>
 
-        {/* Left: tabs + table */}
+        {/* Left: table */}
         <div style={{ ...cardStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          {/* Tabs row */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', borderBottom: `1px solid ${T.border}`, flexShrink: 0, flexWrap: 'wrap', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 0 }}>
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  style={{
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    padding: '14px 16px', fontSize: '0.82rem', fontWeight: activeTab === tab.key ? 600 : 400,
-                    color: activeTab === tab.key ? ACCENT : T.muted,
-                    borderBottom: activeTab === tab.key ? `2px solid ${ACCENT}` : '2px solid transparent',
-                    marginBottom: -1,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+          {/* Toolbar row */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '12px 20px', borderBottom: `1px solid ${T.border}`, flexShrink: 0, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
                 onClick={e => {
@@ -512,9 +467,6 @@ const HRJobsPage = () => {
                 style={{ display: 'flex', alignItems: 'center', gap: 6, background: activeFilterCount > 0 ? (isDarkMode ? 'rgba(37,99,235,0.18)' : '#eff6ff') : T.chipBg, border: `1px solid ${activeFilterCount > 0 ? '#bfdbfe' : T.border}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: activeFilterCount > 0 ? BLUE : T.text, cursor: 'pointer', fontWeight: 500 }}
               >
                 <FiFilter size={13}/> Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-              </button>
-              <button style={{ display: 'flex', alignItems: 'center', gap: 6, background: T.chipBg, border: `1px solid ${T.border}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: T.text, cursor: 'pointer', fontWeight: 500 }}>
-                Sort by: Created On <FiChevronDown size={12}/>
               </button>
             </div>
           </div>

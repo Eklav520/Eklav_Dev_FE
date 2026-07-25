@@ -15,7 +15,7 @@ const resolveMediaUrl = (baseURL: string, url?: string) => {
   return /^https?:\/\//.test(url) ? url : `${baseURL}${url}`
 }
 
-const BLUE   = '#2563eb'
+const ACCENT = '#f2622f' // coral — matches /hr/jobs, /hr/candidates, /hr/pipeline, /hr/interviews & /hr/settings
 const GREEN  = '#16a34a'
 const ORANGE = '#f59e0b'
 const RED    = '#ef4444'
@@ -71,7 +71,7 @@ const PERK_ICONS: Record<string, React.ReactNode> = {
   clock: <FiUsers size={14} />, heart: <FiHeart size={14} />,
 }
 const PERK_STYLE: Record<string, { bg: string; color: string }> = {
-  briefcase: { bg: '#eff6ff', color: '#2563eb' }, growth: { bg: '#eff6ff', color: '#2563eb' },
+  briefcase: { bg: '#fef1ec', color: '#f2622f' }, growth: { bg: '#fef1ec', color: '#f2622f' },
   clock: { bg: '#fff7ed', color: '#f59e0b' }, heart: { bg: '#fef2f2', color: '#ef4444' },
 }
 
@@ -155,12 +155,12 @@ const CompanyProfilePage = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ position: 'relative' }}>
             <FiSearch size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input placeholder="Search candidates, jobs..." style={{ paddingLeft: 32, paddingRight: 12, height: 36, width: 220, border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: '0.8rem', outline: 'none' }} />
+            <input placeholder="Search candidates, jobs..." style={{ paddingLeft: 32, paddingRight: 12, height: 36, width: 220, border: `1px solid ${BORDER}`, borderRadius: 8, fontSize: '0.8rem', outline: 'none', background: '#fff', color: '#334155', colorScheme: 'light' }} />
           </div>
           <button style={{ width: 36, height: 36, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}><FiSettings size={15} /></button>
           <button style={{ width: 36, height: 36, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#475569' }}><FiBell size={15} /></button>
           {canEdit && (
-            <button onClick={() => setShowEdit(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={() => setShowEdit(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
               <FiEdit2 size={13} /> Edit Profile
             </button>
           )}
@@ -197,7 +197,7 @@ const CompanyProfilePage = () => {
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                       <h2 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#0f172a' }}>{profile.name || 'Company name not set'}</h2>
-                      {profile.verified && <FiCheckCircle size={17} color={BLUE} title="Verified" />}
+                      {profile.verified && <FiCheckCircle size={17} color={ACCENT} title="Verified" />}
                     </div>
                     {profile.tagline ? (
                       <p style={{ margin: '5px 0 12px', fontSize: '0.86rem', color: GRAY }}>{profile.tagline}</p>
@@ -213,7 +213,7 @@ const CompanyProfilePage = () => {
                         : <MissingField canEdit={canEdit} onClick={() => setShowEdit(true)} icon={<FiUsers size={13} />}>Add employee count</MissingField>}
                     </div>
                     {profile.website ? (
-                      <a href={profile.website} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: '0.8rem', color: BLUE, textDecoration: 'none', fontWeight: 500 }}>
+                      <a href={profile.website} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: '0.8rem', color: ACCENT, textDecoration: 'none', fontWeight: 500 }}>
                         <FiGlobe size={13} />{profile.website.replace(/^https?:\/\//, '')}<FiExternalLink size={11} />
                       </a>
                     ) : (
@@ -264,8 +264,8 @@ const CompanyProfilePage = () => {
             {TABS.map(t => (
               <button key={t} onClick={() => setActiveTab(t)} style={{
                 background: 'none', border: 'none', cursor: 'pointer', padding: '10px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap',
-                fontWeight: activeTab === t ? 600 : 400, color: activeTab === t ? BLUE : GRAY,
-                borderBottom: activeTab === t ? `2px solid ${BLUE}` : '2px solid transparent', marginBottom: -1,
+                fontWeight: activeTab === t ? 600 : 400, color: activeTab === t ? ACCENT : GRAY,
+                borderBottom: activeTab === t ? `2px solid ${ACCENT}` : '2px solid transparent', marginBottom: -1,
               }}>{t}</button>
             ))}
           </div>
@@ -285,7 +285,7 @@ const CompanyProfilePage = () => {
                       )}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                         {[
-                          { icon: <BsRocket size={19} color={BLUE} />, bg: '#eef4ff', title: 'Our Mission', text: profile.mission, placeholder: 'Add mission', list: false },
+                          { icon: <BsRocket size={19} color={ACCENT} />, bg: '#fef1ec', title: 'Our Mission', text: profile.mission, placeholder: 'Add mission', list: false },
                           { icon: <FiEye size={19} color={PURPLE} />, bg: '#f1edfe', title: 'Our Vision', text: profile.vision, placeholder: 'Add vision', list: false },
                           { icon: <BsGem size={19} color={ORANGE} />, bg: '#fff4e6', title: 'Our Values', text: profile.values, placeholder: 'Add values', list: true },
                         ].map(b => (
@@ -350,7 +350,7 @@ const CompanyProfilePage = () => {
                       { icon: <FiUsers size={20} color={PURPLE} />, bg: '#f5f3ff', value: `${h.employees}+`, label: 'Employees', trend: h.employeesTrend, trendUp: true },
                       { icon: <FiBriefcase size={20} color={GREEN} />, bg: '#ecfdf5', value: `${h.activeJobs}+`, label: 'Active Jobs', trend: h.activeJobsTrend, trendUp: true },
                       { icon: <FiUserPlus size={20} color={ORANGE} />, bg: '#fff7ed', value: `${h.hiresMade >= 1000 ? `${Math.round(h.hiresMade / 1000)}K` : h.hiresMade}+`, label: 'Hires Made', trend: h.hiresMadeSub, trendUp: false },
-                      { icon: <FiGlobe size={20} color={BLUE} />, bg: '#eff6ff', value: String(h.countries), label: 'Countries', trend: 'Global presence', trendUp: false },
+                      { icon: <FiGlobe size={20} color={ACCENT} />, bg: '#fef1ec', value: String(h.countries), label: 'Countries', trend: 'Global presence', trendUp: false },
                       { icon: <FiAward size={20} color={RED} />, bg: '#fef2f2', value: `${h.awardsWon}+`, label: 'Awards Won', trend: h.awardsWonSub, trendUp: false },
                     ].map(s => (
                       <div key={s.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -378,7 +378,7 @@ const CompanyProfilePage = () => {
                         ))}
                       </div>
                     ) : <div style={{ fontSize: '0.78rem', color: GRAY }}>No culture photos added yet.</div>}
-                    <button onClick={() => setActiveTab('Gallery')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 14, display: 'flex', alignItems: 'center', gap: 5, color: BLUE, fontSize: '0.78rem', fontWeight: 600 }}>
+                    <button onClick={() => setActiveTab('Gallery')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 14, display: 'flex', alignItems: 'center', gap: 5, color: ACCENT, fontSize: '0.78rem', fontWeight: 600 }}>
                       View more photos <FiArrowRight size={12} />
                     </button>
                   </Card>
@@ -388,7 +388,7 @@ const CompanyProfilePage = () => {
                     {profile.whyJoinPerks.length > 0 ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
                         {profile.whyJoinPerks.map((p, i) => {
-                          const style = PERK_STYLE[p.icon] || { bg: '#eff6ff', color: BLUE }
+                          const style = PERK_STYLE[p.icon] || { bg: '#fef1ec', color: ACCENT }
                           return (
                             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                               <div style={{ width: 30, height: 30, borderRadius: 8, background: style.bg, color: style.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{PERK_ICONS[p.icon] || <FiCheckCircle size={14} />}</div>
@@ -401,7 +401,7 @@ const CompanyProfilePage = () => {
                         })}
                       </div>
                     ) : <div style={{ fontSize: '0.78rem', color: GRAY }}>No perks added yet.</div>}
-                    <button onClick={() => setActiveTab('Benefits')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 14, display: 'flex', alignItems: 'center', gap: 5, color: BLUE, fontSize: '0.78rem', fontWeight: 600 }}>
+                    <button onClick={() => setActiveTab('Benefits')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, marginTop: 14, display: 'flex', alignItems: 'center', gap: 5, color: ACCENT, fontSize: '0.78rem', fontWeight: 600 }}>
                       View all benefits <FiArrowRight size={12} />
                     </button>
                   </Card>
@@ -424,7 +424,7 @@ const CompanyProfilePage = () => {
                             <span style={{ fontWeight: 700, color: '#0f172a' }}>{d.count}</span>
                           </div>
                           <div style={{ height: 5, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(100, d.percent)}%`, background: BLUE, borderRadius: 99 }} />
+                            <div style={{ height: '100%', width: `${Math.min(100, d.percent)}%`, background: ACCENT, borderRadius: 99 }} />
                           </div>
                         </div>
                       ))}
@@ -440,7 +440,7 @@ const CompanyProfilePage = () => {
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <FiMapPin size={13} color={GRAY} />
                           <span style={{ fontSize: '0.78rem', color: '#0f172a', flex: 1 }}>{l.name}</span>
-                          <span style={{ fontSize: '0.66rem', fontWeight: 600, color: l.isHQ ? BLUE : GRAY, background: l.isHQ ? '#eff6ff' : '#f1f5f9', padding: '2px 8px', borderRadius: 20 }}>{l.type || (l.isHQ ? 'Headquarters' : 'Office')}</span>
+                          <span style={{ fontSize: '0.66rem', fontWeight: 600, color: l.isHQ ? ACCENT : GRAY, background: l.isHQ ? '#fef1ec' : '#f1f5f9', padding: '2px 8px', borderRadius: 20 }}>{l.type || (l.isHQ ? 'Headquarters' : 'Office')}</span>
                         </div>
                       ))}
                     </div>
@@ -517,7 +517,7 @@ const CompanyProfilePage = () => {
 
 // ─── Edit Profile Modal ─────────────────────────────────────────────────────
 
-const inputStyle: React.CSSProperties = { width: '100%', height: 36, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '0 10px', fontSize: '0.8rem', color: '#0f172a', outline: 'none', boxSizing: 'border-box' }
+const inputStyle: React.CSSProperties = { width: '100%', height: 36, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '0 10px', fontSize: '0.8rem', color: '#0f172a', background: '#fff', colorScheme: 'light', outline: 'none', boxSizing: 'border-box' }
 const labelStyle: React.CSSProperties = { fontSize: '0.72rem', fontWeight: 600, color: GRAY, marginBottom: 4, display: 'block' }
 const textareaStyle: React.CSSProperties = { ...inputStyle, height: 70, padding: '8px 10px', resize: 'vertical' as const, fontFamily: 'inherit' }
 
@@ -654,7 +654,7 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
                 background: section === s.key ? '#fff' : 'transparent',
                 boxShadow: section === s.key ? '0 1px 3px rgba(15,23,42,0.08)' : 'none',
               }}>
-                <span style={{ width: 28, height: 28, borderRadius: 8, background: section === s.key ? '#eff6ff' : '#f1f5f9', color: section === s.key ? BLUE : GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.icon}</span>
+                <span style={{ width: 28, height: 28, borderRadius: 8, background: section === s.key ? '#fef1ec' : '#f1f5f9', color: section === s.key ? ACCENT : GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{s.icon}</span>
                 <span style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '0.82rem', fontWeight: section === s.key ? 700 : 600, color: section === s.key ? '#0f172a' : '#334155' }}>{s.key}</div>
                   <div style={{ fontSize: '0.68rem', color: GRAY, marginTop: 1 }}>{s.desc}</div>
@@ -763,7 +763,7 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
               <SubHeading>Perks & Benefits</SubHeading>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
-                  <button onClick={() => set('whyJoinPerks', [...form.whyJoinPerks, { icon: 'briefcase', title: '', description: '' }])} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4 }}><FiPlus size={12} /> Add perk</button>
+                  <button onClick={() => set('whyJoinPerks', [...form.whyJoinPerks, { icon: 'briefcase', title: '', description: '' }])} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4 }}><FiPlus size={12} /> Add perk</button>
                 </div>
                 {form.whyJoinPerks.map((p, i) => (
                   <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 1fr 30px', gap: 8, marginBottom: 8, alignItems: 'center' }}>
@@ -801,7 +801,7 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
                   <SubHeading style={{ flex: 1, marginBottom: 0 }}>Departments</SubHeading>
-                  <button onClick={() => set('departments', [...form.departments, { name: '', count: 0, percent: 0 }])} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add department</button>
+                  <button onClick={() => set('departments', [...form.departments, { name: '', count: 0, percent: 0 }])} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add department</button>
                 </div>
                 <div style={{ marginTop: 12 }}>
                 {form.departments.map((d, i) => (
@@ -818,7 +818,7 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
                   <SubHeading style={{ flex: 1, marginBottom: 0 }}>Locations</SubHeading>
-                  <button onClick={() => set('locations', [...form.locations, { name: '', type: 'Office', isHQ: false }])} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add location</button>
+                  <button onClick={() => set('locations', [...form.locations, { name: '', type: 'Office', isHQ: false }])} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add location</button>
                 </div>
                 <div style={{ marginTop: 12 }}>
                 {form.locations.map((l, i) => (
@@ -850,7 +850,7 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
                   <SubHeading style={{ flex: 1, marginBottom: 0 }}>Key Contacts</SubHeading>
-                  <button onClick={() => set('keyContacts', [...form.keyContacts, { name: '', role: '', email: '', phone: '', avatarUrl: '' }])} style={{ background: 'none', border: 'none', color: BLUE, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add contact</button>
+                  <button onClick={() => set('keyContacts', [...form.keyContacts, { name: '', role: '', email: '', phone: '', avatarUrl: '' }])} style={{ background: 'none', border: 'none', color: ACCENT, cursor: 'pointer', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginBottom: 9 }}><FiPlus size={12} /> Add contact</button>
                 </div>
                 <div style={{ marginTop: 12 }}>
                 {form.keyContacts.map((c, i) => (
@@ -876,12 +876,19 @@ const EditProfileModal = ({ profile, baseURL, token, onClose, onSaved }: {
           <span style={{ fontSize: '0.76rem', color: RED }}>{error}</span>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={onClose} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', color: '#334155', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-            <button onClick={save} disabled={saving} style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.8rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Changes'}</button>
+            <button onClick={save} disabled={saving} style={{ height: 36, padding: '0 18px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.8rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>{saving ? 'Saving…' : 'Save Changes'}</button>
           </div>
         </div>
           </div>
         </div>
       </div>
+      <style>{`
+        .hr-modal-scroll::-webkit-scrollbar { width: 6px; }
+        .hr-modal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .hr-modal-scroll::-webkit-scrollbar-thumb { background: ${BORDER}; border-radius: 4px; }
+        .hr-modal-scroll::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+        .hr-modal-scroll { scrollbar-width: thin; scrollbar-color: ${BORDER} transparent; }
+      `}</style>
     </div>
   )
 }

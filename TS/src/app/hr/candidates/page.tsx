@@ -12,6 +12,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 
 // ─── Palette ────────────────────────────────────────────────────────────────
 const BLUE   = '#2563eb'
+const ACCENT = '#f2622f' // coral — matches /hr/jobs: primary buttons, active tab/pagination, links
 const GREEN  = '#10b981'
 const ORANGE = '#f59e0b'
 const RED    = '#ef4444'
@@ -115,7 +116,7 @@ const scoreColor = (score?: number | null) => {
   return '#dc2626'
 }
 
-const emptyNewCandidate = { jobId: '', name: '', email: '', phone: '', skills: '', experience: '', location: '' }
+const emptyNewCandidate = { jobId: '', name: '', email: '', phone: '', skills: '', experience: '', location: '', status: '' }
 
 type ChartMode = 'bar' | 'line'
 
@@ -397,6 +398,28 @@ const HRCandidatesPage = () => {
     }
   }
 
+  // A talent-pool row (hasApplied === false) has no real Candidate document
+  // yet — its _id is a synthetic `profile-...` id, not something PUT
+  // /candidates/:id can update. Since the Candidate schema requires a jobId,
+  // "shortlisting" someone from the pool means creating their first real
+  // Candidate record, which needs HR to pick which job it's for — so this
+  // pre-fills the existing Add Candidate modal with their pool info and the
+  // status they clicked, rather than silently failing a PUT to a fake id.
+  const shortlistFromPool = (cd: Candidate, status: CandidateStatus) => {
+    setOpenMenu(null)
+    setNewCandidate({
+      jobId: '',
+      name: cd.name,
+      email: cd.email || '',
+      phone: cd.phone || '',
+      skills: (cd.skills || []).join(', '),
+      experience: cd.experience || '',
+      location: cd.location || '',
+      status,
+    })
+    setShowAdd(true)
+  }
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -515,7 +538,7 @@ const HRCandidatesPage = () => {
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
           >
             <FiPlus size={15}/> Add Candidate
           </button>
@@ -529,7 +552,7 @@ const HRCandidatesPage = () => {
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Total Candidates', value: total,             sub: 'All time',                                                             icon: <HiOutlineBriefcase size={20}/>, ic: PURPLE, bg: '#f5f3ff' },
+          { label: 'Total Candidates', value: total,             sub: 'All time',                                                             icon: <HiOutlineBriefcase size={20}/>, ic: ACCENT, bg: '#fef1ec' },
           { label: 'New This Month',   value: newThisMonth,      sub: total ? `${Math.round(newThisMonth / total * 100)}% from last month` : '0%', icon: <BsPersonPlus size={18}/>,        ic: GREEN,  bg: '#ecfdf5', subColor: GREEN },
           { label: 'In Process',       value: inProcess,         sub: total ? `${Math.round(inProcess / total * 100)}% of total` : '0%',           icon: <BsPeople size={18}/>,            ic: ORANGE, bg: '#fff7ed', subColor: ORANGE },
           { label: 'Shortlisted',      value: counts.Shortlisted || 0, sub: total ? `${Math.round((counts.Shortlisted || 0) / total * 100)}% of total` : '0%', icon: <FiCheckCircle size={18}/>, ic: BLUE, bg: '#eff6ff', subColor: BLUE },
@@ -563,8 +586,8 @@ const HRCandidatesPage = () => {
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     padding: '14px 14px', fontSize: '0.8rem', fontWeight: activeTab === tab.key ? 600 : 400,
-                    color: activeTab === tab.key ? BLUE : GRAY,
-                    borderBottom: activeTab === tab.key ? `2px solid ${BLUE}` : '2px solid transparent',
+                    color: activeTab === tab.key ? ACCENT : GRAY,
+                    borderBottom: activeTab === tab.key ? `2px solid ${ACCENT}` : '2px solid transparent',
                     marginBottom: -1,
                     whiteSpace: 'nowrap',
                   }}
@@ -574,7 +597,7 @@ const HRCandidatesPage = () => {
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
-              <button onClick={() => setShowFilters(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: showFilters ? '#eff6ff' : '#f8fafc', border: `1px solid ${showFilters ? '#bfdbfe' : BORDER}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: showFilters ? BLUE : '#334155', cursor: 'pointer', fontWeight: 500 }}>
+              <button onClick={() => setShowFilters(p => !p)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: showFilters ? '#fef1ec' : '#f8fafc', border: `1px solid ${showFilters ? '#fbd0bb' : BORDER}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: showFilters ? ACCENT : '#334155', cursor: 'pointer', fontWeight: 500 }}>
                 <FiFilter size={13}/> Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
               </button>
               <button onClick={exportCsv} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', border: `1px solid ${BORDER}`, borderRadius: 7, padding: '6px 12px', fontSize: '0.78rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
@@ -584,8 +607,8 @@ const HRCandidatesPage = () => {
           </div>
 
           {selectedIds.size > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: '#eff6ff', borderBottom: `1px solid ${BORDER}` }}>
-              <span style={{ fontSize: '0.82rem', color: BLUE, fontWeight: 600 }}>{selectedIds.size} selected</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: '#fef1ec', borderBottom: `1px solid ${BORDER}` }}>
+              <span style={{ fontSize: '0.82rem', color: ACCENT, fontWeight: 600 }}>{selectedIds.size} selected</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button onClick={() => setSelectedIds(new Set())} style={{ background: 'none', border: 'none', color: '#334155', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
                   Clear selection
@@ -611,7 +634,7 @@ const HRCandidatesPage = () => {
                       type="checkbox"
                       checked={paged.length > 0 && paged.every(cd => selectedIds.has(cd._id))}
                       onChange={toggleSelectAllOnPage}
-                      style={{ accentColor: BLUE, colorScheme: 'light' }}
+                      style={{ accentColor: ACCENT, colorScheme: 'light' }}
                     />
                   </th>
                   {['Candidate', 'Contact', 'Job Applied', 'Skills', 'Experience', 'Score', 'Status', 'Applied On', 'Actions'].map(h => (
@@ -622,7 +645,7 @@ const HRCandidatesPage = () => {
                           if (sortBy === 'score') setSortDir(d => d === 'desc' ? 'asc' : 'desc')
                           else { setSortBy('score'); setSortDir('desc') }
                         }}
-                        style={{ padding: '11px 14px', fontSize: '0.74rem', fontWeight: 600, color: sortBy === 'score' ? BLUE : GRAY, textAlign: 'left', borderBottom: `1px solid ${BORDER}`, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
+                        style={{ padding: '11px 14px', fontSize: '0.74rem', fontWeight: 600, color: sortBy === 'score' ? ACCENT : GRAY, textAlign: 'left', borderBottom: `1px solid ${BORDER}`, whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none' }}
                       >
                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           {h} {sortBy === 'score' ? (sortDir === 'desc' ? <FiArrowDown size={11}/> : <FiArrowUp size={11}/>) : <FiArrowDown size={11} color="#cbd5e1"/>}
@@ -662,7 +685,7 @@ const HRCandidatesPage = () => {
                           type="checkbox"
                           checked={selectedIds.has(cd._id)}
                           onChange={() => toggleSelect(cd._id)}
-                          style={{ accentColor: BLUE, colorScheme: 'light' }}
+                          style={{ accentColor: ACCENT, colorScheme: 'light' }}
                         />
                       </td>
                       <td style={{ padding: '14px' }}>
@@ -701,7 +724,6 @@ const HRCandidatesPage = () => {
                           <button onClick={() => setViewCandidate(cd)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 3, display: 'flex', alignItems: 'center' }} title="View">
                             <FiEye size={15}/>
                           </button>
-                          {cd.hasApplied && (
                           <button
                             onClick={e => {
                               const rect = e.currentTarget.getBoundingClientRect()
@@ -713,7 +735,6 @@ const HRCandidatesPage = () => {
                           >
                             <FiMoreVertical size={15}/>
                           </button>
-                          )}
 
                           {openMenu?.id === cd._id && createPortal(
                             <>
@@ -723,27 +744,46 @@ const HRCandidatesPage = () => {
                                 background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10,
                                 boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 200, overflow: 'hidden',
                               }}>
-                                <div style={{ padding: '8px 12px', fontSize: '0.68rem', color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Set status</div>
-                                {STATUSES.filter(s => s !== cd.status).map(s => (
-                                  <button
-                                    key={s}
-                                    onClick={() => changeStatus(cd, s)}
-                                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#334155', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}
-                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
-                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-                                  >
-                                    <FiCheckCircle size={13} color={STATUS_STYLE[s].color} /> Mark as {s}
-                                  </button>
-                                ))}
-                                <div style={{ borderTop: `1px solid ${BORDER}` }} />
-                                <button
-                                  onClick={() => deleteCandidate(cd)}
-                                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
-                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
-                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
-                                >
-                                  <FiTrash2 size={13} /> Remove
-                                </button>
+                                {cd.hasApplied ? (
+                                  <>
+                                    <div style={{ padding: '8px 12px', fontSize: '0.68rem', color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Set status</div>
+                                    {STATUSES.filter(s => s !== cd.status).map(s => (
+                                      <button
+                                        key={s}
+                                        onClick={() => changeStatus(cd, s)}
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#334155', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                                      >
+                                        <FiCheckCircle size={13} color={STATUS_STYLE[s].color} /> Mark as {s}
+                                      </button>
+                                    ))}
+                                    <div style={{ borderTop: `1px solid ${BORDER}` }} />
+                                    <button
+                                      onClick={() => deleteCandidate(cd)}
+                                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '9px 12px', background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fef2f2' }}
+                                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                                    >
+                                      <FiTrash2 size={13} /> Remove
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div style={{ padding: '8px 12px', fontSize: '0.68rem', color: GRAY, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Not applied yet — shortlist for</div>
+                                    {STATUSES.map(s => (
+                                      <button
+                                        key={s}
+                                        onClick={() => shortlistFromPool(cd, s)}
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'none', border: 'none', color: '#334155', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', textAlign: 'left' }}
+                                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc' }}
+                                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                                      >
+                                        <FiCheckCircle size={13} color={STATUS_STYLE[s].color} /> Mark as {s}
+                                      </button>
+                                    ))}
+                                  </>
+                                )}
                               </div>
                             </>,
                             document.body
@@ -775,7 +815,7 @@ const HRCandidatesPage = () => {
                   return (
                     <button key={p} onClick={() => setPage(p)} style={{
                       width: 30, height: 30, border: isActive ? 'none' : `1px solid ${BORDER}`,
-                      borderRadius: 6, background: isActive ? BLUE : '#fff',
+                      borderRadius: 6, background: isActive ? ACCENT : '#fff',
                       color: isActive ? '#fff' : GRAY,
                       fontSize: '0.78rem', fontWeight: isActive ? 700 : 400,
                       cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -817,7 +857,7 @@ const HRCandidatesPage = () => {
           <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${BORDER}`, padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>Filters</span>
-              <span onClick={resetFilters} style={{ fontSize: '0.76rem', color: BLUE, fontWeight: 600, cursor: 'pointer' }}>Clear all</span>
+              <span onClick={resetFilters} style={{ fontSize: '0.76rem', color: ACCENT, fontWeight: 600, cursor: 'pointer' }}>Clear all</span>
             </div>
 
             <div style={{ marginBottom: 16 }}>
@@ -860,16 +900,16 @@ const HRCandidatesPage = () => {
 
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontSize: '0.76rem', fontWeight: 600, color: '#334155', marginBottom: 8 }}>Score Range</div>
-              <input type="range" min={0} max={100} step={5} value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ width: '100%', accentColor: BLUE, colorScheme: 'light' }} />
+              <input type="range" min={0} max={100} step={5} value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ width: '100%', accentColor: ACCENT, colorScheme: 'light' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#94a3b8' }}>
                 <span>{minScore}%</span><span>100%</span>
               </div>
             </div>
 
-            <button onClick={() => setPage(1)} style={{ width: '100%', background: BLUE, color: '#fff', border: 'none', borderRadius: 10, padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
+            <button onClick={() => setPage(1)} style={{ width: '100%', background: ACCENT, color: '#fff', border: 'none', borderRadius: 10, padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 8 }}>
               <FiSliders size={13} /> Apply Filters
             </button>
-            <button onClick={resetFilters} style={{ width: '100%', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10, color: activeFilterCount > 0 ? BLUE : GRAY, padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+            <button onClick={resetFilters} style={{ width: '100%', background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10, color: activeFilterCount > 0 ? ACCENT : GRAY, padding: '9px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
               Reset{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
             </button>
           </div>
@@ -893,6 +933,12 @@ const HRCandidatesPage = () => {
             <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14 }}>
               {addError && (
                 <div style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', padding: '9px 12px', borderRadius: 8 }}>{addError}</div>
+              )}
+
+              {newCandidate.status && (
+                <div style={{ background: '#fef1ec', color: ACCENT, fontSize: '0.8rem', fontWeight: 600, padding: '9px 12px', borderRadius: 8 }}>
+                  Will be added with status "{newCandidate.status}" — just pick which job this is for below.
+                </div>
               )}
 
               <div>
@@ -953,7 +999,7 @@ const HRCandidatesPage = () => {
               <button onClick={() => { setShowAdd(false); setAddError('') }} style={{ height: 38, padding: '0 16px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', color: '#334155', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleAddCandidate} disabled={adding} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: adding ? 'default' : 'pointer', opacity: adding ? 0.7 : 1 }}>
+              <button onClick={handleAddCandidate} disabled={adding} style={{ height: 38, padding: '0 18px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: adding ? 'default' : 'pointer', opacity: adding ? 0.7 : 1 }}>
                 {adding ? 'Adding…' : 'Add Candidate'}
               </button>
             </div>
@@ -1010,14 +1056,14 @@ const HRCandidatesPage = () => {
                 {/* Contact */}
                 <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap' }}>
                   {viewCandidate.phone && (
-                    <a href={`tel:${viewCandidate.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: '#334155', textDecoration: 'none' }}><FiPhone size={13} color={BLUE}/> {viewCandidate.phone}</a>
+                    <a href={`tel:${viewCandidate.phone}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: '#334155', textDecoration: 'none' }}><FiPhone size={13} color={ACCENT}/> {viewCandidate.phone}</a>
                   )}
                   {(p?.email || viewCandidate.email) && (
-                    <a href={`mailto:${p?.email || viewCandidate.email}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: '#334155', textDecoration: 'none' }}><FiMail size={13} color={BLUE}/> {p?.email || viewCandidate.email}</a>
+                    <a href={`mailto:${p?.email || viewCandidate.email}`} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: '#334155', textDecoration: 'none' }}><FiMail size={13} color={ACCENT}/> {p?.email || viewCandidate.email}</a>
                   )}
                   {viewCandidate.studentId && (
                     resumeUrl ? (
-                      <a href={resumeUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: BLUE, textDecoration: 'none', fontWeight: 600, marginLeft: 'auto' }}>
+                      <a href={resumeUrl} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', color: ACCENT, textDecoration: 'none', fontWeight: 600, marginLeft: 'auto' }}>
                         <FiDownload size={13}/> Resume Available
                       </a>
                     ) : (
@@ -1031,7 +1077,7 @@ const HRCandidatesPage = () => {
                 {/* Application + background */}
                 <div style={{ border: `1px solid ${BORDER}`, borderRadius: 10, padding: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', marginBottom: 12 }}>
-                    <HiOutlineBriefcase size={15} color={BLUE} /> Application
+                    <HiOutlineBriefcase size={15} color={ACCENT} /> Application
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
                     {[

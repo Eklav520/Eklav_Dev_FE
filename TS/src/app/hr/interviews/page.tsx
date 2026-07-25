@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from 'react'
 import {
   FiSearch, FiBell, FiPlus, FiCalendar, FiEye, FiX,
-  FiUsers, FiClock, FiCheckCircle, FiUserCheck, FiFileText, FiStar, FiUser, FiVideo, FiCopy,
+  FiClock, FiCheckCircle, FiStar, FiUser, FiVideo, FiCopy,
 } from 'react-icons/fi'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -13,6 +13,7 @@ const RED    = '#ef4444'
 const PURPLE = '#8b5cf6'
 const GRAY   = '#64748b'
 const BORDER = '#e2e8f0'
+const ACCENT = '#f2622f' // coral — matches /hr/jobs, /hr/candidates & /hr/pipeline: primary buttons, active states, links
 
 const STATUS_META: Record<string, { label: string; bg: string; color: string }> = {
   Active:           { label: 'In Progress',     bg: '#eff6ff', color: BLUE },
@@ -114,7 +115,7 @@ type DetailTab = 'Overview' | 'History' | 'Feedback' | 'Documents' | 'Notes'
 // column, matching the boxed-icon treatment in the Figma spec.
 const IconField = ({ icon: Icon, label, value }: { icon: ComponentType<{ size?: number }>; label: string; value: ReactNode }) => (
   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#eff6ff', color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+    <div style={{ width: 28, height: 28, borderRadius: 8, background: '#fef1ec', color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
       <Icon size={13} />
     </div>
     <div style={{ minWidth: 0 }}>
@@ -352,31 +353,11 @@ const HRInterviewsPage = () => {
           </button>
           <button
             onClick={() => { setEditingInterviewId(null); setForm(emptyForm); setSaveError(''); setShowSchedule(true) }}
-            style={{ display: 'flex', alignItems: 'center', gap: 7, background: BLUE, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 7, background: ACCENT, color: '#fff', border: 'none', borderRadius: 8, padding: '0 16px', height: 36, fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
           >
             <FiPlus size={15}/> Schedule Interview
           </button>
         </div>
-      </div>
-
-      {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 20 }}>
-        {[
-          { label: 'Total Candidates', value: stats.total, sub: 'All jobs', icon: <FiUsers size={17}/>, ic: BLUE, bg: '#eff6ff' },
-          { label: 'In Progress', value: stats.active, sub: stats.total ? `${Math.round(stats.active / stats.total * 100)}% of total` : '0%', icon: <FiClock size={17}/>, ic: GREEN, bg: '#ecfdf5' },
-          { label: 'Awaiting Approval', value: stats.awaitingApproval, sub: stats.total ? `${Math.round(stats.awaitingApproval / stats.total * 100)}% of total` : '0%', icon: <FiUserCheck size={17}/>, ic: ORANGE, bg: '#fff7ed' },
-          { label: 'Offered', value: stats.offered, sub: stats.total ? `${Math.round(stats.offered / stats.total * 100)}% of total` : '0%', icon: <FiFileText size={17}/>, ic: PURPLE, bg: '#f5f3ff' },
-          { label: 'Joined', value: stats.joined, sub: stats.total ? `${Math.round(stats.joined / stats.total * 100)}% of total` : '0%', icon: <FiCheckCircle size={17}/>, ic: GREEN, bg: '#ecfdf5' },
-        ].map(s => (
-          <div key={s.label} style={{ background: '#fff', borderRadius: 12, padding: '14px 16px', border: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.ic, flexShrink: 0 }}>{s.icon}</div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '0.7rem', color: GRAY, marginBottom: 2, whiteSpace: 'nowrap' }}>{s.label}</div>
-              <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>{s.value}</div>
-              <div style={{ fontSize: '0.66rem', color: GRAY, fontWeight: 500, marginTop: 2, whiteSpace: 'nowrap' }}>{s.sub}</div>
-            </div>
-          </div>
-        ))}
       </div>
 
       {loadError && <div style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.82rem', padding: '10px 14px', borderRadius: 8, marginBottom: 16 }}>{loadError}</div>}
@@ -384,14 +365,17 @@ const HRInterviewsPage = () => {
       {/* Candidate list — full width; clicking a row opens the detail drawer */}
       <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: 0, padding: '0 16px', borderBottom: `1px solid ${BORDER}`, overflowX: 'auto', overflowY: 'hidden' }}>
-            {TABS.map(tab => (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: '13px 10px', fontSize: '0.78rem',
-                fontWeight: activeTab === tab.key ? 600 : 400, color: activeTab === tab.key ? BLUE : GRAY,
-                borderBottom: activeTab === tab.key ? `2px solid ${BLUE}` : '2px solid transparent', marginBottom: -1, whiteSpace: 'nowrap',
-              }}>
-                {tab.label}
-              </button>
+            {TABS.map((tab, i) => (
+              <div key={tab.key} style={{ display: 'flex', alignItems: 'center' }}>
+                {i > 0 && <span style={{ color: BORDER, fontSize: '0.8rem', margin: '0 8px -1px' }}>|</span>}
+                <button onClick={() => setActiveTab(tab.key)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: '13px 6px', fontSize: '0.78rem',
+                  fontWeight: activeTab === tab.key ? 600 : 400, color: activeTab === tab.key ? ACCENT : GRAY,
+                  borderBottom: activeTab === tab.key ? `2px solid ${ACCENT}` : '2px solid transparent', marginBottom: -1, whiteSpace: 'nowrap',
+                }}>
+                  {tab.label}
+                </button>
+              </div>
             ))}
           </div>
 
@@ -494,7 +478,7 @@ const HRInterviewsPage = () => {
                         <span style={{ display: 'inline-block', background: meta.bg, color: meta.color, fontSize: '0.68rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{meta.label}</span>
                       </td>
                       <td style={{ padding: '14px 10px' }}>
-                        <button onClick={e => { e.stopPropagation(); selectCandidate(r._id) }} style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${BORDER}`, background: '#fff', color: BLUE, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <button onClick={e => { e.stopPropagation(); selectCandidate(r._id) }} style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${BORDER}`, background: '#fff', color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
                           <FiEye size={14} />
                         </button>
                       </td>
@@ -515,7 +499,7 @@ const HRInterviewsPage = () => {
                 {Array.from({ length: pageCount }, (_, i) => i + 1).slice(0, 3).map(p => (
                   <button key={p} onClick={() => setPage(p)} style={{
                     width: 28, height: 28, border: p === page ? 'none' : `1px solid ${BORDER}`, borderRadius: 7,
-                    background: p === page ? BLUE : '#fff', color: p === page ? '#fff' : '#334155',
+                    background: p === page ? ACCENT : '#fff', color: p === page ? '#fff' : '#334155',
                     fontSize: '0.76rem', fontWeight: p === page ? 700 : 400, cursor: 'pointer',
                   }}>{p}</button>
                 ))}
@@ -631,7 +615,7 @@ const HRInterviewsPage = () => {
                       {detail.currentRound.meetingLink && (
                         <PlainField label="Meeting Link" value={
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                            <a href={detail.currentRound.meetingLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: BLUE, textDecoration: 'none', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                            <a href={detail.currentRound.meetingLink} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.8rem', color: ACCENT, textDecoration: 'none', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
                               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{detail.currentRound.meetingLink}</span>
                             </a>
                             <button onClick={() => copyMeetingLink(detail.currentRound!.meetingLink!)} title={linkCopied ? 'Copied!' : 'Copy link'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: linkCopied ? GREEN : GRAY, display: 'flex', padding: 2, flexShrink: 0 }}>
@@ -640,7 +624,7 @@ const HRInterviewsPage = () => {
                           </div>
                         } />
                       )}
-                      <PlainField label="Interview Type" value={<span style={{ color: BLUE }}>{detail.currentRound.interviewType}</span>} />
+                      <PlainField label="Interview Type" value={<span style={{ color: ACCENT }}>{detail.currentRound.interviewType}</span>} />
                     </div>
                   </div>
                   {detail.currentRound.status === 'Scheduled' && (() => {
@@ -664,8 +648,8 @@ const HRInterviewsPage = () => {
                 {(['Overview', 'History', 'Feedback', 'Documents', 'Notes'] as DetailTab[]).map(t => (
                   <button key={t} onClick={() => setDetailTab(t)} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '9px 10px', fontSize: '0.76rem',
-                    fontWeight: detailTab === t ? 600 : 400, color: detailTab === t ? BLUE : GRAY,
-                    borderBottom: detailTab === t ? `2px solid ${BLUE}` : '2px solid transparent', marginBottom: -1,
+                    fontWeight: detailTab === t ? 600 : 400, color: detailTab === t ? ACCENT : GRAY,
+                    borderBottom: detailTab === t ? `2px solid ${ACCENT}` : '2px solid transparent', marginBottom: -1,
                   }}>
                     {t === 'History' ? 'Interview History' : t}
                   </button>
@@ -863,7 +847,7 @@ const HRInterviewsPage = () => {
                       const p = interviewerRecords.find(x => x._id === id)
                       if (!p) return null
                       return (
-                        <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.74rem', fontWeight: 600, color: BLUE, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 20, padding: '4px 8px 4px 10px' }}>
+                        <span key={id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.74rem', fontWeight: 600, color: ACCENT, background: '#fef1ec', border: '1px solid #fbd0bb', borderRadius: 20, padding: '4px 8px 4px 10px' }}>
                           {p.name}
                           <FiX size={11} style={{ cursor: 'pointer' }} onClick={() => toggleInterviewer(id)} />
                         </span>
@@ -881,8 +865,8 @@ const HRInterviewsPage = () => {
                       .map(p => {
                         const checked = form.interviewerIds.includes(p._id)
                         return (
-                          <label key={p._id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#334155', borderRadius: 6, padding: '8px 10px', cursor: 'pointer', background: checked ? '#eff6ff' : 'transparent', minWidth: 0 }}>
-                            <input type="checkbox" checked={checked} onChange={() => toggleInterviewer(p._id)} style={{ accentColor: BLUE, colorScheme: 'light', flexShrink: 0 }} />
+                          <label key={p._id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8rem', color: '#334155', borderRadius: 6, padding: '8px 10px', cursor: 'pointer', background: checked ? '#fef1ec' : 'transparent', minWidth: 0 }}>
+                            <input type="checkbox" checked={checked} onChange={() => toggleInterviewer(p._id)} style={{ accentColor: ACCENT, colorScheme: 'light', flexShrink: 0 }} />
                             <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                             {(p.role || p.department) && <span style={{ color: GRAY, fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{[p.role, p.department].filter(Boolean).join(' · ')}</span>}
                           </label>
@@ -905,7 +889,7 @@ const HRInterviewsPage = () => {
               <button onClick={() => { setShowSchedule(false); setEditingInterviewId(null); setSaveError('') }} style={{ height: 40, padding: '0 18px', borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff', color: '#334155', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer' }}>
                 Cancel
               </button>
-              <button onClick={handleSchedule} disabled={saving} style={{ height: 40, padding: '0 20px', borderRadius: 8, border: 'none', background: BLUE, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+              <button onClick={handleSchedule} disabled={saving} style={{ height: 40, padding: '0 20px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? (editingInterviewId ? 'Saving…' : 'Scheduling…') : (editingInterviewId ? 'Save Changes' : 'Schedule Interview')}
               </button>
             </div>
