@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import PageMetaData from '@/components/PageMetaData'
 import { useAuthContext } from '@/context/useAuthContext'
+import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
+import CourseCertificate from './components/CourseCertificate'
 import {
   FaPlay, FaStar, FaRegStar, FaStarHalfAlt, FaCheck,
-  FaBookOpen, FaTrophy, FaClock,
+  FaBookOpen, FaTrophy, FaClock, FaAward,
   FaThLarge, FaList, FaSearch,
 } from 'react-icons/fa'
 import { BsCheckCircleFill, BsLightningFill } from 'react-icons/bs'
@@ -129,7 +131,7 @@ const RateThisCourse = ({ userRating, onRate }: { userRating?: number; onRate: (
 
 // ─── Course Row ─────────────────────────────────────────────────────────────
 
-const CourseRow = ({ course, onRate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void }) => {
+const CourseRow = ({ course, onRate, onCertificate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void; onCertificate: (course: EnrolledCourse) => void }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const pct = Math.round(course.completedLectures)
   const isCompleted = pct >= 100
@@ -228,13 +230,21 @@ const CourseRow = ({ course, onRate }: { course: EnrolledCourse; onRate: (course
       <div style={{ width: 1, background: PAGE_BORDER, alignSelf: 'stretch', flexShrink: 0 }} />
 
       {/* Actions — single button only */}
-      <div style={{ flexShrink: 0, minWidth: 170 }}>
+      <div style={{ flexShrink: 0, minWidth: 170, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {isCompleted ? (
-          <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-            <button style={{ background: '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
-              <FaCheck size={11} /> Completed
+          <>
+            <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+              <button style={{ background: '#16a34a', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}>
+                <FaCheck size={11} /> Completed
+              </button>
+            </a>
+            <button
+              onClick={() => onCertificate(course)}
+              style={{ background: '#fff7ed', border: '1px solid rgba(255,122,0,0.3)', borderRadius: 8, color: '#ff7a00', fontWeight: 700, fontSize: '0.78rem', padding: '8px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}
+            >
+              <FaAward size={12} /> Get Certificate
             </button>
-          </a>
+          </>
         ) : (
           <a href={`/pages/course/detail-adv/${course._id}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
             <button style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', boxShadow: '0 4px 14px rgba(255,122,0,0.28)' }}>
@@ -250,7 +260,7 @@ const CourseRow = ({ course, onRate }: { course: EnrolledCourse; onRate: (course
 
 // ─── Course Grid Card ────────────────────────────────────────────────────────
 
-const CourseGridCard = ({ course, onRate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void }) => {
+const CourseGridCard = ({ course, onRate, onCertificate }: { course: EnrolledCourse; onRate: (courseId: string, rating: number) => void; onCertificate: (course: EnrolledCourse) => void }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const pct = Math.round(course.completedLectures)
   const isCompleted = pct >= 100
@@ -337,6 +347,14 @@ const CourseGridCard = ({ course, onRate }: { course: EnrolledCourse; onRate: (c
             {isCompleted ? <><FaCheck size={10} /> Completed</> : <><FaPlay size={9} /> {hasStarted ? 'Continue' : 'Start Learning'}</>}
           </button>
         </a>
+        {isCompleted && (
+          <button
+            onClick={() => onCertificate(course)}
+            style={{ background: '#fff7ed', border: '1px solid rgba(255,122,0,0.3)', borderRadius: 8, color: '#ff7a00', fontWeight: 700, fontSize: '0.74rem', padding: '8px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%' }}
+          >
+            <FaAward size={11} /> Get Certificate
+          </button>
+        )}
       </div>
     </div>
   )
@@ -348,8 +366,10 @@ const CourseListPage = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
+  const { profile } = useProfile()
 
   const [enrolledCourses, setEnrolledCourses] = useState<EnrolledCourse[]>([])
+  const [certificateCourse, setCertificateCourse] = useState<EnrolledCourse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'all' | 'inprogress' | 'completed' | 'wishlist'>('all')
@@ -609,17 +629,28 @@ const CourseListPage = () => {
         ) : viewMode === 'grid' ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
             {filteredCourses.map(course => (
-              <CourseGridCard key={course._id} course={course} onRate={handleRate} />
+              <CourseGridCard key={course._id} course={course} onRate={handleRate} onCertificate={setCertificateCourse} />
             ))}
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {filteredCourses.map(course => (
-              <CourseRow key={course._id} course={course} onRate={handleRate} />
+              <CourseRow key={course._id} course={course} onRate={handleRate} onCertificate={setCertificateCourse} />
             ))}
           </div>
         )}
       </div>
+
+      {certificateCourse && (
+        <CourseCertificate
+          studentName={profile?.fullName || profile?.name || 'Student'}
+          courseName={certificateCourse.name}
+          courseId={certificateCourse._id}
+          studentId={profile?.userId || profile?._id || ''}
+          completionDate={certificateCourse.lastAccessedAt}
+          onClose={() => setCertificateCourse(null)}
+        />
+      )}
     </>
   )
 }
