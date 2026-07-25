@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import PageMetaData from '@/components/PageMetaData'
 import { useAuthContext } from '@/context/useAuthContext'
 import {
   FaTicketAlt, FaClock, FaCheckCircle, FaBoxOpen, FaHeadset, FaPaperclip,
-  FaPaperPlane, FaChevronRight, FaSearch, FaTimes,
+  FaPaperPlane, FaChevronRight, FaSearch, FaTimes, FaChevronLeft,
 } from 'react-icons/fa'
 
 // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
@@ -67,6 +66,8 @@ const RaiseTicketPage = () => {
   const [counts, setCounts] = useState({ total: 0, open: 0, resolved: 0, closed: 0 })
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const [showTicketsModal, setShowTicketsModal] = useState(false)
+  const [ticketsPage, setTicketsPage] = useState(1)
+  const TICKETS_PAGE_SIZE = 8
 
   const fetchTickets = () => {
     if (!baseURL || !token) return
@@ -141,9 +142,17 @@ const RaiseTicketPage = () => {
       <PageMetaData title="Raise a Ticket" />
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: PAGE_TEXT }}>Raise a Ticket</h1>
-        <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: PAGE_GRAY }}>Need help? Let us know your issue and we&apos;ll get back to you.</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 700, color: PAGE_TEXT }}>Raise a Ticket</h1>
+          <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: PAGE_GRAY }}>Need help? Let us know your issue and we&apos;ll get back to you.</p>
+        </div>
+        <button
+          onClick={() => { setTicketsPage(1); setShowTicketsModal(true) }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, height: 40, padding: '0 18px', borderRadius: 8, border: 'none', background: ACCENT, color: '#fff', fontSize: '0.84rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 14px rgba(255,122,0,0.28)' }}
+        >
+          <FaSearch size={13}/> View My Tickets
+        </button>
       </div>
 
       {/* Stats row */}
@@ -176,20 +185,22 @@ const RaiseTicketPage = () => {
             {error && <div style={{ background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', padding: '9px 12px', borderRadius: 8, marginBottom: 14 }}>{error}</div>}
             {success && <div style={{ background: '#ecfdf5', color: '#059669', fontSize: '0.8rem', padding: '9px 12px', borderRadius: 8, marginBottom: 14 }}>{success}</div>}
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, marginBottom: 6 }}>1. Select Category <span style={{ color: '#ef4444' }}>*</span></label>
-              <select value={category} onChange={e => { setCategory(e.target.value); setSubCategory('') }} style={{ ...inputStyle, colorScheme: 'light' }}>
-                <option value="">Select a category</option>
-                {Object.keys(categories).map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, marginBottom: 6 }}>1. Select Category <span style={{ color: '#ef4444' }}>*</span></label>
+                <select value={category} onChange={e => { setCategory(e.target.value); setSubCategory('') }} style={{ ...inputStyle, colorScheme: 'light' }}>
+                  <option value="">Select a category</option>
+                  {Object.keys(categories).map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, marginBottom: 6 }}>2. Select Sub-Category</label>
-              <select value={subCategory} onChange={e => setSubCategory(e.target.value)} disabled={!category} style={{ ...inputStyle, colorScheme: 'light', opacity: category ? 1 : 0.6 }}>
-                <option value="">Select a sub-category</option>
-                {subCategoryOptions.map(sc => <option key={sc} value={sc}>{sc}</option>)}
-              </select>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, marginBottom: 6 }}>2. Select Sub-Category</label>
+                <select value={subCategory} onChange={e => setSubCategory(e.target.value)} disabled={!category} style={{ ...inputStyle, colorScheme: 'light', opacity: category ? 1 : 0.6 }}>
+                  <option value="">Select a sub-category</option>
+                  {subCategoryOptions.map(sc => <option key={sc} value={sc}>{sc}</option>)}
+                </select>
+              </div>
             </div>
 
             <div style={{ marginBottom: 14 }}>
@@ -234,21 +245,6 @@ const RaiseTicketPage = () => {
               </button>
             </div>
           </div>
-
-          <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{ width: 38, height: 38, borderRadius: 9, background: 'rgba(255,122,0,0.12)', color: ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FaSearch size={15}/>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: PAGE_TEXT }}>Track Your Ticket</div>
-                <div style={{ fontSize: '0.75rem', color: PAGE_GRAY }}>You can track the status of your ticket anytime.</div>
-              </div>
-            </div>
-            <button onClick={() => setShowTicketsModal(true)} style={{ height: 36, padding: '0 16px', borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_TEXT, fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              View My Tickets
-            </button>
-          </div>
         </div>
 
         {/* Right: sidebar */}
@@ -259,11 +255,7 @@ const RaiseTicketPage = () => {
               <FaHeadset size={18}/>
             </div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: PAGE_TEXT, marginBottom: 4 }}>Need Immediate Help?</div>
-            <div style={{ fontSize: '0.76rem', color: PAGE_GRAY, marginBottom: 14 }}>Check our Help Center or contact our support team.</div>
-            <Link to="/help/center" style={{ display: 'block', background: ACCENT, color: '#fff', borderRadius: 8, padding: '9px 0', fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none', marginBottom: 10 }}>
-              Go to Help Center
-            </Link>
-            <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginBottom: 4 }}>or</div>
+            <div style={{ fontSize: '0.76rem', color: PAGE_GRAY, marginBottom: 14 }}>Contact our support team directly.</div>
             <div style={{ fontSize: '0.76rem', color: PAGE_GRAY }}>
               Email us at <a href="mailto:admin@eklav.in" style={{ color: ACCENT, fontWeight: 600, textDecoration: 'none' }}>admin@eklav.in</a>
             </div>
@@ -273,7 +265,7 @@ const RaiseTicketPage = () => {
           <div id="my-tickets" style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: 18 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <span style={{ fontSize: '0.88rem', fontWeight: 700, color: PAGE_TEXT }}>My Recent Tickets</span>
-              {tickets.length > 3 && <span onClick={() => setShowTicketsModal(true)} style={{ fontSize: '0.74rem', color: ACCENT, fontWeight: 600, cursor: 'pointer' }}>View All</span>}
+              {tickets.length > 3 && <span onClick={() => { setTicketsPage(1); setShowTicketsModal(true) }} style={{ fontSize: '0.74rem', color: ACCENT, fontWeight: 600, cursor: 'pointer' }}>View All</span>}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {tickets.length === 0 && <span style={{ fontSize: '0.78rem', color: PAGE_GRAY }}>No tickets raised yet.</span>}
@@ -316,43 +308,84 @@ const RaiseTicketPage = () => {
         </div>
       </div>
 
-      {/* All Tickets modal */}
-      {showTicketsModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ background: CARD_BG, borderRadius: 14, width: 620, maxWidth: '100%', maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: PAGE_TEXT }}>My Tickets ({tickets.length})</span>
-              <button onClick={() => setShowTicketsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PAGE_GRAY as any, display: 'flex' }}>
-                <FaTimes size={16}/>
-              </button>
-            </div>
-            <div style={{ padding: '10px 20px', overflowY: 'auto', flex: 1 }}>
-              {tickets.length === 0 && (
-                <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '0.82rem', color: PAGE_GRAY }}>No tickets raised yet.</div>
-              )}
-              {tickets.map(t => {
-                const st = STATUS_STYLE[t.status || 'Open']
-                return (
-                  <div key={t._id} style={{ padding: '12px 0', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: PAGE_GRAY }}>#{t.ticketNumber}</span>
-                      <span style={{ background: st.bg, color: st.color, fontSize: '0.68rem', fontWeight: 700, padding: '2px 9px', borderRadius: 20 }}>{t.status || 'Open'}</span>
-                    </div>
-                    <div style={{ fontSize: '0.86rem', fontWeight: 600, color: PAGE_TEXT, marginBottom: 3 }}>{t.subject}</div>
-                    {(t.category || t.subCategory) && (
-                      <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginBottom: 3 }}>{[t.category, t.subCategory].filter(Boolean).join(' → ')}</div>
-                    )}
-                    {t.issue && (
-                      <div style={{ fontSize: '0.76rem', color: PAGE_GRAY, marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>{t.issue}</div>
-                    )}
-                    <div style={{ fontSize: '0.68rem', color: PAGE_GRAY }}>Created on {formatDate(t.submittedAt)}</div>
+      {/* All Tickets modal — table view */}
+      {showTicketsModal && (() => {
+        const pageCount = Math.max(1, Math.ceil(tickets.length / TICKETS_PAGE_SIZE))
+        const pagedTickets = tickets.slice((ticketsPage - 1) * TICKETS_PAGE_SIZE, ticketsPage * TICKETS_PAGE_SIZE)
+        return (
+          <div
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+            onClick={() => setShowTicketsModal(false)}
+          >
+            <div
+              style={{ background: CARD_BG, borderRadius: 14, width: '75vw', maxWidth: '75vw', maxHeight: '82vh', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 50px rgba(0,0,0,0.25)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: PAGE_TEXT }}>My Tickets ({tickets.length})</span>
+                <button onClick={() => setShowTicketsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: PAGE_GRAY as any, display: 'flex' }}>
+                  <FaTimes size={16}/>
+                </button>
+              </div>
+              <div style={{ overflow: 'auto', flex: 1 }}>
+                {tickets.length === 0 ? (
+                  <div style={{ padding: '30px 0', textAlign: 'center', fontSize: '0.82rem', color: PAGE_GRAY }}>No tickets raised yet.</div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'var(--dash-page-bg, #f8fafc)' }}>
+                        {['Ticket ID', 'Subject', 'Category', 'Status', 'Created On'].map(h => (
+                          <th key={h} style={{ padding: '10px 16px', fontSize: '0.7rem', fontWeight: 700, color: PAGE_GRAY, textAlign: 'left', borderBottom: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap', position: 'sticky', top: 0, background: 'var(--dash-page-bg, #f8fafc)' }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedTickets.map(t => {
+                        const st = STATUS_STYLE[t.status || 'Open']
+                        return (
+                          <tr key={t._id} style={{ borderBottom: `1px solid ${PAGE_BORDER}` }}>
+                            <td style={{ padding: '10px 16px', fontSize: '0.76rem', fontWeight: 700, color: PAGE_GRAY, whiteSpace: 'nowrap' }}>#{t.ticketNumber}</td>
+                            <td style={{ padding: '10px 16px', fontSize: '0.8rem', fontWeight: 600, color: PAGE_TEXT, maxWidth: 320 }}>{t.subject}</td>
+                            <td style={{ padding: '10px 16px', fontSize: '0.74rem', color: PAGE_GRAY, whiteSpace: 'nowrap' }}>{[t.category, t.subCategory].filter(Boolean).join(' → ') || '—'}</td>
+                            <td style={{ padding: '10px 16px' }}>
+                              <span style={{ background: st.bg, color: st.color, fontSize: '0.66rem', fontWeight: 700, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap' }}>{t.status || 'Open'}</span>
+                            </td>
+                            <td style={{ padding: '10px 16px', fontSize: '0.74rem', color: PAGE_GRAY, whiteSpace: 'nowrap' }}>{formatDate(t.submittedAt)}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              {tickets.length > TICKETS_PAGE_SIZE && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderTop: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.74rem', color: PAGE_GRAY }}>
+                    Showing {(ticketsPage - 1) * TICKETS_PAGE_SIZE + 1}–{Math.min(ticketsPage * TICKETS_PAGE_SIZE, tickets.length)} of {tickets.length}
+                  </span>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setTicketsPage(p => Math.max(1, p - 1))}
+                      disabled={ticketsPage === 1}
+                      style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: ticketsPage === 1 ? 'default' : 'pointer', opacity: ticketsPage === 1 ? 0.5 : 1 }}
+                    >
+                      <FaChevronLeft size={11}/>
+                    </button>
+                    <span style={{ fontSize: '0.78rem', color: PAGE_TEXT, display: 'flex', alignItems: 'center', padding: '0 6px' }}>{ticketsPage} / {pageCount}</span>
+                    <button
+                      onClick={() => setTicketsPage(p => Math.min(pageCount, p + 1))}
+                      disabled={ticketsPage === pageCount}
+                      style={{ width: 30, height: 30, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, color: PAGE_TEXT, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: ticketsPage === pageCount ? 'default' : 'pointer', opacity: ticketsPage === pageCount ? 0.5 : 1 }}
+                    >
+                      <FaChevronRight size={11}/>
+                    </button>
                   </div>
-                )
-              })}
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
