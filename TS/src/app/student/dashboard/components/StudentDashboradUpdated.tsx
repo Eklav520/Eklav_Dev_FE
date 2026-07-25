@@ -649,33 +649,22 @@ const StudentDashboardUpdated: React.FC = () => {
         />
       </div>
 
-      {/* ── SUCCESS STORY PROMPT ── */}
-      {myStory !== undefined && (
+      {/* ── SUCCESS STORY PROMPT — only shown before the student has submitted
+          a story; once submitted (any status), it's hidden for good. ── */}
+      {myStory === null && (
         <div style={{ margin: '18px 28px 0', background: 'linear-gradient(135deg, #fff7ed, #fef3e2)', border: `1px solid ${ORANGE}33`, borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: `1px solid ${ORANGE}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ORANGE, fontSize: '1.2rem' }}>
               🌟
             </div>
             <div>
-              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: TEXT }}>
-                {!myStory ? 'Share Your Success Story' : myStory.status === 'Pending' ? 'Your story is under review' : myStory.status === 'Approved' ? 'Your story is live on our website! 🎉' : 'Thanks for sharing your story'}
-              </div>
-              <div style={{ fontSize: '0.76rem', color: GRAY }}>
-                {!myStory
-                  ? 'Tell us how Eklav has helped you — approved stories get featured on our homepage.'
-                  : myStory.status === 'Pending'
-                  ? 'Our team is reviewing it — we will feature it once approved.'
-                  : myStory.status === 'Approved'
-                  ? 'Check it out on the Eklav homepage under "Empowering Every Student".'
-                  : 'You can always submit another story later.'}
-              </div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: TEXT }}>Share Your Success Story</div>
+              <div style={{ fontSize: '0.76rem', color: GRAY }}>Tell us how Eklav has helped you — approved stories get featured on our homepage.</div>
             </div>
           </div>
-          {!myStory && (
-            <button onClick={() => setShowStoryModal(true)} className="sd-btn-orange" style={{ width: 'auto', padding: '10px 20px', flexShrink: 0 }}>
-              Share Your Story
-            </button>
-          )}
+          <button onClick={() => setShowStoryModal(true)} className="sd-btn-orange" style={{ width: 'auto', padding: '10px 20px', flexShrink: 0 }}>
+            Share Your Story
+          </button>
         </div>
       )}
 
