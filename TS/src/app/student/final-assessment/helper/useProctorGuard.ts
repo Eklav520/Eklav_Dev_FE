@@ -64,6 +64,12 @@ export function useProctorGuard(
   const cameraStreamRef = useRef<MediaStream | null>(null)
   const lastRaiseTimeRef = useRef(0)
   const escPressedRef = useRef(false)
+  // Chrome/Edge render the camera/mic/screen-share permission bubble as
+  // native browser chrome, not page content, so requesting it fires a
+  // real `blur` on window — indistinguishable from an actual tab switch
+  // unless we track "a getUserMedia/getDisplayMedia call is in flight"
+  // ourselves and treat blur as benign while it is.
+  const permissionRequestActiveRef = useRef(false)
 
   const raise = useCallback(
     (reason: string) => {
@@ -263,7 +269,7 @@ export function useProctorGuard(
     if (!enabled) return
 
     const onVisibilityChange = () => {
-      if (document.hidden && !escPressedRef.current) {
+      if (document.hidden && !escPressedRef.current && !permissionRequestActiveRef.current) {
         raise('Tab/window switched')
         setTimeout(() => window.focus(), 50)
       }
@@ -271,6 +277,7 @@ export function useProctorGuard(
     
     const onWindowBlur = () => {
       if (escPressedRef.current) return  // ESC fullscreen exit — not a real tab switch
+      if (permissionRequestActiveRef.current) return  // camera/mic/screen-share prompt — not a real tab switch
       raise('Window focus lost')
       setTimeout(() => window.focus(), 50)
     }
@@ -280,6 +287,13 @@ export function useProctorGuard(
       setIsFullscreen(active)
 
       if (!active && captureFullscreenExit && armedRef.current) {
+        if (permissionRequestActiveRef.current) {
+          // Chrome/Edge auto-exit fullscreen to render the camera/mic/screen
+          // permission bubble (it can't be drawn over fullscreen content) —
+          // that's a browser-forced exit, not the student backing out.
+          if (autoReenterFullscreen) enterFullscreen()
+          return
+        }
         // Always count as violation — ESC or any other exit
         setTimeout(() => { escPressedRef.current = false }, 300)
         raise('Exited fullscreen mode')
@@ -341,6 +355,30 @@ export function useProctorGuard(
     document.addEventListener('cut', onCut)
     window.addEventListener('beforeunload', onBeforeUnload)
 
+    // Wrap getUserMedia/getDisplayMedia so any round component (StudentQuiz,
+    // HRRound, TechnicalRound, etc.) requesting camera/mic/screen access
+    // automatically gets the blur-suppression above, without each of them
+    // having to know about the proctor guard.
+    const md = navigator.mediaDevices
+    const originalGetUserMedia = md?.getUserMedia?.bind(md)
+    const originalGetDisplayMedia = md?.getDisplayMedia?.bind(md)
+
+    const withPermissionGrace = <A extends any[], R>(fn: (...args: A) => Promise<R>) =>
+      async (...args: A) => {
+        permissionRequestActiveRef.current = true
+        try {
+          return await fn(...args)
+        } finally {
+          // Focus/blur events from the closing permission bubble can lag
+          // a tick behind the promise settling, so hold the grace period
+          // open briefly instead of clearing it immediately.
+          setTimeout(() => { permissionRequestActiveRef.current = false }, 1000)
+        }
+      }
+
+    if (originalGetUserMedia) md.getUserMedia = withPermissionGrace(originalGetUserMedia)
+    if (originalGetDisplayMedia) md.getDisplayMedia = withPermissionGrace(originalGetDisplayMedia)
+
     return () => {
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('blur', onWindowBlur)
@@ -350,6 +388,9 @@ export function useProctorGuard(
       document.removeEventListener('copy', onCopy)
       document.removeEventListener('cut', onCut)
       window.removeEventListener('beforeunload', onBeforeUnload)
+
+      if (originalGetUserMedia) md.getUserMedia = originalGetUserMedia
+      if (originalGetDisplayMedia) md.getDisplayMedia = originalGetDisplayMedia
     }
   }, [enabled, captureFullscreenExit, autoReenterFullscreen, raise, enterFullscreen])
 

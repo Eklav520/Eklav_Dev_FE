@@ -72,6 +72,16 @@ interface Props {
   isHeadTurned: boolean
   headViolationCount: number
   headAwaySeconds: number
+  // Optional — only the final-assessment exam view currently tracks
+  // mouth/nose covering; self-interview callers can omit these.
+  maskDetected?: boolean
+  maskViolationCount?: number
+  maskAwaySeconds?: number
+  // Horizontal mesh/bracket stretch factor from center, tuned for
+  // self-interview's large video frame. Small preview boxes (like the exam's
+  // sidebar camera) should pass 1 (no stretch) so the mesh/corner brackets
+  // actually match the visible face instead of overflowing past its edges.
+  widen?: number
 }
 
 function drawCornerBrackets(
@@ -100,16 +110,20 @@ function drawCornerBrackets(
 const GazeScanOverlay: React.FC<Props> = ({
   landmarks, faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds,
   headDirection, isHeadTurned, headViolationCount, headAwaySeconds,
+  maskDetected = false, maskViolationCount = 0, maskAwaySeconds = 0,
+  widen = 1.85,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animRef   = useRef<number>(0)
   const lmRef     = useRef<any>(null)
-  const propsRef  = useRef({ faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds })
+  const widenRef  = useRef(widen)
+  widenRef.current = widen
+  const propsRef  = useRef({ faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds, headDirection, isHeadTurned, headViolationCount, headAwaySeconds, maskDetected, maskViolationCount, maskAwaySeconds })
 
   useEffect(() => {
     lmRef.current = landmarks
-    propsRef.current = { faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds, headDirection, isHeadTurned, headViolationCount, headAwaySeconds }
-  }, [landmarks, faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds, headDirection, isHeadTurned, headViolationCount, headAwaySeconds])
+    propsRef.current = { faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds, headDirection, isHeadTurned, headViolationCount, headAwaySeconds, maskDetected, maskViolationCount, maskAwaySeconds }
+  }, [landmarks, faceDetected, direction, isLookingAway, violationCount, lookAwaySeconds, headDirection, isHeadTurned, headViolationCount, headAwaySeconds, maskDetected, maskViolationCount, maskAwaySeconds])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -127,10 +141,11 @@ const GazeScanOverlay: React.FC<Props> = ({
       ctx.clearRect(0, 0, W, H)
 
       const { faceDetected: fd, isLookingAway: away, violationCount: vc, lookAwaySeconds: secs, direction: dir,
-              isHeadTurned: headTurned, headViolationCount: hvc, headAwaySeconds: hsecs, headDirection: hdir } = propsRef.current
+              isHeadTurned: headTurned, headViolationCount: hvc, headAwaySeconds: hsecs, headDirection: hdir,
+              maskDetected: masked, maskViolationCount: mvc, maskAwaySeconds: msecs } = propsRef.current
       const lm = lmRef.current
 
-      const anyAlert  = away || headTurned
+      const anyAlert  = away || headTurned || masked
       const mainColor = anyAlert ? '#ef4444' : '#3b82f6'
       const mainRgb   = anyAlert ? '239,68,68' : '59,130,246'
 
@@ -150,9 +165,8 @@ const GazeScanOverlay: React.FC<Props> = ({
 
       // Widen mesh horizontally — push each point away from canvas center
       const cx = W / 2
-      const WIDEN = 1.85
       const pt = (i: number) => ({
-        x: cx + (lm[i].x * W - cx) * WIDEN,
+        x: cx + (lm[i].x * W - cx) * widenRef.current,
         y: lm[i].y * H,
       })
 
@@ -254,14 +268,16 @@ const GazeScanOverlay: React.FC<Props> = ({
 
       // ── Status label at top-center of box ──────────────────────
       const label = (() => {
+        if (masked && msecs >= 1)
+          return `MASK/COVERING DETECTED  ${msecs}s  |  Violations: ${mvc}`
         if (away && secs >= 1 && headTurned && hsecs >= 1)
           return `EYE ${secs}s | HEAD ${hsecs}s  Eye:${vc} Head:${hvc}`
         if (away && secs >= 1)
           return `LOOK AT CAMERA  ${secs}s  |  Eye Violations: ${vc}`
         if (headTurned && hsecs >= 1)
           return `HEAD TURNED ${hdir.toUpperCase()}  ${hsecs}s  |  Head Violations: ${hvc}`
-        if (vc > 0 || hvc > 0)
-          return `Eye: ${vc}  Head: ${hvc}`
+        if (vc > 0 || hvc > 0 || mvc > 0)
+          return `Eye: ${vc}  Head: ${hvc}  Mask: ${mvc}`
         return 'FACE TRACKING'
       })()
 

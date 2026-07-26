@@ -1037,8 +1037,19 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                             <Badge bg={r.passed ? 'success' : 'danger'}>
                               {r.passed ? 'Passed' : 'Failed'}
                             </Badge>
-                            {r.violationAutoSubmit && (
+                            {r.tabSwitchViolationCount > 0 && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>
+                                🖥 Tab/window switches: {r.tabSwitchViolationCount}{r.violationAutoSubmit ? ' (auto-submitted)' : ''}
+                              </span>
+                            )}
+                            {r.violationAutoSubmit && !r.tabSwitchViolationCount && (
                               <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>⚠ Auto-submitted</span>
+                            )}
+                            {r.faceViolationCount > 0 && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#f59e0b' }}>
+                                👁 Face/gaze violations: {r.faceViolationCount}
+                                {' '}(Eye: {r.eyeViolationCount || 0} · Head: {r.headViolationCount || 0} · Mask: {r.maskViolationCount || 0} · No face: {r.noFaceViolationCount || 0})
+                              </span>
                             )}
                           </div>
                         </div>

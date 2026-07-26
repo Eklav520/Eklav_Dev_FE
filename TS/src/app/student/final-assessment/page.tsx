@@ -455,6 +455,10 @@ export default function StudentAssessmentController() {
   }
 
   const handleStartRound = async (round: Round) => {
+    if (isPending) {
+      alert('Your profile is awaiting admin approval. Assessments unlock once you are enrolled.')
+      return
+    }
     setStartingRound(round.roundType)
     try {
       const startRes = await fetch(`${API_BASE}/api/assessment/start/${selectedAssessment._id}`, {
@@ -570,7 +574,7 @@ export default function StudentAssessmentController() {
 
   // ── Round label (must be before useMemo that references it) ────────────────
   const getRoundLabel = (type: string) => {
-    const labels: Record<string, string> = { mcq: "MCQ Round", coding: "Coding Round", tr: "Technical Round", hr: "HR Round", english: "English Round" }
+    const labels: Record<string, string> = { mcq: "Aptitude Round", coding: "Coding Round", tr: "Technical Round", hr: "HR Round", english: "English Round" }
     return labels[type] || type.toUpperCase()
   }
 
@@ -1951,7 +1955,7 @@ export default function StudentAssessmentController() {
                   </select>
                   <select className="fc-select" value={fcFilterType} onChange={e => setFcFilterType(e.target.value)}>
                     <option value="all">All Types</option>
-                    <option value="mcq">MCQ Round</option>
+                    <option value="mcq">Aptitude Round</option>
                     <option value="coding">Coding Round</option>
                     <option value="tr">Technical Round</option>
                     <option value="hr">HR Interview</option>
@@ -2143,24 +2147,64 @@ export default function StudentAssessmentController() {
                                     <span className="fa-timer-lbl">Secs</span>
                                   </div>
                                 </div>
-                                <button className="fa-round-start-btn" onClick={() => handleSelectAssessment(fa)}>Resume Now</button>
+                                <button className="fa-round-start-btn" onClick={() => handleSelectAssessment(fa)}>Start Now</button>
                               </>
                             )
                           })()}
 
-                          {isScheduled && (
-                            <>
-                              <div className="fa-round-status-badge scheduled">Scheduled</div>
-                              <div className="fa-round-date-label">Date &amp; Time</div>
-                              <div className="fa-round-date-value">
-                                {s!.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                              </div>
-                              <div className="fa-round-time-value">
-                                {s!.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                              </div>
-                              <button className="fa-round-details-btn" onClick={() => handleSelectAssessment(fa)}>View Details</button>
-                            </>
-                          )}
+                          {isScheduled && (() => {
+                            const remaining = Math.max(0, Math.floor((s!.getTime() - now2.getTime()) / 1000))
+                            const d = Math.floor(remaining / 86400)
+                            const h = Math.floor((remaining % 86400) / 3600)
+                            const m = Math.floor((remaining % 3600) / 60)
+                            const sec = remaining % 60
+                            return (
+                              <>
+                                <div className="fa-round-status-badge scheduled">Scheduled</div>
+                                <div className="fa-round-split-row">
+                                  <div className="fa-round-split-col">
+                                    <div className="fa-round-date-label">Date &amp; Time</div>
+                                    <div className="fa-round-date-value">
+                                      {s!.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </div>
+                                    <div className="fa-round-time-value">
+                                      {s!.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                    </div>
+                                  </div>
+                                  <div className="fa-round-split-divider" />
+                                  <div className="fa-round-split-col">
+                                    <div className="fa-round-date-label">Starts in</div>
+                                    <div className="fa-round-timer scheduled compact">
+                                      {d > 0 && (
+                                        <>
+                                          <div className="fa-timer-unit">
+                                            <span className="fa-timer-val">{d}</span>
+                                            <span className="fa-timer-lbl">{d === 1 ? 'Day' : 'Days'}</span>
+                                          </div>
+                                          <span className="fa-round-timer-colon">:</span>
+                                        </>
+                                      )}
+                                      <div className="fa-timer-unit">
+                                        <span className="fa-timer-val">{String(h).padStart(2, '0')}</span>
+                                        <span className="fa-timer-lbl">Hrs</span>
+                                      </div>
+                                      <span className="fa-round-timer-colon">:</span>
+                                      <div className="fa-timer-unit">
+                                        <span className="fa-timer-val">{String(m).padStart(2, '0')}</span>
+                                        <span className="fa-timer-lbl">Mins</span>
+                                      </div>
+                                      <span className="fa-round-timer-colon">:</span>
+                                      <div className="fa-timer-unit">
+                                        <span className="fa-timer-val">{String(sec).padStart(2, '0')}</span>
+                                        <span className="fa-timer-lbl">Secs</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button className="fa-round-details-btn" onClick={() => handleSelectAssessment(fa)}>View Details</button>
+                              </>
+                            )
+                          })()}
 
                           {isEnded && (
                             <>
@@ -2290,7 +2334,7 @@ export default function StudentAssessmentController() {
                             return (
                               <React.Fragment key={i}>
                                 <div className={'fa-prog-dot' + (done ? ' done' : live ? ' live' : '')} title={getRoundLabel(r.roundType)}>
-                                  {done ? <FaCheckCircle style={{ fontSize: 10 }} /> : i + 1}
+                                  {done ? <FaCheckCircle style={{ fontSize: 10 }} /> : getRoundLabel(r.roundType).charAt(0)}
                                 </div>
                                 {i < aRounds.length - 1 && (
                                   <div className={'fa-prog-line' + (done ? ' done' : '')} />
@@ -2317,7 +2361,11 @@ export default function StudentAssessmentController() {
 
                       {/* Next Round / Action */}
                       <td>
-                        {liveRound3 && !doneTypes.includes(liveRound3.roundType) ? (
+                        {isPending ? (
+                          <span className="fa-tbl-action locked" title="Your profile is awaiting admin approval">
+                            <LockIcon /> Enrollment Required
+                          </span>
+                        ) : liveRound3 && !doneTypes.includes(liveRound3.roundType) ? (
                           <span className="fa-tbl-action live" onClick={e => { e.stopPropagation(); handleSelectAssessment(assessment) }}>
                             Resume {getRoundLabel(liveRound3.roundType)} <FaChevronRight className="fa-tbl-chevron" />
                           </span>
@@ -2908,14 +2956,16 @@ export default function StudentAssessmentController() {
 
                         {/* Right: CTA button */}
                         <button
-                          className={'am-cta' + (isActive && !isCompleted ? ' enabled' : '')}
-                          disabled={!isActive || isCompleted}
+                          className={'am-cta' + (isActive && !isCompleted && !isPending ? ' enabled' : '')}
+                          disabled={!isActive || isCompleted || isPending}
                           onClick={() => handleStartRound(round)}
                         >
                           {startingRound === round.roundType ? (
                             <Spinner animation="border" size="sm" />
                           ) : isCompleted ? (
                             <><CheckIcon /> Completed</>
+                          ) : isPending ? (
+                            <><LockIcon /> Enrollment Required</>
                           ) : isActive ? (
                             <><UnlockIcon /> Start Round</>
                           ) : (
@@ -3026,6 +3076,7 @@ export default function StudentAssessmentController() {
             duration={roundConfig.duration}
             onSubmit={handleRoundSubmit}
             forceSubmitRef={mcqForceSubmitRef}
+            tabSwitchViolationCount={proctor.violationCount}
           />
         </div>
       )}
@@ -3169,7 +3220,7 @@ export default function StudentAssessmentController() {
         /* Scheduled card date/time breakdown */
         .fa-round-date-label { font-size: 11px; color: var(--dash-gray, #94a3b8); font-weight: 500; text-align: center; margin-bottom: -2px; }
         .fa-round-date-value { font-size: 18px; font-weight: 800; color: var(--dash-text, #0f172a); text-align: center; line-height: 1.3; }
-        .fa-round-time-value { font-size: 16px; font-weight: 600; color: var(--dash-gray, #475569); text-align: center; line-height: 1.4; }
+        .fa-round-time-value { font-size: 18px; font-weight: 800; color: var(--dash-text, #0f172a); text-align: center; line-height: 1.3; }
 
         /* Live timer */
         .fa-round-timer { display: flex; align-items: flex-start; justify-content: center; gap: 2px; }
@@ -3177,6 +3228,18 @@ export default function StudentAssessmentController() {
         .fa-timer-val { font-size: 26px; font-weight: 800; color: #1e3a8a; line-height: 1; letter-spacing: 0.01em; }
         .fa-timer-lbl { font-size: 10px; font-weight: 800; color: var(--dash-gray, #64748b); }
         .fa-round-timer-colon { font-size: 24px; font-weight: 800; color: #1e3a8a; line-height: 1; margin-top: 1px; }
+        .fa-round-timer.scheduled .fa-timer-val,
+        .fa-round-timer.scheduled .fa-round-timer-colon { color: #f59e0b; }
+
+        .fa-round-split-row { display: flex; align-items: stretch; width: 100%; gap: 10px; }
+        .fa-round-split-col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .fa-round-split-col:last-child { gap: 6px; }
+        .fa-round-split-divider { width: 1px; align-self: stretch; background: var(--dash-border, #e2e8f0); margin: 2px 0; }
+
+        .fa-round-timer.compact { gap: 1px; }
+        .fa-round-timer.compact .fa-timer-val { font-size: 18px; }
+        .fa-round-timer.compact .fa-timer-lbl { font-size: 9px; }
+        .fa-round-timer.compact .fa-round-timer-colon { font-size: 16px; }
 
         /* Buttons */
         .fa-round-start-btn { background: #2563eb; color: #fff; border: none; border-radius: 10px; padding: 10px 16px; font-size: 12px; font-weight: 700; cursor: pointer; margin-top: auto; width: 100%; }
@@ -3233,6 +3296,7 @@ export default function StudentAssessmentController() {
         .fa-tbl-action.report { color: #ea580c; }
         .fa-tbl-action.report:hover { text-decoration: underline; }
         .fa-tbl-action.date { color: var(--dash-gray, #475569); font-weight: 500; cursor: default; }
+        .fa-tbl-action.locked { color: #94a3b8; font-weight: 500; cursor: not-allowed; }
         .fa-tbl-chevron { font-size: 12px; flex-shrink: 0; margin-left: 2px; }
 
         /* Table pagination */

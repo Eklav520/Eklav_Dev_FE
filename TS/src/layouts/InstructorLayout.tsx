@@ -20,7 +20,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
 import { ChildrenType } from '@/types/component-props'
-import { FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
+import { FaSignOutAlt, FaChevronRight, FaAngleDoubleLeft, FaAngleDoubleRight } from 'react-icons/fa'
 import TrialWelcomeModal from './TrialWelcomeModal'
 
 // lazy parts
@@ -43,6 +43,15 @@ type MenuItemTypeLocal = {
 const InstructorLayout = ({ children }: ChildrenType) => {
   const { width } = useViewPort()
   const { isTrue: isOffCanvasMenuOpen, toggle: toggleOffCanvasMenu } = useToggle()
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
+    () => typeof window !== 'undefined' && localStorage.getItem('eklavadmin-sidebar-collapsed') === '1'
+  )
+  const toggleSidebarCollapse = () => setIsSidebarCollapsed((v) => !v)
+
+  useEffect(() => {
+    localStorage.setItem('eklavadmin-sidebar-collapsed', isSidebarCollapsed ? '1' : '0')
+  }, [isSidebarCollapsed])
+
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -88,10 +97,18 @@ const InstructorLayout = ({ children }: ChildrenType) => {
         <Banner toggleOffCanvas={toggleOffCanvasMenu} />
         <section className="pt-0 mt-3 mt-md-4">
           <Container fluid>
-            <Row className="g-3 g-xl-4">
-              <Col xl={2}>
+            <Row className="g-3 g-xl-4 flex-nowrap">
+              <Col
+                xl="auto"
+                className="p-0"
+                style={width >= 1200 ? { width: isSidebarCollapsed ? 76 : 250, flexShrink: 0, transition: 'width 0.2s ease' } : undefined}
+              >
                 {width >= 1200 ? (
-                  <VerticalMenu role={role} />
+                  <VerticalMenu
+                    role={role}
+                    collapsed={isSidebarCollapsed}
+                    onToggleCollapse={toggleSidebarCollapse}
+                  />
                 ) : (
                   <Offcanvas
                     show={isOffCanvasMenuOpen}
@@ -113,7 +130,7 @@ const InstructorLayout = ({ children }: ChildrenType) => {
                 )}
               </Col>
 
-              <Col xl={10}>
+              <Col className="flex-grow-1" style={{ minWidth: 0 }}>
                 <div className="main-content-wrapper">
                   <Suspense fallback={<Preloader />}>{children}</Suspense>
                 </div>
@@ -188,7 +205,14 @@ const InstructorLayout = ({ children }: ChildrenType) => {
   )
 }
 
-const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () => void }) => {
+type VerticalMenuProps = {
+  role?: string
+  onItemClick?: () => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
+}
+
+const VerticalMenu = ({ role, onItemClick, collapsed = false, onToggleCollapse }: VerticalMenuProps) => {
   const { pathname } = useLocation()
   const { removeSession } = useAuthContext()
 
@@ -256,17 +280,28 @@ const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () =
         <div key={node.key} className="menu-item-wrapper">
           <button
             type="button"
-            onClick={() => toggle(node.key)}
+            title={collapsed ? node.label : undefined}
+            onClick={() => {
+              // Collapsed rail has no room for a submenu — expand the
+              // sidebar first so the click lands somewhere useful instead
+              // of silently doing nothing.
+              if (collapsed) {
+                onToggleCollapse?.()
+                setOpenKeys((s) => ({ ...s, [node.key]: true }))
+                return
+              }
+              toggle(node.key)
+            }}
             className="menu-button"
           >
             <div className="menu-button-content">
               {Icon && <Icon className="menu-icon" />}
               <span>{node.label}</span>
             </div>
-            <FaChevronRight className={`menu-chevron ${open ? 'open' : ''}`} />
+            {!collapsed && <FaChevronRight className={`menu-chevron ${open ? 'open' : ''}`} />}
           </button>
 
-          <Collapse in={open}>
+          <Collapse in={open && !collapsed}>
             <div className="menu-children">
               {(node.children || []).map((c) => renderNode(c))}
             </div>
@@ -279,6 +314,7 @@ const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () =
       <Link
         key={node.key}
         to={node.url || '#'}
+        title={collapsed ? node.label : undefined}
         className={`menu-link ${isActive(node) ? 'active' : ''}`}
         onClick={() => onItemClick?.()}
       >
@@ -289,13 +325,24 @@ const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () =
   }
 
   return (
-    <div className="vertical-menu-container">
+    <div className={`vertical-menu-container ${collapsed ? 'collapsed' : ''}`}>
+      {onToggleCollapse && (
+        <button
+          type="button"
+          className="sidebar-collapse-toggle"
+          onClick={onToggleCollapse}
+          title={collapsed ? 'Expand menu' : 'Collapse menu'}
+        >
+          {collapsed ? <FaAngleDoubleRight /> : <FaAngleDoubleLeft />}
+        </button>
+      )}
+
       <div className="menu-list">
         {(tree as MenuItemTypeLocal[]).map((n) => renderNode(n))}
 
         <div className="menu-divider" />
 
-        <Link className="menu-link signout-link" to="/auth/sign-in" onClick={removeSession}>
+        <Link className="menu-link signout-link" to="/auth/sign-in" title={collapsed ? 'Sign Out' : undefined} onClick={removeSession}>
           <FaSignOutAlt className="menu-icon" />
           <span>Sign Out</span>
         </Link>
@@ -309,10 +356,50 @@ const VerticalMenu = ({ role, onItemClick }: { role?: string, onItemClick?: () =
           width: 100%;
           position: sticky;
           top: 20px;
+          overflow: hidden;
+        }
+
+        .sidebar-collapse-toggle {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          padding: 0.6rem 0;
+          background: transparent;
+          border: none;
+          border-bottom: 1px solid #1f1f1f;
+          color: #6c757d;
+          cursor: pointer;
+          transition: color 0.2s ease;
+        }
+
+        .sidebar-collapse-toggle:hover {
+          color: #ff7a00;
         }
 
         .menu-list {
           padding: 1rem;
+        }
+
+        .vertical-menu-container.collapsed .menu-list {
+          padding: 1rem 0.5rem;
+        }
+
+        .vertical-menu-container.collapsed .menu-title,
+        .vertical-menu-container.collapsed .menu-link span,
+        .vertical-menu-container.collapsed .menu-button-content span,
+        .vertical-menu-container.collapsed .menu-chevron {
+          display: none;
+        }
+
+        .vertical-menu-container.collapsed .menu-link,
+        .vertical-menu-container.collapsed .menu-button {
+          justify-content: center;
+          padding: 0.625rem;
+        }
+
+        .vertical-menu-container.collapsed .menu-icon {
+          margin: 0;
         }
 
         .menu-title {

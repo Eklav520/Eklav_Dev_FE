@@ -1,12 +1,18 @@
 import React, { useEffect, useRef, useState } from "react"
 import { Button, Card, ProgressBar, Spinner, Alert, Modal } from "react-bootstrap"
 import { useAuthContext } from "@/context/useAuthContext"
+import { useGazeDetection } from "@/app/student/self-interview/components/useGazeDetection"
+import GazeScanOverlay from "@/app/student/self-interview/components/GazeScanOverlay"
 
 type Props = {
   examId: string
   duration?: number
   onSubmit?: () => void
   forceSubmitRef?: React.MutableRefObject<() => void>
+  // Tab-switch/window-blur/fullscreen-exit count from the page-level
+  // useProctorGuard — folded into the submission so every violation type
+  // ends up stored against this attempt, not just face/gaze ones.
+  tabSwitchViolationCount?: number
 }
 
 type Option = {
@@ -22,7 +28,7 @@ type Question = {
   correctAnswer?: string
 }
 
-export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef }: Props) {
+export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef, tabSwitchViolationCount = 0 }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
   const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -45,12 +51,51 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunks = useRef<Blob[]>([])
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  // State (not a plain ref) so the gaze-detection effect below — which
+  // depends on this value — actually re-runs once the <video> node mounts.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const answersRef = useRef(answers)
   const questionsRef = useRef(questions)
   const submittingRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // ── Gaze/head-pose proctoring (same detector as /student/self-interview) ──
+  // Unlike tab-switch/window-blur (which shows a blocking modal and caps out
+  // at 3 strikes with auto-submit), face-turn/eye-gaze violations are only
+  // silently tallied here and sent up with the submission for admin review —
+  // no popup, no cap, no effect on the exam flow itself.
+  // Suspended while the student is typing a FILL answer — looking down at
+  // the keyboard to type is expected, not a violation.
+  // Reuses the visible recording preview's video element + stream (via
+  // useExternalStream) rather than requesting a second independent camera
+  // stream — mediapipe's Camera utility always does its own getUserMedia,
+  // and most Windows webcams (Media Foundation) only allow one active
+  // capture session, so a second concurrent request was silently failing
+  // and gaze/head detection never started.
+  const [isTypingAnswer, setIsTypingAnswer] = useState(false)
+  const gaze = useGazeDetection(videoEl, !!cameraStream && !submitted, isTypingAnswer, { useExternalStream: true })
+  const faceViolationCount = gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount
+  // handleSubmit may run from a setInterval closure captured well before the
+  // latest counts, so submission reads this ref instead of the values above.
+  const violationCountsRef = useRef({
+    eyeViolationCount: 0,
+    headViolationCount: 0,
+    maskViolationCount: 0,
+    noFaceViolationCount: 0,
+    tabSwitchViolationCount: 0,
+    faceViolationCount: 0,
+  })
+  useEffect(() => {
+    violationCountsRef.current = {
+      eyeViolationCount: gaze.violationCount,
+      headViolationCount: gaze.headViolationCount,
+      maskViolationCount: gaze.maskViolationCount,
+      noFaceViolationCount: gaze.noFaceViolationCount,
+      tabSwitchViolationCount,
+      faceViolationCount,
+    }
+  }, [gaze.violationCount, gaze.headViolationCount, gaze.maskViolationCount, gaze.noFaceViolationCount, tabSwitchViolationCount, faceViolationCount])
 
   useEffect(() => {
     questionsRef.current = questions
@@ -92,14 +137,14 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
   }, [questions])
 
   useEffect(() => {
-    if (!loading && videoRef.current && cameraStream) {
-      videoRef.current.srcObject = cameraStream
+    if (!loading && videoEl && cameraStream) {
+      videoEl.srcObject = cameraStream
 
-      videoRef.current.play().catch(() => {
+      videoEl.play().catch(() => {
         console.log("Autoplay blocked")
       })
     }
-  }, [cameraStream, loading])
+  }, [cameraStream, loading, videoEl])
 
   // ================= CAMERA RECORDING =================
   const startCameraRecording = async () => {
@@ -367,6 +412,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
           submittedAt: new Date(),
           autoSubmitted: auto,
           violationAutoSubmit: isViolation,
+          ...violationCountsRef.current,
         }),
       })
 
@@ -639,6 +685,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
                       const q = questions[current]
                       setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))
                     }}
+                    onFocus={() => setIsTypingAnswer(true)}
+                    onBlur={() => setIsTypingAnswer(false)}
                     disabled={submitted}
                     placeholder="Write your answer here..."
                     style={{
@@ -711,25 +759,40 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
             >
               ← Previous
             </Button>
-            <Button
-              onClick={() => setCurrent(p => p + 1)}
-              disabled={current === questions.length - 1}
-              style={{
-                background: current === questions.length - 1 ? "#333" : "#ff6b35",
-                border: "none",
-                padding: "8px 24px",
-                borderRadius: "6px",
-                cursor: current === questions.length - 1 ? "not-allowed" : "pointer"
-              }}
-            >
-              Next →
-            </Button>
+            <div className="d-flex gap-2">
+              <Button
+                onClick={() => setCurrent(p => p + 1)}
+                disabled={current === questions.length - 1}
+                style={{
+                  background: current === questions.length - 1 ? "#333" : "#ff6b35",
+                  border: "none",
+                  padding: "8px 24px",
+                  borderRadius: "6px",
+                  cursor: current === questions.length - 1 ? "not-allowed" : "pointer"
+                }}
+              >
+                Next →
+              </Button>
+              <Button
+                onClick={() => handleSubmit(false)}
+                disabled={submitted}
+                style={{
+                  background: "#dc3545",
+                  border: "none",
+                  padding: "8px 24px",
+                  fontWeight: 500,
+                  borderRadius: "6px",
+                }}
+              >
+                Submit Exam
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Sidebar - Compact with Timer and Navigator */}
         <div style={{
-          width: "280px",
+          width: "360px",
           padding: "20px 15px",
           background: "#111",
           borderLeft: "1px solid #333",
@@ -739,32 +802,40 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
           overflowY: "auto"
         }}>
           {/* Timer Section */}
-          <div className="text-center" style={{ background: "#000", padding: "12px", borderRadius: "10px" }}>
-            <div style={{ fontSize: "0.8rem", color: "#888", marginBottom: "5px" }}>Time Remaining</div>
-            <h2 style={{ color: "#ff6b35", fontSize: "1.8rem", fontWeight: "bold", margin: 0 }}>
-              {formatTime(timeLeft)}
-            </h2>
-            <ProgressBar
-              now={(Object.keys(answers).length / questions.length) * 100}
-              style={{ background: "#333", height: "4px", marginTop: "10px" }}
-            >
+          <div style={{ background: "#000", padding: "8px 12px", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: "0.68rem", color: "#888" }}>Time Remaining</div>
+              <div style={{ color: "#ff6b35", fontSize: "1.15rem", fontWeight: "bold", lineHeight: 1.2 }}>
+                {formatTime(timeLeft)}
+              </div>
+            </div>
+            <div style={{ flex: 1, maxWidth: 90 }}>
               <ProgressBar
                 now={(Object.keys(answers).length / questions.length) * 100}
-                style={{ background: "#ff6b35" }}
-              />
-            </ProgressBar>
-            <div style={{ fontSize: "0.75rem", color: "#888", marginTop: "8px" }}>
-              {Object.keys(answers).length} / {questions.length} answered
+                style={{ background: "#333", height: "4px" }}
+              >
+                <ProgressBar
+                  now={(Object.keys(answers).length / questions.length) * 100}
+                  style={{ background: "#ff6b35" }}
+                />
+              </ProgressBar>
+              <div style={{ fontSize: "0.65rem", color: "#888", marginTop: 3, textAlign: "right" }}>
+                {Object.keys(answers).length}/{questions.length} answered
+              </div>
             </div>
           </div>
 
           {/* Question Navigator - Compact Grid */}
           <div>
-            <h6 style={{ color: "#ff6b35", marginBottom: "12px", fontSize: "0.9rem" }}>Quick Navigation</h6>
+            <h6 style={{ color: "#ff6b35", marginBottom: "10px", fontSize: "0.9rem" }}>Quick Navigation</h6>
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(6, 1fr)",
-              gap: "6px"
+              gap: "6px",
+              maxHeight: "220px",
+              overflowY: "auto",
+              overflowX: "hidden",
+              width: "100%",
             }}>
               {questions.map((_, i) => (
                 <button
@@ -772,12 +843,14 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
                   onClick={() => setCurrent(i)}
                   style={{
                     width: "100%",
+                    minWidth: 0,
+                    boxSizing: "border-box",
                     aspectRatio: "1",
                     background: i === current ? "#ff6b35" : answers[questions[i].id] ? "#28a745" : "#222",
                     border: i === current ? "2px solid #fff" : "none",
                     color: "#fff",
                     fontWeight: "bold",
-                    fontSize: "0.85rem",
+                    fontSize: "0.8rem",
                     borderRadius: "6px",
                     cursor: "pointer",
                     transition: "all 0.2s"
@@ -804,8 +877,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
             background: "#000",
             borderRadius: "8px",
             overflow: "hidden",
-            border: "1px solid #ff6b35",
-            minHeight: "120px"
+            border: `1px solid ${gaze.isLookingAway || gaze.isHeadTurned ? '#dc3545' : '#ff6b35'}`,
+            minHeight: "150px",
+            transition: "border-color 0.2s",
           }}>
             {cameraStream ? (
               <>
@@ -821,13 +895,72 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
                   {isRecording && <span>●</span>}
                 </div>
 
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  muted
-                  playsInline
-                  style={{ width: "100%" }}
-                />
+                <div style={{ position: "relative" }}>
+                  <video
+                    ref={setVideoEl}
+                    autoPlay
+                    muted
+                    playsInline
+                    style={{ width: "100%", display: "block" }}
+                  />
+                  {gaze.isReady && (
+                    <GazeScanOverlay
+                      landmarks={gaze.landmarks}
+                      faceDetected={gaze.faceDetected}
+                      direction={gaze.direction}
+                      isLookingAway={gaze.isLookingAway}
+                      violationCount={gaze.violationCount}
+                      lookAwaySeconds={gaze.lookAwaySeconds}
+                      headDirection={gaze.headDirection}
+                      isHeadTurned={gaze.isHeadTurned}
+                      headViolationCount={gaze.headViolationCount}
+                      headAwaySeconds={gaze.headAwaySeconds}
+                      maskDetected={gaze.maskDetected}
+                      maskViolationCount={gaze.maskViolationCount}
+                      maskAwaySeconds={gaze.maskAwaySeconds}
+                      widen={1}
+                    />
+                  )}
+                </div>
+
+                {/* Gaze/head-pose proctoring status — same signal source as
+                    /student/self-interview's face tracking, condensed to a
+                    status strip since the camera box here is small. */}
+                {gaze.isReady && (
+                  <div style={{
+                    padding: "5px 8px",
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    color: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? "#fff" : "#28a745",
+                    background: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? "#dc3545" : "rgba(40,167,69,0.12)",
+                  }}>
+                    {!gaze.faceDetected
+                      ? `⚠ Face not visible — remove any covering (${gaze.noFaceSeconds}s)`
+                      : gaze.maskDetected
+                        ? `⚠ Mouth/nose covered — remove mask (${gaze.maskAwaySeconds}s)`
+                        : gaze.isLookingAway
+                          ? `⚠ Look at the screen (${gaze.lookAwaySeconds}s)`
+                          : gaze.isHeadTurned
+                            ? `⚠ Face the camera (${gaze.headAwaySeconds}s)`
+                            : "✓ Face tracking OK"}
+                  </div>
+                )}
+
+                {/* Silent tally — not a blocking violation, just a count
+                    sent up with the submission for admin review. */}
+                {faceViolationCount > 0 && (
+                  <div style={{
+                    padding: "3px 8px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    textAlign: "center",
+                    color: "#f59e0b",
+                    background: "rgba(245,158,11,0.12)",
+                  }}>
+                    Face/gaze violations noted: {faceViolationCount}
+                  </div>
+                )}
               </>
             ) : (
               <div style={{
@@ -840,24 +973,6 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
               </div>
             )}
           </div>
-
-          {/* Submit Button at Bottom */}
-          <Button
-            style={{
-              background: "#dc3545",
-              border: "none",
-              width: "100%",
-              fontWeight: "500",
-              padding: "8px",
-              fontSize: "0.9rem",
-              borderRadius: "6px",
-              marginTop: "10px"
-            }}
-            onClick={() => handleSubmit(false)}
-            disabled={submitted}
-          >
-            Submit Exam
-          </Button>
         </div>
       </div>
 
