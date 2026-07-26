@@ -9,7 +9,7 @@ import {
   FaComments, FaClipboardList, FaEdit, FaTrash, FaSyncAlt, FaExclamationTriangle,
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
-  FaChevronRight, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
+  FaChevronRight, FaChevronLeft, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
   FaSpellCheck, FaTachometerAlt, FaFont, FaTimes,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
@@ -671,7 +671,8 @@ const EnglishVoicePractice: React.FC = () => {
     setActiveSessionTab('feedback')
 
     try {
-      const res = await axios.post(`${baseURL}/api/english/end`, { transcript: transcriptRef.current }, { headers: { Authorization: `Bearer ${token}` } })
+      const durationSeconds = Math.max(0, 180 - timeLeft)
+      const res = await axios.post(`${baseURL}/api/english/end`, { transcript: transcriptRef.current, durationSeconds, timeLimit: 180 }, { headers: { Authorization: `Bearer ${token}` } })
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
       setFeedbackBreakdown(res.data.breakdown ?? null)
@@ -761,8 +762,8 @@ const EnglishVoicePractice: React.FC = () => {
   const [youBgOption, setYouBgOption] = useState(BG_OPTIONS[0])
   const [showAiBgPicker, setShowAiBgPicker]   = useState(false)
   const [showYouBgPicker, setShowYouBgPicker] = useState(false)
-  const scrollTopics = () => {
-    if (topicsScrollRef.current) topicsScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' })
+  const scrollTopics = (direction: 1 | -1 = 1) => {
+    if (topicsScrollRef.current) topicsScrollRef.current.scrollBy({ left: 200 * direction, behavior: 'smooth' })
   }
 
   const ORANGE = '#ff7a00'
@@ -864,24 +865,6 @@ const EnglishVoicePractice: React.FC = () => {
     setShowSessionModal(true)
   }
 
-  const TIPS = [
-    'Speak clearly and at a moderate pace',
-    'Use connecting words for better flow',
-    'Maintain good posture and eye contact',
-    'Avoid filler words like "um" and "uh"',
-    'Practice tongue twisters to improve pronunciation',
-    'Read aloud daily to build fluency',
-    'Record yourself and review your speech',
-    'Learn 5 new words every day to grow vocabulary',
-  ]
-
-  type Session = { icon: React.ReactNode; iconBg: string; iconColor: string; title: string; time: string; score: number; up: boolean }
-  const RECENT_SESSIONS: Session[] = [
-    { icon: <FaUser />,       iconBg: '#fed7aa', iconColor: '#ea580c', title: 'Self Introduction',     time: 'Today, 10:30 AM',        score: 72, up: true  },
-    { icon: <FaBullseye />,   iconBg: '#bbf7d0', iconColor: '#16a34a', title: 'Hobbies',               time: 'Yesterday, 09:15 AM',    score: 88, up: true  },
-    { icon: <FaUniversity />, iconBg: '#bfdbfe', iconColor: '#2563eb', title: 'Describe your College', time: '12 May 2025, 06:30 PM',  score: 75, up: false },
-    { icon: <FaRocket />,     iconBg: '#e9d5ff', iconColor: '#7c3aed', title: 'Future Goals',          time: '10 May 2025, 11:20 AM',  score: 90, up: true  },
-  ]
 
   const overallPct = avgScore ?? 0
   const R = 46, CX = 56, CY = 56, SW = 9
@@ -893,12 +876,6 @@ const EnglishVoicePractice: React.FC = () => {
     { icon: <FaRobot />,     label: 'AI Feedback',        color: ORANGE,    bg: '#fff7ed' },
     { icon: <FaChartLine />, label: 'Track Progress',     color: '#16a34a', bg: '#dcfce7' },
     { icon: <FaBolt />,      label: 'Improve Skills',     color: '#7c3aed', bg: '#f3e8ff' },
-  ]
-
-  const QUICK_ACTIONS = [
-    { icon: <FaMicrophone />, borderColor: '#22c55e', iconColor: '#22c55e', iconBg: '#f0fdf4', title: 'Start New Session', desc: 'Start a conversation with AI Coach',  btnLabel: 'Start Now',    btnColor: '#22c55e' },
-    { icon: <FaEdit />,       borderColor: '#a855f7', iconColor: '#a855f7', iconBg: '#faf5ff', title: 'Custom Topic',      desc: 'Choose your own topic to practice',  btnLabel: 'Choose Topic', btnColor: '#a855f7' },
-    { icon: <FaLightbulb />,  borderColor: '#f59e0b', iconColor: '#f59e0b', iconBg: '#fffbeb', title: 'Random Topic',      desc: 'Let AI pick a random topic for you', btnLabel: 'Surprise Me',  btnColor: '#f59e0b' },
   ]
 
   return (
@@ -1484,10 +1461,13 @@ const EnglishVoicePractice: React.FC = () => {
       )}
 
       {/* ── LANDING PAGE ── */}
-      <div style={{ display: 'flex', minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+
+        {/* Header + hero + sidebar row */}
+        <div style={{ display: 'flex' }}>
 
         {/* Main content */}
-        <div style={{ flex: 1, padding: '20px 24px', minWidth: 0 }}>
+        <div style={{ flex: 1, padding: '20px 24px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
           {/* Page header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -1506,7 +1486,7 @@ const EnglishVoicePractice: React.FC = () => {
           </div>
 
           {/* Hero banner */}
-          <div style={{ background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 60%, #f472b6 100%)', borderRadius: 20, padding: '28px 32px', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 200 }}>
+          <div style={{ flex: 1, background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 60%, #f472b6 100%)', borderRadius: 20, padding: '40px 32px', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 230 }}>
             <div style={{ maxWidth: 480, position: 'relative', zIndex: 2 }}>
               {/* Fixed dark text — this banner's pink background never changes with theme */}
               <h2 style={{ fontSize: 28, fontWeight: 900, color: '#1e293b', margin: '0 0 8px', lineHeight: 1.2 }}>Practice. Speak. Improve.</h2>
@@ -1537,91 +1517,6 @@ const EnglishVoicePractice: React.FC = () => {
             </div>
             <div style={{ position: 'absolute', top: -40, right: 200, width: 180, height: 180, borderRadius: '50%', background: 'rgba(236,72,153,0.08)', zIndex: 1 }} />
             <div style={{ position: 'absolute', bottom: -60, right: 80, width: 200, height: 200, borderRadius: '50%', background: 'rgba(236,72,153,0.05)', zIndex: 1 }} />
-          </div>
-
-          {/* Practice Topics */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>Practice Topics</div>
-                <div style={{ fontSize: 12, color: PAGE_GRAY }}>Choose a topic and start speaking with AI</div>
-              </div>
-              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                View All Topics <FaChevronRight style={{ fontSize: 11 }} />
-              </button>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <div ref={topicsScrollRef} style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {TOPICS.map((t, i) => (
-                  <div key={i} style={{ flexShrink: 0, width: 175, background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '16px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, background: t.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.iconColor, fontSize: 19, marginBottom: 10 }}>{t.icon}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: PAGE_TEXT, marginBottom: 4 }}>{t.title}</div>
-                    <div style={{ fontSize: 11, color: PAGE_GRAY, lineHeight: 1.45, marginBottom: 12, minHeight: 32 }}>{t.desc}</div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 10, color: '#94a3b8' }}>5 Questions</span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color: LEVEL_COLOR[t.level] }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: LEVEL_COLOR[t.level], display: 'inline-block' }} />
-                        {t.level}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {/* Right scroll arrow */}
-              <button onClick={scrollTopics} style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_TEXT, zIndex: 2 }}>
-                <FaChevronRight style={{ fontSize: 12 }} />
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Actions + Recent Sessions */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-            {/* Quick Actions */}
-            <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT, marginBottom: 2 }}>Quick Actions</div>
-              <div style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 16 }}>Jump into practice or explore more</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                {QUICK_ACTIONS.map((a, i) => (
-                  <div key={i} style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 14, padding: '18px 12px', textAlign: 'center' }}>
-                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: a.iconBg, border: `2px solid ${a.borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: a.iconColor, fontSize: 24, margin: '0 auto 12px' }}>{a.icon}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: PAGE_TEXT, marginBottom: 5 }}>{a.title}</div>
-                    <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 14, lineHeight: 1.45 }}>{a.desc}</div>
-                    <button style={{ border: `1.5px solid ${a.btnColor}`, background: CARD_BG, color: a.btnColor, borderRadius: 8, padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'default', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
-                      {a.btnLabel} <FaChevronRight style={{ fontSize: 10 }} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Sessions */}
-            <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Recent Sessions</div>
-                <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
-                  View All <FaChevronRight style={{ fontSize: 10 }} />
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {RECENT_SESSIONS.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < RECENT_SESSIONS.length - 1 ? '1px solid #f1f5f9' : 'none' }}>
-                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.iconColor, fontSize: 16, flexShrink: 0 }}>{s.icon}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: PAGE_TEXT }}>{s.title}</div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{s.time}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 12, fontWeight: 700, color: s.up ? '#22c55e' : '#ef4444', minWidth: 42 }}>
-                        <FaArrowUp style={{ fontSize: 9 }} /> {s.score}%
-                      </span>
-                      <button style={{ width: 30, height: 30, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_GRAY, fontSize: 10 }}>
-                        <FaPlay />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1728,33 +1623,126 @@ const EnglishVoicePractice: React.FC = () => {
                     </div>
                   </div>
                 ))}
-
-                <button
-                  disabled
-                  style={{ width: '100%', background: '#f1f5f9', color: '#cbd5e1', border: '1.5px solid #e2e8f0', borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700, cursor: 'not-allowed', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  View Detailed Feedback <FaChevronRight style={{ fontSize: 11 }} />
-                </button>
               </>
             )}
           </div>
+        </div>
+        </div>{/* end header + hero + sidebar row */}
 
-          {/* Tips to Improve */}
-          <div style={{ background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Tips to Improve</div>
-              <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>View Tips <FaChevronRight style={{ fontSize: 10 }} /></button>
+        {/* Practice Topics */}
+        <div style={{ padding: '0 24px', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: PAGE_TEXT }}>Practice Topics</div>
+              <div style={{ fontSize: 12, color: PAGE_GRAY }}>Choose a topic and start speaking with AI</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-              {TIPS.map((tip, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13, flexShrink: 0 }}>
-                    <FaLightbulb />
+            <button style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+              View All Topics <FaChevronRight style={{ fontSize: 11 }} />
+            </button>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <div ref={topicsScrollRef} style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {TOPICS.map((t, i) => (
+                <div key={i} style={{ flexShrink: 0, width: 210, background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '22px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 14, background: t.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: t.iconColor, fontSize: 23, marginBottom: 14 }}>{t.icon}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: PAGE_TEXT, marginBottom: 6 }}>{t.title}</div>
+                  <div style={{ fontSize: 12, color: PAGE_GRAY, lineHeight: 1.5, marginBottom: 16, minHeight: 54 }}>{t.desc}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>5 Questions</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 700, color: LEVEL_COLOR[t.level] }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: LEVEL_COLOR[t.level], display: 'inline-block' }} />
+                      {t.level}
+                    </span>
                   </div>
-                  <span style={{ fontSize: 12, color: PAGE_TEXT, lineHeight: 1.5, paddingTop: 6 }}>{tip}</span>
                 </div>
               ))}
             </div>
+            {/* Left scroll arrow */}
+            <button onClick={() => scrollTopics(-1)} style={{ position: 'absolute', left: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_TEXT, zIndex: 2 }}>
+              <FaChevronLeft style={{ fontSize: 12 }} />
+            </button>
+            {/* Right scroll arrow */}
+            <button onClick={() => scrollTopics(1)} style={{ position: 'absolute', right: -14, top: '50%', transform: 'translateY(-50%)', width: 32, height: 32, borderRadius: '50%', background: CARD_BG, border: '1.5px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: PAGE_TEXT, zIndex: 2 }}>
+              <FaChevronRight style={{ fontSize: 12 }} />
+            </button>
           </div>
+        </div>
+
+        {/* Tips to Improve */}
+        <div style={{ margin: '0 24px 24px', background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Performance Over Time</div>
+          </div>
+
+          {/* Performance line graph */}
+          {(() => {
+            const attempts: { n: number; score: number }[] = (history?.attempts ?? []).map((a: any, i: number) => ({ n: a.attempt ?? i + 1, score: a.score ?? 0 }))
+            if (attempts.length < 2) return null
+
+            const w = 700, h = 220
+            const padL = 34, padR = 12, padT = 12, padB = 24
+            const plotW = w - padL - padR
+            const plotH = h - padT - padB
+
+            const stepX = attempts.length > 1 ? plotW / (attempts.length - 1) : 0
+            const xFor = (i: number) => padL + i * stepX
+            const yFor = (score: number) => padT + (1 - score / 100) * plotH
+
+            const points = attempts.map((a, i) => [xFor(i), yFor(a.score)] as const)
+            const bestScore = Math.max(...attempts.map((a) => a.score))
+
+            const yTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+            const areaPath = `M${xFor(0)},${padT + plotH} ` +
+              points.map(([x, y]) => `L${x},${y}`).join(' ') +
+              ` L${xFor(attempts.length - 1)},${padT + plotH} Z`
+
+            return (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#9333ea' }}>
+                    <FaStar style={{ fontSize: 9 }} /> Best Score: {bestScore}%
+                  </span>
+                </div>
+                <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 220, display: 'block' }}>
+                  <defs>
+                    <linearGradient id="perfAreaFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={ORANGE} stopOpacity={0.22} />
+                      <stop offset="100%" stopColor={ORANGE} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  {/* Y gridlines + labels (0-100, step 10) */}
+                  {yTicks.map((t) => {
+                    const y = yFor(t)
+                    return (
+                      <g key={t}>
+                        <line x1={padL} y1={y} x2={w - padR} y2={y} stroke="#f1f5f9" strokeWidth={1} />
+                        <text x={padL - 8} y={y + 3} textAnchor="end" fontSize={9} fill="#94a3b8">{t}</text>
+                      </g>
+                    )
+                  })}
+                  {/* X axis labels — every attempt number */}
+                  {attempts.map((a, i) => (
+                    <text key={a.n} x={xFor(i)} y={h - 6} textAnchor="middle" fontSize={9} fill="#94a3b8">{a.n}</text>
+                  ))}
+                  <path d={areaPath} fill="url(#perfAreaFill)" stroke="none" />
+                  <polyline
+                    points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+                    fill="none"
+                    stroke={ORANGE}
+                    strokeWidth={2.5}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {points.map(([x, y], i) => (
+                    <circle key={i} cx={x} cy={y} r={3.5} fill={ORANGE} stroke={CARD_BG} strokeWidth={1.5} />
+                  ))}
+                </svg>
+                <div style={{ textAlign: 'center', marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: '#94a3b8' }}>Attempt #</span>
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
 
