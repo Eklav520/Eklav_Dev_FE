@@ -34,7 +34,7 @@ const timeAgo = (dateStr: string) => {
   return `${days}d ago`
 }
 
-const ChatBox = lazy(() => import('@/layouts/ChatBox'))
+// const ChatBox = lazy(() => import('@/layouts/ChatBox')) // temporarily disabled, will re-enable later
 
 // ── Theme constants (matches HRLayout pattern, orange accent) ──────────────
 const SIDEBAR_BG     = '#0d1117'
@@ -606,10 +606,10 @@ const StudentLayout = ({ children }: ChildrenType) => {
         </main>
       </div>
 
-      {/* Chat */}
-      <Suspense fallback={null}>
+      {/* Chat — temporarily disabled, will re-enable later */}
+      {/* <Suspense fallback={null}>
         <ChatBox position="bottom-right" />
-      </Suspense>
+      </Suspense> */}
     </div>
   )
 }
