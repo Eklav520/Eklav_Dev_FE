@@ -150,6 +150,7 @@ const WritingPractice: React.FC = () => {
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<WritingFeedbackResult | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const [fetchingPrompt, setFetchingPrompt] = useState(false)
   const [history, setHistory] = useState<WritingHistoryUI | null>(null)
   const [rawAttempts, setRawAttempts] = useState<WritingAttempt[]>([])
@@ -257,6 +258,7 @@ const WritingPractice: React.FC = () => {
 
   const handleSubmit = async () => {
     if (!text.trim()) return alert('Please write your response first!')
+    if (submitted) return
     setLoading(true)
     try {
       const res = await fetch(`${baseURL}/writing/submit`, {
@@ -272,6 +274,8 @@ const WritingPractice: React.FC = () => {
         idealAnswer: data.feedback?.idealAnswer,
         feedback: data.feedback?.feedback,
       })
+      setSubmitted(true)
+      fetchWritingHistory()
     } catch (err) {
       console.error('Error submitting writing:', err)
     } finally {
@@ -282,6 +286,7 @@ const WritingPractice: React.FC = () => {
   const restartPractice = () => {
     setStarted(false)
     setFeedback(null)
+    setSubmitted(false)
     setPrompt('')
     setText('')
     if (editorRef.current) editorRef.current.innerHTML = ''
@@ -289,8 +294,11 @@ const WritingPractice: React.FC = () => {
 
   const fetchNewTopic = async () => {
     setFeedback(null)
+    setSubmitted(false)
     setText('')
     setPrompt('')
+    setTimeLeft(30 * 60)
+    if (editorRef.current) editorRef.current.innerHTML = ''
     setFetchingPrompt(true)
     try {
       const res = await fetch(`${baseURL}/writing/prompt/${mode}`, {
@@ -352,7 +360,7 @@ const WritingPractice: React.FC = () => {
 
   const [historyFilter, setHistoryFilter] = useState<'all' | ModeType>('all')
   const [historyPage, setHistoryPage] = useState(1)
-  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [rowsPerPage, setRowsPerPage] = useState(5)
 
   const allAttempts = [...rawAttempts].reverse()
   const filteredAttempts = historyFilter === 'all' ? allAttempts : allAttempts.filter(a => a.mode === historyFilter)
@@ -981,11 +989,11 @@ const WritingPractice: React.FC = () => {
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                disabled={loading || !text.trim() || isLimitReached}
+                disabled={loading || !text.trim() || isLimitReached || submitted}
                 onClick={handleSubmit}
-                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #ff6a00, #ff9a3c)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, cursor: loading || !text.trim() || isLimitReached ? 'not-allowed' : 'pointer', opacity: loading || !text.trim() || isLimitReached ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+                style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #ff6a00, #ff9a3c)', color: '#fff', fontSize: '0.85rem', fontWeight: 700, cursor: loading || !text.trim() || isLimitReached || submitted ? 'not-allowed' : 'pointer', opacity: loading || !text.trim() || isLimitReached || submitted ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
               >
-                {loading ? <><Spinner animation="border" size="sm" /> Evaluating…</> : <><FaCheckCircle /> Submit Essay</>}
+                {loading ? <><Spinner animation="border" size="sm" /> Evaluating…</> : submitted ? <><FaCheckCircle /> Submitted</> : <><FaCheckCircle /> Submit</>}
               </button>
               <button
                 onClick={fetchNewTopic}
