@@ -1134,6 +1134,8 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       const monitoring = {
         eyeViolations: gaze.violationCount,
         headViolations: gaze.headViolationCount,
+        maskViolations: gaze.maskViolationCount,
+        noFaceViolations: gaze.noFaceViolationCount,
         faceDetected: gaze.faceDetected,
         lightingOk,
         lightingLabel,
@@ -1460,18 +1462,23 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 isHeadTurned={gaze.isHeadTurned}
                 headViolationCount={gaze.headViolationCount}
                 headAwaySeconds={gaze.headAwaySeconds}
+                maskDetected={gaze.maskDetected}
+                maskViolationCount={gaze.maskViolationCount}
+                maskAwaySeconds={gaze.maskAwaySeconds}
               />
-              {/* Look-away / head-turn warning banner */}
-              {(gaze.isLookingAway || gaze.isHeadTurned) && (
+              {/* Look-away / head-turn / mask warning banner */}
+              {(gaze.isLookingAway || gaze.isHeadTurned || gaze.maskDetected || !gaze.faceDetected) && (
                 <div style={{ position: 'absolute', top: 48, left: '50%', transform: 'translateX(-50%)', zIndex: 8, background: 'rgba(239,68,68,0.95)', color: '#fff', borderRadius: 8, padding: '5px 14px', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', boxShadow: '0 2px 12px rgba(0,0,0,0.4)', display: 'flex', gap: 10 }}>
-                  {gaze.isLookingAway && <span>Eye away: {gaze.lookAwaySeconds}s (×{gaze.violationCount})</span>}
-                  {gaze.isHeadTurned  && <span>Head turned: {gaze.headAwaySeconds}s (×{gaze.headViolationCount})</span>}
+                  {!gaze.faceDetected && <span>No face: {gaze.noFaceSeconds}s (×{gaze.noFaceViolationCount})</span>}
+                  {gaze.faceDetected && gaze.maskDetected && <span>Mouth/nose covered: {gaze.maskAwaySeconds}s (×{gaze.maskViolationCount})</span>}
+                  {gaze.faceDetected && gaze.isLookingAway && <span>Eye away: {gaze.lookAwaySeconds}s (×{gaze.violationCount})</span>}
+                  {gaze.faceDetected && gaze.isHeadTurned  && <span>Head turned: {gaze.headAwaySeconds}s (×{gaze.headViolationCount})</span>}
                 </div>
               )}
               {/* Violation toast */}
-              {gaze.violationCount > 0 && (
+              {(gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount) > 0 && (
                 <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 9, background: 'rgba(239,68,68,0.92)', color: '#fff', borderRadius: 8, padding: '4px 12px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  Eye Violation #{gaze.violationCount}
+                  Violations — Eye: {gaze.violationCount} · Head: {gaze.headViolationCount} · Mask: {gaze.maskViolationCount} · No face: {gaze.noFaceViolationCount}
                 </div>
               )}
               {/* Robot avatar overlay */}

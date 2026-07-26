@@ -2,6 +2,13 @@ import React, { useEffect, useRef, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import { Button, Spinner, Alert, Badge } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
+import { useGazeDetection } from '@/app/student/self-interview/components/useGazeDetection'
+import GazeScanOverlay from '@/app/student/self-interview/components/GazeScanOverlay'
+import {
+  FiCheckCircle, FiXCircle, FiFileText, FiClipboard, FiSend, FiTerminal,
+  FiVideo, FiAlertTriangle, FiPlay,
+} from 'react-icons/fi'
+import { FaFlask } from 'react-icons/fa'
 
 // ================= TYPES =================
 type TestCase = {
@@ -97,17 +104,6 @@ function unescapeText(s: unknown): string {
     .replace(/\\t/g, '\t')
 }
 
-function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-
-  if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m`
-  }
-  return `${minutes}m`
-}
-
 // ================= COMPONENTS =================
 const ConsoleOutput: React.FC<{
   result: JudgeResult | null
@@ -135,8 +131,8 @@ const ConsoleOutput: React.FC<{
         <div style={{ display: 'flex', gap: '12px' }}>
           <div>
             <span style={{ color: '#888' }}>Status:</span>
-            <span style={{ marginLeft: '8px', color: result.success ? '#28a745' : '#dc3545', fontWeight: 600 }}>
-              {result.success ? '✓ Success' : '✗ Failed'}
+            <span style={{ marginLeft: '8px', color: result.success ? '#28a745' : '#dc3545', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+              {result.success ? <FiCheckCircle /> : <FiXCircle />} {result.success ? 'Success' : 'Failed'}
             </span>
           </div>
           {total > 0 && (
@@ -243,7 +239,7 @@ const ConsoleOutput: React.FC<{
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px' }}>{test.passed ? '✅' : '❌'}</span>
+                      <span style={{ fontSize: '14px', display: 'inline-flex', color: test.passed ? '#28a745' : '#dc3545' }}>{test.passed ? <FiCheckCircle /> : <FiXCircle />}</span>
                       <span style={{ fontWeight: 600, fontSize: '13px' }}>{test.name || `Test ${idx + 1}`}</span>
                       {test.type && (
                         <Badge style={{ background: test.type === 'positive' ? '#28a745' : '#dc3545', fontSize: '10px' }}>
@@ -287,9 +283,17 @@ interface Props {
   eventId: string
   onSubmitted?: () => void
   baseURL?: string
+  // Tab-switch/window-blur/fullscreen-exit count from the page-level
+  // useProctorGuard — folded into the submission alongside the face/gaze
+  // violations tracked in this component.
+  tabSwitchViolationCount?: number
+  // Call right before requesting camera/mic — the resulting permission
+  // bubble steals window focus and can force fullscreen to exit, which
+  // would otherwise be mistaken for the student tabbing away.
+  onBeforeCameraRequest?: () => void
 }
 
-export default function StudentCodeChallengeComponent({ eventId, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL }: Props) {
+export default function StudentCodeChallengeComponent({ eventId, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL, tabSwitchViolationCount = 0, onBeforeCameraRequest }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
 
@@ -314,9 +318,45 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   const draftKey = `coding_draft_${user?.id}_${eventId}`
 
   // Camera refs
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  // State (not a plain ref) so the gaze-detection effect below — which
+  // depends on this value — actually re-runs once the <video> node mounts.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+
+  // ── Gaze/head-pose/mask/no-face proctoring (same detector as the MCQ round
+  // and /student/self-interview). No blocking modal, no strike cap — just a
+  // silent tally sent up with the submission for admin review, same as the
+  // aptitude round. Reuses this panel's existing camera stream/video element
+  // (via useExternalStream) rather than requesting a second independent
+  // camera stream — mediapipe's Camera utility always does its own
+  // getUserMedia, and most Windows webcams only allow one active capture
+  // session at a time.
+  // Unlike the MCQ round's FILL-blank input, there's no single discrete
+  // "answer field" here to suspend tracking for — the whole round is spent
+  // typing code — so this always runs unsuspended.
+  const gaze = useGazeDetection(videoEl, !!cameraStream && !submitted, false, { useExternalStream: true })
+  const faceViolationCount = gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount
+  // handleSubmit may run from a setInterval closure captured well before the
+  // latest counts, so submission reads this ref instead of the values above.
+  const violationCountsRef = useRef({
+    eyeViolationCount: 0,
+    headViolationCount: 0,
+    maskViolationCount: 0,
+    noFaceViolationCount: 0,
+    tabSwitchViolationCount: 0,
+    faceViolationCount: 0,
+  })
+  useEffect(() => {
+    violationCountsRef.current = {
+      eyeViolationCount: gaze.violationCount,
+      headViolationCount: gaze.headViolationCount,
+      maskViolationCount: gaze.maskViolationCount,
+      noFaceViolationCount: gaze.noFaceViolationCount,
+      tabSwitchViolationCount,
+      faceViolationCount,
+    }
+  }, [gaze.violationCount, gaze.headViolationCount, gaze.maskViolationCount, gaze.noFaceViolationCount, tabSwitchViolationCount, faceViolationCount])
 
   // Current challenge
   const currentChallenge = challenges[currentQuestionIndex]
@@ -328,16 +368,13 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
   // ================= CAMERA RECORDING =================
   const startCamera = async () => {
     try {
+      onBeforeCameraRequest?.()
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 320 }, height: { ideal: 240 } },
         audio: true,
       })
 
       setCameraStream(stream)
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
 
       /* 🎥 START RECORDING */
       const recorder = new MediaRecorder(stream, {
@@ -415,6 +452,17 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
       setCameraStream(null)
     }
   }
+
+  // Assigns the stream once both the stream and the <video> node exist —
+  // whichever resolves second (camera permission vs. the question-panel
+  // finishing its initial load) triggers this, instead of relying on
+  // startCamera() to catch a video node that may not have mounted yet.
+  useEffect(() => {
+    if (videoEl && cameraStream) {
+      videoEl.srcObject = cameraStream
+      videoEl.play().catch(() => {})
+    }
+  }, [videoEl, cameraStream])
 
   // ================= FETCH CHALLENGES =================
   useEffect(() => {
@@ -787,6 +835,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
           }),
 
           completedQuestions: challenges.map(c => c._id),
+          ...violationCountsRef.current,
         })
       })
 
@@ -866,20 +915,42 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
           background: '#28a745', color: '#fff', textAlign: 'center',
           padding: '10px 16px', fontSize: '14px', fontWeight: 600,
-          animation: 'fadeOut 0.5s ease 3.5s forwards'
+          animation: 'fadeOut 0.5s ease 3.5s forwards',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
         }}>
-          ✅ Previous session restored — your code has been loaded
+          <FiCheckCircle /> Previous session restored — your code has been loaded
         </div>
       )}
       {/* ================= LEFT PANEL - QUESTION ================= */}
       <div style={{
-        width: showQuestionPanel ? '35%' : '0px',
+        width: showQuestionPanel ? '26%' : '0px',
+        minWidth: showQuestionPanel ? '280px' : '0px',
         transition: 'width 0.3s ease',
         overflow: 'hidden',
         background: '#111',
         borderRight: showQuestionPanel ? '1px solid #333' : 'none',
-        padding: showQuestionPanel ? '20px' : '0px'
+        display: 'flex',
+        flexDirection: 'column',
       }}>
+        {/* Header — matches the code editor panel's header so both panels'
+            content starts at the same vertical offset. */}
+        {showQuestionPanel && (
+          <div style={{
+            height: '58px',
+            boxSizing: 'border-box',
+            padding: '0 20px',
+            background: '#111',
+            borderBottom: '1px solid #333',
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ color: '#ff6b35', fontWeight: 600, fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}><FiFileText /> Problem Statement</span>
+          </div>
+        )}
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: showQuestionPanel ? '20px' : '0px' }}>
+
         {/* Question Navigation */}
         {challenges.length > 1 && (
           <div style={{ marginBottom: '20px' }}>
@@ -927,25 +998,31 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
 
         {/* Sample Test Cases - Show both Positive and Negative */}
         {currentChallenge?.testSpec && (
-          <div style={{ marginTop: '20px' }}>
-            <h5 style={{ color: '#ff6b35', fontSize: '13px', marginBottom: '10px' }}>📝 Sample Test Cases</h5>
+          <div style={{ marginTop: '18px' }}>
+            <h5 style={{ color: '#ff6b35', fontSize: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}><FiClipboard /> Sample Test Cases</h5>
 
             {/* Positive Tests */}
             {(currentChallenge.testSpec.positiveTests || []).length > 0 && (
-              <div style={{ marginBottom: '16px' }}>
-                <Badge style={{ background: '#28a745', marginBottom: '8px' }}>Positive Tests</Badge>
+              <div style={{ marginBottom: '12px' }}>
+                <Badge style={{ background: '#28a745', marginBottom: '6px', fontSize: '10px' }}>Positive</Badge>
                 {(currentChallenge.testSpec.positiveTests || []).map((test, idx) => (
                   <div key={`pos-${idx}`} style={{
+                    display: 'flex',
+                    gap: '8px',
                     background: '#0a0a0a',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    marginBottom: '10px',
+                    borderRadius: '5px',
+                    padding: '7px 9px',
+                    marginBottom: '6px',
                     border: '1px solid #28a74533'
                   }}>
-                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>Input:</div>
-                    <pre style={{ fontSize: '12px', color: '#e2e8f0', margin: '0 0 6px 0' }}>{unescapeText(test.input)}</pre>
-                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>Expected Output:</div>
-                    <pre style={{ fontSize: '12px', color: '#28a745', margin: 0 }}>{unescapeText(test.expectedOutput)}</pre>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '9.5px', color: '#888', marginBottom: '2px' }}>Input</div>
+                      <pre style={{ fontSize: '11px', color: '#e2e8f0', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{unescapeText(test.input)}</pre>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, borderLeft: '1px solid #222', paddingLeft: '8px' }}>
+                      <div style={{ fontSize: '9.5px', color: '#888', marginBottom: '2px' }}>Output</div>
+                      <pre style={{ fontSize: '11px', color: '#28a745', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{unescapeText(test.expectedOutput)}</pre>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -954,19 +1031,25 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
             {/* Negative Tests */}
             {(currentChallenge.testSpec.negativeTests || []).length > 0 && (
               <div>
-                <Badge style={{ background: '#dc3545', marginBottom: '8px' }}>Negative Tests</Badge>
+                <Badge style={{ background: '#dc3545', marginBottom: '6px', fontSize: '10px' }}>Negative</Badge>
                 {(currentChallenge.testSpec.negativeTests || []).map((test, idx) => (
                   <div key={`neg-${idx}`} style={{
+                    display: 'flex',
+                    gap: '8px',
                     background: '#0a0a0a',
-                    borderRadius: '6px',
-                    padding: '10px',
-                    marginBottom: '10px',
+                    borderRadius: '5px',
+                    padding: '7px 9px',
+                    marginBottom: '6px',
                     border: '1px solid #dc354533'
                   }}>
-                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>Input:</div>
-                    <pre style={{ fontSize: '12px', color: '#e2e8f0', margin: '0 0 6px 0' }}>{unescapeText(test.input)}</pre>
-                    <div style={{ fontSize: '11px', color: '#888', marginBottom: '3px' }}>Expected Output:</div>
-                    <pre style={{ fontSize: '12px', color: '#dc3545', margin: 0 }}>{unescapeText(test.expectedOutput)}</pre>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '9.5px', color: '#888', marginBottom: '2px' }}>Input</div>
+                      <pre style={{ fontSize: '11px', color: '#e2e8f0', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{unescapeText(test.input)}</pre>
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, borderLeft: '1px solid #222', paddingLeft: '8px' }}>
+                      <div style={{ fontSize: '9.5px', color: '#888', marginBottom: '2px' }}>Output</div>
+                      <pre style={{ fontSize: '11px', color: '#dc3545', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{unescapeText(test.expectedOutput)}</pre>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -974,24 +1057,17 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
           </div>
         )}
 
-        <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #333' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <div><span style={{ color: '#888' }}>Time Limit:</span> <span style={{ color: '#ff6b35' }}>{currentChallenge?.timeLimitSeconds ? formatDuration(currentChallenge.timeLimitSeconds) : 'N/A'}</span></div>
-            <div><span style={{ color: '#888' }}>Max Score:</span> <span style={{ color: '#ff6b35' }}>{currentChallenge?.maxScore || 'N/A'}</span></div>
-          </div>
-          {roundConfig && (
-            <div style={{ fontSize: '11px', color: '#666', marginTop: '8px', textAlign: 'center' }}>
-              Complete all {challenges.length} questions to finish the round
-            </div>
-          )}
         </div>
       </div>
 
       {/* ================= MIDDLE PANEL - CODE EDITOR ================= */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
-        {/* Header */}
+        {/* Header — same fixed height as the question panel's header above,
+            so both panels' content starts at the same vertical offset. */}
         <div style={{
-          padding: '12px 20px',
+          height: '58px',
+          boxSizing: 'border-box',
+          padding: '0 20px',
           background: '#111',
           borderBottom: '1px solid #333',
           display: 'flex',
@@ -1124,10 +1200,11 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
               background: '#6c757d',
               border: 'none',
               padding: '8px 24px',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
             }}
           >
-            {isRunning ? 'Running...' : '▶ Run Code Only'}
+            {isRunning ? 'Running...' : <><FiPlay /> Run Code Only</>}
           </Button>
           <Button
             onClick={runAllTests}
@@ -1136,10 +1213,11 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
               background: '#ff6b35',
               border: 'none',
               padding: '8px 24px',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
             }}
           >
-            {isRunning ? 'Testing...' : '🧪 Run All Tests'}
+            {isRunning ? 'Testing...' : <><FaFlask /> Run All Tests</>}
           </Button>
           <Button
             onClick={() => handleSubmit(false)}
@@ -1148,10 +1226,11 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
               background: '#28a745',
               border: 'none',
               padding: '8px 24px',
-              fontWeight: 'bold'
+              fontWeight: 'bold',
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
             }}
           >
-            🚀 Submit All
+            <FiSend /> Submit All
           </Button>
         </div>
 
@@ -1177,7 +1256,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
             userSelect: 'none'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
-              <span style={{ fontSize: '14px' }}>🖥️</span>
+              <span style={{ fontSize: '14px', display: 'inline-flex' }}><FiTerminal /></span>
               <span style={{ fontWeight: 600, fontSize: '12px' }}>Console Output</span>
               {result && (
                 <Badge style={{ background: result.success ? '#28a745' : '#dc3545', fontSize: '10px' }}>
@@ -1213,7 +1292,7 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
         flexDirection: 'column'
       }}>
         <div style={{ marginBottom: '12px' }}>
-          <h6 style={{ color: '#ff6b35', marginBottom: '6px', fontSize: '13px' }}>📹 Recording</h6>
+          <h6 style={{ color: '#ff6b35', marginBottom: '6px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}><FiVideo /> Recording</h6>
           <div style={{ height: '2px', background: '#333', width: '100%' }}></div>
         </div>
 
@@ -1255,25 +1334,85 @@ export default function StudentCodeChallengeComponent({ eventId, onSubmitted, ba
                 }} />
               )}
             </div>
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              style={{
-                width: '100%',
-                height: 'auto',
-                background: '#000',
-                display: 'block'
-              }}
-            />
+            <div style={{ position: 'relative' }}>
+              <video
+                ref={setVideoEl}
+                autoPlay
+                muted
+                playsInline
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  background: '#000',
+                  display: 'block'
+                }}
+              />
+              {gaze.isReady && (
+                <GazeScanOverlay
+                  landmarks={gaze.landmarks}
+                  faceDetected={gaze.faceDetected}
+                  direction={gaze.direction}
+                  isLookingAway={gaze.isLookingAway}
+                  violationCount={gaze.violationCount}
+                  lookAwaySeconds={gaze.lookAwaySeconds}
+                  headDirection={gaze.headDirection}
+                  isHeadTurned={gaze.isHeadTurned}
+                  headViolationCount={gaze.headViolationCount}
+                  headAwaySeconds={gaze.headAwaySeconds}
+                  maskDetected={gaze.maskDetected}
+                  maskViolationCount={gaze.maskViolationCount}
+                  maskAwaySeconds={gaze.maskAwaySeconds}
+                  widen={1}
+                />
+              )}
+            </div>
+
+            {/* Gaze/head-pose/mask proctoring status — same detector as the
+                MCQ round, condensed to a status strip since this panel is
+                small. */}
+            {gaze.isReady && (
+              <div style={{
+                padding: '5px 8px',
+                fontSize: '10.5px',
+                fontWeight: 600,
+                textAlign: 'center',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                color: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#fff' : '#28a745',
+                background: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#dc3545' : 'rgba(40,167,69,0.12)',
+              }}>
+                {!gaze.faceDetected
+                  ? <><FiAlertTriangle /> Face not visible — remove any covering ({gaze.noFaceSeconds}s)</>
+                  : gaze.maskDetected
+                    ? <><FiAlertTriangle /> Mouth/nose covered — remove mask ({gaze.maskAwaySeconds}s)</>
+                    : gaze.isLookingAway
+                      ? <><FiAlertTriangle /> Look at the screen ({gaze.lookAwaySeconds}s)</>
+                      : gaze.isHeadTurned
+                        ? <><FiAlertTriangle /> Face the camera ({gaze.headAwaySeconds}s)</>
+                        : <><FiCheckCircle /> Face tracking OK</>}
+              </div>
+            )}
+
+            {/* Silent tally — not a blocking violation, just a count sent up
+                with the submission for admin review. */}
+            {faceViolationCount > 0 && (
+              <div style={{
+                padding: '3px 8px',
+                fontSize: '10px',
+                fontWeight: 600,
+                textAlign: 'center',
+                color: '#f59e0b',
+                background: 'rgba(245,158,11,0.12)',
+              }}>
+                Face/gaze violations noted: {faceViolationCount}
+              </div>
+            )}
           </div>
         )}
 
         <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #333' }}>
           <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>
-              ⚠️ Camera is being recorded during the challenge
+            <p style={{ fontSize: '10px', color: '#888', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+              <FiAlertTriangle /> Camera is being recorded during the challenge
             </p>
             <div style={{ fontSize: '9px', color: '#888' }}>
               {challenges.length} question{challenges.length !== 1 ? 's' : ''} to complete

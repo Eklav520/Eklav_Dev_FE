@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import Editor from '@monaco-editor/react'
 import { ProgressBar, Spinner, Alert, Modal, Button, Form } from 'react-bootstrap'
 import {
   FaMicrophone,
@@ -19,6 +20,8 @@ import {
   FaQuestionCircle
 } from 'react-icons/fa'
 import { useAuthContext } from "@/context/useAuthContext"
+import { useGazeDetection } from "@/app/student/self-interview/components/useGazeDetection"
+import GazeScanOverlay from "@/app/student/self-interview/components/GazeScanOverlay"
 
 // ---- Types ----
 type TRQuestion = { _id: string; topic: string; question: string }
@@ -27,11 +30,44 @@ type Props = {
   duration?: number
   onSubmitted?: () => void
   baseURL?: string
+  // Tab-switch/window-blur/fullscreen-exit count from the page-level
+  // useProctorGuard — folded into the submission alongside the face/gaze
+  // violations tracked in this component.
+  tabSwitchViolationCount?: number
+  // Call right before requesting camera/mic — the resulting permission
+  // bubble steals window focus and can force fullscreen to exit, which
+  // would otherwise be mistaken for the student tabbing away.
+  onBeforeCameraRequest?: () => void
 }
 
 type QuestionGenerationMode = 'resume' | 'topic'
 
-export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL }: Props) {
+// ---- Code editor language options (Example/Code panel) ----
+const CODE_LANGUAGES: { id: string; name: string }[] = [
+  { id: 'javascript', name: 'JavaScript' },
+  { id: 'typescript', name: 'TypeScript' },
+  { id: 'python', name: 'Python' },
+  { id: 'java', name: 'Java' },
+  { id: 'cpp', name: 'C++' },
+  { id: 'c', name: 'C' },
+  { id: 'csharp', name: 'C#' },
+  { id: 'go', name: 'Go' },
+  { id: 'rust', name: 'Rust' },
+  { id: 'php', name: 'PHP' },
+  { id: 'ruby', name: 'Ruby' },
+  { id: 'sql', name: 'SQL' },
+]
+
+function getMonacoLanguage(lang: string) {
+  const map: Record<string, string> = {
+    javascript: 'javascript', typescript: 'typescript', python: 'python',
+    java: 'java', cpp: 'cpp', c: 'c', csharp: 'csharp', go: 'go',
+    rust: 'rust', php: 'php', ruby: 'ruby', sql: 'sql',
+  }
+  return map[lang] || 'plaintext'
+}
+
+export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL, tabSwitchViolationCount = 0, onBeforeCameraRequest }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
   const [open, setOpen] = useState(true)
@@ -84,13 +120,47 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
   const [isRecording, setIsRecording] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  // State (not a plain ref) so the gaze-detection effect below — which
+  // depends on this value — actually re-runs once the <video> node mounts.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+
+  // ── Gaze/head-pose/mask/no-face proctoring (same detector as the MCQ,
+  // coding & HR rounds and /student/self-interview). No blocking modal, no
+  // strike cap — just a silent tally sent up with the submission for admin
+  // review. Reuses this panel's existing camera stream/video element (via
+  // useExternalStream) rather than requesting a second independent camera
+  // stream — mediapipe's Camera utility always does its own getUserMedia,
+  // and most Windows webcams only allow one active capture session.
+  const gaze = useGazeDetection(videoEl, !!cameraStream && open, false, { useExternalStream: true })
+  const faceViolationCount = gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount
+  // handleSubmit may run well after the values above changed, so submission
+  // reads this ref instead of closing over stale state.
+  const violationCountsRef = useRef({
+    eyeViolationCount: 0,
+    headViolationCount: 0,
+    maskViolationCount: 0,
+    noFaceViolationCount: 0,
+    tabSwitchViolationCount: 0,
+    faceViolationCount: 0,
+  })
+  useEffect(() => {
+    violationCountsRef.current = {
+      eyeViolationCount: gaze.violationCount,
+      headViolationCount: gaze.headViolationCount,
+      maskViolationCount: gaze.maskViolationCount,
+      noFaceViolationCount: gaze.noFaceViolationCount,
+      tabSwitchViolationCount,
+      faceViolationCount,
+    }
+  }, [gaze.violationCount, gaze.headViolationCount, gaze.maskViolationCount, gaze.noFaceViolationCount, tabSwitchViolationCount, faceViolationCount])
 
   const [interviewId, setInterviewId] = useState<string | null>(null)
   const [startingInterview, setStartingInterview] = useState(false)
   const welcomePlayedRef = useRef(false)
   const [exampleAnswers, setExampleAnswers] = useState<Record<string, string>>({})
+  const [codeLanguage, setCodeLanguage] = useState('javascript')
+  const [answerTab, setAnswerTab] = useState<'answer' | 'code'>('answer')
   const audioStreamRef = useRef<MediaStream | null>(null)
 
   const [showResumeBanner, setShowResumeBanner] = useState(false)
@@ -130,7 +200,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
       if (!token) return
       setLoadingTopics(true)
       try {
-        const res = await fetch(`${baseURL}/api/tr/topics`, {
+        const res = await fetch(`${baseURL}/api/tr/topics?examId=${examId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()
@@ -144,28 +214,28 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
       }
     }
     fetchTopics()
-  }, [token, baseURL])
+  }, [token, baseURL, examId])
 
   useEffect(() => {
-    if (videoRef.current && cameraStream) {
+    if (videoEl && cameraStream) {
       console.log("🎯 Attaching stream to video")
 
-      const video = videoRef.current
-      video.srcObject = cameraStream
-      video.muted = true
-      video.playsInline = true
+      videoEl.srcObject = cameraStream
+      videoEl.muted = true
+      videoEl.playsInline = true
 
-      video.play()
+      videoEl.play()
         .then(() => console.log("✅ Video playing"))
         .catch(() => {
-          setTimeout(() => video.play().catch(() => { }), 500)
+          setTimeout(() => videoEl.play().catch(() => { }), 500)
         })
     }
-  }, [cameraStream, qs.length])
+  }, [cameraStream, qs.length, videoEl])
 
   // ===== CAMERA RECORDING =====
   const startCameraRecording = async () => {
     try {
+      onBeforeCameraRequest?.()
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: "user" },
         audio: {
@@ -177,20 +247,19 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
       console.log("Stream tracks:", stream.getTracks())
       setCameraStream(stream)
 
-      if (videoRef.current) {
-        const video = videoRef.current
-        video.srcObject = stream
-        video.muted = true
-        video.playsInline = true
+      if (videoEl) {
+        videoEl.srcObject = stream
+        videoEl.muted = true
+        videoEl.playsInline = true
 
-        video.play()
+        videoEl.play()
           .then(() => console.log("✅ Video playing"))
           .catch((err) => {
             console.log("Play failed, retrying...", err)
-            setTimeout(() => video.play().catch(() => { }), 500)
+            setTimeout(() => videoEl.play().catch(() => { }), 500)
           })
       }
-      console.log("Video srcObject:", videoRef.current?.srcObject)
+      console.log("Video srcObject:", videoEl?.srcObject)
       const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' })
       mediaRecorderRef.current = recorder
       recordedChunksRef.current = []
@@ -353,6 +422,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
 
   const checkMicrophonePermission = async () => {
     try {
+      onBeforeCameraRequest?.()
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       stream.getTracks().forEach(track => track.stop())
       return true
@@ -550,6 +620,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
           resumeSkills: generationMode === 'resume' ? resumeSkills : undefined,
           resumeSummary: generationMode === 'resume' ? resumeAnalysis?.summary || '' : undefined,
           answers, recordingUrl, timeLeft,
+          ...violationCountsRef.current,
         }),
       })
       const data = await res.json()
@@ -627,8 +698,14 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
 
   const currentInterim = recording && current ? interimTranscriptRef.current : ''
 
-  // Mode Selection Component
-  const ModeSelection = () => (
+  // Mode Selection — a plain JSX value (not a nested component function), so
+  // it's never given a new component identity on re-render. Defining these
+  // as `const X = () => (...)` inside the parent's render body used to make
+  // React treat <X /> as a brand-new component type every re-render, forcing
+  // an unmount/remount of the subtree — which is what snapped the topic
+  // <select> shut the instant it was opened (a re-render while the native
+  // dropdown was open remounted the element out from under it).
+  const modeSelectionEl = (
     <div className="mode-selection-section">
       <div className="mode-selection-header">
         <h3 className="mode-title">Choose Question Generation Method</h3>
@@ -655,8 +732,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
     </div>
   )
 
-  // Topic Selection Component
-  const TopicSelection = () => (
+  const topicSelectionEl = (
     <div className="topic-selection-section">
       <div className="topic-selection-header"><FaQuestionCircle className="topic-header-icon" /><div><h4 className="topic-title">Select a Topic</h4><p className="topic-subtitle">Choose a technical topic for your interview questions</p></div></div>
       <Form.Group className="topic-select-group">
@@ -678,8 +754,7 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
     </div>
   )
 
-  // Resume Upload Component
-  const ResumeUpload = () => (
+  const resumeUploadEl = (
     <div className="upload-section">
       <div className="upload-card">
         <div className="upload-icon-wrapper"><FaFileAlt className="upload-icon" /></div>
@@ -741,9 +816,9 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
           {loadErr && (<Alert variant="danger" className="alert-custom alert-danger"><FaExclamationTriangle className="alert-icon" /><span>{loadErr}</span></Alert>)}
           {uiErr && (<Alert variant="warning" className="alert-custom alert-warning"><FaExclamationTriangle className="alert-icon" /><span>{uiErr}</span></Alert>)}
 
-          {(!generationMode || generationMode === null) && !qs.length && !startingInterview && <ModeSelection />}
-          {generationMode === 'resume' && !qs.length && !startingInterview && resumeSkills.length === 0 && <ResumeUpload />}
-          {generationMode === 'topic' && !qs.length && !startingInterview && !selectedTopic && <TopicSelection />}
+          {(!generationMode || generationMode === null) && !qs.length && !startingInterview && modeSelectionEl}
+          {generationMode === 'resume' && !qs.length && !startingInterview && resumeSkills.length === 0 && resumeUploadEl}
+          {generationMode === 'topic' && !qs.length && !startingInterview && !selectedTopic && topicSelectionEl}
 
           {generationMode && !qs.length && !startingInterview && (
             <div className="start-interview-container">
@@ -774,48 +849,93 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
                     <div className="question-source"><small>Generated from {generationMode === 'resume' ? 'your resume' : `topic: ${selectedTopic}`}</small></div>
                     <h3 className="question-text-custom">{current?.question}</h3>
 
-                    <div className="answer-section-custom">
-                      <label className="terminal-label"><span className="terminal-prompt">$</span> Your Answer</label>
-                      <textarea
-                        placeholder="Speak (Start) or type freely..."
-                        value={
-                          recording
-                            ? (finalTranscriptRef.current + " " + interimTranscriptRef.current)
-                            : (textAnswers[current?._id] || "")
-                        }
-                        onChange={(e) => {
-                          if (!current) return
-                          finalTranscriptRef.current = e.target.value
-                          setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
-                        }}
-                        rows={6}
-                        className="answer-textarea-terminal"
-                      />
-                      {recording && currentInterim && (
-                        <div className="interim-line-terminal"><span className="terminal-prompt-small"></span><em>{currentInterim}</em><span className="cursor-blink">_</span></div>
+                    <div className="answer-tabs-container">
+                      <div className="answer-tabs-header">
+                        <button
+                          type="button"
+                          className={`answer-tab-btn ${answerTab === 'answer' ? 'active' : ''}`}
+                          onClick={() => setAnswerTab('answer')}
+                        >
+                          <span className="terminal-prompt">$</span> Answer
+                        </button>
+                        <button
+                          type="button"
+                          className={`answer-tab-btn ${answerTab === 'code' ? 'active' : ''}`}
+                          onClick={() => setAnswerTab('code')}
+                        >
+                          <FaCode className="me-2" /> Code
+                        </button>
+                      </div>
+
+                      {answerTab === 'answer' && (
+                        <div className="answer-tab-panel">
+                          <textarea
+                            placeholder="Speak (Start) or type freely..."
+                            value={
+                              recording
+                                ? (finalTranscriptRef.current + " " + interimTranscriptRef.current)
+                                : (textAnswers[current?._id] || "")
+                            }
+                            onChange={(e) => {
+                              if (!current) return
+                              finalTranscriptRef.current = e.target.value
+                              setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
+                            }}
+                            rows={14}
+                            className="answer-textarea-terminal"
+                          />
+                          {recording && currentInterim && (
+                            <div className="interim-line-terminal"><span className="terminal-prompt-small"></span><em>{currentInterim}</em><span className="cursor-blink">_</span></div>
+                          )}
+
+                          <div className="audio-controls-custom">
+                            {!recording ? (
+                              <button className="record-btn-custom" onClick={startDictation}><FaMicrophone className="me-2" /> Start Speaking</button>
+                            ) : (
+                              <div className="mic-active-container">
+                                <button className="stop-record-btn-custom" onClick={stopDictation}><FaStop className="me-2" /> Stop Recording</button>
+                                <div className="mic-status-indicator">
+                                  <span className="mic-dot listening"></span>
+                                  <span className="mic-status-text">🎤 Listening...</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </div>
 
-                    <div className="example-section">
-                      <label className="terminal-label"><span className="terminal-prompt">#</span> Example / Code</label>
-                      <textarea
-                        placeholder="Provide example or code (optional)..."
-                        value={exampleAnswers[current?._id] || ''}
-                        onChange={(e) => { if (!current) return; setExampleAnswers(prev => ({ ...prev, [current._id]: e.target.value })) }}
-                        rows={4}
-                        className="answer-textarea-terminal"
-                      />
-                    </div>
-
-                    <div className="audio-controls-custom">
-                      {!recording ? (
-                        <button className="record-btn-custom" onClick={startDictation}><FaMicrophone className="me-2" /> Start Speaking</button>
-                      ) : (
-                        <div className="mic-active-container">
-                          <button className="stop-record-btn-custom" onClick={stopDictation}><FaStop className="me-2" /> Stop Recording</button>
-                          <div className="mic-status-indicator">
-                            <span className="mic-dot listening"></span>
-                            <span className="mic-status-text">🎤 Listening...</span>
+                      {answerTab === 'code' && (
+                        <div className="answer-tab-panel">
+                          <div className="code-editor-toolbar">
+                            <span className="code-editor-toolbar-label">Language</span>
+                            <select
+                              value={codeLanguage}
+                              onChange={(e) => setCodeLanguage(e.target.value)}
+                              className="code-lang-select"
+                            >
+                              {CODE_LANGUAGES.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                            </select>
+                          </div>
+                          <div className="code-editor-wrapper">
+                            <Editor
+                              height="360px"
+                              language={getMonacoLanguage(codeLanguage)}
+                              value={exampleAnswers[current?._id] || ''}
+                              onChange={(value) => { if (!current) return; setExampleAnswers(prev => ({ ...prev, [current._id]: value || '' })) }}
+                              theme="vs"
+                              options={{
+                                minimap: { enabled: false },
+                                fontSize: 13,
+                                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                                lineNumbers: 'on',
+                                scrollBeyondLastLine: false,
+                                automaticLayout: true,
+                                wordWrap: 'on',
+                                padding: { top: 10, bottom: 10 },
+                                renderLineHighlight: 'all',
+                                scrollbar: { verticalScrollbarSize: 6, horizontalScrollbarSize: 6 },
+                              }}
+                            />
                           </div>
                         </div>
                       )}
@@ -837,11 +957,57 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
                 <div className="video-panel">
                   <div className="video-section-custom"><h4><FaVideo className="me-2" /> Camera Recording</h4>
                     <div className="video-preview-custom camera-preview">
-                      <video ref={videoRef} autoPlay playsInline muted className="video-element" style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#000', transform: 'scaleX(-1)' }} />
+                      {/* Mirror wrapper — the video is flipped for a natural
+                          "look in a mirror" preview; the gaze overlay must
+                          flip with it so the mesh stays aligned to the face
+                          instead of floating off to the wrong side. */}
+                      <div style={{ position: 'relative', width: '100%', height: '100%', transform: 'scaleX(-1)' }}>
+                        <video ref={setVideoEl} autoPlay playsInline muted className="video-element" style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#000' }} />
+                        {gaze.isReady && (
+                          <GazeScanOverlay
+                            landmarks={gaze.landmarks}
+                            faceDetected={gaze.faceDetected}
+                            direction={gaze.direction}
+                            isLookingAway={gaze.isLookingAway}
+                            violationCount={gaze.violationCount}
+                            lookAwaySeconds={gaze.lookAwaySeconds}
+                            headDirection={gaze.headDirection}
+                            isHeadTurned={gaze.isHeadTurned}
+                            headViolationCount={gaze.headViolationCount}
+                            headAwaySeconds={gaze.headAwaySeconds}
+                            maskDetected={gaze.maskDetected}
+                            maskViolationCount={gaze.maskViolationCount}
+                            maskAwaySeconds={gaze.maskAwaySeconds}
+                            widen={1}
+                          />
+                        )}
+                      </div>
                       {!isRecording && !cameraStream && (<div className="video-placeholder-custom"><FaVideo size={32} /><div>Camera not started</div></div>)}
                     </div>
                   </div>
                   <div className="recording-status"><span className={`status-dot ${isRecording ? 'active' : ''}`}></span><span>{isRecording ? 'Camera is recording' : 'Recording stopped'}</span></div>
+                  {gaze.isReady && (
+                    <div style={{
+                      padding: '6px 10px', fontSize: '11px', fontWeight: 600, textAlign: 'center', borderRadius: 8,
+                      color: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#fff' : '#28a745',
+                      background: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#dc3545' : 'rgba(40,167,69,0.12)',
+                    }}>
+                      {!gaze.faceDetected
+                        ? `⚠ Face not visible — remove any covering (${gaze.noFaceSeconds}s)`
+                        : gaze.maskDetected
+                          ? `⚠ Mouth/nose covered — remove mask (${gaze.maskAwaySeconds}s)`
+                          : gaze.isLookingAway
+                            ? `⚠ Look at the screen (${gaze.lookAwaySeconds}s)`
+                            : gaze.isHeadTurned
+                              ? `⚠ Face the camera (${gaze.headAwaySeconds}s)`
+                              : '✓ Face tracking OK'}
+                    </div>
+                  )}
+                  {faceViolationCount > 0 && (
+                    <div style={{ padding: '4px 10px', fontSize: '10.5px', fontWeight: 600, textAlign: 'center', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', borderRadius: 8 }}>
+                      Face/gaze violations noted: {faceViolationCount}
+                    </div>
+                  )}
                   {timerActive && (<div className="timer-panel-custom"><FaClock className="timer-icon" /><strong>Time: {formatTime(timeLeft)}</strong>{isLastQuestion && (<div className="final-note">This is the final question. Click "Review Answers" to submit.</div>)}</div>)}
                   {generationMode === 'resume' && resumeSkills.length > 0 && (<div className="skills-summary-custom"><h5><FaCode className="me-2" /> Resume Skills</h5><div className="skills-tags-compact">{resumeSkills.slice(0, 8).map((skill) => (<span key={skill} className="skill-tag-compact">{skill}</span>))}{resumeSkills.length > 8 && (<span className="skill-tag-compact">+{resumeSkills.length - 8} more</span>)}</div></div>)}
                 </div>
@@ -1021,6 +1187,24 @@ export default function TechnicalRound({ examId, duration = 45 * 60, onSubmitted
         .answer-textarea-terminal:focus { outline: none; border-color: #00ff00; box-shadow: 0 0 10px rgba(0, 255, 0, 0.3); background: #000000; }
         .answer-textarea-terminal::placeholder { color: #2a6b2a; font-family: 'Courier New', monospace; }
         .interim-line-terminal { margin-top: 0.5rem; color: #00ff00; font-size: 0.85rem; font-family: 'Courier New', monospace; background: #0a0a0a; padding: 0.5rem; border-left: 3px solid #00ff00; }
+        /* Answer / Code tabbed box — replaces two separately-labelled
+           stacked sections with a single box + tab switcher. */
+        .answer-tabs-container { border: 1px solid #00ff00; border-radius: 6px; background: #050505; overflow: hidden; margin-bottom: 1rem; }
+        .answer-tabs-header { display: flex; border-bottom: 1px solid #00ff00; background: #0a0a0a; }
+        .answer-tab-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.6rem 1rem; background: transparent; border: none; color: #2a6b2a; font-family: 'Courier New', monospace; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border-right: 1px solid #003300; }
+        .answer-tab-btn:last-child { border-right: none; }
+        .answer-tab-btn:hover { color: #00ff00; background: rgba(0, 255, 0, 0.05); }
+        .answer-tab-btn.active { color: #00ff00; background: rgba(0, 255, 0, 0.1); box-shadow: inset 0 -2px 0 #00ff00; }
+        .answer-tab-panel { padding: 1rem; }
+        .answer-tab-panel .answer-textarea-terminal { border: none; box-shadow: none; background: transparent; padding: 0; margin-bottom: 0.5rem; }
+        .code-editor-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .code-editor-toolbar-label { color: #00ff00; font-family: 'Courier New', monospace; font-size: 0.8rem; }
+        .code-lang-select { background: #0a0a0a; color: #00ff00; border: 1px solid #00ff00; border-radius: 4px; padding: 0.3rem 0.6rem; font-family: 'Courier New', monospace; font-size: 0.8rem; cursor: pointer; }
+        .code-lang-select:focus { outline: none; box-shadow: 0 0 8px rgba(0, 255, 0, 0.3); }
+        /* White code panel, as requested — a clean light card instead of
+           the terminal's neon-green styling, since the editor itself now
+           uses Monaco's light "vs" theme. */
+        .code-editor-wrapper { border: 1px solid #d0d7de; border-radius: 6px; overflow: hidden; background: #ffffff; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .cursor-blink { animation: blink 1s step-end infinite; color: #00ff00; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
         .mic-active-container { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }

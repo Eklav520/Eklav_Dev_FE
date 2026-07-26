@@ -21,6 +21,8 @@ import {
   FaPlay
 } from 'react-icons/fa'
 import { useAuthContext } from "@/context/useAuthContext"
+import { useGazeDetection } from "@/app/student/self-interview/components/useGazeDetection"
+import GazeScanOverlay from "@/app/student/self-interview/components/GazeScanOverlay"
 
 // ---- Types ----
 type HRQuestion = { _id: string; topic: string; question: string }
@@ -29,9 +31,17 @@ type Props = {
   duration?: number
   onSubmitted?: () => void
   baseURL?: string
+  // Tab-switch/window-blur/fullscreen-exit count from the page-level
+  // useProctorGuard — folded into the submission alongside the face/gaze
+  // violations tracked in this component.
+  tabSwitchViolationCount?: number
+  // Call right before requesting camera/mic — the resulting permission
+  // bubble steals window focus and can force fullscreen to exit, which
+  // would otherwise be mistaken for the student tabbing away.
+  onBeforeCameraRequest?: () => void
 }
 
-export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL }: Props) {
+export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseURL = import.meta.env.VITE_API_BASE_URL, tabSwitchViolationCount = 0, onBeforeCameraRequest }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
   const [open, setOpen] = useState(true)
@@ -76,8 +86,40 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
   const [isRecording, setIsRecording] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
-  const videoRef = useRef<HTMLVideoElement | null>(null)
+  // State (not a plain ref) so the gaze-detection effect below — which
+  // depends on this value — actually re-runs once the <video> node mounts.
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+
+  // ── Gaze/head-pose/mask/no-face proctoring (same detector as the MCQ &
+  // coding rounds and /student/self-interview). No blocking modal, no
+  // strike cap — just a silent tally sent up with the submission for admin
+  // review. Reuses this panel's existing camera stream/video element (via
+  // useExternalStream) rather than requesting a second independent camera
+  // stream — mediapipe's Camera utility always does its own getUserMedia,
+  // and most Windows webcams only allow one active capture session.
+  const gaze = useGazeDetection(videoEl, !!cameraStream && open, false, { useExternalStream: true })
+  const faceViolationCount = gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount
+  // handleSubmit may run well after the values above changed, so submission
+  // reads this ref instead of closing over stale state.
+  const violationCountsRef = useRef({
+    eyeViolationCount: 0,
+    headViolationCount: 0,
+    maskViolationCount: 0,
+    noFaceViolationCount: 0,
+    tabSwitchViolationCount: 0,
+    faceViolationCount: 0,
+  })
+  useEffect(() => {
+    violationCountsRef.current = {
+      eyeViolationCount: gaze.violationCount,
+      headViolationCount: gaze.headViolationCount,
+      maskViolationCount: gaze.maskViolationCount,
+      noFaceViolationCount: gaze.noFaceViolationCount,
+      tabSwitchViolationCount,
+      faceViolationCount,
+    }
+  }, [gaze.violationCount, gaze.headViolationCount, gaze.maskViolationCount, gaze.noFaceViolationCount, tabSwitchViolationCount, faceViolationCount])
 
   const [startingInterview, setStartingInterview] = useState(false)
   const welcomePlayedRef = useRef(false)
@@ -137,25 +179,25 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
   }, [token, baseURL])
 
   useEffect(() => {
-    if (videoRef.current && cameraStream) {
+    if (videoEl && cameraStream) {
       console.log("🎯 HR: Attaching stream to video")
 
-      const video = videoRef.current
-      video.srcObject = cameraStream
-      video.muted = true
-      video.playsInline = true
+      videoEl.srcObject = cameraStream
+      videoEl.muted = true
+      videoEl.playsInline = true
 
-      video.play()
+      videoEl.play()
         .then(() => console.log("✅ HR Video playing"))
         .catch(() => {
-          setTimeout(() => video.play().catch(() => { }), 500)
+          setTimeout(() => videoEl.play().catch(() => { }), 500)
         })
     }
-  }, [cameraStream, qs.length])
+  }, [cameraStream, qs.length, videoEl])
 
   // ===== CAMERA RECORDING =====
   const startCameraRecording = async () => {
     try {
+      onBeforeCameraRequest?.()
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 640 },
@@ -503,6 +545,7 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
           answers,
           recordingUrl,
           timeLeft,
+          ...violationCountsRef.current,
         }),
       })
 
@@ -574,8 +617,12 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
   const committedValue = (() => (!current ? '' : textAnswers[current._id] || ''))()
   const currentInterim = dictating && current ? interimRef.current[current._id] || '' : ''
 
-  // Topic Selection Component
-  const TopicSelection = () => (
+  // Topic Selection — a plain JSX value (not a nested component function),
+  // so it's never given a new component identity on re-render. Defining
+  // this as `const X = () => (...)` inside the parent's render body used to
+  // make React treat <X /> as a brand-new component type every re-render,
+  // forcing an unmount/remount of the subtree on any parent state change.
+  const topicSelectionEl = (
     <div className="topic-selection-section">
       <div className="topic-selection-header">
         <FaList className="topic-header-icon" />
@@ -702,7 +749,7 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
             </Alert>
           )}
 
-          {!qs.length && !startingInterview && <TopicSelection />}
+          {!qs.length && !startingInterview && topicSelectionEl}
 
           {startingInterview && !qs.length && (
             <div className="loading-section">
@@ -765,7 +812,7 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
                           setTextAnswers((prev) => ({ ...prev, [current._id]: e.target.value }))
                           tick((x) => x + 1)
                         }}
-                        rows={6}
+                        rows={14}
                         className="answer-textarea-custom"
                       />
                       {currentInterim && (
@@ -812,12 +859,30 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
                     <h4><FaVideo className="me-2" /> Camera Recording</h4>
                     <div className="video-preview-custom camera-preview">
                       <video
-                        ref={videoRef}
+                        ref={setVideoEl}
                         autoPlay
                         muted
                         playsInline
                         className="video-element"
                       />
+                      {gaze.isReady && (
+                        <GazeScanOverlay
+                          landmarks={gaze.landmarks}
+                          faceDetected={gaze.faceDetected}
+                          direction={gaze.direction}
+                          isLookingAway={gaze.isLookingAway}
+                          violationCount={gaze.violationCount}
+                          lookAwaySeconds={gaze.lookAwaySeconds}
+                          headDirection={gaze.headDirection}
+                          isHeadTurned={gaze.isHeadTurned}
+                          headViolationCount={gaze.headViolationCount}
+                          headAwaySeconds={gaze.headAwaySeconds}
+                          maskDetected={gaze.maskDetected}
+                          maskViolationCount={gaze.maskViolationCount}
+                          maskAwaySeconds={gaze.maskAwaySeconds}
+                          widen={1}
+                        />
+                      )}
                       {!isRecording && !cameraStream && (
                         <div className="video-placeholder-custom">
                           <div>Camera not started</div>
@@ -830,6 +895,32 @@ export default function HRRound({ examId, duration = 30 * 60, onSubmitted, baseU
                     <span className={`status-dot ${isRecording ? 'active' : ''}`}></span>
                     <span>{isRecording ? 'Camera is recording' : 'Recording stopped'}</span>
                   </div>
+
+                  {/* Gaze/head-pose/mask proctoring status — same detector
+                      as the MCQ/coding rounds, condensed since this panel
+                      is small. */}
+                  {gaze.isReady && (
+                    <div style={{
+                      padding: '6px 10px', fontSize: '11px', fontWeight: 600, textAlign: 'center', borderRadius: 8,
+                      color: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#fff' : '#28a745',
+                      background: !gaze.faceDetected || gaze.maskDetected || gaze.isLookingAway || gaze.isHeadTurned ? '#dc3545' : 'rgba(40,167,69,0.12)',
+                    }}>
+                      {!gaze.faceDetected
+                        ? `⚠ Face not visible — remove any covering (${gaze.noFaceSeconds}s)`
+                        : gaze.maskDetected
+                          ? `⚠ Mouth/nose covered — remove mask (${gaze.maskAwaySeconds}s)`
+                          : gaze.isLookingAway
+                            ? `⚠ Look at the screen (${gaze.lookAwaySeconds}s)`
+                            : gaze.isHeadTurned
+                              ? `⚠ Face the camera (${gaze.headAwaySeconds}s)`
+                              : '✓ Face tracking OK'}
+                    </div>
+                  )}
+                  {faceViolationCount > 0 && (
+                    <div style={{ padding: '4px 10px', fontSize: '10.5px', fontWeight: 600, textAlign: 'center', color: '#f59e0b', background: 'rgba(245,158,11,0.12)', borderRadius: 8 }}>
+                      Face/gaze violations noted: {faceViolationCount}
+                    </div>
+                  )}
 
                   {timerActive && (
                     <div className="timer-panel-custom">

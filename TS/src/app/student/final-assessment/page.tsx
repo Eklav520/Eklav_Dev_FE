@@ -231,9 +231,15 @@ export default function StudentAssessmentController() {
   const submitRef = useRef<() => void>(() => {})
   const mcqForceSubmitRef = useRef<() => void>(() => {})
   const violationPendingRef = useRef(false)
+  // Drives a full-screen "Submitting..." overlay from the moment max
+  // violations is reached until the page reloads with fresh data — covers
+  // both the 3s countdown and the actual submit request, so there's no
+  // jarring instant cut to the assessment list.
+  const [autoSubmitting, setAutoSubmitting] = useState(false)
   const onViolationCb = useCallback(() => setShowViolationAlert(true), [])
   const onMaxReachedCb = useCallback(() => {
     violationPendingRef.current = true
+    setAutoSubmitting(true)
     setTimeout(() => submitRef.current(), 3000)
   }, [])
 
@@ -553,17 +559,16 @@ export default function StudentAssessmentController() {
       console.error("Submit error", err)
     }
 
-    setIsRunning(false)
-    setActiveRound(null)
-
+    // Every round submission reloads the whole page instead of relying on
+    // the modal/state transition below — the Assessment Portal's list/card
+    // data (and the "Round Details & Summary" / "Round Flow" panels) come
+    // from a separate fetch on mount that this function's state updates
+    // don't reach, so without a reload they kept showing stale status
+    // until the student manually refreshed the browser.
     if (examStatus === "completed") {
       alert("🎉 Congratulations! You have successfully completed all rounds! 🎉")
-      setSelectedAssessment(null)
-      setRounds([])
-      setShowAssessmentModal(false)
-    } else {
-      setShowAssessmentModal(true)
     }
+    window.location.reload()
   }
 
   submitRef.current = (roundConfig?.type === 'mcq')
@@ -3077,6 +3082,7 @@ export default function StudentAssessmentController() {
             onSubmit={handleRoundSubmit}
             forceSubmitRef={mcqForceSubmitRef}
             tabSwitchViolationCount={proctor.violationCount}
+            onBeforeCameraRequest={proctor.suppressBlurBriefly}
           />
         </div>
       )}
@@ -3087,6 +3093,8 @@ export default function StudentAssessmentController() {
           <StudentCodeChallengeComponent
             eventId={selectedAssessment._id}
             onSubmitted={handleRoundSubmit}
+            tabSwitchViolationCount={proctor.violationCount}
+            onBeforeCameraRequest={proctor.suppressBlurBriefly}
           />
         </div>
       )}
@@ -3102,6 +3110,8 @@ export default function StudentAssessmentController() {
             examId={selectedAssessment._id}
             duration={roundConfig.duration}
             onSubmitted={handleRoundSubmit}
+            tabSwitchViolationCount={proctor.violationCount}
+            onBeforeCameraRequest={proctor.suppressBlurBriefly}
           />
         </div>
       )}
@@ -3112,6 +3122,8 @@ export default function StudentAssessmentController() {
             examId={selectedAssessment._id}
             duration={roundConfig.duration}
             onSubmitted={handleRoundSubmit}
+            tabSwitchViolationCount={proctor.violationCount}
+            onBeforeCameraRequest={proctor.suppressBlurBriefly}
           />
         </div>
       )}
@@ -3140,6 +3152,19 @@ export default function StudentAssessmentController() {
             proctor.enterFullscreen()
           }}
         />
+      )}
+
+      {autoSubmitting && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 2147483647,
+          background: 'rgba(0,0,0,0.85)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', gap: 16,
+        }}>
+          <Spinner animation="border" style={{ width: 56, height: 56, color: '#ff6b6b' }} />
+          <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Submitting your exam…</div>
+          <div style={{ fontSize: '0.85rem', color: '#ccc' }}>Maximum violations reached — this round is being auto-submitted.</div>
+        </div>
       )}
 
       <style>{`
@@ -3705,7 +3730,7 @@ export default function StudentAssessmentController() {
         }
         .ap-cal-day.empty { }
         .ap-cal-day.today { background: #ff6b35; color: #fff; font-weight: 700; }
-        .ap-cal-day.has-asm { background: #eff6ff; color: #2563eb; font-weight: 700; border-radius: 50%; }
+        .ap-cal-day.has-asm { background: #dcfce7; color: #16a34a; font-weight: 700; border-radius: 50%; }
         .ap-cal-day.today.has-asm { background: #ff6b35; color: #fff; }
         .ap-cal-events { margin-top: 10px; display: flex; flex-direction: column; gap: 0; }
         .ap-cal-event { display: flex; align-items: center; gap: 8px; padding: 7px 2px; border-bottom: 1px solid var(--dash-border, #f1f5f9); }

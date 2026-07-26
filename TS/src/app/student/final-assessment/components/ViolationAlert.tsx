@@ -1,6 +1,6 @@
 // src/components/ViolationAlert.tsx
 import React from 'react'
-import { Modal, Button } from 'react-bootstrap'
+import { Button } from 'react-bootstrap'
 import { FaExclamationTriangle } from 'react-icons/fa'
 
 interface ViolationAlertProps {
@@ -10,57 +10,63 @@ interface ViolationAlertProps {
   onClose: () => void
 }
 
+// Plain fixed overlay instead of react-bootstrap's Modal — Modal's
+// `centered` flex-centering combined with a custom margin-top override
+// was producing a mismatch between the rendered button position and its
+// actual clickable hit-box (clicks landed on the button only when clicked
+// a bit above it). This also guarantees the alert renders above the exam's
+// own fixed z-index:999999 wrappers, which sit well above Bootstrap's
+// default modal z-index (~1055).
 const ViolationAlert: React.FC<ViolationAlertProps> = ({
   show,
   count,
   maxViolations,
   onClose,
 }) => {
-  // No auto-dismiss — user must click "I Understand" so the click event
-  // can be used as a user gesture to re-enter fullscreen.
-  
+  if (!show) return null
+
   return (
-    <Modal show={show} centered backdrop={false} keyboard={false} className="violation-alert">
-      <Modal.Body className="text-center">
-        <FaExclamationTriangle className="violation-icon" />
+    <div
+      role="dialog"
+      aria-modal="true"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 2147483647,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(0,0,0,0.6)',
+      }}
+    >
+      <div
+        style={{
+          background: '#1a1a2e',
+          border: '2px solid #ff6b6b',
+          borderRadius: 12,
+          padding: '32px 28px',
+          maxWidth: 420,
+          width: '90%',
+          textAlign: 'center',
+          color: '#fff',
+        }}
+      >
+        <FaExclamationTriangle style={{ fontSize: '3rem', color: '#ff6b6b' }} />
         <h5 className="mt-3">⚠️ Proctoring Violation Detected</h5>
-        <p>Tab switching / Alt+Tab is not allowed during the assessment.</p>
-        <p className="violation-count">
+        <p style={{ color: '#e2e8f0' }}>Tab switching / Alt+Tab is not allowed during the assessment.</p>
+        <p style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ff6b6b' }}>
           Violation {count} / {maxViolations}
         </p>
         {count >= maxViolations && (
-          <p className="text-warning">
+          <p style={{ color: '#ffc107' }}>
             ⚠️ Maximum violations reached. Your exam will auto-submit in 3 seconds.
           </p>
         )}
         <Button variant="danger" onClick={onClose} className="mt-2">
           I Understand
         </Button>
-      </Modal.Body>
-      
-      <style>{`
-        .violation-alert .modal-content {
-          background: #1a1a2e;
-          border: 2px solid #ff6b6b;
-          border-radius: 12px;
-        }
-        
-        .violation-icon {
-          font-size: 3rem;
-          color: #ff6b6b;
-        }
-        
-        .violation-count {
-          font-size: 1.1rem;
-          font-weight: bold;
-          color: #ff6b6b;
-        }
-        
-        .violation-alert .modal-dialog {
-          margin-top: 20vh;
-        }
-      `}</style>
-    </Modal>
+      </div>
+    </div>
   )
 }
 

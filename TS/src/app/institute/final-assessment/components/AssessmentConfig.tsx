@@ -76,6 +76,11 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [uploadRound, setUploadRound] = useState<RoundType | null>(null);
     const [questionCounts, setQuestionCounts] = useState<Record<string, number>>({});
+    // Rounds a student has actually started/completed — used instead of the
+    // scheduled start time to decide whether editing should be locked, so a
+    // round doesn't lock the instant its start time passes with nobody
+    // having attempted it yet.
+    const [startedRoundTypes, setStartedRoundTypes] = useState<Set<string>>(new Set());
     const [viewRound, setViewRound] = useState<{ type: 'mcq'|'tr'|'hr'; label: string } | null>(null);
     const [savedRoundTypes, setSavedRoundTypes] = useState<Set<string>>(new Set());
     const [savingRound, setSavingRound] = useState<string | null>(null);
@@ -213,7 +218,19 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
         } catch {}
     };
 
-    useEffect(() => { fetchQuestionCounts(); }, [examId]);
+    const fetchRoundActivity = async () => {
+        if (!examId) return;
+        try {
+            const res = await fetch(
+                `${import.meta.env.VITE_API_BASE_URL}/api/assessment/admin/exam/${examId}/round-activity`,
+                { headers: { Authorization: `Bearer ${user?.token}` } }
+            );
+            const data = await res.json();
+            if (data.success) setStartedRoundTypes(new Set(data.startedRoundTypes || []));
+        } catch {}
+    };
+
+    useEffect(() => { fetchQuestionCounts(); fetchRoundActivity(); }, [examId]);
 
     /* ================= TOGGLE ROUND ================= */
     const toggleRound = (index: number) => {
@@ -774,7 +791,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                         {round.enabled && (() => {
                                             const count = questionCounts[round.roundType] ?? 0;
                                             const isScheduled = !!(round.startDateTime && round.endDateTime);
-                                            const isStarted = isScheduled && new Date(round.startDateTime) <= new Date();
+                                            const isStarted = startedRoundTypes.has(round.roundType);
                                             const isMCQTRHR = round.roundType === 'mcq' || round.roundType === 'tr' || round.roundType === 'hr';
                                             const isSaved = savedRoundTypes.has(round.roundType);
                                             return (
@@ -1638,16 +1655,14 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                         {uploadRound === 'hr'      && '👥 HR Interview Questions'}
                         {uploadRound === 'english' && '🇬🇧 English Assessment'}
                         {uploadRound && (() => {
-                            const activeRound = rounds.find(r => r.roundType === uploadRound);
-                            const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
+                            const isStarted = startedRoundTypes.has(uploadRound);
                             return isStarted ? <span style={{ marginLeft: 12, fontSize: '0.75rem', color: '#ef4444', background: 'rgba(239,68,68,0.12)', padding: '2px 10px', borderRadius: 20, border: '1px solid #ef444430' }}>🔒 View Only — Exam in Progress</span> : null;
                         })()}
                     </Modal.Title>
                 </Modal.Header>
                 <Modal.Body style={{ background: '#000', padding: '1.5rem', overflowY: 'auto' }}>
                     {uploadRound && examId && (() => {
-                        const activeRound = rounds.find(r => r.roundType === uploadRound);
-                        const isStarted = activeRound?.startDateTime ? new Date(activeRound.startDateTime) <= new Date() : false;
+                        const isStarted = startedRoundTypes.has(uploadRound);
                         return (
                             <>
                                 {uploadRound === 'mcq'     && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}

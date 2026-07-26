@@ -13,6 +13,10 @@ type Props = {
   // useProctorGuard — folded into the submission so every violation type
   // ends up stored against this attempt, not just face/gaze ones.
   tabSwitchViolationCount?: number
+  // Call right before requesting camera/mic — the resulting permission
+  // bubble steals window focus and can force fullscreen to exit, which
+  // would otherwise be mistaken for the student tabbing away.
+  onBeforeCameraRequest?: () => void
 }
 
 type Option = {
@@ -28,7 +32,7 @@ type Question = {
   correctAnswer?: string
 }
 
-export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef, tabSwitchViolationCount = 0 }: Props) {
+export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef, tabSwitchViolationCount = 0, onBeforeCameraRequest }: Props) {
   const { user } = useAuthContext()
   const token = user?.token
   const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -150,6 +154,7 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
   const startCameraRecording = async () => {
     console.log("🎥 Starting camera...")
     try {
+      onBeforeCameraRequest?.()
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 320 },
