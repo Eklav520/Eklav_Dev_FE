@@ -47,6 +47,24 @@ const AVATAR_COLORS = [
 ]
 const avatarColor = (name: string) => AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
 const initials = (name: string) => name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+// Wraps bare http(s) URLs in a description's HTML with clickable <a> tags.
+// Splits out any existing <a>...</a> blocks first and leaves them completely
+// untouched — otherwise a URL that's already linked gets wrapped a second
+// time (inside its own href/text), producing broken, mismatched markup.
+const linkifyUrls = (segment: string) =>
+  segment.replace(/https?:\/\/[^\s<"')]+/g, (url) => {
+    const trailingPunct = url.match(/[.,;:!?)]+$/)?.[0] || ''
+    const cleanUrl = trailingPunct ? url.slice(0, -trailingPunct.length) : url
+    return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer">${cleanUrl}</a>${trailingPunct}`
+  })
+
+const linkifyHtml = (html: string) => {
+  if (!html) return html
+  return html
+    .split(/(<a\b[^>]*>[\s\S]*?<\/a>)/gi)
+    .map((part, i) => (i % 2 === 1 ? part : linkifyUrls(part)))
+    .join('')
+}
 const timeAgo = (dateStr: string) => {
   if (!dateStr) return ''
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -331,28 +349,6 @@ const JobDetailsModal: React.FC<Props> = ({
               {/* Actions */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                 <button
-                  onClick={() => onToggleSave?.(job._id)}
-                  style={{
-                    background: isSaved ? 'rgba(255,122,0,0.1)' : '#fff',
-                    border: '1px solid #e2e8f0', borderRadius: 8,
-                    width: 36, height: 36, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', cursor: 'pointer',
-                    color: isSaved ? '#ff7a00' : '#64748b',
-                  }}
-                >
-                  <FiBookmark size={15} fill={isSaved ? '#ff7a00' : 'none'} />
-                </button>
-                <button
-                  onClick={handleShare}
-                  style={{
-                    background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
-                    width: 36, height: 36, display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', cursor: 'pointer', color: '#64748b',
-                  }}
-                >
-                  <FiShare2 size={15} />
-                </button>
-                <button
                   onClick={handleMarkRead}
                   disabled={job.isRead || markLoading || isExpired}
                   style={{
@@ -365,27 +361,6 @@ const JobDetailsModal: React.FC<Props> = ({
                   }}
                 >
                   {markLoading ? 'Marking…' : job.isRead ? '✓ Marked' : 'Mark As Read'}
-                </button>
-                <button
-                  onClick={handleApply}
-                  disabled={job.isApplied || applyLoading || isExpired}
-                  style={{
-                    background: isExpired ? '#94a3b8' : job.isApplied ? '#16a34a' : '#ff7a00',
-                    border: 'none', borderRadius: 8, color: '#fff',
-                    padding: '8px 20px', fontWeight: 700, fontSize: '0.85rem',
-                    cursor: (job.isApplied || isExpired) ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap',
-                    opacity: applyLoading ? 0.7 : 1,
-                    transition: 'background 0.3s',
-                  }}
-                >
-                  {isExpired
-                    ? 'Expired'
-                    : applyLoading
-                    ? 'Applying…'
-                    : job.isApplied
-                    ? '✓ Applied'
-                    : 'Apply Now'}
                 </button>
               </div>
             </div>
@@ -453,7 +428,7 @@ const JobDetailsModal: React.FC<Props> = ({
                 {/* Highlights / Description */}
                 {job.highlights && job.highlights.length > 0 && (
                   <Section title="Responsibilities & Requirements">
-                    <div className="jd-highlights" dangerouslySetInnerHTML={{ __html: job.highlights[0] || '' }} />
+                    <div className="jd-highlights" dangerouslySetInnerHTML={{ __html: linkifyHtml(job.highlights[0] || '') }} />
                   </Section>
                 )}
                 <style>{`
@@ -468,6 +443,7 @@ const JobDetailsModal: React.FC<Props> = ({
                   .jd-highlights ul, .jd-highlights ol { padding-left: 20px !important; margin-bottom: 8px !important; }
                   .jd-highlights li { margin-bottom: 4px !important; }
                   .jd-highlights strong, .jd-highlights b { color: #0f172a !important; font-weight: 700 !important; }
+                  .jd-highlights a { color: #2563eb !important; text-decoration: underline !important; }
                 `}</style>
 
                 {/* Required skills */}
