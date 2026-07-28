@@ -6,7 +6,6 @@ import { python } from '@codemirror/lang-python'
 import { go } from '@codemirror/lang-go'
 import { php } from '@codemirror/lang-php'
 import { rust } from '@codemirror/lang-rust'
-import { EditorView, keymap } from '@codemirror/view'
 import { Extension } from '@codemirror/state'
 
 type Language =
@@ -45,39 +44,11 @@ const languageExtensions: Record<Language, Extension | null> = {
 const CodeEditor = ({ language, value, onChange }: Props) => {
   const extension = languageExtensions[language]
 
-  const blockShortcuts = keymap.of([
-    { key: 'Mod-c', run: () => true },
-    { key: 'Mod-v', run: () => true },
-    { key: 'Mod-x', run: () => true },
-    { key: 'Mod-a', run: () => true },
-  ])
-
-  const blockDomEvents = EditorView.domEventHandlers({
-    paste: (event) => {
-      event.preventDefault()
-      return true
-    },
-    copy: (event) => {
-      event.preventDefault()
-      return true
-    },
-    cut: (event) => {
-      event.preventDefault()
-      return true
-    },
-    contextmenu: (event) => {
-      event.preventDefault()
-      return true
-    },
-  })
-
   return (
     <CodeMirror
       value={value}
       extensions={[
         ...(extension ? [extension] : []),
-        blockShortcuts,
-        blockDomEvents,
       ]}
       onChange={onChange}
       height="100%"

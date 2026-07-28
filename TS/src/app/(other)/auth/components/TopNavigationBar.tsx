@@ -1,13 +1,98 @@
-import { FC, memo } from "react";
+import { FC, lazy, memo, Suspense, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Container } from "react-bootstrap";
 import LogoBox from "@/components/LogoBox";
 import TopNavbar from "@/components/TopNavbar";
 import useTenant from "@/utils/tenant";
 
+const PostJobPage = lazy(() => import("@/app/post-job/page"));
+
 interface TopNavigationBarProps {
   onLoginClick?: () => void;
   onSignupClick?: () => void;
 }
+
+// Modal wrapping the public job-post form, so "Post a Job" opens in-place
+// instead of navigating away from whatever the visitor was doing. Rendered
+// via a portal straight into document.body — mounted inside the nav tree,
+// `position: fixed` would resolve against whichever ancestor happens to
+// establish a containing block (any transform/filter/etc in that chain), not
+// the viewport, leaving it sized to a tiny box instead of covering the page.
+const PostJobModal: FC<{ onClose: () => void }> = ({ onClose }) => {
+  // Lock background scroll while open — otherwise the page behind and the
+  // modal's own inner content both scroll independently, showing two bars.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, []);
+
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, background: "rgba(15,15,20,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "3vh 3vw" }}>
+      <div style={{ width: "88vw", height: "94vh", maxWidth: 1720, background: "#f8fafc", borderRadius: 16, overflow: "hidden", boxShadow: "0 30px 80px rgba(0,0,0,0.5)", display: "flex", flexDirection: "column" }}>
+        <div className="post-job-modal-scroll" style={{ flex: 1, overflowY: "auto" }}>
+          <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>Loading…</div>}>
+            <PostJobPage onClose={onClose} />
+          </Suspense>
+        </div>
+      </div>
+      <style>{`
+        .post-job-modal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .post-job-modal-scroll::-webkit-scrollbar { display: none; }
+      `}</style>
+    </div>,
+    document.body
+  );
+};
+
+// "For Employers" dropdown — houses the public job-posting link. A plain
+// outlined button next to Login/Sign Up read as a third, competing CTA;
+// tucking it under a dropdown reads more like a standard enterprise nav item.
+const EmployersDropdown: FC = () => {
+  const [open, setOpen] = useState(false);
+  const [showPostJob, setShowPostJob] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [open]);
+
+  return (
+    <div className="nav-employers-dropdown" ref={ref}>
+      <button
+        type="button"
+        className="nav-employers-trigger"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        For Employers
+        <svg className={`nav-employers-chevron${open ? " open" : ""}`} width="10" height="6" viewBox="0 0 10 6" fill="none">
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="nav-employers-menu" role="menu">
+          <button
+            type="button"
+            className="nav-employers-item"
+            role="menuitem"
+            onClick={() => { setOpen(false); setShowPostJob(true); }}
+          >
+            <span className="nav-employers-item-title">Post a Job</span>
+            <span className="nav-employers-item-sub">Reach students on Eklav</span>
+          </button>
+        </div>
+      )}
+      {showPostJob && <PostJobModal onClose={() => setShowPostJob(false)} />}
+    </div>
+  );
+};
 
 const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSignupClick }) => {
   const tenant = useTenant();
@@ -65,10 +150,9 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
           background: transparent;
           border: 1px solid rgba(255,122,0,0.4);
           color: #ff7a00;
-          font-size: 0.8rem;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
+          font-size: 0.85rem;
+          font-weight: 600;
+          letter-spacing: 0.01em;
           padding: 6px 20px;
           border-radius: 6px;
           cursor: pointer;
@@ -100,10 +184,9 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
           background: linear-gradient(135deg, #ff7a00, #ffb347);
           border: none;
           color: #fff;
-          font-size: 0.8rem;
-          font-weight: 700;
-          letter-spacing: 0.08em;
-          text-transform: uppercase;
+          font-size: 0.85rem;
+          font-weight: 600;
+          letter-spacing: 0.01em;
           padding: 6px 22px;
           border-radius: 6px;
           cursor: pointer;
@@ -128,7 +211,90 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         .nav-signup-btn:hover::after { opacity: 1; }
 
         @media (prefers-reduced-motion: reduce) {
-          .nav-login-btn, .nav-signup-btn { transition: none; }
+          .nav-login-btn, .nav-signup-btn, .nav-employers-trigger { transition: none; }
+        }
+
+        /* "For Employers" dropdown — houses the public job-post link */
+        .nav-employers-dropdown {
+          position: relative;
+        }
+
+        .nav-employers-trigger {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: transparent;
+          border: none;
+          color: rgba(255,255,255,0.7);
+          font-size: 0.8rem;
+          font-weight: 600;
+          letter-spacing: 0.02em;
+          padding: 6px 4px;
+          cursor: pointer;
+          transition: color 0.2s ease;
+        }
+
+        .nav-employers-trigger:hover {
+          color: #fff;
+        }
+
+        .nav-employers-chevron {
+          transition: transform 0.2s ease;
+          flex-shrink: 0;
+        }
+
+        .nav-employers-chevron.open {
+          transform: rotate(180deg);
+        }
+
+        .nav-employers-menu {
+          position: absolute;
+          top: calc(100% + 12px);
+          left: 50%;
+          transform: translateX(-50%);
+          min-width: 220px;
+          background: #0c0c16;
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 10px;
+          box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+          padding: 6px;
+          z-index: 1060;
+          animation: navEmployersFadeIn 0.15s ease;
+        }
+
+        @keyframes navEmployersFadeIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        .nav-employers-item {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 2px;
+          width: 100%;
+          background: transparent;
+          border: none;
+          border-radius: 7px;
+          padding: 9px 12px;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.15s ease;
+        }
+
+        .nav-employers-item:hover {
+          background: rgba(255,122,0,0.1);
+        }
+
+        .nav-employers-item-title {
+          font-size: 0.82rem;
+          font-weight: 700;
+          color: #fff;
+        }
+
+        .nav-employers-item-sub {
+          font-size: 0.7rem;
+          color: rgba(255,255,255,0.5);
         }
       `}</style>
 
@@ -142,9 +308,10 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
 
         {/* Actions */}
         <div className="d-flex align-items-center gap-3">
+          <EmployersDropdown />
           {onLoginClick && (
             <button className="nav-login-btn" onClick={onLoginClick}>
-              Login
+              Log In
             </button>
           )}
           {onSignupClick && (

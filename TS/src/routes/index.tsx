@@ -71,6 +71,7 @@ const SignIn = lazy(() => import('@/app/(other)/auth/sign-in/page'))
 const SignUp = lazy(() => import('@/app/(other)/auth/sign-up/page'))
 const ForgotPassword = lazy(() => import('@/app/(other)/auth/forgot-password/page'))
 const DeleteAccountPublic = lazy(() => import('@/app/delete-account/page'))
+const PostJobPublic = lazy(() => import('@/app/post-job/page'))
 const HRAcceptInvitePage = lazy(() => import('@/app/hr/accept-invite/page'))
 
 //Instructor
@@ -501,6 +502,11 @@ export const authRoutes: RoutesProps[] = [
     path: '/delete-account',
     name: 'Delete Account',
     element: <DeleteAccountPublic />,
+  },
+  {
+    path: '/post-job',
+    name: 'Post a Job',
+    element: <PostJobPublic />,
   },
   {
     path: '/hr/accept-invite/:token',

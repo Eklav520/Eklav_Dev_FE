@@ -851,11 +851,24 @@ const ProblemStatement = () => {
                               {selectedProblem.testCases[selectedTestCaseIdx].output}
                             </div>
                           </div>
-                          {aiResult?.testCaseResults?.[selectedTestCaseIdx] && (
+                          {loading && (
+                            <div>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Output</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2d2d2d', border: '1px solid #3c3c3c', borderRadius: 8, padding: '10px 14px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                                <span className="spinner-border spinner-border-sm" style={{ width: 13, height: 13, borderColor: '#9ca3af', borderTopColor: 'transparent' }} />
+                                Running your code…
+                              </div>
+                            </div>
+                          )}
+                          {!loading && aiResult?.testCaseResults?.[selectedTestCaseIdx] && (
                             <div>
                               <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9ca3af', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Your Output</div>
                               <div style={{ background: aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#14532d33' : '#7f1d1d33', border: `1px solid ${aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#22c55e44' : '#ef444444'}`, borderRadius: 8, padding: '10px 14px', fontFamily: 'monospace', fontSize: '0.75rem', color: aiResult.testCaseResults[selectedTestCaseIdx].status === 'PASS' ? '#4ade80' : '#f87171' }}>
-                                {JSON.stringify(aiResult.testCaseResults[selectedTestCaseIdx].received) || 'null'}
+                                {(() => {
+                                  const received = aiResult.testCaseResults[selectedTestCaseIdx].received
+                                  if (received === null || received === undefined) return 'null'
+                                  return typeof received === 'string' ? received : JSON.stringify(received)
+                                })()}
                               </div>
                             </div>
                           )}

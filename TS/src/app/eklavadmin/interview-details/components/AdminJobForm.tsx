@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap'
+import { Form, Button, Row, Col, Alert, Spinner, Modal } from 'react-bootstrap'
 import ReactQuill from 'react-quill-new'
 import 'quill/dist/quill.snow.css'
 import {
@@ -20,7 +20,12 @@ import {
   FaTimes,
   FaEdit,
   FaPlus,
-  FaSearch
+  FaSearch,
+  FaEye,
+  FaEnvelope,
+  FaPhone,
+  FaUserTie,
+  FaPaperclip
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -39,6 +44,12 @@ interface ExistingJob {
   logo: string
   tag?: string
   isExpired: boolean
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
+  posterName?: string
+  posterEmail?: string
+  posterPhone?: string
+  posterCompany?: string
+  attachments?: { fileName?: string; fileUrl?: string }[]
 }
 
 const AdminJobForm: React.FC = () => {
@@ -72,6 +83,9 @@ const AdminJobForm: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
+  const [reviewingId, setReviewingId] = useState('')
+  const [deletingId, setDeletingId] = useState('')
+  const [viewingJob, setViewingJob] = useState<ExistingJob | null>(null)
 
   useEffect(() => {
     if (mode !== 'edit' || !token) return
@@ -107,6 +121,52 @@ const AdminJobForm: React.FC = () => {
     setSuccessMessage('')
     setErrorMessage('')
     setShowEditForm(true)
+  }
+
+  const reviewJob = async (jobId: string, action: 'approve' | 'reject') => {
+    setReviewingId(jobId)
+    setErrorMessage('')
+    try {
+      const res = await fetch(`${baseURL}/jobs/${jobId}/${action}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || `Failed to ${action} job`)
+      }
+      setExistingJobs(prev => prev.map(j => j._id === jobId
+        ? { ...j, approvalStatus: action === 'approve' ? 'approved' : 'rejected' }
+        : j))
+      setSuccessMessage(action === 'approve' ? 'Job approved and published to students' : 'Job rejected')
+    } catch (err: any) {
+      setErrorMessage(err.message || `Something went wrong`)
+    } finally {
+      setReviewingId('')
+    }
+  }
+
+  const handleDelete = async (job: ExistingJob) => {
+    if (!window.confirm(`Delete "${job.title}" at ${job.company}? This cannot be undone.`)) return
+    setDeletingId(job._id)
+    setErrorMessage('')
+    try {
+      const res = await fetch(`${baseURL}/jobs/${job._id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null)
+        throw new Error(err?.error || 'Failed to delete job')
+      }
+      setExistingJobs(prev => prev.filter(j => j._id !== job._id))
+      if (selectedJobId === job._id) cancelEdit()
+      setSuccessMessage('Job deleted successfully')
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Something went wrong')
+    } finally {
+      setDeletingId('')
+    }
   }
 
   const cancelEdit = () => {
@@ -394,6 +454,7 @@ const AdminJobForm: React.FC = () => {
                           <th>Company</th>
                           <th>Type</th>
                           <th>Domain</th>
+                          <th>Status</th>
                           <th>Expires</th>
                           <th>Action</th>
                         </tr>
@@ -406,15 +467,42 @@ const AdminJobForm: React.FC = () => {
                             <td>{job.company}</td>
                             <td><span className="job-badge">{job.jobType}</span></td>
                             <td><span className="job-badge job-badge-dim">{job.domain}</span></td>
+                            <td>
+                              {job.approvalStatus === 'pending' ? (
+                                <span className="job-badge job-badge-pending" title={job.posterEmail ? `Submitted by ${job.posterName} (${job.posterEmail})` : undefined}>Pending Review</span>
+                              ) : job.approvalStatus === 'rejected' ? (
+                                <span className="job-badge job-badge-rejected">Rejected</span>
+                              ) : (
+                                <span className="job-badge job-badge-dim">Active</span>
+                              )}
+                            </td>
                             <td className="td-expiry">{formatExpiryDate(job.expiryDate)}</td>
                             <td>
-                              <button
-                                type="button"
-                                className="edit-action-btn"
-                                onClick={() => handleJobSelect(job)}
-                              >
-                                <FaEdit className="me-1" /> Edit
-                              </button>
+                              <div className="d-flex gap-2">
+                                <button
+                                  type="button"
+                                  className="view-action-btn"
+                                  onClick={() => setViewingJob(job)}
+                                >
+                                  <FaEye className="me-1" /> View
+                                </button>
+                                <button
+                                  type="button"
+                                  className="edit-action-btn"
+                                  disabled={deletingId === job._id}
+                                  onClick={() => handleJobSelect(job)}
+                                >
+                                  <FaEdit className="me-1" /> Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="delete-action-btn"
+                                  disabled={deletingId === job._id}
+                                  onClick={() => handleDelete(job)}
+                                >
+                                  {deletingId === job._id ? '…' : <><FaTimes className="me-1" /> Delete</>}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -948,6 +1036,229 @@ const AdminJobForm: React.FC = () => {
           opacity: 0.7;
         }
 
+        .job-badge-pending {
+          background: rgba(251, 191, 36, 0.15);
+          color: #fbbf24;
+          border: 1px solid rgba(251, 191, 36, 0.35);
+        }
+
+        .job-badge-rejected {
+          background: rgba(239, 68, 68, 0.12);
+          color: #ef4444;
+          border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .approve-action-btn, .reject-action-btn, .delete-action-btn {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.3rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+        }
+
+        .approve-action-btn {
+          border: 1px solid #22c55e;
+          background: transparent;
+          color: #22c55e;
+        }
+
+        .approve-action-btn:hover:not(:disabled) {
+          background: #22c55e;
+          color: #000000;
+        }
+
+        .reject-action-btn {
+          border: 1px solid #ef4444;
+          background: transparent;
+          color: #ef4444;
+        }
+
+        .reject-action-btn:hover:not(:disabled) {
+          background: #ef4444;
+          color: #ffffff;
+        }
+
+        .delete-action-btn {
+          border: 1px solid #6c757d;
+          background: transparent;
+          color: #aaaaaa;
+        }
+
+        .delete-action-btn:hover:not(:disabled) {
+          background: #ef4444;
+          border-color: #ef4444;
+          color: #ffffff;
+        }
+
+        .view-action-btn {
+          display: inline-flex;
+          align-items: center;
+          padding: 0.3rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+          border: 1px solid #3b82f6;
+          background: transparent;
+          color: #60a5fa;
+        }
+
+        .view-action-btn:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
+
+        .approve-action-btn:disabled, .reject-action-btn:disabled, .delete-action-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        /* Job details view modal */
+        .job-view-modal-content {
+          background: #0a0a0a;
+          border: 1px solid #2c2c2c;
+          border-radius: 14px;
+        }
+
+        .job-view-modal-header {
+          border-bottom: 1px solid #2c2c2c;
+          padding: 1.25rem 1.5rem;
+        }
+
+        .job-view-modal-title {
+          color: #ffffff;
+          font-size: 1.15rem;
+          font-weight: 700;
+        }
+
+        .job-view-modal-subtitle {
+          color: #8a8a8a;
+          font-size: 0.85rem;
+          font-weight: 500;
+          margin-top: 4px;
+        }
+
+        .job-view-modal-body {
+          padding: 1.5rem;
+          max-height: 60vh;
+          overflow-y: auto;
+        }
+
+        .job-view-poster-box {
+          background: rgba(255, 122, 0, 0.08);
+          border: 1px solid rgba(255, 122, 0, 0.3);
+          border-radius: 10px;
+          padding: 0.9rem 1.1rem;
+          margin-bottom: 1.25rem;
+        }
+
+        .job-view-poster-title {
+          color: #ff7a00;
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 6px;
+        }
+
+        .job-view-poster-row {
+          display: flex;
+          align-items: center;
+          color: #e5e5e5;
+          font-size: 0.85rem;
+          margin-bottom: 4px;
+        }
+
+        .job-view-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+
+        .job-view-label {
+          display: block;
+          color: #6c757d;
+          font-size: 0.7rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 3px;
+        }
+
+        .job-view-value {
+          display: block;
+          color: #e5e5e5;
+          font-size: 0.88rem;
+          font-weight: 500;
+        }
+
+        .job-view-section {
+          margin-bottom: 1.25rem;
+        }
+
+        .job-view-section-title {
+          color: #ff7a00;
+          font-size: 0.82rem;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+
+        .job-view-skills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .job-view-skill-chip {
+          background: rgba(255, 122, 0, 0.1);
+          color: #ff7a00;
+          border: 1px solid rgba(255, 122, 0, 0.25);
+          border-radius: 20px;
+          padding: 3px 12px;
+          font-size: 0.76rem;
+          font-weight: 600;
+        }
+
+        .job-view-highlights {
+          background: #111111;
+          border: 1px solid #2c2c2c;
+          border-radius: 8px;
+          padding: 0.9rem 1rem;
+          color: #d9d9d9;
+          font-size: 0.85rem;
+          line-height: 1.65;
+        }
+
+        .job-view-highlights * {
+          color: #d9d9d9 !important;
+          background: transparent !important;
+        }
+
+        .job-view-attachment {
+          display: flex;
+          align-items: center;
+          color: #60a5fa;
+          font-size: 0.85rem;
+          text-decoration: none;
+          margin-bottom: 6px;
+        }
+
+        .job-view-attachment:hover {
+          text-decoration: underline;
+        }
+
+        .job-view-modal-footer {
+          border-top: 1px solid #2c2c2c;
+          padding: 1rem 1.5rem;
+        }
+
         .edit-action-btn {
           display: inline-flex;
           align-items: center;
@@ -1272,6 +1583,97 @@ const AdminJobForm: React.FC = () => {
           }
         }
       `}</style>
+
+      {/* Job details modal — full view of a submission before deciding to approve/reject */}
+      <Modal show={!!viewingJob} onHide={() => setViewingJob(null)} centered size="lg" contentClassName="job-view-modal-content">
+        {viewingJob && (
+          <>
+            <Modal.Header closeButton closeVariant="white" className="job-view-modal-header">
+              <Modal.Title className="job-view-modal-title">
+                {viewingJob.title}
+                <div className="job-view-modal-subtitle">{viewingJob.company}</div>
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body className="job-view-modal-body">
+              {(viewingJob.posterName || viewingJob.posterEmail || viewingJob.posterPhone) && (
+                <div className="job-view-poster-box">
+                  <div className="job-view-poster-title">Submitted by</div>
+                  {viewingJob.posterName && <div className="job-view-poster-row"><FaUserTie className="me-2" />{viewingJob.posterName}{viewingJob.posterCompany ? ` — ${viewingJob.posterCompany}` : ''}</div>}
+                  {viewingJob.posterEmail && <div className="job-view-poster-row"><FaEnvelope className="me-2" />{viewingJob.posterEmail}</div>}
+                  {viewingJob.posterPhone && <div className="job-view-poster-row"><FaPhone className="me-2" />{viewingJob.posterPhone}</div>}
+                </div>
+              )}
+
+              <div className="job-view-grid">
+                <div><span className="job-view-label">Job Type</span><span className="job-view-value">{viewingJob.jobType || '—'}</span></div>
+                <div><span className="job-view-label">Domain</span><span className="job-view-value">{viewingJob.domain || '—'}</span></div>
+                <div><span className="job-view-label">Experience</span><span className="job-view-value">{viewingJob.experience || '—'}</span></div>
+                <div><span className="job-view-label">Salary</span><span className="job-view-value">{viewingJob.salary || '—'}</span></div>
+                <div><span className="job-view-label">Location</span><span className="job-view-value">{viewingJob.location || '—'}</span></div>
+                <div><span className="job-view-label">Expires</span><span className="job-view-value">{formatExpiryDate(viewingJob.expiryDate)}</span></div>
+                {viewingJob.tag && <div><span className="job-view-label">Tag</span><span className="job-view-value">{viewingJob.tag}</span></div>}
+              </div>
+
+              {viewingJob.skills && (
+                <div className="job-view-section">
+                  <div className="job-view-section-title">Skills</div>
+                  <div className="job-view-skills">
+                    {(Array.isArray(viewingJob.skills) ? viewingJob.skills : viewingJob.skills.split(',')).map((s, i) => (
+                      <span key={i} className="job-view-skill-chip">{s.trim()}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewingJob.highlights && (
+                <div className="job-view-section">
+                  <div className="job-view-section-title">Key Highlights</div>
+                  <div
+                    className="job-view-highlights"
+                    dangerouslySetInnerHTML={{ __html: Array.isArray(viewingJob.highlights) ? viewingJob.highlights.join('') : viewingJob.highlights }}
+                  />
+                </div>
+              )}
+
+              {viewingJob.attachments && viewingJob.attachments.length > 0 && (
+                <div className="job-view-section">
+                  <div className="job-view-section-title">Attachments</div>
+                  {viewingJob.attachments.map((a, i) => (
+                    a.fileUrl ? (
+                      <a key={i} href={a.fileUrl} target="_blank" rel="noopener noreferrer" className="job-view-attachment">
+                        <FaPaperclip className="me-2" />{a.fileName || `Attachment ${i + 1}`}
+                      </a>
+                    ) : null
+                  ))}
+                </div>
+              )}
+            </Modal.Body>
+            <Modal.Footer className="job-view-modal-footer">
+              {viewingJob.approvalStatus === 'pending' && (
+                <>
+                  <button
+                    type="button"
+                    className="approve-action-btn"
+                    disabled={reviewingId === viewingJob._id}
+                    onClick={async () => { await reviewJob(viewingJob._id, 'approve'); setViewingJob(null) }}
+                  >
+                    {reviewingId === viewingJob._id ? '…' : 'Approve'}
+                  </button>
+                  <button
+                    type="button"
+                    className="reject-action-btn"
+                    disabled={reviewingId === viewingJob._id}
+                    onClick={async () => { await reviewJob(viewingJob._id, 'reject'); setViewingJob(null) }}
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+              <button type="button" className="edit-action-btn" onClick={() => setViewingJob(null)}>Close</button>
+            </Modal.Footer>
+          </>
+        )}
+      </Modal>
     </div>
   )
 }

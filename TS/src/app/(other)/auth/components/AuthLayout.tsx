@@ -913,7 +913,9 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
 
   const isSubdomain = typeof window !== "undefined" &&
     window.location.hostname !== "eklav.in" &&
-    !window.location.hostname.startsWith("www");
+    !window.location.hostname.startsWith("www") &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1";
 
   const handleOpen = (type: "signin" | "signup" | "forgot") => {
     setAuthType(type);
