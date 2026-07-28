@@ -961,6 +961,7 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <TopNavigationBar
             onLoginClick={() => handleOpen("signin")}
             onSignupClick={!isSubdomain ? () => handleOpen("signup") : undefined}
+            showForEmployers={!isSubdomain}
           />
         </Suspense>
       </div>

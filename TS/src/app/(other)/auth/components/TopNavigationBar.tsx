@@ -10,6 +10,7 @@ const PostJobPage = lazy(() => import("@/app/post-job/page"));
 interface TopNavigationBarProps {
   onLoginClick?: () => void;
   onSignupClick?: () => void;
+  showForEmployers?: boolean;
 }
 
 // Modal wrapping the public job-post form, so "Post a Job" opens in-place
@@ -94,7 +95,7 @@ const EmployersDropdown: FC = () => {
   );
 };
 
-const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSignupClick }) => {
+const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSignupClick, showForEmployers = true }) => {
   const tenant = useTenant();
   return (
     <TopNavbar className="futuristic-nav">
@@ -308,7 +309,7 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
 
         {/* Actions */}
         <div className="d-flex align-items-center gap-3">
-          <EmployersDropdown />
+          {showForEmployers && <EmployersDropdown />}
           {onLoginClick && (
             <button className="nav-login-btn" onClick={onLoginClick}>
               Log In
