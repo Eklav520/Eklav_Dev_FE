@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Col, Row, Spinner } from 'react-bootstrap'
+import { Spinner } from 'react-bootstrap'
 import { FaCheckCircle, FaSearch, FaTimesCircle, FaUserGraduate } from 'react-icons/fa'
 import ReactApexChart from 'react-apexcharts'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -13,8 +13,12 @@ type Student = {
   email: string
   isActiveToday: boolean
   totalMinutes: number
+  todayMinutes: number
   daily: Record<string, DayData>
 }
+
+type SortBy = 'totalMinutes' | 'name' | 'todayMinutes'
+type SortOrder = 'asc' | 'desc'
 
 type TrendPoint = { date: string; active: number; inactive: number }
 
@@ -43,29 +47,41 @@ const fmtColDate = (dateStr: string) =>
 
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
-  statCard: (accent: string): React.CSSProperties => ({
+  statStrip: {
     background: '#1a1a1a',
     border: '1px solid #2a2a2a',
-    borderLeft: `4px solid ${accent}`,
     borderRadius: '14px',
-    padding: '1.25rem 1.5rem',
-    height: '100%',
-  }),
-  iconBox: (accent: string): React.CSSProperties => ({
+    padding: '0.75rem 1.5rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1.5rem',
+    marginBottom: '1.25rem',
+    flexWrap: 'wrap' as const,
+  } as React.CSSProperties,
+  statStripItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  } as React.CSSProperties,
+  statStripDivider: {
+    width: 1,
+    height: 24,
+    background: '#2a2a2a',
+  } as React.CSSProperties,
+  iconBoxSm: (accent: string): React.CSSProperties => ({
     background: `${accent}22`,
-    borderRadius: '10px',
-    padding: '10px',
+    borderRadius: '8px',
+    padding: '6px',
     display: 'inline-flex',
   }),
-  num: (accent: string): React.CSSProperties => ({
-    fontSize: '2rem',
+  numSm: (accent: string): React.CSSProperties => ({
+    fontSize: '1.15rem',
     fontWeight: 700,
     color: accent,
     lineHeight: 1,
-    marginBottom: 4,
   }),
-  label: { color: '#888', fontSize: '0.8rem' } as React.CSSProperties,
-  sub: (accent: string): React.CSSProperties => ({ color: accent, fontSize: '0.75rem', fontWeight: 500 }),
+  labelSm: { color: '#888', fontSize: '0.78rem' } as React.CSSProperties,
+  sub: (accent: string): React.CSSProperties => ({ color: accent, fontSize: '0.72rem', fontWeight: 600, marginLeft: 2 }),
   sectionLabel: {
     color: '#aaa',
     fontSize: '0.7rem',
@@ -117,6 +133,27 @@ const S = {
     padding: '6px 18px',
     fontSize: '0.82rem',
     cursor: 'pointer',
+  } as React.CSSProperties,
+  presetBtn: (active: boolean): React.CSSProperties => ({
+    background: active ? '#ff6b0022' : '#111',
+    border: `1px solid ${active ? '#ff6b00' : '#2a2a2a'}`,
+    color: active ? '#ff6b00' : '#aaa',
+    fontWeight: active ? 700 : 500,
+    borderRadius: '8px',
+    padding: '6px 14px',
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+  }),
+  sortOrderBtn: {
+    background: '#111',
+    border: '1px solid #2a2a2a',
+    color: '#ff6b00',
+    borderRadius: '8px',
+    padding: '6px 10px',
+    fontSize: '0.85rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    lineHeight: 1,
   } as React.CSSProperties,
   th: {
     background: '#111',
@@ -223,12 +260,22 @@ const DailyEngagement = () => {
   const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [page, setPage] = useState(1)
   const [limit, setLimit] = useState(20)
+  const [sortBy, setSortBy] = useState<SortBy>('totalMinutes')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [minMinutes, setMinMinutes] = useState('')
+  const [maxMinutes, setMaxMinutes] = useState('')
+  const [appliedMinMinutes, setAppliedMinMinutes] = useState('')
+  const [appliedMaxMinutes, setAppliedMaxMinutes] = useState('')
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchData = useCallback(async (
     start: string, end: string,
-    opts: { page?: number; limit?: number; search?: string; filter?: string; fullReload?: boolean } = {}
+    opts: {
+      page?: number; limit?: number; search?: string; filter?: string
+      sortBy?: SortBy; sortOrder?: SortOrder; minMinutes?: string; maxMinutes?: string
+      fullReload?: boolean
+    } = {}
   ) => {
     if (!user?.token) return
     const isFullReload = opts.fullReload !== false && (!opts.page || opts.page === 1)
@@ -241,7 +288,11 @@ const DailyEngagement = () => {
         limit:     String(opts.limit  ?? 20),
         search:    opts.search  ?? '',
         filter:    opts.filter  ?? 'all',
+        sortBy:    opts.sortBy  ?? 'totalMinutes',
+        order:     opts.sortOrder ?? 'desc',
       })
+      if (opts.minMinutes) params.set('minMinutes', opts.minMinutes)
+      if (opts.maxMinutes) params.set('maxMinutes', opts.maxMinutes)
       const res  = await fetch(`${baseURL}/api/institute/daily-engagement?${params}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       })
@@ -266,12 +317,12 @@ const DailyEngagement = () => {
   // Initial + date range load
   useEffect(() => {
     setPage(1)
-    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter, fullReload: true })
+    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter, sortBy, sortOrder, minMinutes: appliedMinMinutes, maxMinutes: appliedMaxMinutes, fullReload: true })
   }, [appliedStart, appliedEnd])   // eslint-disable-line
 
   // Page / limit change
   useEffect(() => {
-    fetchData(appliedStart, appliedEnd, { page, limit, search, filter, fullReload: false })
+    fetchData(appliedStart, appliedEnd, { page, limit, search, filter, sortBy, sortOrder, minMinutes: appliedMinMinutes, maxMinutes: appliedMaxMinutes, fullReload: false })
   }, [page, limit])                // eslint-disable-line
 
   // Search with 400ms debounce
@@ -280,15 +331,43 @@ const DailyEngagement = () => {
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(() => {
       setPage(1)
-      fetchData(appliedStart, appliedEnd, { page: 1, limit, search: val, filter, fullReload: false })
+      fetchData(appliedStart, appliedEnd, { page: 1, limit, search: val, filter, sortBy, sortOrder, minMinutes: appliedMinMinutes, maxMinutes: appliedMaxMinutes, fullReload: false })
     }, 400)
+  }
+
+  // Sort change
+  const onSortChange = (nextSortBy: SortBy, nextOrder: SortOrder) => {
+    setSortBy(nextSortBy)
+    setSortOrder(nextOrder)
+    setPage(1)
+    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter, sortBy: nextSortBy, sortOrder: nextOrder, minMinutes: appliedMinMinutes, maxMinutes: appliedMaxMinutes, fullReload: false })
+  }
+
+  // Engagement (min/max minutes) range apply
+  const applyMinutesRange = () => {
+    setAppliedMinMinutes(minMinutes)
+    setAppliedMaxMinutes(maxMinutes)
+    setPage(1)
+    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter, sortBy, sortOrder, minMinutes, maxMinutes, fullReload: false })
+  }
+
+  // Quick date range presets
+  const applyPreset = (daysBack: number) => {
+    const end = defaultEnd()
+    const d = new Date()
+    d.setDate(d.getDate() - daysBack)
+    const start = toDateStr(d)
+    setStartDate(start)
+    setEndDate(end)
+    setAppliedStart(start)
+    setAppliedEnd(end)
   }
 
   // Filter change
   const onFilterChange = (val: 'all' | 'active' | 'inactive') => {
     setFilter(val)
     setPage(1)
-    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter: val, fullReload: false })
+    fetchData(appliedStart, appliedEnd, { page: 1, limit, search, filter: val, sortBy, sortOrder, minMinutes: appliedMinMinutes, maxMinutes: appliedMaxMinutes, fullReload: false })
   }
 
   const applyRange = () => {
@@ -391,45 +470,29 @@ const DailyEngagement = () => {
   return (
     <div>
 
-      {/* ── Summary Cards ─────────────────────────────── */}
+      {/* ── Summary Strip ─────────────────────────────── */}
       <div style={S.sectionLabel}>Overview</div>
-      <Row className="g-3 mb-4">
-        <Col md={4}>
-          <div style={S.statCard('#ff6b00')}>
-            <div className="d-flex align-items-center gap-3">
-              <div style={S.iconBox('#ff6b00')}><FaUserGraduate size={22} color="#ff6b00" /></div>
-              <div>
-                <div style={S.num('#ff6b00')}>{summary.totalStudents}</div>
-                <div style={S.label}>Total Students</div>
-              </div>
-            </div>
-          </div>
-        </Col>
-        <Col md={4}>
-          <div style={S.statCard('#22c55e')}>
-            <div className="d-flex align-items-center gap-3">
-              <div style={S.iconBox('#22c55e')}><FaCheckCircle size={22} color="#22c55e" /></div>
-              <div>
-                <div style={S.num('#22c55e')}>{summary.activeToday}</div>
-                <div style={S.label}>Active Today</div>
-                <div style={S.sub('#22c55e')}>{activeRate}% of total</div>
-              </div>
-            </div>
-          </div>
-        </Col>
-        <Col md={4}>
-          <div style={S.statCard('#ef4444')}>
-            <div className="d-flex align-items-center gap-3">
-              <div style={S.iconBox('#ef4444')}><FaTimesCircle size={22} color="#ef4444" /></div>
-              <div>
-                <div style={S.num('#ef4444')}>{summary.inactiveToday}</div>
-                <div style={S.label}>Not Active Today</div>
-                <div style={S.sub('#ef4444')}>{100 - activeRate}% of total</div>
-              </div>
-            </div>
-          </div>
-        </Col>
-      </Row>
+      <div style={S.statStrip}>
+        <div style={S.statStripItem}>
+          <div style={S.iconBoxSm('#ff6b00')}><FaUserGraduate size={15} color="#ff6b00" /></div>
+          <div style={S.numSm('#ff6b00')}>{summary.totalStudents}</div>
+          <div style={S.labelSm}>Total Students</div>
+        </div>
+        <div style={S.statStripDivider} />
+        <div style={S.statStripItem}>
+          <div style={S.iconBoxSm('#22c55e')}><FaCheckCircle size={15} color="#22c55e" /></div>
+          <div style={S.numSm('#22c55e')}>{summary.activeToday}</div>
+          <div style={S.labelSm}>Active Today</div>
+          <span style={S.sub('#22c55e')}>{activeRate}%</span>
+        </div>
+        <div style={S.statStripDivider} />
+        <div style={S.statStripItem}>
+          <div style={S.iconBoxSm('#ef4444')}><FaTimesCircle size={15} color="#ef4444" /></div>
+          <div style={S.numSm('#ef4444')}>{summary.inactiveToday}</div>
+          <div style={S.labelSm}>Not Active Today</div>
+          <span style={S.sub('#ef4444')}>{100 - activeRate}%</span>
+        </div>
+      </div>
 
       {/* ── Table Filters ─────────────────────────────── */}
       <div style={S.sectionLabel}>Student Daily Breakdown</div>
@@ -444,6 +507,27 @@ const DailyEngagement = () => {
             alignItems: 'center',
           }}
         >
+          {/* Quick date presets */}
+          {[
+            { label: 'Today', days: 0 },
+            { label: '7 Days', days: 6 },
+            { label: '30 Days', days: 29 },
+          ].map((p) => {
+            const daysSpan = Math.round((new Date(appliedEnd).getTime() - new Date(appliedStart).getTime()) / 86400000)
+            const isActivePreset = appliedEnd === defaultEnd() && daysSpan === p.days
+            return (
+              <button
+                key={p.label}
+                style={S.presetBtn(isActivePreset)}
+                onClick={() => applyPreset(p.days)}
+              >
+                {p.label}
+              </button>
+            )
+          })}
+
+          <div style={{ width: 1, height: 22, background: '#2a2a2a', margin: '0 2px' }} />
+
           {/* Date range */}
           <label style={{ color: '#666', fontSize: '0.78rem', marginRight: 2 }}>From</label>
           <input
@@ -463,9 +547,18 @@ const DailyEngagement = () => {
             onChange={(e) => setEndDate(e.target.value)}
           />
           <button style={S.applyBtn} onClick={applyRange}>Apply</button>
+        </div>
 
-          <div style={{ flex: 1 }} />
-
+        <div
+          style={{
+            padding: '0.9rem 1.25rem',
+            borderBottom: '1px solid #2a2a2a',
+            display: 'flex',
+            flexWrap: 'wrap' as const,
+            gap: '0.6rem',
+            alignItems: 'center',
+          }}
+        >
           {/* Status filter */}
           <select
             style={{ ...S.select, width: 140 }}
@@ -476,6 +569,47 @@ const DailyEngagement = () => {
             <option value="active">Active Today</option>
             <option value="inactive">Inactive Today</option>
           </select>
+
+          {/* Sort by */}
+          <select
+            style={{ ...S.select, width: 150 }}
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value as SortBy, sortOrder)}
+          >
+            <option value="totalMinutes">Sort: Total Time</option>
+            <option value="todayMinutes">Sort: Today's Time</option>
+            <option value="name">Sort: Name</option>
+          </select>
+          <button
+            style={S.sortOrderBtn}
+            title={sortOrder === 'desc' ? 'Descending' : 'Ascending'}
+            onClick={() => onSortChange(sortBy, sortOrder === 'desc' ? 'asc' : 'desc')}
+          >
+            {sortOrder === 'desc' ? '↓' : '↑'}
+          </button>
+
+          {/* Engagement range (total minutes) */}
+          <label style={{ color: '#666', fontSize: '0.78rem', marginLeft: 4 }}>Min (m)</label>
+          <input
+            type="number"
+            min={0}
+            style={{ ...S.input(), width: 80, paddingLeft: 12 }}
+            placeholder="0"
+            value={minMinutes}
+            onChange={(e) => setMinMinutes(e.target.value)}
+          />
+          <label style={{ color: '#666', fontSize: '0.78rem' }}>Max (m)</label>
+          <input
+            type="number"
+            min={0}
+            style={{ ...S.input(), width: 80, paddingLeft: 12 }}
+            placeholder="∞"
+            value={maxMinutes}
+            onChange={(e) => setMaxMinutes(e.target.value)}
+          />
+          <button style={S.applyBtn} onClick={applyMinutesRange}>Apply</button>
+
+          <div style={{ flex: 1 }} />
 
           {/* Rows per page */}
           <select
