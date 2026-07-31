@@ -230,11 +230,20 @@ const ProblemsList = ({ problems, selectedId, completedIds, onSelect, isPending 
         <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.07)' }}>
 
           {/* Table title + sort — aligned with sidebar "Filter by Level" and panel "My Submissions" */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: PAGE_TEXT }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 12px', borderBottom: `1px solid ${PAGE_BORDER}`, gap: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: PAGE_TEXT, whiteSpace: 'nowrap' }}>
               All Problems <span style={{ color: PAGE_GRAY, fontWeight: 500, fontSize: '0.82rem' }}>({filtered.length.toLocaleString()})</span>
             </div>
-            <select style={{ height: 30, border: `1px solid ${PAGE_BORDER}`, borderRadius: 7, padding: '0 10px', fontSize: '0.72rem', color: PAGE_TEXT, background: PAGE_BG, outline: 'none', cursor: 'pointer' }}>
+            <div style={{ position: 'relative', flex: '1 1 420px', minWidth: 0 }}>
+              <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input
+                placeholder="Search problems..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: '100%', height: 30, border: `1px solid ${PAGE_BORDER}`, borderRadius: 7, paddingLeft: 28, paddingRight: 8, fontSize: '0.72rem', color: PAGE_TEXT, outline: 'none', background: PAGE_BG }}
+              />
+            </div>
+            <select style={{ height: 30, border: `1px solid ${PAGE_BORDER}`, borderRadius: 7, padding: '0 10px', fontSize: '0.72rem', color: PAGE_TEXT, background: PAGE_BG, outline: 'none', cursor: 'pointer', flexShrink: 0 }}>
               <option>Sort by: Newest First</option>
               <option>Sort by: Difficulty</option>
             </select>

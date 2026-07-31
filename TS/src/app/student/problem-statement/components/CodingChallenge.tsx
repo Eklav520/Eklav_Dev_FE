@@ -387,6 +387,8 @@ const ProblemStatement = () => {
           language,
           code,
           testCases: normalizedTestCases,
+          title: selectedProblem?.title,
+          desc: selectedProblem?.desc,
         }),
       })
 
