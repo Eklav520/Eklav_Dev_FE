@@ -223,6 +223,52 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
     return rec
   }
 
+  // Live "is the mic actually picking anything up" indicator for real
+  // (non-practice) attempts — reads volume off the SAME stream/track
+  // MediaRecorder is using, via Web Audio's AnalyserNode. Deliberately NOT
+  // a second SpeechRecognition instance: running SpeechRecognition and
+  // MediaRecorder against the mic at the same time let them starve each
+  // other on some browsers/drivers, which was silently producing empty
+  // Whisper transcripts too (not just an empty live preview) — the actual
+  // uploaded audio blob was affected, not just the client-side text.
+  const audioContextRef = useRef<AudioContext | null>(null)
+  const analyserRef = useRef<AnalyserNode | null>(null)
+  const volumeRafRef = useRef<number | null>(null)
+
+  const startVolumeMeter = (stream: MediaStream) => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      const ctx = new AudioCtx()
+      const source = ctx.createMediaStreamSource(stream)
+      const analyser = ctx.createAnalyser()
+      analyser.fftSize = 512
+      source.connect(analyser)
+      audioContextRef.current = ctx
+      analyserRef.current = analyser
+      const data = new Uint8Array(analyser.frequencyBinCount)
+      const tick = () => {
+        analyser.getByteTimeDomainData(data)
+        let sumSquares = 0
+        for (let i = 0; i < data.length; i++) {
+          const centered = data[i] - 128
+          sumSquares += centered * centered
+        }
+        const rms = Math.sqrt(sumSquares / data.length)
+        if (rms > 4) setHeardAnySpeech(true)
+        volumeRafRef.current = requestAnimationFrame(tick)
+      }
+      volumeRafRef.current = requestAnimationFrame(tick)
+    } catch { /* AnalyserNode unavailable — live indicator just won't show, recording is unaffected */ }
+  }
+
+  const stopVolumeMeter = () => {
+    if (volumeRafRef.current) cancelAnimationFrame(volumeRafRef.current)
+    volumeRafRef.current = null
+    try { audioContextRef.current?.close() } catch { /* no-op */ }
+    audioContextRef.current = null
+    analyserRef.current = null
+  }
+
   const stopAndUploadAudio = (qNumber: number) => {
     const mr = mediaRecorderRef.current
     const stream = micStreamRef.current
@@ -264,6 +310,7 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
 
   const finishRecording = (qNumber: number, seconds: number) => {
     stopRecognition()
+    stopVolumeMeter()
     stopAndUploadAudio(qNumber)
     setRecording(false)
     setRecordings((prev) => ({ ...prev, [qNumber]: seconds }))
@@ -276,7 +323,7 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
     if (recording) {
       if (recordTimerRef.current) clearInterval(recordTimerRef.current)
       if (recordSeconds > 0) finishRecording(current, recordSeconds)
-      else { stopRecognition(); setRecording(false) }
+      else { stopRecognition(); stopVolumeMeter(); setRecording(false) }
       return
     }
     setRecording(true)
@@ -284,16 +331,20 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
     setHeardAnySpeech(false)
     transcriptAccumRef.current = ''
 
-    const rec = getRecognition()
-    if (rec) {
-      recognitionActiveRef.current = true
-      startRecognitionWithRetry(rec)
-    }
-
     audioChunksRef.current = []
-    if (!practiceMode) {
-      // Practice attempts are never persisted, so there's no reason to
-      // record/upload raw audio — only the live transcript is needed.
+    if (practiceMode) {
+      // Practice attempts never touch MediaRecorder (nothing to persist),
+      // so SpeechRecognition alone — running solo, not competing with a
+      // parallel MediaRecorder capture — is the only transcript source.
+      const rec = getRecognition()
+      if (rec) {
+        recognitionActiveRef.current = true
+        startRecognitionWithRetry(rec)
+      }
+    } else {
+      // Real attempts: MediaRecorder + server-side Whisper is the sole
+      // capture path (see startVolumeMeter above for why SpeechRecognition
+      // is deliberately NOT also running here).
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then((stream) => {
           micStreamRef.current = stream
@@ -301,6 +352,7 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
           mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
           mediaRecorderRef.current = mr
           mr.start()
+          startVolumeMeter(stream)
         })
         .catch(() => { /* mic unavailable for raw audio capture — playback falls back to text-to-speech */ })
     }
@@ -320,6 +372,7 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
   useEffect(() => () => {
     if (recordTimerRef.current) clearInterval(recordTimerRef.current)
     stopRecognition()
+    stopVolumeMeter()
     try { mediaRecorderRef.current?.stop() } catch { /* no-op */ }
     micStreamRef.current?.getTracks().forEach((t) => t.stop())
   }, [])
