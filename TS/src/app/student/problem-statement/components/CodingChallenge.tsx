@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import PageMetaData from '@/components/PageMetaData'
 import ProblemsList from './ProblemsList'
-import { Problem, fetchProblems } from './problems.data'
+import { Problem, fetchProblems, fetchProblemById } from './problems.data'
 
 import Discussion from './Discussion/Discussion'
 import CodeEditor from './CodeEditor'
@@ -572,6 +572,10 @@ const ProblemStatement = () => {
             completedIds={completedIds}
             isPending={isPending}
             onSelect={(p) => {
+              // The list only carries title/difficulty (see fetchProblems) —
+              // open the modal immediately with that, then fill in the real
+              // desc/testCases once fetchProblemById resolves, preserving
+              // the list's serial `id` (used elsewhere for tags/stats).
               setSelectedProblem(p)
               setCode(DEFAULT_CODE[language])
               setAiResult(null)
@@ -579,6 +583,10 @@ const ProblemStatement = () => {
               setSubmissionResult(null)
               setModalDescTab('description')
               setIsModalOpen(true)
+              setIsProblemLoading(true)
+              fetchProblemById(p._id, token).then((full) => {
+                if (full) setSelectedProblem((prev) => (prev && prev._id === p._id ? { ...full, id: p.id } : prev))
+              }).finally(() => setIsProblemLoading(false))
             }}
           />
         )}
@@ -656,7 +664,11 @@ const ProblemStatement = () => {
                         }}
                       >
                         <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 10 }}>Problem Statement</div>
-                        <div style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.75, marginBottom: 16, whiteSpace: 'pre-line' }}>{selectedProblem.desc}</div>
+                        {isProblemLoading ? (
+                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: 16 }}>Loading problem…</div>
+                        ) : (
+                          <div style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.75, marginBottom: 16, whiteSpace: 'pre-line' }}>{selectedProblem.desc}</div>
+                        )}
                         {selectedProblem.testCases.slice(0, 3).map((tc, idx) => (
                           <div key={idx} style={{ marginBottom: 14 }}>
                             <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>Example {idx + 1}:</div>

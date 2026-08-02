@@ -23,6 +23,9 @@ export type Problem = {
 
 const baseURL = import.meta.env.VITE_API_BASE_URL
 
+// List view only ever renders title/difficulty (search + table columns) — hits
+// the lightweight /summary route instead of fetching every problem's full
+// desc/testCases up front, which was the source of the long initial load.
 export const fetchProblems = async (token?: string): Promise<Problem[]> => {
   try {
     // ✅ If token not available yet, avoid crash
@@ -31,7 +34,7 @@ export const fetchProblems = async (token?: string): Promise<Problem[]> => {
       return []
     }
 
-    const res = await fetch(`${baseURL}/api/dashboard/adminProblems`, {
+    const res = await fetch(`${baseURL}/api/dashboard/adminProblems/summary`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -47,7 +50,8 @@ export const fetchProblems = async (token?: string): Promise<Problem[]> => {
     const data = await res.json()
     console.log('Response data (problem-statement):', data)
 
-    // ✅ Safe mapping
+    // ✅ Safe mapping — desc/testCases aren't in the summary response;
+    // fetchProblemById fills them in once a specific problem is opened.
     return (data || []).map((p: any, index: number): Problem => ({
       id: index + 1,
       _id: p._id,
@@ -60,5 +64,37 @@ export const fetchProblems = async (token?: string): Promise<Problem[]> => {
   } catch (error) {
     console.error("❌ fetchProblems error:", error)
     return [] // ✅ prevent UI crash
+  }
+}
+
+// Full detail (desc + testCases) for exactly the one problem the student
+// opened — called on selection instead of bundling this into fetchProblems.
+export const fetchProblemById = async (id: string, token?: string): Promise<Problem | null> => {
+  try {
+    if (!token || !id) return null
+
+    const res = await fetch(`${baseURL}/api/dashboard/adminProblems/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch problem ${id}: ${res.status}`)
+    }
+
+    const p = await res.json()
+    return {
+      id: 0, // caller should preserve the original serial number from the list
+      _id: p._id,
+      title: p.title,
+      desc: p.desc ?? 'Description not available',
+      difficulty: (p.difficulty ?? 'Easy') as 'Easy' | 'Medium' | 'Hard',
+      testCases: p.testCases ?? [],
+    }
+  } catch (error) {
+    console.error("❌ fetchProblemById error:", error)
+    return null
   }
 }

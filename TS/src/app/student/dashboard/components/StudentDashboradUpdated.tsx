@@ -253,7 +253,9 @@ const StudentDashboardUpdated: React.FC = () => {
       fetch(`${baseURL}/api/resume-based-interview/my-results`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/interview/limits`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/ai/me`, { headers: h }).then(r => r.json()),
-      fetch(`${baseURL}/api/dashboard/adminProblems`, { headers: h }).then(r => r.json()),
+      // Dashboard only needs title/difficulty to tally easy/medium/hard counts —
+      // /summary skips the desc/testCases fields that make the full list slow.
+      fetch(`${baseURL}/api/dashboard/adminProblems/summary`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/institute/achievements`, { headers: h }).then(r => r.json()),
     ]).then(([sumR, enrR, tsR, annR, jobR, resR, limR, mySubR, allProblemsR, achR]) => {
       if (sumR.status === 'fulfilled') setDashSummary(sumR.value)
