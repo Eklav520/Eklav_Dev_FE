@@ -4,11 +4,10 @@ import TopicSelection from './TopicSelection'
 import ResumeInterviewSelection from './ResumeInterviewSelection'
 import InterviewUILayoutWithLogic from './InterviewUILayoutWithLogic'
 import {
-  FaLaptopCode, FaFileAlt, FaTimes, FaStar,
+  FaLaptopCode, FaFileAlt,
   FaBrain, FaChartLine, FaTrophy, FaUserTie, FaRocket,
-  FaLightbulb, FaArrowRight, FaRobot, FaUser,
+  FaLightbulb, FaArrowRight,
 } from 'react-icons/fa'
-import interviewImg from '@/assets/images/interview.png'
 import { useAuthContext } from '@/context/useAuthContext'
 
 type InterviewMeta = {
@@ -95,58 +94,40 @@ const InterviewModalLayout = () => {
   const totalAvailable = totalTopicRemaining + resumeRemaining
 
   return (
-    <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '28px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+    <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
 
       {/* ── Header ─────────────────────────────────────────── */}
-      <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'space-between', gap: 0, marginBottom: 28, background: '#fff8f2', borderRadius: 18, overflow: 'hidden', boxShadow: '0 2px 12px rgba(255,122,0,0.07)' }}>
-
-        {/* Left: label + title + underline + desc + features */}
-        <div style={{ flex: 1, minWidth: 280, padding: '32px 32px 32px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          {/* Label */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <FaStar style={{ color: '#ff7a00', fontSize: 12 }} />
-            <span style={{ color: '#ff7a00', fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>AI Powered Practice</span>
-          </div>
-
-          {/* Title */}
-          <h2 style={{ fontWeight: 800, fontSize: '2rem', color: '#0f172a', margin: '0 0 8px' }}>AI Interview Practice</h2>
-
-          {/* Orange underline */}
-          <div style={{ width: 48, height: 4, background: '#ff7a00', borderRadius: 4, marginBottom: 14 }} />
-
-          {/* Description */}
-          <p style={{ color: '#475569', fontSize: 14, margin: '0 0 20px', maxWidth: 480, lineHeight: 1.7 }}>
-            Choose between topic-based technical interviews or resume-based simulations
-            tailored to your background. Get real-time AI feedback and improve with every attempt.
-          </p>
-
-          {/* Feature pills */}
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            {[
-              { icon: <FaRobot size={13} color="#ff7a00" />, label: 'AI-Powered', sub: 'Smart learning' },
-              { icon: <FaChartLine size={13} color="#ff7a00" />, label: 'Track Progress', sub: 'See your improvement' },
-              { icon: <FaUser size={13} color="#ff7a00" />, label: 'Personalized', sub: 'Learn at your pace' },
-            ].map((f, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {f.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{f.label}</div>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{f.sub}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+        <div>
+          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>Tech Interview with AI</h2>
+          <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose topic-based or resume-based interviews and get real-time AI feedback.</p>
         </div>
+      </div>
 
-        {/* Right: illustration */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'flex-end' }}>
-          <img
-            src={interviewImg}
-            alt="AI Interview"
-            style={{ width: 380, maxWidth: '45vw', objectFit: 'contain', display: 'block' }}
-          />
+      {/* ── Stats Bar ──────────────────────────────────────── */}
+      <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
+        {[
+          { label: 'Topic Interviews Used', value: `${totalTopicUsed}` },
+          { label: 'Topic Interviews Remaining', value: `${totalTopicRemaining}` },
+          { label: 'Resume Interviews Used', value: `${resumeUsed}` },
+          { label: 'Resume Interviews Remaining', value: `${resumeRemaining}` },
+          { label: 'Total Completed', value: `${totalInterviews}`, color: '#ff7a00' },
+        ].map((s) => (
+          <div key={s.label}>
+            <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 4 }}>{s.label}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: s.color || PAGE_TEXT }}>{s.value}</div>
+          </div>
+        ))}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: '50%',
+            border: `4px solid ${PAGE_BORDER}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 800, color: PAGE_TEXT,
+          }}>
+            {totalAvailable}
+          </div>
+          <div style={{ fontSize: 10, color: PAGE_GRAY }}>Attempts Left</div>
         </div>
       </div>
 
@@ -154,7 +135,7 @@ const InterviewModalLayout = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 36 }}>
 
         {/* Topic-Based Card */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -186,7 +167,7 @@ const InterviewModalLayout = () => {
         </div>
 
         {/* Resume-Based Card */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '18px 20px 14px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

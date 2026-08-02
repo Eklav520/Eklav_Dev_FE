@@ -57,7 +57,7 @@ import {
   BsWallet2,
 } from 'react-icons/bs'
 import { HiOutlineCodeBracketSquare, HiOutlinePuzzlePiece, HiOutlineUserGroup } from 'react-icons/hi2'
-import { FaUserCog, FaChalkboardTeacher, FaVideo, FaFileUpload, FaComments } from 'react-icons/fa'
+import { FaUserCog, FaChalkboardTeacher, FaVideo, FaFileUpload, FaComments, FaLaptopCode } from 'react-icons/fa'
 import { MdOutlineAssessment, MdOutlineSchool, MdOutlineLocalOffer } from 'react-icons/md'
 
 import { AiOutlineCloudUpload } from 'react-icons/ai'
@@ -350,6 +350,27 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         label: 'Assessments Details',
         icon: BsFileEarmarkArrowUp,
         url: '/eklavadmin/final-assessment-details',
+        parentKey: 'eklavadmin',
+      },
+    ],
+  },
+  {
+    key: 'lsrwContentActivities',
+    label: 'LSRW Content',
+    icon: BsChatSquareText,
+    children: [
+      {
+        key: 'lsrwListeningReadingContent',
+        label: 'Content Bank',
+        icon: AiOutlineCloudUpload,
+        url: '/eklavadmin/lsrw-content',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'lsrwListeningReadingResults',
+        label: 'Listening & Reading Results',
+        icon: BsChatSquareText,
+        url: '/eklavadmin/lsrw-submissions',
         parentKey: 'eklavadmin',
       },
     ],
@@ -711,8 +732,23 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
     key: 'selfInterview',
     label: 'Self Interview with AI',
     icon: FaRobot, // 🤖 AI
-    url: '/student/selfInterview',
     parentKey: 'preparation',
+    children: [
+      {
+        key: 'techInterviewAI',
+        label: 'Tech Interview with AI',
+        icon: FaLaptopCode,
+        url: '/student/selfInterview',
+        parentKey: 'selfInterview',
+      },
+      {
+        key: 'lsrwCommunication',
+        label: 'LSRW Skill Practice',
+        icon: FaComments,
+        url: '/student/lsrwCommunication',
+        parentKey: 'selfInterview',
+      },
+    ],
   },
 
   /*   {

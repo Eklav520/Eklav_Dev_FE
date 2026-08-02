@@ -171,7 +171,7 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     setAppliedEnd(customEnd)
   }
 
-  const rangeParams = () =>
+  const rangeParams = (): Record<string, string> =>
     isCustom ? { startDate: appliedStart, endDate: appliedEnd } : { monthKey }
 
   const [students, setStudents]   = useState<StudentRow[]>([])

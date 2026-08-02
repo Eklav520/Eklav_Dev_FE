@@ -85,6 +85,8 @@ const InstructorCodeChallenge = lazy(() => import('@/app/eklavadmin/codeChalleng
 const AdminChallengeDetail = lazy(() => import('@/app/eklavadmin/codeChallenge/components/AdminChallengeDetail'))
 const AdminFinalAssessmentUpload = lazy(() => import('@/app/eklavadmin/final-assessment/page'))
 const AdminFinalAssessmentDetails = lazy(() => import('@/app/eklavadmin/final-assessment-details/page'))
+const AdminLSRWContent = lazy(() => import('@/app/eklavadmin/lsrw-content/page'))
+const AdminLSRWSubmissions = lazy(() => import('@/app/eklavadmin/lsrw-submissions/page'))
 const Quiz = lazy(() => import('@/app/eklavadmin/quiz/page'))
 const Earnings = lazy(() => import('@/app/eklavadmin/earning/page'))
 const StudentsList = lazy(() => import('@/app/eklavadmin/student-list/page'))
@@ -168,6 +170,7 @@ const SpeakingPractice = lazy(() => import('@/app/student/speaking-practice/page
 const JustAMinute = lazy(() => import('@/app/student/just-a-minute/page'))
 const LearningPractice = lazy(() => import('@/app/student/learning-practice/page'))
 const WritingPractice = lazy(() => import('@/app/student/writing-practice/pages'))
+const LSRWCommunicationSkills = lazy(() => import('@/app/student/lsrw-communication/page'))
 const StudentCollegeLabs = lazy(() => import('@/app/student/college-labs/page'))
 const StudentAchievements = lazy(() => import('@/app/student/achievements/page'))
 const StudentPlacement = lazy(() => import('@/app/student/placement/page'))
@@ -599,6 +602,16 @@ export const EklavAdminRoutes: RoutesProps[] = [
     element: <AdminFinalAssessmentDetails />,
   },
   {
+    path: '/eklavadmin/lsrw-content',
+    name: 'LSRW Listening & Reading Content',
+    element: <AdminLSRWContent />,
+  },
+  {
+    path: '/eklavadmin/lsrw-submissions',
+    name: 'LSRW Listening & Reading Results',
+    element: <AdminLSRWSubmissions />,
+  },
+  {
     path: '/eklavadmin/student-list',
     name: 'Students List',
     element: <StudentsList />,
@@ -1022,6 +1035,11 @@ export const studentRoutes: RoutesProps[] = [
     path:'/student/WritingPractice',
     name: 'WritingPractice',
     element: <WritingPractice/>
+  },
+  {
+    path: '/student/lsrwCommunication',
+    name: 'LSRW Skill Practice',
+    element: <LSRWCommunicationSkills />,
   },
   {
     path: '/student/college-labs',
