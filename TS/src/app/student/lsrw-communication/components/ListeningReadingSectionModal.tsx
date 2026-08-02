@@ -671,119 +671,134 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
               )}
 
               {/* Recording Time */}
-              <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '16px', flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <FaMicrophone size={12} color={accent} />
-                    <span style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT }}>{q.type === 'reading' ? 'Your Reading' : 'Your Repetition'}</span>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 20, alignItems: 'stretch' }}>
+                  {/* ── Left: recording controls ── */}
+                  <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column' as const }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FaMicrophone size={12} color={accent} />
+                        <span style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT }}>{q.type === 'reading' ? 'Your Reading' : 'Your Repetition'}</span>
+                      </div>
+                      {recording ? (
+                        (() => {
+                          const remaining = Math.max(0, q.timeLimit - recordSeconds)
+                          const radius = 15
+                          const circumference = 2 * Math.PI * radius
+                          const progress = Math.min(1, recordSeconds / q.timeLimit)
+                          const low = remaining <= 5
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2 }}>
+                              <svg width={36} height={36} style={{ transform: 'rotate(-90deg)' }}>
+                                <circle cx={18} cy={18} r={radius} fill="none" stroke={PAGE_BORDER} strokeWidth={3} />
+                                <circle
+                                  cx={18} cy={18} r={radius} fill="none" stroke={low ? '#dc2626' : accent} strokeWidth={3}
+                                  strokeDasharray={circumference} strokeDashoffset={circumference * progress}
+                                  strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
+                                />
+                              </svg>
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color: low ? '#dc2626' : accent }}>{fmtTime(remaining)}</span>
+                            </div>
+                          )
+                        })()
+                      ) : (
+                        <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>Max Time <strong style={{ color: accent }}>{fmtTime(q.timeLimit)}</strong></span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 10 }}>
+                      {q.type === 'reading' ? 'Click the mic and read the sentence above aloud.' : 'Click the mic and repeat exactly what you just heard.'}
+                    </div>
+
+                    <div style={{ background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '20px 16px', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 36, justifyContent: 'center' }}>
+                        {Array.from({ length: 48 }, (_, i) => {
+                          const active = recording && i < Math.round((recordSeconds / q.timeLimit) * 48)
+                          const h = 8 + ((i * 37) % 26)
+                          return <span key={i} style={{ width: 3, height: h, borderRadius: 2, background: active ? accent : PAGE_BORDER, flexShrink: 0 }} />
+                        })}
+                      </div>
+                      <div style={{ textAlign: 'center' as const, fontSize: 11.5, color: PAGE_GRAY, marginTop: 8 }}>
+                        {fmtTime(recordSeconds)} / {fmtTime(q.timeLimit)}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
+                      <button
+                        onClick={toggleRecording}
+                        disabled={lockedQuestions[current]}
+                        style={{
+                          width: 56, height: 56, borderRadius: '50%', border: 'none',
+                          cursor: lockedQuestions[current] ? 'not-allowed' : 'pointer',
+                          background: lockedQuestions[current] ? PAGE_BORDER : recording ? '#dc2626' : accent,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          boxShadow: recording ? '0 0 0 6px rgba(220,38,38,0.15)' : 'none',
+                        }}
+                      >
+                        <FaMicrophone size={20} color={lockedQuestions[current] ? PAGE_GRAY : '#fff'} />
+                      </button>
+                      <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>
+                        {recording
+                          ? 'Recording… click to stop'
+                          : lockedQuestions[current]
+                            ? 'Attempt used — one recording per question'
+                            : 'Click the mic to start recording'}
+                      </span>
+
+                      {/* Live heads-up — this is their ONE attempt, so if speech
+                          recognition isn't picking anything up, better they find
+                          out while there's still time left to speak louder/closer
+                          to the mic than after the fact. */}
+                      {recording && recordSeconds >= 3 && !heardAnySpeech && (
+                        <div style={{ width: '100%', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <FaExclamationTriangle size={11} color="#92400e" />
+                          <span style={{ fontSize: 11, color: '#92400e' }}>No speech detected yet — speak clearly and check your mic.</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {recording ? (
-                    (() => {
-                      const remaining = Math.max(0, q.timeLimit - recordSeconds)
-                      const radius = 15
-                      const circumference = 2 * Math.PI * radius
-                      const progress = Math.min(1, recordSeconds / q.timeLimit)
-                      const low = remaining <= 5
-                      return (
-                        <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 2 }}>
-                          <svg width={36} height={36} style={{ transform: 'rotate(-90deg)' }}>
-                            <circle cx={18} cy={18} r={radius} fill="none" stroke={PAGE_BORDER} strokeWidth={3} />
-                            <circle
-                              cx={18} cy={18} r={radius} fill="none" stroke={low ? '#dc2626' : accent} strokeWidth={3}
-                              strokeDasharray={circumference} strokeDashoffset={circumference * progress}
-                              strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.3s' }}
-                            />
-                          </svg>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: low ? '#dc2626' : accent }}>{fmtTime(remaining)}</span>
+
+                  {/* ── Divider ── */}
+                  <div style={{ width: 1, background: PAGE_BORDER }} />
+
+                  {/* ── Right: captured result ── */}
+                  <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, padding: '16px', display: 'flex', flexDirection: 'column' as const, justifyContent: 'center' }}>
+                    {/* Confirms the recording actually saved — shows what the
+                        mic captured so the student isn't left wondering. While
+                        the audio is still uploading/being transcribed server-
+                        side, this stays neutral rather than flashing "failed"
+                        with the (often still-empty) client transcript first. */}
+                    {lockedQuestions[current] ? (
+                      uploadingAudio[current] ? (
+                        <div style={{ background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 13, height: 13, borderRadius: '50%', border: `2px solid ${PAGE_BORDER}`, borderTopColor: accent, animation: 'lsrw-spin 0.7s linear infinite' }} />
+                          <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>Processing your recording…</span>
+                          <style>{`@keyframes lsrw-spin { to { transform: rotate(360deg); } }`}</style>
+                        </div>
+                      ) : (
+                        <div style={{ background: transcripts[current] ? '#f0fdf4' : '#fef2f2', border: `1px solid ${transcripts[current] ? '#86efac' : '#fca5a5'}`, borderRadius: 10, padding: '12px 14px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                            <FaCheckCircle size={11} color={transcripts[current] ? '#16a34a' : '#dc2626'} />
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: transcripts[current] ? '#16a34a' : '#dc2626' }}>
+                              Captured — {fmtTime(recordings[current] || 0)} recorded
+                            </span>
+                          </div>
+                          {transcripts[current] ? (
+                            <div style={{ fontSize: 11, color: '#166534', lineHeight: 1.5 }}>
+                              "{transcripts[current]}"
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 11, color: '#991b1b', lineHeight: 1.5 }}>
+                              No speech was recognized in this recording — this will likely score 0 on this question. Your raw audio is still saved.
+                            </div>
+                          )}
                         </div>
                       )
-                    })()
-                  ) : (
-                    <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>Max Time <strong style={{ color: accent }}>{fmtTime(q.timeLimit)}</strong></span>
-                  )}
-                </div>
-                <div style={{ fontSize: 12, color: PAGE_GRAY, marginBottom: 10 }}>
-                  {q.type === 'reading' ? 'Click the mic and read the sentence above aloud.' : 'Click the mic and repeat exactly what you just heard.'}
-                </div>
-
-                <div style={{ background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '20px 16px', marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: 36, justifyContent: 'center' }}>
-                    {Array.from({ length: 48 }, (_, i) => {
-                      const active = recording && i < Math.round((recordSeconds / q.timeLimit) * 48)
-                      const h = 8 + ((i * 37) % 26)
-                      return <span key={i} style={{ width: 3, height: h, borderRadius: 2, background: active ? accent : PAGE_BORDER, flexShrink: 0 }} />
-                    })}
-                  </div>
-                  <div style={{ textAlign: 'center' as const, fontSize: 11.5, color: PAGE_GRAY, marginTop: 8 }}>
-                    {fmtTime(recordSeconds)} / {fmtTime(q.timeLimit)}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8 }}>
-                  <button
-                    onClick={toggleRecording}
-                    disabled={lockedQuestions[current]}
-                    style={{
-                      width: 56, height: 56, borderRadius: '50%', border: 'none',
-                      cursor: lockedQuestions[current] ? 'not-allowed' : 'pointer',
-                      background: lockedQuestions[current] ? PAGE_BORDER : recording ? '#dc2626' : accent,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: recording ? '0 0 0 6px rgba(220,38,38,0.15)' : 'none',
-                    }}
-                  >
-                    <FaMicrophone size={20} color={lockedQuestions[current] ? PAGE_GRAY : '#fff'} />
-                  </button>
-                  <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>
-                    {recording
-                      ? 'Recording… click to stop'
-                      : lockedQuestions[current]
-                        ? 'Attempt used — one recording per question'
-                        : 'Click the mic to start recording'}
-                  </span>
-
-                  {/* Live heads-up — this is their ONE attempt, so if speech
-                      recognition isn't picking anything up, better they find
-                      out while there's still time left to speak louder/closer
-                      to the mic than after the fact. */}
-                  {recording && recordSeconds >= 3 && !heardAnySpeech && (
-                    <div style={{ width: '100%', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <FaExclamationTriangle size={11} color="#92400e" />
-                      <span style={{ fontSize: 11, color: '#92400e' }}>No speech detected yet — speak clearly and check your mic.</span>
-                    </div>
-                  )}
-
-                  {/* Confirms the recording actually saved — shows what the
-                      mic captured so the student isn't left wondering. While
-                      the audio is still uploading/being transcribed server-
-                      side, this stays neutral rather than flashing "failed"
-                      with the (often still-empty) client transcript first. */}
-                  {lockedQuestions[current] && (
-                    uploadingAudio[current] ? (
-                      <div style={{ width: '100%', marginTop: 4, background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 13, height: 13, borderRadius: '50%', border: `2px solid ${PAGE_BORDER}`, borderTopColor: accent, animation: 'lsrw-spin 0.7s linear infinite' }} />
-                        <span style={{ fontSize: 11.5, color: PAGE_GRAY }}>Processing your recording…</span>
-                        <style>{`@keyframes lsrw-spin { to { transform: rotate(360deg); } }`}</style>
-                      </div>
                     ) : (
-                      <div style={{ width: '100%', marginTop: 4, background: transcripts[current] ? '#f0fdf4' : '#fef2f2', border: `1px solid ${transcripts[current] ? '#86efac' : '#fca5a5'}`, borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <FaCheckCircle size={11} color={transcripts[current] ? '#16a34a' : '#dc2626'} />
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: transcripts[current] ? '#16a34a' : '#dc2626' }}>
-                            Captured — {fmtTime(recordings[current] || 0)} recorded
-                          </span>
-                        </div>
-                        {transcripts[current] ? (
-                          <div style={{ fontSize: 11, color: '#166534', lineHeight: 1.5 }}>
-                            "{transcripts[current]}"
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: 11, color: '#991b1b', lineHeight: 1.5 }}>
-                            No speech was recognized in this recording — this will likely score 0 on this question. Your raw audio is still saved.
-                          </div>
-                        )}
+                      <div style={{ border: `1px dashed ${PAGE_BORDER}`, borderRadius: 10, padding: '20px 14px', textAlign: 'center' as const, color: PAGE_GRAY, fontSize: 11.5 }}>
+                        Your captured recording and transcript will appear here.
                       </div>
-                    )
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
