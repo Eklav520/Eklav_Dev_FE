@@ -598,25 +598,25 @@ const LSRWCommunicationRound = () => {
       <ReadingSectionModal
         show={showPassages}
         onClose={() => { setShowPassages(false); if (practiceSectionKey === 'passages') setPracticeSectionKey(null) }}
-        onSubmitted={() => completeSection('passages')}
+        onSubmitted={(result) => completeSection('passages', result?.scoreAwarded, result?.submissionId, result?.totalMarks)}
         practiceMode={practiceSectionKey === 'passages'}
       />
       <JumbledSentencesModal
         show={showJumbled}
         onClose={() => { setShowJumbled(false); if (practiceSectionKey === 'jumbled') setPracticeSectionKey(null) }}
-        onSubmitted={() => completeSection('jumbled')}
+        onSubmitted={(result) => completeSection('jumbled', result?.scoreAwarded, result?.submissionId, result?.totalMarks)}
         practiceMode={practiceSectionKey === 'jumbled'}
       />
       <StoryTellingModal
         show={showStoryTelling}
         onClose={() => { setShowStoryTelling(false); if (practiceSectionKey === 'storytelling') setPracticeSectionKey(null) }}
-        onSubmitted={() => completeSection('storytelling')}
+        onSubmitted={(result) => completeSection('storytelling', result?.scoreAwarded, result?.submissionId, result?.totalMarks)}
         practiceMode={practiceSectionKey === 'storytelling'}
       />
       <GrammarSectionModal
         show={showGrammar}
         onClose={() => { setShowGrammar(false); if (practiceSectionKey === 'grammar') setPracticeSectionKey(null) }}
-        onSubmitted={() => completeSection('grammar')}
+        onSubmitted={(result) => completeSection('grammar', result?.scoreAwarded, result?.submissionId, result?.totalMarks)}
         practiceMode={practiceSectionKey === 'grammar'}
       />
     </>

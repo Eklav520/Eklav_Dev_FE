@@ -332,19 +332,21 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
     transcriptAccumRef.current = ''
 
     audioChunksRef.current = []
-    if (practiceMode) {
-      // Practice attempts never touch MediaRecorder (nothing to persist),
-      // so SpeechRecognition alone — running solo, not competing with a
-      // parallel MediaRecorder capture — is the only transcript source.
-      const rec = getRecognition()
-      if (rec) {
-        recognitionActiveRef.current = true
-        startRecognitionWithRetry(rec)
-      }
-    } else {
-      // Real attempts: MediaRecorder + server-side Whisper is the sole
-      // capture path (see startVolumeMeter above for why SpeechRecognition
-      // is deliberately NOT also running here).
+
+    // Always run the browser's own live SpeechRecognition, in both practice
+    // and real attempts. For real attempts, server-side Whisper is still
+    // preferred when it succeeds (see stopAndUploadAudio) — but if Whisper
+    // fails or is misconfigured server-side, this client-side transcript is
+    // the fallback that keeps the question from silently scoring zero.
+    const rec = getRecognition()
+    if (rec) {
+      recognitionActiveRef.current = true
+      startRecognitionWithRetry(rec)
+    }
+
+    if (!practiceMode) {
+      // Real attempts additionally capture raw audio via MediaRecorder for
+      // Whisper transcription + playback in the mistake-review screen.
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then((stream) => {
           micStreamRef.current = stream

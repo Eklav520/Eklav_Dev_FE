@@ -56,7 +56,12 @@ const buildQuestions = (items: GrammarItem[]) => {
 
 const fmtClock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-type Props = { show: boolean; onClose: () => void; onSubmitted?: () => void; practiceMode?: boolean }
+type Props = {
+  show: boolean
+  onClose: () => void
+  onSubmitted?: (result?: { scoreAwarded: number; totalMarks: number; submissionId: string }) => void
+  practiceMode?: boolean
+}
 
 const GrammarSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props) => {
   const { user } = useAuthContext()
@@ -94,7 +99,7 @@ const GrammarSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const submittedRef = useRef(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (submittedRef.current) return
     submittedRef.current = true
     if (timerRef.current) clearInterval(timerRef.current)
@@ -102,7 +107,45 @@ const GrammarSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props
       setShowResults(true)
       return
     }
-    onSubmitted?.()
+
+    const answered = QUESTIONS.filter((qq) => qq.itemId)
+    const items = answered.map((qq) => ({
+      itemId: qq.itemId,
+      answer: qq.type === 'mcq'
+        ? (mcqAnswers[qq.number] !== undefined ? qq.options[mcqAnswers[qq.number]] : '')
+        : (fillAnswers[qq.number] || ''),
+    }))
+
+    let result: { scoreAwarded: number; totalMarks: number; submissionId: string } | undefined
+    if (items.length > 0 && user?.token) {
+      try {
+        const res = await fetch(`${baseURL}/api/student/lsrw-grammar-content/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+          body: JSON.stringify({
+            items,
+            exitedEarly: false,
+            violations: {
+              tabSwitches: proctor.violationCount,
+              lookingAway: gaze.violationCount,
+              headTurned: gaze.headViolationCount,
+              faceCovered: gaze.maskViolationCount,
+              faceNotVisible: gaze.noFaceViolationCount,
+            },
+          }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          result = {
+            scoreAwarded: data.submission.totalScoreAwarded,
+            totalMarks: data.submission.totalMarks,
+            submissionId: data.submission._id,
+          }
+        }
+      } catch { /* still close even if the save fails — don't block the student */ }
+    }
+
+    onSubmitted?.(result)
     onClose()
   }
 

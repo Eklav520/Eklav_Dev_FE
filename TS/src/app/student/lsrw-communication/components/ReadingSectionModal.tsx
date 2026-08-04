@@ -21,7 +21,7 @@ const DEFAULT_TIME_LIMIT_SEC = 30
 type PassageDbItem = {
   _id: string
   audioUrl?: string
-  questions: { question: string; options: string[]; marks: number; timeLimit?: number; correctAnswer?: string }[]
+  questions: { index: number; question: string; options: string[]; marks: number; timeLimit?: number; correctAnswer?: string }[]
 }
 
 // Placeholder fallback — used only while no real admin-uploaded passages
@@ -31,6 +31,7 @@ const PLACEHOLDER_PASSAGE: PassageDbItem = {
   _id: '',
   audioUrl: undefined,
   questions: Array.from({ length: 10 }, (_, i) => ({
+    index: i,
     question: i === 0
       ? 'What is the main idea of the passage?'
       : `Placeholder question ${i + 1} — replace with a real passage/question.`,
@@ -46,12 +47,14 @@ const PLACEHOLDER_PASSAGE: PassageDbItem = {
 // like every other section here) while remembering which passage/audio each
 // question belongs to, so the listen-gate can apply per passage.
 const buildFlat = (passages: PassageDbItem[]) => {
-  const flat: { number: number; passageIdx: number; question: string; options: string[]; marks: number; timeLimit: number; correctAnswer?: string }[] = []
+  const flat: { number: number; passageIdx: number; passageId: string; questionIndex: number; question: string; options: string[]; marks: number; timeLimit: number; correctAnswer?: string }[] = []
   passages.forEach((p, passageIdx) => {
     p.questions.forEach((q) => {
       flat.push({
         number: flat.length + 1,
         passageIdx,
+        passageId: p._id,
+        questionIndex: q.index,
         question: q.question,
         options: q.options,
         marks: q.marks,
@@ -63,7 +66,12 @@ const buildFlat = (passages: PassageDbItem[]) => {
   return flat
 }
 
-type Props = { show: boolean; onClose: () => void; onSubmitted?: () => void; practiceMode?: boolean }
+type Props = {
+  show: boolean
+  onClose: () => void
+  onSubmitted?: (result?: { scoreAwarded: number; totalMarks: number; submissionId: string }) => void
+  practiceMode?: boolean
+}
 
 const ReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props) => {
   const { user } = useAuthContext()
@@ -102,7 +110,7 @@ const ReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const submittedRef = useRef(false)
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (submittedRef.current) return
     submittedRef.current = true
     if (timerRef.current) clearInterval(timerRef.current)
@@ -110,7 +118,43 @@ const ReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props
       setShowResults(true)
       return
     }
-    onSubmitted?.()
+
+    const items = FLAT.map((qq) => ({
+      passageId: qq.passageId,
+      questionIndex: qq.questionIndex,
+      answer: answers[qq.number] !== undefined ? qq.options[answers[qq.number]] : '',
+    }))
+
+    let result: { scoreAwarded: number; totalMarks: number; submissionId: string } | undefined
+    if (items.length > 0 && user?.token) {
+      try {
+        const res = await fetch(`${baseURL}/api/student/lsrw-passage-content/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+          body: JSON.stringify({
+            items,
+            exitedEarly: false,
+            violations: {
+              tabSwitches: proctor.violationCount,
+              lookingAway: gaze.violationCount,
+              headTurned: gaze.headViolationCount,
+              faceCovered: gaze.maskViolationCount,
+              faceNotVisible: gaze.noFaceViolationCount,
+            },
+          }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          result = {
+            scoreAwarded: data.submission.totalScoreAwarded,
+            totalMarks: data.submission.totalMarks,
+            submissionId: data.submission._id,
+          }
+        }
+      } catch { /* still close even if the save fails — don't block the student */ }
+    }
+
+    onSubmitted?.(result)
     onClose()
   }
 

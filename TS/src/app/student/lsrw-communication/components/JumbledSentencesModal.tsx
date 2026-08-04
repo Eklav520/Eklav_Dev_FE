@@ -47,7 +47,12 @@ const buildQuestions = (dbItems: JumbledDbItem[]) => {
 
 const fmtTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 
-type Props = { show: boolean; onClose: () => void; onSubmitted?: () => void; practiceMode?: boolean }
+type Props = {
+  show: boolean
+  onClose: () => void
+  onSubmitted?: (result?: { scoreAwarded: number; totalMarks: number; submissionId: string }) => void
+  practiceMode?: boolean
+}
 
 const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Props) => {
   const { user } = useAuthContext()
@@ -94,6 +99,37 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
 
   const nextQuestion = () => goTo(current + 1)
 
+  const handleSubmit = async () => {
+    if (practiceMode) { setShowResults(true); return }
+
+    const items = QUESTIONS.filter((qq) => qq.itemId).map((qq) => {
+      const idx = placed[qq.number] ?? []
+      return { itemId: qq.itemId, order: idx.map((i) => qq.shuffled[i]) }
+    })
+
+    let result: { scoreAwarded: number; totalMarks: number; submissionId: string } | undefined
+    if (items.length > 0 && user?.token) {
+      try {
+        const res = await fetch(`${baseURL}/api/student/lsrw-jumbled-content/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+          body: JSON.stringify({ items, exitedEarly: false }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          result = {
+            scoreAwarded: data.submission.totalScoreAwarded,
+            totalMarks: data.submission.totalMarks,
+            submissionId: data.submission._id,
+          }
+        }
+      } catch { /* still close even if the save fails — don't block the student */ }
+    }
+
+    onSubmitted?.(result)
+    onClose()
+  }
+
   useEffect(() => {
     if (!show || !q) return
     if (timerRef.current) clearInterval(timerRef.current)
@@ -103,8 +139,7 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
         if (s <= 1) {
           if (timerRef.current) clearInterval(timerRef.current)
           if (current < TOTAL_QUESTIONS) nextQuestion()
-          else if (practiceMode) setShowResults(true)
-          else { onSubmitted?.(); onClose() }
+          else handleSubmit()
           return 0
         }
         return s - 1
@@ -396,7 +431,7 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
               </button>
               {isLastQuestion ? (
                 <button
-                  onClick={() => { if (practiceMode) { setShowResults(true); return } onSubmitted?.(); onClose() }}
+                  onClick={handleSubmit}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
                 >
                   {practiceMode ? 'See Results' : 'Submit Section'} <FaArrowRight size={11} />

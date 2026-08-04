@@ -54,6 +54,7 @@ type AlignmentToken = { type: 'match' | 'substitution' | 'missing' | 'extra'; wo
 type SubmissionItem = {
   itemId: string; type: 'reading' | 'listening'; expectedSentence: string; transcript: string
   marks: number; scoreAwarded: number; accuracyPercent: number; mistakes: SubmissionMistake[]; alignment?: AlignmentToken[]; audioUrl?: string | null; recordedSeconds: number
+  pronunciationFeedback?: string
 }
 type SubmissionDetail = {
   _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number
@@ -61,6 +62,14 @@ type SubmissionDetail = {
 }
 type SpeakingSubmissionItem = { itemId: string; topic: string; transcript: string; marks: number; scoreAwarded: number; feedback: string; sampleAnswer?: string; recordedSeconds: number }
 type SpeakingSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: SpeakingSubmissionItem[] }
+type GrammarSubmissionItem = { itemId: string; category: string; type: 'mcq' | 'fill'; question: string; options: string[]; correctAnswer: string; studentAnswer: string; isCorrect: boolean; marks: number; scoreAwarded: number }
+type GrammarSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: GrammarSubmissionItem[] }
+type PassageSubmissionItem = { passageId: string; questionIndex: number; question: string; options: string[]; correctAnswer: string; studentAnswer: string; isCorrect: boolean; marks: number; scoreAwarded: number }
+type PassageSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: PassageSubmissionItem[] }
+type JumbledSubmissionItem = { itemId: string; correctOrder: string[]; studentOrder: string[]; isCorrect: boolean; marks: number; scoreAwarded: number }
+type JumbledSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: JumbledSubmissionItem[] }
+type StoryTellingSubmissionItem = { itemId: string; promptType: 'image' | 'text'; promptText: string; points: string[]; story: string; marks: number; scoreAwarded: number; feedback: string }
+type StoryTellingSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: StoryTellingSubmissionItem[] }
 type Attempt = {
   _id: string; patternKey: 1 | 2; sections: SectionResult[]
   totalMarks: number; totalScoreAwarded: number; status: 'in_progress' | 'completed'
@@ -236,7 +245,11 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
 
   const chartOptions = useMemo(() => ({
     chart: { toolbar: { show: false }, zoom: { enabled: false } },
-    stroke: { curve: 'smooth' as const, width: 2.5 },
+    // connectNulls draws the line straight through days with no attempt
+    // (they'd otherwise be gaps, which is why a section with only sparse
+    // attempts this month showed as isolated dots instead of a line) — each
+    // series still keeps its own section color from `colors` below.
+    stroke: { curve: 'smooth' as const, width: 2.5, connectNulls: true },
     colors: monthChart.sectionSeries.map((s) => s.def.color),
     markers: { size: 4, strokeColors: '#fff', strokeWidth: 2 },
     legend: { show: true, fontSize: '11px', position: 'bottom' as const, itemMargin: { horizontal: 8, vertical: 4 } },
@@ -326,6 +339,74 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
         setSpeakingFeedbackDetail((prev) => ({ ...prev, [submissionId]: data.success ? data.submission : 'error' }))
       })
       .catch(() => setSpeakingFeedbackDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
+  }
+
+  // Same lazy-load pattern, for Grammar's per-question correct/incorrect breakdown.
+  const [openGrammarFor, setOpenGrammarFor] = useState<string | null>(null)
+  const [grammarDetail, setGrammarDetail] = useState<Record<string, GrammarSubmissionDetail | 'loading' | 'error'>>({})
+
+  const toggleGrammarFeedback = (submissionId: string) => {
+    if (openGrammarFor === submissionId) { setOpenGrammarFor(null); return }
+    setOpenGrammarFor(submissionId)
+    if (grammarDetail[submissionId] || !user?.token) return
+    setGrammarDetail((prev) => ({ ...prev, [submissionId]: 'loading' }))
+    fetch(`${baseURL}/api/student/lsrw-grammar-content/submissions/${submissionId}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        setGrammarDetail((prev) => ({ ...prev, [submissionId]: data.success ? data.submission : 'error' }))
+      })
+      .catch(() => setGrammarDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
+  }
+
+  // Same lazy-load pattern, for Passages' per-question correct/incorrect breakdown.
+  const [openPassageFor, setOpenPassageFor] = useState<string | null>(null)
+  const [passageDetail, setPassageDetail] = useState<Record<string, PassageSubmissionDetail | 'loading' | 'error'>>({})
+
+  const togglePassageFeedback = (submissionId: string) => {
+    if (openPassageFor === submissionId) { setOpenPassageFor(null); return }
+    setOpenPassageFor(submissionId)
+    if (passageDetail[submissionId] || !user?.token) return
+    setPassageDetail((prev) => ({ ...prev, [submissionId]: 'loading' }))
+    fetch(`${baseURL}/api/student/lsrw-passage-content/submissions/${submissionId}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        setPassageDetail((prev) => ({ ...prev, [submissionId]: data.success ? data.submission : 'error' }))
+      })
+      .catch(() => setPassageDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
+  }
+
+  // Same lazy-load pattern, for Jumbled Sentences' per-sentence correct/incorrect breakdown.
+  const [openJumbledFor, setOpenJumbledFor] = useState<string | null>(null)
+  const [jumbledDetail, setJumbledDetail] = useState<Record<string, JumbledSubmissionDetail | 'loading' | 'error'>>({})
+
+  const toggleJumbledFeedback = (submissionId: string) => {
+    if (openJumbledFor === submissionId) { setOpenJumbledFor(null); return }
+    setOpenJumbledFor(submissionId)
+    if (jumbledDetail[submissionId] || !user?.token) return
+    setJumbledDetail((prev) => ({ ...prev, [submissionId]: 'loading' }))
+    fetch(`${baseURL}/api/student/lsrw-jumbled-content/submissions/${submissionId}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        setJumbledDetail((prev) => ({ ...prev, [submissionId]: data.success ? data.submission : 'error' }))
+      })
+      .catch(() => setJumbledDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
+  }
+
+  // Same lazy-load pattern, for Story Telling's per-prompt AI feedback.
+  const [openStoryFor, setOpenStoryFor] = useState<string | null>(null)
+  const [storyDetail, setStoryDetail] = useState<Record<string, StoryTellingSubmissionDetail | 'loading' | 'error'>>({})
+
+  const toggleStoryFeedback = (submissionId: string) => {
+    if (openStoryFor === submissionId) { setOpenStoryFor(null); return }
+    setOpenStoryFor(submissionId)
+    if (storyDetail[submissionId] || !user?.token) return
+    setStoryDetail((prev) => ({ ...prev, [submissionId]: 'loading' }))
+    fetch(`${baseURL}/api/student/lsrw-storytelling-content/submissions/${submissionId}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        setStoryDetail((prev) => ({ ...prev, [submissionId]: data.success ? data.submission : 'error' }))
+      })
+      .catch(() => setStoryDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
   }
 
   // Plays the student's actual recorded voice when it was captured/uploaded
@@ -721,6 +802,38 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                             View Feedback
                                           </button>
                                         )}
+                                        {s.submissionId && s.sectionKey === 'grammar' && (
+                                          <button
+                                            onClick={() => toggleGrammarFeedback(s.submissionId!)}
+                                            style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                          >
+                                            View Answers
+                                          </button>
+                                        )}
+                                        {s.submissionId && s.sectionKey === 'passages' && (
+                                          <button
+                                            onClick={() => togglePassageFeedback(s.submissionId!)}
+                                            style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                          >
+                                            View Answers
+                                          </button>
+                                        )}
+                                        {s.submissionId && s.sectionKey === 'jumbled' && (
+                                          <button
+                                            onClick={() => toggleJumbledFeedback(s.submissionId!)}
+                                            style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                          >
+                                            View Answers
+                                          </button>
+                                        )}
+                                        {s.submissionId && s.sectionKey === 'storytelling' && (
+                                          <button
+                                            onClick={() => toggleStoryFeedback(s.submissionId!)}
+                                            style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                                          >
+                                            View Feedback
+                                          </button>
+                                        )}
                                       </div>
                                     )
                                   })}
@@ -842,6 +955,15 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                             <div style={{ color: PAGE_GRAY }}>You said: <span style={{ color: PAGE_TEXT }}>{it.transcript || '(nothing captured)'}</span></div>
                           </div>
                         )}
+                        {!isPerfect && it.pronunciationFeedback && (
+                          <div style={{ background: '#fff7ed', borderLeft: '3px solid #ea580c', borderRadius: '0 8px 8px 0', padding: '8px 10px', marginTop: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                              <FaGraduationCap size={11} color="#ea580c" />
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ea580c' }}>PRONUNCIATION TIPS</span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: '#7c2d12', lineHeight: 1.5, whiteSpace: 'pre-line' as const }}>{it.pronunciationFeedback}</div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
@@ -906,6 +1028,229 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                           <div style={{ marginTop: 2 }}>{it.sampleAnswer}</div>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Grammar answers — same modal shell as the others, per-question
+          correct/incorrect + correct answer instead of a word diff or AI feedback. */}
+      {openGrammarFor && (
+        <div
+          onClick={() => setOpenGrammarFor(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 999998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD_BG, borderRadius: 16, width: '95vw', maxWidth: '95vw', height: '92vh', maxHeight: '92vh', display: 'flex', flexDirection: 'column' as const, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>Grammar — Your Answers</span>
+              <button
+                onClick={() => setOpenGrammarFor(null)}
+                aria-label="Close"
+                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <FaTimes size={12} color={PAGE_GRAY} />
+              </button>
+            </div>
+            <div className="lsrw-mistake-scroll" style={{ padding: '14px 20px', overflowY: 'auto' as const, scrollbarWidth: 'thin' as const }}>
+              {grammarDetail[openGrammarFor] === 'loading' ? (
+                <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center' as const, padding: '20px 0' }}>Loading…</div>
+              ) : grammarDetail[openGrammarFor] === 'error' ? (
+                <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
+                  {(grammarDetail[openGrammarFor] as GrammarSubmissionDetail).items.map((it, idx) => (
+                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1} · {it.category}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
+                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                          {it.scoreAwarded}/{it.marks}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 8, fontWeight: 600 }}>{it.question}</div>
+                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
+                        <strong>Your answer:</strong> {it.studentAnswer || <em>(not answered)</em>}
+                      </div>
+                      {!it.isCorrect && (
+                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
+                          <strong>Correct answer:</strong> {it.correctAnswer}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Passages answers — same modal shell as Grammar's, per-question
+          correct/incorrect + correct answer. */}
+      {openPassageFor && (
+        <div
+          onClick={() => setOpenPassageFor(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 999998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD_BG, borderRadius: 16, width: '95vw', maxWidth: '95vw', height: '92vh', maxHeight: '92vh', display: 'flex', flexDirection: 'column' as const, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>Passages — Your Answers</span>
+              <button
+                onClick={() => setOpenPassageFor(null)}
+                aria-label="Close"
+                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <FaTimes size={12} color={PAGE_GRAY} />
+              </button>
+            </div>
+            <div className="lsrw-mistake-scroll" style={{ padding: '14px 20px', overflowY: 'auto' as const, scrollbarWidth: 'thin' as const }}>
+              {passageDetail[openPassageFor] === 'loading' ? (
+                <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center' as const, padding: '20px 0' }}>Loading…</div>
+              ) : passageDetail[openPassageFor] === 'error' ? (
+                <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
+                  {(passageDetail[openPassageFor] as PassageSubmissionDetail).items.map((it, idx) => (
+                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
+                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                          {it.scoreAwarded}/{it.marks}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 8, fontWeight: 600 }}>{it.question}</div>
+                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
+                        <strong>Your answer:</strong> {it.studentAnswer || <em>(not answered)</em>}
+                      </div>
+                      {!it.isCorrect && (
+                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
+                          <strong>Correct answer:</strong> {it.correctAnswer}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Jumbled Sentences answers — same modal shell as Grammar/Passages',
+          per-sentence correct/incorrect + correct order. */}
+      {openJumbledFor && (
+        <div
+          onClick={() => setOpenJumbledFor(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 999998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD_BG, borderRadius: 16, width: '95vw', maxWidth: '95vw', height: '92vh', maxHeight: '92vh', display: 'flex', flexDirection: 'column' as const, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>Jumbled Sentences — Your Answers</span>
+              <button
+                onClick={() => setOpenJumbledFor(null)}
+                aria-label="Close"
+                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <FaTimes size={12} color={PAGE_GRAY} />
+              </button>
+            </div>
+            <div className="lsrw-mistake-scroll" style={{ padding: '14px 20px', overflowY: 'auto' as const, scrollbarWidth: 'thin' as const }}>
+              {jumbledDetail[openJumbledFor] === 'loading' ? (
+                <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center' as const, padding: '20px 0' }}>Loading…</div>
+              ) : jumbledDetail[openJumbledFor] === 'error' ? (
+                <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
+                  {(jumbledDetail[openJumbledFor] as JumbledSubmissionDetail).items.map((it, idx) => (
+                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
+                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                          {it.scoreAwarded}/{it.marks}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
+                        <strong>Your order:</strong> {it.studentOrder.length ? it.studentOrder.join(' ') : <em>(not attempted)</em>}
+                      </div>
+                      {!it.isCorrect && (
+                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
+                          <strong>Correct order:</strong> {it.correctOrder.join(' ')}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Story Telling feedback — same modal shell as Speaking's, per-prompt
+          AI feedback instead of a word diff. */}
+      {openStoryFor && (
+        <div
+          onClick={() => setOpenStoryFor(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', zIndex: 999998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD_BG, borderRadius: 16, width: '95vw', maxWidth: '95vw', height: '92vh', maxHeight: '92vh', display: 'flex', flexDirection: 'column' as const, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
+              <span style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>Story Telling — AI Feedback</span>
+              <button
+                onClick={() => setOpenStoryFor(null)}
+                aria-label="Close"
+                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <FaTimes size={12} color={PAGE_GRAY} />
+              </button>
+            </div>
+            <div className="lsrw-mistake-scroll" style={{ padding: '14px 20px', overflowY: 'auto' as const, scrollbarWidth: 'thin' as const }}>
+              {storyDetail[openStoryFor] === 'loading' ? (
+                <div style={{ fontSize: 12, color: PAGE_GRAY, textAlign: 'center' as const, padding: '20px 0' }}>Loading…</div>
+              ) : storyDetail[openStoryFor] === 'error' ? (
+                <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the feedback.</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10, alignItems: 'start' }}>
+                  {(storyDetail[openStoryFor] as StoryTellingSubmissionDetail).items.map((it, idx) => (
+                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
+                        <span style={{ color: pctColor(Math.round((it.scoreAwarded / it.marks) * 100)), fontWeight: 700, fontSize: 12 }}>{it.scoreAwarded}/{it.marks} ({Math.round((it.scoreAwarded / it.marks) * 100)}%)</span>
+                      </div>
+                      {it.promptType === 'text' && (
+                        <div style={{ background: '#eff6ff', borderLeft: '3px solid #2563eb', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb' }}>PROMPT</span>
+                          <div style={{ marginTop: 2 }}>{it.promptText}</div>
+                        </div>
+                      )}
+                      <div style={{ background: '#f5f3ff', borderLeft: '3px solid #7c3aed', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed' }}>YOUR STORY</span>
+                        <div style={{ marginTop: 2 }}>
+                          {it.story.trim() ? it.story : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(nothing captured)</span>}
+                        </div>
+                      </div>
+                      <div style={{ background: '#fff7ed', borderLeft: '3px solid #ea580c', borderRadius: '0 8px 8px 0', padding: '6px 10px' }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ea580c' }}>AI FEEDBACK</span>
+                        <div style={{ marginTop: 2 }}>{it.feedback || 'No feedback available.'}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
