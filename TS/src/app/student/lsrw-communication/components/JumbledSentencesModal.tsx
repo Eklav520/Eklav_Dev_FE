@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  FaRandom, FaArrowLeft, FaArrowRight, FaCheckCircle, FaLightbulb, FaTimes, FaClock,
-  FaTimesCircle, FaGraduationCap,
+  FaRandom, FaArrowLeft, FaArrowRight, FaCheckCircle, FaTimes, FaClock,
+  FaTimesCircle, FaGraduationCap, FaExclamationTriangle, FaShieldAlt, FaVideoSlash,
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import { useGazeDetection } from '@/app/student/self-interview/components/useGazeDetection'
+import GazeScanOverlay from '@/app/student/self-interview/components/GazeScanOverlay'
+import { useProctorGuard } from '@/app/student/final-assessment/helper/useProctorGuard'
 
 const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
 const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
@@ -82,6 +85,60 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
   const TOTAL_QUESTIONS = QUESTIONS.length
   const MARKS_TOTAL = dbItems.length ? dbItems.reduce((sum, i) => sum + i.marks, 0) : TOTAL_QUESTIONS
 
+  // Camera / face + tab-switch proctoring — identical wiring to the
+  // Listening & Reading and Speaking sections (real, live detection; no
+  // fabricated numbers). Skipped entirely in practice mode.
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null)
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!show || practiceMode) {
+      cameraStream?.getTracks().forEach((t) => t.stop())
+      setCameraStream(null)
+      setCameraError(null)
+      return
+    }
+    let cancelled = false
+    navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' } })
+      .then((stream) => {
+        if (cancelled) { stream.getTracks().forEach((t) => t.stop()); return }
+        stream.getVideoTracks().forEach((track) => {
+          track.onended = () => {
+            setCameraStream(null)
+            setCameraError('Camera was closed or disconnected. Proctoring has stopped.')
+          }
+        })
+        setCameraStream(stream)
+      })
+      .catch(() => { if (!cancelled) setCameraError('Camera access denied or unavailable.') })
+    return () => {
+      cancelled = true
+      cameraStream?.getTracks().forEach((t) => t.stop())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show, practiceMode])
+
+  useEffect(() => {
+    if (videoEl && cameraStream) {
+      videoEl.srcObject = cameraStream
+      videoEl.play().catch(() => {})
+    }
+  }, [videoEl, cameraStream])
+
+  const gaze = useGazeDetection(videoEl, !!cameraStream, false, { useExternalStream: true })
+  const faceViolationCount = gaze.violationCount + gaze.headViolationCount + gaze.maskViolationCount + gaze.noFaceViolationCount
+
+  const proctor = useProctorGuard(
+    { maxViolations: 9999, enabled: show && !practiceMode, captureFullscreenExit: false, autoReenterFullscreen: false, preventEscFullscreen: false },
+    {}
+  )
+  useEffect(() => {
+    if (show && !practiceMode) proctor.arm()
+    else proctor.disarm()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show, practiceMode])
+
   const q = QUESTIONS[current - 1]
   const placedIdx = placed[current] ?? []
   const bankIdx = (q ? q.shuffled.map((_, i) => i) : []).filter((i) => !placedIdx.includes(i))
@@ -99,13 +156,18 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
 
   const nextQuestion = () => goTo(current + 1)
 
-  const handleSubmit = async () => {
+  // exitedEarly=true when closing mid-section (X button) — only whatever's
+  // been placed so far is submitted, same pattern as the Listening & Reading
+  // and Speaking sections' proctored exit flow.
+  const handleSubmit = async (exitedEarly = false) => {
     if (practiceMode) { setShowResults(true); return }
 
-    const items = QUESTIONS.filter((qq) => qq.itemId).map((qq) => {
-      const idx = placed[qq.number] ?? []
-      return { itemId: qq.itemId, order: idx.map((i) => qq.shuffled[i]) }
-    })
+    const items = QUESTIONS
+      .filter((qq) => qq.itemId && (exitedEarly ? (placed[qq.number]?.length ?? 0) > 0 : true))
+      .map((qq) => {
+        const idx = placed[qq.number] ?? []
+        return { itemId: qq.itemId, order: idx.map((i) => qq.shuffled[i]) }
+      })
 
     let result: { scoreAwarded: number; totalMarks: number; submissionId: string } | undefined
     if (items.length > 0 && user?.token) {
@@ -113,7 +175,17 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
         const res = await fetch(`${baseURL}/api/student/lsrw-jumbled-content/submit`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
-          body: JSON.stringify({ items, exitedEarly: false }),
+          body: JSON.stringify({
+            items,
+            exitedEarly,
+            violations: {
+              tabSwitches: proctor.violationCount,
+              lookingAway: gaze.violationCount,
+              headTurned: gaze.headViolationCount,
+              faceCovered: gaze.maskViolationCount,
+              faceNotVisible: gaze.noFaceViolationCount,
+            },
+          }),
         })
         const data = await res.json()
         if (data.success) {
@@ -128,6 +200,11 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
 
     onSubmitted?.(result)
     onClose()
+  }
+
+  const handleExit = async () => {
+    if (practiceMode) { onClose(); return }
+    await handleSubmit(true)
   }
 
   useEffect(() => {
@@ -281,7 +358,7 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
     // react-bootstrap Modal), so there's no backdrop/z-index stacking to fight.
     <div style={{ position: 'fixed', inset: 0, zIndex: 999999, background: PAGE_BG, overflowY: 'auto' }}>
       <button
-        onClick={onClose}
+        onClick={handleExit}
         aria-label="Close"
         style={{
           position: 'fixed', top: 14, right: 20, zIndex: 1,
@@ -399,27 +476,6 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
               </div>
             </div>
 
-            {/* Instructions */}
-            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: '14px 20px', marginTop: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <FaCheckCircle size={13} color={ORANGE} />
-                <span style={{ fontWeight: 700, fontSize: 13, color: ORANGE }}>Instructions</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '8px 24px' }}>
-                {[
-                  'Rearrange the parts to form a meaningful sentence.',
-                  'Make sure to use proper punctuation.',
-                  'The sentence should be grammatically correct.',
-                  'Each question has its own time limit — time runs out automatically.',
-                ].map((tip) => (
-                  <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12.5, color: '#1e293b' }}>
-                    <FaCheckCircle size={11} color={ORANGE} style={{ marginTop: 2, flexShrink: 0 }} />
-                    {tip}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Prev / Next */}
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
               <button
@@ -431,7 +487,7 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
               </button>
               {isLastQuestion ? (
                 <button
-                  onClick={handleSubmit}
+                  onClick={() => handleSubmit()}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer' }}
                 >
                   {practiceMode ? 'See Results' : 'Submit Section'} <FaArrowRight size={11} />
@@ -445,6 +501,35 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
                 </button>
               )}
             </div>
+
+            {/* Live proctoring violations */}
+            {!practiceMode && (
+              <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: '12px 20px', marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <FaExclamationTriangle size={12} color="#dc2626" />
+                  <span style={{ fontWeight: 700, fontSize: 12.5, color: '#dc2626' }}>Proctoring — Live Violations</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
+                  {[
+                    ['Tab Switches', proctor.violationCount],
+                    ['Looking Away', gaze.violationCount],
+                    ['Head Turned', gaze.headViolationCount],
+                    ['Face Covered', gaze.maskViolationCount],
+                    ['Face Not Visible', gaze.noFaceViolationCount],
+                  ].map(([label, count]) => (
+                    <span key={label as string} style={{
+                      background: (count as number) > 0 ? '#fee2e2' : CARD_BG,
+                      border: `1px solid ${(count as number) > 0 ? '#fca5a5' : PAGE_BORDER}`,
+                      color: (count as number) > 0 ? '#dc2626' : PAGE_GRAY,
+                      borderRadius: 20, padding: '6px 10px', fontSize: 11.5, fontWeight: 700,
+                      textAlign: 'center' as const,
+                    }}>
+                      {label}: {count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Sidebar ────────────────────────────────── */}
@@ -476,40 +561,56 @@ const JumbledSentencesModal = ({ show, onClose, onSubmitted, practiceMode }: Pro
               </div>
             </div>
 
-            <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 18px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-              <div style={{ fontWeight: 700, fontSize: 13.5, color: PAGE_TEXT, marginBottom: 10 }}>Section Details</div>
-              {[
-                ['Total Questions', String(TOTAL_QUESTIONS)],
-                ['Total Marks', String(MARKS_TOTAL)],
-                ['Time per Question', `${q.timeLimit} sec`],
-                ['Negative Marking', 'No'],
-              ].map(([label, value]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, padding: '5px 0', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  <span style={{ color: PAGE_GRAY }}>{label}</span>
-                  <span style={{ color: PAGE_TEXT, fontWeight: 700 }}>{value}</span>
+            {/* Camera / face proctoring preview — identical wiring to the
+                Listening & Reading and Speaking sections. Pinned to the
+                bottom of the stretched sidebar column (margin-top: auto) so
+                its bottom edge lines up with the main column's Proctoring —
+                Live Violations panel. */}
+            {!practiceMode && (
+              <div style={{
+                marginTop: 'auto', width: '100%',
+                background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '12px',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.03)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '0 4px' }}>
+                  <FaShieldAlt size={13} color={ORANGE} />
+                  <span style={{ fontWeight: 700, fontSize: 12.5, color: PAGE_TEXT }}>Proctoring Camera</span>
                 </div>
-              ))}
-            </div>
-
-            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: '14px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <FaLightbulb size={13} color={ORANGE} />
-                <span style={{ fontWeight: 700, fontSize: 12.5, color: ORANGE }}>Tips</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                {[
-                  'Read all parts carefully.',
-                  'Identify the subject and the main verb.',
-                  'Start with the part that makes the most sense.',
-                  'Check punctuation at the end.',
-                ].map((tip) => (
-                  <div key={tip} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12, color: '#1e293b' }}>
-                    <FaCheckCircle size={11} color={ORANGE} style={{ marginTop: 2, flexShrink: 0 }} />
-                    {tip}
+                {cameraError ? (
+                  <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 8, padding: '20px 8px', color: PAGE_GRAY, fontSize: 11.5, textAlign: 'center' as const }}>
+                    <FaVideoSlash size={20} />
+                    {cameraError}
                   </div>
-                ))}
+                ) : (
+                  <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', background: '#111' }}>
+                    <video ref={setVideoEl} autoPlay muted playsInline style={{ width: '100%', display: 'block' }} />
+                    {gaze.isReady && (
+                      <GazeScanOverlay
+                        landmarks={gaze.landmarks}
+                        faceDetected={gaze.faceDetected}
+                        direction={gaze.direction}
+                        isLookingAway={gaze.isLookingAway}
+                        violationCount={gaze.violationCount}
+                        lookAwaySeconds={gaze.lookAwaySeconds}
+                        headDirection={gaze.headDirection}
+                        isHeadTurned={gaze.isHeadTurned}
+                        headViolationCount={gaze.headViolationCount}
+                        headAwaySeconds={gaze.headAwaySeconds}
+                        maskDetected={gaze.maskDetected}
+                        maskViolationCount={gaze.maskViolationCount}
+                        maskAwaySeconds={gaze.maskAwaySeconds}
+                        widen={1}
+                      />
+                    )}
+                  </div>
+                )}
+                {!cameraError && (
+                  <div style={{ fontSize: 10.5, color: PAGE_GRAY, marginTop: 8, textAlign: 'center' as const }}>
+                    {faceViolationCount > 0 ? `${faceViolationCount} face violation(s) detected` : 'Face tracking active'}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

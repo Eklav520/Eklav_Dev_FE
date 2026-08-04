@@ -81,12 +81,30 @@ type PassageSubmissionItem = { passageId: string; questionIndex: number; questio
 type PassageSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: PassageSubmissionItem[] }
 type JumbledSubmissionItem = { itemId: string; correctOrder: string[]; studentOrder: string[]; isCorrect: boolean; marks: number; scoreAwarded: number }
 type JumbledSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: JumbledSubmissionItem[] }
-type StoryTellingSubmissionItem = { itemId: string; promptType: 'image' | 'text'; promptText: string; points: string[]; story: string; marks: number; scoreAwarded: number; feedback: string }
+type StoryTellingSubmissionItem = {
+  itemId: string; promptType: 'image' | 'text'; promptText: string; imageUrl?: string | null; points: string[]; story: string
+  marks: number; scoreAwarded: number; feedback: string
+  grammarMistakes?: string[]; sentenceFormationTips?: string[]; modelStory?: string; modelStoryAudioUrl?: string | null
+}
 type StoryTellingSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: StoryTellingSubmissionItem[] }
 type Attempt = {
   _id: string; patternKey: 1 | 2; sections: SectionResult[]
   totalMarks: number; totalScoreAwarded: number; status: 'in_progress' | 'completed'
   createdAt: string; startedAt: string; completedAt: string | null
+}
+
+// Reconstructs the scrambled order the student was actually shown for a
+// Jumbled Sentences question — the shuffle isn't persisted, only
+// correctOrder is, so this mirrors JumbledSentencesModal's deterministic
+// pseudo-shuffle exactly, seeded only by position (same input -> same
+// shuffle every time, matching what was displayed during the attempt).
+const jumbledShuffle = (arr: string[]) => {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(((i + 7) * 2654435761) % (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 const pctColor = (pct: number) => pct >= 80 ? '#16a34a' : pct >= 60 ? '#ea580c' : '#dc2626'
@@ -103,6 +121,25 @@ const highlightQuotedWords = (text: string) => {
     return quoted
       ? <span key={i} style={{ fontWeight: 700, color: '#4c1d95', background: '#e9d5ff', borderRadius: 4, padding: '0 4px' }}>{part}</span>
       : <span key={i}>{part}</span>
+  })
+}
+
+// Grammar-mistake points follow a "'wrong phrase' should be 'right phrase'"
+// shape — color the first quoted phrase red (what the student got wrong) and
+// any later quoted phrase(s) in the same point green (the correction), so
+// the mistake vs. fix is visually obvious at a glance instead of both
+// looking the same.
+const highlightMistakeWords = (text: string) => {
+  const parts = text.split(/('[^']+'|"[^"]+")/g)
+  let quotedSeen = 0
+  return parts.map((part, i) => {
+    const quoted = /^['"][^'"]+['"]$/.test(part)
+    if (!quoted) return <span key={i}>{part}</span>
+    const isFirst = quotedSeen === 0
+    quotedSeen += 1
+    return isFirst
+      ? <span key={i} style={{ fontWeight: 700, color: '#991b1b', background: '#fee2e2', borderRadius: 4, padding: '0 4px', textDecoration: 'line-through' }}>{part}</span>
+      : <span key={i} style={{ fontWeight: 700, color: '#166534', background: '#dcfce7', borderRadius: 4, padding: '0 4px' }}>{part}</span>
   })
 }
 
@@ -1414,26 +1451,39 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : jumbledDetail[openJumbledFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
-                  {(jumbledDetail[openJumbledFor] as JumbledSubmissionDetail).items.map((it, idx) => (
-                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
-                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
-                          {it.scoreAwarded}/{it.marks}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
-                        <strong>Your order:</strong> {it.studentOrder.length ? it.studentOrder.join(' ') : <em>(not attempted)</em>}
-                      </div>
-                      {!it.isCorrect && (
-                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
-                          <strong>Correct order:</strong> {it.correctOrder.join(' ')}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' as const, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+                  <table style={{ width: '100%', minWidth: 950, borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Q', 'Jumbled Question', 'Your Order', 'Correct Order', 'Score'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left' as const, fontSize: 11, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '0.04em', padding: '12px 14px', fontWeight: 700, whiteSpace: 'nowrap' as const, background: `linear-gradient(90deg, ${ORANGE}, #ff9a3d)` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(jumbledDetail[openJumbledFor] as JumbledSubmissionDetail).items.map((it, idx) => {
+                        const rowBg = idx % 2 === 0 ? CARD_BG : PAGE_BG
+                        return (
+                          <tr key={idx} style={{ background: rowBg }}>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, fontWeight: 800, color: ORANGE, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const }}>{idx + 1}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 200, maxWidth: 260, color: PAGE_GRAY, fontStyle: 'italic' as const, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>{jumbledShuffle(it.correctOrder).join(' / ')}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 180, maxWidth: 240, color: it.isCorrect ? '#15803d' : '#dc2626', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.studentOrder.length ? it.studentOrder.join(' ') : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(not attempted)</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 180, maxWidth: 240, color: '#15803d', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.isCorrect ? <span style={{ color: PAGE_GRAY }}>—</span> : it.correctOrder.join(' ')}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'middle' as const, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const, textAlign: 'center' as const }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: it.isCorrect ? '#16a34a' : '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12.5, borderRadius: 20, padding: '4px 10px' }}>
+                                {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                                {it.scoreAwarded}/{it.marks}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1468,31 +1518,95 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : storyDetail[openStoryFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the feedback.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10, alignItems: 'start' }}>
-                  {(storyDetail[openStoryFor] as StoryTellingSubmissionDetail).items.map((it, idx) => (
-                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
-                        <span style={{ color: pctColor(Math.round((it.scoreAwarded / it.marks) * 100)), fontWeight: 700, fontSize: 12 }}>{it.scoreAwarded}/{it.marks} ({Math.round((it.scoreAwarded / it.marks) * 100)}%)</span>
-                      </div>
-                      {it.promptType === 'text' && (
-                        <div style={{ background: '#eff6ff', borderLeft: '3px solid #2563eb', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb' }}>PROMPT</span>
-                          <div style={{ marginTop: 2 }}>{it.promptText}</div>
+                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 18 }}>
+                  {(storyDetail[openStoryFor] as StoryTellingSubmissionDetail).items.map((it, idx) => {
+                    const pct = Math.round((it.scoreAwarded / it.marks) * 100)
+                    return (
+                      <div key={idx} style={{ display: 'flex', flexDirection: 'column' as const, gap: 12 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE }}>Q{idx + 1}</div>
+
+                        {/* Box 1: Image | Hints | AI Feedback | Score */}
+                        <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)', padding: '16px', display: 'grid', gridTemplateColumns: (it.promptType === 'image' ? '200px ' : '') + '1fr 1.4fr 90px', gap: 20, alignItems: 'start' }}>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Image</div>
+                            {it.promptType === 'image' && it.imageUrl ? (
+                              <img src={it.imageUrl} alt="Story prompt" style={{ width: '100%', borderRadius: 8, display: 'block', border: `1px solid ${PAGE_BORDER}` }} />
+                            ) : it.promptType === 'text' && it.promptText ? (
+                              <div style={{ fontWeight: 600, fontSize: 13, color: PAGE_TEXT }}>{it.promptText}</div>
+                            ) : (
+                              <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const, fontSize: 12.5 }}>No image available for this attempt.</span>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Hints</div>
+                            {it.points && it.points.length > 0 ? (
+                              <ul style={{ margin: 0, paddingLeft: 16, color: PAGE_TEXT, fontSize: 12.5, lineHeight: 1.7 }}>
+                                {it.points.map((p, pi) => <li key={pi}>{p}</li>)}
+                              </ul>
+                            ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>AI Feedback</div>
+                            {it.feedback ? (
+                              <ul style={{ margin: 0, paddingLeft: 16, color: '#c2410c', fontSize: 12.5, lineHeight: 1.8 }}>
+                                {it.feedback.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean).map((p, pi) => <li key={pi}>{highlightQuotedWords(p)}</li>)}
+                              </ul>
+                            ) : <span style={{ color: PAGE_GRAY, fontSize: 12.5 }}>No feedback available.</span>}
+                          </div>
+                          <div style={{ textAlign: 'center' as const }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: ORANGE, textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Score</div>
+                            <span style={{ display: 'inline-block', background: pctColor(pct), color: '#fff', fontWeight: 700, fontSize: 13, borderRadius: 20, padding: '5px 12px' }}>{it.scoreAwarded}/{it.marks}</span>
+                            <div style={{ fontSize: 11.5, color: pctColor(pct), fontWeight: 700, marginTop: 6 }}>{pct}%</div>
+                            {it.modelStory && (
+                              <button
+                                onClick={() => toggleSpeak(`story-${idx}:ai`, it.modelStory!, it.modelStoryAudioUrl)}
+                                title={it.modelStoryAudioUrl ? "Hear the corrected story" : "No AI voice available — playing a text-to-speech reading instead"}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: speakingKey === `story-${idx}:ai` ? '#16a34a' : '#f0fdf4', border: '1px solid #16a34a55', color: speakingKey === `story-${idx}:ai` ? '#fff' : '#16a34a', borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginTop: 10 }}
+                              >
+                                {speakingKey === `story-${idx}:ai` ? <FaStop size={9} /> : <FaPlay size={8} />}
+                                {speakingKey === `story-${idx}:ai` ? 'Stop' : 'Listen'}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div style={{ background: '#f5f3ff', borderLeft: '3px solid #7c3aed', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed' }}>YOUR STORY</span>
-                        <div style={{ marginTop: 2 }}>
-                          {it.story.trim() ? it.story : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(nothing captured)</span>}
+
+                        {/* Box 2: Your Story / Model Story / Grammar Mistakes / Sentence Formation */}
+                        <div style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)', overflow: 'hidden' }}>
+                          <table style={{ width: '100%', tableLayout: 'fixed' as const, borderCollapse: 'collapse' as const, fontSize: 13 }}>
+                            <thead>
+                              <tr>
+                                {['Your Story', 'Model Story', 'Grammar Mistakes', 'Sentence Formation'].map((h) => (
+                                  <th key={h} style={{ width: '25%', textAlign: 'left' as const, fontSize: 11, color: ORANGE, textTransform: 'uppercase' as const, letterSpacing: '0.03em', padding: '10px 14px', fontWeight: 700, background: PAGE_BG }}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td style={{ padding: '16px 14px', verticalAlign: 'top' as const, color: PAGE_TEXT, fontWeight: 500, lineHeight: 1.7, wordBreak: 'break-word' as const }}>
+                                  {it.story.trim() ? it.story : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(nothing captured)</span>}
+                                </td>
+                                <td style={{ padding: '16px 14px', verticalAlign: 'top' as const, color: '#15803d', fontWeight: 500, lineHeight: 1.7, wordBreak: 'break-word' as const }}>{it.modelStory || <span style={{ color: PAGE_GRAY }}>—</span>}</td>
+                                <td style={{ padding: '16px 14px', verticalAlign: 'top' as const, color: PAGE_TEXT, wordBreak: 'break-word' as const }}>
+                                  {it.grammarMistakes && it.grammarMistakes.length > 0 ? (
+                                    <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+                                      {it.grammarMistakes.map((m, mi) => <li key={mi}>{highlightMistakeWords(m)}</li>)}
+                                    </ul>
+                                  ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                                </td>
+                                <td style={{ padding: '16px 14px', verticalAlign: 'top' as const, color: PAGE_TEXT, wordBreak: 'break-word' as const }}>
+                                  {it.sentenceFormationTips && it.sentenceFormationTips.length > 0 ? (
+                                    <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
+                                      {it.sentenceFormationTips.map((t, ti) => <li key={ti}>{highlightQuotedWords(t)}</li>)}
+                                    </ul>
+                                  ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
                       </div>
-                      <div style={{ background: '#fff7ed', borderLeft: '3px solid #ea580c', borderRadius: '0 8px 8px 0', padding: '6px 10px' }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ea580c' }}>AI FEEDBACK</span>
-                        <div style={{ marginTop: 2 }}>{it.feedback || 'No feedback available.'}</div>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
