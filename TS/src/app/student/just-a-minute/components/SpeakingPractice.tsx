@@ -1763,6 +1763,7 @@ const SpeakingPractice: React.FC = () => {
                     { key: 'model-answer', label: 'Model Answer', icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
                     { key: 'transcript',   label: 'Transcript',   icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/><line x1="7" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="7" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
                     { key: 'voice',        label: 'Voice',        icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="8" y="1" width="8" height="13" rx="4" stroke="currentColor" strokeWidth="2"/><path d="M5 10a7 7 0 0 0 14 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
+                    { key: 'analysis',     label: 'Analysis',     icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/><line x1="7" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="7" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><line x1="7" y1="16" x2="11" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
                     { key: 'detailed',     label: 'Detailed',     icon: <svg viewBox="0 0 24 24" fill="none" width="13" height="13"><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg> },
                   ]).map(tab => {
                     const isActive = activeTab === tab.key
@@ -1854,6 +1855,16 @@ const SpeakingPractice: React.FC = () => {
                         ))}
                       </div>
                     )}
+                    {activeTab === 'analysis' && (
+                      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
+                        <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '12px 14px', display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+                          {[80, 92, 65].map((w, i) => <div key={i} style={{ height: 7, background: '#e5e7eb', borderRadius: 3, width: `${w}%` }} />)}
+                        </div>
+                        <div style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1px solid #f0f0f0', display: 'flex', flexDirection: 'column' as const, gap: 8 }}>
+                          {[85, 70, 90, 60].map((w, i) => <div key={i} style={{ height: 8, background: '#e5e7eb', borderRadius: 4, width: `${w}%` }} />)}
+                        </div>
+                      </div>
+                    )}
                     {activeTab === 'detailed' && (
                       <div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 8, marginBottom: 12 }}>
@@ -1892,8 +1903,8 @@ const SpeakingPractice: React.FC = () => {
                       <div>
                         {sampleAnswer ? (
                           <>
-                            <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 8 }}>Model Answer <span style={{ color: '#9ca3af', fontWeight: 400 }}>(Ideal Answer)</span></div>
-                            <div style={{ background: '#f8f9ff', borderRadius: 12, padding: '14px 16px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.75, borderLeft: '3px solid #6c63ff' }}>{sampleAnswer}</div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 10 }}>Model Answer <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.85rem' }}>(Ideal Answer)</span></div>
+                            <div style={{ background: '#f8f9ff', borderRadius: 12, padding: '18px 20px', fontSize: '1.05rem', color: '#374151', lineHeight: 1.8, borderLeft: '3px solid #6c63ff' }}>{sampleAnswer}</div>
                           </>
                         ) : (
                           <div style={{ textAlign: 'center' as const, color: '#9ca3af', fontSize: '0.82rem', padding: '40px 0' }}>Model answer not available for this topic.</div>
@@ -1906,13 +1917,13 @@ const SpeakingPractice: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 14 }}>
                         {transcript && (
                           <div>
-                            <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 6 }}>Your Original Transcript</div>
-                            <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '12px 14px', fontSize: '0.83rem', color: '#374151', lineHeight: 1.7 }}>{transcript}</div>
+                            <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 10 }}>Your Original Transcript</div>
+                            <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '18px 20px', fontSize: '1.05rem', color: '#374151', lineHeight: 1.8 }}>{transcript}</div>
                           </div>
                         )}
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.83rem', color: '#1a1a2e', marginBottom: 6 }}>AI Corrected Transcript</div>
-                          <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '12px 14px', fontSize: '0.83rem', color: '#15803d', lineHeight: 1.7, borderLeft: '3px solid #16a34a' }}>{feedback.correctedTranscript}</div>
+                          <div style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a2e', marginBottom: 10 }}>AI Corrected Transcript</div>
+                          <div style={{ background: '#f0fdf4', borderRadius: 12, padding: '18px 20px', fontSize: '1.05rem', color: '#15803d', lineHeight: 1.8, borderLeft: '3px solid #16a34a' }}>{feedback.correctedTranscript}</div>
                         </div>
                       </div>
                     )}
@@ -1951,8 +1962,8 @@ const SpeakingPractice: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Tab 4: Detailed Feedback */}
-                    {activeTab === 'detailed' && (() => {
+                    {/* Tab 4: Analysis (Sentence Analysis + Category Scores) */}
+                    {activeTab === 'analysis' && (() => {
                       const diff = computeWordDiff(transcript || '', feedback.correctedTranscript || '')
                       const sc = feedback.scores
                       return (
@@ -1963,18 +1974,18 @@ const SpeakingPractice: React.FC = () => {
                             <div style={{ background: '#f8f9fa', borderRadius: 12, padding: '12px 14px' }}>
                               <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 8 }}>Sentence Analysis</div>
                               {/* Student line */}
-                              <div style={{ marginBottom: 6 }}>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 6, padding: '1px 7px', marginRight: 8 }}>YOU</span>
-                                <span style={{ fontSize: '0.8rem', lineHeight: 1.7 }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+                                <span style={{ flexShrink: 0, marginTop: 2, fontSize: '0.68rem', fontWeight: 700, color: '#dc2626', background: '#fee2e2', borderRadius: 6, padding: '2px 7px' }}>YOU</span>
+                                <span style={{ flex: 1, fontSize: '0.8rem', lineHeight: 1.7 }}>
                                   {diff.origOut.map((t, idx) => (
                                     <span key={idx} style={t.ok ? { color: '#374151' } : { color: '#dc2626', background: '#fee2e2', borderRadius: 3, padding: '0 2px', textDecoration: 'line-through', marginRight: 1 }}>{t.w} </span>
                                   ))}
                                 </span>
                               </div>
                               {/* AI corrected line */}
-                              <div>
-                                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '1px 7px', marginRight: 8 }}>AI</span>
-                                <span style={{ fontSize: '0.8rem', lineHeight: 1.7 }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                                <span style={{ flexShrink: 0, marginTop: 2, fontSize: '0.68rem', fontWeight: 700, color: '#16a34a', background: '#dcfce7', borderRadius: 6, padding: '2px 7px' }}>AI</span>
+                                <span style={{ flex: 1, fontSize: '0.8rem', lineHeight: 1.7 }}>
                                   {diff.corrOut.map((t, idx) => (
                                     <span key={idx} style={t.ok ? { color: '#374151' } : { color: '#16a34a', background: '#dcfce7', borderRadius: 3, padding: '0 2px', fontWeight: 600, marginRight: 1 }}>{t.w} </span>
                                   ))}
@@ -1987,24 +1998,33 @@ const SpeakingPractice: React.FC = () => {
                           {sc && (
                             <div style={{ background: '#fff', borderRadius: 12, padding: '12px 14px', border: '1px solid #f0f0f0' }}>
                               <div style={{ fontWeight: 700, fontSize: '0.78rem', color: '#1a1a2e', marginBottom: 10 }}>Category Scores</div>
-                              {([
-                                { label: 'Grammar',    val: sc.grammar,    color: '#0284c7' },
-                                { label: 'Fluency',    val: sc.fluency,    color: '#6c63ff' },
-                                { label: 'Vocabulary', val: sc.vocabulary, color: '#ff7a00' },
-                                { label: 'Sentence',   val: sc.sentence,   color: '#16a34a' },
-                              ]).map(s => (
-                                <div key={s.label} style={{ marginBottom: 8 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                                    <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#374151' }}>{s.label}</span>
-                                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: s.color }}>{s.val}/100</span>
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', columnGap: 16, rowGap: 10 }}>
+                                {([
+                                  { label: 'Grammar',    val: sc.grammar,    color: '#0284c7' },
+                                  { label: 'Fluency',    val: sc.fluency,    color: '#6c63ff' },
+                                  { label: 'Vocabulary', val: sc.vocabulary, color: '#ff7a00' },
+                                  { label: 'Sentence',   val: sc.sentence,   color: '#16a34a' },
+                                ]).map(s => (
+                                  <div key={s.label}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                                      <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#374151' }}>{s.label}</span>
+                                      <span style={{ fontSize: '0.74rem', fontWeight: 700, color: s.color }}>{s.val}/100</span>
+                                    </div>
+                                    <div style={{ height: 6, background: '#f0f0f0', borderRadius: 4 }}>
+                                      <div style={{ height: 6, background: s.color, borderRadius: 4, width: `${s.val}%`, transition: 'width 0.6s ease' }} />
+                                    </div>
                                   </div>
-                                  <div style={{ height: 6, background: '#f0f0f0', borderRadius: 4 }}>
-                                    <div style={{ height: 6, background: s.color, borderRadius: 4, width: `${s.val}%`, transition: 'width 0.6s ease' }} />
-                                  </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           )}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Tab 5: Detailed Feedback (Grammar/Fluency/Vocabulary/Recommendations) */}
+                    {activeTab === 'detailed' && (
+                        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 10 }}>
 
                           {/* ── Category text feedback ── */}
                           {([
@@ -2032,8 +2052,7 @@ const SpeakingPractice: React.FC = () => {
                             </div>
                           )}
                         </div>
-                      )
-                    })()}
+                    )}
 
                     <div style={{ marginTop: 20 }}>
                       <button onClick={resetPractice} style={{ width: '100%', background: 'linear-gradient(90deg,#6c63ff,#8b7cf8)', border: 'none', borderRadius: 12, padding: '12px', color: '#fff', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(108,99,255,0.28)' }}>

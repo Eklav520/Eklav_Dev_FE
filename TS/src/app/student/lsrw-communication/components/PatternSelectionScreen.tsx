@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
   FaFileAlt, FaBookOpen, FaMicrophone, FaPuzzlePiece, FaImage, FaInfoCircle, FaArrowRight,
   FaCheckCircle, FaHourglassHalf, FaChartLine, FaSearch, FaChevronDown, FaChevronUp, FaDownload,
-  FaStar, FaRegStar, FaTrophy, FaExclamationTriangle, FaClock, FaTimes, FaVolumeUp, FaStop,
+  FaStar, FaRegStar, FaTrophy, FaExclamationTriangle, FaClock, FaTimes, FaStop, FaPlay,
   FaGraduationCap,
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
@@ -51,16 +53,27 @@ const PATTERNS: {
 type SectionResult = { sectionKey: string; label: string; marks: number; scoreAwarded: number | null; status: 'pending' | 'attempted' | 'graded'; submissionId?: string | null }
 type SubmissionMistake = { expected: string; said: string; type: 'substitution' | 'missing' | 'extra' }
 type AlignmentToken = { type: 'match' | 'substitution' | 'missing' | 'extra'; word?: string; expected?: string; said?: string }
+// `points` is the current shape; `feedback` is kept optional to still render
+// older submissions saved before this was split into bullet points.
+type AccentReview = { score: number; points?: string[]; feedback?: string }
 type SubmissionItem = {
   itemId: string; type: 'reading' | 'listening'; expectedSentence: string; transcript: string
   marks: number; scoreAwarded: number; accuracyPercent: number; mistakes: SubmissionMistake[]; alignment?: AlignmentToken[]; audioUrl?: string | null; recordedSeconds: number
   pronunciationFeedback?: string
+  // AI reading of the expected sentence, for side-by-side comparison with the
+  // student's own recording — the item's real reference audio for listening
+  // questions, or a cached TTS reading for reading questions.
+  aiAudioUrl?: string | null
+  // GPT-4o audio-based judgement of the student's actual pronunciation,
+  // stress and intonation (rise/fall) from the recording itself — separate
+  // from the plain word-accuracy diff above.
+  accentReview?: AccentReview | null
 }
 type SubmissionDetail = {
   _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number
   items: SubmissionItem[]
 }
-type SpeakingSubmissionItem = { itemId: string; topic: string; transcript: string; marks: number; scoreAwarded: number; feedback: string; sampleAnswer?: string; recordedSeconds: number }
+type SpeakingSubmissionItem = { itemId: string; topic: string; transcript: string; marks: number; scoreAwarded: number; feedback: string; mistakes?: string[]; sampleAnswer?: string; sampleAnswerAudioUrl?: string | null; recordedSeconds: number }
 type SpeakingSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: SpeakingSubmissionItem[] }
 type GrammarSubmissionItem = { itemId: string; category: string; type: 'mcq' | 'fill'; question: string; options: string[]; correctAnswer: string; studentAnswer: string; isCorrect: boolean; marks: number; scoreAwarded: number }
 type GrammarSubmissionDetail = { _id: string; totalMarks: number; totalScoreAwarded: number; totalQuestions: number; items: GrammarSubmissionItem[] }
@@ -80,14 +93,38 @@ const pctColor = (pct: number) => pct >= 80 ? '#16a34a' : pct >= 60 ? '#ea580c' 
 const overallLabel = (pct: number) =>
   pct >= 90 ? 'Excellent' : pct >= 75 ? 'Very Good' : pct >= 60 ? 'Good' : pct >= 40 ? 'Average' : 'Needs Improvement'
 
+// Accent/pronunciation feedback quotes the specific words being discussed in
+// 'single' or "double" quotes — highlight those inline so the exact word a
+// student should focus on jumps out instead of blending into the sentence.
+const highlightQuotedWords = (text: string) => {
+  const parts = text.split(/('[^']+'|"[^"]+")/g)
+  return parts.map((part, i) => {
+    const quoted = /^['"][^'"]+['"]$/.test(part)
+    return quoted
+      ? <span key={i} style={{ fontWeight: 700, color: '#4c1d95', background: '#e9d5ff', borderRadius: 4, padding: '0 4px' }}>{part}</span>
+      : <span key={i}>{part}</span>
+  })
+}
+
 // Graded % is computed only over sections that have real grading so far
 // (gradedMarks/gradedScore), not the attempt's full total — otherwise
 // sections with no grading yet (pending: true "auto-grade coming later")
 // would silently drag the percentage down and mislead the student.
-const gradedPct = (a: Attempt) => {
+//
+// `accentBlend` (submissionId -> blended 0-100 %, see the fetch effect in the
+// component) lets Listening & Reading sections fold in the accent/intonation
+// score (70% word-accuracy + 30% accent) for DISPLAY purposes only — the
+// underlying scoreAwarded/marks stored on the attempt are never touched, so
+// this only changes what percentage is shown, not any real recorded grade.
+const gradedPct = (a: Attempt, accentBlend?: Record<string, number>) => {
   const graded = a.sections.filter((s) => s.status === 'graded')
   const gradedMarks = graded.reduce((sum, s) => sum + s.marks, 0)
-  const gradedScore = graded.reduce((sum, s) => sum + (s.scoreAwarded || 0), 0)
+  const gradedScore = graded.reduce((sum, s) => {
+    if (s.sectionKey === 'listeningReading' && s.submissionId && accentBlend?.[s.submissionId] !== undefined) {
+      return sum + (accentBlend[s.submissionId] / 100) * s.marks
+    }
+    return sum + (s.scoreAwarded || 0)
+  }, 0)
   return gradedMarks > 0 ? Math.round((gradedScore / gradedMarks) * 100) : 0
 }
 
@@ -97,32 +134,101 @@ const formatDuration = (a: Attempt) => {
   return mins < 1 ? '< 1 min' : `${mins} min`
 }
 
-const downloadReport = (a: Attempt) => {
+const BRAND_ORANGE: [number, number, number] = [255, 122, 0]
+const BRAND_DARK: [number, number, number] = [15, 23, 42]
+const BRAND_GRAY: [number, number, number] = [100, 116, 139]
+
+const downloadReport = (a: Attempt, student?: { name?: string; email?: string }, accentBlend?: Record<string, number>) => {
   const graded = a.sections.filter((s) => s.status === 'graded')
   const gradedMarks = graded.reduce((sum, s) => sum + s.marks, 0)
   const gradedScore = graded.reduce((sum, s) => sum + (s.scoreAwarded || 0), 0)
-  const lines = [
-    `LSRW Communication Round — Pattern ${a.patternKey} Report`,
-    `Date: ${new Date(a.createdAt).toLocaleString()}`,
-    `Status: ${a.status === 'completed' ? 'Completed' : 'In Progress'}`,
-    `Time Taken: ${formatDuration(a)}`,
-    '',
-    'Section-wise Result:',
-    ...a.sections.map((s) => `  ${s.label}: ${
-      s.status === 'graded' ? `${s.scoreAwarded}/${s.marks} (${Math.round((s.scoreAwarded! / s.marks) * 100)}%)`
-        : s.status === 'attempted' ? 'Attempted — pending grading'
-        : 'Not attempted'
-    }`),
-    '',
-    `Graded Total: ${gradedScore}/${gradedMarks}${gradedMarks > 0 ? ` (${Math.round((gradedScore / gradedMarks) * 100)}%)` : ''}`,
+  const pct = gradedPct(a, accentBlend)
+  const sectionPct = (s: SectionResult) =>
+    s.sectionKey === 'listeningReading' && s.submissionId && accentBlend?.[s.submissionId] !== undefined
+      ? accentBlend[s.submissionId]
+      : Math.round((s.scoreAwarded! / s.marks) * 100)
+
+  const doc = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  // ── Header band ──
+  doc.setFillColor(...BRAND_ORANGE)
+  doc.rect(0, 0, pageWidth, 28, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text('LSRW Communication Round', 14, 13)
+  doc.setFontSize(10.5)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Pattern ${a.patternKey} — Performance Report`, 14, 21)
+
+  // ── Student / attempt meta ──
+  let y = 38
+  doc.setTextColor(...BRAND_DARK)
+  doc.setFontSize(10)
+  const metaRows: [string, string][] = [
+    ...(student?.name ? [['Student', student.name] as [string, string]] : []),
+    ...(student?.email ? [['Email', student.email] as [string, string]] : []),
+    ['Date', new Date(a.createdAt).toLocaleString()],
+    ['Status', a.status === 'completed' ? 'Completed' : 'In Progress'],
+    ['Time Taken', formatDuration(a)],
   ]
-  const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `lsrw-pattern${a.patternKey}-${new Date(a.createdAt).toISOString().slice(0, 10)}.txt`
-  link.click()
-  URL.revokeObjectURL(url)
+  metaRows.forEach(([label, value]) => {
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${label}:`, 14, y)
+    doc.setFont('helvetica', 'normal')
+    doc.text(value, 45, y)
+    y += 6
+  })
+
+  // ── Overall score summary card ──
+  y += 4
+  doc.setDrawColor(226, 232, 240)
+  doc.setFillColor(248, 250, 252)
+  doc.roundedRect(14, y, pageWidth - 28, 22, 2, 2, 'FD')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...BRAND_GRAY)
+  doc.text('GRADED TOTAL', 20, y + 8)
+  doc.setFontSize(15)
+  const scoreColor: [number, number, number] = pct >= 80 ? [22, 163, 74] : pct >= 60 ? [234, 88, 12] : [220, 38, 38]
+  doc.setTextColor(...scoreColor)
+  doc.text(`${gradedScore}/${gradedMarks}  (${pct}%)`, 20, y + 17)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(...BRAND_DARK)
+  doc.text(overallLabel(pct), pageWidth - 20, y + 13, { align: 'right' })
+  y += 32
+
+  // ── Section-wise table ──
+  autoTable(doc, {
+    startY: y,
+    head: [['Section', 'Score', 'Percentage', 'Status']],
+    body: a.sections.map((s) => [
+      s.label,
+      s.status === 'graded' ? `${s.scoreAwarded}/${s.marks}` : '—',
+      s.status === 'graded' ? `${sectionPct(s)}%` : '—',
+      s.status === 'graded' ? 'Graded' : s.status === 'attempted' ? 'Pending grading' : 'Not attempted',
+    ]),
+    styles: { fontSize: 9.5, cellPadding: 4 },
+    headStyles: { fillColor: BRAND_ORANGE, textColor: [255, 255, 255], fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 3) {
+        const v = String(data.cell.raw)
+        data.cell.styles.textColor = v === 'Graded' ? [22, 163, 74] : v === 'Pending grading' ? [234, 88, 12] : [148, 163, 184]
+        data.cell.styles.fontStyle = 'bold'
+      }
+    },
+  })
+
+  // ── Footer ──
+  const finalY = (doc as any).lastAutoTable?.finalY || y + 40
+  doc.setFontSize(8)
+  doc.setTextColor(...BRAND_GRAY)
+  doc.text(`Generated on ${new Date().toLocaleString()} — Eklav LSRW Communication Assessment`, 14, finalY + 12)
+
+  doc.save(`lsrw-pattern${a.patternKey}-${new Date(a.createdAt).toISOString().slice(0, 10)}.pdf`)
 }
 
 // Unique section keys across both patterns, in first-seen order, for the
@@ -179,6 +285,40 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
       .catch(() => {})
       .finally(() => setLoadingAttempts(false))
   }, [user?.token, baseURL])
+
+  // Listening & Reading's displayed percentage blends in the accent/intonation
+  // score (70% word-accuracy + 30% accent, same weighting as the per-question
+  // badge in the mistake breakdown) — but that needs each submission's full
+  // item list, which the attempt-history endpoint doesn't return. Fetch it
+  // once per graded Listening & Reading submissionId and cache the blended %
+  // here; every percentage shown for that section (table cell, section-wise
+  // performance bar, PDF report) reads from this cache. The underlying
+  // scoreAwarded/marks stored on the attempt are never modified — this only
+  // changes what percentage is displayed.
+  const [accentBlend, setAccentBlend] = useState<Record<string, number>>({})
+  const accentBlendFetchedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!user?.token) return
+    attempts.forEach((a) => a.sections.forEach((s) => {
+      if (s.sectionKey !== 'listeningReading' || s.status !== 'graded' || !s.submissionId) return
+      if (accentBlendFetchedRef.current.has(s.submissionId)) return
+      accentBlendFetchedRef.current.add(s.submissionId)
+      fetch(`${baseURL}/api/student/lsrw-content/submissions/${s.submissionId}`, { headers: { Authorization: `Bearer ${user.token}` } })
+        .then((r) => r.json())
+        .then((data) => {
+          if (!data.success) return
+          const items: SubmissionItem[] = data.submission.items || []
+          const totalMarks = items.reduce((sum, it) => sum + it.marks, 0)
+          if (totalMarks === 0) return
+          const blendedScore = items.reduce((sum, it) => {
+            const combinedPct = it.accentReview ? it.accuracyPercent * 0.7 + it.accentReview.score * 0.3 : it.accuracyPercent
+            return sum + (combinedPct / 100) * it.marks
+          }, 0)
+          setAccentBlend((prev) => ({ ...prev, [s.submissionId!]: Math.round((blendedScore / totalMarks) * 100) }))
+        })
+        .catch(() => {})
+    }))
+  }, [attempts, user?.token, baseURL])
 
   const chronological = useMemo(() => [...attempts].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()), [attempts])
 
@@ -306,7 +446,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     playbackAudioRef.current?.pause()
     playbackAudioRef.current = null
-    setSpeakingIdx(null)
+    setSpeakingKey(null)
     setOpenMistakesFor(null)
   }
 
@@ -409,17 +549,18 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
       .catch(() => setStoryDetail((prev) => ({ ...prev, [submissionId]: 'error' })))
   }
 
-  // Plays the student's actual recorded voice when it was captured/uploaded
-  // (audioUrl); older submissions from before real audio capture existed
-  // fall back to a text-to-speech reading of the transcript.
-  const [speakingIdx, setSpeakingIdx] = useState<number | null>(null)
+  // Plays either the student's actual recorded voice or the AI reference
+  // voice, keyed by a string (`${idx}:student` / `${idx}:ai`) so both can be
+  // tracked independently per question. Falls back to text-to-speech when no
+  // real audio URL was captured (e.g. older submissions).
+  const [speakingKey, setSpeakingKey] = useState<string | null>(null)
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null)
-  const toggleSpeak = (idx: number, text: string, audioUrl?: string | null) => {
-    if (speakingIdx === idx) {
+  const toggleSpeak = (key: string, text: string, audioUrl?: string | null) => {
+    if (speakingKey === key) {
       playbackAudioRef.current?.pause()
       playbackAudioRef.current = null
       if ('speechSynthesis' in window) window.speechSynthesis.cancel()
-      setSpeakingIdx(null)
+      setSpeakingKey(null)
       return
     }
     playbackAudioRef.current?.pause()
@@ -429,19 +570,19 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
     if (audioUrl) {
       const audioEl = new Audio(audioUrl)
       playbackAudioRef.current = audioEl
-      audioEl.onended = () => setSpeakingIdx(null)
-      audioEl.onerror = () => setSpeakingIdx(null)
-      setSpeakingIdx(idx)
-      audioEl.play().catch(() => setSpeakingIdx(null))
+      audioEl.onended = () => setSpeakingKey(null)
+      audioEl.onerror = () => setSpeakingKey(null)
+      setSpeakingKey(key)
+      audioEl.play().catch(() => setSpeakingKey(null))
       return
     }
 
     if (!('speechSynthesis' in window)) return
     const utter = new SpeechSynthesisUtterance(text)
     utter.lang = 'en-IN'
-    utter.onend = () => setSpeakingIdx(null)
-    utter.onerror = () => setSpeakingIdx(null)
-    setSpeakingIdx(idx)
+    utter.onend = () => setSpeakingKey(null)
+    utter.onerror = () => setSpeakingKey(null)
+    setSpeakingKey(key)
     window.speechSynthesis.speak(utter)
   }
 
@@ -453,11 +594,11 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
     const map: Record<string, number | null> = {}
     ;([1, 2] as const).forEach((p) => {
       byPattern[p].forEach((a, idx) => {
-        map[a._id] = idx === 0 ? null : gradedPct(a) - gradedPct(byPattern[p][idx - 1])
+        map[a._id] = idx === 0 ? null : gradedPct(a, accentBlend) - gradedPct(byPattern[p][idx - 1], accentBlend)
       })
     })
     return map
-  }, [chronological])
+  }, [chronological, accentBlend])
 
   const filteredSortedAttempts = useMemo(() => {
     let list = [...attempts]
@@ -473,16 +614,18 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
     list.sort((a, b) => {
       if (sortBy === 'latest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       if (sortBy === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      if (sortBy === 'highest') return gradedPct(b) - gradedPct(a)
-      return gradedPct(a) - gradedPct(b)
+      if (sortBy === 'highest') return gradedPct(b, accentBlend) - gradedPct(a, accentBlend)
+      return gradedPct(a, accentBlend) - gradedPct(b, accentBlend)
     })
     return list
-  }, [attempts, patternFilter, search, sortBy])
+  }, [attempts, patternFilter, search, sortBy, accentBlend])
 
   const sectionCell = (result: SectionResult | undefined): { text: string; sub: string | null; color: string } => {
     if (!result || result.status === 'pending') return { text: '—', sub: null, color: PAGE_GRAY }
     if (result.status === 'graded') {
-      const pct = Math.round((result.scoreAwarded! / result.marks) * 100)
+      const pct = result.sectionKey === 'listeningReading' && result.submissionId && accentBlend[result.submissionId] !== undefined
+        ? accentBlend[result.submissionId]
+        : Math.round((result.scoreAwarded! / result.marks) * 100)
       return { text: `${result.scoreAwarded}/${result.marks}`, sub: `${pct}%`, color: pctColor(pct) }
     }
     return { text: result.label, sub: 'Pending grading', color: PAGE_GRAY } // attempted but not gradable yet
@@ -657,7 +800,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                 <tr><td colSpan={11} style={{ padding: '30px 20px', textAlign: 'center' as const, color: PAGE_GRAY, fontSize: 13 }}>No attempts match.</td></tr>
               ) : (
                 filteredSortedAttempts.map((a, rowIdx) => {
-                  const pct = gradedPct(a)
+                  const pct = gradedPct(a, accentBlend)
                   const stars = Math.max(1, Math.min(5, Math.round(pct / 20)))
                   const improvement = improvementById[a._id]
                   const isOpen = expandedId === a._id
@@ -700,8 +843,13 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          {improvement === null || improvement === undefined ? (
+                          {improvement === undefined ? (
                             <span style={{ fontSize: 12, color: PAGE_GRAY }}>—</span>
+                          ) : improvement === null ? (
+                            // First attempt of this pattern — nothing to compare against yet,
+                            // so show the overall score itself as the baseline future attempts
+                            // will be measured against.
+                            <span style={{ fontSize: 12, fontWeight: 600, color: PAGE_GRAY }}>{pct}% <span style={{ fontWeight: 400 }}>(baseline)</span></span>
                           ) : (
                             <span style={{ fontSize: 12, fontWeight: 700, color: improvement >= 0 ? '#16a34a' : '#dc2626' }}>
                               {improvement >= 0 ? '+' : ''}{improvement}%
@@ -754,7 +902,11 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                   {secDefs.map((def, idx) => {
                                     const result = a.sections[idx]
                                     const graded_ = result?.status === 'graded'
-                                    const pctBar = graded_ ? Math.round((result.scoreAwarded! / result.marks) * 100) : 0
+                                    const pctBar = graded_
+                                      ? (result.sectionKey === 'listeningReading' && result.submissionId && accentBlend[result.submissionId] !== undefined
+                                          ? accentBlend[result.submissionId]
+                                          : Math.round((result.scoreAwarded! / result.marks) * 100))
+                                      : 0
                                     return (
                                       <div key={def.key}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: PAGE_TEXT, marginBottom: 3 }}>
@@ -778,7 +930,9 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                     if (s.status !== 'graded') {
                                       return <div key={s.sectionKey} style={{ fontSize: 11.5, color: PAGE_GRAY }}><FaHourglassHalf size={9} style={{ marginRight: 6 }} />{s.label}: pending grading.</div>
                                     }
-                                    const pctS = Math.round((s.scoreAwarded! / s.marks) * 100)
+                                    const pctS = s.sectionKey === 'listeningReading' && s.submissionId && accentBlend[s.submissionId] !== undefined
+                                      ? accentBlend[s.submissionId]
+                                      : Math.round((s.scoreAwarded! / s.marks) * 100)
                                     const msg = pctS >= 85 ? `${s.label}: excellent accuracy — keep it up.`
                                       : pctS >= 60 ? `${s.label}: solid performance — keep practicing.`
                                       : `${s.label}: needs more practice — review the fundamentals.`
@@ -791,7 +945,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                             onClick={() => toggleMistakes(s.submissionId!)}
                                             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                                           >
-                                            View Mistakes
+                                            View Feedback
                                           </button>
                                         )}
                                         {s.submissionId && s.sectionKey === 'speaking' && (
@@ -807,7 +961,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                             onClick={() => toggleGrammarFeedback(s.submissionId!)}
                                             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                                           >
-                                            View Answers
+                                            View Feedback
                                           </button>
                                         )}
                                         {s.submissionId && s.sectionKey === 'passages' && (
@@ -815,7 +969,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                             onClick={() => togglePassageFeedback(s.submissionId!)}
                                             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                                           >
-                                            View Answers
+                                            View Feedback
                                           </button>
                                         )}
                                         {s.submissionId && s.sectionKey === 'jumbled' && (
@@ -823,7 +977,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                             onClick={() => toggleJumbledFeedback(s.submissionId!)}
                                             style={{ background: 'none', border: 'none', color: ORANGE, fontSize: 11, fontWeight: 700, cursor: 'pointer', padding: 0, flexShrink: 0 }}
                                           >
-                                            View Answers
+                                            View Feedback
                                           </button>
                                         )}
                                         {s.submissionId && s.sectionKey === 'storytelling' && (
@@ -839,7 +993,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                                   })}
                                 </div>
                                 <button
-                                  onClick={() => downloadReport(a)}
+                                  onClick={() => downloadReport(a, { name: user?.username, email: user?.email }, accentBlend)}
                                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, border: 'none', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
                                 >
                                   <FaDownload size={11} /> Download Report
@@ -899,74 +1053,112 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : mistakeDetail[openMistakesFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the mistake breakdown.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10, alignItems: 'stretch' }}>
-                  {(mistakeDetail[openMistakesFor] as SubmissionDetail).items.map((it, idx) => {
-                    const expectedTokens = it.alignment?.filter((t) => t.type !== 'extra') || []
-                    const saidTokens = it.alignment?.filter((t) => t.type !== 'missing') || []
-                    const isPerfect = it.mistakes.length === 0
-                    return (
-                      <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px', display: 'flex', flexDirection: 'column' as const, height: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1} · {it.type === 'reading' ? 'Reading' : 'Listening'}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            {(it.transcript?.trim() || it.audioUrl) && (
-                              <button
-                                onClick={() => toggleSpeak(idx, it.transcript, it.audioUrl)}
-                                title={it.audioUrl ? "Play your actual recording" : "No recording saved for this attempt — playing a text-to-speech reading of the transcript instead"}
-                                style={{ width: 24, height: 24, borderRadius: '50%', border: `1px solid ${ORANGE}55`, background: speakingIdx === idx ? ORANGE : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                              >
-                                {speakingIdx === idx
-                                  ? <FaStop size={9} color="#fff" />
-                                  : <FaVolumeUp size={10} color={ORANGE} />}
-                              </button>
-                            )}
-                            <span style={{ color: pctColor(it.accuracyPercent), fontWeight: 700, fontSize: 12 }}>{it.scoreAwarded}/{it.marks} ({it.accuracyPercent}%)</span>
-                          </div>
-                        </div>
-                        {isPerfect && (
-                          <div style={{ color: '#16a34a', fontSize: 11.5, fontWeight: 700, marginBottom: 6 }}>✓ Perfect — matched every word.</div>
-                        )}
-                        {it.alignment && it.alignment.length > 0 ? (
-                          <>
-                            <div style={{ background: '#eff6ff', borderLeft: '3px solid #2563eb', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb' }}>EXPECTED</span>
-                              <div style={{ marginTop: 2 }}>
-                                {expectedTokens.map((t, ti) => {
-                                  const wrong = t.type === 'missing' || t.type === 'substitution'
-                                  return <span key={ti} style={wrong ? { color: '#dc2626', fontWeight: 700 } : undefined}>{t.type === 'match' ? t.word : t.expected} </span>
-                                })}
+                <div style={{ overflowX: 'auto' as const, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+                  <table style={{ width: '100%', minWidth: 1250, borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Q', 'Expected', 'Student Said', 'Pronunciation Tips', 'Accent & Intonation', 'Score'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left' as const, fontSize: 11, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '0.04em', padding: '12px 14px', fontWeight: 700, whiteSpace: 'nowrap' as const, background: `linear-gradient(90deg, ${ORANGE}, #ff9a3d)` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(mistakeDetail[openMistakesFor] as SubmissionDetail).items.map((it, idx) => {
+                        const expectedTokens = it.alignment?.filter((t) => t.type !== 'extra') || []
+                        const saidTokens = it.alignment?.filter((t) => t.type !== 'missing') || []
+                        const isPerfect = it.mistakes.length === 0
+                        // Overall = 70% word-accuracy + 30% accent/intonation when an
+                        // accent review exists (display-only — graded marks/section
+                        // totals still use word-accuracy alone, unchanged).
+                        const combinedPct = it.accentReview
+                          ? Math.round(it.accuracyPercent * 0.7 + it.accentReview.score * 0.3)
+                          : it.accuracyPercent
+                        const rowBg = idx % 2 === 0 ? CARD_BG : PAGE_BG
+                        return (
+                          <tr key={idx} style={{ background: rowBg }}>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, fontWeight: 800, color: ORANGE, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const }}>
+                              {idx + 1}
+                              <div style={{ fontSize: 10.5, fontWeight: 600, color: PAGE_GRAY, textTransform: 'capitalize' as const }}>{it.type}</div>
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 200, maxWidth: 240, color: PAGE_TEXT, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {(it.aiAudioUrl || it.expectedSentence) && (
+                                <button
+                                  onClick={() => toggleSpeak(`${idx}:ai`, it.expectedSentence, it.aiAudioUrl)}
+                                  title={it.aiAudioUrl ? "Play the AI's model pronunciation" : "No AI voice available — playing a text-to-speech reading instead"}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: speakingKey === `${idx}:ai` ? '#6c63ff' : '#f0efff', border: '1px solid #6c63ff55', color: speakingKey === `${idx}:ai` ? '#fff' : '#6c63ff', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginBottom: 6 }}
+                                >
+                                  {speakingKey === `${idx}:ai` ? <FaStop size={9} /> : <FaPlay size={8} />}
+                                  {speakingKey === `${idx}:ai` ? 'Stop' : 'AI Voice'}
+                                </button>
+                              )}
+                              {isPerfect && (
+                                <div style={{ color: '#16a34a', fontSize: 11.5, fontWeight: 700, marginBottom: 4 }}>✓ Perfect match</div>
+                              )}
+                              <div>
+                                {expectedTokens.length > 0
+                                  ? expectedTokens.map((t, ti) => {
+                                      const wrong = t.type === 'missing' || t.type === 'substitution'
+                                      return <span key={ti} style={wrong ? { color: '#dc2626', fontWeight: 700 } : undefined}>{t.type === 'match' ? t.word : t.expected} </span>
+                                    })
+                                  : it.expectedSentence}
                               </div>
-                            </div>
-                            <div style={{ background: '#f5f3ff', borderLeft: '3px solid #7c3aed', borderRadius: '0 8px 8px 0', padding: '6px 10px' }}>
-                              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed' }}>STUDENT SAID</span>
-                              <div style={{ marginTop: 2 }}>
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 200, maxWidth: 240, color: PAGE_TEXT, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {(it.transcript?.trim() || it.audioUrl) && (
+                                <button
+                                  onClick={() => toggleSpeak(`${idx}:student`, it.transcript, it.audioUrl)}
+                                  title={it.audioUrl ? "Play your actual recording" : "No recording saved for this attempt — playing a text-to-speech reading of the transcript instead"}
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: speakingKey === `${idx}:student` ? ORANGE : '#fff7ed', border: `1px solid ${ORANGE}55`, color: speakingKey === `${idx}:student` ? '#fff' : ORANGE, borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginBottom: 6 }}
+                                >
+                                  {speakingKey === `${idx}:student` ? <FaStop size={9} /> : <FaPlay size={8} />}
+                                  {speakingKey === `${idx}:student` ? 'Stop' : 'Your Voice'}
+                                </button>
+                              )}
+                              <div>
                                 {it.transcript.trim() === '' ? (
                                   <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(nothing captured)</span>
-                                ) : saidTokens.map((t, ti) => {
-                                  const wrong = t.type === 'extra' || t.type === 'substitution'
-                                  return <span key={ti} style={wrong ? { color: '#dc2626', fontWeight: 700 } : undefined}>{t.type === 'match' ? t.word : t.said} </span>
-                                })}
+                                ) : saidTokens.length > 0 ? (
+                                  saidTokens.map((t, ti) => {
+                                    const wrong = t.type === 'extra' || t.type === 'substitution'
+                                    return <span key={ti} style={wrong ? { color: '#dc2626', fontWeight: 700 } : undefined}>{t.type === 'match' ? t.word : t.said} </span>
+                                  })
+                                ) : it.transcript}
                               </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div style={{ fontSize: 12 }}>
-                            <div style={{ color: PAGE_GRAY, marginBottom: 3 }}>Expected: <span style={{ color: PAGE_TEXT }}>{it.expectedSentence}</span></div>
-                            <div style={{ color: PAGE_GRAY }}>You said: <span style={{ color: PAGE_TEXT }}>{it.transcript || '(nothing captured)'}</span></div>
-                          </div>
-                        )}
-                        {!isPerfect && it.pronunciationFeedback && (
-                          <div style={{ background: '#fff7ed', borderLeft: '3px solid #ea580c', borderRadius: '0 8px 8px 0', padding: '8px 10px', marginTop: 6 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                              <FaGraduationCap size={11} color="#ea580c" />
-                              <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ea580c' }}>PRONUNCIATION TIPS</span>
-                            </div>
-                            <div style={{ fontSize: 11.5, color: '#7c2d12', lineHeight: 1.5, whiteSpace: 'pre-line' as const }}>{it.pronunciationFeedback}</div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 220, maxWidth: 280, color: '#9a3412', borderTop: `1px solid ${PAGE_BORDER}` }}>
+                              {!isPerfect && it.pronunciationFeedback ? (
+                                <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.7 }}>
+                                  {it.pronunciationFeedback
+                                    .split(/\n+/).filter(Boolean)
+                                    .flatMap((line) => line.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean))
+                                    .map((p, pi) => <li key={pi}>{highlightQuotedWords(p)}</li>)}
+                                </ul>
+                              ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 220, maxWidth: 280, color: '#3730a3', borderTop: `1px solid ${PAGE_BORDER}` }}>
+                              {it.accentReview && ((it.accentReview.points?.length ?? 0) > 0 || it.accentReview.feedback) ? (
+                                <>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: pctColor(it.accentReview.score), marginBottom: 4 }}>{it.accentReview.score}/100</div>
+                                  <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.7 }}>
+                                    {(it.accentReview.points?.length
+                                      ? it.accentReview.points
+                                      // Legacy submissions only stored one combined paragraph —
+                                      // split it into sentences so it still reads as points.
+                                      : it.accentReview.feedback!.split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean)
+                                    ).map((p, pi) => <li key={pi}>{highlightQuotedWords(p)}</li>)}
+                                  </ul>
+                                </>
+                              ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'middle' as const, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const, textAlign: 'center' as const }}>
+                              <span title={it.accentReview ? 'Overall = 70% word-accuracy + 30% accent/intonation' : undefined} style={{ display: 'inline-block', background: pctColor(combinedPct), color: '#fff', fontWeight: 700, fontSize: 12.5, borderRadius: 20, padding: '4px 10px' }}>{it.scoreAwarded}/{it.marks}</span>
+                              <div style={{ fontSize: 11, color: pctColor(combinedPct), fontWeight: 700, marginTop: 4, textAlign: 'center' as const }}>{combinedPct}%</div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1001,35 +1193,58 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : speakingFeedbackDetail[openSpeakingFeedbackFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the feedback.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 10, alignItems: 'start' }}>
-                  {(speakingFeedbackDetail[openSpeakingFeedbackFor] as SpeakingSubmissionDetail).items.map((it, idx) => (
-                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
-                        <span style={{ color: pctColor(Math.round((it.scoreAwarded / it.marks) * 100)), fontWeight: 700, fontSize: 12 }}>{it.scoreAwarded}/{it.marks} ({Math.round((it.scoreAwarded / it.marks) * 100)}%)</span>
-                      </div>
-                      <div style={{ background: '#eff6ff', borderLeft: '3px solid #2563eb', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#2563eb' }}>TOPIC</span>
-                        <div style={{ marginTop: 2 }}>{it.topic}</div>
-                      </div>
-                      <div style={{ background: '#f5f3ff', borderLeft: '3px solid #7c3aed', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: 6 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#7c3aed' }}>WHAT YOU SAID</span>
-                        <div style={{ marginTop: 2 }}>
-                          {it.transcript.trim() ? it.transcript : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(nothing captured)</span>}
-                        </div>
-                      </div>
-                      <div style={{ background: '#fff7ed', borderLeft: '3px solid #ea580c', borderRadius: '0 8px 8px 0', padding: '6px 10px', marginBottom: it.sampleAnswer ? 6 : 0 }}>
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ea580c' }}>AI FEEDBACK</span>
-                        <div style={{ marginTop: 2 }}>{it.feedback || 'No feedback available.'}</div>
-                      </div>
-                      {it.sampleAnswer && (
-                        <div style={{ background: '#f0fdf4', borderLeft: '3px solid #16a34a', borderRadius: '0 8px 8px 0', padding: '6px 10px' }}>
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#16a34a' }}>SAMPLE ANSWER</span>
-                          <div style={{ marginTop: 2 }}>{it.sampleAnswer}</div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' as const, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+                  <table style={{ width: '100%', minWidth: 1150, borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Q', 'Topic', 'What You Said', 'Grammar & Mistakes', 'Sample Answer', 'AI Feedback', 'Score'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left' as const, fontSize: 11, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '0.04em', padding: '12px 14px', fontWeight: 700, whiteSpace: 'nowrap' as const, background: `linear-gradient(90deg, ${ORANGE}, #ff9a3d)` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(speakingFeedbackDetail[openSpeakingFeedbackFor] as SpeakingSubmissionDetail).items.map((it, idx) => {
+                        const pct = Math.round((it.scoreAwarded / it.marks) * 100)
+                        const rowBg = idx % 2 === 0 ? CARD_BG : PAGE_BG
+                        return (
+                          <tr key={idx} style={{ background: rowBg }}>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, fontWeight: 800, color: ORANGE, borderTop: `1px solid ${PAGE_BORDER}` }}>{idx + 1}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 160, maxWidth: 200, fontWeight: 700, color: PAGE_TEXT, borderTop: `1px solid ${PAGE_BORDER}` }}>{it.topic}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 200, maxWidth: 260, color: PAGE_TEXT, fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.transcript.trim() ? it.transcript : <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const, fontWeight: 400 }}>(nothing captured)</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 220, maxWidth: 280, color: PAGE_TEXT, borderTop: `1px solid ${PAGE_BORDER}` }}>
+                              {it.mistakes && it.mistakes.length > 0 ? (
+                                <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.7, fontWeight: 500 }}>
+                                  {it.mistakes.map((m, mi) => <li key={mi}>{highlightQuotedWords(m)}</li>)}
+                                </ul>
+                              ) : <span style={{ color: PAGE_GRAY }}>—</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 200, maxWidth: 260, color: '#15803d', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.sampleAnswer ? (
+                                <>
+                                  <button
+                                    onClick={() => toggleSpeak(`speaking-${idx}:ai`, it.sampleAnswer!, it.sampleAnswerAudioUrl)}
+                                    title={it.sampleAnswerAudioUrl ? "Hear how this should sound" : "No AI voice available — playing a text-to-speech reading instead"}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: speakingKey === `speaking-${idx}:ai` ? '#16a34a' : '#f0fdf4', border: '1px solid #16a34a55', color: speakingKey === `speaking-${idx}:ai` ? '#fff' : '#16a34a', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', marginBottom: 6 }}
+                                  >
+                                    {speakingKey === `speaking-${idx}:ai` ? <FaStop size={9} /> : <FaPlay size={8} />}
+                                    {speakingKey === `speaking-${idx}:ai` ? 'Stop' : 'Listen'}
+                                  </button>
+                                  <div>{it.sampleAnswer}</div>
+                                </>
+                              ) : '—'}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 180, maxWidth: 240, color: '#c2410c', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>{it.feedback || 'No feedback available.'}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'middle' as const, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const, textAlign: 'center' as const }}>
+                              <span style={{ display: 'inline-block', background: pctColor(pct), color: '#fff', fontWeight: 700, fontSize: 12.5, borderRadius: 20, padding: '4px 10px' }}>{it.scoreAwarded}/{it.marks}</span>
+                              <div style={{ fontSize: 11, color: pctColor(pct), fontWeight: 700, marginTop: 4, textAlign: 'center' as const }}>{pct}%</div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1064,27 +1279,40 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : grammarDetail[openGrammarFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
-                  {(grammarDetail[openGrammarFor] as GrammarSubmissionDetail).items.map((it, idx) => (
-                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1} · {it.category}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
-                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
-                          {it.scoreAwarded}/{it.marks}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 8, fontWeight: 600 }}>{it.question}</div>
-                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
-                        <strong>Your answer:</strong> {it.studentAnswer || <em>(not answered)</em>}
-                      </div>
-                      {!it.isCorrect && (
-                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
-                          <strong>Correct answer:</strong> {it.correctAnswer}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' as const, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+                  <table style={{ width: '100%', minWidth: 900, borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Q', 'Topic', 'Question', 'Your Answer', 'Correct Answer', 'Score'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left' as const, fontSize: 11, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '0.04em', padding: '12px 14px', fontWeight: 700, whiteSpace: 'nowrap' as const, background: `linear-gradient(90deg, ${ORANGE}, #ff9a3d)` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(grammarDetail[openGrammarFor] as GrammarSubmissionDetail).items.map((it, idx) => {
+                        const rowBg = idx % 2 === 0 ? CARD_BG : PAGE_BG
+                        return (
+                          <tr key={idx} style={{ background: rowBg }}>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, fontWeight: 800, color: ORANGE, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const }}>{idx + 1}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 120, maxWidth: 160, color: PAGE_TEXT, fontWeight: 600, borderTop: `1px solid ${PAGE_BORDER}` }}>{it.category}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 220, maxWidth: 320, color: PAGE_TEXT, fontWeight: 600, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>{it.question}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 160, maxWidth: 220, color: it.isCorrect ? '#15803d' : '#dc2626', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.studentAnswer || <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(not answered)</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 160, maxWidth: 220, color: '#15803d', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.isCorrect ? <span style={{ color: PAGE_GRAY }}>—</span> : it.correctAnswer}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'middle' as const, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const, textAlign: 'center' as const }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: it.isCorrect ? '#16a34a' : '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12.5, borderRadius: 20, padding: '4px 10px' }}>
+                                {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                                {it.scoreAwarded}/{it.marks}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -1119,27 +1347,39 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
               ) : passageDetail[openPassageFor] === 'error' ? (
                 <div style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' as const, padding: '20px 0' }}>Couldn't load the answers.</div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 10, alignItems: 'start' }}>
-                  {(passageDetail[openPassageFor] as PassageSubmissionDetail).items.map((it, idx) => (
-                    <div key={idx} style={{ fontSize: 13, color: PAGE_TEXT, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 12px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        <span style={{ fontWeight: 700, fontSize: 12 }}>Q{idx + 1}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700, color: it.isCorrect ? '#16a34a' : '#dc2626' }}>
-                          {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
-                          {it.scoreAwarded}/{it.marks}
-                        </span>
-                      </div>
-                      <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 8, fontWeight: 600 }}>{it.question}</div>
-                      <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginBottom: 4 }}>
-                        <strong>Your answer:</strong> {it.studentAnswer || <em>(not answered)</em>}
-                      </div>
-                      {!it.isCorrect && (
-                        <div style={{ fontSize: 11.5, color: '#16a34a' }}>
-                          <strong>Correct answer:</strong> {it.correctAnswer}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div style={{ overflowX: 'auto' as const, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12, boxShadow: '0 1px 6px rgba(15,23,42,0.05)' }}>
+                  <table style={{ width: '100%', minWidth: 900, borderCollapse: 'separate' as const, borderSpacing: 0, fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        {['Q', 'Question', 'Your Answer', 'Correct Answer', 'Score'].map((h) => (
+                          <th key={h} style={{ textAlign: 'left' as const, fontSize: 11, color: '#fff', textTransform: 'uppercase' as const, letterSpacing: '0.04em', padding: '12px 14px', fontWeight: 700, whiteSpace: 'nowrap' as const, background: `linear-gradient(90deg, ${ORANGE}, #ff9a3d)` }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(passageDetail[openPassageFor] as PassageSubmissionDetail).items.map((it, idx) => {
+                        const rowBg = idx % 2 === 0 ? CARD_BG : PAGE_BG
+                        return (
+                          <tr key={idx} style={{ background: rowBg }}>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, fontWeight: 800, color: ORANGE, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const }}>{idx + 1}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 220, maxWidth: 320, color: PAGE_TEXT, fontWeight: 600, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>{it.question}</td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 160, maxWidth: 220, color: it.isCorrect ? '#15803d' : '#dc2626', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.studentAnswer || <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>(not answered)</span>}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'top' as const, minWidth: 160, maxWidth: 220, color: '#15803d', fontWeight: 500, borderTop: `1px solid ${PAGE_BORDER}`, lineHeight: 1.6 }}>
+                              {it.isCorrect ? <span style={{ color: PAGE_GRAY }}>—</span> : it.correctAnswer}
+                            </td>
+                            <td style={{ padding: '14px', verticalAlign: 'middle' as const, borderTop: `1px solid ${PAGE_BORDER}`, whiteSpace: 'nowrap' as const, textAlign: 'center' as const }}>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: it.isCorrect ? '#16a34a' : '#dc2626', color: '#fff', fontWeight: 700, fontSize: 12.5, borderRadius: 20, padding: '4px 10px' }}>
+                                {it.isCorrect ? <FaCheckCircle size={11} /> : <FaTimes size={11} />}
+                                {it.scoreAwarded}/{it.marks}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

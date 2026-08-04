@@ -49,6 +49,16 @@ const EnglishVoicePractice: React.FC = () => {
 
   const [liveSpeech, setLiveSpeech] = useState('')
   const [isUserSpeaking, setIsUserSpeaking] = useState(false)
+  // Reactive mirror of ttsCountRef (a ref, so it doesn't trigger re-renders on
+  // its own) — used anywhere the UI needs to visibly reflect "Robo is
+  // speaking right now" in sync with the actual TTS start/end events, e.g.
+  // the turn-indicator badge and avatar mouth animation.
+  const [botSpeaking, setBotSpeaking] = useState(false)
+  // Elapsed seconds while waiting on the AI's reply (isTyping window) — gives
+  // the student a live "how much longer" cue instead of an unbounded silent
+  // wait after they finish speaking.
+  const [thinkingSeconds, setThinkingSeconds] = useState(0)
+  const thinkingTimerRef = useRef<any>(null)
   const [typewriterMap, setTypewriterMap] = useState<Record<string, number>>({})
 
   const mkId = () => `${Date.now()}-${Math.random()}`
@@ -129,7 +139,7 @@ const EnglishVoicePractice: React.FC = () => {
   const segmentationRef = useRef<any>(null)
   const rafRef = useRef<number>(0)
   const [segReady, setSegReady] = useState(false)
-  const youBgOptionRef = useRef<any>({ id: 'dark', canvasColors: ['#0d1117', '#1a1f35'], cat: 'color' })
+  const youBgOptionRef = useRef<any>({ id: 'none', canvasColors: undefined, cat: 'color' })
   const bgImageCacheRef = useRef<Record<string, HTMLImageElement>>({})
 
   const loadBgImage = (url: string) => {
@@ -228,13 +238,39 @@ const EnglishVoicePractice: React.FC = () => {
         webcamRef.current.srcObject = stream
       }
       setWebcamActive(true)
-      if (!segmentationRef.current) {
-        initSegmentation()
-      } else {
-        startSegLoop()
+      // Raw feed by default — only start the ML segmentation pipeline once
+      // the student has actually picked a virtual background (see applyYouBg).
+      if (youWantsBg) {
+        if (!segmentationRef.current) initSegmentation()
+        else startSegLoop()
       }
     } catch {
       setWebcamActive(false)
+    }
+  }
+
+  // Applies a background choice for the student's own camera panel. Picking
+  // "None" reverts to the raw webcam feed (segmentation instance is kept
+  // around, just paused, so switching back to a real background later is
+  // instant). Picking any real background lazily starts segmentation the
+  // first time it's needed.
+  const applyYouBg = (o: any) => {
+    setYouBgOption(o)
+    youBgOptionRef.current = o
+    setShowYouBgPicker(false)
+    if (o.imageUrl) loadBgImage(o.imageUrl)
+
+    if (o.id === 'none') {
+      setYouWantsBg(false)
+      cancelAnimationFrame(rafRef.current)
+      setSegReady(false)
+      return
+    }
+
+    setYouWantsBg(true)
+    if (webcamActive) {
+      if (!segmentationRef.current) initSegmentation()
+      else startSegLoop()
     }
   }
 
@@ -353,6 +389,22 @@ const EnglishVoicePractice: React.FC = () => {
         handleEndSession()
       }
     }, SILENCE_TIMEOUT)
+  }
+
+  const stopThinkingTimer = () => {
+    if (thinkingTimerRef.current) {
+      clearInterval(thinkingTimerRef.current)
+      thinkingTimerRef.current = null
+    }
+    setThinkingSeconds(0)
+  }
+
+  const startThinkingTimer = () => {
+    stopThinkingTimer()
+    setThinkingSeconds(0)
+    thinkingTimerRef.current = setInterval(() => {
+      setThinkingSeconds((s) => s + 1)
+    }, 1000)
   }
 
   const startMicMonitor = async () => {
@@ -486,16 +538,21 @@ const EnglishVoicePractice: React.FC = () => {
 
   const onTTSStart = () => {
     ttsCountRef.current += 1
+    setBotSpeaking(true)
     stopListening()
   }
 
   const onTTSEnd = () => {
     ttsCountRef.current -= 1
-    if (ttsCountRef.current === 0 && sessionActiveRef.current && !isPausedRef.current) {
-      startListening()
-      setTimeout(() => {
-        if (sessionActiveRef.current && !isPausedRef.current) startSilenceTimer()
-      }, 500)
+    if (ttsCountRef.current === 0) {
+      setBotSpeaking(false)
+      stopThinkingTimer()
+      if (sessionActiveRef.current && !isPausedRef.current) {
+        startListening()
+        setTimeout(() => {
+          if (sessionActiveRef.current && !isPausedRef.current) startSilenceTimer()
+        }, 500)
+      }
     }
   }
 
@@ -562,6 +619,7 @@ const EnglishVoicePractice: React.FC = () => {
   const sendToRob = async (msg: string) => {
     if (!sessionActiveRef.current) return
     setIsTyping(true)
+    startThinkingTimer()
 
     try {
       const { data } = await axios.post(`${baseURL}/api/english/chat`, { userMessage: msg })
@@ -581,6 +639,7 @@ const EnglishVoicePractice: React.FC = () => {
       }
 
       setIsTyping(false)
+      stopThinkingTimer()
 
       for (const item of toSpeak) {
         if (!sessionActiveRef.current) break
@@ -591,6 +650,7 @@ const EnglishVoicePractice: React.FC = () => {
       }
     } finally {
       setIsTyping(false)
+      stopThinkingTimer()
     }
   }
 
@@ -599,6 +659,8 @@ const EnglishVoicePractice: React.FC = () => {
     noResponseCountRef.current = 0
     manualStopRef.current = false
     ttsCountRef.current = 0
+    setBotSpeaking(false)
+    stopThinkingTimer()
     isPausedRef.current = false
     setIsPaused(false)
     stopListening()
@@ -624,6 +686,8 @@ const EnglishVoicePractice: React.FC = () => {
     stopListening()
     speechSynthesis.cancel()
     ttsCountRef.current = 0
+    setBotSpeaking(false)
+    stopThinkingTimer()
     setLiveSpeech('')
   }
 
@@ -666,6 +730,8 @@ const EnglishVoicePractice: React.FC = () => {
     stopMicMonitor()
     speechSynthesis.cancel()
     ttsCountRef.current = 0
+    setBotSpeaking(false)
+    stopThinkingTimer()
     setSessionEnded(true)
     setIsLoadingFeedback(true)
     setActiveSessionTab('feedback')
@@ -708,6 +774,7 @@ const EnglishVoicePractice: React.FC = () => {
 
   const BG_OPTIONS = [
     // ── Color gradients ───────────────────────────────────────────────────────
+    { id: 'none',   style: 'transparent', canvasColors: undefined, label: 'None',   cat: 'color' },
     { id: 'dark',   style: 'linear-gradient(160deg,#0d1117 0%,#1a1f35 100%)',              canvasColors: ['#0d1117','#1a1f35'], label: 'Dark',   cat: 'color' },
     { id: 'ocean',  style: 'linear-gradient(160deg,#0ea5e9 0%,#0369a1 100%)',              canvasColors: ['#0ea5e9','#0369a1'], label: 'Ocean',  cat: 'color' },
     { id: 'purple', style: 'linear-gradient(160deg,#6d28d9 0%,#8b5cf6 100%)',              canvasColors: ['#6d28d9','#8b5cf6'], label: 'Purple', cat: 'color' },
@@ -758,8 +825,15 @@ const EnglishVoicePractice: React.FC = () => {
       thumb:    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=80&auto=format&fit=crop',
     },
   ]
-  const [aiBgStyle, setAiBgStyle] = useState(BG_OPTIONS[0].style)
+  // AI Coach panel is just a colored backdrop behind the robot avatar (no
+  // camera involved), so it keeps a real color as its default — only the
+  // student's own camera panel defaults to "None" (raw feed, no processing).
+  const [aiBgStyle, setAiBgStyle] = useState(BG_OPTIONS[1].style)
   const [youBgOption, setYouBgOption] = useState(BG_OPTIONS[0])
+  // Whether the student has opted into a virtual background — until they do,
+  // the raw webcam feed is shown as-is and the (heavier) ML segmentation
+  // pipeline never even starts.
+  const [youWantsBg, setYouWantsBg] = useState(false)
   const [showAiBgPicker, setShowAiBgPicker]   = useState(false)
   const [showYouBgPicker, setShowYouBgPicker] = useState(false)
   const scrollTopics = (direction: 1 | -1 = 1) => {
@@ -810,6 +884,8 @@ const EnglishVoicePractice: React.FC = () => {
     stopMicMonitor()
     speechSynthesis.cancel()
     ttsCountRef.current = 0
+    setBotSpeaking(false)
+    stopThinkingTimer()
     stopWebcam()
     setShowSessionModal(false)
     setSessionStarted(false)
@@ -990,6 +1066,10 @@ const EnglishVoicePractice: React.FC = () => {
               0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.7; }
               100% { transform: translate(-50%,-50%) scale(2.2);  opacity: 0; }
             }
+            @keyframes turnDotPulse {
+              0%,100% { transform: scale(1);   opacity: 1; }
+              50%     { transform: scale(1.6); opacity: 0.5; }
+            }
             @keyframes lipBounce {
               0%,100% { transform: scaleY(1); }
               50%     { transform: scaleY(1.6); }
@@ -1026,17 +1106,42 @@ const EnglishVoicePractice: React.FC = () => {
                 </div>
               )}
               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 16px', zIndex: 2 }}>
-                <AnimatedRobotSVG isSpeaking={ttsCountRef.current > 0} isListening={isListening} isTyping={isTyping} />
+                <AnimatedRobotSVG isSpeaking={botSpeaking} isListening={isListening} isTyping={isTyping} />
               </div>
               <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end', zIndex: 3 }}>
                 {[3,5,9,6,11,8,5,7,4,9,5,3,6,4,8].map((h, i) => (
-                  <div key={i} style={{ width: 3, height: ttsCountRef.current > 0 ? h * 2.5 : 4, background: ORANGE, borderRadius: 2, transition: 'height .18s', opacity: 0.95 }} />
+                  <div key={i} style={{ width: 3, height: botSpeaking ? h * 2.5 : 4, background: ORANGE, borderRadius: 2, transition: 'height .18s', opacity: 0.95 }} />
                 ))}
               </div>
+              {/* ── Turn indicator — the actual fix: an unmissable, color-coded
+                  badge that always says whose turn it is right now, instead of
+                  students having to infer it from the avatar animation alone. */}
+              {sessionStarted && !sessionEnded && !isPaused && (
+                <div style={{
+                  position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 3,
+                  display: 'flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '5px 14px',
+                  fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap',
+                  background: botSpeaking ? '#2563eb' : isTyping ? '#94a3b8' : isListening ? '#16a34a' : '#94a3b8',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)', transition: 'background .2s',
+                }}>
+                  {botSpeaking ? (
+                    <><FaVolumeUp size={11} /> Robo is speaking…</>
+                  ) : isTyping ? (
+                    <>Robo is thinking… {thinkingSeconds}s</>
+                  ) : isListening ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff', animation: 'turnDotPulse 0.9s ease-in-out infinite' }} />
+                      Your turn — speak now!
+                    </span>
+                  ) : (
+                    <>Get ready…</>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* You panel — equal height */}
-            <div style={{ position: 'relative', background: youBgOption.style, overflow: 'hidden', borderRadius: 12, flex: 1, minHeight: 0 }}>
+            <div style={{ position: 'relative', background: youWantsBg ? youBgOption.style : '#111827', overflow: 'hidden', borderRadius: 12, flex: 1, minHeight: 0 }}>
               {/* Video element: hidden when segmentation is ready (canvas takes over), visible as fallback */}
               <video ref={webcamRef} autoPlay playsInline muted style={{
                 display: webcamActive && !segReady ? 'block' : 'none',
@@ -1048,7 +1153,7 @@ const EnglishVoicePractice: React.FC = () => {
                 position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1,
               }} />
               {/* Loading indicator while model initialises */}
-              {webcamActive && !segReady && (
+              {youWantsBg && webcamActive && !segReady && (
                 <div style={{ position: 'absolute', bottom: 40, left: 0, right: 0, display: 'flex', justifyContent: 'center', zIndex: 5 }}>
                   <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 20, padding: '4px 14px', color: '#fff', fontSize: 11, fontWeight: 600 }}>
                     Loading virtual background…
@@ -1077,8 +1182,15 @@ const EnglishVoicePractice: React.FC = () => {
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                     {BG_OPTIONS.filter(o => o.cat === 'color').map(o => (
                       <button key={o.id} title={o.label}
-                        onClick={() => { setYouBgOption(o); youBgOptionRef.current = o; setShowYouBgPicker(false) }}
-                        style={{ width: 28, height: 28, borderRadius: 7, background: o.style, border: youBgOption.id === o.id ? '3px solid #2563eb' : '2px solid #e2e8f0', cursor: 'pointer', flexShrink: 0 }} />
+                        onClick={() => applyYouBg(o)}
+                        style={{
+                          width: 28, height: 28, borderRadius: 7,
+                          background: o.id === 'none' ? PAGE_BG : o.style,
+                          border: youBgOption.id === o.id ? '3px solid #2563eb' : '2px solid #e2e8f0', cursor: 'pointer', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: PAGE_GRAY, fontWeight: 700,
+                        }}>
+                        {o.id === 'none' ? '✕' : ''}
+                      </button>
                     ))}
                   </div>
                   {/* Premium image section */}
@@ -1088,10 +1200,7 @@ const EnglishVoicePractice: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
                     {BG_OPTIONS.filter(o => o.cat === 'premium').map(o => (
                       <button key={o.id} title={o.label}
-                        onClick={() => {
-                          setYouBgOption(o); youBgOptionRef.current = o; setShowYouBgPicker(false)
-                          if (o.imageUrl) loadBgImage(o.imageUrl)
-                        }}
+                        onClick={() => applyYouBg(o)}
                         style={{
                           width: '100%', aspectRatio: '16/10', borderRadius: 8, padding: 0, overflow: 'hidden', cursor: 'pointer',
                           border: youBgOption.id === o.id ? '3px solid #2563eb' : '2px solid #e2e8f0',
@@ -1173,10 +1282,23 @@ const EnglishVoicePractice: React.FC = () => {
                       </div>
                     )
                   })}
-                  {liveSpeech && (
+                  {liveSpeech ? (
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
                       <div style={{ maxWidth: '70%', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px 14px 4px 14px', padding: '8px 13px', fontSize: 13, color: '#1e40af', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <FaMicrophone style={{ flexShrink: 0 }} /> {liveSpeech}
+                        <span style={{ display: 'inline-block', width: 2, height: 14, background: '#1e40af', animation: 'turnDotPulse 0.9s ease-in-out infinite', flexShrink: 0 }} />
+                      </div>
+                    </div>
+                  ) : isListening && (
+                    // Placeholder bubble right where the student's transcribed
+                    // speech will appear once they start talking — makes it
+                    // obvious it's their turn AND exactly where to look,
+                    // instead of an empty chat area giving no feedback at all.
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+                      <div style={{ maxWidth: '70%', background: '#eff6ff', border: '1px dashed #bfdbfe', borderRadius: '14px 14px 4px 14px', padding: '8px 13px', fontSize: 13, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <FaMicrophone style={{ flexShrink: 0 }} />
+                        <span>Listening for your answer</span>
+                        <span style={{ display: 'inline-block', width: 2, height: 14, background: '#3b82f6', animation: 'turnDotPulse 0.9s ease-in-out infinite', flexShrink: 0 }} />
                       </div>
                     </div>
                   )}
@@ -1185,8 +1307,11 @@ const EnglishVoicePractice: React.FC = () => {
                       <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 13 }}>
                         <FaRobot />
                       </div>
-                      <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: '14px 14px 14px 4px', padding: '9px 14px', display: 'flex', gap: 4 }}>
-                        {[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8', animation: `bounce 1.2s infinite ${j * 0.2}s` }} />)}
+                      <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: '14px 14px 14px 4px', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {[0,1,2].map(j => <div key={j} style={{ width: 6, height: 6, borderRadius: '50%', background: '#94a3b8', animation: `bounce 1.2s infinite ${j * 0.2}s` }} />)}
+                        </div>
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>{thinkingSeconds}s</span>
                       </div>
                     </div>
                   )}
@@ -1395,8 +1520,17 @@ const EnglishVoicePractice: React.FC = () => {
 
             {/* ── Mic bar ── */}
             <div style={{ background: CARD_BG, borderTop: '1px solid #e2e8f0', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, minHeight: 44 }}>
-              <div style={{ flex: 1, fontSize: 12, color: '#94a3b8' }}>
-                {isPaused ? 'Session paused...' : sessionEnded ? 'Session ended' : !sessionStarted ? 'Click the mic and start speaking...' : isListening ? 'Listening...' : 'Speaking...'}
+              <div style={{
+                flex: 1, fontSize: 12.5, fontWeight: isListening ? 700 : 500,
+                color: isPaused || sessionEnded || !sessionStarted ? '#94a3b8' : botSpeaking ? '#2563eb' : isTyping ? '#94a3b8' : isListening ? '#16a34a' : '#94a3b8',
+              }}>
+                {isPaused ? 'Session paused...'
+                  : sessionEnded ? 'Session ended'
+                  : !sessionStarted ? 'Click the mic and start speaking...'
+                  : botSpeaking ? '🔊 Robo is speaking — listen up'
+                  : isTyping ? `Robo is thinking… ${thinkingSeconds}s`
+                  : isListening ? '🎤 Your turn — speak now!'
+                  : 'Get ready…'}
               </div>
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 {/* Popup — appears anchored above the mic button, Meet-style,

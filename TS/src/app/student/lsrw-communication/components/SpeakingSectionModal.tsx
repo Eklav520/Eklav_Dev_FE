@@ -68,6 +68,9 @@ const SpeakingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Prop
   const [current, setCurrent]     = useState(1)
   const [showResults, setShowResults] = useState(false)
   const [resultItems, setResultItems] = useState<PracticeResultItem[]>([])
+  // Grading each answer server-side (GPT call per question) takes a few
+  // seconds — without this, clicking Submit looks unresponsive.
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [recordings, setRecordings] = useState<Record<number, number>>({}) // question -> seconds recorded
   // One recording attempt per question — once it ends, it's locked; no
   // re-recording on the same question (same rule as Listening & Reading).
@@ -259,6 +262,7 @@ const SpeakingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Prop
   const submitAttempt = async (exitedEarly: boolean) => {
     if (submittingRef.current) return { attempted: false, practiceItems: [] as PracticeResultItem[] }
     submittingRef.current = true
+    setIsSubmitting(true)
     try {
       const answered = QUESTIONS.filter((qq) => qq.itemId && (exitedEarly ? recordings[qq.number] !== undefined : true))
       const items = answered.map((qq) => ({
@@ -296,6 +300,7 @@ const SpeakingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Prop
       return { result, attempted: items.length > 0, practiceItems }
     } finally {
       submittingRef.current = false
+      setIsSubmitting(false)
     }
   }
 
@@ -533,7 +538,7 @@ const SpeakingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Prop
                     </span>
                   )}
                 </div>
-                <style>{`@keyframes lsrw-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }`}</style>
+                <style>{`@keyframes lsrw-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } } @keyframes lsrw-spin { to { transform: rotate(360deg); } }`}</style>
               </div>
               </div>
             </div>
@@ -550,10 +555,19 @@ const SpeakingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Prop
               {isLastQuestion ? (
                 <button
                   onClick={handleSubmitSection}
-                  disabled={recording || !lockedQuestions[current]}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: (recording || !lockedQuestions[current]) ? 'not-allowed' : 'pointer', opacity: (recording || !lockedQuestions[current]) ? 0.6 : 1 }}
+                  disabled={recording || !lockedQuestions[current] || isSubmitting}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, border: 'none', borderRadius: 10, padding: '10px 22px', fontSize: 13, fontWeight: 700, color: '#fff', cursor: (recording || !lockedQuestions[current] || isSubmitting) ? 'not-allowed' : 'pointer', opacity: (recording || !lockedQuestions[current] || isSubmitting) ? 0.6 : 1 }}
                 >
-                  <FaPaperPlane size={12} /> {practiceMode ? 'See Feedback' : 'Submit Speaking Section'}
+                  {isSubmitting ? (
+                    <>
+                      <span style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'lsrw-spin 0.7s linear infinite', display: 'inline-block' }} />
+                      Submitting…
+                    </>
+                  ) : (
+                    <>
+                      <FaPaperPlane size={12} /> {practiceMode ? 'See Feedback' : 'Submit Speaking Section'}
+                    </>
+                  )}
                 </button>
               ) : (
                 <button

@@ -94,6 +94,8 @@ type PracticeResultItem = {
   marks: number
   scoreAwarded: number
   accuracyPercent: number
+  aiAudioUrl?: string | null
+  accentReview?: { score: number; points: string[] } | null
 }
 
 const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props) => {
@@ -155,6 +157,11 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
   const audioChunksRef = useRef<Blob[]>([])
   const [audioUrls, setAudioUrls] = useState<Record<number, string>>({})
   const [uploadingAudio, setUploadingAudio] = useState<Record<number, boolean>>({})
+  // AI reference voice (for side-by-side comparison) and GPT-4o audio-based
+  // accent/intonation review, both returned by upload-audio alongside the
+  // Whisper transcript.
+  const [aiAudioUrls, setAiAudioUrls] = useState<Record<number, string>>({})
+  const [accentReviews, setAccentReviews] = useState<Record<number, { score: number; points: string[] }>>({})
 
   const audioElRef = useRef<HTMLAudioElement | null>(null)
   const recordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -285,6 +292,8 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
       try {
         const form = new FormData()
         form.append('audio', blob, `q${qNumber}.webm`)
+        const itemId = QUESTIONS[qNumber - 1]?.itemId
+        if (itemId) form.append('itemId', itemId)
         const res = await fetch(`${baseURL}/api/student/lsrw-content/upload-audio`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${user.token}` },
@@ -293,6 +302,8 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
         const data = await res.json()
         if (data.success) {
           setAudioUrls((prev) => ({ ...prev, [qNumber]: data.audioUrl }))
+          if (data.aiAudioUrl) setAiAudioUrls((prev) => ({ ...prev, [qNumber]: data.aiAudioUrl }))
+          if (data.accentReview) setAccentReviews((prev) => ({ ...prev, [qNumber]: data.accentReview }))
           // Server-side Whisper transcript is the source of truth — the
           // browser's live SpeechRecognition is unreliable and frequently
           // produces nothing. Prefer Whisper's result; only keep whatever
@@ -389,6 +400,8 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
       transcript: transcripts[q.number] || '',
       recordedSeconds: recordings[q.number] || 0,
       audioUrl: audioUrls[q.number] || null,
+      aiAudioUrl: aiAudioUrls[q.number] || null,
+      accentReview: accentReviews[q.number] || null,
     }))
     let result: { scoreAwarded: number; totalMarks: number; submissionId: string } | undefined
     let practiceItems: PracticeResultItem[] = []

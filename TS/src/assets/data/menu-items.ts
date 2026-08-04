@@ -777,12 +777,12 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         icon: FaBookOpen,
         url: '/student/materials',
       },
-      {
-        key: 'onlineClasses',
-        label: 'Online Classes',
-        icon: FaChalkboardTeacher, // 👨‍🏫 online classes
-        url: '/student/online-classes',
-      },
+      // {
+      //   key: 'onlineClasses',
+      //   label: 'Online Classes',
+      //   icon: FaChalkboardTeacher, // 👨‍🏫 online classes
+      //   url: '/student/online-classes',
+      // },
       {
         key: 'materials',
         label: 'Tech Bytes',
