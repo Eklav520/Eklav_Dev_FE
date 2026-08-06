@@ -741,13 +741,13 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         url: '/student/selfInterview',
         parentKey: 'selfInterview',
       },
-      {
+     /*  {
         key: 'lsrwCommunication',
         label: 'LSRW Skill Practice',
         icon: FaComments,
         url: '/student/lsrwCommunication',
         parentKey: 'selfInterview',
-      },
+      }, */
     ],
   },
 
