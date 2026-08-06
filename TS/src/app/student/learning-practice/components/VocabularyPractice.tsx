@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from "react"
-import { Card, Container, Button, Spinner, Form, ProgressBar, Badge, Modal } from "react-bootstrap"
+import { Button, Spinner, Modal } from "react-bootstrap"
 import {
-  FaBookReader, FaPlay, FaArrowRight, FaArrowLeft, FaCheckCircle, FaCalendarCheck,
+  FaBookReader, FaPlay, FaCheckCircle, FaCalendarCheck,
   FaBrain, FaBook, FaQuestionCircle, FaChartLine, FaVolumeUp,
   FaBriefcase, FaGraduationCap, FaLaptopCode, FaFlask, FaLeaf, FaHeartbeat,
   FaPlane, FaSmile, FaUsers, FaUtensils, FaCity, FaThLarge,
-  FaStar, FaClock, FaFire, FaBullseye,
+  FaStar, FaClock, FaBullseye, FaChevronDown, FaChevronUp, FaChevronRight,
+  FaBookmark, FaRegBookmark, FaTimes, FaCalendarAlt, FaAngleLeft, FaAngleRight,
+  FaClone, FaMicrophone, FaPencilAlt,
 } from "react-icons/fa"
 import { useAuthContext } from "@/context/useAuthContext"
 import bookImg from "@/assets/images/vacabularybook.png"
+
+interface WordProgress {
+  status: 'new' | 'learned' | 'review' | 'difficult'
+  seenCount: number
+  correctCount: number
+  bookmarked: boolean
+  lastSeenAt: string | null
+}
 
 interface Word {
   _id: string
@@ -17,13 +27,211 @@ interface Word {
   example?: string
   quizOptions: string[]
   correctAnswer: string
+  synonyms?: string[]
+  antonyms?: string[]
+  partOfSpeech?: string
+  usageTip?: string
+  progress?: WordProgress
 }
 
-interface Feedback {
-  word: string
-  yourAnswer: string
-  correct: string
-  isCorrect: boolean
+interface VocabStats {
+  totalWordsLearned: number
+  learnedThisWeek: number
+  wordsMastered: number
+  masteredPercentOfLearned: number
+  wordsToReview: number
+  currentLevel: string
+  nextLevel: string | null
+}
+
+type PracticeTileKey = 'flashcard' | 'quiz' | 'fill' | 'pronounce'
+
+const PRACTICE_TILES: { key: PracticeTileKey; label: string; sub: string; Icon: typeof FaClone; color: string }[] = [
+  { key: 'flashcard', label: 'Flashcard', sub: 'Review with a flashcard', Icon: FaClone, color: '#6366f1' },
+  { key: 'quiz', label: 'Quiz', sub: 'Test your knowledge', Icon: FaQuestionCircle, color: '#ef4444' },
+  { key: 'fill', label: 'Fill in the Blanks', sub: 'Practice using the word', Icon: FaPencilAlt, color: '#22c55e' },
+  { key: 'pronounce', label: 'Pronunciation', sub: 'Listen & repeat', Icon: FaMicrophone, color: '#3b82f6' },
+]
+
+// "Quick Practice" tile buttons — display-only, selection is controlled by
+// the parent so the active tile's content can be rendered somewhere else
+// (e.g. into the otherwise-empty "Word Usage" box next to it) instead of
+// always appearing directly underneath the tiles.
+const QuickPracticeTiles: React.FC<{
+  activeTile: PracticeTileKey | null
+  onSelect: (tile: PracticeTileKey | null) => void
+  variant?: 'grid' | 'list'
+}> = ({ activeTile, onSelect, variant = 'grid' }) => (
+  <div style={{ display: variant === 'grid' ? 'grid' : 'flex', gridTemplateColumns: variant === 'grid' ? 'repeat(2,1fr)' : undefined, flexDirection: variant === 'list' ? 'column' as const : undefined, gap: 8 }}>
+    {PRACTICE_TILES.map((t) => (
+      <button
+        key={t.key}
+        onClick={() => onSelect(activeTile === t.key ? null : t.key)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 10, border: `1px solid ${activeTile === t.key ? t.color : '#e2e8f0'}`, background: activeTile === t.key ? `${t.color}12` : '#fff', cursor: 'pointer', textAlign: 'left' as const, width: '100%' }}
+      >
+        <div style={{ width: 26, height: 26, borderRadius: 7, background: `${t.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <t.Icon style={{ color: t.color, fontSize: 12 }} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: '#0f172a' }}>{t.label}</div>
+          <div style={{ fontSize: 10, color: '#94a3b8' }}>{t.sub}</div>
+        </div>
+        {variant === 'list' && <FaChevronRight style={{ color: '#cbd5e1', fontSize: 10, flexShrink: 0 }} />}
+      </button>
+    ))}
+  </div>
+)
+
+// The active tile's actual mini-interaction (flip a flashcard, answer a
+// quiz, fill a blank, listen/repeat) — kept separate from the tile buttons
+// above so it can be placed wherever makes sense in the layout.
+const QuickPracticeContent: React.FC<{
+  word: Word
+  tile: PracticeTileKey
+  onSpeak: (text: string) => void
+  onResult: (correct: boolean) => void
+}> = ({ word, tile, onSpeak, onResult }) => {
+  const [flipped, setFlipped] = useState(false)
+  const [quizSelected, setQuizSelected] = useState<string | null>(null)
+  const [fillAnswer, setFillAnswer] = useState('')
+  const [fillChecked, setFillChecked] = useState<'correct' | 'incorrect' | null>(null)
+  const [pronounceResult, setPronounceResult] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+
+  // Reset per-tile state whenever the active tile or word changes.
+  useEffect(() => {
+    setFlipped(false); setQuizSelected(null); setFillAnswer(''); setFillChecked(null); setPronounceResult(null)
+  }, [tile, word._id])
+
+  const startRecognition = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SR) { setPronounceResult('Speech recognition not supported in this browser.'); return }
+    const rec = new SR()
+    rec.lang = 'en-US'
+    rec.onresult = (e: any) => {
+      const said = e.results[0][0].transcript as string
+      setPronounceResult(said)
+      onResult(said.trim().toLowerCase() === word.word.trim().toLowerCase())
+    }
+    rec.onerror = () => setListening(false)
+    rec.onend = () => setListening(false)
+    setListening(true)
+    setPronounceResult(null)
+    rec.start()
+  }
+
+  if (tile === 'flashcard') {
+    return (
+      <div onClick={() => setFlipped((f) => !f)} style={{ minHeight: 90, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center' as const, padding: 12 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{flipped ? word.meaning : word.word}</div>
+          <div style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 6 }}>Tap to flip</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (tile === 'quiz') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
+        {word.quizOptions.map((opt) => {
+          const isSelected = quizSelected === opt
+          const isCorrectOpt = opt === word.correctAnswer
+          const showState = quizSelected !== null
+          return (
+            <button
+              key={opt}
+              disabled={quizSelected !== null}
+              onClick={() => { setQuizSelected(opt); onResult(opt === word.correctAnswer) }}
+              style={{
+                textAlign: 'left' as const, padding: '7px 10px', borderRadius: 8, fontSize: 12,
+                border: `1px solid ${showState && isCorrectOpt ? '#16a34a' : showState && isSelected ? '#dc2626' : '#e2e8f0'}`,
+                background: showState && isCorrectOpt ? '#f0fdf4' : showState && isSelected ? '#fef2f2' : '#fff',
+                color: '#0f172a', cursor: quizSelected === null ? 'pointer' : 'default',
+              }}
+            >
+              {opt}
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (tile === 'fill') {
+    return word.example ? (
+      <div>
+        <div style={{ fontSize: 12, color: '#475569', marginBottom: 8, fontStyle: 'italic' as const }}>
+          "{word.example.replace(new RegExp(word.word, 'ig'), '_____')}"
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            value={fillAnswer}
+            onChange={(e) => setFillAnswer(e.target.value)}
+            placeholder="Type the missing word"
+            style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, minWidth: 0, background: '#fff', color: '#0f172a' }}
+          />
+          <button
+            onClick={() => {
+              const correct = fillAnswer.trim().toLowerCase() === word.word.trim().toLowerCase()
+              setFillChecked(correct ? 'correct' : 'incorrect')
+              onResult(correct)
+            }}
+            style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#6366f1', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+          >
+            Check
+          </button>
+        </div>
+        {fillChecked && (
+          <div style={{ marginTop: 6, fontSize: 11.5, fontWeight: 700, color: fillChecked === 'correct' ? '#16a34a' : '#dc2626' }}>
+            {fillChecked === 'correct' ? '✓ Correct!' : `✗ Not quite — the word was "${word.word}"`}
+          </div>
+        )}
+      </div>
+    ) : (
+      <div style={{ fontSize: 11.5, color: '#94a3b8' }}>No example sentence available for this word.</div>
+    )
+  }
+
+  // tile === 'pronounce'
+  return (
+    <div style={{ textAlign: 'center' as const }}>
+      <button onClick={() => onSpeak(word.word)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid #3b82f6', background: '#eff6ff', color: '#3b82f6', fontSize: 12, fontWeight: 700, cursor: 'pointer', marginRight: 8 }}>
+        <FaVolumeUp /> Listen
+      </button>
+      <button onClick={startRecognition} disabled={listening} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 20, border: '1px solid #22c55e', background: listening ? '#dcfce7' : '#f0fdf4', color: '#16a34a', fontSize: 12, fontWeight: 700, cursor: listening ? 'default' : 'pointer' }}>
+        <FaMicrophone /> {listening ? 'Listening…' : 'Repeat it'}
+      </button>
+      {pronounceResult && (
+        <div style={{ marginTop: 8, fontSize: 11.5, color: '#475569' }}>
+          You said: <strong>{pronounceResult}</strong>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Self-contained composition of tiles + content stacked vertically — used
+// in the side detail panel, where there's no separate box to redirect the
+// active tile's content into.
+const QuickPracticeWidget: React.FC<{
+  word: Word
+  onSpeak: (text: string) => void
+  onResult: (correct: boolean) => void
+  variant?: 'grid' | 'list'
+}> = ({ word, onSpeak, onResult, variant = 'grid' }) => {
+  const [tile, setTile] = useState<PracticeTileKey | null>(null)
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Quick Practice</div>
+      <QuickPracticeTiles activeTile={tile} onSelect={setTile} variant={variant} />
+      {tile && (
+        <div style={{ marginTop: 10 }}>
+          <QuickPracticeContent word={word} tile={tile} onSpeak={onSpeak} onResult={onResult} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 const VocabularyPractice: React.FC = () => {
@@ -33,45 +241,30 @@ const VocabularyPractice: React.FC = () => {
 
   const [started, setStarted] = useState(false)
   const [words, setWords] = useState<Word[]>([])
-  const [answers, setAnswers] = useState<{ [id: string]: string }>({})
-  const [feedback, setFeedback] = useState<Feedback[] | null>(null)
   const [loading, setLoading] = useState(false)
-  const [statusLoading, setStatusLoading] = useState(true)
-  const [todayScore, setTodayScore] = useState<{ score: number; total: number } | null>(null)
   const [wordOfDay, setWordOfDay] = useState<Word | null>(null)
   const [wordOfDayLoading, setWordOfDayLoading] = useState(true)
   const [activeTopic, setActiveTopic] = useState('Daily Use')
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
 
-  // pagination states
+  // Vocabulary Practice table state (post-"Start" screen)
+  const [stats, setStats] = useState<VocabStats | null>(null)
+  const [expandedWordId, setExpandedWordId] = useState<string | null>(null)
+  const [detailWord, setDetailWord] = useState<Word | null>(null)
+  // Which Quick Practice tile is active for the currently-expanded row — its
+  // content renders into the "Word Usage" box when set, since that box is
+  // otherwise empty for words with no AI usage tip.
+  const [expandedPracticeTile, setExpandedPracticeTile] = useState<PracticeTileKey | null>(null)
+
+  // pagination states — 5 per page to match the table design
   const [currentPage, setCurrentPage] = useState(0)
-  const wordsPerPage = 4
+  const wordsPerPage = 5
 
   const startIndex = currentPage * wordsPerPage
   const currentWords = words.slice(startIndex, startIndex + wordsPerPage)
-  const totalPages = Math.ceil(words.length / wordsPerPage)
+  const totalPages = Math.max(1, Math.ceil(words.length / wordsPerPage))
 
-  // On mount — check if student already did today's exam
-  useEffect(() => {
-    const checkStatus = async () => {
-      if (!token || !baseURL) { setStatusLoading(false); return }
-      try {
-        const res = await fetch(`${baseURL}/learning/vocab/today/status`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        if (data.words?.length) setWords(data.words)
-        if (data.completed && data.attempt) {
-          setTodayScore({ score: data.attempt.score, total: data.attempt.total })
-          setFeedback(data.attempt.feedback)
-        }
-      } catch (err) {
-        console.error("Error checking vocab status", err)
-      } finally {
-        setStatusLoading(false)
-      }
-    }
-    checkStatus()
-  }, [token, baseURL])
+  const todayLabel = new Date().toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
 
   // Fetch Word of the Day
   useEffect(() => {
@@ -92,59 +285,127 @@ const VocabularyPractice: React.FC = () => {
     fetchWordOfDay()
   }, [token, baseURL])
 
-  const startVocabulary = async () => {
+  const fetchStats = async () => {
+    if (!token || !baseURL) return
+    try {
+      const res = await fetch(`${baseURL}/learning/vocab/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setStats(data)
+    } catch (err) {
+      console.error('Error fetching vocab stats', err)
+    }
+  }
+
+  const startVocabulary = async (topic?: string) => {
+    const useTopic = topic ?? activeTopic
     setStarted(true)
     setLoading(true)
-    setAnswers({})
     setCurrentPage(0)
+    setExpandedWordId(null)
+    setDetailWord(null)
     setWords([])
 
     try {
-      const params = new URLSearchParams({ topic: activeTopic })
+      const params = new URLSearchParams({ topic: useTopic })
       const res = await fetch(`${baseURL}/learning/vocab/daily?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
-      setWords(data)
+      setWords(Array.isArray(data) ? data : [])
     } catch (err) {
       console.error("Error fetching vocabulary:", err)
     } finally {
       setLoading(false)
     }
+    fetchStats()
   }
 
-  const handleChange = (wordId: string, selected: string) => {
-    setAnswers({ ...answers, [wordId]: selected })
+  const selectCategory = (topic: string) => {
+    setActiveTopic(topic)
+    setCategoryMenuOpen(false)
+    startVocabulary(topic)
   }
 
-  const handleSubmit = async () => {
-    if (!Object.keys(answers).length) return
-    setLoading(true)
-    setFeedback(null)
+  const speak = (text: string) => {
+    if (!('speechSynthesis' in window) || !text) return
+    window.speechSynthesis.cancel()
+    const utter = new SpeechSynthesisUtterance(text)
+    utter.lang = 'en-US'
+    window.speechSynthesis.speak(utter)
+  }
 
+  const updateWordProgress = (word: string, progress: WordProgress) => {
+    const wl = word.trim().toLowerCase()
+    setWords((prev) => prev.map((w) => (w.word.trim().toLowerCase() === wl ? { ...w, progress } : w)))
+    setDetailWord((prev) => (prev && prev.word.trim().toLowerCase() === wl ? { ...prev, progress } : prev))
+  }
+
+  const recordSeen = async (word: Word) => {
+    if (!token || !baseURL) return
     try {
-      const res = await fetch(`${baseURL}/learning/vocab/quiz/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ answers }),
+      const res = await fetch(`${baseURL}/learning/vocab/word/seen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ word: word.word }),
       })
       const data = await res.json()
-      setFeedback(data.feedback)
-      setTodayScore({ score: data.score, total: data.total })
-    } catch (err) {
-      console.error("Quiz submit failed:", err)
-    } finally {
-      setLoading(false)
-    }
+      if (data.progress) updateWordProgress(word.word, data.progress)
+    } catch (err) { console.error('Error recording word view', err) }
   }
 
-  const score = todayScore?.score ?? (feedback ? feedback.filter((f) => f.isCorrect).length : 0)
-  const total = todayScore?.total ?? words.length
-  const scorePercentage = total > 0 ? (score / total) * 100 : 0
-  const alreadyDoneToday = !!todayScore && !started
+  const markStatus = async (word: Word, status: WordProgress['status']) => {
+    if (!token || !baseURL) return
+    try {
+      const res = await fetch(`${baseURL}/learning/vocab/word/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ word: word.word, status }),
+      })
+      const data = await res.json()
+      if (data.progress) updateWordProgress(word.word, data.progress)
+      fetchStats()
+    } catch (err) { console.error('Error updating word status', err) }
+  }
+
+  const toggleBookmark = async (word: Word) => {
+    if (!token || !baseURL) return
+    try {
+      const res = await fetch(`${baseURL}/learning/vocab/word/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ word: word.word }),
+      })
+      const data = await res.json()
+      if (data.progress) updateWordProgress(word.word, data.progress)
+    } catch (err) { console.error('Error updating bookmark', err) }
+  }
+
+  const recordPracticeResult = async (word: Word, correct: boolean) => {
+    if (!token || !baseURL) return
+    try {
+      const res = await fetch(`${baseURL}/learning/vocab/word/practice-result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ word: word.word, correct }),
+      })
+      const data = await res.json()
+      if (data.progress) updateWordProgress(word.word, data.progress)
+    } catch (err) { console.error('Error recording practice result', err) }
+  }
+
+  const toggleExpand = (word: Word) => {
+    setExpandedPracticeTile(null)
+    if (expandedWordId === word._id) { setExpandedWordId(null); return }
+    setExpandedWordId(word._id)
+    recordSeen(word)
+  }
+
+  const openDetail = (word: Word) => {
+    setDetailWord(word)
+    recordSeen(word)
+  }
 
   const PURPLE = '#8b5cf6'
 
@@ -172,15 +433,6 @@ const VocabularyPractice: React.FC = () => {
     { label: 'Economics',      Icon: FaChartLine,     active: false },
     { label: 'Workplace',      Icon: FaCity,          active: false },
   ]
-
-  if (statusLoading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12, fontFamily: "'Inter',sans-serif" }}>
-        <Spinner animation="border" style={{ color: PURPLE }} />
-        <span style={{ color: '#64748b', fontSize: 14 }}>Loading today's vocabulary...</span>
-      </div>
-    )
-  }
 
   return (
     <>
@@ -332,7 +584,7 @@ const VocabularyPractice: React.FC = () => {
         {/* ── Start Button ── */}
         <div style={{ padding: '20px 28px 28px' }}>
           <button
-            onClick={alreadyDoneToday ? () => setStarted(true) : startVocabulary}
+            onClick={() => startVocabulary()}
             style={{
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
               background: `linear-gradient(90deg, ${PURPLE} 0%, #7c3aed 100%)`,
@@ -342,7 +594,7 @@ const VocabularyPractice: React.FC = () => {
             }}
           >
             <FaPlay style={{ fontSize: 14 }} />
-            {alreadyDoneToday ? 'Review Today\'s Words & Result' : 'Start Vocabulary Practice'}
+            Start Vocabulary Practice
           </button>
         </div>
 
@@ -354,212 +606,337 @@ const VocabularyPractice: React.FC = () => {
             <FaBookReader style={{ marginRight: 8 }} /> Vocabulary Practice
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: '2rem 1.5rem' }}>
-          <div className="practice-layout">
-          {/* Main Vocabulary Area - Full Width */}
-          <div className="vocabulary-section">
-            <Card className="vocabulary-card">
-              <Card.Header className="vocabulary-header">
-                <FaBookReader className="me-2" />
-                Daily Word List
-                <span className="progress-indicator">
-                  {String(currentPage + 1).padStart(2, '0')} / {String(totalPages).padStart(2, '0')}
-                </span>
-              </Card.Header>
-              
-              <Card.Body className="vocabulary-body">
-                {loading && !feedback ? (
-                  <div className="loading-state">
-                    <Spinner animation="border" variant="primary" />
-                    <p>Generating daily words...</p>
-                  </div>
-                ) : words.length > 0 ? (
-                  <>
-                    <div className="words-grid">
-                      {currentWords.map((word, idx) => (
-                        <div key={word._id || idx} className="word-card">
-                          <div className="word-header">
-                            <h4 className="word-text">
-                              {startIndex + idx + 1}. {word.word}
-                            </h4>
-                            <Badge bg="primary" className="word-number">
-                              Word {startIndex + idx + 1}
-                            </Badge>
-                          </div>
-                          
-                          <div className="word-details">
-                            <div className="meaning-section">
-                              <h6>Meaning</h6>
-                              <p>{word.meaning}</p>
-                            </div>
-                            
-                            {word.example && (
-                              <div className="example-section">
-                                <h6>Example</h6>
-                                <p className="example-text">"{word.example}"</p>
-                              </div>
-                            )}
+        <Modal.Body style={{ background: '#f8fafc', overflowY: 'auto', padding: 0, position: 'relative' }}>
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
+              <Spinner animation="border" variant="primary" />
+              <p style={{ color: '#64748b', fontSize: 13 }}>Generating daily words...</p>
+            </div>
+          ) : words.length === 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 14 }}>
+              <p style={{ color: '#64748b' }}>No words available. Please try again.</p>
+              <Button variant="outline-primary" onClick={() => startVocabulary()}>Retry</Button>
+            </div>
+          ) : (
+            <div style={{ padding: '20px 28px 40px', fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
-                            {/* Quiz Options */}
-                            <div className="quiz-section">
-                              <h6>Choose the correct meaning:</h6>
-                              <div className="options-grid">
-                                {word.quizOptions.map((opt, i) => (
-                                  <div
-                                    key={i}
-                                    className="option-item"
-                                    onClick={() => handleChange(word._id, opt)}
-                                  >
-                                    <Form.Check
-                                      type="radio"
-                                      id={`${word._id}-${i}`}
-                                      name={`word-${word._id}`}
-                                      label={opt}
-                                      value={opt}
-                                      checked={answers[word._id] === opt}
-                                      onChange={(e) => handleChange(word._id, e.target.value)}
-                                      className="custom-radio"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+              {/* ── Stat cards ── */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 22 }}>
+                {[
+                  { label: 'Total Words Learned', value: stats ? stats.totalWordsLearned.toLocaleString() : '—', sub: stats && stats.learnedThisWeek > 0 ? `+${stats.learnedThisWeek} this week` : undefined, subColor: '#16a34a', color: PURPLE, bg: `${PURPLE}15`, Icon: FaBook },
+                  { label: 'Words Mastered', value: stats ? stats.wordsMastered.toLocaleString() : '—', sub: stats ? `${stats.masteredPercentOfLearned}% of total` : undefined, subColor: '#64748b', color: '#16a34a', bg: '#16a34a15', Icon: FaCheckCircle },
+                  { label: 'Words to Review', value: stats ? stats.wordsToReview.toLocaleString() : '—', sub: 'Due for revision', subColor: '#64748b', color: '#f59e0b', bg: '#f59e0b15', Icon: FaClock },
+                  { label: 'Current Level', value: stats ? stats.currentLevel : '—', sub: stats?.nextLevel ? `Next: ${stats.nextLevel}` : undefined, subColor: '#64748b', color: '#ec4899', bg: '#ec489915', Icon: FaStar },
+                ].map((c) => (
+                  <div key={c.label} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <c.Icon style={{ color: c.color, fontSize: 16 }} />
                     </div>
-
-                    {/* Navigation Buttons */}
-                    <div className="navigation-buttons">
-                      <Button
-                        variant="outline-primary"
-                        disabled={currentPage === 0}
-                        onClick={() => setCurrentPage(currentPage - 1)}
-                        className="nav-button prev-button"
-                      >
-                        <FaArrowLeft className="me-2" />
-                        Previous
-                      </Button>
-
-                      {currentPage < totalPages - 1 ? (
-                        <Button
-                          variant="primary"
-                          onClick={() => setCurrentPage(currentPage + 1)}
-                          className="nav-button next-button"
-                        >
-                          Next
-                          <FaArrowRight className="ms-2" />
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="success"
-                          size="lg"
-                          onClick={handleSubmit}
-                          disabled={Object.keys(answers).length !== words.length}
-                          className="submit-button"
-                        >
-                          <FaCheckCircle className="me-2" />
-                          Submit Quiz
-                        </Button>
-                      )}
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 10.5, color: '#94a3b8', fontWeight: 600 }}>{c.label}</div>
+                      <div style={{ fontSize: 17, fontWeight: 900, color: '#0f172a', lineHeight: 1.2, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.value}</div>
+                      {c.sub && <div style={{ fontSize: 10.5, color: c.subColor, marginTop: 1 }}>{c.sub}</div>}
                     </div>
-                  </>
-                ) : (
-                  <div className="error-state">
-                    <p>No words available. Please try again.</p>
-                    <Button variant="outline-primary" onClick={startVocabulary}>
-                      Retry
-                    </Button>
                   </div>
-                )}
-              </Card.Body>
-            </Card>
-          </div>
+                ))}
+              </div>
 
-          {/* Feedback Section - Appears after submission */}
-          {feedback && (
-            <div className="feedback-section">
-              <Card className="feedback-card">
-                <Card.Header className="feedback-header">
-                  💡 AI Feedback & Results
-                </Card.Header>
-                <Card.Body className="feedback-body">
-                  <div className="score-display">
-                    <h3>Your Score</h3>
-                    <div className="score-circle">
-                      <span className="score-number">
-                        {score}/{words.length}
-                      </span>
-                      <span className="score-percentage">
-                        ({Math.round(scorePercentage)}%)
-                      </span>
-                    </div>
-                    <ProgressBar
-                      now={scorePercentage}
-                      variant={
-                        scorePercentage >= 70
-                          ? "success"
-                          : scorePercentage >= 40
-                          ? "warning"
-                          : "danger"
-                      }
-                      className="score-bar"
-                    />
+              {/* ── Daily Words header ── */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap' as const, gap: 10 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: '#0f172a' }}>Daily Words</span>
+                    <span style={{ background: '#fff7ed', color: '#ff6a00', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '3px 10px' }}>{words.length} New Words</span>
                   </div>
-
-                  <div className="feedback-content">
-                    <div className="feedback-item results">
-                      <h6>📊 Quiz Results</h6>
-                      <div className="results-grid">
-                        {feedback.map((f, i) => (
-                          <div key={i} className="result-item">
-                            <div className="word-info">
-                              <span className="word">{f.word}</span>
-                              <div className="answers">
-                                <div className="answer your-answer">
-                                  <span className="label">Your Answer:</span>
-                                  <Badge bg={f.isCorrect ? "success" : "danger"}>
-                                    {f.yourAnswer || "Not answered"}
-                                  </Badge>
-                                </div>
-                                <div className="answer correct-answer">
-                                  <span className="label">Correct Answer:</span>
-                                  <Badge bg="info">{f.correct}</Badge>
-                                </div>
-                              </div>
-                            </div>
-                            <div className={`status-indicator ${f.isCorrect ? 'correct' : 'incorrect'}`}>
-                              {f.isCorrect ? '✓' : '✗'}
-                            </div>
-                          </div>
+                  <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>New words for today. Learn, practice and master them!</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid #e2e8f0', borderRadius: 10, padding: '6px 10px', background: '#fff' }}>
+                    <button disabled title="Only today's words are available right now" style={{ border: 'none', background: 'none', color: '#cbd5e1', cursor: 'not-allowed', display: 'flex' }}><FaAngleLeft /></button>
+                    <FaCalendarAlt style={{ color: '#94a3b8', fontSize: 12 }} />
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: '#334155', whiteSpace: 'nowrap' as const }}>{todayLabel}</span>
+                    <button disabled title="Only today's words are available right now" style={{ border: 'none', background: 'none', color: '#cbd5e1', cursor: 'not-allowed', display: 'flex' }}><FaAngleRight /></button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => setCategoryMenuOpen((v) => !v)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 12px', background: '#fff', fontSize: 12.5, fontWeight: 700, color: '#334155', cursor: 'pointer' }}
+                    >
+                      {activeTopic} {categoryMenuOpen ? <FaChevronUp size={10} /> : <FaChevronDown size={10} />}
+                    </button>
+                    {categoryMenuOpen && (
+                      <div style={{ position: 'absolute', right: 0, top: '110%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.10)', zIndex: 30, maxHeight: 280, overflowY: 'auto' as const, minWidth: 190 }}>
+                        {TOPICS.map((t) => (
+                          <button
+                            key={t.label}
+                            onClick={() => selectCategory(t.label)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left' as const, padding: '9px 14px', border: 'none', background: activeTopic === t.label ? `${PURPLE}12` : '#fff', color: activeTopic === t.label ? PURPLE : '#334155', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}
+                          >
+                            <t.Icon style={{ fontSize: 11 }} /> {t.label}
+                          </button>
                         ))}
                       </div>
-                    </div>
-
-                    <div className="feedback-item encouragement">
-                      <h6>🌟 Keep Learning!</h6>
-                      <p className="encouragement-text">
-                        {scorePercentage === 100
-                          ? "🎉 Perfect score! You're mastering new vocabulary!"
-                          : scorePercentage >= 70
-                          ? "🌟 Excellent work! You're building a strong vocabulary foundation!"
-                          : scorePercentage >= 40
-                          ? "💡 Good progress! Regular practice will help you improve even more!"
-                          : "📚 Every word learned is a step forward. Keep practicing!"}
-                      </p>
-                    </div>
+                    )}
                   </div>
+                </div>
+              </div>
 
-                  <div className="action-buttons">
-                    <p style={{ color: '#888', fontSize: '0.9rem', margin: 0 }}>
-                      🗓️ Come back tomorrow for 10 new words!
-                    </p>
-                  </div>
-                </Card.Body>
-              </Card>
+              {/* ── Table ── */}
+              <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 14, overflow: 'hidden' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 2.6fr 1.3fr', padding: '10px 20px', borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}>
+                  {['Word', 'Meaning', 'Example', 'Action'].map((h, i) => (
+                    <div key={h} style={{ fontSize: 10.5, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', textAlign: i === 3 ? 'right' as const : 'left' as const }}>{h}</div>
+                  ))}
+                </div>
+
+                {currentWords.map((word) => {
+                  const isExpanded = expandedWordId === word._id
+                  const status = word.progress?.status || 'new'
+                  return (
+                    <React.Fragment key={word._id}>
+                      <div
+                        onClick={() => toggleExpand(word)}
+                        style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.8fr 2.6fr 1.3fr', padding: '14px 20px', borderBottom: isExpanded ? 'none' : '1px solid #f1f5f9', cursor: 'pointer', alignItems: 'center', background: isExpanded ? '#faf5ff' : '#fff' }}
+                      >
+                        <div onClick={(e) => { e.stopPropagation(); openDetail(word) }} style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                          <button onClick={(e) => { e.stopPropagation(); speak(word.word) }} style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: '#fff7ed', color: '#ff6a00', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                            <FaVolumeUp size={11} />
+                          </button>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: 13.5, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{word.word}</div>
+                            {word.partOfSpeech && <span style={{ fontSize: 10, color: PURPLE, background: `${PURPLE}15`, borderRadius: 6, padding: '1px 6px' }}>{word.partOfSpeech}</span>}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: '#475569', paddingRight: 10 }}>{word.meaning}</div>
+                        <div style={{ fontSize: 12.5, color: '#475569', display: 'flex', alignItems: 'flex-start', gap: 6, paddingRight: 10 }}>
+                          {word.example && (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); speak(word.example!) }} style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', flexShrink: 0, marginTop: 2 }}>
+                                <FaVolumeUp size={11} />
+                              </button>
+                              <span style={{ fontStyle: 'italic' as const }}>"{word.example}"</span>
+                            </>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 18 }}>
+                          {status === 'learned' ? (
+                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 999, padding: '5px 14px', fontSize: 11.5, fontWeight: 700, whiteSpace: 'nowrap' as const, width: 108, boxSizing: 'border-box' as const }}>
+                              <FaCheckCircle size={10} /> Learned
+                            </span>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); markStatus(word, 'learned') }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff7ed', color: '#ff6a00', border: '1px solid #fed7aa', borderRadius: 999, padding: '5px 14px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const, width: 108, boxSizing: 'border-box' as const }}>
+                              Learn Word
+                            </button>
+                          )}
+                          {isExpanded ? <FaChevronUp size={12} color="#94a3b8" /> : <FaChevronDown size={12} color="#94a3b8" />}
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div style={{ padding: '16px 20px 20px', borderBottom: '1px solid #f1f5f9', background: '#faf5ff' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 14 }}>
+                            <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 12, padding: 14 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>More Details</div>
+                              {word.synonyms && word.synonyms.length > 0 && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#3b82f6', marginBottom: 4 }}>Synonyms</div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+                                    {word.synonyms.map((s) => <span key={s} style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11, borderRadius: 6, padding: '2px 8px' }}>{s}</span>)}
+                                  </div>
+                                </div>
+                              )}
+                              {word.antonyms && word.antonyms.length > 0 && (
+                                <div style={{ marginBottom: 8 }}>
+                                  <div style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>Antonyms</div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 5 }}>
+                                    {word.antonyms.map((s) => <span key={s} style={{ background: '#fef2f2', color: '#dc2626', fontSize: 11, borderRadius: 6, padding: '2px 8px' }}>{s}</span>)}
+                                  </div>
+                                </div>
+                              )}
+                              <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.6 }}>{word.meaning}</div>
+                            </div>
+
+                            <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 12, padding: 14 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                <FaBrain style={{ color: PURPLE, fontSize: 11 }} />
+                                <span style={{ fontSize: 11, fontWeight: 700, color: PURPLE, textTransform: 'uppercase' as const, letterSpacing: '0.03em' }}>
+                                  {expandedPracticeTile ? PRACTICE_TILES.find((t) => t.key === expandedPracticeTile)?.label : 'Word Usage (AI Tip)'}
+                                </span>
+                              </div>
+                              {expandedPracticeTile ? (
+                                <QuickPracticeContent word={word} tile={expandedPracticeTile} onSpeak={speak} onResult={(correct) => recordPracticeResult(word, correct)} />
+                              ) : (
+                                <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.6 }}>
+                                  {word.usageTip || 'No usage tip available for this word yet — try a Quick Practice exercise instead.'}
+                                </div>
+                              )}
+                            </div>
+
+                            <div style={{ background: '#fff', border: '1px solid #e9d5ff', borderRadius: 12, padding: 14 }}>
+                              <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Quick Practice</div>
+                              <QuickPracticeTiles activeTile={expandedPracticeTile} onSelect={setExpandedPracticeTile} variant="grid" />
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+                              <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600, marginRight: 2 }}>Mark as:</span>
+                              {([
+                                { key: 'learned', label: 'Learned', color: '#16a34a', bg: '#f0fdf4' },
+                                { key: 'review', label: 'Need Review', color: '#f59e0b', bg: '#fffbeb' },
+                                { key: 'difficult', label: 'Difficult', color: '#dc2626', bg: '#fef2f2' },
+                              ] as const).map((s) => (
+                                <button
+                                  key={s.key}
+                                  onClick={() => markStatus(word, s.key)}
+                                  style={{ border: `1px solid ${status === s.key ? s.color : '#e2e8f0'}`, background: status === s.key ? s.bg : '#fff', color: status === s.key ? s.color : '#64748b', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}
+                                >
+                                  {s.label}
+                                </button>
+                              ))}
+                              <button onClick={() => toggleBookmark(word)} style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1px solid #e2e8f0', background: '#fff', color: word.progress?.bookmarked ? '#f59e0b' : '#64748b', borderRadius: 20, padding: '5px 12px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+                                {word.progress?.bookmarked ? <FaBookmark size={11} /> : <FaRegBookmark size={11} />} Bookmark
+                              </button>
+                            </div>
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                              {word.progress?.lastSeenAt ? `Seen on ${new Date(word.progress.lastSeenAt).toLocaleDateString()}` : 'Not seen yet'}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </div>
+
+              {/* ── Pagination ── */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, flexWrap: 'wrap' as const, gap: 10 }}>
+                <span style={{ fontSize: 12.5, color: '#64748b' }}>
+                  Showing {startIndex + 1} to {Math.min(startIndex + wordsPerPage, words.length)} of {words.length} words
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    disabled={currentPage === 0}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: currentPage === 0 ? '#cbd5e1' : '#334155', cursor: currentPage === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <FaAngleLeft size={12} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i)}
+                      style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${currentPage === i ? '#ff6a00' : '#e2e8f0'}`, background: currentPage === i ? '#ff6a00' : '#fff', color: currentPage === i ? '#fff' : '#334155', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  <button
+                    disabled={currentPage >= totalPages - 1}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: currentPage >= totalPages - 1 ? '#cbd5e1' : '#334155', cursor: currentPage >= totalPages - 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <FaAngleRight size={12} />
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-        </div>
+
+          {/* ── Right-side word detail panel ── */}
+          {detailWord && (
+            <div onClick={() => setDetailWord(null)} style={{ position: 'fixed', inset: 0, zIndex: 1060, background: 'rgba(15,23,42,0.25)' }}>
+              <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 360, maxWidth: '92vw', background: '#fff', boxShadow: '-10px 0 30px rgba(0,0,0,0.15)', padding: '20px 22px', overflowY: 'auto' as const }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <div>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {detailWord.word}
+                      <button onClick={() => speak(detailWord.word)} style={{ width: 26, height: 26, borderRadius: '50%', border: 'none', background: '#fff7ed', color: '#ff6a00', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                        <FaVolumeUp size={11} />
+                      </button>
+                    </div>
+                    {detailWord.partOfSpeech && <span style={{ fontSize: 10.5, color: PURPLE, background: `${PURPLE}15`, borderRadius: 6, padding: '1px 6px' }}>{detailWord.partOfSpeech}</span>}
+                  </div>
+                  <button onClick={() => setDetailWord(null)} style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                    <FaTimes size={11} color="#64748b" />
+                  </button>
+                </div>
+
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 4 }}>Meaning</div>
+                  <div style={{ fontSize: 13, color: '#334155' }}>{detailWord.meaning}</div>
+                </div>
+
+                {detailWord.example && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 4 }}>Example Sentence</div>
+                    <div style={{ fontSize: 12.5, color: '#475569', fontStyle: 'italic' as const, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                      "{detailWord.example}"
+                      <button onClick={() => speak(detailWord.example!)} style={{ border: 'none', background: 'none', color: '#94a3b8', cursor: 'pointer', flexShrink: 0 }}>
+                        <FaVolumeUp size={11} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {detailWord.synonyms && detailWord.synonyms.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 6 }}>Synonyms</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                      {detailWord.synonyms.map((s) => <span key={s} style={{ background: '#eff6ff', color: '#2563eb', fontSize: 11.5, borderRadius: 6, padding: '3px 9px' }}>{s}</span>)}
+                    </div>
+                  </div>
+                )}
+
+                {detailWord.antonyms && detailWord.antonyms.length > 0 && (
+                  <div style={{ marginTop: 14 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 6 }}>Antonyms</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
+                      {detailWord.antonyms.map((s) => <span key={s} style={{ background: '#fef2f2', color: '#dc2626', fontSize: 11.5, borderRadius: 6, padding: '3px 9px' }}>{s}</span>)}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ marginTop: 14, background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 10, padding: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <FaBrain style={{ color: PURPLE, fontSize: 11 }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: PURPLE, textTransform: 'uppercase' as const, letterSpacing: '0.03em' }}>Word Usage (AI Tip)</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#475569', lineHeight: 1.6 }}>{detailWord.usageTip || 'No usage tip available for this word yet.'}</div>
+                </div>
+
+                <div style={{ marginTop: 16 }}>
+                  <QuickPracticeWidget word={detailWord} onSpeak={speak} onResult={(correct) => recordPracticeResult(detailWord, correct)} variant="list" />
+                </div>
+
+                <div style={{ marginTop: 18, borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' as const, letterSpacing: '0.03em', marginBottom: 8 }}>Your Progress</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' as const }}>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{detailWord.progress?.seenCount ?? 0}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Seen</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: '#0f172a' }}>{detailWord.progress?.correctCount ?? 0}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Correct</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>{detailWord.progress?.lastSeenAt ? new Date(detailWord.progress.lastSeenAt).toLocaleDateString() : '—'}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8' }}>Last Seen</div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => markStatus(detailWord, 'learned')}
+                  disabled={detailWord.progress?.status === 'learned'}
+                  style={{ width: '100%', marginTop: 18, padding: '11px 0', borderRadius: 10, border: 'none', background: detailWord.progress?.status === 'learned' ? '#dcfce7' : '#16a34a', color: detailWord.progress?.status === 'learned' ? '#16a34a' : '#fff', fontWeight: 700, fontSize: 13, cursor: detailWord.progress?.status === 'learned' ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  <FaCheckCircle size={12} /> {detailWord.progress?.status === 'learned' ? 'Learned' : 'Mark as Learned'}
+                </button>
+              </div>
+            </div>
+          )}
         </Modal.Body>
       </Modal>
 
