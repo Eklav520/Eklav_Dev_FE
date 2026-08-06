@@ -1215,7 +1215,7 @@ const StudentDashboardUpdated: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
                 {/* Topic grid with remaining counts */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 8 }}>
-                  {Object.entries(topicLimits).slice(0, 6).map(([topic, info]: [string, any]) => {
+                  {Object.entries(topicLimits).slice(0, 8).map(([topic, info]: [string, any]) => {
                     const rem = info?.remaining ?? 0
                     const depleted = rem === 0
                     return (
@@ -1240,9 +1240,9 @@ const StudentDashboardUpdated: React.FC = () => {
                     )
                   })}
                 </div>
-                {Object.keys(topicLimits).length > 6 && (
-                  <Link to="/student/ai-mock-interview" style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', marginTop: 'auto', paddingTop: 8, display: 'block' }}>
-                    +{Object.keys(topicLimits).length - 6} more topics →
+                {Object.keys(topicLimits).length > 8 && (
+                  <Link to="/student/selfInterview" style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', marginTop: 'auto', paddingTop: 8, display: 'block' }}>
+                    +{Object.keys(topicLimits).length - 8} more topics →
                   </Link>
                 )}
               </div>
