@@ -94,6 +94,7 @@ type PracticeResultItem = {
   marks: number
   scoreAwarded: number
   accuracyPercent: number
+  audioUrl?: string | null
   aiAudioUrl?: string | null
   accentReview?: { score: number; points: string[] } | null
 }
@@ -101,6 +102,28 @@ type PracticeResultItem = {
 const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode }: Props) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  // Playback for the Practice Results screen — lets the student compare
+  // their own recorded voice against the AI's correctly-accented reading.
+  const [resultSpeakingKey, setResultSpeakingKey] = useState<string | null>(null)
+  const resultAudioRef = useRef<HTMLAudioElement | null>(null)
+  const toggleResultSpeak = (key: string, audioUrl?: string | null) => {
+    if (resultSpeakingKey === key) {
+      resultAudioRef.current?.pause()
+      resultAudioRef.current = null
+      setResultSpeakingKey(null)
+      return
+    }
+    resultAudioRef.current?.pause()
+    resultAudioRef.current = null
+    if (!audioUrl) return
+    const audioEl = new Audio(audioUrl)
+    resultAudioRef.current = audioEl
+    audioEl.onended = () => setResultSpeakingKey(null)
+    audioEl.onerror = () => setResultSpeakingKey(null)
+    setResultSpeakingKey(key)
+    audioEl.play().catch(() => setResultSpeakingKey(null))
+  }
 
   const [current, setCurrent]     = useState(1)
   const [recordings, setRecordings] = useState<Record<number, number>>({}) // question -> seconds recorded
@@ -294,6 +317,7 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
         form.append('audio', blob, `q${qNumber}.webm`)
         const itemId = QUESTIONS[qNumber - 1]?.itemId
         if (itemId) form.append('itemId', itemId)
+        if (practiceMode) form.append('practice', 'true')
         const res = await fetch(`${baseURL}/api/student/lsrw-content/upload-audio`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${user.token}` },
@@ -345,30 +369,30 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
     audioChunksRef.current = []
 
     // Always run the browser's own live SpeechRecognition, in both practice
-    // and real attempts. For real attempts, server-side Whisper is still
-    // preferred when it succeeds (see stopAndUploadAudio) — but if Whisper
-    // fails or is misconfigured server-side, this client-side transcript is
-    // the fallback that keeps the question from silently scoring zero.
+    // and real attempts. Server-side Whisper (below) is still preferred when
+    // it succeeds (see stopAndUploadAudio) — but if Whisper fails or is
+    // misconfigured server-side, this client-side transcript is the
+    // fallback that keeps the question from silently scoring zero.
     const rec = getRecognition()
     if (rec) {
       recognitionActiveRef.current = true
       startRecognitionWithRetry(rec)
     }
 
-    if (!practiceMode) {
-      // Real attempts additionally capture raw audio via MediaRecorder for
-      // Whisper transcription + playback in the mistake-review screen.
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then((stream) => {
-          micStreamRef.current = stream
-          const mr = new MediaRecorder(stream)
-          mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
-          mediaRecorderRef.current = mr
-          mr.start()
-          startVolumeMeter(stream)
-        })
-        .catch(() => { /* mic unavailable for raw audio capture — playback falls back to text-to-speech */ })
-    }
+    // Also capture raw audio via MediaRecorder for Whisper transcription —
+    // in both real and practice attempts, since the browser's own
+    // SpeechRecognition alone is unreliable enough that practice attempts
+    // were frequently coming back with no transcript at all.
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then((stream) => {
+        micStreamRef.current = stream
+        const mr = new MediaRecorder(stream)
+        mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+        mediaRecorderRef.current = mr
+        mr.start()
+        startVolumeMeter(stream)
+      })
+      .catch(() => { /* mic unavailable for raw audio capture — playback falls back to text-to-speech */ })
 
     const maxSeconds = QUESTIONS[current - 1]?.timeLimit ?? DEFAULT_RECORD_SECONDS
     recordTimerRef.current = setInterval(() => {
@@ -382,6 +406,22 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
       })
     }, 1000)
   }
+
+  // Practice-only: lets the student re-record a question when nothing was
+  // recognized, instead of being permanently locked out on a wasted attempt.
+  // (Real, graded attempts stay one-take — this only clears state for the
+  // "Try Again" button, which itself is only shown in practice mode.)
+  const retryRecording = (qNumber: number) => {
+    setLockedQuestions((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setRecordings((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setTranscripts((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setAudioUrls((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setAiAudioUrls((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setAccentReviews((prev) => { const next = { ...prev }; delete next[qNumber]; return next })
+    setRecordSeconds(0)
+    setHeardAnySpeech(false)
+  }
+
   useEffect(() => () => {
     if (recordTimerRef.current) clearInterval(recordTimerRef.current)
     stopRecognition()
@@ -569,9 +609,31 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
               <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 6 }}>
                 <strong>Expected:</strong> {item.expectedSentence}
               </div>
-              <div style={{ fontSize: 12.5, color: PAGE_GRAY }}>
+              <div style={{ fontSize: 12.5, color: PAGE_GRAY, marginBottom: (item.audioUrl || item.aiAudioUrl) ? 10 : 0 }}>
                 <strong>You said:</strong> {item.transcript || <em>(nothing recognized)</em>}
               </div>
+              {(item.audioUrl || item.aiAudioUrl) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {item.audioUrl && (
+                    <button
+                      onClick={() => toggleResultSpeak(`${idx}:student`, item.audioUrl)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, background: resultSpeakingKey === `${idx}:student` ? ORANGE : '#fff7ed', border: `1px solid ${ORANGE}55`, color: resultSpeakingKey === `${idx}:student` ? '#fff' : ORANGE, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {resultSpeakingKey === `${idx}:student` ? <FaPause size={9} /> : <FaPlay size={8} />}
+                      Your Voice
+                    </button>
+                  )}
+                  {item.aiAudioUrl && (
+                    <button
+                      onClick={() => toggleResultSpeak(`${idx}:ai`, item.aiAudioUrl)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, background: resultSpeakingKey === `${idx}:ai` ? '#6c63ff' : '#f0efff', border: '1px solid #6c63ff55', color: resultSpeakingKey === `${idx}:ai` ? '#fff' : '#6c63ff', borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      {resultSpeakingKey === `${idx}:ai` ? <FaPause size={9} /> : <FaPlay size={8} />}
+                      AI Voice
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           <button
@@ -802,9 +864,19 @@ const ListeningReadingSectionModal = ({ show, onClose, onSubmitted, practiceMode
                               "{transcripts[current]}"
                             </div>
                           ) : (
-                            <div style={{ fontSize: 11, color: '#991b1b', lineHeight: 1.5 }}>
-                              No speech was recognized in this recording — this will likely score 0 on this question. Your raw audio is still saved.
-                            </div>
+                            <>
+                              <div style={{ fontSize: 11, color: '#991b1b', lineHeight: 1.5 }}>
+                                No speech was recognized in this recording{practiceMode ? '' : ' — this will likely score 0 on this question'}. Your raw audio is still saved.
+                              </div>
+                              {practiceMode && (
+                                <button
+                                  onClick={() => retryRecording(current)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, padding: '6px 12px', fontSize: 11.5, fontWeight: 700, color: '#991b1b', cursor: 'pointer' }}
+                                >
+                                  <FaMicrophone size={10} /> Try Again
+                                </button>
+                              )}
+                            </>
                           )}
                         </div>
                       )

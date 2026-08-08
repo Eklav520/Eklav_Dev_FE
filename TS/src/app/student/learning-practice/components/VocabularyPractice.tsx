@@ -5,7 +5,7 @@ import {
   FaBrain, FaBook, FaQuestionCircle, FaChartLine, FaVolumeUp,
   FaBriefcase, FaGraduationCap, FaLaptopCode, FaFlask, FaLeaf, FaHeartbeat,
   FaPlane, FaSmile, FaUsers, FaUtensils, FaCity, FaThLarge,
-  FaStar, FaClock, FaBullseye, FaChevronDown, FaChevronUp, FaChevronRight,
+  FaStar, FaClock, FaChevronDown, FaChevronUp, FaChevronRight,
   FaBookmark, FaRegBookmark, FaTimes, FaCalendarAlt, FaAngleLeft, FaAngleRight,
   FaClone, FaMicrophone, FaPencilAlt,
 } from "react-icons/fa"
@@ -244,6 +244,7 @@ const VocabularyPractice: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [wordOfDay, setWordOfDay] = useState<Word | null>(null)
   const [wordOfDayLoading, setWordOfDayLoading] = useState(true)
+  const [addingToMyWords, setAddingToMyWords] = useState(false)
   const [activeTopic, setActiveTopic] = useState('Daily Use')
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false)
 
@@ -283,6 +284,13 @@ const VocabularyPractice: React.FC = () => {
       }
     }
     fetchWordOfDay()
+  }, [token, baseURL])
+
+  // Also fetch stats on mount (not only after "Start Vocabulary Practice")
+  // so the hero stats row shows real numbers right away.
+  useEffect(() => {
+    fetchStats()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, baseURL])
 
   const fetchStats = async () => {
@@ -380,6 +388,27 @@ const VocabularyPractice: React.FC = () => {
       const data = await res.json()
       if (data.progress) updateWordProgress(word.word, data.progress)
     } catch (err) { console.error('Error updating bookmark', err) }
+  }
+
+  // "Add to My Words" on the Word of the Day card — bookmarks it via the
+  // same endpoint the practice table's bookmark toggle uses, so it shows up
+  // wherever bookmarked words are surfaced.
+  const addToMyWords = async () => {
+    if (!token || !baseURL || !wordOfDay || addingToMyWords || wordOfDay.progress?.bookmarked) return
+    setAddingToMyWords(true)
+    try {
+      const res = await fetch(`${baseURL}/learning/vocab/word/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ word: wordOfDay.word }),
+      })
+      const data = await res.json()
+      if (data.progress) setWordOfDay((prev) => (prev ? { ...prev, progress: data.progress } : prev))
+    } catch (err) {
+      console.error('Error adding word to My Words', err)
+    } finally {
+      setAddingToMyWords(false)
+    }
   }
 
   const recordPracticeResult = async (word: Word, correct: boolean) => {
@@ -499,7 +528,12 @@ const VocabularyPractice: React.FC = () => {
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                     <span style={{ fontSize: 26, fontWeight: 900, color: PURPLE }}>{wordOfDay.word}</span>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${PURPLE}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <div
+                      onClick={() => speak(wordOfDay.word)}
+                      role="button"
+                      title="Listen"
+                      style={{ width: 28, height: 28, borderRadius: '50%', background: `${PURPLE}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                    >
                       <FaVolumeUp style={{ color: PURPLE, fontSize: 12 }} />
                     </div>
                   </div>
@@ -510,8 +544,22 @@ const VocabularyPractice: React.FC = () => {
                       Example: <span style={{ color: PURPLE, fontWeight: 600 }}>{wordOfDay.example}</span>
                     </div>
                   )}
-                  <button style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 20, border: `1.5px solid ${PURPLE}`, background: '#fff', color: PURPLE, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    <FaBook style={{ fontSize: 11 }} /> Add to My Words
+                  <button
+                    onClick={addToMyWords}
+                    disabled={addingToMyWords || !!wordOfDay.progress?.bookmarked}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', borderRadius: 20,
+                      border: `1.5px solid ${PURPLE}`,
+                      background: wordOfDay.progress?.bookmarked ? PURPLE : '#fff',
+                      color: wordOfDay.progress?.bookmarked ? '#fff' : PURPLE,
+                      fontSize: 12, fontWeight: 700,
+                      cursor: wordOfDay.progress?.bookmarked ? 'default' : 'pointer',
+                      opacity: addingToMyWords ? 0.7 : 1,
+                    }}
+                  >
+                    {wordOfDay.progress?.bookmarked
+                      ? <><FaCheckCircle style={{ fontSize: 11 }} /> Added to My Words</>
+                      : <><FaBook style={{ fontSize: 11 }} /> {addingToMyWords ? 'Adding...' : 'Add to My Words'}</>}
                   </button>
                 </>
               ) : (
@@ -559,16 +607,16 @@ const VocabularyPractice: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Stats Row ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderBottom: '1px solid #f1f5f9' }}>
+        {/* ── Stats Row — real per-student progress, same figures shown
+             inside the practice screen (Total/Mastered/ToReview/Level) ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderBottom: '1px solid #f1f5f9' }}>
           {[
-            { label: 'Monthly Words Learned', value: '120 / 300',  sub: '',              color: PURPLE,    Icon: FaBook       },
-            { label: 'Quizzes Completed',      value: '18',         sub: 'This Month',    color: '#f59e0b', Icon: FaCheckCircle},
-            { label: 'Accuracy',               value: '85%',        sub: 'Keep it up!',   color: '#22c55e', Icon: FaBullseye   },
-            { label: 'Best Score',             value: '92%',        sub: 'In Vocabulary Quiz', color: '#3b82f6', Icon: FaStar  },
-            { label: 'Time Spent',             value: '4h 30m',     sub: 'This Month',    color: '#8b5cf6', Icon: FaClock      },
+            { label: 'Total Words Learned', value: stats ? stats.totalWordsLearned.toLocaleString() : '—', sub: stats && stats.learnedThisWeek > 0 ? `+${stats.learnedThisWeek} this week` : undefined, color: PURPLE, Icon: FaBook },
+            { label: 'Words Mastered', value: stats ? stats.wordsMastered.toLocaleString() : '—', sub: stats ? `${stats.masteredPercentOfLearned}% of total` : undefined, color: '#22c55e', Icon: FaCheckCircle },
+            { label: 'Words to Review', value: stats ? stats.wordsToReview.toLocaleString() : '—', sub: 'Due for revision', color: '#f59e0b', Icon: FaClock },
+            { label: 'Current Level', value: stats ? stats.currentLevel : '—', sub: stats?.nextLevel ? `Next: ${stats.nextLevel}` : undefined, color: '#ec4899', Icon: FaStar },
           ].map(({ label, value, sub, color, Icon: SIcon }, i) => (
-            <div key={label} style={{ padding: '16px 18px', borderRight: i < 4 ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div key={label} style={{ padding: '16px 18px', borderRight: i < 3 ? '1px solid #f1f5f9' : 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <SIcon style={{ color, fontSize: 16 }} />
               </div>

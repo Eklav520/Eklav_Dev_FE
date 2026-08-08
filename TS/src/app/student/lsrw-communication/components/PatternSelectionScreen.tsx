@@ -6,7 +6,7 @@ import {
   FaFileAlt, FaBookOpen, FaMicrophone, FaPuzzlePiece, FaImage, FaInfoCircle, FaArrowRight,
   FaCheckCircle, FaHourglassHalf, FaChartLine, FaSearch, FaChevronDown, FaChevronUp, FaDownload,
   FaStar, FaRegStar, FaTrophy, FaExclamationTriangle, FaClock, FaTimes, FaStop, FaPlay,
-  FaGraduationCap,
+  FaGraduationCap, FaLock,
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 import { PATTERN_SECTIONS } from '../sectionsConfig'
@@ -279,6 +279,12 @@ type Props = { onSelect: (pattern: 1 | 2) => void; onPracticeSection: (sectionKe
 const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  // Same paid/approved gating pattern as CourseCard.tsx — only students whose
+  // enrollment status is approved (or still pending review) may start a
+  // pattern or practice a section; everyone else sees disabled/locked buttons.
+  const status = user?.status?.toLowerCase()
+  const isApproved = status === 'approved'
 
   // Real "questions shown per attempt" counts per section, from
   // LSRWRoundSettings via each section's own student-facing endpoint — the
@@ -675,6 +681,15 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
         <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
       </div>
 
+      {!isApproved && (
+        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <FaLock size={13} color={ORANGE} />
+          <span style={{ fontSize: 12.5, color: '#1e293b' }}>
+            This is a Premium feature. You are not subscribed yet — subscribe to a plan to start a pattern or practice any section.
+          </span>
+        </div>
+      )}
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginBottom: 20 }}>
         {PATTERNS.map((pattern) => (
           <div key={pattern.key} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' as const }}>
@@ -700,11 +715,19 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
                   <span style={{ fontSize: 13, color: PAGE_GRAY, flexShrink: 0 }}>Section {s.letter}:-</span>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: PAGE_TEXT, flex: 1 }}>{s.label}</span>
                   <button
-                    onClick={() => onPracticeSection(s.key)}
-                    title="Try this section for practice — not scored or saved"
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1px solid #16a34a55`, color: '#16a34a', background: '#f0fdf4', borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                    onClick={() => isApproved && onPracticeSection(s.key)}
+                    disabled={!isApproved}
+                    title={isApproved ? 'Try this section for practice — not scored or saved' : 'Premium feature — you are not subscribed to this plan'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      border: `1px solid ${isApproved ? '#16a34a55' : PAGE_BORDER}`,
+                      color: isApproved ? '#16a34a' : PAGE_GRAY,
+                      background: isApproved ? '#f0fdf4' : PAGE_BG,
+                      borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700,
+                      cursor: isApproved ? 'pointer' : 'not-allowed',
+                    }}
                   >
-                    <FaGraduationCap size={10} /> Practice
+                    {isApproved ? <FaGraduationCap size={10} /> : <FaLock size={10} />} Practice
                   </button>
                   <span style={{ border: `1px solid ${ORANGE}55`, color: ORANGE, borderRadius: 8, padding: '2px 10px', fontSize: 12, fontWeight: 700, minWidth: 34, textAlign: 'center' as const }}>
                     {sectionCounts[s.key] ?? s.count}
@@ -714,14 +737,19 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
             </div>
 
             <button
-              onClick={() => onSelect(pattern.key)}
+              onClick={() => isApproved && onSelect(pattern.key)}
+              disabled={!isApproved}
+              title={isApproved ? undefined : 'Premium feature — you are not subscribed to this plan'}
               style={{
                 marginTop: 20, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                background: CARD_BG, border: `1.5px solid ${ORANGE}`, color: ORANGE, borderRadius: 10,
-                padding: '11px 0', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+                background: isApproved ? CARD_BG : PAGE_BG,
+                border: `1.5px solid ${isApproved ? ORANGE : PAGE_BORDER}`,
+                color: isApproved ? ORANGE : PAGE_GRAY, borderRadius: 10,
+                padding: '11px 0', fontSize: 13.5, fontWeight: 700,
+                cursor: isApproved ? 'pointer' : 'not-allowed',
               }}
             >
-              Select {pattern.label} <FaArrowRight size={11} />
+              {isApproved ? <>Select {pattern.label} <FaArrowRight size={11} /></> : <><FaLock size={11} /> Not Subscribed</>}
             </button>
           </div>
         ))}
