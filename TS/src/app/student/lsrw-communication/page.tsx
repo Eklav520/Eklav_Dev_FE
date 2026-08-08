@@ -237,7 +237,7 @@ const LSRWCommunicationRound = () => {
         <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '12px 20px', marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: 10, marginBottom: 10 }}>
             <div>
-              <h2 style={{ fontWeight: 800, fontSize: '1.15rem', color: PAGE_TEXT, margin: '0 0 2px' }}>LSRW Communication Round — Pattern {pattern}</h2>
+              <h2 style={{ fontWeight: 800, fontSize: '1.15rem', color: PAGE_TEXT, margin: '0 0 2px' }}>LSRW Communication Skills — Pattern {pattern}</h2>
               <p style={{ color: PAGE_GRAY, fontSize: 12, margin: 0 }}>Complete all {sectionDefs.length} sections in order to finish this exam</p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const }}>
@@ -457,7 +457,7 @@ const LSRWCommunicationRound = () => {
 
   return (
     <>
-      <PageMetaData title="LSRW Communication Round" />
+      <PageMetaData title="LSRW Communication Skills" />
       {renderMain()}
 
       {/* ── Instructions Modal ──────────────────────────── */}

@@ -194,7 +194,7 @@ const downloadReport = (a: Attempt, student?: { name?: string; email?: string },
   doc.setTextColor(255, 255, 255)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(16)
-  doc.text('LSRW Communication Round', 14, 13)
+  doc.text('LSRW Communication Skills', 14, 13)
   doc.setFontSize(10.5)
   doc.setFont('helvetica', 'normal')
   doc.text(`Pattern ${a.patternKey} — Performance Report`, 14, 21)
@@ -677,7 +677,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
   return (
     <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>LSRW Communication Round</h2>
+        <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>LSRW Communication Skills</h2>
         <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
       </div>
 
