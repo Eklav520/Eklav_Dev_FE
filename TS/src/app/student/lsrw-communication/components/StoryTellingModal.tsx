@@ -427,7 +427,7 @@ const StoryTellingModal = ({ show, onClose, onSubmitted, practiceMode }: Props) 
                   : 'Look at the given prompt and the points below. Use your imagination to tell a creative and meaningful story out loud.'}
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 20, marginBottom: 16, alignItems: 'start' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 20, marginBottom: 16, alignItems: 'stretch' }}>
                 <div>
                   {q.promptType === 'image' ? (
                     <>
@@ -447,9 +447,11 @@ const StoryTellingModal = ({ show, onClose, onSubmitted, practiceMode }: Props) 
                       )}
                     </>
                   ) : (
-                    <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '16px 18px', height: '100%' }}>
+                    <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '16px 18px', height: '100%', display: 'flex', flexDirection: 'column' as const }}>
                       <div style={{ fontSize: 12.5, fontWeight: 700, color: ORANGE, marginBottom: 8 }}>Prompt</div>
-                      <div style={{ fontSize: 14.5, color: '#1e293b', fontWeight: 600, lineHeight: 1.6 }}>{q.promptText}</div>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+                        <div style={{ fontSize: 14.5, color: '#1e293b', fontWeight: 600, lineHeight: 1.6 }}>{q.promptText}</div>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -407,18 +407,22 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
       })
     })
 
-    const categories: string[] = []
-    for (let day = 1; day <= daysInMonth; day++) categories.push(String(day))
+    // This ApexCharts version doesn't support `connectNulls` — null-padded
+    // gaps between days actually break the line instead of being bridged.
+    // So instead of one value per calendar day (mostly null), each series
+    // only carries {x,y} points for days with a real graded result, plus a
+    // leading (0, 0) anchor — ApexCharts then draws a straight line directly
+    // between whatever real points exist, with no nulls to break on.
+    const sectionSeries = ALL_SECTION_DEFS.map((def) => {
+      const points: { x: number; y: number }[] = [{ x: 0, y: 0 }]
+      for (let day = 1; day <= daysInMonth; day++) {
+        const vals = sectionDayBuckets[def.key][day]
+        if (vals) points.push({ x: day, y: Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) })
+      }
+      return { def, data: points }
+    })
 
-    const sectionSeries = ALL_SECTION_DEFS.map((def) => ({
-      def,
-      data: categories.map((_, idx) => {
-        const vals = sectionDayBuckets[def.key][idx + 1]
-        return vals ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null
-      }),
-    }))
-
-    return { categories, sectionSeries, hasAnyAttemptThisMonth }
+    return { daysInMonth, sectionSeries, hasAnyAttemptThisMonth }
   }, [chronological, selectedMonth])
 
   const chartSeries = useMemo(() => monthChart.sectionSeries.map((s) => ({
@@ -428,19 +432,16 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
 
   const chartOptions = useMemo(() => ({
     chart: { toolbar: { show: false }, zoom: { enabled: false } },
-    // connectNulls draws the line straight through days with no attempt
-    // (they'd otherwise be gaps, which is why a section with only sparse
-    // attempts this month showed as isolated dots instead of a line) — each
-    // series still keeps its own section color from `colors` below.
-    stroke: { curve: 'smooth' as const, width: 2.5, connectNulls: true },
+    stroke: { curve: 'straight' as const, width: 2.5 },
     colors: monthChart.sectionSeries.map((s) => s.def.color),
     markers: { size: 4, strokeColors: '#fff', strokeWidth: 2 },
     legend: { show: true, fontSize: '11px', position: 'bottom' as const, itemMargin: { horizontal: 8, vertical: 4 } },
     xaxis: {
-      categories: monthChart.categories,
+      type: 'numeric' as const,
+      min: 0, max: monthChart.daysInMonth,
       title: { text: `Day of month — ${monthLabel(selectedMonth)}`, style: { fontSize: '11px', color: PAGE_GRAY } },
-      labels: { style: { fontSize: '10px' }, rotate: 0 },
-      tickAmount: Math.max(1, Math.min(monthChart.categories.length - 1, 15)),
+      labels: { style: { fontSize: '10px' }, rotate: 0, formatter: (v: string) => String(Math.round(Number(v))) },
+      tickAmount: Math.max(1, Math.min(monthChart.daysInMonth, 15)),
       axisBorder: { show: true, color: PAGE_BORDER },
       axisTicks: { show: true, color: PAGE_BORDER },
     },

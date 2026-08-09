@@ -1236,8 +1236,13 @@ const LSRWContentAdmin = () => {
                   <input
                     type="file" accept="image/*"
                     onChange={(e) => handleStoryImageChange(e.target.files)}
-                    style={{ width: '100%', border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '8px 10px', fontSize: 12.5, color: PAGE_TEXT, background: CARD_BG, marginBottom: 12 }}
+                    style={{ width: '100%', border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '8px 10px', fontSize: 12.5, color: PAGE_TEXT, background: CARD_BG, marginBottom: 6 }}
                   />
+                  <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 12, lineHeight: 1.5 }}>
+                    Recommended: landscape, ~800×450px (16:9), JPG/PNG under 2MB. The student view fits it into a
+                    260px-tall box without cropping, so a landscape image looks best — tall/portrait images will
+                    appear smaller with empty space on the sides.
+                  </div>
                   {storyImagePreview && (
                     <div style={{ width: '100%', borderRadius: 10, marginBottom: 12, overflow: 'hidden', lineHeight: 0 }}>
                       <img src={storyImagePreview} alt="" style={{ display: 'block', width: '100%', maxHeight: 160, objectFit: 'contain' }} />
