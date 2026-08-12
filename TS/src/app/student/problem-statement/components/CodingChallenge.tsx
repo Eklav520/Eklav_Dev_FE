@@ -278,6 +278,31 @@ const ProblemStatement = () => {
       return tc
     }
 
+    // Operations-format inputs (e.g. "nums=[1,3,5], query(0,2)" or "update(1,2), query(0,2)")
+    // must never go through the array/number rewriting below — that heuristic was written for
+    // plain "nums=[...], target=N" problems and doesn't know about method calls at all. It just
+    // counts arrays and numbers anywhere in the string, so a call like "query(0,2)" gets its own
+    // digits swept up as if they were a trailing target value, mangling e.g.
+    // "nums=[1,3,5], query(0,2)" into "[[1,3,5],2]" — silently destroying the method-call
+    // structure the backend actually needs to run this as a stateful operations problem.
+    if (/\w+\([^)]*\)/.test(input)) {
+      return tc
+    }
+
+    // Any "key=value, key2=value2, ..." input (however many scalar params, alongside however
+    // many arrays) is already the backend's own native convention — every wrapper's parser
+    // (parseTopLevel/__parse_input/etc.) handles it directly. The array/number-counting
+    // heuristic below was only ever a proxy for "1 array + 1 trailing scalar" (Two Sum-style)
+    // and breaks the moment a problem has 2+ scalar params: it counts EVERY digit anywhere in
+    // the string (including inside the array itself), so e.g. "arr=[1,2,3,4,5], k=4, x=3" (5
+    // digits inside the array + 4 + 3 = 7 numbers) satisfies ">= 2" just as easily as a real
+    // single-target case, and blindly keeps only the LAST number found — silently discarding
+    // k=4 entirely and mangling the input into "[[1,2,3,4,5],3]". Trust the backend's own
+    // parser for anything already in this format instead of re-guessing it here.
+    if (input.includes('=')) {
+      return tc
+    }
+
     // Case 2: nums=[...], target=number (Two Sum)
     const arrayMatches = input.match(/\[[^\]]*\]/g)
     const numberMatches = input.match(/-?\d+/g)

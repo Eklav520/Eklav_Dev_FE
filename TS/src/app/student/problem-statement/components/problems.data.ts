@@ -34,7 +34,11 @@ export const fetchProblems = async (token?: string): Promise<Problem[]> => {
       return []
     }
 
-    const res = await fetch(`${baseURL}/api/dashboard/adminProblems/summary`, {
+    // verified=true: only problems where all 3 languages currently pass — students should
+    // never land on a problem that's still broken due to a harness/test-data/AI-solution bug,
+    // regardless of which language they pick to solve it in. Grows automatically as more
+    // problems get fixed; no separate "publish" step needed.
+    const res = await fetch(`${baseURL}/api/dashboard/adminProblems/summary?verified=true`, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',

@@ -255,7 +255,9 @@ const StudentDashboardUpdated: React.FC = () => {
       fetch(`${baseURL}/api/ai/me`, { headers: h }).then(r => r.json()),
       // Dashboard only needs title/difficulty to tally easy/medium/hard counts —
       // /summary skips the desc/testCases fields that make the full list slow.
-      fetch(`${baseURL}/api/dashboard/adminProblems/summary`, { headers: h }).then(r => r.json()),
+      // verified=true keeps these counts consistent with what the problem list itself shows —
+      // students shouldn't see a count that includes problems they can't actually access yet.
+      fetch(`${baseURL}/api/dashboard/adminProblems/summary?verified=true`, { headers: h }).then(r => r.json()),
       fetch(`${baseURL}/api/institute/achievements`, { headers: h }).then(r => r.json()),
     ]).then(([sumR, enrR, tsR, annR, jobR, resR, limR, mySubR, allProblemsR, achR]) => {
       if (sumR.status === 'fulfilled') setDashSummary(sumR.value)

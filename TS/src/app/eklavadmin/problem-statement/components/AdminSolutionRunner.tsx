@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, Button, Form, Alert, ProgressBar, Badge, InputGroup } from 'react-bootstrap'
-import { FaCheckCircle, FaTimesCircle, FaPlay, FaStop, FaSearch } from 'react-icons/fa'
+import { FaCheckCircle, FaTimesCircle, FaPlay, FaStop, FaSearch, FaStethoscope } from 'react-icons/fa'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
+import DiagnoseModal from './DiagnoseModal'
 
 interface LanguageResult {
   passed: boolean | null
@@ -45,14 +46,35 @@ const LANGUAGES: Array<{ key: 'java' | 'javascript' | 'python'; label: string }>
   { key: 'python', label: 'Python' },
 ]
 
-const StatusIcon = ({ result }: { result?: LanguageResult }) => {
-  if (!result || result.passed === null || result.passed === undefined) {
-    return <span className="text-muted">—</span>
-  }
-  return result.passed ? (
-    <FaCheckCircle color="#22c55e" size={18} title="Passed" />
-  ) : (
-    <FaTimesCircle color="#ef4444" size={18} title={result.error || 'Failed'} />
+const StatusIcon = ({
+  result,
+  onToggle,
+}: {
+  result?: LanguageResult
+  onToggle: (nextPassed: boolean) => void
+}) => {
+  const untested = !result || result.passed === null || result.passed === undefined
+  // Click cycles the manual override: untested -> Passed -> Failed -> Passed -> ...
+  const nextPassed = untested ? true : !result!.passed
+  return (
+    <button
+      type="button"
+      className="btn btn-sm btn-link p-0 border-0"
+      onClick={() => onToggle(nextPassed)}
+      title={
+        untested
+          ? 'Not run yet — click to mark manually'
+          : `Click to mark as ${result!.passed ? 'Failed' : 'Passed'}`
+      }
+    >
+      {untested ? (
+        <span className="text-muted">—</span>
+      ) : result!.passed ? (
+        <FaCheckCircle color="#22c55e" size={18} />
+      ) : (
+        <FaTimesCircle color="#ef4444" size={18} title={result!.error || 'Failed'} />
+      )}
+    </button>
   )
 }
 
@@ -68,6 +90,7 @@ const AdminSolutionRunner = () => {
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [diagnoseTarget, setDiagnoseTarget] = useState<{ id: string; title: string } | null>(null)
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -143,6 +166,78 @@ const AdminSolutionRunner = () => {
       setError(err?.response?.data?.error || 'Failed to start test run')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleToggleStatus = async (
+    problemId: string,
+    language: 'java' | 'javascript' | 'python',
+    passed: boolean
+  ) => {
+    // Optimistic update so the icon flips instantly; rolled back on request failure.
+    const prevProblems = problems
+    setProblems((prev) =>
+      prev.map((p) =>
+        p._id === problemId
+          ? {
+              ...p,
+              testResults: {
+                ...p.testResults,
+                [language]: { ...p.testResults?.[language], passed, error: passed ? null : 'Manually marked failed by admin' },
+              },
+            }
+          : p
+      )
+    )
+    try {
+      await axios.patch(
+        `${baseURL}/api/dashboard/adminProblems/${problemId}/status`,
+        { language, passed },
+        authHeaders
+      )
+    } catch (err: any) {
+      setProblems(prevProblems)
+      setError(err?.response?.data?.error || 'Failed to update status')
+    }
+  }
+
+  const handleToggleOverallStatus = async (problemId: string, nextPassed: boolean) => {
+    // Flips ALL THREE languages at once — the overall Status badge is derived from all of
+    // them together (overallStatus), so a single-language toggle can't move it by itself.
+    const prevProblems = problems
+    setProblems((prev) =>
+      prev.map((p) =>
+        p._id === problemId
+          ? {
+              ...p,
+              testResults: LANGUAGES.reduce(
+                (acc, l) => ({
+                  ...acc,
+                  [l.key]: {
+                    ...p.testResults?.[l.key],
+                    passed: nextPassed,
+                    error: nextPassed ? null : 'Manually marked failed by admin',
+                  },
+                }),
+                { ...p.testResults }
+              ),
+            }
+          : p
+      )
+    )
+    try {
+      await Promise.all(
+        LANGUAGES.map((l) =>
+          axios.patch(
+            `${baseURL}/api/dashboard/adminProblems/${problemId}/status`,
+            { language: l.key, passed: nextPassed },
+            authHeaders
+          )
+        )
+      )
+    } catch (err: any) {
+      setProblems(prevProblems)
+      setError(err?.response?.data?.error || 'Failed to update status')
     }
   }
 
@@ -295,6 +390,7 @@ const AdminSolutionRunner = () => {
                 <th className="text-center">JavaScript</th>
                 <th className="text-center">Python</th>
                 <th className="text-center">Status</th>
+                <th className="text-center">Fix</th>
               </tr>
             </thead>
             <tbody>
@@ -305,20 +401,41 @@ const AdminSolutionRunner = () => {
                     <td>{p.title}</td>
                     {LANGUAGES.map((l) => (
                       <td key={l.key} className="text-center">
-                        <StatusIcon result={p.testResults?.[l.key]} />
+                        <StatusIcon
+                          result={p.testResults?.[l.key]}
+                          onToggle={(nextPassed) => handleToggleStatus(p._id, l.key, nextPassed)}
+                        />
                       </td>
                     ))}
                     <td className="text-center">
-                      {status === 'pass' && <Badge bg="success">Pass</Badge>}
-                      {status === 'fail' && <Badge bg="danger">Failed</Badge>}
-                      {status === 'untested' && <Badge bg="secondary">Not run</Badge>}
+                      <button
+                        type="button"
+                        className="btn btn-sm p-0 border-0 bg-transparent"
+                        onClick={() => handleToggleOverallStatus(p._id, status !== 'pass')}
+                        title={status === 'pass' ? 'Click to mark all languages Failed' : 'Click to mark all languages Passed'}
+                      >
+                        {status === 'pass' && <Badge bg="success">Pass</Badge>}
+                        {status === 'fail' && <Badge bg="danger">Failed</Badge>}
+                        {status === 'untested' && <Badge bg="secondary">Not run</Badge>}
+                      </button>
+                    </td>
+                    <td className="text-center">
+                      <Button
+                        variant="outline-primary"
+                        size="sm"
+                        title="Diagnose &amp; propose a fix (test data or solution) — review before it's applied"
+                        onClick={() => setDiagnoseTarget({ id: p._id, title: p.title })}
+                      >
+                        <FaStethoscope className="me-1" />
+                        Diagnose
+                      </Button>
                     </td>
                   </tr>
                 )
               })}
               {pageRows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center text-muted py-4">
+                  <td colSpan={6} className="text-center text-muted py-4">
                     No problems found.
                   </td>
                 </tr>
@@ -354,6 +471,14 @@ const AdminSolutionRunner = () => {
           </div>
         )}
       </Card.Body>
+
+      <DiagnoseModal
+        show={diagnoseTarget !== null}
+        onClose={() => setDiagnoseTarget(null)}
+        problemId={diagnoseTarget?.id || null}
+        problemTitle={diagnoseTarget?.title || ''}
+        onApplied={fetchReport}
+      />
     </Card>
   )
 }
