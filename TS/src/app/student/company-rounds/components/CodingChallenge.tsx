@@ -408,7 +408,7 @@ const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose, o
         <div className="cc-problem-panel">
           <div className="cc-problem-header">
             <h4 className="cc-problem-title">{question.title || 'Coding Challenge'}</h4>
-            <Badge className="cc-difficulty-badge">
+            <Badge bg="dark" className="cc-difficulty-badge">
               <Zap size={10} /> Challenge
             </Badge>
           </div>
@@ -782,8 +782,8 @@ const CodingChallenge: React.FC<Props> = ({ round, companyName, role, onClose, o
         }
 
         .cc-difficulty-badge {
-          background: rgba(255, 107, 53, 0.15);
-          color: #FF6B35;
+          background: #000000 !important;
+          color: #FF6B35 !important;
           border: 1px solid #FF6B35;
           font-size: 0.7rem;
           padding: 0.3rem 0.7rem;
