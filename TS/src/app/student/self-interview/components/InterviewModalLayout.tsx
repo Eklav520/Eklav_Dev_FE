@@ -92,6 +92,9 @@ const InterviewModalLayout = () => {
   const totalTopicRemaining = Object.values(topicLimits).reduce((s: number, l: any) => s + (l.remaining ?? 5), 0)
   const resumeRemaining = resumeLimits?.remaining ?? 5
   const totalAvailable = totalTopicRemaining + resumeRemaining
+  const totalCapacity = totalInterviews + totalAvailable
+  const utilizedPct = totalCapacity > 0 ? (totalInterviews / totalCapacity) * 100 : 0
+  const attemptsRingColor = utilizedPct > 60 ? '#16a34a' : PAGE_BORDER
 
   return (
     <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
@@ -121,7 +124,7 @@ const InterviewModalLayout = () => {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
           <div style={{
             width: 56, height: 56, borderRadius: '50%',
-            border: `4px solid ${PAGE_BORDER}`,
+            border: `4px solid ${attemptsRingColor}`,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, fontWeight: 800, color: PAGE_TEXT,
           }}>
