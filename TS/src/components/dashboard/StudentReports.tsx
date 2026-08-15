@@ -5,7 +5,7 @@ import {
   FaPen, FaBook, FaHeadphones, FaBullhorn, FaRobot, FaFileAlt,
   FaClipboardList, FaCheckCircle, FaStar,
   FaChevronLeft, FaChevronRight, FaTrophy, FaClock,
-  FaCode, FaGraduationCap, FaEye, FaFlask,
+  FaCode, FaGraduationCap, FaEye, FaFlask, FaLanguage,
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 
@@ -25,6 +25,12 @@ type EnglishSection = {
   attempts: { attempt: number; score: number; date: string }[]
 }
 
+type VocabSection = {
+  totalWordsLearned: number; wordsMastered: number; masteredPercentOfLearned: number
+  wordsToReview: number; wordsPracticedInPeriod: number
+  currentLevel: string; nextLevel: string | null
+}
+
 type CourseItem = { courseId: string; title: string; progress: number }
 
 type Report = {
@@ -41,6 +47,7 @@ type Report = {
   sections: {
     speaking: EnglishSection; writing: EnglishSection; reading: EnglishSection
     listening: EnglishSection; jam: EnglishSection
+    vocabulary: VocabSection
     selfInterview: TopicStat; resumeInterview: ResumeStat
     assessment: AssessmentStat
   }
@@ -637,9 +644,31 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
           </div>
         </div>
 
-        {/* ── 04 AI Interview ── */}
+        {/* ── 04 Vocabulary Practice ── */}
         <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="04" title="AI Based Interview" sub="Topic Based · Resume Based" color="#a855f7" />
+          <SectionHeader num="04" title="Vocabulary Practice" sub="Daily words · Learned · Mastered · CEFR level" color="#8b5cf6" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
+            {([
+              { label: 'Total Words Learned', value: sec.vocabulary.totalWordsLearned, sub: sec.vocabulary.wordsPracticedInPeriod > 0 ? `${sec.vocabulary.wordsPracticedInPeriod} in period` : undefined },
+              { label: 'Words Mastered', value: sec.vocabulary.wordsMastered, sub: sec.vocabulary.totalWordsLearned > 0 ? `${sec.vocabulary.masteredPercentOfLearned}% of learned` : undefined },
+              { label: 'Words to Review', value: sec.vocabulary.wordsToReview, sub: 'Due for revision' },
+              { label: 'Current Level', value: sec.vocabulary.currentLevel, sub: sec.vocabulary.nextLevel ? `Next: ${sec.vocabulary.nextLevel}` : undefined },
+            ]).map(({ label, value, sub }) => (
+              <div key={label} style={{ background: '#111', border: '1px solid #8b5cf620', borderRadius: 10, padding: '0.85rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                  <FaLanguage size={12} color="#8b5cf6" />
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#999' }}>{label}</span>
+                </div>
+                <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#ddd', lineHeight: 1 }}>{value}</div>
+                {sub && <div style={{ fontSize: '0.62rem', color: '#555', marginTop: 4, fontWeight: 600 }}>{sub}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 05 AI Interview ── */}
+        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
+          <SectionHeader num="05" title="AI Based Interview" sub="Topic Based · Resume Based" color="#a855f7" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
 
             {/* Topic Based */}
@@ -771,7 +800,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
 
         {/* ── 05 Code Challenges ── */}
         <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="05" title="Code Challenges" sub="Problem availability and student progress" color="#06b6d4" />
+          <SectionHeader num="06" title="Code Challenges" sub="Problem availability and student progress" color="#06b6d4" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
 
             {/* Availability */}
@@ -818,7 +847,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
         {/* ── Assessments strip ── */}
         {sec.assessment.sessions > 0 && (
           <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-            <SectionHeader num="06" title="Assessments" sub="MCQ · Coding · TR · HR rounds" color="#f59e0b" />
+            <SectionHeader num="07" title="Assessments" sub="MCQ · Coding · TR · HR rounds" color="#f59e0b" />
             <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' as const }}>
               {[
                 { label: 'Attempted', value: sec.assessment.sessions,   color: '#06b6d4' },
@@ -841,7 +870,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
 
         {/* ── College Labs ── */}
         <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="07" title="College Labs" sub="Available labs and student completion" color="#ef4444" />
+          <SectionHeader num="08" title="College Labs" sub="Available labs and student completion" color="#ef4444" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <div>
               <div style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.55rem' }}>AVAILABLE LABS</div>
@@ -880,7 +909,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
 
         {/* ── Freelance Tasks ── */}
         <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="08" title="Freelance Tasks" sub="Institute tasks · Assigned · Completed" color="#f59e0b" />
+          <SectionHeader num="09" title="Freelance Tasks" sub="Institute tasks · Assigned · Completed" color="#f59e0b" />
 
           {/* 3-stat summary */}
           <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' as const }}>

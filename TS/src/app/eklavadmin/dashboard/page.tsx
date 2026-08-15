@@ -4,6 +4,7 @@ import {
   FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaCode,
 } from 'react-icons/fa'
 import StudentReports from '@/components/dashboard/StudentReports'
+import SiteBannerUpload from '@/components/dashboard/SiteBannerUpload'
 import PageMetaData from '@/components/PageMetaData'
 import Counter from './components/Counter'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
@@ -142,6 +143,8 @@ const DashboardPage = () => {
 
           {/* Stats */}
           <Counter />
+
+          <SiteBannerUpload />
 
           {/* ── Tab bar ───────────────────────────────── */}
           <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginTop: '1.75rem', overflowX: 'auto', scrollbarWidth: 'none' }}>

@@ -1,0 +1,96 @@
+<svg width="1600" height="220" viewBox="0 0 1600 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="20%" r="70%">
+      <stop offset="0%" stop-color="#FF9933" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FF9933" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bgBase" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fffdf9"/>
+      <stop offset="55%" stop-color="#fffaf2"/>
+      <stop offset="100%" stop-color="#f4fbea"/>
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ff7a00"/>
+      <stop offset="100%" stop-color="#ff9933"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="220" fill="url(#bgBase)"/>
+  <rect width="1600" height="220" fill="url(#bgGlow)"/>
+
+  <!-- Flag drape corner -->
+  <path d="M0 0H360 C 300 40 250 76 185 104 C 128 129 57 148 0 166 Z" fill="#FF9933"/>
+  <path d="M0 34H315 C 258 72 205 100 148 124 C 90 146 40 157 0 169 Z" fill="#ffffff"/>
+  <path d="M0 68H270 C 215 100 165 122 112 140 C 65 155 30 162 0 167 Z" fill="#138808"/>
+
+  <!-- India Gate silhouette watermark -->
+  <g opacity="0.14" transform="translate(700,20)">
+    <path d="M20 180 V80 Q20 20 90 20 Q140 20 140 80 V180
+             M140 110 H210
+             M210 180 V50 Q210 10 260 10 Q310 10 310 50 V180
+             M310 110 H380
+             M380 180 V50 Q380 10 430 10 Q480 10 480 50 V180
+             M480 110 H550
+             M550 180 V80 Q550 20 500 20 Q450 20 450 80"
+          fill="none" stroke="#E6A04A" stroke-width="9" stroke-linecap="round"/>
+  </g>
+
+  <!-- Birds -->
+  <g stroke-linecap="round" fill="none">
+    <path d="M660 40 Q672 26 684 40 Q696 26 708 40" stroke="#ff7a00" stroke-width="3.4"/>
+    <path d="M690 62 Q699 51 708 62 Q717 51 726 62" stroke="#138808" stroke-width="2.6"/>
+    <path d="M715 30 Q722 21 729 30 Q736 21 743 30" stroke="#ff7a00" stroke-width="2.2"/>
+  </g>
+
+  <!-- Brand -->
+  <g transform="translate(60,72)" font-family="'Segoe UI', Arial, sans-serif">
+    <text x="0" y="36" font-size="42" font-weight="900" fill="#111">e</text>
+    <text x="34" y="36" font-size="34" font-weight="800" fill="#111">Ek</text>
+    <text x="80" y="36" font-size="34" font-weight="800" fill="#ff7a00">lav</text>
+    <text x="0" y="62" font-size="14" font-weight="600" fill="#334155">Learn <tspan fill="#ff9933">•</tspan> Practice <tspan fill="#ff9933">•</tspan> Achieve</text>
+  </g>
+
+  <!-- Center headline -->
+  <g text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif">
+    <text x="800" y="70" font-size="20" font-weight="800" letter-spacing="6" fill="#ff7a00">— HAPPY —</text>
+    <text x="800" y="112" font-size="44" font-weight="900" letter-spacing="2" fill="#102d59">INDEPENDENCE DAY</text>
+    <text x="800" y="140" font-size="17" fill="#475569">Let's build a smarter tomorrow</text>
+    <text x="800" y="164" font-size="16" font-weight="700">
+      <tspan fill="#ff7a00">Proud to be Indian.</tspan>
+      <tspan fill="#138808"> Proud to learn.</tspan>
+    </text>
+  </g>
+
+  <!-- Coupon ticket -->
+  <g transform="translate(1260,38)">
+    <rect x="0" y="0" width="300" height="144" rx="16" fill="#ffffff" stroke="#ff9933" stroke-width="2.5" stroke-dasharray="6 5"/>
+    <circle cx="0" cy="72" r="12" fill="#fffaf2" stroke="#ff9933" stroke-width="2.5"/>
+    <circle cx="300" cy="72" r="12" fill="#fffaf2" stroke="#ff9933" stroke-width="2.5"/>
+
+    <!-- chakra -->
+    <g transform="translate(44,72)">
+      <circle r="26" fill="none" stroke="#0b3d91" stroke-width="2.2"/>
+      <circle r="3" fill="#0b3d91"/>
+      <g stroke="#0b3d91" stroke-width="1">
+        <line x1="0" y1="0" x2="0" y2="-24"/><line x1="0" y1="0" x2="10.4" y2="-21.7"/>
+        <line x1="0" y1="0" x2="18.7" y2="-15.1"/><line x1="0" y1="0" x2="23.5" y2="-6.2"/>
+        <line x1="0" y1="0" x2="23.5" y2="6.2"/><line x1="0" y1="0" x2="18.7" y2="15.1"/>
+        <line x1="0" y1="0" x2="10.4" y2="21.7"/><line x1="0" y1="0" x2="0" y2="24"/>
+        <line x1="0" y1="0" x2="-10.4" y2="21.7"/><line x1="0" y1="0" x2="-18.7" y2="15.1"/>
+        <line x1="0" y1="0" x2="-23.5" y2="6.2"/><line x1="0" y1="0" x2="-23.5" y2="-6.2"/>
+        <line x1="0" y1="0" x2="-18.7" y2="-15.1"/><line x1="0" y1="0" x2="-10.4" y2="-21.7"/>
+      </g>
+    </g>
+
+    <g text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif">
+      <text x="190" y="28" font-size="13" font-weight="800" letter-spacing="1.5" fill="#ff7a00">★ SPECIAL OFFER ★</text>
+      <text x="190" y="48" font-size="12" fill="#64748b">Use Coupon</text>
+      <text x="190" y="80" font-size="30" font-weight="900" fill="#102d59">EKLAV<tspan fill="#ff7a00">70</tspan></text>
+      <g transform="translate(130,96)">
+        <polygon points="8,0 172,0 180,20 172,40 8,40 0,20" fill="url(#badgeGrad)"/>
+        <text x="90" y="26" font-size="13" font-weight="800" fill="#ffffff">FLAT 70% OFF</text>
+      </g>
+    </g>
+  </g>
+</svg>

@@ -11,6 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import "./About.css";
 import useTenant from "@/utils/tenant";
+import SiteBannerStrip from "./SiteBannerStrip";
 import avatar1 from "@/assets/images/avatar/01.jpg";
 import avatar2 from "@/assets/images/avatar/02.jpg";
 import avatar3 from "@/assets/images/avatar/03.jpg";
@@ -292,6 +293,9 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
   const isCoreDataLabs = tenant?.name === "coredatalabs" || window?.location?.hostname === "coredatalabs.eklav.in";
   const students = [avatar1, avatar2, avatar3, avatar4];
   const [featIdx, setFeatIdx] = useState(0);
+  // Hide the "Next-Gen E-Learning Platform" badge when the site banner is
+  // actually showing above it — saves vertical space instead of stacking both.
+  const [bannerVisible, setBannerVisible] = useState(false);
 
   const features = [
     { icon: <TechCoursesIcon />, title: "Top Tech Courses", description: "Unlimited access to premium tech courses curated by industry experts.", color: "#ff7a00" },
@@ -327,10 +331,12 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
 
             {/* Left: Text */}
             <Col lg={5} xl={5} className="neo-hero-left">
-              <div className="neo-badge">
-                <span className="neo-badge-dot" />
-                Next-Gen E-Learning Platform
-              </div>
+              {!bannerVisible && (
+                <div className="neo-badge">
+                  <span className="neo-badge-dot" />
+                  Next-Gen E-Learning Platform
+                </div>
+              )}
 
               <h1 className="neo-title">
                 About{" "}
@@ -356,6 +362,8 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
               <p className="neo-desc">
                 Powerful learning tools, AI practice systems, and real industry training — all at an affordable cost.
               </p>
+
+              <SiteBannerStrip onVisibleChange={setBannerVisible} />
 
               <div className="neo-tags">
                 {["Learn with Experts", "Practice with AI", "Get Placed", "Gain Knowledge"].map((t) => (
