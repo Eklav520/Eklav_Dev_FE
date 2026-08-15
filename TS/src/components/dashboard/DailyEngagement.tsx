@@ -264,6 +264,15 @@ const S = {
   }),
 }
 
+// #, Student, Department, Status stay pinned via position:sticky while the
+// date columns scroll horizontally underneath — fixed pixel widths (via
+// colgroup + tableLayout:fixed) so each column's sticky `left` offset lines
+// up exactly with where it actually renders.
+const STICKY_COL = {
+  numW: 36, studentW: 170, deptW: 90, statusW: 80,
+  numLeft: 0, studentLeft: 36, deptLeft: 36 + 170, statusLeft: 36 + 170 + 90,
+}
+
 /* ─── Pagination button ──────────────────────────────────── */
 const PagBtn = ({
   children, onClick, disabled = false, active = false,
@@ -968,19 +977,29 @@ const DailyEngagement = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                   <Spinner animation="border" style={{ color: '#ff6b00', width: 24, height: 24 }} />
                 </div>
               )}
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: STICKY_COL.numW }} />
+                  <col style={{ width: STICKY_COL.studentW }} />
+                  <col style={{ width: STICKY_COL.deptW }} />
+                  <col style={{ width: STICKY_COL.statusW }} />
+                  <col style={{ width: 56 }} />
+                  {dates.map((d) => <col key={d} style={{ width: 52 }} />)}
+                  <col style={{ width: 60 }} />
+                  <col style={{ width: 56 }} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th style={{ ...S.th, minWidth: 28 }}>#</th>
-                    <th style={{ ...S.th, minWidth: 150 }}>Student</th>
-                    <th style={{ ...S.th, minWidth: 68 }}>Department</th>
-                    <th style={{ ...S.th, minWidth: 62, textAlign: 'center' }}>Status</th>
-                    <SortableTh label="Today" sortKey="todayMinutes" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ minWidth: 56, textAlign: 'center' }} />
+                    <th style={{ ...S.th, position: 'sticky', left: STICKY_COL.numLeft, zIndex: 2 }}>#</th>
+                    <th style={{ ...S.th, position: 'sticky', left: STICKY_COL.studentLeft, zIndex: 2 }}>Student</th>
+                    <th style={{ ...S.th, position: 'sticky', left: STICKY_COL.deptLeft, zIndex: 2 }}>Department</th>
+                    <th style={{ ...S.th, textAlign: 'center', position: 'sticky', left: STICKY_COL.statusLeft, zIndex: 2, boxShadow: '2px 0 0 #2a2a2a' }}>Status</th>
+                    <SortableTh label="Today" sortKey="todayMinutes" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ textAlign: 'center' }} />
                     {dates.map((d) => (
-                      <th key={d} style={{ ...S.th, minWidth: 52, textAlign: 'center' }}>{fmtColDate(d)}</th>
+                      <th key={d} style={{ ...S.th, textAlign: 'center' }}>{fmtColDate(d)}</th>
                     ))}
-                    <SortableTh label="Total" sortKey="totalMinutes" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ minWidth: 60, textAlign: 'center', color: '#ff6b00' }} />
-                    <th style={{ ...S.th, minWidth: 56, textAlign: 'center' }}>Avg/Day</th>
+                    <SortableTh label="Total" sortKey="totalMinutes" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ textAlign: 'center', color: '#ff6b00' }} />
+                    <th style={{ ...S.th, textAlign: 'center' }}>Avg/Day</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -991,8 +1010,8 @@ const DailyEngagement = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                   ) : (
                     students.map((s, i) => (
                       <tr key={s.userId}>
-                        <td style={S.tdMuted}>{(pagination.page - 1) * pagination.limit + i + 1}</td>
-                        <td style={{ ...S.td }}>
+                        <td style={{ ...S.tdMuted, position: 'sticky', left: STICKY_COL.numLeft, zIndex: 1, background: '#1a1a1a' }}>{(pagination.page - 1) * pagination.limit + i + 1}</td>
+                        <td style={{ ...S.td, position: 'sticky', left: STICKY_COL.studentLeft, zIndex: 1, background: '#1a1a1a' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 22, height: 22, borderRadius: '50%', background: avatarColor(s.name), color: '#fff', fontSize: '0.56rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                               {initials(s.name)}
@@ -1003,8 +1022,8 @@ const DailyEngagement = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                             </div>
                           </div>
                         </td>
-                        <td style={S.tdMuted}>{s.branch || '—'}</td>
-                        <td style={{ ...S.td, textAlign: 'center' }}>
+                        <td style={{ ...S.tdMuted, position: 'sticky', left: STICKY_COL.deptLeft, zIndex: 1, background: '#1a1a1a' }}>{s.branch || '—'}</td>
+                        <td style={{ ...S.td, textAlign: 'center', position: 'sticky', left: STICKY_COL.statusLeft, zIndex: 1, background: '#1a1a1a', boxShadow: '2px 0 0 #2a2a2a' }}>
                           <span style={S.badge(s.isActiveToday)}>{s.isActiveToday ? 'Active' : 'Away'}</span>
                         </td>
                         <td style={{ ...S.td, textAlign: 'center', color: s.todayMinutes > 0 ? '#ff6b00' : '#333', fontWeight: 600 }}>{fmtMin(s.todayMinutes)}</td>

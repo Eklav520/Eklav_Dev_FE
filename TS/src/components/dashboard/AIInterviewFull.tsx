@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Spinner } from 'react-bootstrap'
 import {
-  FaCalendarAlt, FaCheckCircle, FaChevronRight, FaDownload, FaFileAlt, FaMicrophone, FaRobot, FaSearch, FaUserGraduate,
+  FaCalendarAlt, FaCheckCircle, FaDownload, FaFileAlt, FaMicrophone, FaRobot, FaSearch, FaUserGraduate,
 } from 'react-icons/fa'
 import ReactApexChart from 'react-apexcharts'
 import * as XLSX from 'xlsx'
@@ -57,6 +57,7 @@ type InterviewEntry = {
   avgScore: number
   bestScore: number
   lastActivity: string | null
+  violations?: number // topic-based only — resume-based attempts carry no proctoring data
 } | null
 type StudentRow = {
   userId: string
@@ -77,6 +78,11 @@ const defaultEnd = () => toDateStr()
 const defaultStart = () => {
   const d = new Date()
   d.setDate(d.getDate() - 6)
+  return toDateStr(d)
+}
+const addDaysStr = (dateStr: string, days: number) => {
+  const d = new Date(dateStr + 'T00:00:00.000Z')
+  d.setUTCDate(d.getUTCDate() + days)
   return toDateStr(d)
 }
 const fmtDateTime = (d: string | null) =>
@@ -140,6 +146,36 @@ const S = {
   } as React.CSSProperties,
 }
 
+/* ─── Score ring — small circular progress indicator ───────
+   pct is 0-100; label is the text shown in the center (kept
+   separate from pct since topic scores display as "3.47" not
+   "35%"). A plain bordered circle reads as a static badge, not
+   progress — this actually fills proportionally. ───────────── */
+const ScoreRing = ({ pct, label, color, size = 26 }: { pct: number; label: string; color: string; size?: number }) => {
+  const strokeWidth = 2.5
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.max(0, Math.min(100, pct))
+  const offset = circumference * (1 - clamped / 100)
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#2a2a2a" strokeWidth={strokeWidth} />
+        <circle
+          cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color, fontSize: size <= 26 ? '0.58rem' : '0.62rem', fontWeight: 700,
+      }}>
+        {label}
+      </div>
+    </div>
+  )
+}
+
 /* ─── Pagination button ──────────────────────────────────── */
 const PagBtn = ({ children, onClick, disabled = false, active = false }: {
   children: React.ReactNode; onClick: () => void; disabled?: boolean; active?: boolean
@@ -183,6 +219,17 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
   const [viewStudent, setViewStudent] = useState<StudentRow | null>(null)
   const [modalStartDate, setModalStartDate] = useState('')
   const [modalEndDate, setModalEndDate] = useState('')
+  // Applied separately from the raw inputs above — the table only refilters
+  // once "Apply" is clicked, not on every date pick.
+  const [modalAppliedStart, setModalAppliedStart] = useState('')
+  const [modalAppliedEnd, setModalAppliedEnd] = useState('')
+  // viewStudent's attemptsList only ever contains data from the outer
+  // Month/Year picker (e.g. August) — a modal range reaching into another
+  // month (e.g. July) would silently show nothing without this: fetched
+  // fresh on Apply, scoped to the picked range, independent of Month/Year.
+  const [modalRangeEntry, setModalRangeEntry] = useState<{ topicBased: InterviewEntry; resumeBased: InterviewEntry } | null>(null)
+  const [modalRangeLoading, setModalRangeLoading] = useState(false)
+  const [modalRangeError, setModalRangeError] = useState('')
   const attendedLimit = 5
 
   // Interview Details (Latest) — date-range scoped, independent of month/year
@@ -304,7 +351,7 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
       ...(s.resumeBased?.attemptsList || []).map((a) => ({ type: 'Resume Based' as const, name: 'Resume Interview', studentName: s.name, date: a.date, score: a.score })),
     ])
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 4)
+    .slice(0, 5)
 
   /* ── Chart configs ──────────────────────────────────── */
   const trendOptions: ApexCharts.ApexOptions = {
@@ -439,24 +486,22 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
 
       {/* ── Monthly Utilization + Monthly Trend — one row ─ */}
       <div style={S.sectionLabel}>AI Interview – Monthly Utilization · {MONTH_SHORT[month - 1]} {year}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr 1.15fr', gap: '0.85rem', marginBottom: '1.25rem', alignItems: 'stretch', minWidth: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '0.65fr 1.35fr 1.3fr', gap: '0.85rem', marginBottom: '1.25rem', alignItems: 'stretch', minWidth: 0 }}>
         {/* Topic Based + Resume Based — stacked in one column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', minWidth: 0, height: 340 }}>
-          <div style={{ background: '#1a1a1a', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 14, padding: '1rem 1.25rem', minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <div style={{ ...S.iconCircle('rgba(168,85,247,0.2)'), borderRadius: 8 }}><FaMicrophone size={12} color="#a855f7" /></div>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Topic Based</span>
+          <div style={{ background: '#1a1a1a', border: '1px solid rgba(168,85,247,0.4)', borderRadius: 14, padding: '1rem 1.25rem', minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ ...S.iconCircle('rgba(168,85,247,0.2)'), borderRadius: 8 }}><FaMicrophone size={12} color="#a855f7" /></div>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Topic Based</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <div>
+                <div style={{ color: '#a855f7', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.topicBased.attempts}</div>
+                <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Attempts</div>
               </div>
-              <div style={{ display: 'flex', gap: '2rem', marginBottom: 10 }}>
-                <div>
-                  <div style={{ color: '#a855f7', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.topicBased.attempts}</div>
-                  <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Attempts</div>
-                </div>
-                <div>
-                  <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.topicBased.uniqueStudents}</div>
-                  <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Students</div>
-                </div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.topicBased.uniqueStudents}</div>
+                <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Students</div>
               </div>
             </div>
             <div>
@@ -467,21 +512,19 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
             </div>
           </div>
 
-          <div style={{ background: '#1a1a1a', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 14, padding: '1rem 1.25rem', minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                <div style={{ ...S.iconCircle('rgba(245,158,11,0.2)'), borderRadius: 8 }}><FaFileAlt size={12} color="#f59e0b" /></div>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Resume Based</span>
+          <div style={{ background: '#1a1a1a', border: '1px solid rgba(245,158,11,0.4)', borderRadius: 14, padding: '1rem 1.25rem', minWidth: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ ...S.iconCircle('rgba(245,158,11,0.2)'), borderRadius: 8 }}><FaFileAlt size={12} color="#f59e0b" /></div>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.85rem' }}>Resume Based</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <div>
+                <div style={{ color: '#f59e0b', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.resumeBased.attempts}</div>
+                <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Attempts</div>
               </div>
-              <div style={{ display: 'flex', gap: '2rem', marginBottom: 10 }}>
-                <div>
-                  <div style={{ color: '#f59e0b', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.resumeBased.attempts}</div>
-                  <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Attempts</div>
-                </div>
-                <div>
-                  <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.resumeBased.uniqueStudents}</div>
-                  <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Students</div>
-                </div>
+              <div>
+                <div style={{ color: '#fff', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1 }}>{overview.resumeBased.uniqueStudents}</div>
+                <div style={{ color: '#666', fontSize: '0.68rem', marginTop: 4 }}>Students</div>
               </div>
             </div>
             <div>
@@ -507,7 +550,7 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
         {/* Interview Details (Latest) */}
         <div style={{ ...S.card, minWidth: 0, height: 340, display: 'flex', flexDirection: 'column' }}>
           <div style={S.cardHeader}><span style={S.cardTitle}>Interview Details (Latest)</span></div>
-          <div style={{ padding: '0.5rem 0.9rem', flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '0.3rem 0.9rem', flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: latestAttempts.length ? 'flex-start' : 'center', gap: 6 }}>
             {latestAttempts.length === 0 ? (
               <div style={{ color: '#555', fontSize: '0.76rem', textAlign: 'center', padding: '1rem 0' }}>No activity yet</div>
             ) : latestAttempts.map((a, i) => {
@@ -515,31 +558,24 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
               const accent = isTopic ? '#a855f7' : '#f59e0b'
               const Icon = isTopic ? FaMicrophone : FaFileAlt
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.6rem 0', borderBottom: i < latestAttempts.length - 1 ? '1px solid #232323' : 'none' }}>
-                  <div style={{ ...S.iconCircle(`${accent}22`), borderRadius: 8 }}><Icon size={11} color={accent} /></div>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0.3rem 0', borderBottom: i < latestAttempts.length - 1 ? '1px solid #232323' : 'none' }}>
+                  <div style={{ ...S.iconCircle(`${accent}22`), width: 22, height: 22, borderRadius: 7, flexShrink: 0 }}><Icon size={10} color={accent} /></div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: accent, fontSize: '0.66rem', fontWeight: 700 }}>{a.type}</div>
-                    <div style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.studentName}</div>
-                    <div style={{ color: '#555', fontSize: '0.68rem' }}>{fmtDateTime(a.date)}</div>
+                    <div style={{ color: '#fff', fontSize: '0.76rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.studentName}</div>
+                    <div style={{ fontSize: '0.64rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: accent, fontWeight: 700 }}>{a.type}</span>
+                      <span style={{ color: '#444' }}> · </span>
+                      <span style={{ color: '#666' }}>{fmtDateTime(a.date)}</span>
+                    </div>
                   </div>
-                  <div style={{
-                    width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-                    border: `2px solid ${isTopic ? '#555' : scoreDotColor(a.score)}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: isTopic ? '#aaa' : scoreDotColor(a.score), fontSize: '0.62rem', fontWeight: 700,
-                  }}>
-                    {isTopic ? a.score : `${a.score}%`}
-                  </div>
-                  <FaChevronRight size={10} color="#444" />
+                  <ScoreRing
+                    pct={isTopic ? (a.score / 10) * 100 : a.score}
+                    label={isTopic ? String(a.score) : `${a.score}%`}
+                    color={isTopic ? '#a855f7' : scoreDotColor(a.score)}
+                  />
                 </div>
               )
             })}
-            <button
-              onClick={() => { setAttendedSearch(''); setAttendedPage(1) }}
-              style={{ width: '100%', marginTop: 10, background: 'transparent', border: '1px solid #2a2a2a', color: '#ff6b00', borderRadius: 8, padding: '7px 0', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}
-            >
-              View All Interviews
-            </button>
           </div>
         </div>
       </div>
@@ -587,14 +623,15 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                   <th style={{ ...S.th, minWidth: 140 }}>Student Name</th>
                   <th style={{ ...S.th, minWidth: 150 }}>Email</th>
                   <th style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>Attempts</th>
+                  <th style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>Violations</th>
                   <th style={{ ...S.th, minWidth: 110 }}>Last Attempt</th>
-                  <th style={{ ...S.th, minWidth: 80, textAlign: 'center' }}>Status</th>
+                  <th style={{ ...S.th, minWidth: 80, textAlign: 'center' }}>Last Score</th>
                   <th style={{ ...S.th, minWidth: 60, textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {attendedPageRows.length === 0 ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: '#444' }}>No students found</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: '#444' }}>No students found</td></tr>
                 ) : attendedPageRows.map((s, i) => {
                   const entry = s[attendedTab]!
                   return (
@@ -603,13 +640,29 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                       <td style={{ ...S.td, fontWeight: 600, color: '#fff' }}>{s.name}</td>
                       <td style={S.tdMuted}>{s.email}</td>
                       <td style={{ ...S.td, textAlign: 'center' }}>{entry.attempts}</td>
+                      <td style={{ ...S.td, textAlign: 'center' }}>
+                        {typeof entry.violations === 'number' ? (
+                          <span style={{
+                            color: entry.violations === 0 ? '#22c55e' : entry.violations <= 3 ? '#f59e0b' : '#ef4444',
+                            fontWeight: 700,
+                          }}>
+                            {entry.violations}
+                          </span>
+                        ) : '—'}
+                      </td>
                       <td style={S.tdMuted}>{fmtDateTime(entry.lastActivity)}</td>
                       <td style={{ ...S.td, textAlign: 'center' }}>
-                        <span style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e', borderRadius: 6, padding: '2px 8px', fontSize: '0.68rem', fontWeight: 700 }}>Completed</span>
+                        {(() => {
+                          const lastScore = entry.attemptsList[0]?.score
+                          if (typeof lastScore !== 'number') return '—'
+                          return attendedTab === 'resumeBased'
+                            ? <span style={{ color: scoreDotColor(lastScore), fontWeight: 700 }}>{lastScore}%</span>
+                            : <span style={{ color: '#aaa', fontWeight: 700 }}>{lastScore} <span style={{ color: '#555', fontWeight: 400 }}>/ 10</span></span>
+                        })()}
                       </td>
                       <td style={{ ...S.td, textAlign: 'center' }}>
                         <button
-                          onClick={() => { setViewStudent(s); setModalStartDate(''); setModalEndDate('') }}
+                          onClick={() => { setViewStudent(s); setModalStartDate(''); setModalEndDate(''); setModalAppliedStart(''); setModalAppliedEnd(''); setModalRangeEntry(null); setModalRangeError('') }}
                           style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#ff6b00', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
                         >
                           View
@@ -648,9 +701,42 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
       {/* ── Student Attempts Modal ─────────────────────── */}
       {viewStudent && createPortal(
         (() => {
-          const entry = viewStudent[attendedTab]
+          const entry = modalRangeEntry ? modalRangeEntry[attendedTab] : viewStudent[attendedTab]
           const isTopic = attendedTab === 'topicBased'
           const accent = isTopic ? '#a855f7' : '#f59e0b'
+
+          const applyModalRange = async () => {
+            if (modalStartDate && modalEndDate) {
+              const spanDays = Math.round((new Date(modalEndDate).getTime() - new Date(modalStartDate).getTime()) / 86400000) + 1
+              if (spanDays > 31) {
+                setModalRangeError(`Date range can't exceed 31 days (currently ${spanDays} days)`)
+                return
+              }
+            }
+            setModalRangeError('')
+            setModalAppliedStart(modalStartDate)
+            setModalAppliedEnd(modalEndDate)
+            if (!modalStartDate && !modalEndDate) { setModalRangeEntry(null); return }
+            setModalRangeLoading(true)
+            try {
+              const params = new URLSearchParams({
+                page: '1', limit: '500',
+                startDate: modalStartDate || '2000-01-01',
+                endDate: modalEndDate || toDateStr(),
+              })
+              const res = await fetch(`${baseURL}${apiBase}/ai-interview-students?${params}`, {
+                headers: { Authorization: `Bearer ${user?.token}` },
+              })
+              const data = await res.json()
+              const found = (data.students || []).find((s: StudentRow) => s.userId === viewStudent.userId)
+              setModalRangeEntry(found ? { topicBased: found.topicBased, resumeBased: found.resumeBased } : { topicBased: null, resumeBased: null })
+            } catch (err) {
+              console.error('Modal range fetch failed', err)
+            } finally {
+              setModalRangeLoading(false)
+            }
+          }
+
           return (
             <div
               onClick={() => setViewStudent(null)}
@@ -675,12 +761,28 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ color: '#666', fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}>Date Range</span>
-                    <input type="date" style={S.select} value={modalStartDate} max={modalEndDate || undefined} onChange={(e) => setModalStartDate(e.target.value)} />
+                    <input
+                      type="date" style={S.select} value={modalStartDate}
+                      max={modalEndDate || undefined}
+                      onChange={(e) => { setModalStartDate(e.target.value); setModalRangeError('') }}
+                    />
                     <span style={{ color: '#555' }}>–</span>
-                    <input type="date" style={S.select} value={modalEndDate} min={modalStartDate || undefined} onChange={(e) => setModalEndDate(e.target.value)} />
-                    {(modalStartDate || modalEndDate) && (
+                    <input
+                      type="date" style={S.select} value={modalEndDate}
+                      min={modalStartDate || undefined}
+                      max={modalStartDate ? addDaysStr(modalStartDate, 30) : undefined}
+                      onChange={(e) => { setModalEndDate(e.target.value); setModalRangeError('') }}
+                    />
+                    <button
+                      onClick={applyModalRange}
+                      disabled={modalRangeLoading}
+                      style={{ background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.4)', color: '#ff6b00', borderRadius: 6, padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: modalRangeLoading ? 'default' : 'pointer', opacity: modalRangeLoading ? 0.6 : 1 }}
+                    >
+                      {modalRangeLoading ? 'Applying…' : 'Apply'}
+                    </button>
+                    {(modalStartDate || modalEndDate || modalAppliedStart || modalAppliedEnd) && (
                       <button
-                        onClick={() => { setModalStartDate(''); setModalEndDate('') }}
+                        onClick={() => { setModalStartDate(''); setModalEndDate(''); setModalAppliedStart(''); setModalAppliedEnd(''); setModalRangeEntry(null); setModalRangeError('') }}
                         style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#888', borderRadius: 6, padding: '4px 10px', fontSize: '0.72rem', cursor: 'pointer' }}
                       >
                         Clear
@@ -694,12 +796,15 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                     </button>
                   </div>
                 </div>
-                <div style={{ overflowY: 'auto', overflowX: 'auto' }}>
+                {modalRangeError && (
+                  <div style={{ padding: '0.5rem 1.4rem 0', color: '#ef4444', fontSize: '0.72rem', textAlign: 'right' }}>{modalRangeError}</div>
+                )}
+                <div style={{ overflowY: 'auto', padding: '0 1.4rem 1.1rem' }}>
                   {(() => {
                     const filtered = !entry ? [] : entry.attemptsList.filter((a) => {
                       const d = toDateStr(new Date(a.date))
-                      if (modalStartDate && d < modalStartDate) return false
-                      if (modalEndDate && d > modalEndDate) return false
+                      if (modalAppliedStart && d < modalAppliedStart) return false
+                      if (modalAppliedEnd && d > modalAppliedEnd) return false
                       return true
                     })
                     if (filtered.length === 0) {
@@ -726,17 +831,24 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                       }
                     })
 
+                    // Fixed per-column widths (not %-based) let the table grow
+                    // wider than the viewport and scroll horizontally, so
+                    // date columns get real breathing room instead of being
+                    // squeezed to fit — the Topic column stays pinned via
+                    // position:sticky while the dates scroll underneath it.
+                    const dateColWidth = 110
                     return (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                      <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
                         <colgroup>
-                          <col style={{ width: 150 }} />
-                          {dates.map((d) => <col key={d} />)}
+                          <col style={{ width: 170 }} />
+                          {dates.map((d) => <col key={d} style={{ width: dateColWidth }} />)}
                         </colgroup>
                         <thead>
                           <tr>
-                            <th style={{ ...S.th, minWidth: 0 }}>{isTopic ? 'Topic' : 'Resume'}</th>
+                            <th style={{ ...S.th, minWidth: 0, position: 'sticky', left: 0, zIndex: 2, background: '#111', boxShadow: '1px 0 0 #2a2a2a' }}>{isTopic ? 'Topic' : 'Resume'}</th>
                             {dates.map((d) => (
-                              <th key={d} style={{ ...S.th, minWidth: 0, textAlign: 'center', padding: '0.6rem 0.3rem' }}>
+                              <th key={d} style={{ ...S.th, minWidth: 0, textAlign: 'center', padding: '0.6rem 0.6rem' }}>
                                 {new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                               </th>
                             ))}
@@ -745,14 +857,14 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                         <tbody>
                           {topicOrder.map((topic) => (
                             <tr key={topic}>
-                              <td style={{ ...S.td, fontWeight: 700, color: '#ddd', whiteSpace: 'normal', verticalAlign: 'middle' }}>{topic}</td>
+                              <td style={{ ...S.td, fontWeight: 700, color: '#ddd', whiteSpace: 'normal', verticalAlign: 'middle', position: 'sticky', left: 0, zIndex: 1, background: '#141414', boxShadow: '1px 0 0 #2a2a2a' }}>{topic}</td>
                               {dates.map((d) => {
                                 const cell = byTopic[topic][d]
                                 return (
-                                  <td key={d} style={{ ...S.td, textAlign: 'center', padding: '0.55rem 0.3rem', verticalAlign: 'middle' }}>
+                                  <td key={d} style={{ ...S.td, textAlign: 'center', padding: '0.6rem 0.6rem', verticalAlign: 'middle' }}>
                                     {cell ? (
                                       <div>
-                                        <div style={{ color: accent, fontWeight: 700, fontSize: '0.78rem' }}>{isTopic ? cell.score : `${cell.score}%`}</div>
+                                        <div style={{ color: accent, fontWeight: 700, fontSize: '0.78rem' }}>{isTopic ? `${cell.score} / 10` : `${cell.score}%`}</div>
                                         <div style={{ color: '#555', fontSize: '0.6rem', marginTop: 2 }}>{cell.time}</div>
                                       </div>
                                     ) : <span style={{ color: '#333' }}>—</span>}
@@ -763,6 +875,7 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                           ))}
                         </tbody>
                       </table>
+                      </div>
                     )
                   })()}
                 </div>

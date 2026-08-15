@@ -1197,6 +1197,17 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }))
 
     if (meta.interviewType === 'resume') {
+      const monitoring = {
+        eyeViolations: gaze.violationCount,
+        headViolations: gaze.headViolationCount,
+        maskViolations: gaze.maskViolationCount,
+        noFaceViolations: gaze.noFaceViolationCount,
+        faceDetected: gaze.faceDetected,
+        lightingOk,
+        lightingLabel,
+        recordingActive: isRecordingActive,
+      }
+
       try {
         await fetch(`${baseURL}/api/resume-based-interview/submit`, {
           method: 'POST',
@@ -1204,7 +1215,7 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify({ attemptId: meta.attemptId, scores }),
+          body: JSON.stringify({ attemptId: meta.attemptId, scores, monitoring }),
         })
       } catch (err) {
         console.error('Resume score submit failed', err)
@@ -1777,13 +1788,13 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
       ) : (
         interviewFinished && finalFeedback ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: '#f8fafc' }}>
-            <div style={{ fontSize: 48 }}>ðŸŽ‰</div>
+            <div style={{ fontSize: 48 }}>🎉</div>
             <h4 style={{ fontWeight: 800, color: '#1e293b', margin: 0 }}>Interview Completed!</h4>
             <p style={{ color: '#64748b', margin: 0 }}>Your results have been saved. Download your report below.</p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button disabled={isDownloadingPdf} onClick={downloadPDF}
                 style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                {isDownloadingPdf ? <><Spinner size="sm" /> Generating...</> : 'ðŸ"„ Download Interview Report'}
+                {isDownloadingPdf ? <><Spinner size="sm" /> Generating...</> : '📄 Download Interview Report'}
               </button>
               <button onClick={() => onComplete?.()}
                 style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: 10, padding: '12px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>

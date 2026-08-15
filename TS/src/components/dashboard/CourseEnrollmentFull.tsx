@@ -23,7 +23,17 @@ type Summary = {
 }
 
 type Distribution = { notStarted: number; inProgress: number; midProgress: number; completed: number }
-type TrendPoint = { date: string; avgProgress: number }
+type TopCourse = {
+  courseId: string
+  title: string
+  image: string | null
+  enrolledCount: number
+  notEnrolledCount: number
+  completedCount: number
+  inProgressCount: number
+  notStartedCount: number
+  avgCompletion: number
+}
 
 type Row = {
   userId: string
@@ -195,11 +205,11 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
   const [summary, setSummary] = useState<Summary>(EMPTY_SUMMARY)
   const [courseOptions, setCourseOptions] = useState<CourseOption[]>([])
   const [distribution, setDistribution] = useState<Distribution>(EMPTY_DIST)
-  const [trend, setTrend] = useState<TrendPoint[]>([])
+  const [topCourses, setTopCourses] = useState<TopCourse[]>([])
   const [departments, setDepartments] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Date range (drives the "Average Progress Over Time" trend window)
+  // Date range (drives the summary cards' "vs start of range" comparison)
   const [dateRangeMode, setDateRangeMode] = useState<DateRangeMode>('7d')
   const [startDate, setStartDate] = useState(defaultStart)
   const [endDate, setEndDate] = useState(defaultEnd)
@@ -241,7 +251,7 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
           setSummary(data.summary)
           setCourseOptions(data.courses.map((c: any) => ({ courseId: c.courseId, title: c.title })))
           setDistribution(data.distribution)
-          setTrend(data.trend)
+          setTopCourses(data.courses)
         }
       })
       .catch(console.error)
@@ -406,24 +416,9 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     tooltip: { theme: 'dark', enabled: hasDistData },
   }
 
-  const lineOptions: ApexCharts.ApexOptions = {
-    chart: { type: 'area', toolbar: { show: false }, background: 'transparent', animations: { enabled: true, speed: 500 } },
-    theme: { mode: 'dark' },
-    stroke: { curve: 'smooth', width: 3 },
-    colors: ['#ff6b00'],
-    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0, stops: [0, 90, 100] } },
-    markers: { size: 4, colors: ['#ff6b00'], strokeColors: '#141414', strokeWidth: 2, hover: { size: 7 } },
-    xaxis: {
-      categories: trend.map((t) => new Date(t.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })),
-      labels: { style: { colors: '#444', fontSize: '10px' } },
-      axisBorder: { show: false }, axisTicks: { show: false },
-    },
-    yaxis: { min: 0, max: 100, tickAmount: 4, labels: { style: { colors: '#444', fontSize: '10px' }, formatter: (v) => `${Math.round(v)}%` } },
-    dataLabels: { enabled: false },
-    grid: { borderColor: '#1e1e1e', strokeDashArray: 3, xaxis: { lines: { show: false } }, padding: { left: 6, right: 12 } },
-    tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v}%` } },
-  }
-  const lineSeries = [{ name: 'Avg Progress', data: trend.map((t) => t.avgProgress) }]
+  // Top Courses — already sorted by enrolledCount desc server-side
+  const topCoursesRanked = topCourses.slice(0, 5)
+  const maxEnrolled = Math.max(1, ...topCoursesRanked.map((c) => c.enrolledCount))
 
   if (loading) {
     return (
@@ -656,14 +651,41 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
           </div>
         </div>
 
-        {/* Average Progress Over Time */}
+        {/* Top Courses — enrollment-ranked, with each course's own avg
+            completion. Replaces the old "Average Progress Over Time" line
+            chart, which was structurally flat: it averaged each student's
+            *current* progress and only shifted if new UserProgress records
+            were created within the selected date window — with no daily
+            snapshots in the DB, most ranges showed an identical value
+            repeated every day. This shows real, immediately-true variation
+            instead. */}
         <div style={{ ...S.card, minWidth: 0 }}>
           <div style={S.cardHeader}>
-            <span style={S.cardTitle}>Average Progress Over Time</span>
-            <span style={{ color: '#555', fontSize: '0.7rem' }}>{trend.length} Day{trend.length !== 1 ? 's' : ''}</span>
+            <span style={S.cardTitle}>Top Courses</span>
+            <span style={{ color: '#555', fontSize: '0.7rem' }}>By Enrollment</span>
           </div>
-          <div style={{ padding: '0.5rem 0.5rem 0' }}>
-            <ReactApexChart type="area" height={190} series={lineSeries} options={lineOptions} />
+          <div style={{ padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {topCoursesRanked.length === 0 ? (
+              <div style={{ color: '#555', fontSize: '0.76rem', textAlign: 'center', padding: '1rem 0' }}>No courses yet</div>
+            ) : topCoursesRanked.map((c, i) => {
+              const barPct = Math.round((c.enrolledCount / maxEnrolled) * 100)
+              const completionColor = c.avgCompletion >= 70 ? '#22c55e' : c.avgCompletion >= 40 ? '#f59e0b' : '#ef4444'
+              return (
+                <div key={c.courseId}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5, gap: 8 }}>
+                    <span style={{ color: '#ddd', fontSize: '0.78rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {i + 1}. {truncate(c.title, 32)}
+                    </span>
+                    <span style={{ color: '#666', fontSize: '0.7rem', flexShrink: 0 }}>
+                      {c.enrolledCount} enrolled · <span style={{ color: completionColor, fontWeight: 700 }}>{c.avgCompletion}%</span>
+                    </span>
+                  </div>
+                  <div style={{ background: '#2a2a2a', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                    <div style={{ width: `${barPct}%`, background: '#ff6b00', height: '100%' }} />
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

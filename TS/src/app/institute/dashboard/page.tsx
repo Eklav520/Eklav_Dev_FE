@@ -367,7 +367,7 @@ const DashboardPage = () => {
           </div>
         </Modal.Header>
         <Modal.Body style={S.modalBody}>
-          <CodeChallengeFull apiBase="/api/adminDashboardCharts" />
+          <CodeChallengeFull apiBase="/api/institute" />
         </Modal.Body>
       </Modal>
 
