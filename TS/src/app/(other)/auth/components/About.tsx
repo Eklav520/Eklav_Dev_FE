@@ -338,12 +338,14 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 </div>
               )}
 
-              <h1 className="neo-title">
-                About{" "}
-                <span className="neo-gradient-text">
-                  <TypewriterText text={normalized} />
-                </span>
-              </h1>
+              {!bannerVisible && (
+                <h1 className="neo-title">
+                  About{" "}
+                  <span className="neo-gradient-text">
+                    <TypewriterText text={normalized} />
+                  </span>
+                </h1>
+              )}
 
               <p className="neo-subtitle">
                 <strong style={{ color: "#fff" }}>{first2}{rest}</strong> is a modern{" "}
