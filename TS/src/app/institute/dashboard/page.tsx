@@ -273,7 +273,7 @@ const DashboardPage = () => {
             {activeTab === 'code-challenge' && (
               <Row className="g-3">
                 <Col md={12} lg={8}>
-                  <CodeChallengeWidget apiBase="/api/adminDashboardCharts" />
+                  <CodeChallengeWidget apiBase="/api/institute" />
                 </Col>
                 <Col md={12} lg={4}>
                   <div style={S.infoCard}>
