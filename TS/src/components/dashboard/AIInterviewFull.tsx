@@ -50,7 +50,7 @@ type OverviewData = {
 
 type DateRangeMode = 'today' | '7d' | '30d' | 'custom'
 
-type AttemptEntry = { date: string; score: number; topic?: string }
+type AttemptEntry = { date: string; score: number; topic?: string; attemptId?: string }
 type InterviewEntry = {
   attempts: number
   attemptsList: AttemptEntry[]
@@ -67,6 +67,31 @@ type StudentRow = {
   resumeBased: InterviewEntry
 }
 type LatestAttempt = { type: 'Topic Based' | 'Resume Based'; name: string; studentName: string; date: string; score: number }
+
+/* ─── Per-attempt drill-down ─────────────────────────────── */
+type Monitoring = {
+  eyeViolations: number; headViolations: number; maskViolations: number; noFaceViolations: number
+  faceDetected: boolean; lightingOk: boolean; lightingLabel: string; recordingActive: boolean
+} | null
+type TopicResponse = {
+  question: string; answer: string
+  rating: { accuracy: number; clarity: number; completeness: number; total: number }
+  feedback: string; idealAnswer: string; followUpQuestion: string; improvementTips: string[]
+  videoPath: string | null
+}
+type TopicAttemptDetail = {
+  attemptId: string; studentName: string; studentEmail: string; topic: string; attemptNumber: number
+  startedAt: string; completedAt: string | null; totalScore: number | null
+  monitoring: Monitoring; responses: TopicResponse[]
+}
+type ResumeAttemptDetail = {
+  attemptId: string; studentName: string; studentEmail: string; attemptNumber: number
+  createdAt: string; totalScore: number | null; isScored: boolean
+  monitoring: Monitoring; questions: string[]; scores: { question: string; score: number }[]
+}
+type AttemptDetail =
+  | { success: true; type: 'topic'; attempt: TopicAttemptDetail }
+  | { success: true; type: 'resume'; attempt: ResumeAttemptDetail }
 
 /* ─── Constants ─────────────────────────────────────────── */
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -234,6 +259,33 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
 
   // Interview Details (Latest) — date-range scoped, independent of month/year
   const [rangeStudents, setRangeStudents] = useState<StudentRow[]>([])
+
+  // Per-attempt drill-down — full question-by-question report behind each
+  // score cell in the pivot table modal above.
+  const [attemptDetail, setAttemptDetail] = useState<AttemptDetail | null>(null)
+  const [attemptDetailLoading, setAttemptDetailLoading] = useState(false)
+  const [attemptDetailError, setAttemptDetailError] = useState('')
+
+  const openAttemptDetail = async (attemptId: string, type: 'topic' | 'resume') => {
+    if (!user?.token) return
+    setAttemptDetail(null)
+    setAttemptDetailError('')
+    setAttemptDetailLoading(true)
+    try {
+      const params = new URLSearchParams({ attemptId, type })
+      const res = await fetch(`${baseURL}${apiBase}/ai-interview-attempt?${params}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      })
+      const data = await res.json()
+      if (data.success) setAttemptDetail(data)
+      else setAttemptDetailError(data.message || 'Failed to load attempt')
+    } catch (err) {
+      console.error(err)
+      setAttemptDetailError('Network error')
+    } finally {
+      setAttemptDetailLoading(false)
+    }
+  }
 
   const yearRange = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
 
@@ -817,7 +869,7 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                     const dateSet = new Set(filtered.map((a) => toDateStr(new Date(a.date))))
                     const dates = [...dateSet].sort()
                     const topicOrder: string[] = []
-                    const byTopic: Record<string, Record<string, { score: number; time: string; ms: number }>> = {}
+                    const byTopic: Record<string, Record<string, { score: number; time: string; ms: number; attemptId?: string }>> = {}
                     filtered.forEach((a) => {
                       const topic = a.topic || (isTopic ? 'Untitled Topic' : 'Resume Interview')
                       const d = toDateStr(new Date(a.date))
@@ -827,7 +879,7 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                       const existing = byTopic[topic][d]
                       if (!existing || ms > existing.ms) {
                         const time = new Date(a.date).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                        byTopic[topic][d] = { score: a.score, time, ms }
+                        byTopic[topic][d] = { score: a.score, time, ms, attemptId: a.attemptId }
                       }
                     })
 
@@ -863,10 +915,20 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                                 return (
                                   <td key={d} style={{ ...S.td, textAlign: 'center', padding: '0.6rem 0.6rem', verticalAlign: 'middle' }}>
                                     {cell ? (
-                                      <div>
-                                        <div style={{ color: accent, fontWeight: 700, fontSize: '0.78rem' }}>{isTopic ? `${cell.score} / 10` : `${cell.score}%`}</div>
+                                      <button
+                                        onClick={() => cell.attemptId && openAttemptDetail(cell.attemptId, isTopic ? 'topic' : 'resume')}
+                                        disabled={!cell.attemptId}
+                                        title={cell.attemptId ? 'View full report' : undefined}
+                                        style={{
+                                          background: 'none', border: 'none', padding: 0, width: '100%',
+                                          cursor: cell.attemptId ? 'pointer' : 'default',
+                                        }}
+                                      >
+                                        <div style={{ color: accent, fontWeight: 700, fontSize: '0.78rem', textDecoration: cell.attemptId ? 'underline' : 'none', textDecorationColor: `${accent}55` }}>
+                                          {isTopic ? `${cell.score} / 10` : `${cell.score}%`}
+                                        </div>
                                         <div style={{ color: '#555', fontSize: '0.6rem', marginTop: 2 }}>{cell.time}</div>
-                                      </div>
+                                      </button>
                                     ) : <span style={{ color: '#333' }}>—</span>}
                                   </td>
                                 )
@@ -878,6 +940,174 @@ const AIInterviewFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) =
                       </div>
                     )
                   })()}
+                </div>
+              </div>
+            </div>
+          )
+        })(),
+        document.body
+      )}
+
+      {/* ── Per-Attempt Report ──────────────────────────── */}
+      {(attemptDetailLoading || attemptDetail || attemptDetailError) && createPortal(
+        (() => {
+          const closeDetail = () => { setAttemptDetail(null); setAttemptDetailError('') }
+          const scoreColor = (s: number) => (s >= 70 ? '#22c55e' : s >= 40 ? '#f59e0b' : '#ef4444')
+          return (
+            <div
+              onClick={closeDetail}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.8)',
+                backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+              }}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  background: '#141414', border: '1px solid #252525', borderRadius: 16,
+                  width: 'min(760px, 96vw)', maxHeight: '88vh', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
+                }}
+              >
+                <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #252525', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
+                      {attemptDetail?.type === 'topic' ? attemptDetail.attempt.topic : 'Resume Interview'} — Full Report
+                    </div>
+                    <div style={{ color: '#555', fontSize: '0.72rem', marginTop: 2 }}>
+                      {attemptDetail ? `${attemptDetail.attempt.studentName} · ${attemptDetail.attempt.studentEmail}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    onClick={closeDetail}
+                    style={{ background: '#222', border: '1px solid #333', color: '#777', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div style={{ overflowY: 'auto', padding: '1.1rem 1.4rem' }}>
+                  {attemptDetailLoading && (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem 0' }}>
+                      <Spinner animation="border" style={{ color: '#ff6b00' }} />
+                    </div>
+                  )}
+                  {attemptDetailError && (
+                    <div style={{ color: '#ef4444', textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem' }}>{attemptDetailError}</div>
+                  )}
+
+                  {attemptDetail && !attemptDetailLoading && (
+                    <>
+                      {/* Summary row */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '0.6rem', marginBottom: '1.1rem' }}>
+                        <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '0.6rem 0.9rem' }}>
+                          <div style={{ color: '#555', fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Score</div>
+                          <div style={{ color: '#ff6b00', fontWeight: 800, fontSize: '1.1rem' }}>
+                            {attemptDetail.type === 'topic'
+                              ? `${attemptDetail.attempt.totalScore ?? '—'} / 10`
+                              : `${attemptDetail.attempt.totalScore ?? '—'}%`}
+                          </div>
+                        </div>
+                        <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '0.6rem 0.9rem' }}>
+                          <div style={{ color: '#555', fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Attempt #</div>
+                          <div style={{ color: '#ddd', fontWeight: 700, fontSize: '1.1rem' }}>{attemptDetail.attempt.attemptNumber}</div>
+                        </div>
+                        <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '0.6rem 0.9rem' }}>
+                          <div style={{ color: '#555', fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Date</div>
+                          <div style={{ color: '#ddd', fontWeight: 700, fontSize: '0.82rem' }}>
+                            {fmtDateTime(attemptDetail.type === 'topic' ? attemptDetail.attempt.startedAt : attemptDetail.attempt.createdAt)}
+                          </div>
+                        </div>
+                        {attemptDetail.attempt.monitoring && (
+                          <div style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '0.6rem 0.9rem' }}>
+                            <div style={{ color: '#555', fontSize: '0.62rem', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>Violations</div>
+                            {(() => {
+                              const m = attemptDetail.attempt.monitoring!
+                              const total = m.eyeViolations + m.headViolations + m.maskViolations + m.noFaceViolations
+                              return <div style={{ color: total === 0 ? '#22c55e' : total <= 3 ? '#f59e0b' : '#ef4444', fontWeight: 800, fontSize: '1.1rem' }}>{total}</div>
+                            })()}
+                          </div>
+                        )}
+                      </div>
+
+                      {attemptDetail.attempt.monitoring && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '0.5rem', marginBottom: '1.4rem', fontSize: '0.72rem', color: '#888' }}>
+                          <span>👁 Eye: <strong style={{ color: '#ddd' }}>{attemptDetail.attempt.monitoring.eyeViolations}</strong></span>
+                          <span>·</span>
+                          <span>Head: <strong style={{ color: '#ddd' }}>{attemptDetail.attempt.monitoring.headViolations}</strong></span>
+                          <span>·</span>
+                          <span>Mask: <strong style={{ color: '#ddd' }}>{attemptDetail.attempt.monitoring.maskViolations}</strong></span>
+                          <span>·</span>
+                          <span>No-face: <strong style={{ color: '#ddd' }}>{attemptDetail.attempt.monitoring.noFaceViolations}</strong></span>
+                          <span>·</span>
+                          <span>Lighting: <strong style={{ color: attemptDetail.attempt.monitoring.lightingOk ? '#22c55e' : '#ef4444' }}>{attemptDetail.attempt.monitoring.lightingLabel || (attemptDetail.attempt.monitoring.lightingOk ? 'OK' : 'Poor')}</strong></span>
+                        </div>
+                      )}
+
+                      {/* Topic-based: full per-question breakdown */}
+                      {attemptDetail.type === 'topic' && (
+                        attemptDetail.attempt.responses.length === 0 ? (
+                          <div style={{ color: '#444', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.85rem' }}>No responses recorded</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {attemptDetail.attempt.responses.map((r, i) => (
+                              <div key={i} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 12, padding: '0.9rem 1rem' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                                  <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.82rem' }}>Q{i + 1}. {r.question}</div>
+                                  <span style={{
+                                    background: `${scoreColor(r.rating?.total * 10)}18`, color: scoreColor(r.rating?.total * 10),
+                                    border: `1px solid ${scoreColor(r.rating?.total * 10)}33`, borderRadius: 6,
+                                    padding: '2px 9px', fontSize: '0.72rem', fontWeight: 700, flexShrink: 0,
+                                  }}>
+                                    {r.rating?.total ?? 0}/10
+                                  </span>
+                                </div>
+                                {r.answer && <div style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: 8, whiteSpace: 'pre-wrap' as const }}>{r.answer}</div>}
+                                {r.feedback && (
+                                  <div style={{ fontSize: '0.76rem', color: '#888', marginBottom: 4 }}>
+                                    <span style={{ color: '#ff6b00', fontWeight: 600 }}>Feedback: </span>{r.feedback}
+                                  </div>
+                                )}
+                                {r.idealAnswer && (
+                                  <div style={{ fontSize: '0.76rem', color: '#888', marginBottom: 4 }}>
+                                    <span style={{ color: '#22c55e', fontWeight: 600 }}>Ideal answer: </span>{r.idealAnswer}
+                                  </div>
+                                )}
+                                {r.improvementTips?.length > 0 && (
+                                  <div style={{ fontSize: '0.76rem', color: '#888' }}>
+                                    <span style={{ color: '#818cf8', fontWeight: 600 }}>Tips: </span>{r.improvementTips.join(' · ')}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      )}
+
+                      {/* Resume-based: question + score list */}
+                      {attemptDetail.type === 'resume' && (
+                        attemptDetail.attempt.scores.length === 0 ? (
+                          <div style={{ color: '#444', textAlign: 'center', padding: '1.5rem 0', fontSize: '0.85rem' }}>Not yet scored</div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                            {attemptDetail.attempt.scores.map((s, i) => (
+                              <div key={i} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 10, padding: '0.7rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                                <div style={{ color: '#ddd', fontSize: '0.8rem' }}>Q{i + 1}. {s.question}</div>
+                                <span style={{
+                                  background: `${scoreColor(s.score * 10)}18`, color: scoreColor(s.score * 10),
+                                  border: `1px solid ${scoreColor(s.score * 10)}33`, borderRadius: 6,
+                                  padding: '2px 9px', fontSize: '0.72rem', fontWeight: 700, flexShrink: 0,
+                                }}>
+                                  {s.score}/10
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
