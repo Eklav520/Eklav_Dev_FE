@@ -123,6 +123,7 @@ const FacultyAdminPage = lazy(() => import('@/app/institute/facultyAdmin/page'))
 const InstituteDashboard = lazy(() => import('@/app/institute/dashboard/page'))
 const InstituteCourses = lazy(() => import('@/app/institute//manage-course/page'))
 const InstituteOnlineClasses = lazy(() => import('@/app/institute/online-classes/page'))
+const InstituteLSRWReport = lazy(() => import('@/app/institute/lsrw-report/page'))
 const InstituteJobOpenings = lazy(() => import('@/app/institute/interview-details/page'))
 const InstituteFinalAssessmentUpload = lazy(() => import('@/app/institute/final-assessment/page'))
 const InstituteFinalAssessmentResults = lazy(() => import('@/app/institute/final-assessment-details/page'))
@@ -768,6 +769,12 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     path: '/institute/online-classes',
     name: 'Online Classes',
     element: <InstituteOnlineClasses />,
+  },
+
+  {
+    path: '/institute/lsrw-report',
+    name: 'LSRW Section Report',
+    element: <InstituteLSRWReport />,
   },
 
   {

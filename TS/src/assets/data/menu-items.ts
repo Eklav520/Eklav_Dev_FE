@@ -495,15 +495,15 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
   },
 
   {
-    key: 'onlineClasses',
-    label: 'Online Classes',
-    icon: BsCameraVideo,
+    key: 'lsrwReport',
+    label: 'LSRW',
+    icon: BsChatSquareText,
     children: [
       {
-        key: 'manageClasses',
-        label: 'Manage Classes',
-        icon: FaVideo,
-        url: '/institute/online-classes',
+        key: 'lsrwSectionReport',
+        label: 'Section Report',
+        icon: FaChalkboardTeacher,
+        url: '/institute/lsrw-report',
         parentKey: 'instituteadmin',
       },
     ],
