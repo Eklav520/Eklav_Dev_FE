@@ -274,17 +274,43 @@ const ALL_SECTION_DEFS = [...PATTERN_SECTIONS[1], ...PATTERN_SECTIONS[2]].filter
   (s, idx, arr) => arr.findIndex((x) => x.key === s.key) === idx
 )
 
-type Props = { onSelect: (pattern: 1 | 2) => void; onPracticeSection: (sectionKey: string) => void }
+type Props = {
+  onSelect: (pattern: 1 | 2) => void
+  onPracticeSection: (sectionKey: string) => void
+  // Real Pattern attempts (not Practice Mode) are capped at 30/month —
+  // `starting` disables the Select buttons while /lsrw-pattern/start is
+  // in flight, `limitMessage` surfaces the 403 it returns once the cap is
+  // hit for this calendar month.
+  starting?: boolean
+  limitMessage?: string | null
+  onDismissLimitMessage?: () => void
+}
 
-const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
+const MONTHLY_ATTEMPT_LIMIT = 30
+
+const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMessage, onDismissLimitMessage }: Props) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  // Monthly usage badge — how many of the 30 real Pattern attempts this
+  // student has used so far this calendar month (Practice Mode doesn't
+  // count). Read-only display; the actual gate is enforced server-side.
+  const [monthlyUsed, setMonthlyUsed] = useState<number | null>(null)
+  useEffect(() => {
+    if (!user?.token) return
+    fetch(`${baseURL}/api/student/lsrw-pattern/monthly-usage`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setMonthlyUsed(data.used) })
+      .catch(() => {})
+  }, [user?.token, baseURL, limitMessage])
 
   // Same paid/approved gating pattern as CourseCard.tsx — only students whose
   // enrollment status is approved (or still pending review) may start a
   // pattern or practice a section; everyone else sees disabled/locked buttons.
   const status = user?.status?.toLowerCase()
   const isApproved = status === 'approved'
+  const limitReached = monthlyUsed !== null && monthlyUsed >= MONTHLY_ATTEMPT_LIMIT
+  const canStart = isApproved && !limitReached
 
   // Real "questions shown per attempt" counts per section, from
   // LSRWRoundSettings via each section's own student-facing endpoint — the
@@ -677,10 +703,40 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
 
   return (
     <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>LSRW Communication Skills</h2>
-        <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' as const }}>
+        <div>
+          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>LSRW Communication Skills</h2>
+          <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
+        </div>
+        {monthlyUsed !== null && (
+          <div
+            title="Practicing individual sections is unlimited — this counts only real Pattern 1/2 attempts."
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, background: CARD_BG, border: `1px solid ${limitReached ? '#fecaca' : PAGE_BORDER}`,
+              borderRadius: 10, padding: '8px 14px', flexShrink: 0,
+            }}
+          >
+            <span style={{ fontSize: 11, color: PAGE_GRAY }}>Pattern Attempts This Month</span>
+            <span style={{ fontSize: 13.5, fontWeight: 800, color: limitReached ? '#dc2626' : PAGE_TEXT }}>
+              {monthlyUsed} / {MONTHLY_ATTEMPT_LIMIT}
+            </span>
+          </div>
+        )}
       </div>
+
+      {limitMessage && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <FaExclamationTriangle size={13} color="#dc2626" />
+            <span style={{ fontSize: 12.5, color: '#1e293b' }}>{limitMessage}</span>
+          </div>
+          {onDismissLimitMessage && (
+            <button onClick={onDismissLimitMessage} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'flex' }}>
+              <FaTimes size={12} />
+            </button>
+          )}
+        </div>
+      )}
 
       {!isApproved && (
         <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
@@ -738,19 +794,27 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection }: Props) => {
             </div>
 
             <button
-              onClick={() => isApproved && onSelect(pattern.key)}
-              disabled={!isApproved}
-              title={isApproved ? undefined : 'Premium feature — you are not subscribed to this plan'}
+              onClick={() => canStart && !starting && onSelect(pattern.key)}
+              disabled={!canStart || starting}
+              title={
+                !isApproved ? 'Premium feature — you are not subscribed to this plan'
+                : limitReached ? `You've used all ${MONTHLY_ATTEMPT_LIMIT} pattern attempts for this month`
+                : undefined
+              }
               style={{
                 marginTop: 20, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                background: isApproved ? CARD_BG : PAGE_BG,
-                border: `1.5px solid ${isApproved ? ORANGE : PAGE_BORDER}`,
-                color: isApproved ? ORANGE : PAGE_GRAY, borderRadius: 10,
+                background: canStart ? CARD_BG : PAGE_BG,
+                border: `1.5px solid ${canStart ? ORANGE : PAGE_BORDER}`,
+                color: canStart ? ORANGE : PAGE_GRAY, borderRadius: 10,
                 padding: '11px 0', fontSize: 13.5, fontWeight: 700,
-                cursor: isApproved ? 'pointer' : 'not-allowed',
+                cursor: canStart && !starting ? 'pointer' : 'not-allowed',
+                opacity: starting ? 0.7 : 1,
               }}
             >
-              {isApproved ? <>Select {pattern.label} <FaArrowRight size={11} /></> : <><FaLock size={11} /> Not Subscribed</>}
+              {!isApproved ? <><FaLock size={11} /> Not Subscribed</>
+                : limitReached ? <><FaLock size={11} /> Monthly Limit Reached</>
+                : starting ? <>Starting…</>
+                : <>Select {pattern.label} <FaArrowRight size={11} /></>}
             </button>
           </div>
         ))}

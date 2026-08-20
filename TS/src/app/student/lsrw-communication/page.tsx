@@ -45,6 +45,10 @@ const LSRWCommunicationRound = () => {
   const [pattern, setPattern] = useState<1 | 2 | null>(null)
   const [attempt, setAttempt] = useState<Attempt | null>(null)
   const [loadingAttempt, setLoadingAttempt] = useState(false)
+  // Real (non-practice) pattern attempts are capped at 30/month — surfaced
+  // from /lsrw-pattern/start's 403 so the selection screen can show it as a
+  // banner instead of silently doing nothing when a student hits the cap.
+  const [limitMessage, setLimitMessage] = useState<string | null>(null)
 
   const [showInstructions, setShowInstructions] = useState(false)
   const [activeTab, setActiveTab] = useState<InstructionTab>('general')
@@ -150,13 +154,18 @@ const LSRWCommunicationRound = () => {
         body: JSON.stringify({ patternKey: p }),
       })
       const data = await res.json()
-      if (data.success) setAttempt(data.attempt)
+      if (data.success) {
+        setAttempt(data.attempt)
+        setPattern(p)
+      } else if (data.limitReached) {
+        setLimitMessage(data.message || `You've used all 30 pattern attempts for this month. Try again next month.`)
+      }
     } catch { /* leave attempt null — the loading guard below keeps the UI safe */ }
     finally { setLoadingAttempt(false) }
   }
 
   const handleSelectPattern = (p: 1 | 2) => {
-    setPattern(p)
+    setLimitMessage(null)
     startAttempt(p)
   }
 
@@ -214,7 +223,15 @@ const LSRWCommunicationRound = () => {
   // at the bottom of the component's single return always mounted.
   const renderMain = () => {
     if (pattern === null) {
-      return <PatternSelectionScreen onSelect={handleSelectPattern} onPracticeSection={handlePracticeSection} />
+      return (
+        <PatternSelectionScreen
+          onSelect={handleSelectPattern}
+          onPracticeSection={handlePracticeSection}
+          starting={loadingAttempt}
+          limitMessage={limitMessage}
+          onDismissLimitMessage={() => setLimitMessage(null)}
+        />
+      )
     }
 
     if (loadingAttempt || !attempt) {
