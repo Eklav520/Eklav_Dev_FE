@@ -104,6 +104,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
   const [hrJobs, setHrJobs] = useState<any[]>([])
   const [adminMessages, setAdminMessages] = useState<any[]>([])
   const [notifOpen, setNotifOpen] = useState(false)
+  const [purchasedModuleCount, setPurchasedModuleCount] = useState(0)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const hostname = window.location.hostname
@@ -195,6 +196,22 @@ const StudentLayout = ({ children }: ChildrenType) => {
     }).catch(() => {})
   }, [baseURL, user?.token])
 
+  // How many individual modules this student has purchased — once they've
+  // bought a handful separately, nudging them toward the full plan card
+  // stops being useful, so it hides itself past that point.
+  useEffect(() => {
+    const token = user?.token
+    if (!baseURL || !token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return
+        const count = Object.values(data.modules || {}).filter((m: any) => m?.active && !data.fullAccess).length
+        setPurchasedModuleCount(count)
+      })
+      .catch(() => {})
+  }, [baseURL, user?.token])
+
   // Close mobile on route change
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
@@ -275,8 +292,9 @@ const StudentLayout = ({ children }: ChildrenType) => {
         />
       </nav>
 
-      {/* Upgrade to Premium — only for pending/unsubscribed users */}
-      {isPending && expanded && (
+      {/* Upgrade to Premium — only for pending/unsubscribed users who haven't
+          already bought their way into several individual modules */}
+      {isPending && purchasedModuleCount <= 2 && expanded && (
         <div style={{
           margin: '0 12px 10px',
           background: 'linear-gradient(135deg, #1a0a00, #2a1200)',
@@ -305,7 +323,7 @@ const StudentLayout = ({ children }: ChildrenType) => {
       )}
 
       {/* Upgrade crown icon in collapsed mode */}
-      {isPending && !expanded && (
+      {isPending && purchasedModuleCount <= 2 && !expanded && (
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8, flexShrink: 0 }}>
           <Link to="/student/subscriptions" title="Upgrade to Premium" style={{
             width: 36, height: 36, borderRadius: 8,

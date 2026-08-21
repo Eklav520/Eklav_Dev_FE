@@ -58,7 +58,7 @@ import {
 } from 'react-icons/bs'
 import { HiOutlineCodeBracketSquare, HiOutlinePuzzlePiece, HiOutlineUserGroup } from 'react-icons/hi2'
 import { FaUserCog, FaChalkboardTeacher, FaVideo, FaFileUpload, FaComments, FaLaptopCode } from 'react-icons/fa'
-import { MdOutlineAssessment, MdOutlineSchool, MdOutlineLocalOffer } from 'react-icons/md'
+import { MdOutlineAssessment, MdOutlineSchool, MdOutlineLocalOffer, MdOutlineCurrencyRupee } from 'react-icons/md'
 
 import { AiOutlineCloudUpload } from 'react-icons/ai'
 
@@ -436,6 +436,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     label: 'Manage Coupons',
     icon: MdOutlineLocalOffer,
     url: '/eklavadmin/coupon-management',
+    parentKey: 'eklavadmin',
+  },
+  {
+    key: 'modulePricing',
+    label: 'Module Pricing',
+    icon: MdOutlineCurrencyRupee,
+    url: '/eklavadmin/module-pricing',
     parentKey: 'eklavadmin',
   },
   {

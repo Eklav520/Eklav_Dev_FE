@@ -220,6 +220,87 @@ export default function StudentAssessmentController() {
   const PAGE_SIZE = 5
   const [featuredAsmId, setFeaturedAsmId] = useState<string | null>(null)
 
+  // Full access (status === 'approved') OR a standalone "finalAssessment"
+  // module purchase unlocks starting/submitting a round — no free trial,
+  // fully locked otherwise. Server-enforced in POST /api/assessment/start/:examId
+  // and POST /api/assessment/complete-round.
+  type ModulePlan = '6months' | '12months'
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate?: string | null } | null>(null)
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
+  const [buyError, setBuyError] = useState<string | null>(null)
+
+  const fetchModuleAccess = useCallback(() => {
+    if (!token) return
+    fetch(`${API_BASE}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return
+        const mod = data.modules?.finalAssessment
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { '6months': mod?.plans?.['6months'] ?? 19900, '12months': mod?.plans?.['12months'] ?? 34900 },
+          label: mod?.label ?? 'Final Assessment',
+          endDate: mod?.endDate ?? null,
+        })
+      })
+      .catch(() => {})
+  }, [token, API_BASE])
+  useEffect(fetchModuleAccess, [fetchModuleAccess])
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
+  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!token || buyingPlan) return
+    setBuyingPlan(plan)
+    setBuyError(null)
+    fetch(`${API_BASE}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'finalAssessment', plan }),
+    })
+      .then(r => r.json())
+      .then(order => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${API_BASE}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'finalAssessment', plan }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchModuleAccess()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingPlan(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingPlan(null)
+        })
+        razorpay.open()
+      })
+      .catch(e => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
+
   // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
   // (light-mode values as fallback), so this page re-themes with the portal.
   const PAGE_BG     = 'var(--dash-page-bg, #f1f5f9)'
@@ -463,6 +544,10 @@ export default function StudentAssessmentController() {
   const handleStartRound = async (round: Round) => {
     if (isPending) {
       alert('Your profile is awaiting admin approval. Assessments unlock once you are enrolled.')
+      return
+    }
+    if (!hasAccess) {
+      alert('Unlock Final Assessment, or subscribe to a full plan, to start.')
       return
     }
     setStartingRound(round.roundType)
@@ -1632,11 +1717,11 @@ export default function StudentAssessmentController() {
                                   if (live && !done) {
                                     return (
                                       <button
-                                        className={'ss-rt-btn continue' + (agreedToTerms ? '' : ' disabled')}
-                                        disabled={!agreedToTerms || startingRound === r.roundType}
+                                        className={'ss-rt-btn continue' + (agreedToTerms && hasAccess ? '' : ' disabled')}
+                                        disabled={!agreedToTerms || startingRound === r.roundType || !hasAccess}
                                         onClick={() => agreedToTerms && handleStartRound(r)}
                                       >
-                                        {startingRound === r.roundType ? 'Starting…' : 'Start Assessment'} <FaChevronRight style={{ fontSize: 10, marginLeft: 4 }} />
+                                        {startingRound === r.roundType ? 'Starting…' : !hasAccess ? '🔒 Locked' : 'Start Assessment'} <FaChevronRight style={{ fontSize: 10, marginLeft: 4 }} />
                                       </button>
                                     )
                                   }
@@ -2017,11 +2102,81 @@ export default function StudentAssessmentController() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div className="ap-header-icon"><AssessmentIcon /></div>
               <div>
-                <h1 className="ap-title">Assessment Portal</h1>
+                <h1 className="ap-title" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  Assessment Portal
+                  {!hasAccess && (
+                    <span title="Unlock this module, or subscribe to a full plan" style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ff7a00', background: 'rgba(255,122,0,0.1)', border: '1px solid rgba(255,122,0,0.3)', borderRadius: 20, padding: '3px 10px', letterSpacing: '0.03em' }}>
+                      🔒 PREMIUM MODULE
+                    </span>
+                  )}
+                  {modulePurchased && (
+                    <span style={{ fontSize: '0.62rem', fontWeight: 700, color: '#166534', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 20, padding: '3px 10px', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>
+                      🏆 Unlocked{moduleInfo?.endDate ? ` — valid until ${new Date(moduleInfo.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
+                    </span>
+                  )}
+                </h1>
                 <p className="ap-subtitle">Explore, attempt and track all your assessments in one place.</p>
               </div>
             </div>
+
+            {!hasAccess && (() => {
+              const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
+              const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
+              const betterValue = price12 / 12 < price6 / 6
+              const isBusy = buyingPlan === selectedPlan
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+                  {(['6months', '12months'] as ModulePlan[]).map((plan) => {
+                    const price = plan === '6months' ? price6 : price12
+                    const active = selectedPlan === plan
+                    const highlight = plan === '12months' && betterValue
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => setSelectedPlan(plan)}
+                        style={{
+                          position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                          padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                          border: active ? '1.5px solid #ff7a00' : '1.5px solid transparent', cursor: 'pointer',
+                          background: active ? '#fff7ed' : 'transparent',
+                        }}
+                      >
+                        {highlight && (
+                          <span style={{
+                            position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                            fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                          }}>
+                            BEST
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? '#ff7a00' : '#999', whiteSpace: 'nowrap' }}>
+                          {plan === '6months' ? '6 Months' : '12 Months'}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
+                      </button>
+                    )
+                  })}
+                  <button
+                    onClick={() => buyModule(selectedPlan)}
+                    disabled={!!buyingPlan || !moduleInfo}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, background: '#ff7a00', border: 'none', color: '#fff',
+                      borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                      cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                    }}
+                  >
+                    {isBusy ? 'Processing…' : 'Buy Now'}
+                  </button>
+                </div>
+              )
+            })()}
           </div>
+
+          {buyError && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, margin: '14px 28px 0' }}>
+              {buyError}
+            </div>
+          )}
 
           {isPending && (
             <div className="ap-pending-banner">
@@ -2961,8 +3116,8 @@ export default function StudentAssessmentController() {
 
                         {/* Right: CTA button */}
                         <button
-                          className={'am-cta' + (isActive && !isCompleted && !isPending ? ' enabled' : '')}
-                          disabled={!isActive || isCompleted || isPending}
+                          className={'am-cta' + (isActive && !isCompleted && !isPending && hasAccess ? ' enabled' : '')}
+                          disabled={!isActive || isCompleted || isPending || !hasAccess}
                           onClick={() => handleStartRound(round)}
                         >
                           {startingRound === round.roundType ? (
@@ -2971,6 +3126,8 @@ export default function StudentAssessmentController() {
                             <><CheckIcon /> Completed</>
                           ) : isPending ? (
                             <><LockIcon /> Enrollment Required</>
+                          ) : !hasAccess ? (
+                            <><LockIcon /> Locked — Unlock to Start</>
                           ) : isActive ? (
                             <><UnlockIcon /> Start Round</>
                           ) : (

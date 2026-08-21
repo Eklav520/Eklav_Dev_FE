@@ -4,9 +4,18 @@ import { FileText, PenLine, Eye, Download, Lightbulb, CheckCircle, Circle, Chevr
 import { BsFileEarmarkPerson, BsBook, BsBriefcase } from 'react-icons/bs'
 import TopProgressBar from './TopProgressBar'
 
+type ModulePlan = '6months' | '12months'
+
 type TemplateGalleryProps = {
   onSelectTemplate: (id: TemplateKey) => void
   isPending?: boolean
+  hasAccess: boolean
+  moduleInfo: { fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string } | null
+  buyingPlan: ModulePlan | null
+  selectedPlan: ModulePlan
+  setSelectedPlan: (plan: ModulePlan) => void
+  buyModule: (plan: ModulePlan) => void
+  buyError: string | null
 }
 
 /* ── Template display config ─────────────────────────────────── */
@@ -149,7 +158,9 @@ const RESUME_TIP_ICONS = [
 ]
 
 /* ── Main component ──────────────────────────────────────────── */
-const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isPending = false }) => {
+const TemplateGallery: React.FC<TemplateGalleryProps> = ({
+  onSelectTemplate, isPending = false, hasAccess, moduleInfo, buyingPlan, selectedPlan, setSelectedPlan, buyModule, buyError,
+}) => {
   const [hovered, setHovered] = useState<TemplateKey | null>(null)
   const [activeFilter, setActiveFilter] = useState<Filter>('All Templates')
   const [selectedKey, setSelectedKey] = useState<TemplateKey | null>(null)
@@ -174,10 +185,76 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({ onSelectTemplate, isP
     <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
 
       {/* ── Top header ── */}
-      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '20px 28px 12px' }}>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: TEXT, margin: '0 0 2px' }}>Resume Preparation</h1>
-        <p style={{ fontSize: '0.82rem', color: GRAY, margin: 0 }}>Choose a template, fill in your details and create your professional resume in minutes.</p>
+      <div style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '20px 28px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap' }}>
+        <div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: TEXT, margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            Resume Preparation
+            {!hasAccess && (
+              <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: '0.85rem', fontWeight: 700 }}>
+                <Lock size={13} />(Premium Module)
+              </span>
+            )}
+          </h1>
+          <p style={{ fontSize: '0.82rem', color: GRAY, margin: 0 }}>Choose a template, fill in your details and create your professional resume in minutes.</p>
+        </div>
+
+        {!hasAccess && (() => {
+          const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
+          const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
+          const betterValue = price12 / 12 < price6 / 6
+          const isBusy = buyingPlan === selectedPlan
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff7ed', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+              {(['6months', '12months'] as const).map((plan) => {
+                const price = plan === '6months' ? price6 : price12
+                const active = selectedPlan === plan
+                const highlight = plan === '12months' && betterValue
+                return (
+                  <button
+                    key={plan}
+                    onClick={() => setSelectedPlan(plan)}
+                    style={{
+                      position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                      padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                      border: active ? `1.5px solid ${ORANGE}` : '1.5px solid transparent', cursor: 'pointer',
+                      background: active ? '#fff' : 'transparent',
+                    }}
+                  >
+                    {highlight && (
+                      <span style={{
+                        position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                        fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                      }}>
+                        BEST
+                      </span>
+                    )}
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? ORANGE : '#999', whiteSpace: 'nowrap' }}>
+                      {plan === '6months' ? '6 Months' : '12 Months'}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => buyModule(selectedPlan)}
+                disabled={!!buyingPlan || !moduleInfo}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, background: ORANGE, border: 'none', color: '#fff',
+                  borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                  cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                }}
+              >
+                {isBusy ? 'Processing…' : <>Buy Now <ArrowRight size={13} /></>}
+              </button>
+            </div>
+          )
+        })()}
       </div>
+      {buyError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, margin: '10px 28px 0' }}>
+          {buyError}
+        </div>
+      )}
       <TopProgressBar stage={0} templateLabel={selectedKey ? TEMPLATE_META[selectedKey].label : undefined} />
 
       {/* ── Body ── */}

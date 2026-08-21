@@ -90,7 +90,6 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
   const courseType = course?.courseType?.toLowerCase()
 
   const isApproved = status === 'approved'
-  const isPending = status === 'pending'
   const courseStatus = course?.courseStatus?.toLowerCase()
   const isComingSoon = courseStatus === 'coming-soon'
   const [enrolling, setEnrolling] = useState(false)
@@ -117,12 +116,10 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
       .catch(() => {})
   }, [showDetails, token, course._id])
 
-  const canEnroll =
-    courseType === 'free'
-      ? true // free course always allowed
-      : courseType === 'paid'
-        ? isApproved // paid only allowed if approved
-        : true
+  // Full-plan (approved) students get every course included — no per-course
+  // payment. Everyone else can still buy any single paid course on its own,
+  // so "paid" no longer blocks on account status here.
+  const canEnroll = true
 
   const {
     duration,
@@ -238,40 +235,94 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
   }, [user, baseURL, token])
 
   // actions
+  const enrollFree = async (courseId: string) => {
+    const response = await fetch(`${baseURL}/enroll`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ courseId }),
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+      setEnrolledCourseIds((prev) => [...prev, courseId])
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 3000)
+    } else {
+      alert('Enroll failed: ' + data.message)
+    }
+  }
+
+  const enrollPaid = async (courseId: string) => {
+    const orderRes = await fetch(`${baseURL}/courses/${courseId}/create-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    const order = await orderRes.json()
+    if (!orderRes.ok || !order.success) {
+      throw new Error(order.message || 'Failed to start payment')
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const options = {
+        key: order.key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Eklav',
+        description: order.courseTitle,
+        order_id: order.orderId,
+        prefill: { email: user?.email || '' },
+        theme: { color: '#ff7a00' },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch(`${baseURL}/courses/${courseId}/verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(response),
+            })
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok) throw new Error(verifyData.message || 'Payment verification failed')
+            setEnrolledCourseIds((prev) => [...prev, courseId])
+            setShowSuccess(true)
+            setTimeout(() => setShowSuccess(false), 3000)
+            resolve()
+          } catch (e) {
+            reject(e)
+          }
+        },
+        modal: { ondismiss: () => resolve() },
+      }
+      const razorpay = new (window as any).Razorpay(options)
+      razorpay.on('payment.failed', (response: any) => {
+        reject(new Error(response.error?.description || 'Payment failed'))
+      })
+      razorpay.open()
+    })
+  }
+
   const handleEnroll = async (courseId: string) => {
     if (!token) return alert('Please log in to enroll.')
 
-    if (!canEnroll) {
-      if (courseType === 'paid' && isPending) {
-        return alert('Upgrade to Premium to enroll in paid courses.')
-      }
-      return alert('You are not allowed to enroll in this course.')
-    }
-
     try {
       setEnrolling(true)
-
-      const response = await fetch(`${baseURL}/enroll`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ courseId }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setEnrolledCourseIds((prev) => [...prev, courseId])
-
-        setShowSuccess(true)
-        setTimeout(() => setShowSuccess(false), 3000)
+      // Full-plan students already have every course included — just
+      // register the enrollment, no charge, regardless of this course's price.
+      if (isApproved || effectivePrice <= 0) {
+        await enrollFree(courseId)
       } else {
-        alert('Enroll failed: ' + data.message)
+        await enrollPaid(courseId)
       }
-    } catch {
-      alert('Error enrolling')
+    } catch (e: any) {
+      alert(e?.message || 'Error enrolling')
     } finally {
       setEnrolling(false)
     }
@@ -660,22 +711,27 @@ const CourseCard = ({ course, open, openMarketInsight, onClose, onCloseMarketIns
                     </div>
                   </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => handleEnroll(_id)}
-                  disabled={!canEnroll || enrolling}
-                  style={{
-                    background: canEnroll ? '#ff7a00' : '#e2e8f0', border: 'none', borderRadius: 10,
-                    color: canEnroll ? '#fff' : '#94a3b8', fontWeight: 700, fontSize: '0.9rem',
-                    padding: '12px', cursor: canEnroll ? 'pointer' : 'not-allowed',
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    boxShadow: canEnroll ? '0 4px 16px rgba(255,122,0,0.32)' : 'none',
-                    transition: 'all 0.15s',
-                  }}>
-                  {enrolling ? <><Spinner animation="border" size="sm" /> Enrolling...</> :
-                    !canEnroll && courseType === 'paid' && isPending ? 'Premium Required' : 'Enroll Now'}
-                </button>
-              )}
+              ) : (() => {
+                const needsPayment = !isApproved && effectivePrice > 0
+                return (
+                  <button
+                    onClick={() => handleEnroll(_id)}
+                    disabled={enrolling}
+                    style={{
+                      background: '#ff7a00', border: 'none', borderRadius: 10,
+                      color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+                      padding: '12px', cursor: enrolling ? 'not-allowed' : 'pointer',
+                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      boxShadow: '0 4px 16px rgba(255,122,0,0.32)',
+                      transition: 'all 0.15s',
+                      opacity: enrolling ? 0.75 : 1,
+                    }}>
+                    {enrolling
+                      ? <><Spinner animation="border" size="sm" /> {needsPayment ? 'Processing...' : 'Enrolling...'}</>
+                      : needsPayment ? `Pay ₹${formatRupee(effectivePrice)} & Enroll` : 'Enroll Now'}
+                  </button>
+                )
+              })()}
 
               {/* Wishlist + Share */}
               <div style={{ display: 'flex', gap: 8 }}>

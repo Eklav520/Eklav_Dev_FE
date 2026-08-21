@@ -125,7 +125,7 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
           />
         </Col>
 
-        <Col md={12} className="mb-3">
+        <Col md={6} className="mb-3">
           <FormInput
             control={control}
             name="phoneNo"
@@ -137,27 +137,30 @@ const SignUpForm: React.FC<SignUpFormProps> = ({ onSuccess }) => {
             error={errors.phoneNo}
           />
         </Col>
+
+        <Col md={6} className="mb-3">
+          <label className="fw-semibold mb-2 d-block">Captcha</label>
+          <CaptchaBox onValidate={setCaptchaValid} />
+        </Col>
       </Row>
 
-      {/* CAPTCHA */}
-      <div className="my-3">
-        <CaptchaBox onValidate={setCaptchaValid} />
-      </div>
-
       {/* TERMS */}
-      <div className="form-check mb-4">
+      <div className="mb-4" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input
           type="checkbox"
+          id="terms-checkbox"
           className="form-check-input"
+          style={{ margin: 0, flexShrink: 0 }}
           {...register('terms')}
         />
 
-        <label className="form-check-label">
-          I agree to the{' '}
+        <label htmlFor="terms-checkbox" className="form-check-label" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+          I agree to the
           <button
             type="button"
             className="btn btn-link p-0"
             onClick={() => setShowTermsModal(true)}
+            style={{ lineHeight: 'normal' }}
           >
             Terms & Conditions
           </button>

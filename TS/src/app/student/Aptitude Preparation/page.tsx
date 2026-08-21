@@ -434,7 +434,7 @@ const TopicCard = ({ topic, liveProgress, onClick }: { topic: PracticeTopic; liv
 const TOPICS_PER_PAGE = 9
 
 const OverviewTab = ({
-  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData, categoryProgress, dynamicTopics, onTopicClick,
+  todayData, calendarDays, stats, calendarMonth, onMonthChange, onStartExam, weeklyData, categoryProgress, dynamicTopics, loadingTopics, onTopicClick,
 }: {
   todayData: TodayExamData | null
   calendarDays: CalendarDay[]
@@ -445,6 +445,7 @@ const OverviewTab = ({
   weeklyData: number[]
   categoryProgress: Record<string, CategoryProgressEntry>
   dynamicTopics: PracticeTopic[]
+  loadingTopics: boolean
   onTopicClick: (title: string) => void
 }) => {
   const [topicPage, setTopicPage] = useState(0)
@@ -494,11 +495,17 @@ const OverviewTab = ({
             </button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-          {visibleTopics.map(t => (
-            <TopicCard key={t.id} topic={t} liveProgress={categoryProgress[t.title]} onClick={onTopicClick} />
-          ))}
-        </div>
+        {loadingTopics ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '48px 0' }}>
+            <div style={{ width: 28, height: 28, border: '3px solid rgba(255,122,0,0.2)', borderTop: '3px solid #ff7a00', borderRadius: '50%', animation: 'ap-spin 1s linear infinite' }} />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            {visibleTopics.map(t => (
+              <TopicCard key={t.id} topic={t} liveProgress={categoryProgress[t.title]} onClick={onTopicClick} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
 
@@ -542,10 +549,92 @@ const OverviewTab = ({
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+type ModulePlan = '6months' | '12months'
+
 const AptitudePage = () => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
+
+  // Full access (status === 'approved') OR a standalone "aptitude" module
+  // purchase unlocks the Daily Exam + Practice Quiz — no free trial,
+  // fully locked otherwise. Server-enforced in daily-aptitude/today,
+  // daily-aptitude/submit and the topic-progress endpoint.
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string } | null>(null)
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
+  const [buyError, setBuyError] = useState<string | null>(null)
+
+  const fetchModuleAccess = useCallback(() => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return
+        const mod = data.modules?.aptitude
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { '6months': mod?.plans?.['6months'] ?? 19900, '12months': mod?.plans?.['12months'] ?? 34900 },
+          label: mod?.label ?? 'Aptitude Preparation',
+        })
+      })
+      .catch(() => {})
+  }, [token, baseURL])
+  useEffect(fetchModuleAccess, [fetchModuleAccess])
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!token || buyingPlan) return
+    setBuyingPlan(plan)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'aptitude', plan }),
+    })
+      .then(r => r.json())
+      .then(order => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'aptitude', plan }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchModuleAccess()
+              fetchToday()
+              fetchCalendar()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingPlan(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingPlan(null)
+        })
+        razorpay.open()
+      })
+      .catch(e => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
 
   const [activeTab, setActiveTab] = useState<NavTab>('overview')
   const [pendingTopicTitle, setPendingTopicTitle] = useState<string | null>(null)
@@ -556,6 +645,7 @@ const AptitudePage = () => {
   const [practiceTotal, setPracticeTotal] = useState(0)
   const [categoryProgress, setCategoryProgress] = useState<Record<string, CategoryProgressEntry>>({})
   const [dynamicTopics, setDynamicTopics] = useState<PracticeTopic[]>([])
+  const [loadingTopics, setLoadingTopics] = useState(true)
 
   const handleMonthChange = (delta: number) => {
     setCalendarMonth(p => {
@@ -594,9 +684,10 @@ const AptitudePage = () => {
   useEffect(() => {
     if (!token) return
     const load = async () => {
+      setLoadingTopics(true)
       try {
         const [catRes, progRes] = await Promise.all([
-          fetch(`${baseURL}/apptitudeQuestions`),
+          fetch(`${baseURL}/apptitudeQuestions`, { headers: { Authorization: `Bearer ${token}` } }),
           fetch(`${baseURL}/apptitudeQuestions/topics/progress`, { headers: { Authorization: `Bearer ${token}` } }),
         ])
         const catData = await catRes.json()
@@ -640,6 +731,7 @@ const AptitudePage = () => {
           setDynamicTopics(topics)
         }
       } catch { /* silent */ }
+      finally { setLoadingTopics(false) }
     }
     load()
   }, [baseURL, token])
@@ -661,15 +753,76 @@ const AptitudePage = () => {
   return (
     <>
       <PageMetaData title="Aptitude Preparation" />
+      <style>{`@keyframes ap-spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }`}</style>
       <div style={{ padding: '0 0 32px' }}>
 
         {/* ── Page Header + Stats (same row) ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20, marginBottom: 20 }}>
           {/* Title */}
           <div style={{ flexShrink: 0 }}>
-            <h4 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 4px', fontSize: '1.3rem' }}>Aptitude Preparation</h4>
+            <h4 style={{ fontWeight: 800, color: PAGE_TEXT, margin: '0 0 4px', fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+              Aptitude Preparation
+              {!hasAccess && (
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#ff7a00', background: 'rgba(255,122,0,0.1)', border: '1px solid rgba(255,122,0,0.3)', borderRadius: 20, padding: '3px 10px', letterSpacing: '0.03em' }}>
+                  🔒 PREMIUM MODULE
+                </span>
+              )}
+            </h4>
             <p style={{ color: PAGE_GRAY, fontSize: '0.82rem', margin: 0 }}>Practice daily, improve skills and achieve your goals.</p>
           </div>
+
+          {/* Right-hand group: plan/price picker (when locked) + Total Quizzes, kept close together */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+
+          {!hasAccess && (() => {
+            const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
+            const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
+            const betterValue = price12 / 12 < price6 / 6
+            const isBusy = buyingPlan === selectedPlan
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: 4, flexShrink: 0 }}>
+                {(['6months', '12months'] as ModulePlan[]).map(plan => {
+                  const price = plan === '6months' ? price6 : price12
+                  const active = selectedPlan === plan
+                  const highlight = plan === '12months' && betterValue
+                  return (
+                    <button
+                      key={plan}
+                      onClick={() => setSelectedPlan(plan)}
+                      style={{
+                        position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                        padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                        border: active ? '1.5px solid #ff7a00' : '1.5px solid transparent', cursor: 'pointer',
+                        background: active ? 'rgba(255,122,0,0.06)' : 'transparent',
+                      }}>
+                      {highlight && (
+                        <span style={{
+                          position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                          fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                        }}>
+                          BEST
+                        </span>
+                      )}
+                      <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? '#ff7a00' : PAGE_GRAY, whiteSpace: 'nowrap' }}>
+                        {plan === '6months' ? '6 Months' : '12 Months'}
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>₹{price}</span>
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => buyModule(selectedPlan)}
+                  disabled={!!buyingPlan || !moduleInfo}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, background: '#ff7a00', border: 'none', color: '#fff',
+                    borderRadius: 7, padding: '10px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                    cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1, whiteSpace: 'nowrap',
+                  }}>
+                  {isBusy ? 'Processing…' : 'Buy Now'}
+                </button>
+              </div>
+            )
+          })()}
 
           {/* Stats — Total Quizzes only */}
           <div style={{
@@ -691,7 +844,13 @@ const AptitudePage = () => {
               <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 2 }}>Total Quizzes</div>
             </div>
           </div>
+
+          </div>
         </div>
+
+        {buyError && (
+          <div style={{ color: '#dc2626', fontSize: '0.78rem', marginBottom: 16, marginTop: -12 }}>{buyError}</div>
+        )}
 
         {/* ── Tab Bar ── */}
         <div style={{ display: 'flex', borderBottom: `1px solid ${PAGE_BORDER}`, marginBottom: 22, gap: 2 }}>
@@ -726,12 +885,13 @@ const AptitudePage = () => {
             weeklyData={weeklyData}
             categoryProgress={categoryProgress}
             dynamicTopics={dynamicTopics}
+            loadingTopics={loadingTopics}
             onTopicClick={title => { setPendingTopicTitle(title); setActiveTab('practice') }}
           />
         )}
 
-        {activeTab === 'daily' && <DailyExam />}
-        {activeTab === 'practice' && <Bookmark onStatsUpdate={setPracticeTotal} initialCategoryTitle={pendingTopicTitle} />}
+        {activeTab === 'daily' && <DailyExam hasAccess={hasAccess} />}
+        {activeTab === 'practice' && <Bookmark onStatsUpdate={setPracticeTotal} initialCategoryTitle={pendingTopicTitle} hasAccess={hasAccess} />}
 
 
       </div>

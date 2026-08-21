@@ -239,6 +239,20 @@ const VocabularyPractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
+  // Vocabulary is bundled under the same "learningPractice" module as
+  // Listening + Reading (purchased on the English Practice hub page) — no
+  // free trial, fully locked until unlocked. Server-enforced in
+  // learningRoutes.js's POST /vocab/quiz/submit.
+  const [hasModuleAccess, setHasModuleAccess] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setHasModuleAccess(!!data.fullAccess || !!data.modules?.learningPractice?.active) })
+      .catch(() => {})
+  }, [token, baseURL])
+  const hasAccess = hasModuleAccess ?? (user?.status?.toLowerCase() === 'approved')
+
   const [started, setStarted] = useState(false)
   const [words, setWords] = useState<Word[]>([])
   const [loading, setLoading] = useState(false)
@@ -307,6 +321,7 @@ const VocabularyPractice: React.FC = () => {
   }
 
   const startVocabulary = async (topic?: string) => {
+    if (!hasAccess) return
     const useTopic = topic ?? activeTopic
     setStarted(true)
     setLoading(true)
@@ -631,18 +646,25 @@ const VocabularyPractice: React.FC = () => {
 
         {/* ── Start Button ── */}
         <div style={{ padding: '20px 28px 28px' }}>
+          {!hasAccess && (
+            <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <FaBookReader style={{ flexShrink: 0 }} />
+              Unlock Learning Practice, or subscribe to a full plan, to start.
+            </div>
+          )}
           <button
             onClick={() => startVocabulary()}
+            disabled={!hasAccess}
             style={{
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-              background: `linear-gradient(90deg, ${PURPLE} 0%, #7c3aed 100%)`,
+              background: !hasAccess ? '#cbd5e1' : `linear-gradient(90deg, ${PURPLE} 0%, #7c3aed 100%)`,
               color: '#fff', fontWeight: 800, fontSize: 16,
-              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: `0 6px 20px ${PURPLE}40`,
+              cursor: !hasAccess ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: !hasAccess ? 'none' : `0 6px 20px ${PURPLE}40`,
             }}
           >
             <FaPlay style={{ fontSize: 14 }} />
-            Start Vocabulary Practice
+            {!hasAccess ? 'Locked — Unlock to Start' : 'Start Vocabulary Practice'}
           </button>
         </div>
 

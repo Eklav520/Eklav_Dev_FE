@@ -72,7 +72,90 @@ export interface StepProps {
 
 const ResumeBuilder: React.FC = () => {
   const { user } = useAuthContext()
-  const isPending = (user?.status || '').trim().toLowerCase() === 'pending'
+  const token = user?.token
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+
+  // Full access (status === 'approved', same as institute-granted students)
+  // OR a standalone "resumeBuilder" module purchase both unlock every
+  // template — server-enforced in app.js's POST /generate, not just this flag.
+  type ModulePlan = '6months' | '12months'
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string } | null>(null)
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
+  const [buyError, setBuyError] = useState<string | null>(null)
+
+  const fetchModuleAccess = () => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return
+        const mod = data.modules?.resumeBuilder
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { '6months': mod?.plans?.['6months'] ?? 19900, '12months': mod?.plans?.['12months'] ?? 34900 },
+          label: mod?.label ?? 'Resume Builder',
+        })
+      })
+      .catch(() => {})
+  }
+  React.useEffect(fetchModuleAccess, [token, baseURL])
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
+  // Kept as isPending below — TemplateGallery just treats it as "should the
+  // free-trial template lock apply", the literal account-status meaning no
+  // longer matters.
+  const isPending = !hasAccess
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!token || buyingPlan) return
+    setBuyingPlan(plan)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'resumeBuilder', plan }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: user?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'resumeBuilder', plan }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchModuleAccess()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingPlan(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingPlan(null)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
 
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateKey | null>(null)
   const [mainStage, setMainStage] = useState<MainStage>(1)
@@ -103,7 +186,19 @@ const ResumeBuilder: React.FC = () => {
   }
 
   if (!selectedTemplate) {
-    return <TemplateGallery onSelectTemplate={handleSelectTemplate} isPending={isPending} />
+    return (
+      <TemplateGallery
+        onSelectTemplate={handleSelectTemplate}
+        isPending={isPending}
+        hasAccess={hasAccess}
+        moduleInfo={moduleInfo}
+        buyingPlan={buyingPlan}
+        selectedPlan={selectedPlan}
+        setSelectedPlan={setSelectedPlan}
+        buyModule={buyModule}
+        buyError={buyError}
+      />
+    )
   }
 
   const SelectedTemplateComponent = templateList[selectedTemplate]?.component

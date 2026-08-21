@@ -21,6 +21,10 @@ interface Props {
     remaining: number
     limit: number
   }
+  // Full plan (status === 'approved') OR a standalone module purchase —
+  // required to start any resume interview at all (no free trial). Same
+  // value the server now enforces in POST /api/resume-based-interview/start.
+  hasModuleAccess: boolean
 }
 
 // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
@@ -30,16 +34,14 @@ const PAGE_TEXT = 'var(--dash-text, #0f172a)'
 const PAGE_GRAY = 'var(--dash-gray, #64748b)'
 
 const MAX_MONTHLY = 5
-const TRIAL_MAX = 2
 const MAX_FILE_SIZE = 3 * 1024 * 1024 // 3MB
 
-const ResumeInterviewSelection = ({ onStart , resumeLimits}: Props) => {
+const ResumeInterviewSelection = ({ onStart, resumeLimits, hasModuleAccess }: Props) => {
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
 
   const token = user?.token
-  const status = user?.status?.toLowerCase()
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -57,8 +59,7 @@ const ResumeInterviewSelection = ({ onStart , resumeLimits}: Props) => {
 const used = resumeLimits?.used ?? 0
 const remainingFromAPI = resumeLimits?.remaining
 
-const maxAllowed =
-  status === 'pending' ? TRIAL_MAX : MAX_MONTHLY
+const maxAllowed = hasModuleAccess ? MAX_MONTHLY : 0
 
 const remaining =
   remainingFromAPI !== undefined
@@ -192,8 +193,8 @@ const remaining =
     if (remaining <= 0) {
 
       alert(
-        status === 'pending'
-          ? 'You have used your trial attempts.'
+        !hasModuleAccess
+          ? 'Unlock AI Self Interview, or subscribe to a full plan, to start a resume interview.'
           : 'You reached your monthly limit.'
       )
 
@@ -303,8 +304,8 @@ const remaining =
               }}
             >
 
-              {status === 'pending'
-                ? `Trial Attempts: ${used} / ${TRIAL_MAX}`
+              {!hasModuleAccess
+                ? 'Locked — unlock to start'
                 : `Monthly Attempts: ${used} / ${MAX_MONTHLY}`}
 
             </div>
@@ -407,7 +408,7 @@ const remaining =
           ) : remaining > 0 ? (
             <><FaMicrophone size={14} style={{ marginRight: 8 }} />Start Interview</>
           ) : (
-            <><FaBan size={14} style={{ marginRight: 8 }} />{status === 'pending' ? 'Free Limit Reached' : 'Monthly Limit Reached'}</>
+            <><FaBan size={14} style={{ marginRight: 8 }} />{!hasModuleAccess ? 'Locked — Unlock to Start' : 'Monthly Limit Reached'}</>
           )}
 
         </Button>

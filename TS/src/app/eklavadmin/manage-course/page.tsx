@@ -393,6 +393,13 @@ const ManageCoursePage = () => {
     filterAndSortCourses()
   }, [courses, searchTerm, sortBy, filterBy])
 
+  // Only jump back to page 1 when the search/sort/filter criteria actually
+  // change — not when `courses` itself changes (e.g. after saving an edit),
+  // which was resetting the pager away from whatever page the admin was on.
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, sortBy, filterBy])
+
   const fetchCourses = async () => {
     setIsLoading(true)
     setError(null)
@@ -462,7 +469,6 @@ const ManageCoursePage = () => {
     })
 
     setFilteredCourses(result)
-    setCurrentPage(1)
   }
 
   const handleDelete = async () => {

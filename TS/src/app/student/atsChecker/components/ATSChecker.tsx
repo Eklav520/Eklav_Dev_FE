@@ -142,6 +142,87 @@ const ATSChecker: React.FC = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
 
+  // Full access (status === 'approved', same as institute-granted students)
+  // OR a standalone "atsChecker" module purchase both give the 20-check
+  // cap (vs the 1-check free trial) — server-enforced in app.js's
+  // /api/resume/ats-usage, /check-ats and /ai-improve, not just this flag.
+  type ModulePlan = '6months' | '12months';
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string } | null>(null);
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months');
+  const [buyError, setBuyError] = useState<string | null>(null);
+
+  const fetchModuleAccess = () => {
+    if (!user?.token) return;
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return;
+        const mod = data.modules?.atsChecker;
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { '6months': mod?.plans?.['6months'] ?? 19900, '12months': mod?.plans?.['12months'] ?? 34900 },
+          label: mod?.label ?? 'ATS Resume Checker',
+        });
+      })
+      .catch(() => {});
+  };
+  useEffect(fetchModuleAccess, [user?.token, baseURL]);
+
+  const hasAtsAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved';
+
+  const buyAtsModule = (plan: ModulePlan) => {
+    if (!user?.token || buyingPlan) return;
+    setBuyingPlan(plan);
+    setBuyError(null);
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+      body: JSON.stringify({ moduleKey: 'atsChecker', plan }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment');
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'atsChecker', plan }),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed');
+              fetchModuleAccess();
+              fetchUsage();
+              setShowPaywall(false);
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.');
+            } finally {
+              setBuyingPlan(null);
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        };
+        const razorpay = new (window as any).Razorpay(options);
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+          setBuyingPlan(null);
+        });
+        razorpay.open();
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null); });
+  };
+
   const [improving, setImproving] = useState(false);
   const [improveResult, setImproveResult] = useState<ImproveResult | null>(null);
   const [showImproveModal, setShowImproveModal] = useState(false);
@@ -185,19 +266,26 @@ const ATSChecker: React.FC = () => {
     return () => cancelAnimationFrame(fid);
   }, [result?.jd_match_score]);
 
-  useEffect(() => {
+  // Trust the server's computed isSubscribed/remaining/canUse directly — it
+  // already runs hasModuleAccess (full plan OR atsChecker module purchase)
+  // instead of the client re-deriving it from raw user.status. Also
+  // re-called after a successful module purchase so the pill updates.
+  const fetchUsage = () => {
     if (!user?.token) return;
-    const isSubscribed = (user as any)?.status?.toLowerCase() === 'approved';
     fetch(`${baseURL}/api/resume/ats-usage`, { headers: { Authorization: `Bearer ${user.token}` } })
       .then(r => r.json())
       .then(data => {
-        const MAX = 20; const count = data.usageCount || 0;
         setUsage({
-          usageCount: count, isSubscribed,
-          remaining: isSubscribed ? Math.max(0, MAX - count) : count === 0 ? 1 : 0,
-          limit: MAX, canUse: count === 0 || (isSubscribed && count < MAX),
+          usageCount: data.usageCount || 0,
+          isSubscribed: !!data.isSubscribed,
+          remaining: data.remaining ?? 0,
+          limit: data.limit ?? 20,
+          canUse: !!data.canUse,
         });
       }).catch(() => {});
+  };
+  useEffect(() => {
+    fetchUsage();
   }, [user?.token]);
 
   const applyFile = (f: File) => {
@@ -303,35 +391,102 @@ const ATSChecker: React.FC = () => {
             <Target size={20} color={ORANGE} />
           </div>
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 800, color: TEXT, margin: 0, lineHeight: 1.2 }}>ATS Resume Checker</h1>
+            <h1 style={{ fontSize: 20, fontWeight: 800, color: TEXT, margin: 0, lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              ATS Resume Checker
+              {!hasAtsAccess && (
+                <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: 12, fontWeight: 700 }}>
+                  🔒 (Premium Module)
+                </span>
+              )}
+            </h1>
             <p style={{ fontSize: 12, color: GRAY, margin: 0 }}>Get an AI-powered ATS score with keyword analysis and improvement tips</p>
           </div>
 
-          {usage && (
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, background: BG, border: `1px solid ${BORDER}`, borderRadius: 24, padding: '6px 14px', fontSize: 12, flexShrink: 0 }}>
-              {usage.isSubscribed ? (
-                <>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: ORANGE }} />
-                  <span style={{ fontWeight: 700, color: ORANGE }}>Subscribed</span>
-                  <span style={{ color: GRAY }}>{usage.usageCount}/{usage.limit} used</span>
-                  <span style={{ color: usage.remaining <= 5 ? '#dc2626' : '#16a34a', fontWeight: 700 }}>{usage.remaining} left</span>
-                </>
-              ) : usage.usageCount === 0 ? (
-                <>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
-                  <span style={{ fontWeight: 700, color: '#16a34a' }}>1 Free Check Available</span>
-                </>
-              ) : (
-                <>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626' }} />
-                  <span style={{ color: '#dc2626', fontWeight: 700 }}>Free limit reached</span>
-                  <button onClick={() => setShowPaywall(true)} style={{ background: ORANGE, border: 'none', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>Subscribe</button>
-                </>
-              )}
-            </div>
-          )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            {usage && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: BG, border: `1px solid ${BORDER}`, borderRadius: 24, padding: '6px 14px', fontSize: 12, flexShrink: 0 }}>
+                {usage.isSubscribed ? (
+                  <>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: ORANGE }} />
+                    <span style={{ fontWeight: 700, color: ORANGE }}>Subscribed</span>
+                    <span style={{ color: GRAY }}>{usage.usageCount}/{usage.limit} used</span>
+                    <span style={{ color: usage.remaining <= 5 ? '#dc2626' : '#16a34a', fontWeight: 700 }}>{usage.remaining} left</span>
+                  </>
+                ) : usage.usageCount === 0 ? (
+                  <>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#16a34a' }} />
+                    <span style={{ fontWeight: 700, color: '#16a34a' }}>1 Free Check Available</span>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#dc2626' }} />
+                    <span style={{ color: '#dc2626', fontWeight: 700 }}>Free limit reached</span>
+                  </>
+                )}
+              </div>
+            )}
+
+            {!hasAtsAccess && (() => {
+              const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100;
+              const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100;
+              const betterValue = price12 / 12 < price6 / 6;
+              const isBusy = buyingPlan === selectedPlan;
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff7ed', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+                  {(['6months', '12months'] as const).map((plan) => {
+                    const price = plan === '6months' ? price6 : price12;
+                    const active = selectedPlan === plan;
+                    const highlight = plan === '12months' && betterValue;
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => setSelectedPlan(plan)}
+                        style={{
+                          position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                          padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                          border: active ? `1.5px solid ${ORANGE}` : '1.5px solid transparent', cursor: 'pointer',
+                          background: active ? '#fff' : 'transparent',
+                        }}
+                      >
+                        {highlight && (
+                          <span style={{
+                            position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                            fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                          }}>
+                            BEST
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? ORANGE : '#999', whiteSpace: 'nowrap' }}>
+                          {plan === '6months' ? '6 Months' : '12 Months'}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => buyAtsModule(selectedPlan)}
+                    disabled={!!buyingPlan || !moduleInfo}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, background: ORANGE, border: 'none', color: '#fff',
+                      borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                      cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                    }}
+                  >
+                    {isBusy ? 'Processing…' : 'Buy Now'}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
         </div>
       </div>
+      {buyError && (
+        <div style={{ maxWidth: 1200, margin: '10px auto 0', padding: '0 32px' }}>
+          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5 }}>
+            {buyError}
+          </div>
+        </div>
+      )}
 
       {/* 2-column body */}
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px 24px', display: 'grid', gridTemplateColumns: '1fr 310px', gap: 20, alignItems: 'flex-start' }}>
@@ -1038,9 +1193,66 @@ const ATSChecker: React.FC = () => {
                     <div key={i} style={{ color: '#ccc', fontSize: '0.82rem', padding: '4px 0', borderBottom: i < 4 ? '1px solid #1e1e24' : 'none' }}>{f}</div>
                   ))}
                 </div>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 18 }}>
                   <button style={{ background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: '0.95rem', color: '#fff', cursor: 'pointer' }} onClick={() => { setShowPaywall(false); window.location.href = '/student/subscription'; }}>🔓 View Plans</button>
                   <button style={{ background: 'transparent', border: '1px solid #2a2a32', borderRadius: 10, padding: '10px 20px', color: '#888', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => setShowPaywall(false)}>Maybe Later</button>
+                </div>
+
+                {/* Or unlock just this module */}
+                <div style={{ borderTop: '1px solid #1e1e24', paddingTop: 16 }}>
+                  <div style={{ color: '#666', fontSize: '0.78rem', marginBottom: 10 }}>— or unlock just the ATS Checker —</div>
+                  {(() => {
+                    const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100;
+                    const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100;
+                    const betterValue = price12 / 12 < price6 / 6;
+                    const isBusy = buyingPlan === selectedPlan;
+                    return (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 0, background: '#0a0a0e', border: '1px solid #2a2a32', borderRadius: 10, padding: 4 }}>
+                        {(['6months', '12months'] as const).map((plan) => {
+                          const price = plan === '6months' ? price6 : price12;
+                          const active = selectedPlan === plan;
+                          const highlight = plan === '12months' && betterValue;
+                          return (
+                            <button
+                              key={plan}
+                              onClick={() => setSelectedPlan(plan)}
+                              style={{
+                                position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                                padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                                border: active ? '1.5px solid #ff7a00' : '1.5px solid transparent', cursor: 'pointer',
+                                background: active ? '#1a1208' : 'transparent',
+                              }}
+                            >
+                              {highlight && (
+                                <span style={{
+                                  position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                                  fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                                }}>
+                                  BEST
+                                </span>
+                              )}
+                              <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? '#ff7a00' : '#666', whiteSpace: 'nowrap' }}>
+                                {plan === '6months' ? '6 Months' : '12 Months'}
+                              </span>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>₹{price}</span>
+                            </button>
+                          );
+                        })}
+                        <button
+                          onClick={() => buyAtsModule(selectedPlan)}
+                          disabled={!!buyingPlan || !moduleInfo}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6, background: '#ff7a00', border: 'none', color: '#fff',
+                            borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                            cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                          }}
+                        >
+                          {isBusy ? 'Processing…' : 'Buy Now'}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                  {buyError && <div style={{ color: '#ef4444', fontSize: '0.78rem', marginTop: 10 }}>{buyError}</div>}
                 </div>
               </>
             )}

@@ -95,7 +95,7 @@ function monthName(month: number) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const DailyExam: React.FC = () => {
+const DailyExam: React.FC<{ hasAccess: boolean }> = ({ hasAccess }) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
@@ -215,6 +215,7 @@ const DailyExam: React.FC = () => {
 
   // ── Open / close quiz ──────────────────────────────────────────────────────
   const openQuiz = async () => {
+    if (!hasAccess) return
     // Enter fullscreen first — must be synchronous with the user click gesture
     await proctor.enterFullscreen()
     setCurrentIndex(0)
@@ -491,15 +492,19 @@ const DailyExam: React.FC = () => {
                       ⚠️ {todayData.error}
                     </div>
                   ) : (
-                    <button onClick={openQuiz} style={{
+                    <button onClick={openQuiz} disabled={!hasAccess} style={{
                       width: '100%', padding: '12px', borderRadius: 10, border: 'none',
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                      color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer',
+                      background: hasAccess ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#94a3b8',
+                      color: '#fff', fontWeight: 800, fontSize: '0.85rem', cursor: hasAccess ? 'pointer' : 'not-allowed',
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+                      boxShadow: hasAccess ? '0 4px 14px rgba(99,102,241,0.35)' : 'none',
                     }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                      Start Exam
+                      {hasAccess ? (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          Start Exam
+                        </>
+                      ) : '🔒 Locked — Unlock to Start'}
                     </button>
                   )}
                 </>
@@ -548,37 +553,38 @@ const DailyExam: React.FC = () => {
           )}
         </div>
 
-        {/* ── RIGHT: Progress Calendar ── */}
-        <div style={{ flex: 1, minWidth: 0, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
+        {/* ── RIGHT: Progress Calendar + info cards stacked under it ── */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
           {/* Calendar header */}
-          <div style={{ padding: '14px 18px 12px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.92rem' }}>Your Progress Calendar</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ padding: '10px 14px 9px', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.84rem' }}>Your Progress Calendar</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <button onClick={() => setCalendarMonth(p => { const m = p.month === 1 ? 12 : p.month - 1; const y = p.month === 1 ? p.year - 1 : p.year; return { year: y, month: m } })}
-                style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_TEXT, fontSize: 14 }}>‹</button>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: PAGE_TEXT, minWidth: 80, textAlign: 'center' }}>{monthName(calendarMonth.month)} {calendarMonth.year}</span>
+                style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_TEXT, fontSize: 12 }}>‹</button>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: PAGE_TEXT, minWidth: 70, textAlign: 'center' }}>{monthName(calendarMonth.month)} {calendarMonth.year}</span>
               <button onClick={() => setCalendarMonth(p => { const m = p.month === 12 ? 1 : p.month + 1; const y = p.month === 12 ? p.year + 1 : p.year; return { year: y, month: m } })}
-                style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_TEXT, fontSize: 14 }}>›</button>
+                style={{ width: 24, height: 24, borderRadius: 6, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: PAGE_TEXT, fontSize: 12 }}>›</button>
             </div>
           </div>
 
           {/* Legend */}
-          <div style={{ display: 'flex', gap: 16, padding: '7px 18px', borderBottom: `1px solid ${PAGE_BORDER}`, flexWrap: 'nowrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12, padding: '5px 14px', borderBottom: `1px solid ${PAGE_BORDER}`, flexWrap: 'nowrap', alignItems: 'center' }}>
             {[
               { color: '#16a34a', bg: '#f0fdf4', label: 'Attempted (≥60%)' },
               { color: '#ca8a04', bg: '#fefce8', label: 'Attempted (<60%)' },
               { color: '#dc2626', bg: '#fff1f2', label: 'Attempted (Poor)' },
               { color: '#94a3b8', bg: '#f8fafc', label: 'Absent' },
             ].map(item => (
-              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                <div style={{ width: 11, height: 11, borderRadius: 2, background: item.bg, border: `1.5px solid ${item.color}`, flexShrink: 0 }} />
-                <span style={{ fontSize: '0.62rem', color: PAGE_GRAY, whiteSpace: 'nowrap' }}>{item.label}</span>
+              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                <div style={{ width: 9, height: 9, borderRadius: 2, background: item.bg, border: `1.5px solid ${item.color}`, flexShrink: 0 }} />
+                <span style={{ fontSize: '0.56rem', color: PAGE_GRAY, whiteSpace: 'nowrap' }}>{item.label}</span>
               </div>
             ))}
           </div>
 
           {/* Unified calendar grid — day names + cells in one grid, single gap colour, no double borders */}
-          <div style={{ flex: 1, overflow: 'hidden', padding: '10px 16px 16px' }}>
+          <div style={{ flex: 1, overflow: 'hidden', padding: '8px 12px 12px' }}>
           {loadingCalendar ? (
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 40 }}>
               <div style={{ width: 24, height: 24, border: '3px solid rgba(99,102,241,0.2)', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'da-spin 1s linear infinite' }} />
@@ -595,16 +601,16 @@ const DailyExam: React.FC = () => {
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(7, 1fr)',
-                  gridTemplateRows: `32px repeat(${numWeeks}, 80px)`,
-                  gap: 6,
+                  gridTemplateRows: `24px repeat(${numWeeks}, 52px)`,
+                  gap: 4,
                   background: PAGE_BORDER,
-                  border: `6px solid ${PAGE_BORDER}`,
-                  borderRadius: 12,
+                  border: `4px solid ${PAGE_BORDER}`,
+                  borderRadius: 10,
                   overflow: 'hidden',
                 }}>
                   {/* Day name header row */}
                   {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-                    <div key={d} style={{ background: CARD_BG, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700, color: PAGE_GRAY, letterSpacing: '0.05em' }}>
+                    <div key={d} style={{ background: CARD_BG, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 700, color: PAGE_GRAY, letterSpacing: '0.05em' }}>
                       {d}
                     </div>
                   ))}
@@ -615,8 +621,8 @@ const DailyExam: React.FC = () => {
                         ? prevMonthLast - firstDay + ci + 1
                         : ci - firstDay - daysInMonth + 1
                       return (
-                        <div key={`n${ci}`} style={{ background: CARD_BG, borderRadius: 6, padding: '8px 10px' }}>
-                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: PAGE_GRAY }}>{outDate}</span>
+                        <div key={`n${ci}`} style={{ background: CARD_BG, borderRadius: 5, padding: '5px 7px' }}>
+                          <span style={{ fontSize: '0.64rem', fontWeight: 600, color: PAGE_GRAY }}>{outDate}</span>
                         </div>
                       )
                     }
@@ -625,29 +631,29 @@ const DailyExam: React.FC = () => {
                     const pct = day.attended && day.score != null && day.total ? Math.round((day.score / day.total) * 100) : null
                     return (
                       <div key={`d${ci}`} style={{
-                        padding: '7px 9px',
+                        padding: '5px 7px',
                         background: day.isToday ? '#ede9fe' : cs.bg,
-                        borderRadius: 6,
-                        outline: day.isToday ? '2px solid #7c3aed' : 'none',
-                        outlineOffset: '-2px',
+                        borderRadius: 5,
+                        outline: day.isToday ? '1.5px solid #7c3aed' : 'none',
+                        outlineOffset: '-1.5px',
                         cursor: day.attended ? 'pointer' : 'default',
                         overflow: 'hidden',
                       }}>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 700, color: day.isToday ? '#7c3aed' : day.isFuture ? PAGE_GRAY : PAGE_TEXT, lineHeight: 1, marginBottom: 5 }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: day.isToday ? '#7c3aed' : day.isFuture ? PAGE_GRAY : PAGE_TEXT, lineHeight: 1, marginBottom: 3 }}>
                           {dateNum}
                         </div>
                         {pct != null ? (
                           <>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 800, color: cs.pctColor, lineHeight: 1 }}>{pct}%</div>
-                            <div style={{ fontSize: '0.62rem', color: cs.scoreColor, marginTop: 3, lineHeight: 1 }}>{day.score}/{day.total}</div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: cs.pctColor, lineHeight: 1 }}>{pct}%</div>
+                            <div style={{ fontSize: '0.56rem', color: cs.scoreColor, marginTop: 2, lineHeight: 1 }}>{day.score}/{day.total}</div>
                           </>
                         ) : day.isToday ? (
                           <>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed', lineHeight: 1 }}>Today</div>
-                            {day.category && <div style={{ fontSize: '0.6rem', color: '#7c3aed', marginTop: 3, lineHeight: 1 }}>{day.category}</div>}
+                            <div style={{ fontSize: '0.58rem', fontWeight: 700, color: '#7c3aed', lineHeight: 1 }}>Today</div>
+                            {day.category && <div style={{ fontSize: '0.54rem', color: '#7c3aed', marginTop: 2, lineHeight: 1 }}>{day.category}</div>}
                           </>
                         ) : !day.isFuture ? (
-                          <div style={{ fontSize: '0.62rem', color: PAGE_GRAY, lineHeight: 1 }}>Absent</div>
+                          <div style={{ fontSize: '0.56rem', color: PAGE_GRAY, lineHeight: 1 }}>Absent</div>
                         ) : null}
                       </div>
                     )
@@ -658,43 +664,9 @@ const DailyExam: React.FC = () => {
           ) : null}
           </div>
         </div>
-      </div>
 
-      {/* ── Bottom info section ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 16 }}>
-
-        {/* Why Daily Practice */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(99,102,241,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </div>
-            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.82rem' }}>Why Daily Practice?</div>
-          </div>
-          <div style={{ fontSize: '0.7rem', color: PAGE_GRAY, lineHeight: 1.5, marginBottom: 10 }}>Consistent practice improves accuracy, speed and confidence.</div>
-          {['Build consistency', 'Track progress', 'Improve every day'].map(t => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span style={{ fontSize: '0.72rem', color: PAGE_TEXT }}>{t}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Tips to Score Better */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(34,197,94,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '0.82rem' }}>Tips to Score Better</div>
-          </div>
-          {['Attempt daily tests', 'Analyze your mistakes', 'Focus on weak areas', 'Stay consistent'].map(t => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span style={{ fontSize: '0.72rem', color: PAGE_TEXT }}>{t}</span>
-            </div>
-          ))}
-        </div>
+        {/* ── Bottom info section — moved directly under the calendar ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
         {/* Performance This Week */}
         <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 18px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -741,6 +713,8 @@ const DailyExam: React.FC = () => {
             )
           })()}
           <div style={{ fontSize: '0.62rem', color: PAGE_GRAY, marginTop: 10, textAlign: 'center', lineHeight: 1.4 }}>Keep it up! You are doing great.</div>
+        </div>
+        </div>
         </div>
       </div>
 

@@ -12,6 +12,10 @@ interface TopicSelectionProps {
     options?: { interviewType: 'topic' | 'resume'; attemptId?: string; attemptNumber?: number }
   ) => void
   limits: any
+  // Full plan (status === 'approved') OR a standalone module purchase —
+  // required to start any topic interview at all (no free trial). Same
+  // value the server now enforces in POST /start.
+  hasModuleAccess: boolean
 }
 
 interface TopicLimit {
@@ -31,7 +35,6 @@ const PAGE_TEXT = 'var(--dash-text, #0f172a)'
 const PAGE_GRAY = 'var(--dash-gray, #64748b)'
 
 const MAX_ATTEMPTS = 5
-const TRIAL_MAX_ATTEMPTS = 2
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000
 
 const formatTime = (ms: number) => {
@@ -42,11 +45,10 @@ const formatTime = (ms: number) => {
   return `${days}d ${hours}h ${minutes}m`
 }
 
-const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
+const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasModuleAccess }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
-  const status = user?.status?.toLowerCase()
 
   const [topics, setTopics] = useState<string[]>([])
   const [topic, setTopic] = useState<string>('')
@@ -54,8 +56,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
   const [countdowns, setCountdowns] = useState<Record<string, number>>({})
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const maxAllowed =
-    status === 'pending' ? TRIAL_MAX_ATTEMPTS : MAX_ATTEMPTS
+  const maxAllowed = hasModuleAccess ? MAX_ATTEMPTS : 0
   const selectStyle: React.CSSProperties = {
     borderRadius: '10px',
     border: '1.5px solid #e2e8f0',
@@ -79,14 +80,9 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
     fontWeight: 600,
     fontSize: '0.92rem',
   };
-  // Convert backend remaining (always based on 5) into correct remaining
-  const getRemaining = (backendRemaining: number) => {
-    if (status !== 'pending') return backendRemaining
-
-    const usedFromBackend = MAX_ATTEMPTS - backendRemaining
-    const trialRemaining = Math.max(TRIAL_MAX_ATTEMPTS - usedFromBackend, 0)
-    return trialRemaining
-  }
+  // No free trial — unpurchased students get 0 regardless of the backend's
+  // real (5-based) remaining count.
+  const getRemaining = (backendRemaining: number) => hasModuleAccess ? backendRemaining : 0
 
   useEffect(() => {
     if (!token) return
@@ -145,17 +141,16 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
   }, [limits])
 
   const startInterview = async () => {
+    if (!hasModuleAccess) {
+      return alert('Unlock AI Self Interview, or subscribe to a full plan, to start an interview.')
+    }
     if (!topic) return alert('Please select a topic')
 
     const backendRemaining = limits[topic]?.remaining ?? MAX_ATTEMPTS
     const remaining = getRemaining(backendRemaining)
 
     if (remaining <= 0) {
-      return alert(
-        status === 'pending'
-          ? 'You have used your 2 free trial attempts. Please upgrade to continue.'
-          : `You have reached the max attempts for ${topic}. Please wait until cooldown expires.`
-      )
+      return alert(`You have reached the max attempts for ${topic}. Please wait until cooldown expires.`)
     }
 
     const response = await fetch(`${baseURL}/start`, {
@@ -229,8 +224,8 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
               </div>
             )}
             <Form.Text style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.85rem', color: PAGE_GRAY }}>
-              {status === 'pending'
-                ? 'Trial users can attempt only 2 interviews per topic.'
+              {!hasModuleAccess
+                ? 'Locked — unlock AI Self Interview above to start practicing.'
                 : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
             </Form.Text>
           </Form.Group>
@@ -256,7 +251,9 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits }) => {
                   : 1,
             }}
           >
-            <FaRocket size={14} style={{ marginRight: 8 }} /> Start Interview
+            {!hasModuleAccess
+              ? <>Locked — Unlock to Start</>
+              : <><FaRocket size={14} style={{ marginRight: 8 }} /> Start Interview</>}
           </Button>
         </div>
 

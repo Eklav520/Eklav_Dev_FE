@@ -304,13 +304,91 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
       .catch(() => {})
   }, [user?.token, baseURL, limitMessage])
 
-  // Same paid/approved gating pattern as CourseCard.tsx — only students whose
-  // enrollment status is approved (or still pending review) may start a
-  // pattern or practice a section; everyone else sees disabled/locked buttons.
+  // Access comes from either the full plan (`status === 'approved'` — same
+  // as institute-granted students) OR having bought JUST the LSRW module
+  // individually. Optimistically fall back to `status` while the real
+  // per-module check is still loading, so already-approved students don't
+  // see a flash of "locked" buttons.
   const status = user?.status?.toLowerCase()
-  const isApproved = status === 'approved'
+  const fullAccessFallback = status === 'approved'
+  type ModulePlan = '6months' | '12months'
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate: string | null } | null>(null)
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
+  const [buyError, setBuyError] = useState<string | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
+
+  const fetchModuleAccess = () => {
+    if (!user?.token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return
+        const lsrw = data.modules?.lsrw
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!lsrw?.active,
+          plans: { '6months': lsrw?.plans?.['6months'] ?? 19900, '12months': lsrw?.plans?.['12months'] ?? 34900 },
+          label: lsrw?.label ?? 'LSRW Communication Skills',
+          endDate: lsrw?.endDate ?? null,
+        })
+      })
+      .catch(() => {})
+  }
+  useEffect(fetchModuleAccess, [user?.token, baseURL])
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : fullAccessFallback
+  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
   const limitReached = monthlyUsed !== null && monthlyUsed >= MONTHLY_ATTEMPT_LIMIT
-  const canStart = isApproved && !limitReached
+  const canStart = hasAccess && !limitReached
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!user?.token || buyingPlan) return
+    setBuyingPlan(plan)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+      body: JSON.stringify({ moduleKey: 'lsrw', plan }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: user?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'lsrw', plan }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchModuleAccess()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingPlan(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingPlan(null)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
 
   // Real "questions shown per attempt" counts per section, from
   // LSRWRoundSettings via each section's own student-facing endpoint — the
@@ -705,23 +783,73 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
     <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 24, flexWrap: 'wrap' as const }}>
         <div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>LSRW Communication Skills</h2>
+          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+            LSRW Communication Skills
+            {!hasAccess && (
+              <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: '0.9rem', fontWeight: 700 }}>
+                <FaLock size={12} />(Premium Module)
+              </span>
+            )}
+          </h2>
           <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
         </div>
-        {monthlyUsed !== null && (
-          <div
-            title="Practicing individual sections is unlimited — this counts only real Pattern 1/2 attempts."
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8, background: CARD_BG, border: `1px solid ${limitReached ? '#fecaca' : PAGE_BORDER}`,
-              borderRadius: 10, padding: '8px 14px', flexShrink: 0,
-            }}
-          >
-            <span style={{ fontSize: 11, color: PAGE_GRAY }}>Pattern Attempts This Month</span>
-            <span style={{ fontSize: 13.5, fontWeight: 800, color: limitReached ? '#dc2626' : PAGE_TEXT }}>
-              {monthlyUsed} / {MONTHLY_ATTEMPT_LIMIT}
-            </span>
-          </div>
-        )}
+
+        {!hasAccess && (() => {
+          const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
+          const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
+          const perMonth6 = price6 / 6
+          const perMonth12 = price12 / 12
+          const betterValue = perMonth12 < perMonth6
+          const isBusy = buyingPlan === selectedPlan
+          // One box holds both plan choices + the buy button, so the whole
+          // thing reads as a single purchase control instead of separate
+          // floating pieces.
+          return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+              {(['6months', '12months'] as const).map((plan) => {
+                const price = plan === '6months' ? price6 : price12
+                const active = selectedPlan === plan
+                const highlight = plan === '12months' && betterValue
+                return (
+                  <button
+                    key={plan}
+                    onClick={() => setSelectedPlan(plan)}
+                    style={{
+                      position: 'relative', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1,
+                      padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                      border: active ? `1.5px solid ${ORANGE}` : '1.5px solid transparent', cursor: 'pointer',
+                      background: active ? '#fff7ed' : 'transparent',
+                    }}
+                  >
+                    {highlight && (
+                      <span style={{
+                        position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                        fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap' as const,
+                      }}>
+                        BEST
+                      </span>
+                    )}
+                    <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? ORANGE : '#999', whiteSpace: 'nowrap' as const }}>
+                      {plan === '6months' ? '6 Months' : '12 Months'}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
+                  </button>
+                )
+              })}
+              <button
+                onClick={() => buyModule(selectedPlan)}
+                disabled={!!buyingPlan || !moduleInfo}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 6, background: ORANGE, border: 'none', color: '#fff',
+                  borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                  cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                }}
+              >
+                {isBusy ? 'Processing…' : <>Buy Now <FaArrowRight size={10} /></>}
+              </button>
+              </div>
+          )
+        })()}
       </div>
 
       {limitMessage && (
@@ -738,11 +866,16 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
         </div>
       )}
 
-      {!isApproved && (
-        <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 18px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-          <FaLock size={13} color={ORANGE} />
+      {buyError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, marginBottom: 16 }}>
+          {buyError}
+        </div>
+      )}
+      {modulePurchased && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, padding: '10px 18px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <FaCheckCircle size={13} color="#16a34a" />
           <span style={{ fontSize: 12.5, color: '#1e293b' }}>
-            This is a Premium feature. You are not subscribed yet — subscribe to a plan to start a pattern or practice any section.
+            LSRW Communication Skills unlocked{moduleInfo?.endDate ? ` — valid until ${new Date(moduleInfo.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}.
           </span>
         </div>
       )}
@@ -750,11 +883,27 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, marginBottom: 20 }}>
         {PATTERNS.map((pattern) => (
           <div key={pattern.key} style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 16, padding: '20px 22px', boxShadow: '0 2px 10px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column' as const }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <FaFileAlt size={16} color={ORANGE} />
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <FaFileAlt size={16} color={ORANGE} />
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 16, color: PAGE_TEXT }}>{pattern.label}</span>
               </div>
-              <span style={{ fontWeight: 800, fontSize: 16, color: PAGE_TEXT }}>{pattern.label}</span>
+              {monthlyUsed !== null && (
+                <div
+                  title="Practicing individual sections is unlimited — this counts only real Pattern 1/2 attempts."
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, background: PAGE_BG, border: `1px solid ${limitReached ? '#fecaca' : PAGE_BORDER}`,
+                    borderRadius: 8, padding: '5px 10px', flexShrink: 0,
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: PAGE_GRAY }}>Attempts This Month</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, color: limitReached ? '#dc2626' : PAGE_TEXT }}>
+                    {monthlyUsed} / {MONTHLY_ATTEMPT_LIMIT}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column' as const }}>
@@ -772,19 +921,19 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
                   <span style={{ fontSize: 13, color: PAGE_GRAY, flexShrink: 0 }}>Section {s.letter}:-</span>
                   <span style={{ fontSize: 13.5, fontWeight: 600, color: PAGE_TEXT, flex: 1 }}>{s.label}</span>
                   <button
-                    onClick={() => isApproved && onPracticeSection(s.key)}
-                    disabled={!isApproved}
-                    title={isApproved ? 'Try this section for practice — not scored or saved' : 'Premium feature — you are not subscribed to this plan'}
+                    onClick={() => hasAccess && onPracticeSection(s.key)}
+                    disabled={!hasAccess}
+                    title={hasAccess ? 'Try this section for practice — not scored or saved' : 'Premium feature — you are not subscribed to this plan'}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
-                      border: `1px solid ${isApproved ? '#16a34a55' : PAGE_BORDER}`,
-                      color: isApproved ? '#16a34a' : PAGE_GRAY,
-                      background: isApproved ? '#f0fdf4' : PAGE_BG,
+                      border: `1px solid ${hasAccess ? '#16a34a55' : PAGE_BORDER}`,
+                      color: hasAccess ? '#16a34a' : PAGE_GRAY,
+                      background: hasAccess ? '#f0fdf4' : PAGE_BG,
                       borderRadius: 8, padding: '3px 10px', fontSize: 11, fontWeight: 700,
-                      cursor: isApproved ? 'pointer' : 'not-allowed',
+                      cursor: hasAccess ? 'pointer' : 'not-allowed',
                     }}
                   >
-                    {isApproved ? <FaGraduationCap size={10} /> : <FaLock size={10} />} Practice
+                    {hasAccess ? <FaGraduationCap size={10} /> : <FaLock size={10} />} Practice
                   </button>
                   <span style={{ border: `1px solid ${ORANGE}55`, color: ORANGE, borderRadius: 8, padding: '2px 10px', fontSize: 12, fontWeight: 700, minWidth: 34, textAlign: 'center' as const }}>
                     {sectionCounts[s.key] ?? s.count}
@@ -797,7 +946,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
               onClick={() => canStart && !starting && onSelect(pattern.key)}
               disabled={!canStart || starting}
               title={
-                !isApproved ? 'Premium feature — you are not subscribed to this plan'
+                !hasAccess ? 'Premium feature — you are not subscribed to this plan'
                 : limitReached ? `You've used all ${MONTHLY_ATTEMPT_LIMIT} pattern attempts for this month`
                 : undefined
               }
@@ -811,7 +960,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
                 opacity: starting ? 0.7 : 1,
               }}
             >
-              {!isApproved ? <><FaLock size={11} /> Not Subscribed</>
+              {!hasAccess ? <><FaLock size={11} /> Not Subscribed</>
                 : limitReached ? <><FaLock size={11} /> Monthly Limit Reached</>
                 : starting ? <>Starting…</>
                 : <>Select {pattern.label} <FaArrowRight size={11} /></>}

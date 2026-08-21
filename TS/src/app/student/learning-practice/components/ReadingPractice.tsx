@@ -44,12 +44,25 @@ type ReadingHistory = {
 
 const ReadingPractice: React.FC = () => {
   const { user } = useAuthContext()
-  const status = user?.status?.toLowerCase()
-  const TRIAL_LIMIT = 5
-  const isTrialUser = status === 'pending'
-
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
+
+  // Full access (status === 'approved', same as institute-granted students)
+  // OR a standalone "learningPractice" module purchase both give the full
+  // 30-attempt monthly allowance instead of the 5-attempt free trial —
+  // server-enforced in learningRoutes.js, so `history.monthlyLimit` below
+  // is always the real, already-correct number. Purchasing happens on the
+  // English Practice hub page (one combined price for Listening + Reading +
+  // Vocabulary) — this sub-page only needs to know whether it's unlocked.
+  const [hasModuleAccess, setHasModuleAccess] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setHasModuleAccess(!!data.fullAccess || !!data.modules?.learningPractice?.active) })
+      .catch(() => {})
+  }, [token, baseURL])
+  const hasAccess = hasModuleAccess ?? (user?.status?.toLowerCase() === 'approved')
 
   const [started, setStarted] = useState(false)
   const [prompt, setPrompt] = useState<Prompt | null>(null)
@@ -61,9 +74,9 @@ const ReadingPractice: React.FC = () => {
   const [history, setHistory] = useState<ReadingHistory | null>(null)
   const [historyLoading, setHistoryLoading] = useState(true)
   const [selectedTopic, setSelectedTopic] = useState<string>('')
-  const maxAllowedAttempts = isTrialUser
-  ? TRIAL_LIMIT
-  : history?.monthlyLimit ?? 0
+  // The server already returns the correct effective limit (30 unlocked /
+  // 5 free-trial) in history.monthlyLimit — no need to re-derive it here.
+  const maxAllowedAttempts = history?.monthlyLimit ?? 0
 
   const isLimitReached =
   !!history && history.attemptsUsed >= maxAllowedAttempts
@@ -89,26 +102,27 @@ const ReadingPractice: React.FC = () => {
 
   //const isMonthlyLimitReached =!!history && history.attemptsUsed >= history.monthlyLimit
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`${baseURL}/learning/reading/history`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const data = await res.json()
-        setHistory(data)
-      } catch (err) {
-        console.error('Error fetching reading history', err)
-      } finally {
-        setHistoryLoading(false)
-      }
+  const fetchReadingHistory = async () => {
+    try {
+      const res = await fetch(`${baseURL}/learning/reading/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      setHistory(data)
+    } catch (err) {
+      console.error('Error fetching reading history', err)
+    } finally {
+      setHistoryLoading(false)
     }
+  }
 
-    if (token && baseURL) fetchHistory()
+  useEffect(() => {
+    if (token && baseURL) fetchReadingHistory()
   }, [token, baseURL])
 
   // 🔹 Start practice & fetch AI reading prompt
   const startPractice = async () => {
+    if (!hasAccess) return
     setStarted(true)
     setLoading(true)
     setFeedback(null)
@@ -246,9 +260,6 @@ const ReadingPractice: React.FC = () => {
           <div style={{ padding: '28px 28px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
             <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>
               Reading Practice
-              {status === 'pending' && (
-                <span style={{ fontSize: 11, fontWeight: 700, background: '#ff6b00', color: '#fff', borderRadius: 20, padding: '3px 10px', marginLeft: 10, verticalAlign: 'middle' }}>Trial</span>
-              )}
             </h1>
             <div style={{ width: 48, height: 3, background: BLUE, borderRadius: 4, marginBottom: 12 }} />
             <p style={{ fontSize: 13, color: '#1e40af', margin: '0 0 20px', lineHeight: 1.6 }}>
@@ -346,26 +357,26 @@ const ReadingPractice: React.FC = () => {
           {/* Start button */}
           <button
             onClick={startPractice}
-            disabled={isLimitReached}
+            disabled={!hasAccess || isLimitReached}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-              background: isLimitReached ? '#cbd5e1' : BLUE,
+              background: (!hasAccess || isLimitReached) ? '#cbd5e1' : BLUE,
               color: '#fff', fontWeight: 800, fontSize: 16,
-              cursor: isLimitReached ? 'not-allowed' : 'pointer',
+              cursor: (!hasAccess || isLimitReached) ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: isLimitReached ? 'none' : `0 6px 20px ${BLUE}35`,
+              boxShadow: (!hasAccess || isLimitReached) ? 'none' : `0 6px 20px ${BLUE}35`,
               marginBottom: 14,
             }}
           >
             <FaPlay style={{ fontSize: 14 }} />
-            {isLimitReached ? 'Limit Reached' : 'Start Reading Practice'}
+            {!hasAccess ? 'Locked — Unlock to Start' : isLimitReached ? 'Limit Reached' : 'Start Reading Practice'}
           </button>
 
-          {isLimitReached && (
+          {(!hasAccess || isLimitReached) && (
             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <FaBullseye style={{ flexShrink: 0 }} />
-              {status === 'pending'
-                ? 'Upgrade to unlock unlimited reading practice.'
+              {!hasAccess
+                ? 'Unlock Learning Practice, or subscribe to a full plan, to start.'
                 : 'Monthly limit reached. Try again next month.'}
             </div>
           )}
@@ -374,7 +385,7 @@ const ReadingPractice: React.FC = () => {
           {!historyLoading && history && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginTop: 8 }}>
               {[
-                { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}`, sub: `${Math.max(0, maxAllowedAttempts - history.attemptsUsed)} remaining`, color: BLUE, Icon: FaBullseye },
+                { label: !hasAccess ? 'Free Attempts' : 'Monthly Attempts', value: `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}`, sub: `${Math.max(0, maxAllowedAttempts - history.attemptsUsed)} remaining`, color: BLUE, Icon: FaBullseye },
                 { label: 'Best Score', value: history.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', sub: history.summary?.bestScore != null ? 'Personal best' : 'No attempts yet', color: '#f59e0b', Icon: FaStar },
                 { label: 'Latest Score', value: history.summary?.latestScore != null ? `${history.summary.latestScore}%` : '--', sub: history.summary?.trend ?? 'Start practicing', color: '#22c55e', Icon: FaChartBar },
                 { label: 'Current Streak', value: `${streak} Day${streak !== 1 ? 's' : ''}`, sub: streak > 0 ? 'Keep it up!' : 'Start your streak!', color: '#ff6b00', Icon: FaFire },

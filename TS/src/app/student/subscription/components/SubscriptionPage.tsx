@@ -112,23 +112,6 @@ const THEME = {
     }
 } as const;
 
-// Free trial plan with features
-const FREE_TRIAL: Plan = {
-    id: 'free-trial',
-    label: 'Free Trial',
-    duration: '',
-    price: 0,
-    priceInPaise: 0,
-    isFree: true,
-    features: [
-        'Limited Access',
-        'Basic features included',
-        'No payment required',
-        'Access to sample courses',
-        'Community support',
-    ],
-};
-
 // Premium features that are the same for both 6 and 12 month plans
 const PREMIUM_FEATURES = [
     'All Courses Access',
@@ -176,6 +159,110 @@ const SubscriptionPage = () => {
         setTimeout(() => setShowConfetti(false), 2800);
     };
 
+    // ── Individual module picker (replaces the old Free Trial card) ──
+    // Every module from MODULE_CATALOG, with its real per-plan price and
+    // whether the student already has it. A student checks off just the
+    // sections they want and pays for all of them in one combined order —
+    // or a single module, same flow either way.
+    type ModulePlan = '6months' | '12months';
+    type ModuleRow = { key: string; label: string; description: string; active: boolean; plans: Record<ModulePlan, number> };
+    const [moduleRows, setModuleRows] = useState<ModuleRow[]>([]);
+    const [moduleFullAccess, setModuleFullAccess] = useState(false);
+    const [loadingModules, setLoadingModules] = useState(true);
+    const [selectedModuleKeys, setSelectedModuleKeys] = useState<Set<string>>(new Set());
+    const [modulePlan, setModulePlan] = useState<ModulePlan>('12months');
+    const [moduleBuying, setModuleBuying] = useState(false);
+    const [moduleError, setModuleError] = useState<string | null>(null);
+
+    const fetchModuleAccess = () => {
+        if (!token) return;
+        setLoadingModules(true);
+        fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => r.json())
+            .then((data) => {
+                if (!data.success) return;
+                setModuleFullAccess(!!data.fullAccess);
+                const rows: ModuleRow[] = Object.values(data.modules || {}).map((m: any) => ({
+                    key: m.key,
+                    label: m.label,
+                    description: m.description,
+                    active: !!m.active,
+                    plans: { '6months': m.plans?.['6months'] ?? 19900, '12months': m.plans?.['12months'] ?? 34900 },
+                }));
+                setModuleRows(rows);
+                // Drop any selection that's since become active (e.g. after a
+                // successful purchase refresh) so it doesn't linger checked.
+                setSelectedModuleKeys((prev) => new Set([...prev].filter((k) => !rows.find((r) => r.key === k)?.active)));
+            })
+            .catch(() => {})
+            .finally(() => setLoadingModules(false));
+    };
+    useEffect(fetchModuleAccess, [token, baseURL]);
+
+    const toggleModule = (key: string) => {
+        setSelectedModuleKeys((prev) => {
+            const next = new Set(prev);
+            if (next.has(key)) next.delete(key); else next.add(key);
+            return next;
+        });
+    };
+
+    const selectedModuleTotal = moduleRows
+        .filter((m) => selectedModuleKeys.has(m.key))
+        .reduce((sum, m) => sum + m.plans[modulePlan], 0);
+
+    const buyModules = () => {
+        if (!token || moduleBuying || selectedModuleKeys.size === 0) return;
+        setModuleBuying(true);
+        setModuleError(null);
+        const moduleKeys = [...selectedModuleKeys];
+        fetch(`${baseURL}/api/student/module-access/create-bulk-order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ moduleKeys, plan: modulePlan }),
+        })
+            .then((r) => r.json())
+            .then((order) => {
+                if (!order.success) throw new Error(order.message || 'Failed to start payment');
+                const options = {
+                    key: order.key,
+                    amount: order.amount,
+                    currency: order.currency,
+                    name: 'Eklav',
+                    description: order.moduleLabel,
+                    order_id: order.orderId,
+                    prefill: { name: profile?.fullName || user?.fullName || '', email: user?.email || '' },
+                    theme: { color: THEME.primary },
+                    handler: async (response: any) => {
+                        try {
+                            const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify-bulk`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                body: JSON.stringify({ ...response, moduleKeys: order.moduleKeys, plan: modulePlan }),
+                            });
+                            const verifyData = await verifyRes.json();
+                            if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed');
+                            setSelectedModuleKeys(new Set());
+                            triggerConfetti();
+                            fetchModuleAccess();
+                        } catch (e: any) {
+                            setModuleError(e.message || 'Payment verification failed. Contact support.');
+                        } finally {
+                            setModuleBuying(false);
+                        }
+                    },
+                    modal: { ondismiss: () => setModuleBuying(false) },
+                };
+                const razorpay = new (window as any).Razorpay(options);
+                razorpay.on('payment.failed', (response: any) => {
+                    setModuleError(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+                    setModuleBuying(false);
+                });
+                razorpay.open();
+            })
+            .catch((e) => { setModuleError(e.message || 'Failed to start payment'); setModuleBuying(false); });
+    };
+
     // Countdown timer for first universal coupon
     const [countdown, setCountdown] = useState({ d: '00', h: '00', m: '00', s: '00' });
     useEffect(() => {
@@ -206,8 +293,9 @@ const SubscriptionPage = () => {
         features: PREMIUM_FEATURES // Same features for all paid plans
     }));
 
-    // All display plans (including free trial)
-    const allPlans: Plan[] = [FREE_TRIAL, ...plansWithFeatures];
+    // All display plans — the old Free Trial card is replaced by the
+    // per-module checklist below (see moduleRows / buyModules).
+    const allPlans: Plan[] = plansWithFeatures;
 
     // Fetch data
     useEffect(() => {
@@ -1162,7 +1250,7 @@ const SubscriptionPage = () => {
                 {successMsg && <Alert variant="success" className="mb-3">{successMsg}</Alert>}
 
                 {/* ── Plan Cards ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(allPlans.length, 1)}, 1fr)`, gap: 28, maxWidth: allPlans.length <= 2 ? 980 : undefined, margin: allPlans.length <= 2 ? '0 auto' : undefined }}>
                     {allPlans.map((plan, index) => {
                         const isCurrentPlan = subscription?.isActive && subscription.plan === plan.id
                         const discountedPrice = getDiscountedPrice(plan)
@@ -1172,13 +1260,13 @@ const SubscriptionPage = () => {
                         return (
                             <div key={plan.id} style={{
                                 background: PAGE_CARD_BG,
-                                borderRadius: 18,
+                                borderRadius: 22,
                                 border: plan.popular ? `2px solid ${OG}` : `1px solid ${PAGE_BORDER}`,
-                                padding: '24px 20px 20px',
+                                padding: '26px 28px 22px',
                                 position: 'relative',
                                 boxShadow: plan.popular
-                                    ? '0 6px 24px rgba(255,107,43,0.15)'
-                                    : '0 2px 12px rgba(0,0,0,0.06)',
+                                    ? '0 8px 30px rgba(255,107,43,0.18)'
+                                    : '0 3px 16px rgba(0,0,0,0.07)',
                                 display: 'flex',
                                 flexDirection: 'column',
                             }}>
@@ -1199,14 +1287,14 @@ const SubscriptionPage = () => {
                                 {/* Icon */}
                                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
                                     <div style={{
-                                        width: 54, height: 54,
+                                        width: 56, height: 56,
                                         background: isCurrentPlan ? 'linear-gradient(135deg, #10b981, #059669)' : GRAD,
-                                        borderRadius: 15,
+                                        borderRadius: 16,
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         color: 'white',
-                                        fontSize: 22,
+                                        fontSize: 23,
                                         boxShadow: isCurrentPlan ? '0 4px 14px rgba(16,185,129,0.35)' : '0 4px 14px rgba(255,107,43,0.35)',
                                     }}>
                                         <PlanIcon />
@@ -1215,11 +1303,11 @@ const SubscriptionPage = () => {
 
                                 {/* Plan name + subtitle */}
                                 <div style={{ textAlign: 'center', marginBottom: 8 }}>
-                                    <h3 style={{ fontWeight: 800, fontSize: '1.2rem', color: PAGE_TEXT, margin: '0 0 3px' }}>
+                                    <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: PAGE_TEXT, margin: '0 0 3px' }}>
                                         {plan.label}
                                     </h3>
                                     {plan.duration && (
-                                        <div style={{ color: OG, fontWeight: 700, fontSize: '0.68rem', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+                                        <div style={{ color: OG, fontWeight: 700, fontSize: '0.7rem', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
                                             {plan.duration} Access
                                         </div>
                                     )}
@@ -1229,22 +1317,22 @@ const SubscriptionPage = () => {
                                 <div style={{
                                     background: '#fff4ec',
                                     borderRadius: 12,
-                                    padding: '10px 14px',
+                                    padding: '12px 16px',
                                     textAlign: 'center',
                                     marginBottom: 10,
                                 }}>
                                     {plan.isFree ? (
-                                        <div style={{ fontWeight: 900, fontSize: '2rem', color: '#1a1a1a', lineHeight: 1 }}>Free</div>
+                                        <div style={{ fontWeight: 900, fontSize: '2.1rem', color: '#1a1a1a', lineHeight: 1 }}>Free</div>
                                     ) : (
                                         <>
                                             {discountedPrice && (
-                                                <span style={{ textDecoration: 'line-through', color: '#bbb', fontSize: '0.85rem', marginRight: 6 }}>₹{plan.price}</span>
+                                                <span style={{ textDecoration: 'line-through', color: '#bbb', fontSize: '0.88rem', marginRight: 6 }}>₹{plan.price}</span>
                                             )}
                                             <div style={{ lineHeight: 1 }}>
-                                                <span style={{ fontWeight: 900, fontSize: '2rem', color: '#1a1a1a' }}>₹{displayPrice}</span>
-                                                <span style={{ fontWeight: 500, fontSize: '0.85rem', color: '#888' }}>.00</span>
+                                                <span style={{ fontWeight: 900, fontSize: '2.1rem', color: '#1a1a1a' }}>₹{displayPrice}</span>
+                                                <span style={{ fontWeight: 500, fontSize: '0.82rem', color: '#888' }}>.00</span>
                                             </div>
-                                            <div style={{ color: '#888', fontSize: '0.78rem', marginTop: 3 }}>/{plan.duration.toLowerCase()}</div>
+                                            <div style={{ color: '#888', fontSize: '0.8rem', marginTop: 3 }}>/{plan.duration.toLowerCase()}</div>
                                             {discountedPrice && (
                                                 <div style={{ display: 'inline-block', background: GRAD, color: 'white', padding: '2px 12px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600, marginTop: 6 }}>
                                                     Save {appliedCoupon?.discountPercent}%
@@ -1255,10 +1343,10 @@ const SubscriptionPage = () => {
                                 </div>
 
                                 {/* Features */}
-                                <div style={{ flex: 1, marginBottom: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px 6px' }}>
+                                <div style={{ flex: 1, marginBottom: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 10px' }}>
                                     {plan.features?.map((feature, idx) => (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', color: PAGE_GRAY, fontSize: '0.78rem' }}>
-                                            <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 11 }} />
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', color: PAGE_GRAY, fontSize: '0.8rem' }}>
+                                            <BsCheckCircleFill style={{ color: OG, flexShrink: 0, fontSize: 12 }} />
                                             <span>{feature}</span>
                                         </div>
                                     ))}
@@ -1267,7 +1355,7 @@ const SubscriptionPage = () => {
                                 {/* Button */}
                                 {isCurrentPlan ? (
                                     <button disabled style={{
-                                        width: '100%', padding: '10px', borderRadius: 10,
+                                        width: '100%', padding: '11px', borderRadius: 10,
                                         background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white',
                                         fontWeight: 700, border: 'none',
                                         cursor: 'not-allowed', fontSize: '0.88rem',
@@ -1281,7 +1369,7 @@ const SubscriptionPage = () => {
                                         onClick={() => { window.location.href = '/student/dashboard' }}
                                         disabled={!!subscription?.isActive}
                                         style={{
-                                            width: '100%', padding: '10px', borderRadius: 10,
+                                            width: '100%', padding: '11px', borderRadius: 10,
                                             background: 'transparent', border: `2px solid ${OG}`,
                                             color: OG, fontWeight: 700, cursor: subscription?.isActive ? 'not-allowed' : 'pointer',
                                             fontSize: '0.88rem', opacity: subscription?.isActive ? 0.6 : 1,
@@ -1293,7 +1381,7 @@ const SubscriptionPage = () => {
                                         onClick={() => handlePayment(plan)}
                                         disabled={!!paymentLoading || !!subscription?.isActive}
                                         style={{
-                                            width: '100%', padding: '10px', borderRadius: 10,
+                                            width: '100%', padding: '11px', borderRadius: 10,
                                             background: GRAD, color: 'white',
                                             fontWeight: 700, border: 'none',
                                             cursor: (!!paymentLoading || subscription?.isActive) ? 'not-allowed' : 'pointer',
@@ -1310,6 +1398,128 @@ const SubscriptionPage = () => {
                         )
                     })}
                 </div>
+
+                {/* ── Or Unlock Individual Modules ── */}
+                {!moduleFullAccess && (
+                    <div style={{ marginTop: 32 }}>
+                        <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                            <h2 style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.3rem', margin: '0 0 4px' }}>Or Pick Just What You Need</h2>
+                            <p style={{ color: PAGE_GRAY, fontSize: '0.85rem', margin: 0 }}>
+                                Check off one or more sections and pay for only those — buy a single module, or several at once.
+                            </p>
+                        </div>
+
+                        <div style={{ background: PAGE_CARD_BG, borderRadius: 18, border: `1px solid ${PAGE_BORDER}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', padding: '20px 22px', maxWidth: 900, margin: '0 auto' }}>
+                            {loadingModules ? (
+                                <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                                    <Spinner animation="border" size="sm" style={{ color: OG }} />
+                                </div>
+                            ) : moduleRows.length === 0 ? (
+                                <div style={{ textAlign: 'center', color: PAGE_GRAY, fontSize: '0.85rem', padding: '10px 0' }}>No modules available right now.</div>
+                            ) : (
+                                <>
+                                    {/* Duration toggle — applies to every checked module */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 18 }}>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: PAGE_GRAY }}>Duration:</span>
+                                        <div style={{ display: 'inline-flex', background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: 4 }}>
+                                            {(['6months', '12months'] as const).map((p) => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setModulePlan(p)}
+                                                    style={{
+                                                        padding: '6px 16px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                                                        background: modulePlan === p ? OG : 'transparent',
+                                                        color: modulePlan === p ? '#fff' : PAGE_TEXT,
+                                                        fontWeight: 700, fontSize: '0.8rem',
+                                                    }}
+                                                >
+                                                    {p === '6months' ? '6 Months' : '12 Months'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Module checklist */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 10, marginBottom: 18 }}>
+                                        {moduleRows.map((m) => {
+                                            const checked = selectedModuleKeys.has(m.key)
+                                            const price = m.plans[modulePlan]
+                                            return (
+                                                <div
+                                                    key={m.key}
+                                                    onClick={() => !m.active && toggleModule(m.key)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 14px', borderRadius: 12,
+                                                        border: `1.5px solid ${m.active ? '#86efac' : checked ? OG : PAGE_BORDER}`,
+                                                        background: m.active ? '#f0fdf4' : checked ? '#fff4ec' : PAGE_BG,
+                                                        cursor: m.active ? 'default' : 'pointer',
+                                                        opacity: m.active ? 0.85 : 1,
+                                                    }}
+                                                >
+                                                    <span
+                                                        role="checkbox"
+                                                        aria-checked={m.active || checked}
+                                                        onClick={() => !m.active && toggleModule(m.key)}
+                                                        style={{
+                                                            marginTop: 2, width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            border: `1.5px solid ${m.active ? '#16a34a' : checked ? OG : '#cbd5e1'}`,
+                                                            background: m.active ? '#16a34a' : checked ? OG : '#fff',
+                                                            cursor: m.active ? 'default' : 'pointer',
+                                                        }}
+                                                    >
+                                                        {(m.active || checked) && (
+                                                            <svg width="11" height="9" viewBox="0 0 11 9" fill="none">
+                                                                <path d="M1 4.5L4 7.5L10 1.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                            </svg>
+                                                        )}
+                                                    </span>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                                            <span style={{ fontWeight: 700, fontSize: '0.85rem', color: PAGE_TEXT }}>{m.label}</span>
+                                                            {m.active ? (
+                                                                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#16a34a', flexShrink: 0 }}>✓ Unlocked</span>
+                                                            ) : (
+                                                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: OG, flexShrink: 0 }}>₹{price / 100}</span>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ fontSize: '0.72rem', color: PAGE_GRAY, marginTop: 2, lineHeight: 1.4 }}>{m.description}</div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+
+                                    {moduleError && <Alert variant="danger" className="mb-3" style={{ fontSize: '0.82rem' }}>{moduleError}</Alert>}
+
+                                    {/* Total + pay button */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap', borderTop: `1px solid ${PAGE_BORDER}`, paddingTop: 16 }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.72rem', color: PAGE_GRAY }}>{selectedModuleKeys.size} module{selectedModuleKeys.size === 1 ? '' : 's'} selected</div>
+                                            <div style={{ fontWeight: 900, fontSize: '1.5rem', color: PAGE_TEXT }}>₹{selectedModuleTotal / 100}</div>
+                                        </div>
+                                        <button
+                                            onClick={buyModules}
+                                            disabled={selectedModuleKeys.size === 0 || moduleBuying}
+                                            style={{
+                                                padding: '12px 28px', borderRadius: 12, border: 'none',
+                                                background: selectedModuleKeys.size === 0 ? '#e2e8f0' : GRAD,
+                                                color: selectedModuleKeys.size === 0 ? '#94a3b8' : '#fff',
+                                                fontWeight: 700, fontSize: '0.9rem',
+                                                cursor: (selectedModuleKeys.size === 0 || moduleBuying) ? 'not-allowed' : 'pointer',
+                                                boxShadow: selectedModuleKeys.size === 0 ? 'none' : '0 4px 12px rgba(255,107,43,0.35)',
+                                            }}
+                                        >
+                                            {moduleBuying ? (
+                                                <><Spinner animation="border" size="sm" style={{ marginRight: 8 }} />Processing...</>
+                                            ) : selectedModuleKeys.size === 0 ? 'Select modules to pay' : `Pay ₹${selectedModuleTotal / 100}`}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );

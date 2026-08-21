@@ -31,6 +31,7 @@ type Category = {
 type Props = {
   onStatsUpdate?: (total: number) => void
   initialCategoryTitle?: string | null
+  hasAccess: boolean
 }
 
 const COUNT = 20
@@ -118,6 +119,7 @@ const CategoryCard = ({
   onSelect,
   onStartQuiz,
   onOpenTopic,
+  hasAccess,
 }: {
   category: Category
   index: number
@@ -125,6 +127,7 @@ const CategoryCard = ({
   onSelect: (c: Category) => void
   onStartQuiz: (c: Category) => void
   onOpenTopic: (t: TopicItem) => void
+  hasAccess: boolean
 }) => {
   const theme = CARD_THEMES[index % CARD_THEMES.length]
   const totalQ = category.items.reduce((s, i) => s + (i.questions?.length ?? 0), 0)
@@ -170,15 +173,16 @@ const CategoryCard = ({
           {theme.icon}
         </div>
         <button
-          onClick={e => { e.stopPropagation(); onStartQuiz(category) }}
+          onClick={e => { e.stopPropagation(); if (hasAccess) onStartQuiz(category) }}
+          disabled={!hasAccess}
           style={{
-            background: '#ff7a00', border: 'none', borderRadius: 7,
+            background: hasAccess ? '#ff7a00' : '#475569', border: 'none', borderRadius: 7,
             color: '#fff', fontWeight: 700, fontSize: '0.72rem',
-            padding: '6px 14px', cursor: 'pointer',
-            boxShadow: '0 3px 10px rgba(255,122,0,0.3)',
+            padding: '6px 14px', cursor: hasAccess ? 'pointer' : 'not-allowed',
+            boxShadow: hasAccess ? '0 3px 10px rgba(255,122,0,0.3)' : 'none',
           }}
         >
-          Start Quiz
+          {hasAccess ? 'Start Quiz' : '🔒 Locked'}
         </button>
       </div>
 
@@ -253,7 +257,7 @@ const TOPIC_COLORS = [
   { bg: 'rgba(192,132,252,0.18)', color: '#c084fc' },
 ]
 
-const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) => {
+const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle, hasAccess }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -289,7 +293,9 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
       setLoading(true)
       setError('')
       try {
-        const res = await fetch(`${baseURL}/apptitudeQuestions`)
+        const res = await fetch(`${baseURL}/apptitudeQuestions`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
         if (!res.ok) throw new Error('Failed to fetch categories')
         const data = await res.json()
         const cats: Category[] = data.data || []
@@ -314,6 +320,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
   }, [baseURL])
 
   const openTopicPreview = async (topicItem: TopicItem) => {
+    if (!hasAccess) return
     setPreviewTopic(topicItem)
     setPreviewCurrentQ(0)
     setExpandedExpQ(-1)
@@ -336,6 +343,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
   }
 
   const openQuizForCategory = (category: Category) => {
+    if (!hasAccess) return
     const all: QA[] = []
     category.items.forEach((it) => all.push(...(it.questions || [])))
     const chosen = shuffle(all).slice(0, COUNT)
@@ -445,6 +453,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
                   onSelect={c => setSelectedCategory(c)}
                   onStartQuiz={openQuizForCategory}
                   onOpenTopic={openTopicPreview}
+                  hasAccess={hasAccess}
                 />
               ))}
             </div>
@@ -490,11 +499,12 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
                     onClick={() => openTopicPreview(item)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 20px', cursor: 'pointer',
+                      padding: '10px 20px', cursor: hasAccess ? 'pointer' : 'not-allowed',
                       transition: 'background 0.12s',
                       borderRadius: 0,
+                      opacity: hasAccess ? 1 : 0.55,
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = PAGE_BG }}
+                    onMouseEnter={e => { if (hasAccess) e.currentTarget.style.background = PAGE_BG }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                   >
                     {/* Avatar */}
@@ -523,13 +533,13 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
                       </div>
                     </div>
 
-                    {/* Arrow */}
+                    {/* Arrow / lock */}
                     <div style={{
                       width: 22, height: 22, borderRadius: 6, flexShrink: 0,
                       background: PAGE_BG,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <FiChevronRight size={12} color={PAGE_GRAY} />
+                      {hasAccess ? <FiChevronRight size={12} color={PAGE_GRAY} /> : <span style={{ fontSize: 11 }}>🔒</span>}
                     </div>
                   </div>
                 )
@@ -542,18 +552,19 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
             <div style={{ padding: '14px 20px' }}>
               <button
                 onClick={() => openQuizForCategory(selectedCategory)}
+                disabled={!hasAccess}
                 style={{
                   width: '100%', background: 'none', border: 'none',
-                  color: '#ff7a00', fontWeight: 700, fontSize: '0.8rem',
-                  cursor: 'pointer',
+                  color: hasAccess ? '#ff7a00' : PAGE_GRAY, fontWeight: 700, fontSize: '0.8rem',
+                  cursor: hasAccess ? 'pointer' : 'not-allowed',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   padding: '8px 0', borderRadius: 8,
                   transition: 'background 0.12s',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,122,0,0.05)' }}
+                onMouseEnter={e => { if (hasAccess) e.currentTarget.style.background = 'rgba(255,122,0,0.05)' }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
               >
-                Take Quiz <FiArrowRight size={14} />
+                {hasAccess ? <>Take Quiz <FiArrowRight size={14} /></> : '🔒 Locked — Unlock to Start'}
               </button>
             </div>
           </div>
@@ -850,6 +861,7 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
                       Next →
                     </button>
                     <button onClick={() => {
+                      if (!hasAccess) return
                       setTopicPreviewOpen(false)
                       const chosen = shuffle(previewTopic.questions).slice(0, COUNT)
                       setQuizTitle(`${previewTopic.topic} — Practice Quiz`)
@@ -859,8 +871,10 @@ const CategoryGrid: React.FC<Props> = ({ onStatsUpdate, initialCategoryTitle }) 
                       setSubmitted(false)
                       setResults([])
                       setQuizOpen(true)
-                    }} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '8px 18px', cursor: 'pointer', boxShadow: '0 3px 10px rgba(255,122,0,0.3)' }}>
-                      Take Quiz (This Topic)
+                    }}
+                      disabled={!hasAccess}
+                      style={{ background: hasAccess ? '#ff7a00' : '#94a3b8', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: '0.82rem', padding: '8px 18px', cursor: hasAccess ? 'pointer' : 'not-allowed', boxShadow: hasAccess ? '0 3px 10px rgba(255,122,0,0.3)' : 'none' }}>
+                      {hasAccess ? 'Take Quiz (This Topic)' : '🔒 Locked'}
                     </button>
                   </div>
                 </div>

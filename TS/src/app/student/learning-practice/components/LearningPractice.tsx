@@ -50,11 +50,25 @@ type ListeningHistory = {
 
 const ListeningPractice: React.FC = () => {
   const { user } = useAuthContext()
-  const status = user?.status?.toLowerCase()
-  const TRIAL_LIMIT = 5
-  const isTrialUser = status === 'pending'
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
+
+  // Full access (status === 'approved', same as institute-granted students)
+  // OR a standalone "learningPractice" module purchase both give the full
+  // 30-attempt monthly allowance instead of the 5-attempt free trial —
+  // server-enforced in learningRoutes.js, so `history.monthlyLimit` below
+  // is always the real, already-correct number. Purchasing happens on the
+  // English Practice hub page (one combined price for Listening + Reading +
+  // Vocabulary) — this sub-page only needs to know whether it's unlocked.
+  const [hasModuleAccess, setHasModuleAccess] = useState<boolean | null>(null)
+  useEffect(() => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setHasModuleAccess(!!data.fullAccess || !!data.modules?.learningPractice?.active) })
+      .catch(() => {})
+  }, [token, baseURL])
+  const hasAccess = hasModuleAccess ?? (user?.status?.toLowerCase() === 'approved')
 
   const [started, setStarted] = useState(false)
   const [prompt, setPrompt] = useState<Prompt | null>(null)
@@ -70,11 +84,10 @@ const ListeningPractice: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState('Conversations')
 
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  //const isMonthlyLimitReached = !!history && history.attemptsUsed >= history.monthlyLimit
 
-  const maxAllowedAttempts = isTrialUser
-    ? TRIAL_LIMIT
-    : history?.monthlyLimit ?? 0
+  // The server already returns the correct effective limit (30 unlocked /
+  // 5 free-trial) in history.monthlyLimit — no need to re-derive it here.
+  const maxAllowedAttempts = history?.monthlyLimit ?? 0
 
   const isLimitReached =
     !!history && history.attemptsUsed >= maxAllowedAttempts
@@ -102,29 +115,30 @@ const ListeningPractice: React.FC = () => {
   const streak = computeStreak(history?.attempts ?? [])
   const lastScore = history?.summary?.latestScore
 
-  useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const res = await fetch(`${baseURL}/learning/listening/history`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+  const fetchListeningHistory = async () => {
+    try {
+      const res = await fetch(`${baseURL}/learning/listening/history`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
 
-        const data = await res.json()
-        setHistory(data)
-      } catch (err) {
-        console.error('Error fetching listening history', err)
-      } finally {
-        setHistoryLoading(false)
-      }
+      const data = await res.json()
+      setHistory(data)
+    } catch (err) {
+      console.error('Error fetching listening history', err)
+    } finally {
+      setHistoryLoading(false)
     }
+  }
 
-    if (token) fetchHistory()
+  useEffect(() => {
+    if (token) fetchListeningHistory()
   }, [token, baseURL])
 
   // 🔹 Start button → fetch AI listening prompt
   const startPractice = async () => {
+    if (!hasAccess) return
     setStarted(true)
     setLoading(true)
     setFeedback(null)
@@ -278,9 +292,6 @@ const ListeningPractice: React.FC = () => {
               <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: 0 }}>
                 Listening Practice
               </h1>
-              {status === 'pending' && (
-                <span style={{ fontSize: 11, fontWeight: 700, background: ORANGE, color: '#fff', borderRadius: 20, padding: '3px 10px' }}>Trial</span>
-              )}
             </div>
             <div style={{ width: 48, height: 3, background: ORANGE, borderRadius: 4, marginBottom: 12 }} />
             <p style={{ fontSize: 13, color: '#64748b', margin: '0 0 20px', lineHeight: 1.6, maxWidth: 440 }}>
@@ -310,7 +321,7 @@ const ListeningPractice: React.FC = () => {
           <div style={{ padding: '18px 20px', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center', borderLeft: '1px solid #fde8c8' }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 12 }}>Your Progress</div>
             {[
-              { label: status === 'pending' ? 'Free Attempts' : 'Monthly Attempts', value: !historyLoading && history ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}` : '-- / --', color: ORANGE, Icon: FaBullseye },
+              { label: !hasAccess ? 'Free Attempts' : 'Monthly Attempts', value: !historyLoading && history ? `${Math.min(history.attemptsUsed, maxAllowedAttempts)} / ${maxAllowedAttempts}` : '-- / --', color: ORANGE, Icon: FaBullseye },
               { label: 'Best Score',     value: !historyLoading && history?.summary?.bestScore != null ? `${history.summary.bestScore}%` : '--', color: '#3b82f6', Icon: FaStar },
               { label: 'Last Score',     value: !historyLoading && lastScore != null ? `${lastScore}%` : '--', color: '#22c55e', Icon: FaChartLine },
               { label: 'Current Streak', value: !historyLoading ? `${streak} Day${streak !== 1 ? 's' : ''}` : '--', color: '#8b5cf6', Icon: FaFire },
@@ -430,29 +441,29 @@ const ListeningPractice: React.FC = () => {
             </button>
           </div>
 
-          {isLimitReached && (
+          {(!hasAccess || isLimitReached) && (
             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
               <FaBullseye style={{ flexShrink: 0 }} />
-              {status === 'pending'
-                ? 'Upgrade to unlock unlimited listening practice.'
+              {!hasAccess
+                ? 'Unlock Learning Practice, or subscribe to a full plan, to start.'
                 : 'Monthly limit reached. Try again next month.'}
             </div>
           )}
 
           <button
             onClick={startPractice}
-            disabled={isLimitReached}
+            disabled={!hasAccess || isLimitReached}
             style={{
               width: '100%', padding: '16px 0', borderRadius: 14, border: 'none',
-              background: isLimitReached ? '#cbd5e1' : `linear-gradient(90deg, ${ORANGE} 0%, #ff9a3c 100%)`,
+              background: (!hasAccess || isLimitReached) ? '#cbd5e1' : `linear-gradient(90deg, ${ORANGE} 0%, #ff9a3c 100%)`,
               color: '#fff', fontWeight: 800, fontSize: 16,
-              cursor: isLimitReached ? 'not-allowed' : 'pointer',
+              cursor: (!hasAccess || isLimitReached) ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: isLimitReached ? 'none' : `0 6px 20px ${ORANGE}40`,
+              boxShadow: (!hasAccess || isLimitReached) ? 'none' : `0 6px 20px ${ORANGE}40`,
             }}
           >
             <FaPlay style={{ fontSize: 14 }} />
-            {isLimitReached ? 'Limit Reached' : 'Start Listening Practice'}
+            {!hasAccess ? 'Locked — Unlock to Start' : isLimitReached ? 'Limit Reached' : 'Start Listening Practice'}
           </button>
         </div>
 

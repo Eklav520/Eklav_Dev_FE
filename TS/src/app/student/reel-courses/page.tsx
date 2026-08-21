@@ -9,7 +9,7 @@ import {
   FaGitAlt, FaTerminal, FaCss3, FaHtml5, FaAws,
   FaJsSquare, FaLeaf, FaFlask, FaTable,
 } from "react-icons/fa";
-import { BsLockFill, BsPlayCircleFill } from "react-icons/bs";
+import { BsLockFill, BsPlayCircleFill, BsTrophyFill } from "react-icons/bs";
 import { MdOutlineTimer } from "react-icons/md";
 import { VscVscode } from "react-icons/vsc";
 import axios from "axios";
@@ -141,6 +141,8 @@ function ReelCard({ section, idx, isLocked, onClick }: {
   );
 }
 
+type ModulePlan = "6months" | "12months";
+
 /* ══════════════════ PAGE ══════════════════ */
 export default function ReelCoursesPage() {
   const [isReelsOpen, setIsReelsOpen]       = useState(false);
@@ -152,7 +154,85 @@ export default function ReelCoursesPage() {
   const { user } = useAuthContext();
   const token    = user?.token;
   const baseURL  = import.meta.env.VITE_API_BASE_URL;
-  const isPending = user?.status?.toLowerCase() === "pending";
+
+  // Full access (status === 'approved') OR a standalone "reels" module
+  // purchase unlocks playback — no free trial, fully locked otherwise.
+  // Server-enforced in GET /api/studentSideReels/:courseId.
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate?: string | null } | null>(null);
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>("12months");
+  const [buyError, setBuyError] = useState<string | null>(null);
+
+  const fetchModuleAccess = () => {
+    if (!token) return;
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+        const mod = data.modules?.reels;
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { "6months": mod?.plans?.["6months"] ?? 19900, "12months": mod?.plans?.["12months"] ?? 34900 },
+          label: mod?.label ?? "Tech Bytes Reels",
+          endDate: mod?.endDate ?? null,
+        });
+      })
+      .catch(() => {});
+  };
+  useEffect(fetchModuleAccess, [token, baseURL]);
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === "approved";
+  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess;
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!token || buyingPlan) return;
+    setBuyingPlan(plan);
+    setBuyError(null);
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: "reels", plan }),
+    })
+      .then(r => r.json())
+      .then(order => {
+        if (!order.success) throw new Error(order.message || "Failed to start payment");
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Eklav",
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || "", email: user?.email || "" },
+          theme: { color: ORANGE },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: "reels", plan }),
+              });
+              const verifyData = await verifyRes.json();
+              if (!verifyData.success) throw new Error(verifyData.message || "Payment verification failed");
+              fetchModuleAccess();
+            } catch (e: any) {
+              setBuyError(e.message || "Payment verification failed. Contact support.");
+            } finally {
+              setBuyingPlan(null);
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        };
+        const razorpay = new (window as any).Razorpay(options);
+        razorpay.on("payment.failed", (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || "Unknown error"}`);
+          setBuyingPlan(null);
+        });
+        razorpay.open();
+      })
+      .catch(e => { setBuyError(e.message || "Failed to start payment"); setBuyingPlan(null); });
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -171,8 +251,7 @@ export default function ReelCoursesPage() {
     })();
   }, [token]);
 
-  const freeSectionId = sections.find(s => s.reelCount > 0)?._id;
-  const isLocked      = (s: any) => isPending && s._id !== freeSectionId;
+  const isLocked      = (_s: any) => !hasAccess;
   const active        = sections.filter(s => s.reelCount > 0);
   const categories    = ["All", ...active.map(s => s.courseName)];
 
@@ -180,7 +259,11 @@ export default function ReelCoursesPage() {
     ? sections
     : sections.filter(s => s.courseName === activeCategory);
 
-  const openReels = (id?: string) => { setSelectedReelId(id); setIsReelsOpen(true); };
+  const openReels = (id?: string) => {
+    if (!hasAccess) return;
+    setSelectedReelId(id);
+    setIsReelsOpen(true);
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: PAGE_BG, color: PAGE_TEXT }}>
@@ -188,8 +271,19 @@ export default function ReelCoursesPage() {
       {/* ── Header: Tech Bytes + Search + Filter ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "20px 20px 12px" }}>
         <div style={{ flexShrink: 0 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: PAGE_TEXT, whiteSpace: "nowrap" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: PAGE_TEXT, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const }}>
             Tech <span style={{ color: ORANGE }}>Bytes</span>
+            {!hasAccess && (
+              <span title="Unlock this module, or subscribe to a full plan" style={{ fontSize: 11, fontWeight: 800, background: "#fff", color: ORANGE, padding: "4px 10px", borderRadius: 20, border: `1.5px solid ${ORANGE}`, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <BsLockFill size={10} /> PREMIUM MODULE
+              </span>
+            )}
+            {modulePurchased && (
+              <span style={{ fontSize: 11, fontWeight: 700, background: "#f0fdf4", color: "#166534", padding: "4px 10px", borderRadius: 20, border: "1.5px solid #86efac", display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" as const }}>
+                <BsTrophyFill size={10} color="#16a34a" />
+                Unlocked{moduleInfo?.endDate ? ` — valid until ${new Date(moduleInfo.endDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}` : ""}
+              </span>
+            )}
           </h1>
           <div style={{ fontSize: 10, color: PAGE_GRAY, marginTop: 1 }}>Bite-sized reels</div>
         </div>
@@ -203,6 +297,11 @@ export default function ReelCoursesPage() {
           </div>
         </div>
       </div>
+      {buyError && (
+        <div style={{ margin: "0 20px 12px", background: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 10, padding: "10px 16px", fontSize: 12.5 }}>
+          {buyError}
+        </div>
+      )}
 
       {/* ── Hero Banner ── */}
       <div style={{ margin: "0 20px 22px", borderRadius: 22, overflow: "hidden", position: "relative", minHeight: 190,
@@ -222,12 +321,67 @@ export default function ReelCoursesPage() {
           <div style={{ fontSize: 12.5, color: "#78350f", marginBottom: 22, lineHeight: 1.6 }}>
             Quick tech insights to upgrade your skills,<br />one reel at a time.
           </div>
-          <button
-            onClick={() => openReels(freeSectionId)}
-            style={{ background: ORANGE, color: "#fff", border: "none", borderRadius: 26, padding: "11px 26px", fontSize: 13, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: `0 6px 20px ${ORANGE}55` }}
-          >
-            <FaPlay style={{ fontSize: 11 }} /> Start Watching
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" as const }}>
+            <button
+              onClick={() => hasAccess && openReels(active[0]?._id)}
+              disabled={!hasAccess}
+              style={{ background: hasAccess ? ORANGE : "#cbd5e1", color: "#fff", border: "none", borderRadius: 26, padding: "11px 26px", fontSize: 13, fontWeight: 800, cursor: hasAccess ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 8, boxShadow: hasAccess ? `0 6px 20px ${ORANGE}55` : "none", whiteSpace: "nowrap" as const }}
+            >
+              {hasAccess ? <><FaPlay style={{ fontSize: 11 }} /> Start Watching</> : <><BsLockFill style={{ fontSize: 11 }} /> Locked — Unlock to Watch</>}
+            </button>
+
+            {!hasAccess && (() => {
+              const price6 = (moduleInfo?.plans?.["6months"] ?? 19900) / 100;
+              const price12 = (moduleInfo?.plans?.["12months"] ?? 34900) / 100;
+              const betterValue = price12 / 12 < price6 / 6;
+              const isBusy = buyingPlan === selectedPlan;
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 0, background: "rgba(255,255,255,0.85)", border: "1px solid rgba(255,107,0,0.3)", borderRadius: 10, padding: 4 }}>
+                  {(["6months", "12months"] as ModulePlan[]).map((plan) => {
+                    const price = plan === "6months" ? price6 : price12;
+                    const active2 = selectedPlan === plan;
+                    const highlight = plan === "12months" && betterValue;
+                    return (
+                      <button
+                        key={plan}
+                        onClick={() => setSelectedPlan(plan)}
+                        style={{
+                          position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 1,
+                          padding: "6px 14px", borderRadius: 7, minWidth: 78,
+                          border: active2 ? `1.5px solid ${ORANGE}` : "1.5px solid transparent", cursor: "pointer",
+                          background: active2 ? "#fff" : "transparent",
+                        }}
+                      >
+                        {highlight && (
+                          <span style={{
+                            position: "absolute", top: -8, right: -4, background: "#16a34a", color: "#fff", fontSize: 8.5,
+                            fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: "2px 5px", whiteSpace: "nowrap" as const,
+                          }}>
+                            BEST
+                          </span>
+                        )}
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: active2 ? ORANGE : "#999", whiteSpace: "nowrap" as const }}>
+                          {plan === "6months" ? "6 Months" : "12 Months"}
+                        </span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: "#1a1a1a" }}>₹{price}</span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => buyModule(selectedPlan)}
+                    disabled={!!buyingPlan || !moduleInfo}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 6, background: ORANGE, border: "none", color: "#fff",
+                      borderRadius: 7, padding: "9px 18px", fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                      cursor: buyingPlan ? "not-allowed" : "pointer", opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                    }}
+                  >
+                    {isBusy ? "Processing…" : "Buy Now"}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
         </div>
 
         {/* Reels image on right */}
@@ -237,14 +391,6 @@ export default function ReelCoursesPage() {
           style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", height: "100%", width: "auto", objectFit: "contain", zIndex: 2 }}
         />
       </div>
-
-      {/* ── Pending Banner ── */}
-      {isPending && (
-        <div style={{ margin: "0 20px 14px", background: "rgba(255,107,0,0.06)", border: "1px solid rgba(255,107,0,0.2)", borderRadius: 10, padding: "9px 14px", display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "#64748b" }}>
-          <BsLockFill style={{ color: ORANGE, flexShrink: 0 }} />
-          <span><strong style={{ color: ORANGE }}>Trial access:</strong> 1 free course. Enroll to unlock all.</span>
-        </div>
-      )}
 
       {/* ── Category Pills ── */}
       <div style={{ overflowX: "auto", overflowY: "hidden", padding: "4px 20px 14px" }}>

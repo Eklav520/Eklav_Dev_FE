@@ -37,7 +37,7 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
 
   return (
     <div className="mb-3">
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
 
         <input
           className="form-control"
@@ -46,6 +46,8 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
           onChange={(e) => setUserInput(e.target.value.toUpperCase())}
           disabled={verified}
           style={{
+            flex: "1 1 120px",
+            minWidth: 0,
             borderColor: verified ? "#fd692a" : undefined,
             boxShadow: verified
               ? "0 0 0 0.2rem rgba(253,105,42,.25)"
@@ -55,23 +57,25 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
 
         <div
           style={{
+            flexShrink: 0,
             background: "#24292d",
-            padding: 12,
+            padding: "8px 10px",
             textAlign: "center",
-            fontSize: 22,
-            letterSpacing: 3,
+            fontSize: 18,
+            letterSpacing: 2,
             fontWeight: "bold",
             borderRadius: 8,
             userSelect: "none",
             color: "#fd692a",
             border: "1px solid rgba(253,105,42,.4)",
+            whiteSpace: "nowrap",
           }}
         >
           {captchaText}
         </div>
 
         {verified ? (
-          <FaCheckCircle color="#fd692a" size={26} />
+          <FaCheckCircle color="#fd692a" size={22} style={{ flexShrink: 0 }} />
         ) : (
           <img
             src={RefreshIcon}
@@ -83,10 +87,10 @@ const CaptchaBox = ({ onValidate, debounceMs = 1000 }: CaptchaBoxProps) => {
               onValidate?.(false);
             }}
             style={{
-              width: 28,
-              height: 28,
+              width: 22,
+              height: 22,
+              flexShrink: 0,
               cursor: "pointer",
-              marginTop: 8,
               filter:
                 "invert(52%) sepia(94%) saturate(1550%) hue-rotate(346deg) brightness(101%) contrast(101%)",
             }}

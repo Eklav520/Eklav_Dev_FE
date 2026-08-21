@@ -397,6 +397,8 @@ const CourseListPage = () => {
   const totalM = Math.round((totalLearningHrs - totalH) * 60)
 
   const fetchEnrolledCourses = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const [enrollRes, ratingsRes, rankRes] = await Promise.all([
         fetch(`${baseURL}/enrollments/me`, { headers: { Authorization: `Bearer ${token}` } }),

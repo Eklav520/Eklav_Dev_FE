@@ -10,7 +10,7 @@ import {
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
   FaChevronRight, FaChevronLeft, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
-  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes,
+  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes, FaTrophy,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
 
@@ -31,10 +31,90 @@ declare global {
 const EnglishVoicePractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
-  const status = user?.status?.toLowerCase()
-
-  const isTrialUser = status === 'pending'
   const token = user?.token
+
+  // Full access (status === 'approved', same as institute-granted students)
+  // OR a standalone "speakingPractice" module purchase unlocks the full
+  // 30-session monthly allowance — no free trial, fully locked otherwise.
+  // Server-enforced in POST /api/english/end and GET /api/speakingPractice/history,
+  // so `history.monthlyLimit` below is always the real, already-correct number.
+  type ModulePlan = '6months' | '12months'
+  const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate?: string | null } | null>(null)
+  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
+  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
+  const [buyError, setBuyError] = useState<string | null>(null)
+
+  const fetchModuleAccess = () => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) return
+        const mod = data.modules?.speakingPractice
+        setModuleInfo({
+          fullAccess: !!data.fullAccess,
+          active: !!mod?.active,
+          plans: { '6months': mod?.plans?.['6months'] ?? 19900, '12months': mod?.plans?.['12months'] ?? 34900 },
+          label: mod?.label ?? 'Speaking Practice With AI',
+          endDate: mod?.endDate ?? null,
+        })
+      })
+      .catch(() => {})
+  }
+  useEffect(fetchModuleAccess, [token, baseURL])
+
+  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
+  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+
+  const buyModule = (plan: ModulePlan) => {
+    if (!token || buyingPlan) return
+    setBuyingPlan(plan)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'speakingPractice', plan }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'speakingPractice', plan }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchModuleAccess()
+              fetchSpeakingHistory()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingPlan(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingPlan(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingPlan(null)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
 
   const [messages, setMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')
@@ -81,10 +161,11 @@ const EnglishVoicePractice: React.FC = () => {
 
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
-  const TRIAL_LIMIT = 5
 
-  const maxAllowedAttempts = isTrialUser ? TRIAL_LIMIT : history?.monthlyLimit ?? 0
-  const isLimitReached = !!history && history.attemptsUsed >= maxAllowedAttempts
+  // The server already returns the correct effective limit (30 unlocked /
+  // 5 free-trial) in history.monthlyLimit — no need to re-derive it here.
+  const maxAllowedAttempts = history?.monthlyLimit ?? 0
+  const isLimitReached = !hasAccess || (!!history && history.attemptsUsed >= maxAllowedAttempts)
   const canStart = !sessionStarted && !isLimitReached
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
@@ -867,6 +948,7 @@ const EnglishVoicePractice: React.FC = () => {
   const LEVEL_COLOR: Record<string, string> = { Easy: '#22c55e', Medium: '#f59e0b', Hard: '#ef4444' }
 
   const handleOpenSession = () => {
+    if (isLimitReached) return
     setShowSessionModal(true)
     setActiveSessionTab('conversation')
     setTimeout(() => startWebcam(), 100)
@@ -1604,24 +1686,47 @@ const EnglishVoicePractice: React.FC = () => {
         <div style={{ flex: 1, padding: '20px 24px', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
 
           {/* Page header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 42, height: 42, borderRadius: 12, background: '#fff7ed', display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 20 }}>
                 <FaMicrophone />
               </div>
               <div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT }}>Speaking Practice With AI</div>
+                <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  Speaking Practice With AI
+                  {!hasAccess && (
+                    <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: 12, fontWeight: 700 }}>
+                      🔒 (Premium Module)
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12, color: PAGE_GRAY }}>Improve your spoken English through real conversations and get AI-powered feedback.</div>
               </div>
             </div>
-            <button onClick={() => setShowHowItWorks(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: CARD_BG, color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              <FaInfoCircle /> How it works?
-            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {modulePurchased && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  <FaTrophy size={13} color="#16a34a" />
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#166534', whiteSpace: 'nowrap' }}>
+                    Unlocked{moduleInfo?.endDate ? ` — valid until ${new Date(moduleInfo.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : ''}
+                  </span>
+                </div>
+              )}
+              <button onClick={() => setShowHowItWorks(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, border: `1.5px solid ${ORANGE}`, borderRadius: 10, padding: '8px 16px', background: CARD_BG, color: ORANGE, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <FaInfoCircle /> How it works?
+              </button>
+            </div>
           </div>
+          {buyError && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, marginBottom: 16 }}>
+              {buyError}
+            </div>
+          )}
 
           {/* Hero banner */}
           <div style={{ flex: 1, background: 'linear-gradient(135deg, #fce7f3 0%, #f9a8d4 60%, #f472b6 100%)', borderRadius: 20, padding: '40px 32px', marginBottom: 24, position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 230 }}>
-            <div style={{ maxWidth: 480, position: 'relative', zIndex: 2 }}>
+            <div style={{ maxWidth: 640, position: 'relative', zIndex: 2 }}>
               {/* Fixed dark text — this banner's pink background never changes with theme */}
               <h2 style={{ fontSize: 28, fontWeight: 900, color: '#1e293b', margin: '0 0 8px', lineHeight: 1.2 }}>Practice. Speak. Improve.</h2>
               <p style={{ fontSize: 13.5, color: '#475569', margin: '0 0 16px', lineHeight: 1.6 }}>Have real conversations with our AI coach and enhance your fluency, pronunciation and confidence.</p>
@@ -1638,10 +1743,64 @@ const EnglishVoicePractice: React.FC = () => {
                   <div key={i} style={{ width: 3, height: h * 2, background: ORANGE, borderRadius: 2, opacity: 0.6 }} />
                 ))}
               </div>
-              <button onClick={handleOpenSession} disabled={isLimitReached}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 32px', fontSize: 15, fontWeight: 800, cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: isLimitReached ? 0.5 : 1 }}>
-                <FaMicrophone /> Start Speaking Now
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap' }}>
+                <button onClick={handleOpenSession} disabled={isLimitReached}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 22px', fontSize: 14, fontWeight: 800, cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: isLimitReached ? 0.5 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <FaMicrophone /> {!hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking Now'}
+                </button>
+
+                {!hasAccess && (() => {
+                  const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
+                  const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
+                  const betterValue = price12 / 12 < price6 / 6
+                  const isBusy = buyingPlan === selectedPlan
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.85)', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+                      {(['6months', '12months'] as const).map((plan) => {
+                        const price = plan === '6months' ? price6 : price12
+                        const active = selectedPlan === plan
+                        const highlight = plan === '12months' && betterValue
+                        return (
+                          <button
+                            key={plan}
+                            onClick={() => setSelectedPlan(plan)}
+                            style={{
+                              position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                              padding: '6px 14px', borderRadius: 7, minWidth: 78,
+                              border: active ? `1.5px solid ${ORANGE}` : '1.5px solid transparent', cursor: 'pointer',
+                              background: active ? '#fff' : 'transparent',
+                            }}
+                          >
+                            {highlight && (
+                              <span style={{
+                                position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
+                                fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
+                              }}>
+                                BEST
+                              </span>
+                            )}
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? ORANGE : '#999', whiteSpace: 'nowrap' }}>
+                              {plan === '6months' ? '6 Months' : '12 Months'}
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
+                          </button>
+                        )
+                      })}
+                      <button
+                        onClick={() => buyModule(selectedPlan)}
+                        disabled={!!buyingPlan || !moduleInfo}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 6, background: ORANGE, border: 'none', color: '#fff',
+                          borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
+                          cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
+                        }}
+                      >
+                        {isBusy ? 'Processing…' : 'Buy Now'}
+                      </button>
+                    </div>
+                  )
+                })()}
+              </div>
               <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
                 <FaClock /> Jump into a real conversation for just 60 seconds!
               </div>
