@@ -103,7 +103,18 @@ const CourseRowItem = ({ course }: { course: any }) => {
     catch { return String(l).replace(/[\[\]"]/g, '').trim() }
   })()
 
-  const price = course.price ? `₹${Number(course.price).toLocaleString('en-IN')}` : ''
+  const { price, originalPrice } = (() => {
+    const rawPrice = Number(course.price)
+    const hasPrice = course.price !== undefined && course.price !== null && String(course.price).trim() !== '' && !Number.isNaN(rawPrice)
+    if (!hasPrice) return { price: '', originalPrice: '' }
+    const rawDiscount = Number(course.discountPrice)
+    const hasValidDiscount = course.discountPrice !== undefined && course.discountPrice !== null && String(course.discountPrice).trim() !== '' && !Number.isNaN(rawDiscount) && rawDiscount > 0
+    const effectivePrice = hasValidDiscount ? Math.max(rawPrice - rawDiscount, 0) : rawPrice
+    return {
+      price: `₹${effectivePrice.toLocaleString('en-IN')}`,
+      originalPrice: hasValidDiscount ? `₹${rawPrice.toLocaleString('en-IN')}` : '',
+    }
+  })()
   const lectures = course.totalLectures ? String(course.totalLectures) : (course.videos?.length ? String(course.videos.length) : '')
 
   const cardCourse = {
@@ -171,7 +182,7 @@ const CourseRowItem = ({ course }: { course: any }) => {
         </div>
 
         {/* Right: 2×2 stats grid + buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 40, flexShrink: 0 }}>
 
           {/* 2×2 stats grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '105px 88px', rowGap: 12 }}>
@@ -212,7 +223,12 @@ const CourseRowItem = ({ course }: { course: any }) => {
             <div style={{ paddingLeft: 16 }}>
               {price ? (
                 <>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#16a34a' }}>{price}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    {originalPrice && (
+                      <span style={{ fontSize: '0.78rem', color: '#dc2626', textDecoration: 'line-through' }}>{originalPrice}</span>
+                    )}
+                    <span style={{ fontSize: '1rem', fontWeight: 800, color: '#16a34a' }}>{price}</span>
+                  </div>
                   <div style={{ fontSize: '0.7rem', color: PAGE_GRAY }}>Price</div>
                 </>
               ) : <div />}
@@ -220,30 +236,32 @@ const CourseRowItem = ({ course }: { course: any }) => {
 
           </div>
 
-          <button
-            onClick={() => setOpenMarket(true)}
-            style={{
-              background: 'transparent', border: `1.5px solid ${ACCENT}`, borderRadius: 8,
-              color: ACCENT, fontSize: '0.75rem', fontWeight: 700,
-              padding: '7px 14px', cursor: 'pointer',
-              whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6,
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ACCENT; (e.currentTarget as HTMLElement).style.color = '#fff' }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = ACCENT }}
-          >
-            <FaChartLine size={11} /> Market Insight
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button
+              onClick={() => setOpenMarket(true)}
+              style={{
+                background: 'transparent', border: `1.5px solid ${ACCENT}`, borderRadius: 8,
+                color: ACCENT, fontSize: '0.75rem', fontWeight: 700,
+                padding: '7px 14px', cursor: 'pointer',
+                whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ACCENT; (e.currentTarget as HTMLElement).style.color = '#fff' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = ACCENT }}
+            >
+              <FaChartLine size={11} /> Market Insight
+            </button>
 
-          <button
-            onClick={() => setOpenDetails(true)}
-            style={{
-              background: ACCENT, border: 'none', borderRadius: 8,
-              color: '#fff', fontSize: '0.75rem', fontWeight: 700,
-              padding: '7px 16px', cursor: 'pointer', whiteSpace: 'nowrap',
-            }}
-          >
-            View Details →
-          </button>
+            <button
+              onClick={() => setOpenDetails(true)}
+              style={{
+                background: ACCENT, border: 'none', borderRadius: 8,
+                color: '#fff', fontSize: '0.75rem', fontWeight: 700,
+                padding: '7px 16px', cursor: 'pointer', whiteSpace: 'nowrap',
+              }}
+            >
+              View Details →
+            </button>
+          </div>
         </div>
       </div>
 
