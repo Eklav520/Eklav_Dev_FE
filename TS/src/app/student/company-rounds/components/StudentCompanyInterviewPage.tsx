@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Spinner, Modal } from 'react-bootstrap'
-import { Clock, Code2, Trophy, Lock } from 'lucide-react'
+import { Clock, Code2, Trophy, Lock, ArrowLeft } from 'lucide-react'
 import DOMPurify from 'dompurify'
 import { useAuthContext } from '@/context/useAuthContext'
 import CodingChallenge from './CodingChallenge'
@@ -37,6 +38,8 @@ type Round = {
 type Company = {
   _id: string
   companyName: string
+  title?: string
+  logoUrl?: string
   role: string
   package: string
   location: string
@@ -284,11 +287,19 @@ const UnderConstruction = () => (
 )
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
-const StudentCompanyInterviewPage = () => {
+// `companyFilter` is set when this page is reached via the company grid
+// (/student/company-rounds/:id) — it pre-filters the sidebar down to that
+// one company's mock papers instead of showing every company.
+const StudentCompanyInterviewPage = ({ companyFilter }: { companyFilter?: string }) => {
   const { user } = useAuthContext()
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL
-  const freeCompanyIdRef = useRef<string | null>(null)
+  const navigate = useNavigate()
+  // The single free-trial document id (state, not a ref, so resolving it
+  // asynchronously — see the dedicated lookup effect below — reliably
+  // re-renders the sidebar's lock state instead of only taking effect on
+  // some unrelated later render).
+  const [freeCompanyId, setFreeCompanyId] = useState<string | null>(null)
 
   // Full access (status === 'approved', same as institute-granted students)
   // OR a standalone "companyInterview" module purchase both unlock every
@@ -297,9 +308,6 @@ const StudentCompanyInterviewPage = () => {
   // (POST /submit), not just this flag.
   type ModulePlan = '6months' | '12months'
   const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string } | null>(null)
-  const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
-  const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
-  const [buyError, setBuyError] = useState<string | null>(null)
 
   const fetchModuleAccess = () => {
     if (!token) return
@@ -324,67 +332,24 @@ const StudentCompanyInterviewPage = () => {
   // "should the free-trial gating apply", regardless of the literal name.
   const isPending = !hasAccess
 
-  const buyModule = (plan: ModulePlan) => {
-    if (!token || buyingPlan) return
-    setBuyingPlan(plan)
-    setBuyError(null)
-    fetch(`${baseURL}/api/student/module-access/create-order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ moduleKey: 'companyInterview', plan }),
-    })
-      .then((r) => r.json())
-      .then((order) => {
-        if (!order.success) throw new Error(order.message || 'Failed to start payment')
-        const options = {
-          key: order.key,
-          amount: order.amount,
-          currency: order.currency,
-          name: 'Eklav',
-          description: order.moduleLabel,
-          order_id: order.orderId,
-          prefill: { name: user?.fullName || '', email: user?.email || '' },
-          theme: { color: '#ff7a00' },
-          handler: async (response: any) => {
-            try {
-              const verifyRes = await fetch(`${baseURL}/api/student/module-access/verify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ ...response, moduleKey: 'companyInterview', plan }),
-              })
-              const verifyData = await verifyRes.json()
-              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
-              fetchModuleAccess()
-            } catch (e: any) {
-              setBuyError(e.message || 'Payment verification failed. Contact support.')
-            } finally {
-              setBuyingPlan(null)
-            }
-          },
-          modal: { ondismiss: () => setBuyingPlan(null) },
-        }
-        const razorpay = new (window as any).Razorpay(options)
-        razorpay.on('payment.failed', (response: any) => {
-          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
-          setBuyingPlan(null)
-        })
-        razorpay.open()
-      })
-      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
-  }
-
   // Data
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
   const [isFetching, setIsFetching] = useState(false)
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Detail-panel-only failures (locked company, fetch error on a single
+  // company) — kept separate from `error` above so a single bad company
+  // fetch (e.g. a 403 on the auto-selected first company) doesn't blank out
+  // the whole page, sidebar included.
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [detailLocked, setDetailLocked] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCompanies, setTotalCompanies] = useState(0)
-  const [searchInput, setSearchInput] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState(companyFilter || '')
+  const [searchQuery, setSearchQuery] = useState(companyFilter || '')
   const [loadingCompanyId, setLoadingCompanyId] = useState<string | null>(null)
 
   // Tabs
@@ -420,6 +385,22 @@ const StudentCompanyInterviewPage = () => {
 
   useEffect(() => { setCurrentPage(1) }, [searchQuery])
 
+  // Resolve the single true free-trial document (the globally newest company
+  // interview, matching the backend's isFreeCompanyInterview check) via an
+  // unfiltered lookup. When `companyFilter` is set, the main companies fetch
+  // below is itself filtered by search — its own fetched[0] would only be
+  // this one company's newest paper, not necessarily the true free-trial
+  // one, which caused rows to look unlocked in the sidebar but 403 on click.
+  useEffect(() => {
+    if (!token || !companyFilter) return
+    fetch(`${baseURL}/api/company-interview?page=1&limit=1`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then((data: CompaniesResponse) => {
+        if (data.success && data.data?.[0]) setFreeCompanyId(data.data[0]._id)
+      })
+      .catch(() => {})
+  }, [token, baseURL, companyFilter])
+
   // Fetch companies
   useEffect(() => {
     const fetchCompanies = async () => {
@@ -434,10 +415,18 @@ const StudentCompanyInterviewPage = () => {
         if (!res.ok || !data.success) throw new Error('Failed to fetch companies')
         const fetched = data.data || []
         setCompanies(fetched)
-        if (!freeCompanyIdRef.current && fetched.length > 0) freeCompanyIdRef.current = fetched[0]._id
+        // Without a company filter, the unfiltered fetched[0] IS the true
+        // free-trial document — safe to use directly. With a filter, the
+        // dedicated lookup above already set this ref; don't let a
+        // company-scoped fetched[0] clobber it.
+        if (!companyFilter && !freeCompanyId && fetched.length > 0) setFreeCompanyId(fetched[0]._id)
         // Default to the first company in the list on initial load so the
-        // detail panel isn't empty before the student clicks anything.
-        if (!hasLoadedOnce && fetched.length > 0) setSelectedCompany(fetched[0])
+        // detail panel isn't empty before the student clicks anything. The
+        // list endpoint doesn't return `rounds`/full round data (only
+        // `roundsCount`), so route through fetchCompanyDetails — same as a
+        // real click — instead of setSelectedCompany(fetched[0]) directly,
+        // which left Rounds/Interviews showing 0 until the user clicked.
+        if (!hasLoadedOnce && fetched.length > 0) fetchCompanyDetails(fetched[0]._id)
         setTotalPages(Math.max(1, data.pagination?.pages || 1))
         setTotalCompanies(data.pagination?.total ?? fetched.length)
       } catch (err: any) {
@@ -480,14 +469,23 @@ const StudentCompanyInterviewPage = () => {
     setLoadingCompanyId(companyId)
     setRecentAttempts({})
     setActiveDetailTab('overview')
+    setDetailError(null)
+    setDetailLocked(false)
     try {
       const res = await fetch(`${baseURL}/api/company-interview/${companyId}`, { headers: { Authorization: `Bearer ${token}` } })
-      const data: CompanyDetailResponse = await res.json()
+      const data: CompanyDetailResponse & { moduleLocked?: boolean; error?: string } = await res.json()
+      if (res.status === 403 && (data as any)?.moduleLocked) {
+        setSelectedCompany(null)
+        setDetailLocked(true)
+        setDetailError((data as any)?.error || 'Unlock this module, or subscribe to a full plan, to view this company.')
+        return
+      }
       if (!res.ok || !data.success) throw new Error('Failed to fetch company details')
       setSelectedCompany(data.data)
       fetchRecentAttempts(companyId)
     } catch (err: any) {
-      setError(err.message || 'Failed to load company details')
+      setSelectedCompany(null)
+      setDetailError(err.message || 'Failed to load company details')
     } finally {
       setLoadingCompanyId(null)
     }
@@ -651,6 +649,19 @@ const StudentCompanyInterviewPage = () => {
     <>
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: PAGE_BG, overflow: 'hidden' }}>
 
+        {companyFilter && (
+          <button
+            onClick={() => navigate('/student/company-rounds')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, background: CARD_BG, border: 'none',
+              borderBottom: `1px solid ${PAGE_BORDER}`, color: '#ff7a00', fontWeight: 700, fontSize: '0.75rem',
+              padding: '10px 24px', cursor: 'pointer', flexShrink: 0, width: '100%',
+            }}
+          >
+            <ArrowLeft size={13} /> All Companies
+          </button>
+        )}
+
         {/* ── Page Header ── */}
         <div style={{
           background: CARD_BG, borderBottom: `1px solid ${PAGE_BORDER}`,
@@ -680,65 +691,8 @@ const StudentCompanyInterviewPage = () => {
               <FiZap size={18} color="#ff7a00" style={{ flexShrink: 0 }} />
               <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.8rem' }}>Level Up Your Interview Skills</div>
             </div>
-
-            {!hasAccess && (() => {
-              const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
-              const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
-              const betterValue = price12 / 12 < price6 / 6
-              const isBusy = buyingPlan === selectedPlan
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
-                  {(['6months', '12months'] as const).map((plan) => {
-                    const price = plan === '6months' ? price6 : price12
-                    const active = selectedPlan === plan
-                    const highlight = plan === '12months' && betterValue
-                    return (
-                      <button
-                        key={plan}
-                        onClick={() => setSelectedPlan(plan)}
-                        style={{
-                          position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                          padding: '6px 14px', borderRadius: 7, minWidth: 78,
-                          border: active ? '1.5px solid #ff7a00' : '1.5px solid transparent', cursor: 'pointer',
-                          background: active ? '#fff7ed' : 'transparent',
-                        }}
-                      >
-                        {highlight && (
-                          <span style={{
-                            position: 'absolute', top: -8, right: -4, background: '#16a34a', color: '#fff', fontSize: 8.5,
-                            fontWeight: 700, letterSpacing: 0.2, borderRadius: 10, padding: '2px 5px', whiteSpace: 'nowrap',
-                          }}>
-                            BEST
-                          </span>
-                        )}
-                        <span style={{ fontSize: 10.5, fontWeight: 700, color: active ? '#ff7a00' : '#999', whiteSpace: 'nowrap' }}>
-                          {plan === '6months' ? '6 Months' : '12 Months'}
-                        </span>
-                        <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>₹{price}</span>
-                      </button>
-                    )
-                  })}
-                  <button
-                    onClick={() => buyModule(selectedPlan)}
-                    disabled={!!buyingPlan || !moduleInfo}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 6, background: '#ff7a00', border: 'none', color: '#fff',
-                      borderRadius: 7, padding: '9px 18px', fontSize: 12.5, fontWeight: 700, marginLeft: 6,
-                      cursor: buyingPlan ? 'not-allowed' : 'pointer', opacity: buyingPlan && !isBusy ? 0.5 : 1,
-                    }}
-                  >
-                    {isBusy ? 'Processing…' : <>Buy Now <FiChevronRight size={13} /></>}
-                  </button>
-                </div>
-              )
-            })()}
           </div>
         </div>
-        {buyError && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, margin: '10px 24px 0' }}>
-            {buyError}
-          </div>
-        )}
 
         {/* ── Main Tabs (hidden — under construction) ── */}
         {/* <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '0 24px', display: 'flex', flexShrink: 0 }}>
@@ -763,7 +717,9 @@ const StudentCompanyInterviewPage = () => {
 
               {/* Sidebar header */}
               <div style={{ padding: '14px 14px 10px', borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
-                <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 10 }}>All Companies</div>
+                <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', marginBottom: 10 }}>
+                  {companyFilter ? companyFilter : 'All Companies'}
+                </div>
                 <div style={{ position: 'relative' }}>
                   <FiSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: PAGE_GRAY }} />
                   <input
@@ -790,7 +746,7 @@ const StudentCompanyInterviewPage = () => {
                 )}
                 {filteredCompanies.map(company => {
                   const isSelected = selectedCompany?._id === company._id
-                  const isLocked = isPending && company._id !== freeCompanyIdRef.current
+                  const isLocked = isPending && company._id !== freeCompanyId
                   const isLoading = loadingCompanyId === company._id
                   const diff = getDifficulty(company)
                   const [fg, bg] = avatarColor(company.companyName)
@@ -811,13 +767,17 @@ const StudentCompanyInterviewPage = () => {
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = CARD_BG }}
                     >
                       {/* Avatar */}
-                      <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: fg }}>
-                        {isLoading ? <Spinner animation="border" size="sm" style={{ color: fg, width: 14, height: 14 }} /> : initials(company.companyName)}
+                      <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: company.logoUrl ? '#fff' : bg, border: company.logoUrl ? `1px solid ${PAGE_BORDER}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: fg, overflow: 'hidden' }}>
+                        {isLoading
+                          ? <Spinner animation="border" size="sm" style={{ color: fg, width: 14, height: 14 }} />
+                          : company.logoUrl
+                            ? <img src={company.logoUrl} alt={company.companyName} style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 3 }} />
+                            : initials(company.companyName)}
                       </div>
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {company.companyName}
+                          {company.title || company.companyName}
                         </div>
                         <div style={{ fontSize: '0.65rem', color: PAGE_GRAY, marginTop: 1 }}>{count} Interviews</div>
                       </div>
@@ -852,10 +812,16 @@ const StudentCompanyInterviewPage = () => {
             {/* ── CENTER: Company Detail ── */}
             <div className="ci-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
               {!selectedCompany ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: PAGE_GRAY }}>
-                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}><FiBriefcase size={30} color={PAGE_GRAY} /></div>
-                  <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.9rem' }}>Select a company</div>
-                  <div style={{ fontSize: '0.78rem', marginTop: 4, color: PAGE_GRAY }}>Choose from the left panel to view details</div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: PAGE_GRAY, padding: '0 24px', textAlign: 'center' }}>
+                  <div style={{ width: 70, height: 70, borderRadius: '50%', background: PAGE_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+                    {detailLocked ? <Lock size={28} color="#ff7a00" /> : <FiBriefcase size={30} color={PAGE_GRAY} />}
+                  </div>
+                  <div style={{ fontWeight: 600, color: PAGE_TEXT, fontSize: '0.9rem' }}>
+                    {detailLocked ? 'This company is locked' : detailError ? 'Couldn’t load this company' : 'Select a company'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', marginTop: 4, color: PAGE_GRAY, maxWidth: 320 }}>
+                    {detailError || 'Choose from the left panel to view details'}
+                  </div>
                 </div>
               ) : (
                 <div style={{ padding: '20px 24px' }}>
@@ -865,7 +831,11 @@ const StudentCompanyInterviewPage = () => {
                       {/* Logo */}
                       {(() => {
                         const [fg, bg] = avatarColor(selectedCompany.companyName)
-                        return (
+                        return selectedCompany.logoUrl ? (
+                          <div style={{ width: 52, height: 52, borderRadius: 12, flexShrink: 0, background: '#fff', border: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6 }}>
+                            <img src={selectedCompany.logoUrl} alt={selectedCompany.companyName} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                          </div>
+                        ) : (
                           <div style={{ width: 52, height: 52, borderRadius: 12, flexShrink: 0, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 800, color: fg }}>
                             {initials(selectedCompany.companyName)}
                           </div>
@@ -874,7 +844,7 @@ const StudentCompanyInterviewPage = () => {
                       {/* Info */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 800, color: PAGE_TEXT, fontSize: '1.05rem' }}>
-                          {selectedCompany.companyName} Mock Interview
+                          {selectedCompany.title || `${selectedCompany.companyName} Mock Interview`}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: PAGE_GRAY, marginTop: 2 }}>
                           Practice {selectedCompany.companyName} interview rounds based on latest pattern and syllabus

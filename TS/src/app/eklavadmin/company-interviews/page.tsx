@@ -8,6 +8,8 @@ import { FaEdit, FaTrash, FaPlus, FaSearch, FaBuilding } from 'react-icons/fa'
 
 const emptyForm = {
   companyName: '',
+  title: '',
+  logoUrl: '',
   role: '',
   package: '',
   location: '',
@@ -76,6 +78,8 @@ const CompanyInterview = () => {
       const c = data.data
       setFormData({
         companyName: c.companyName || '',
+        title: c.title || '',
+        logoUrl: c.logoUrl || '',
         role: c.role || '',
         package: c.package || '',
         location: c.location || '',
@@ -214,7 +218,9 @@ const CompanyInterview = () => {
                 <thead className="table-dark">
                   <tr>
                     <th>#</th>
+                    <th>Logo</th>
                     <th>Company</th>
+                    <th>Title</th>
                     <th>Role</th>
                     <th>Package</th>
                     <th>Location</th>
@@ -226,7 +232,23 @@ const CompanyInterview = () => {
                   {companies.map((c, i) => (
                     <tr key={c._id}>
                       <td>{(page - 1) * 10 + i + 1}</td>
+                      <td>
+                        {c.logoUrl ? (
+                          <img
+                            src={c.logoUrl}
+                            alt={c.companyName}
+                            style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 6, background: '#fff', border: '1px solid #dee2e6' }}
+                          />
+                        ) : (
+                          <div
+                            style={{ width: 36, height: 36, borderRadius: 6, background: '#f1f3f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <FaBuilding className="text-muted" />
+                          </div>
+                        )}
+                      </td>
                       <td><strong>{c.companyName}</strong></td>
+                      <td>{c.title || '—'}</td>
                       <td>{c.role || '—'}</td>
                       <td>{c.package || '—'}</td>
                       <td>{c.location || '—'}</td>

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Row, Col, Form, Card, Button } from "react-bootstrap";
+import { Row, Col, Form, Card, Button, Spinner } from "react-bootstrap";
 import ReactQuill from 'react-quill-new'
 import 'quill/dist/quill.snow.css'
+import { useAuthContext } from '@/context/useAuthContext'
 
 const roundOptions = [
   { label: "Aptitude Test", value: "MCQ" },
@@ -15,12 +16,47 @@ const roundOptions = [
 ];
 
 const Step1 = ({ formData, setFormData }: any) => {
+  const { user } = useAuthContext()
+  const baseURL = import.meta.env.VITE_API_BASE_URL
   const [customRound, setCustomRound] = useState("");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState("");
 
   // ✅ Handle input change
   const handleChange = (e: any) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  // ✅ Upload company logo
+  const handleLogoUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLogoError("");
+    setLogoUploading(true);
+    try {
+      const body = new FormData();
+      body.append("logo", file);
+
+      const res = await fetch(`${baseURL}/api/company-interview/upload-logo`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${user?.token}` },
+        body,
+      });
+      const data = await res.json();
+
+      if (data.success && data.logoUrl) {
+        setFormData((prev: any) => ({ ...prev, logoUrl: data.logoUrl }));
+      } else {
+        setLogoError(data.error || "Failed to upload logo");
+      }
+    } catch (err) {
+      setLogoError("Failed to upload logo");
+    } finally {
+      setLogoUploading(false);
+      e.target.value = "";
+    }
   };
 
   // ✅ Select predefined rounds
@@ -119,6 +155,7 @@ const Step1 = ({ formData, setFormData }: any) => {
                 <Form.Label>Company Name</Form.Label>
                 <Form.Control
                   name="companyName"
+                  placeholder="e.g. Amazon"
                   value={formData?.companyName || ""}
                   onChange={handleChange}
                 />
@@ -126,6 +163,18 @@ const Step1 = ({ formData, setFormData }: any) => {
             </Col>
 
             <Col md={6}>
+              <Form.Group>
+                <Form.Label>Title</Form.Label>
+                <Form.Control
+                  name="title"
+                  placeholder="e.g. SDE-1 Off Campus Drive 2026"
+                  value={formData?.title || ""}
+                  onChange={handleChange}
+                />
+              </Form.Group>
+            </Col>
+
+            <Col md={6} className="mt-3">
               <Form.Group>
                 <Form.Label>Role</Form.Label>
                 <Form.Control
@@ -155,6 +204,29 @@ const Step1 = ({ formData, setFormData }: any) => {
                   value={formData?.location || ""}
                   onChange={handleChange}
                 />
+              </Form.Group>
+            </Col>
+
+            <Col md={6} className="mt-3">
+              <Form.Group>
+                <Form.Label>Logo Upload</Form.Label>
+                <div className="d-flex align-items-center gap-3">
+                  {formData?.logoUrl ? (
+                    <img
+                      src={formData.logoUrl}
+                      alt="Company logo"
+                      style={{ width: 48, height: 48, objectFit: "contain", borderRadius: 8, background: "#fff", border: "1px solid #2c2c2c" }}
+                    />
+                  ) : null}
+                  <Form.Control
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    disabled={logoUploading}
+                  />
+                  {logoUploading && <Spinner animation="border" size="sm" />}
+                </div>
+                {logoError && <div className="text-danger small mt-1">{logoError}</div>}
               </Form.Group>
             </Col>
 
