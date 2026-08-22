@@ -306,13 +306,18 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
 
   // Access comes from either the full plan (`status === 'approved'` — same
   // as institute-granted students) OR having bought JUST the LSRW module
-  // individually. Optimistically fall back to `status` while the real
-  // per-module check is still loading, so already-approved students don't
-  // see a flash of "locked" buttons.
+  // individually.
   const status = user?.status?.toLowerCase()
   const fullAccessFallback = status === 'approved'
   type ModulePlan = '6months' | '12months'
   const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate: string | null } | null>(null)
+  // Tracks whether the module-access check has actually returned yet. Until
+  // it has, `hasAccess` falling back to a `status` guess caused a flash of
+  // the wrong UI on slow networks — locked/price-picker briefly shown to
+  // already-purchased (but not full-plan) students, or actions briefly
+  // enabled/disabled incorrectly. Gate on this instead of guessing so
+  // nothing renders until the real answer is known.
+  const [moduleInfoLoaded, setModuleInfoLoaded] = useState(false)
   const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
   const [buyError, setBuyError] = useState<string | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
@@ -333,11 +338,12 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
         })
       })
       .catch(() => {})
+      .finally(() => setModuleInfoLoaded(true))
   }
   useEffect(fetchModuleAccess, [user?.token, baseURL])
 
-  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : fullAccessFallback
-  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+  const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : fullAccessFallback)
+  const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
   const limitReached = monthlyUsed !== null && monthlyUsed >= MONTHLY_ATTEMPT_LIMIT
   const canStart = hasAccess && !limitReached
 
@@ -785,7 +791,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
         <div>
           <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
             LSRW Communication Skills
-            {!hasAccess && (
+            {moduleInfoLoaded && !hasAccess && (
               <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: '0.9rem', fontWeight: 700 }}>
                 <FaLock size={12} />(Premium Module)
               </span>
@@ -794,7 +800,7 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
           <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Choose a pattern to start practicing different sections of English and improve your LSRW skills.</p>
         </div>
 
-        {!hasAccess && (() => {
+        {moduleInfoLoaded && !hasAccess && (() => {
           const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
           const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
           const perMonth6 = price6 / 6

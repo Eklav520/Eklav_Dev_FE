@@ -45,6 +45,13 @@ const InterviewModalLayout = () => {
   // already enforced server-side in /start and /api/resume-based-interview/start.
   type ModulePlan = '6months' | '12months'
   const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate: string | null } | null>(null)
+  // Tracks whether the module-access check has actually returned yet. Until
+  // it has, `hasAccess` falling back to a `user.status` guess caused a
+  // flash of the wrong UI on slow networks — locked/price-picker briefly
+  // shown to already-purchased students, or actions briefly enabled for
+  // students who turn out to be locked. Gate on this instead of guessing so
+  // nothing renders until the real answer is known.
+  const [moduleInfoLoaded, setModuleInfoLoaded] = useState(false)
   const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -65,9 +72,10 @@ const InterviewModalLayout = () => {
         })
       })
       .catch(() => {})
+      .finally(() => setModuleInfoLoaded(true))
   }
-  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
-  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+  const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved')
+  const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
 
   const buyModule = (plan: ModulePlan) => {
     if (!token || buyingPlan) return
@@ -188,7 +196,7 @@ const InterviewModalLayout = () => {
         <div>
           <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
             Tech Interview with AI
-            {!hasAccess && (
+            {moduleInfoLoaded && !hasAccess && (
               <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#ff7a00', fontSize: '0.9rem', fontWeight: 700 }}>
                 <FaLock size={12} />(Premium Module)
               </span>
@@ -206,7 +214,7 @@ const InterviewModalLayout = () => {
           </div>
         )}
 
-        {!hasAccess && (() => {
+        {moduleInfoLoaded && !hasAccess && (() => {
           const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
           const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
           const betterValue = price12 / 12 < price6 / 6

@@ -40,6 +40,13 @@ const EnglishVoicePractice: React.FC = () => {
   // so `history.monthlyLimit` below is always the real, already-correct number.
   type ModulePlan = '6months' | '12months'
   const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate?: string | null } | null>(null)
+  // Tracks whether the module-access check has actually returned yet. Until
+  // it has, `hasAccess` falling back to a `user.status` guess caused a
+  // flash of the wrong UI on slow networks — locked/price-picker briefly
+  // shown to already-purchased students, or the Start button briefly
+  // enabled for students who turn out to be locked. Gate on this instead of
+  // guessing so nothing renders until the real answer is known.
+  const [moduleInfoLoaded, setModuleInfoLoaded] = useState(false)
   const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -60,11 +67,12 @@ const EnglishVoicePractice: React.FC = () => {
         })
       })
       .catch(() => {})
+      .finally(() => setModuleInfoLoaded(true))
   }
   useEffect(fetchModuleAccess, [token, baseURL])
 
-  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
-  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+  const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved')
+  const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
 
   const buyModule = (plan: ModulePlan) => {
     if (!token || buyingPlan) return
@@ -1694,7 +1702,7 @@ const EnglishVoicePractice: React.FC = () => {
               <div>
                 <div style={{ fontSize: 20, fontWeight: 800, color: PAGE_TEXT, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   Speaking Practice With AI
-                  {!hasAccess && (
+                  {moduleInfoLoaded && !hasAccess && (
                     <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: 12, fontWeight: 700 }}>
                       🔒 (Premium Module)
                     </span>
@@ -1744,12 +1752,12 @@ const EnglishVoicePractice: React.FC = () => {
                 ))}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap' }}>
-                <button onClick={handleOpenSession} disabled={isLimitReached}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 22px', fontSize: 14, fontWeight: 800, cursor: isLimitReached ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: isLimitReached ? 0.5 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  <FaMicrophone /> {!hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking Now'}
+                <button onClick={handleOpenSession} disabled={!moduleInfoLoaded || isLimitReached}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 22px', fontSize: 14, fontWeight: 800, cursor: (!moduleInfoLoaded || isLimitReached) ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: (!moduleInfoLoaded || isLimitReached) ? 0.5 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <FaMicrophone /> {!moduleInfoLoaded ? 'Loading…' : !hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking Now'}
                 </button>
 
-                {!hasAccess && (() => {
+                {moduleInfoLoaded && !hasAccess && (() => {
                   const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
                   const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
                   const betterValue = price12 / 12 < price6 / 6

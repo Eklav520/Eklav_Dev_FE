@@ -56,6 +56,13 @@ const SpeakingPractice: React.FC = () => {
   // so `history.monthlyLimit` below is always the real, already-correct number.
   type ModulePlan = '6months' | '12months'
   const [moduleInfo, setModuleInfo] = useState<{ fullAccess: boolean; active: boolean; plans: Record<ModulePlan, number>; label: string; endDate?: string | null } | null>(null)
+  // Tracks whether the module-access check has actually returned yet. Until
+  // it has, `hasAccess` falling back to a `user.status` guess caused a
+  // flash of the wrong UI on slow networks — locked/price-picker briefly
+  // shown to already-purchased students, or the Start button briefly
+  // enabled for students who turn out to be locked. Gate on this instead of
+  // guessing so nothing renders until the real answer is known.
+  const [moduleInfoLoaded, setModuleInfoLoaded] = useState(false)
   const [buyingPlan, setBuyingPlan] = useState<ModulePlan | null>(null)
   const [selectedPlan, setSelectedPlan] = useState<ModulePlan>('12months')
   const [buyError, setBuyError] = useState<string | null>(null)
@@ -76,11 +83,12 @@ const SpeakingPractice: React.FC = () => {
         })
       })
       .catch(() => {})
+      .finally(() => setModuleInfoLoaded(true))
   }
   useEffect(fetchModuleAccess, [token, baseURL])
 
-  const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved'
-  const modulePurchased = !!moduleInfo?.active && !moduleInfo?.fullAccess
+  const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved')
+  const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
 
   const buyModule = (plan: ModulePlan) => {
     if (!token || buyingPlan) return
@@ -1017,7 +1025,7 @@ const SpeakingPractice: React.FC = () => {
                 <div style={{ flex: 1, position: 'relative' as const, zIndex: 1 }}>
                   <h2 style={{ fontWeight: 800, fontSize: '1.75rem', color: '#1a1a2e', marginBottom: 8, letterSpacing: '-0.3px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const }}>
                     Just A Minute
-                    {!hasAccess && (
+                    {moduleInfoLoaded && !hasAccess && (
                       <span title="Unlock this module, or subscribe to a full plan" style={{ fontSize: '0.72rem', fontWeight: 800, background: '#fff', color: '#ea580c', padding: '5px 12px', borderRadius: 20, border: '1.5px solid #ea580c', letterSpacing: 0.2, display: 'inline-flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 6px rgba(0,0,0,0.12)' }}>
                         <FaLock size={11} /> PREMIUM MODULE
                       </span>
@@ -1029,7 +1037,7 @@ const SpeakingPractice: React.FC = () => {
                       </span>
                     )}
                   </h2>
-                  {!hasAccess && (() => {
+                  {moduleInfoLoaded && !hasAccess && (() => {
                     const price6 = (moduleInfo?.plans?.['6months'] ?? 19900) / 100
                     const price12 = (moduleInfo?.plans?.['12months'] ?? 34900) / 100
                     const betterValue = price12 / 12 < price6 / 6
@@ -1234,9 +1242,9 @@ const SpeakingPractice: React.FC = () => {
                       <line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                       <line x1="9" y1="21" x2="15" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
-                    {!hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking (60 Seconds)'}
+                    {!moduleInfoLoaded ? 'Loading…' : !hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking (60 Seconds)'}
                   </button>
-                  {isLimitReached ? (
+                  {moduleInfoLoaded && isLimitReached ? (
                     <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>
                       {!hasAccess ? 'Unlock Just A Minute, or subscribe to a full plan, to start.' : 'Monthly limit reached. Try again next month.'}
                     </div>
