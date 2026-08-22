@@ -1459,7 +1459,7 @@ const SubscriptionPage = () => {
                                                     <span
                                                         role="checkbox"
                                                         aria-checked={m.active || checked}
-                                                        onClick={() => !m.active && toggleModule(m.key)}
+                                                        onClick={(e) => { e.stopPropagation(); if (!m.active) toggleModule(m.key) }}
                                                         style={{
                                                             marginTop: 2, width: 18, height: 18, borderRadius: 5, flexShrink: 0,
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
