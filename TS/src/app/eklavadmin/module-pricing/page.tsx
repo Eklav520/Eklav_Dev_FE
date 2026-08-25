@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import PageMetaData from '@/components/PageMetaData'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaTag, FaPencilAlt, FaCheck, FaTimes, FaSpinner } from 'react-icons/fa'
+import { FaTag, FaPencilAlt, FaCheck, FaTimes, FaSpinner, FaUsers, FaPhoneAlt, FaHourglassHalf } from 'react-icons/fa'
 
 const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
 const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
@@ -16,9 +16,31 @@ const PLANS: { key: Plan; label: string }[] = [
   { key: '12months', label: '12 Months' },
 ]
 
-type ModuleInfo = { key: string; label: string; description: string; plans: Record<Plan, number> }
+type ModuleInfo = {
+  key: string
+  label: string
+  description: string
+  plans: Record<Plan, number>
+  enrolledCount?: number
+  enrolledByPlan?: Record<Plan, number>
+  // Started checkout but never completed it (popup closed, payment failed, etc).
+  initiatedCount?: number
+  initiatedByPlan?: Record<Plan, number>
+}
 // `${moduleKey}:${plan}` — each duration is edited/saved independently.
 type EditKey = string
+
+type StudentStatus = 'paid' | 'created'
+
+type EnrolledStudent = {
+  name: string
+  phoneNo: string | null
+  email: string
+  plan: Plan
+  amount: number
+  status: StudentStatus
+  purchasedAt: string
+}
 
 // The price a student sees on the LSRW pattern-selection screen (and every
 // other module purchase screen later) is read live from the same
@@ -35,6 +57,13 @@ const ModulePricingPage = () => {
   const [draftRupees, setDraftRupees] = useState('')
   const [saving, setSaving] = useState(false)
   const [savedKey, setSavedKey] = useState<EditKey | null>(null)
+
+  // Enrolled/initiated-students modal
+  const [viewing, setViewing] = useState<{ moduleKey: string; moduleLabel: string; plan: Plan; planLabel: string } | null>(null)
+  const [viewingStatus, setViewingStatus] = useState<StudentStatus>('paid')
+  const [students, setStudents] = useState<EnrolledStudent[]>([])
+  const [studentsLoading, setStudentsLoading] = useState(false)
+  const [studentsError, setStudentsError] = useState<string | null>(null)
 
   const load = () => {
     if (!user?.token) return
@@ -79,6 +108,29 @@ const ModulePricingPage = () => {
       .finally(() => setSaving(false))
   }
 
+  const openEnrolledStudents = (moduleKey: string, moduleLabel: string, plan: Plan, planLabel: string, status: StudentStatus = 'paid') => {
+    setViewing({ moduleKey, moduleLabel, plan, planLabel })
+    setViewingStatus(status)
+  }
+  const closeEnrolledStudents = () => { setViewing(null); setStudents([]); setStudentsError(null) }
+
+  useEffect(() => {
+    if (!viewing || !user?.token) return
+    setStudents([])
+    setStudentsError(null)
+    setStudentsLoading(true)
+    fetch(`${baseURL}/api/eklavadmin/module-pricing/${viewing.moduleKey}/enrollments?plan=${viewing.plan}&status=${viewingStatus}`, {
+      headers: { Authorization: `Bearer ${user.token}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.success) throw new Error(data.message || 'Failed to load students')
+        setStudents(data.students)
+      })
+      .catch((e) => setStudentsError(e.message || 'Failed to load students'))
+      .finally(() => setStudentsLoading(false))
+  }, [viewing, viewingStatus, user?.token, baseURL])
+
   return (
     <>
       <PageMetaData title="Module Pricing" />
@@ -116,6 +168,8 @@ const ModulePricingPage = () => {
                   {PLANS.map(({ key: plan, label }) => {
                     const editKey = `${mod.key}:${plan}`
                     const priceInPaise = mod.plans?.[plan] ?? 0
+                    const enrolledForPlan = mod.enrolledByPlan?.[plan] ?? 0
+                    const initiatedForPlan = mod.initiatedByPlan?.[plan] ?? 0
                     return (
                       <div key={plan} style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 10, padding: '10px 14px' }}>
                         <div style={{ fontSize: 10.5, color: PAGE_GRAY, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.04em', marginBottom: 6 }}>{label}</div>
@@ -150,17 +204,45 @@ const ModulePricingPage = () => {
                             </button>
                           </div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' as const }}>
                             <div>
                               <span style={{ fontWeight: 800, fontSize: 19, color: PAGE_TEXT }}>₹{priceInPaise / 100}</span>
                               {savedKey === editKey && <span style={{ marginLeft: 10, fontSize: 11, color: '#16a34a', fontWeight: 700 }}>Saved</span>}
                             </div>
-                            <button
-                              onClick={() => startEdit(mod.key, plan, priceInPaise)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 6, background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, color: PAGE_TEXT, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                            >
-                              <FaPencilAlt size={9} /> Edit
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <button
+                                onClick={() => startEdit(mod.key, plan, priceInPaise)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 6, background: PAGE_BG, border: `1px solid ${PAGE_BORDER}`, color: PAGE_TEXT, borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                              >
+                                <FaPencilAlt size={9} /> Edit
+                              </button>
+                              <button
+                                onClick={() => openEnrolledStudents(mod.key, mod.label, plan, label, 'paid')}
+                                disabled={enrolledForPlan === 0}
+                                title={enrolledForPlan === 0 ? 'No one has enrolled at this duration yet' : 'View enrolled students'}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5, background: enrolledForPlan ? '#f0fdf4' : PAGE_BG,
+                                  border: `1px solid ${enrolledForPlan ? '#86efac' : PAGE_BORDER}`, color: enrolledForPlan ? '#166534' : PAGE_GRAY,
+                                  borderRadius: 20, padding: '5px 10px', fontSize: 11.5, fontWeight: 700,
+                                  cursor: enrolledForPlan ? 'pointer' : 'default',
+                                }}
+                              >
+                                <FaUsers size={10} /> {enrolledForPlan} enrolled
+                              </button>
+                              <button
+                                onClick={() => openEnrolledStudents(mod.key, mod.label, plan, label, 'created')}
+                                disabled={initiatedForPlan === 0}
+                                title={initiatedForPlan === 0 ? 'No one has started checkout at this duration yet' : 'View students who started checkout but didn’t complete it'}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5, background: initiatedForPlan ? '#fffbeb' : PAGE_BG,
+                                  border: `1px solid ${initiatedForPlan ? '#fde68a' : PAGE_BORDER}`, color: initiatedForPlan ? '#92400e' : PAGE_GRAY,
+                                  borderRadius: 20, padding: '5px 10px', fontSize: 11.5, fontWeight: 700,
+                                  cursor: initiatedForPlan ? 'pointer' : 'default',
+                                }}
+                              >
+                                <FaHourglassHalf size={10} /> {initiatedForPlan} initiated
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -172,6 +254,114 @@ const ModulePricingPage = () => {
           </div>
         )}
       </div>
+
+      {/* Enrolled/initiated students modal */}
+      {viewing && (
+        <div
+          onClick={closeEnrolledStudents}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+            zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: CARD_BG, borderRadius: 16, width: '100%', maxWidth: 760, maxHeight: '82vh', display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', boxShadow: '0 24px 64px rgba(0,0,0,0.25)' }}
+          >
+            <div style={{ padding: '18px 22px 0', borderBottom: `1px solid ${PAGE_BORDER}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+              <div style={{ paddingBottom: 14 }}>
+                <div style={{ fontWeight: 800, fontSize: 15, color: PAGE_TEXT }}>{viewing.moduleLabel}</div>
+                <div style={{ fontSize: 12, color: PAGE_GRAY, marginTop: 2 }}>{viewing.planLabel} plan</div>
+              </div>
+              <button
+                onClick={closeEnrolledStudents}
+                style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, color: PAGE_GRAY, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, marginTop: 4 }}
+              >
+                <FaTimes size={11} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', gap: 4, padding: '10px 22px', borderBottom: `1px solid ${PAGE_BORDER}`, flexShrink: 0 }}>
+              <button
+                onClick={() => setViewingStatus('paid')}
+                style={{
+                  border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                  background: viewingStatus === 'paid' ? '#f0fdf4' : 'transparent', color: viewingStatus === 'paid' ? '#166534' : PAGE_GRAY,
+                }}
+              >
+                <FaUsers size={10} style={{ marginRight: 6 }} /> Enrolled
+              </button>
+              <button
+                onClick={() => setViewingStatus('created')}
+                style={{
+                  border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
+                  background: viewingStatus === 'created' ? '#fffbeb' : 'transparent', color: viewingStatus === 'created' ? '#92400e' : PAGE_GRAY,
+                }}
+              >
+                <FaHourglassHalf size={10} style={{ marginRight: 6 }} /> Initiated only
+              </button>
+            </div>
+
+            <div style={{ overflowY: 'auto' as const }}>
+              {studentsLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: PAGE_GRAY, fontSize: 13, padding: '24px 22px' }}>
+                  <FaSpinner /> Loading…
+                </div>
+              ) : studentsError ? (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: 10, padding: '10px 16px', fontSize: 12.5, margin: '16px 22px' }}>
+                  {studentsError}
+                </div>
+              ) : students.length === 0 ? (
+                <div style={{ textAlign: 'center', color: PAGE_GRAY, fontSize: 13, padding: '32px 0' }}>
+                  {viewingStatus === 'paid' ? 'No enrolled students found.' : 'No dropped-off checkouts found — everyone who started here completed it.'}
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' as const }}>
+                  <div style={{ padding: '12px 22px 0', fontSize: 12, color: PAGE_GRAY }}>
+                    {students.length} {viewingStatus === 'paid' ? 'enrolled' : 'checkout(s) started but not completed'}
+                  </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' as const, fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ background: PAGE_BG }}>
+                        <th style={{ textAlign: 'left', padding: '10px 22px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>#</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>Name</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>Phone</th>
+                        <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>Email</th>
+                        <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>Amount</th>
+                        <th style={{ textAlign: 'right', padding: '10px 22px', fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY, textTransform: 'uppercase' as const, letterSpacing: '0.04em', whiteSpace: 'nowrap' as const }}>
+                          {viewingStatus === 'paid' ? 'Purchased' : 'Started'}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((s, i) => (
+                        <tr key={i} style={{ borderTop: `1px solid ${PAGE_BORDER}` }}>
+                          <td style={{ padding: '11px 22px', color: PAGE_GRAY, fontSize: 12 }}>{i + 1}</td>
+                          <td style={{ padding: '11px 12px', fontWeight: 700, color: PAGE_TEXT, whiteSpace: 'nowrap' as const }}>{s.name}</td>
+                          <td style={{ padding: '11px 12px', color: PAGE_TEXT, whiteSpace: 'nowrap' as const }}>
+                            {s.phoneNo ? (
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <FaPhoneAlt size={10} color={PAGE_GRAY} /> {s.phoneNo}
+                              </span>
+                            ) : (
+                              <span style={{ color: PAGE_GRAY, fontStyle: 'italic' as const }}>Not on file</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '11px 12px', color: PAGE_GRAY, whiteSpace: 'nowrap' as const }}>{s.email}</td>
+                          <td style={{ padding: '11px 12px', textAlign: 'right' as const, fontWeight: 700, color: PAGE_TEXT, whiteSpace: 'nowrap' as const }}>₹{s.amount}</td>
+                          <td style={{ padding: '11px 22px', textAlign: 'right' as const, color: PAGE_GRAY, whiteSpace: 'nowrap' as const }}>
+                            {new Date(s.purchasedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

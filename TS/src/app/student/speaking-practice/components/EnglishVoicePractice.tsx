@@ -162,6 +162,23 @@ const EnglishVoicePractice: React.FC = () => {
   const chatBodyRef = useRef<HTMLDivElement>(null)
   const [history, setHistory] = useState<any>(null)
   const [loadingHistory, setLoadingHistory] = useState(false)
+  // Matches the backend's getMonthKey (UTC-based) so the default selection
+  // always lines up with whichever month the server considers "current".
+  const getMonthKey = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+  const [historyMonths, setHistoryMonths] = useState<string[]>([getMonthKey(new Date())])
+  const [selectedHistoryMonth, setSelectedHistoryMonth] = useState(getMonthKey(new Date()))
+  // Clicking a legend chip isolates that one line on the Performance chart;
+  // clicking the same chip again (or clicking with all others already
+  // isolated) goes back to showing every line.
+  const CHART_SERIES_KEYS = ['overall', 'fluency', 'grammar', 'vocabulary'] as const
+  const [visibleChartSeries, setVisibleChartSeries] = useState<Set<string>>(new Set(CHART_SERIES_KEYS))
+  const toggleChartSeries = (key: string) => {
+    setVisibleChartSeries((prev) => {
+      const isolated = prev.size === 1 && prev.has(key)
+      if (isolated) return new Set(CHART_SERIES_KEYS)
+      return new Set([key])
+    })
+  }
   const speechPauseTimerRef = useRef<any>(null)
   const [isPaused, setIsPaused] = useState(false)
   const [showHowItWorks, setShowHowItWorks] = useState(false)
@@ -370,12 +387,25 @@ const EnglishVoicePractice: React.FC = () => {
     setWebcamActive(false)
   }
 
-  const fetchSpeakingHistory = async () => {
+  const fetchHistoryMonths = async () => {
+    if (!token) return
+    try {
+      const res = await fetch(`${baseURL}/api/speakingPractice/history/months`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (Array.isArray(data.months) && data.months.length) setHistoryMonths(data.months)
+    } catch (error) {
+      console.error('Speaking history months error:', error)
+    }
+  }
+
+  const fetchSpeakingHistory = async (month: string = selectedHistoryMonth) => {
     if (!token) return
 
     try {
       setLoadingHistory(true)
-      const res = await fetch(`${baseURL}/api/speakingPractice/history`, {
+      const res = await fetch(`${baseURL}/api/speakingPractice/history?month=${month}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -425,8 +455,12 @@ const EnglishVoicePractice: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    if (token) fetchSpeakingHistory()
+    if (token) fetchHistoryMonths()
   }, [token])
+
+  useEffect(() => {
+    if (token) fetchSpeakingHistory(selectedHistoryMonth)
+  }, [token, selectedHistoryMonth])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -831,7 +865,12 @@ const EnglishVoicePractice: React.FC = () => {
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
       setFeedbackBreakdown(res.data.breakdown ?? null)
-      await fetchSpeakingHistory()
+      // A new attempt always lands in the current month — jump the picker
+      // back there so the just-completed attempt is visible immediately.
+      const nowMonth = getMonthKey(new Date())
+      setSelectedHistoryMonth(nowMonth)
+      fetchHistoryMonths()
+      await fetchSpeakingHistory(nowMonth)
     } finally {
       setIsLoadingFeedback(false)
     }
@@ -1971,14 +2010,49 @@ const EnglishVoicePractice: React.FC = () => {
 
         {/* Tips to Improve */}
         <div style={{ margin: '0 24px 24px', background: CARD_BG, border: '1.5px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Performance Over Time</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: PAGE_TEXT }}>Performance Over Time</div>
+              {(() => {
+                const scores = (history?.attempts ?? []).map((a: any) => a.score ?? 0)
+                if (!scores.length) return null
+                return (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#9333ea' }}>
+                    <FaStar style={{ fontSize: 9 }} /> Best Score: {Math.max(...scores)}%
+                  </span>
+                )
+              })()}
+            </div>
+            <select
+              value={selectedHistoryMonth}
+              onChange={(e) => setSelectedHistoryMonth(e.target.value)}
+              style={{ border: '1.5px solid #e2e8f0', borderRadius: 8, padding: '6px 10px', fontSize: 12, fontWeight: 600, color: PAGE_TEXT, background: CARD_BG, cursor: 'pointer' }}
+            >
+              {historyMonths.map((m) => (
+                <option key={m} value={m}>
+                  {new Date(`${m}-01T00:00:00Z`).toLocaleDateString('en-IN', { month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Performance line graph */}
           {(() => {
-            const attempts: { n: number; score: number }[] = (history?.attempts ?? []).map((a: any, i: number) => ({ n: a.attempt ?? i + 1, score: a.score ?? 0 }))
-            if (attempts.length < 2) return null
+            // breakdown.{grammar,fluency,vocabulary} come back on a 0-10 scale
+            // (matches the sidebar's avgBreakdown), scale to 0-100 to share the axis with score.
+            const attempts: { n: number; score: number; fluency: number | null; grammar: number | null; vocabulary: number | null }[] =
+              (history?.attempts ?? []).map((a: any, i: number) => ({
+                n: a.attempt ?? i + 1,
+                score: a.score ?? 0,
+                fluency: typeof a.breakdown?.fluency === 'number' ? a.breakdown.fluency * 10 : null,
+                grammar: typeof a.breakdown?.grammar === 'number' ? a.breakdown.grammar * 10 : null,
+                vocabulary: typeof a.breakdown?.vocabulary === 'number' ? a.breakdown.vocabulary * 10 : null,
+              }))
+            if (attempts.length < 2) return (
+              <div style={{ padding: '28px 0', textAlign: 'center', fontSize: 12.5, color: PAGE_GRAY }}>
+                {attempts.length === 0 ? 'No attempts in this month yet.' : 'Need at least 2 attempts this month to plot a trend.'}
+              </div>
+            )
 
             const w = 700, h = 220
             const padL = 34, padR = 12, padT = 12, padB = 24
@@ -1990,24 +2064,51 @@ const EnglishVoicePractice: React.FC = () => {
             const yFor = (score: number) => padT + (1 - score / 100) * plotH
 
             const points = attempts.map((a, i) => [xFor(i), yFor(a.score)] as const)
-            const bestScore = Math.max(...attempts.map((a) => a.score))
+
+            // Catmull-Rom → cubic Bezier so every line reads as a smooth
+            // curve instead of a jagged polyline — the raw straight-segment
+            // version was what made 4 overlapping series look cluttered.
+            const smoothPath = (pts: readonly (readonly [number, number])[]) => {
+              if (pts.length < 2) return ''
+              if (pts.length === 2) return `M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`
+              let d = `M${pts[0][0]},${pts[0][1]} `
+              for (let i = 0; i < pts.length - 1; i++) {
+                const p0 = pts[i === 0 ? i : i - 1]
+                const p1 = pts[i]
+                const p2 = pts[i + 1]
+                const p3 = pts[i + 2 < pts.length ? i + 2 : i + 1]
+                const cp1x = p1[0] + (p2[0] - p0[0]) / 6
+                const cp1y = p1[1] + (p2[1] - p0[1]) / 6
+                const cp2x = p2[0] - (p3[0] - p1[0]) / 6
+                const cp2y = p2[1] - (p3[1] - p1[1]) / 6
+                d += `C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2[0]},${p2[1]} `
+              }
+              return d
+            }
+
+            const SERIES: { key: 'fluency' | 'grammar' | 'vocabulary'; label: string; color: string }[] = [
+              { key: 'fluency', label: 'Fluency', color: '#3b82f6' },
+              { key: 'grammar', label: 'Grammar', color: '#22c55e' },
+              { key: 'vocabulary', label: 'Vocabulary', color: '#06b6d4' },
+            ]
+            // Only draw a breakdown series if at least 2 attempts actually have that metric.
+            const seriesPoints = SERIES.map((s) => {
+              const pts = attempts
+                .map((a, i) => (a[s.key] == null ? null : [xFor(i), yFor(a[s.key] as number)] as const))
+                .filter((p): p is readonly [number, number] => p !== null)
+              return { ...s, points: pts }
+            }).filter((s) => s.points.length >= 2)
 
             const yTicks = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-            const areaPath = `M${xFor(0)},${padT + plotH} ` +
-              points.map(([x, y]) => `L${x},${y}`).join(' ') +
-              ` L${xFor(attempts.length - 1)},${padT + plotH} Z`
+            const overallPath = smoothPath(points)
+            const areaPath = `${overallPath} L${xFor(attempts.length - 1)},${padT + plotH} L${xFor(0)},${padT + plotH} Z`
 
             return (
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 8 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#9333ea' }}>
-                    <FaStar style={{ fontSize: 9 }} /> Best Score: {bestScore}%
-                  </span>
-                </div>
                 <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" style={{ width: '100%', height: 220, display: 'block' }}>
                   <defs>
                     <linearGradient id="perfAreaFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={ORANGE} stopOpacity={0.22} />
+                      <stop offset="0%" stopColor={ORANGE} stopOpacity={0.18} />
                       <stop offset="100%" stopColor={ORANGE} stopOpacity={0} />
                     </linearGradient>
                   </defs>
@@ -2025,21 +2126,60 @@ const EnglishVoicePractice: React.FC = () => {
                   {attempts.map((a, i) => (
                     <text key={a.n} x={xFor(i)} y={h - 6} textAnchor="middle" fontSize={9} fill="#94a3b8">{a.n}</text>
                   ))}
-                  <path d={areaPath} fill="url(#perfAreaFill)" stroke="none" />
-                  <polyline
-                    points={points.map(([x, y]) => `${x},${y}`).join(' ')}
-                    fill="none"
-                    stroke={ORANGE}
-                    strokeWidth={2.5}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {points.map(([x, y], i) => (
-                    <circle key={i} cx={x} cy={y} r={3.5} fill={ORANGE} stroke={CARD_BG} strokeWidth={1.5} />
+                  {visibleChartSeries.has('overall') && <path d={areaPath} fill="url(#perfAreaFill)" stroke="none" />}
+                  {/* Breakdown series drawn under the overall-score line, thin and slightly
+                      muted so the primary score line stays the clear focal point */}
+                  {seriesPoints.filter((s) => visibleChartSeries.has(s.key)).map((s) => (
+                    <g key={s.key}>
+                      <path d={smoothPath(s.points)} fill="none" stroke={s.color} strokeWidth={1.5} strokeLinecap="round" opacity={0.65} />
+                      {s.points.map(([x, y], i) => (
+                        <circle key={i} cx={x} cy={y} r={2} fill={s.color} opacity={0.65} />
+                      ))}
+                    </g>
                   ))}
+                  {visibleChartSeries.has('overall') && (
+                    <>
+                      <path d={overallPath} fill="none" stroke={ORANGE} strokeWidth={2.75} strokeLinecap="round" />
+                      {points.map(([x, y], i) => (
+                        <circle key={i} cx={x} cy={y} r={3.5} fill={ORANGE} stroke={CARD_BG} strokeWidth={1.5} />
+                      ))}
+                    </>
+                  )}
                 </svg>
-                <div style={{ textAlign: 'center', marginTop: 2 }}>
+                <div style={{ textAlign: 'center', marginTop: 2, marginBottom: 14 }}>
                   <span style={{ fontSize: 10, color: '#94a3b8' }}>Attempt #</span>
+                </div>
+
+                {/* Legend, below the chart — click a chip to isolate that line, click again to show all */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', borderTop: '1px solid #f1f5f9', paddingTop: 14 }}>
+                  <button
+                    onClick={() => toggleChartSeries('overall')}
+                    title="Click to isolate this line"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 700,
+                      color: visibleChartSeries.has('overall') ? PAGE_TEXT : '#c7ccd4',
+                      background: visibleChartSeries.has('overall') ? '#fff3e8' : PAGE_BG,
+                      border: `1px solid ${visibleChartSeries.has('overall') ? '#ffd9b3' : '#e2e8f0'}`,
+                      borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
+                    }}
+                  >
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: visibleChartSeries.has('overall') ? ORANGE : '#c7ccd4', display: 'inline-block' }} /> Overall Score
+                  </button>
+                  {seriesPoints.map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => toggleChartSeries(s.key)}
+                      title="Click to isolate this line"
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5, fontWeight: 600,
+                        color: visibleChartSeries.has(s.key) ? PAGE_GRAY : '#c7ccd4',
+                        background: PAGE_BG, border: `1px solid ${visibleChartSeries.has(s.key) ? '#e2e8f0' : '#f1f5f9'}`,
+                        borderRadius: 20, padding: '4px 12px', cursor: 'pointer',
+                      }}
+                    >
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: visibleChartSeries.has(s.key) ? s.color : '#c7ccd4', display: 'inline-block' }} /> {s.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             )
