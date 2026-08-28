@@ -296,13 +296,18 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
   // student has used so far this calendar month (Practice Mode doesn't
   // count). Read-only display; the actual gate is enforced server-side.
   const [monthlyUsed, setMonthlyUsed] = useState<number | null>(null)
-  useEffect(() => {
+  // How many bought single-attempt (₹9) bonuses are unused this month —
+  // lets a locked student start exactly one Pattern attempt without a
+  // full 6/12-month unlock. Re-fetched after a successful purchase below.
+  const [bonusRemaining, setBonusRemaining] = useState(0)
+  const fetchMonthlyUsage = () => {
     if (!user?.token) return
     fetch(`${baseURL}/api/student/lsrw-pattern/monthly-usage`, { headers: { Authorization: `Bearer ${user.token}` } })
       .then((r) => r.json())
-      .then((data) => { if (data.success) setMonthlyUsed(data.used) })
+      .then((data) => { if (data.success) { setMonthlyUsed(data.used); setBonusRemaining(data.bonusRemaining ?? 0) } })
       .catch(() => {})
-  }, [user?.token, baseURL, limitMessage])
+  }
+  useEffect(fetchMonthlyUsage, [user?.token, baseURL, limitMessage])
 
   // Access comes from either the full plan (`status === 'approved'` — same
   // as institute-granted students) OR having bought JUST the LSRW module
@@ -345,7 +350,10 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
   const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : fullAccessFallback)
   const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
   const limitReached = monthlyUsed !== null && monthlyUsed >= MONTHLY_ATTEMPT_LIMIT
-  const canStart = hasAccess && !limitReached
+  // A locked student with an unused single-attempt bonus can still start
+  // one Pattern attempt — the server (lsrwPatternRoutes.js) is the real
+  // gate/consumer, this only decides whether the button is clickable.
+  const canStart = (hasAccess && !limitReached) || (!hasAccess && bonusRemaining > 0)
 
   const buyModule = (plan: ModulePlan) => {
     if (!user?.token || buyingPlan) return
@@ -394,6 +402,61 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
         razorpay.open()
       })
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
+
+  // Buy one Pattern attempt outright for a small fixed fee instead of the
+  // 6/12-month unlock — mirrors buyModule above but hits the single-attempt
+  // endpoints and just grants +1 bonus attempt (server-side) rather than
+  // touching moduleAccess.
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const [buyingSingleAttempt, setBuyingSingleAttempt] = useState(false)
+  const buySingleAttempt = () => {
+    if (!user?.token || buyingSingleAttempt) return
+    setBuyingSingleAttempt(true)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+      body: JSON.stringify({ moduleKey: 'lsrw' }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: user?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'lsrw' }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchMonthlyUsage()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingSingleAttempt(false)
+            }
+          },
+          modal: { ondismiss: () => setBuyingSingleAttempt(false) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingSingleAttempt(false)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingSingleAttempt(false) })
   }
 
   // Real "questions shown per attempt" counts per section, from
@@ -812,6 +875,22 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
           // floating pieces.
           return (
               <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+              <button
+                onClick={buySingleAttempt}
+                disabled={buyingSingleAttempt || bonusRemaining > 0}
+                title={bonusRemaining > 0 ? 'You already have a bonus attempt available' : 'Try one Pattern attempt without committing to a plan'}
+                style={{
+                  display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1,
+                  padding: '6px 14px', borderRadius: 7, minWidth: 78, marginRight: 4,
+                  border: '1.5px dashed #f0a860', cursor: (buyingSingleAttempt || bonusRemaining > 0) ? 'not-allowed' : 'pointer',
+                  background: '#fff7ed', opacity: bonusRemaining > 0 ? 0.6 : 1,
+                }}
+              >
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: ORANGE, whiteSpace: 'nowrap' as const }}>1 Attempt</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>
+                  {bonusRemaining > 0 ? '✓' : buyingSingleAttempt ? '…' : `₹${SINGLE_ATTEMPT_PRICE_RUPEES}`}
+                </span>
+              </button>
               {(['6months', '12months'] as const).map((plan) => {
                 const price = plan === '6months' ? price6 : price12
                 const active = selectedPlan === plan
@@ -952,8 +1031,8 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
               onClick={() => canStart && !starting && onSelect(pattern.key)}
               disabled={!canStart || starting}
               title={
-                !hasAccess ? 'Premium feature — you are not subscribed to this plan'
-                : limitReached ? `You've used all ${MONTHLY_ATTEMPT_LIMIT} pattern attempts for this month`
+                !canStart && !hasAccess ? 'Premium feature — you are not subscribed to this plan'
+                : !canStart && limitReached ? `You've used all ${MONTHLY_ATTEMPT_LIMIT} pattern attempts for this month`
                 : undefined
               }
               style={{
@@ -966,10 +1045,10 @@ const PatternSelectionScreen = ({ onSelect, onPracticeSection, starting, limitMe
                 opacity: starting ? 0.7 : 1,
               }}
             >
-              {!hasAccess ? <><FaLock size={11} /> Not Subscribed</>
-                : limitReached ? <><FaLock size={11} /> Monthly Limit Reached</>
-                : starting ? <>Starting…</>
-                : <>Select {pattern.label} <FaArrowRight size={11} /></>}
+              {starting ? <>Starting…</>
+                : canStart ? <>Select {pattern.label} <FaArrowRight size={11} /></>
+                : !hasAccess ? <><FaLock size={11} /> Not Subscribed</>
+                : <><FaLock size={11} /> Monthly Limit Reached</>}
             </button>
           </div>
         ))}

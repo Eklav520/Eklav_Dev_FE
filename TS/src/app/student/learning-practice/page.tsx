@@ -45,6 +45,7 @@ const PRACTICE_CARDS = [
     features: ["Multiple difficulty levels", "Real-time feedback", "Audio transcripts"],
     btnLabel: "Start Listening",
     hasCategory: true,
+    moduleKey: "learningPracticeListening",
   },
   {
     id: "reading",
@@ -56,6 +57,7 @@ const PRACTICE_CARDS = [
     features: ["Diverse topics & passages", "Comprehension exercises", "Instant explanations"],
     btnLabel: "Start Reading",
     hasTopic: true,
+    moduleKey: "learningPracticeReading",
   },
   {
     id: "vocabulary",
@@ -66,6 +68,7 @@ const PRACTICE_CARDS = [
     description: "Learn new words in context, strengthen your vocabulary, and test your knowledge with smart quizzes.",
     features: ["Word in context", "Vocabulary quizzes", "Spaced repetition"],
     btnLabel: "Start Vocabulary",
+    moduleKey: "learningPracticeVocabulary",
   },
 ]
 
@@ -131,6 +134,25 @@ const EnglishPractice = () => {
   useEffect(fetchModuleAccess, [token, baseURL])
 
   const hasAccess = moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === "approved"
+  // A locked student's base allowance is always 0, so any remaining
+  // allowance on Listening/Reading can only have come from a bought
+  // single-attempt (₹9) bonus for that specific section (see
+  // bumpMonthlyLimit in moduleAccessRoutes.js) — each section is sold and
+  // tracked separately now, unlike the old combined "buy both" purchase.
+  const listeningBonusAvailable = !hasAccess && !!listeningStats && listeningStats.monthlyLimit > listeningStats.attemptsUsed
+  const readingBonusAvailable = !hasAccess && !!readingStats && readingStats.monthlyLimit > readingStats.attemptsUsed
+  // Vocabulary has no monthlyLimit field to read — its bonus lives in the
+  // AttemptBonus ledger instead (see attemptBonus.js), fetched separately.
+  const [vocabBonusRemaining, setVocabBonusRemaining] = useState(0)
+  const fetchVocabBonus = () => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access/single-attempt/bonus/learningPracticeVocabulary`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setVocabBonusRemaining(data.bonusRemaining ?? 0) })
+      .catch(() => {})
+  }
+  useEffect(fetchVocabBonus, [token, baseURL])
+  const vocabBonusAvailable = !hasAccess && vocabBonusRemaining > 0
 
   const buyModule = (plan: ModulePlan) => {
     if (!token || buyingPlan) return
@@ -179,6 +201,72 @@ const EnglishPractice = () => {
         razorpay.open()
       })
       .catch((e) => { setBuyError(e.message || "Failed to start payment"); setBuyingPlan(null) })
+  }
+
+  // Buy one attempt outright for a small fixed fee instead of the 6/12-month
+  // unlock — each of the 3 sections (Listening/Reading/Vocabulary) is its
+  // own ₹9 purchase now, rather than one combined "Listening + Reading"
+  // bundle, so a student who only cares about one section doesn't pay for
+  // the others. `refresh` re-fetches whatever stats that section's card
+  // needs to reflect the new bonus.
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const [buyingAttemptFor, setBuyingAttemptFor] = useState<string | null>(null)
+  const buySectionAttempt = (moduleKey: string, refresh: () => void) => {
+    if (!token || buyingAttemptFor) return
+    setBuyingAttemptFor(moduleKey)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || "Failed to start payment")
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: "Eklav",
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || "", email: user?.email || "" },
+          theme: { color: "#ff7a00" },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || "Payment verification failed")
+              refresh()
+            } catch (e: any) {
+              setBuyError(e.message || "Payment verification failed. Contact support.")
+            } finally {
+              setBuyingAttemptFor(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingAttemptFor(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on("payment.failed", (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || "Unknown error"}`)
+          setBuyingAttemptFor(null)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || "Failed to start payment"); setBuyingAttemptFor(null) })
+  }
+
+  const fetchListeningStats = () => {
+    if (!token) return
+    fetch(`${baseURL}/learning/listening/history`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setListeningStats).catch(() => {})
+  }
+  const fetchReadingStats = () => {
+    if (!token) return
+    fetch(`${baseURL}/learning/reading/history`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json()).then(setReadingStats).catch(() => {})
   }
 
   const goTo = (id: string) => setView(id as typeof view)
@@ -320,7 +408,7 @@ const EnglishPractice = () => {
 
             {/* Practice Cards */}
             <div style={{ padding: "28px 28px 0", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 }}>
-              {PRACTICE_CARDS.map(({ id, label, color, bg, Icon: PIcon, description, features, btnLabel, hasTopic, hasCategory }: any) => (
+              {PRACTICE_CARDS.map(({ id, label, color, bg, Icon: PIcon, description, features, btnLabel, hasTopic, hasCategory, moduleKey }: any) => (
                 <div key={id} style={{ background: CARD_BG, borderRadius: 18, border: `1px solid ${PAGE_BORDER}`, boxShadow: "0 2px 12px rgba(0,0,0,0.05)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
                   {/* Card top icon area — fixed tint, doesn't change with theme */}
                   <div style={{ background: bg, padding: "24px 24px 16px", display: "flex", alignItems: "center", gap: 14 }}>
@@ -391,19 +479,62 @@ const EnglishPractice = () => {
                     )}
                   </div>
 
-                  {/* Start button */}
+                  {/* Start / Buy button — one button per card. Locked with no
+                      bonus yet: buying is the action. Full access, or a
+                      bought-and-unused bonus: starting is the action —
+                      buying again is unnecessary since they can go straight in. */}
                   <div style={{ padding: "0 20px 20px" }}>
-                    <button
-                      onClick={() => goTo(id)}
-                      style={{
-                        width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
-                        background: color, color: "#fff", fontWeight: 700, fontSize: 14,
-                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        boxShadow: `0 4px 14px ${color}35`,
-                      }}
-                    >
-                      <PIcon style={{ fontSize: 14 }} /> {btnLabel}
-                    </button>
+                    {(() => {
+                      const bonusAvailable = id === "listening" ? listeningBonusAvailable
+                        : id === "reading" ? readingBonusAvailable
+                        : vocabBonusAvailable
+                      const refresh = id === "listening" ? fetchListeningStats
+                        : id === "reading" ? fetchReadingStats
+                        : fetchVocabBonus
+                      const isBuying = buyingAttemptFor === moduleKey
+                      const canEnter = hasAccess || bonusAvailable
+
+                      if (canEnter) {
+                        return (
+                          <button
+                            onClick={() => goTo(id)}
+                            style={{
+                              width: "100%", padding: "12px 0", borderRadius: 12, border: "none",
+                              background: color, color: "#fff", fontWeight: 700, fontSize: 14,
+                              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                              boxShadow: `0 4px 14px ${color}35`,
+                            }}
+                          >
+                            <PIcon style={{ fontSize: 14 }} /> {btnLabel}
+                          </button>
+                        )
+                      }
+
+                      return (
+                        <button
+                          onClick={() => buySectionAttempt(moduleKey, refresh)}
+                          disabled={isBuying}
+                          title={`Try 1 ${label} attempt without committing to a plan`}
+                          style={{
+                            width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                            background: color, border: "none", color: "#fff",
+                            borderRadius: 12, padding: "12px 0",
+                            cursor: isBuying ? "not-allowed" : "pointer",
+                            opacity: isBuying ? 0.6 : 1,
+                            boxShadow: `0 4px 14px ${color}35`,
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, fontSize: 13 }}>
+                            {isBuying ? "Processing…" : "Just want to try once?"}
+                          </span>
+                          {!isBuying && (
+                            <span style={{ fontWeight: 800, fontSize: 15 }}>
+                              ₹{SINGLE_ATTEMPT_PRICE_RUPEES}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })()}
                   </div>
                 </div>
               ))}

@@ -212,6 +212,81 @@ const WritingPractice: React.FC = () => {
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
   }
 
+  // Buy one attempt outright for a small fixed fee instead of the 6/12-month
+  // unlock. Essay/Email/Summary each have their OWN ₹9 purchase — they share
+  // one WritingHistory doc/monthlyLimit server-side, so a bonus attempt is
+  // tracked per-type in the AttemptBonus ledger instead (writingRoutes.js);
+  // buying one type does not unlock the others.
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const WRITING_MODULE_KEY: Record<ModeType, string> = {
+    essay: 'writingPracticeEssay',
+    email: 'writingPracticeEmail',
+    summary: 'writingPracticeSummary',
+  }
+  const [bonusRemaining, setBonusRemaining] = useState<Record<ModeType, number>>({ essay: 0, email: 0, summary: 0 })
+  const fetchBonusRemaining = (m: ModeType) => {
+    if (!token) return
+    fetch(`${baseURL}/api/student/module-access/single-attempt/bonus/${WRITING_MODULE_KEY[m]}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => { if (data.success) setBonusRemaining((prev) => ({ ...prev, [m]: data.bonusRemaining ?? 0 })) })
+      .catch(() => {})
+  }
+  useEffect(() => {
+    if (!token) return
+    (['essay', 'email', 'summary'] as const).forEach(fetchBonusRemaining)
+  }, [token, baseURL])
+
+  const [buyingAttemptFor, setBuyingAttemptFor] = useState<ModeType | null>(null)
+  const buySingleAttempt = (m: ModeType) => {
+    if (!token || buyingAttemptFor) return
+    setBuyingAttemptFor(m)
+    setBuyError(null)
+    const moduleKey = WRITING_MODULE_KEY[m]
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchBonusRemaining(m)
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingAttemptFor(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingAttemptFor(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingAttemptFor(null)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingAttemptFor(null) })
+  }
+
   // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
   // (light-mode values as fallback), so this page re-themes along with
   // the rest of the portal without needing its own theme plumbing.
@@ -245,8 +320,8 @@ const WritingPractice: React.FC = () => {
   // ─── API functions ────────────────────────────────────────────────────────
 
   const startWriting = async (selectedMode?: ModeType) => {
-    if (!hasAccess) return
     const m = selectedMode ?? mode
+    if (!canWriteMode(m)) return
     setMode(m)
     setStarted(true)
     setFeedback(null)
@@ -284,8 +359,12 @@ const WritingPractice: React.FC = () => {
 
       const latest = data[0]
       const attempts: WritingAttempt[] = latest.attempts || []
-      const backendLimit = latest.monthlyLimit ?? PREMIUM_DEFAULT
-      const monthlyLimit = hasAccess ? backendLimit : 0
+      // Trust the backend's stored limit as-is — it's already 0 for a
+      // never-purchased student, or >0 if they bought a single attempt (see
+      // moduleAccessRoutes.js single-attempt/verify), even without full
+      // `hasAccess`. Clamping to 0 here whenever !hasAccess used to erase
+      // that bonus.
+      const monthlyLimit = latest.monthlyLimit ?? (hasAccess ? PREMIUM_DEFAULT : 0)
       const attemptsUsed = attempts.length
       const remainingAttempts = Math.max(monthlyLimit - attemptsUsed, 0)
       const bestScore = latest.summary?.bestScore ?? (attempts.length > 0 ? Math.max(...attempts.map((a: any) => a.score ?? 0)) : null)
@@ -312,8 +391,17 @@ const WritingPractice: React.FC = () => {
     return () => clearInterval(id)
   }, [started])
 
-  const maxAllowedAttempts = hasAccess ? (history?.monthlyLimit ?? PREMIUM_DEFAULT) : 0
-  const isLimitReached = !hasAccess || (!!history && history.attemptsUsed >= maxAllowedAttempts)
+  // Shared 30/month cap — only meaningful for a full-access student.
+  // history.monthlyLimit already reflects full unlock (30) or 0 if never
+  // purchased; a bonus is per-type now (bonusRemaining), not tracked here.
+  const maxAllowedAttempts = history?.monthlyLimit ?? (hasAccess ? PREMIUM_DEFAULT : 0)
+  // Can this specific writing type actually be started: full access with
+  // attempts left in the shared pool, OR a bought-and-unused bonus for
+  // just that type.
+  const canWriteMode = (m: ModeType) =>
+    (hasAccess && !!history && history.attemptsUsed < maxAllowedAttempts) || bonusRemaining[m] > 0
+  const attemptsAvailable = canWriteMode(mode)
+  const isLimitReached = !attemptsAvailable
 
   const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')} : ${String(s % 60).padStart(2, '0')}`
   const wordCount = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0
@@ -354,6 +442,7 @@ const WritingPractice: React.FC = () => {
       })
       setSubmitted(true)
       fetchWritingHistory()
+      fetchBonusRemaining(mode)
     } catch (err) {
       console.error('Error submitting writing:', err)
     } finally {
@@ -633,13 +722,28 @@ const WritingPractice: React.FC = () => {
                       <span key={t} style={{ fontSize: '0.68rem', fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 20, padding: '2px 8px' }}>{t}</span>
                     ))}
                   </div>
-                  <button
-                    disabled={isLimitReached}
-                    onClick={() => startWriting(key)}
-                    style={{ marginTop: 'auto', width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: cfg.color, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: isLimitReached ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: isLimitReached ? 0.5 : 1, transition: 'opacity 0.15s, box-shadow 0.15s', letterSpacing: '0.01em' }}
-                  >
-                    {!hasAccess ? 'Locked — Unlock to Start' : <>Start Practice &nbsp;→</>}
-                  </button>
+                  {/* One button per card, per writing type: starts the
+                      attempt once one's available for THIS type (full
+                      access, or this type's own bought bonus), otherwise
+                      IS that type's own ₹9 single-attempt purchase —
+                      buying Email doesn't unlock Essay/Summary. */}
+                  {(() => {
+                    const canWrite = canWriteMode(key)
+                    const isBuying = buyingAttemptFor === key
+                    return (
+                      <button
+                        disabled={canWrite ? false : isBuying}
+                        onClick={() => { if (canWrite) startWriting(key); else buySingleAttempt(key) }}
+                        style={{ marginTop: 'auto', width: '100%', padding: '10px 0', borderRadius: 10, border: 'none', background: cfg.color, color: '#fff', fontSize: '0.82rem', fontWeight: 700, cursor: (!canWrite && isBuying) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: (!canWrite && isBuying) ? 0.6 : 1, transition: 'opacity 0.15s, box-shadow 0.15s', letterSpacing: '0.01em' }}
+                      >
+                        {canWrite
+                          ? <>Start Practice &nbsp;→</>
+                          : isBuying
+                            ? 'Processing…'
+                            : <>Just want to try once? &nbsp;₹{SINGLE_ATTEMPT_PRICE_RUPEES}</>}
+                      </button>
+                    )
+                  })()}
                 </div>
               ))}
             </div>

@@ -140,6 +140,61 @@ const SpeakingPractice: React.FC = () => {
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
   }
 
+  // Buy one attempt outright for a small fixed fee instead of the 6/12-month
+  // unlock — mirrors buyModule above but hits the single-attempt endpoints
+  // and just raises this month's attempt cap by 1 (server-side) rather than
+  // touching moduleAccess.
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const [buyingSingleAttempt, setBuyingSingleAttempt] = useState(false)
+  const buySingleAttempt = () => {
+    if (!token || buyingSingleAttempt) return
+    setBuyingSingleAttempt(true)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'justAMinute' }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'justAMinute' }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchJamHistory()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingSingleAttempt(false)
+            }
+          },
+          modal: { ondismiss: () => setBuyingSingleAttempt(false) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingSingleAttempt(false)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingSingleAttempt(false) })
+  }
+
   // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
   // (light-mode values as fallback), so this page re-themes along with
   // the rest of the portal without needing its own theme plumbing.
@@ -193,13 +248,14 @@ const SpeakingPractice: React.FC = () => {
   const [submissionFailed, setSubmissionFailed] = useState(false)
   const lastSubmitDataRef = useRef<{ audio: Blob | string; transcript: string } | null>(null)
 
-  // The server already returns the correct effective limit (30 unlocked /
-  // 0 locked, no free trial) in history.monthlyLimit — no need to re-derive
-  // it here.
+  // The server already returns the correct effective limit in
+  // history.monthlyLimit — full unlock (30), or 0 plus any single-attempt
+  // top-ups a locked student bought this month. Gate purely on that count
+  // rather than `hasAccess`, so a bought single attempt is actually usable
+  // even though the module itself is still locked.
   const maxAllowedAttempts = history?.monthlyLimit ?? 0
-
-  const isLimitReached =
-    !hasAccess || (!!history && history.attemptsUsed >= maxAllowedAttempts)
+  const attemptsAvailable = !!history && history.attemptsUsed < maxAllowedAttempts
+  const isLimitReached = !attemptsAvailable
 
   useEffect(() => {
     // Check if mobile device
@@ -1045,6 +1101,22 @@ const SpeakingPractice: React.FC = () => {
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' as const, marginBottom: 16 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(255,122,0,0.3)', borderRadius: 10, padding: 4 }}>
+                          <button
+                            onClick={buySingleAttempt}
+                            disabled={buyingSingleAttempt || attemptsAvailable}
+                            title={attemptsAvailable ? 'You already have a bonus attempt available' : 'Try one attempt without committing to a plan'}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                              padding: '6px 14px', borderRadius: 7, minWidth: 78, marginRight: 4,
+                              border: '1.5px dashed #f0a860', cursor: (buyingSingleAttempt || attemptsAvailable) ? 'not-allowed' : 'pointer',
+                              background: '#fff7ed', opacity: attemptsAvailable ? 0.6 : 1,
+                            }}
+                          >
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ff7a00', whiteSpace: 'nowrap' as const }}>1 Attempt</span>
+                            <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>
+                              {attemptsAvailable ? '✓' : buyingSingleAttempt ? '…' : `₹${SINGLE_ATTEMPT_PRICE_RUPEES}`}
+                            </span>
+                          </button>
                           {(['6months', '12months'] as const).map((plan) => {
                             const price = plan === '6months' ? price6 : price12
                             const active = selectedPlan === plan
@@ -1242,7 +1314,7 @@ const SpeakingPractice: React.FC = () => {
                       <line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                       <line x1="9" y1="21" x2="15" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                     </svg>
-                    {!moduleInfoLoaded ? 'Loading…' : !hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking (60 Seconds)'}
+                    {!moduleInfoLoaded ? 'Loading…' : attemptsAvailable ? 'Start Speaking (60 Seconds)' : 'Locked — Unlock to Start'}
                   </button>
                   {moduleInfoLoaded && isLimitReached ? (
                     <div style={{ textAlign: 'center', fontSize: '0.78rem', color: '#dc2626', fontWeight: 600 }}>

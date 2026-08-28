@@ -12,6 +12,11 @@ type CompanyDoc = {
   companyName: string
   logoUrl?: string
   createdAt: string
+  unlocked?: boolean
+  // Full module or this company bought individually — applies to every
+  // paper under the company uniformly, unlike `unlocked` which is also
+  // true for just the single free-trial paper.
+  unlockedByPurchase?: boolean
 }
 
 type CompanyGroup = {
@@ -19,6 +24,10 @@ type CompanyGroup = {
   logoUrl: string
   paperCount: number
   hasFreeSample: boolean
+  unlocked: boolean
+  // One representative paper id from this group — the single-company
+  // purchase endpoints just need any doc to resolve companyName from.
+  representativeId: string
 }
 
 // Reads the same --dash-* CSS vars StudentLayout sets for dark mode
@@ -97,6 +106,7 @@ const CompanyGridPage = () => {
               const verifyData = await verifyRes.json()
               if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
               fetchModuleAccess()
+              fetchCompanies(false)
             } catch (e: any) {
               setBuyError(e.message || 'Payment verification failed. Contact support.')
             } finally {
@@ -115,26 +125,79 @@ const CompanyGridPage = () => {
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
   }
 
-  useEffect(() => {
-    if (!token) return
-    const fetchAll = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        const res = await fetch(`${baseURL}/api/company-interview?page=1&limit=500`, {
-          headers: { Authorization: `Bearer ${token}` },
+  // Buy just ONE company (all its papers) for a flat 12-month fee instead
+  // of the whole "companyInterview" module — cheaper for a student who only
+  // cares about one target company. Keyed by companyName server-side (see
+  // singleCompanyModuleKey in companyInterviewRoutes.js), so any one paper
+  // id from that company works as the purchase target.
+  const SINGLE_COMPANY_PRICE_RUPEES = 49
+  const [buyingCompany, setBuyingCompany] = useState<string | null>(null)
+  const buySingleCompany = (representativeId: string, companyName: string) => {
+    if (!token || buyingCompany) return
+    setBuyingCompany(companyName)
+    setBuyError(null)
+    fetch(`${baseURL}/api/company-interview/${representativeId}/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.error || order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: user?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/company-interview/${representativeId}/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(response),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.error || verifyData.message || 'Payment verification failed')
+              fetchCompanies(false)
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingCompany(null)
+            }
+          },
+          modal: { ondismiss: () => setBuyingCompany(null) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingCompany(null)
         })
-        const data = await res.json()
-        if (!res.ok || !data.success) throw new Error('Failed to fetch companies')
-        setCompanies(data.data || [])
-      } catch (err: any) {
-        setError(err.message || 'Failed to load companies')
-      } finally {
-        setLoading(false)
-      }
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingCompany(null) })
+  }
+
+  const fetchCompanies = async (showSpinner = true) => {
+    if (!token) return
+    try {
+      if (showSpinner) setLoading(true)
+      setError(null)
+      const res = await fetch(`${baseURL}/api/company-interview?page=1&limit=500`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error('Failed to fetch companies')
+      setCompanies(data.data || [])
+    } catch (err: any) {
+      setError(err.message || 'Failed to load companies')
+    } finally {
+      if (showSpinner) setLoading(false)
     }
-    fetchAll()
-  }, [token, baseURL])
+  }
+  useEffect(() => { fetchCompanies() }, [token, baseURL])
 
   // Companies come back sorted by createdAt desc, so the first doc is the
   // single free-trial company (matches isFreeCompanyInterview on the backend).
@@ -148,12 +211,17 @@ const CompanyGridPage = () => {
       if (existing) {
         existing.paperCount += 1
         if (!existing.logoUrl && c.logoUrl) existing.logoUrl = c.logoUrl
+        // Only a genuine purchase should mark the whole group unlocked —
+        // one paper being the free sample doesn't unlock its siblings.
+        if (c.unlockedByPurchase) existing.unlocked = true
       } else {
         map.set(key, {
           companyName: key,
           logoUrl: c.logoUrl || '',
           paperCount: 1,
           hasFreeSample: key === freeCompanyName,
+          unlocked: !!c.unlockedByPurchase,
+          representativeId: c._id,
         })
       }
     })
@@ -297,68 +365,102 @@ const CompanyGridPage = () => {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16,
           }}>
             {filteredGroups.map((g) => {
-              const locked = !hasAccess && !g.hasFreeSample
+              // Fully unlocked = every paper under this company is viewable
+              // (full module, or this company bought individually). The
+              // free-trial company only ever exempts ONE specific paper —
+              // not the whole group — so "has a free sample" alone doesn't
+              // mean fully unlocked; the buy button below still shows for it.
+              const fullyUnlocked = hasAccess || g.unlocked
+              // Enterable = can click into the papers list at all (even if
+              // only the free sample paper turns out to be viewable there).
+              const enterable = fullyUnlocked || g.hasFreeSample
+              const isBuyingThis = buyingCompany === g.companyName
               return (
-                <button
+                <div
                   key={g.companyName}
-                  onClick={() => { if (!locked) goToCompany(g.companyName) }}
-                  disabled={locked}
-                  title={locked ? 'Unlock Company Mock Interviews, or subscribe to a full plan, to view this company.' : undefined}
                   style={{
                     background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14,
                     padding: 18, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                    gap: 10, cursor: locked ? 'not-allowed' : 'pointer', textAlign: 'center', position: 'relative',
-                    opacity: locked ? 0.55 : 1,
+                    gap: 10, textAlign: 'center', position: 'relative',
                   }}
                 >
-                  {locked && (
-                    <div style={{
-                      position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%',
-                      background: 'rgba(15,23,42,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Lock size={11} color="#94a3b8" />
-                    </div>
-                  )}
-
-                  {g.logoUrl ? (
-                    <div style={{
-                      width: 108, height: 108, borderRadius: 20,
-                      background: 'linear-gradient(150deg, rgba(255,122,0,0.14), rgba(255,122,0,0.02))',
-                      border: '2px solid #ff7a00', boxShadow: '0 8px 22px rgba(255,122,0,0.22)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6,
-                    }}>
-                      <div style={{
-                        width: '100%', height: '100%', borderRadius: 14, background: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10,
-                      }}>
-                        <img
-                          src={g.logoUrl}
-                          alt={g.companyName}
-                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        />
+                  <div
+                    role="button"
+                    onClick={() => { if (enterable) goToCompany(g.companyName) }}
+                    title={!enterable ? 'Unlock this company, the whole module, or subscribe to a full plan, to view it.' : undefined}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, width: '100%',
+                      cursor: enterable ? 'pointer' : 'default', opacity: enterable ? 1 : 0.55,
+                    }}
+                  >
+                    {!fullyUnlocked && (
+                      <div
+                        title={enterable ? '1 free sample paper — the rest of this company needs unlocking' : undefined}
+                        style={{
+                          position: 'absolute', top: 10, right: 10, width: 22, height: 22, borderRadius: '50%',
+                          background: 'rgba(15,23,42,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        <Lock size={11} color="#94a3b8" />
                       </div>
-                    </div>
-                  ) : (
+                    )}
+
+                    {g.logoUrl ? (
+                      <div style={{
+                        width: 108, height: 108, borderRadius: 20,
+                        background: 'linear-gradient(150deg, rgba(255,122,0,0.14), rgba(255,122,0,0.02))',
+                        border: '2px solid #ff7a00', boxShadow: '0 8px 22px rgba(255,122,0,0.22)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6,
+                      }}>
+                        <div style={{
+                          width: '100%', height: '100%', borderRadius: 14, background: '#fff',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10,
+                        }}>
+                          <img
+                            src={g.logoUrl}
+                            alt={g.companyName}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{
+                        width: 108, height: 108, borderRadius: 20,
+                        background: 'linear-gradient(150deg, rgba(255,122,0,0.18), rgba(255,122,0,0.06))',
+                        border: '2px solid #ff7a00', boxShadow: '0 8px 22px rgba(255,122,0,0.22)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <Building2 size={40} color="#ff7a00" />
+                      </div>
+                    )}
+
+                    <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', lineHeight: 1.3 }}>{g.companyName}</div>
+
                     <div style={{
-                      width: 108, height: 108, borderRadius: 20,
-                      background: 'linear-gradient(150deg, rgba(255,122,0,0.18), rgba(255,122,0,0.06))',
-                      border: '2px solid #ff7a00', boxShadow: '0 8px 22px rgba(255,122,0,0.22)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,122,0,0.08)',
+                      color: '#ff7a00', fontSize: '0.68rem', fontWeight: 700, borderRadius: 20, padding: '3px 10px',
                     }}>
-                      <Building2 size={40} color="#ff7a00" />
+                      {g.paperCount} {g.paperCount === 1 ? 'Paper' : 'Papers'}
+                      <ChevronRight size={11} />
                     </div>
-                  )}
-
-                  <div style={{ fontWeight: 700, color: PAGE_TEXT, fontSize: '0.88rem', lineHeight: 1.3 }}>{g.companyName}</div>
-
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(255,122,0,0.08)',
-                    color: '#ff7a00', fontSize: '0.68rem', fontWeight: 700, borderRadius: 20, padding: '3px 10px',
-                  }}>
-                    {g.paperCount} {g.paperCount === 1 ? 'Paper' : 'Papers'}
-                    <ChevronRight size={11} />
                   </div>
-                </button>
+
+                  {!fullyUnlocked && (
+                    <button
+                      onClick={() => buySingleCompany(g.representativeId, g.companyName)}
+                      disabled={isBuyingThis}
+                      title={`Unlock all ${g.paperCount} ${g.companyName} papers for ₹${SINGLE_COMPANY_PRICE_RUPEES} / 12 months`}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        background: '#fff7ed', border: '1.5px dashed #f0a860', color: '#ff7a00',
+                        borderRadius: 8, padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700,
+                        cursor: isBuyingThis ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {isBuyingThis ? 'Processing…' : `Unlock this company — ₹${SINGLE_COMPANY_PRICE_RUPEES}/12mo`}
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>

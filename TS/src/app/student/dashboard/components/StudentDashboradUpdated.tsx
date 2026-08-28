@@ -522,7 +522,7 @@ const StudentDashboardUpdated: React.FC = () => {
           </div>
 
           {/* Profile Completed — compact, beside the greeting */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff7ed', border: `1px solid ${ORANGE}33`, borderRadius: 10, padding: '6px 14px 6px 8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,122,0,0.1)', border: `1px solid ${ORANGE}33`, borderRadius: 10, padding: '6px 14px 6px 8px', flexShrink: 0 }}>
             <div style={{ position: 'relative', width: 34, height: 34, flexShrink: 0 }}>
               <svg width="34" height="34">
                 <circle cx="17" cy="17" r="14" fill="none" stroke="#fde8cc" strokeWidth="4" />
@@ -656,9 +656,9 @@ const StudentDashboardUpdated: React.FC = () => {
       {/* ── SUCCESS STORY PROMPT — only shown before the student has submitted
           a story; once submitted (any status), it's hidden for good. ── */}
       {myStory === null && (
-        <div style={{ margin: '18px 28px 0', background: 'linear-gradient(135deg, #fff7ed, #fef3e2)', border: `1px solid ${ORANGE}33`, borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ margin: '18px 28px 0', background: 'linear-gradient(135deg, rgba(255,122,0,0.1), rgba(255,122,0,0.05))', border: `1px solid ${ORANGE}33`, borderRadius: 12, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: `1px solid ${ORANGE}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ORANGE, fontSize: '1.2rem' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: CARD_BG, border: `1px solid ${ORANGE}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: ORANGE, fontSize: '1.2rem' }}>
               🌟
             </div>
             <div>

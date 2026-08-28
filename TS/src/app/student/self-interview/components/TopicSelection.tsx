@@ -16,6 +16,11 @@ interface TopicSelectionProps {
   // required to start any topic interview at all (no free trial). Same
   // value the server now enforces in POST /start.
   hasModuleAccess: boolean
+  // Unused bought single-attempt (₹9) bonuses this month — not topic-
+  // specific, so a locked student can spend one on whichever topic is
+  // currently selected. The server is the real gate/consumer (POST
+  // /start); this only decides whether the button is clickable.
+  bonusRemaining?: number
 }
 
 interface TopicLimit {
@@ -45,7 +50,7 @@ const formatTime = (ms: number) => {
   return `${days}d ${hours}h ${minutes}m`
 }
 
-const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasModuleAccess }) => {
+const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasModuleAccess, bonusRemaining = 0 }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
   const token = user?.token
@@ -140,17 +145,20 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasMod
     }
   }, [limits])
 
+  const hasBonusAttempt = !hasModuleAccess && bonusRemaining > 0
+
   const startInterview = async () => {
-    if (!hasModuleAccess) {
+    if (!hasModuleAccess && !hasBonusAttempt) {
       return alert('Unlock AI Self Interview, or subscribe to a full plan, to start an interview.')
     }
     if (!topic) return alert('Please select a topic')
 
-    const backendRemaining = limits[topic]?.remaining ?? MAX_ATTEMPTS
-    const remaining = getRemaining(backendRemaining)
-
-    if (remaining <= 0) {
-      return alert(`You have reached the max attempts for ${topic}. Please wait until cooldown expires.`)
+    if (!hasBonusAttempt) {
+      const backendRemaining = limits[topic]?.remaining ?? MAX_ATTEMPTS
+      const remaining = getRemaining(backendRemaining)
+      if (remaining <= 0) {
+        return alert(`You have reached the max attempts for ${topic}. Please wait until cooldown expires.`)
+      }
     }
 
     const response = await fetch(`${baseURL}/start`, {
@@ -225,7 +233,9 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasMod
             )}
             <Form.Text style={{ display: 'block', marginTop: '0.9rem', fontSize: '0.85rem', color: PAGE_GRAY }}>
               {!hasModuleAccess
-                ? 'Locked — unlock AI Self Interview above to start practicing.'
+                ? hasBonusAttempt
+                  ? 'You have 1 bonus attempt available — usable on any topic.'
+                  : 'Locked — unlock AI Self Interview above to start practicing.'
                 : 'Max 5 attempts per topic in 30 days. Attempts reset 30 days after your first attempt.'}
             </Form.Text>
           </Form.Group>
@@ -236,7 +246,7 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasMod
             onClick={startInterview}
             disabled={
               !topic ||
-              getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+              (!hasBonusAttempt && getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0)
             }
             style={{
               backgroundColor: '#ff7a00',
@@ -246,14 +256,14 @@ const TopicSelection: React.FC<TopicSelectionProps> = ({ onStart, limits, hasMod
               fontWeight: 600,
               transition: 'all 0.3s ease',
               opacity:
-                getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
+                !hasBonusAttempt && getRemaining(limits[topic]?.remaining ?? MAX_ATTEMPTS) <= 0
                   ? 0.6
                   : 1,
             }}
           >
-            {!hasModuleAccess
+            {!hasModuleAccess && !hasBonusAttempt
               ? <>Locked — Unlock to Start</>
-              : <><FaRocket size={14} style={{ marginRight: 8 }} /> Start Interview</>}
+              : <><FaRocket size={14} style={{ marginRight: 8 }} /> Start Interview{hasBonusAttempt ? ' (Bonus Attempt)' : ''}</>}
           </Button>
         </div>
 

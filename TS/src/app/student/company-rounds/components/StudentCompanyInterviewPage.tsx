@@ -40,6 +40,10 @@ type Company = {
   companyName: string
   title?: string
   logoUrl?: string
+  // Server-computed (companyInterviewRoutes.js GET /) — full module access,
+  // OR this exact company bought individually (₹49/12mo, keyed by
+  // companyName so it covers every paper), OR the single free-trial paper.
+  unlocked?: boolean
   role: string
   package: string
   location: string
@@ -746,7 +750,13 @@ const StudentCompanyInterviewPage = ({ companyFilter }: { companyFilter?: string
                 )}
                 {filteredCompanies.map(company => {
                   const isSelected = selectedCompany?._id === company._id
-                  const isLocked = isPending && company._id !== freeCompanyId
+                  // The list endpoint already resolves the real access
+                  // check server-side (full module, this exact company
+                  // bought individually, or the free-trial paper) — trust
+                  // it over the local freeCompanyId guess when present.
+                  const isLocked = typeof company.unlocked === 'boolean'
+                    ? !company.unlocked
+                    : isPending && company._id !== freeCompanyId
                   const isLoading = loadingCompanyId === company._id
                   const diff = getDifficulty(company)
                   const [fg, bg] = avatarColor(company.companyName)

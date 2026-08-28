@@ -124,6 +124,61 @@ const EnglishVoicePractice: React.FC = () => {
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
   }
 
+  // Buy one attempt outright for a small fixed fee instead of the 6/12-month
+  // unlock — mirrors buyModule above but hits the single-attempt endpoints
+  // and just raises this month's attempt cap by 1 (server-side) rather than
+  // touching moduleAccess.
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const [buyingSingleAttempt, setBuyingSingleAttempt] = useState(false)
+  const buySingleAttempt = () => {
+    if (!token || buyingSingleAttempt) return
+    setBuyingSingleAttempt(true)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'speakingPractice' }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: (user as any)?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'speakingPractice' }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchSpeakingHistory()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingSingleAttempt(false)
+            }
+          },
+          modal: { ondismiss: () => setBuyingSingleAttempt(false) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingSingleAttempt(false)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingSingleAttempt(false) })
+  }
+
   const [messages, setMessages] = useState<Message[]>([])
   const [feedback, setFeedback] = useState('')
   const [feedbackScore, setFeedbackScore] = useState<number | null>(null)
@@ -187,10 +242,14 @@ const EnglishVoicePractice: React.FC = () => {
   const canStop = sessionStarted && !sessionEnded
   const canNewSession = sessionEnded
 
-  // The server already returns the correct effective limit (30 unlocked /
-  // 5 free-trial) in history.monthlyLimit — no need to re-derive it here.
+  // The server already returns the correct effective limit in
+  // history.monthlyLimit — full unlock (30), or 0 plus any single-attempt
+  // top-ups a locked student bought this month. Gate purely on that count
+  // rather than `hasAccess`, so a bought single attempt is actually usable
+  // even though the module itself is still locked.
   const maxAllowedAttempts = history?.monthlyLimit ?? 0
-  const isLimitReached = !hasAccess || (!!history && history.attemptsUsed >= maxAllowedAttempts)
+  const attemptsAvailable = !!history && history.attemptsUsed < maxAllowedAttempts
+  const isLimitReached = !attemptsAvailable
   const canStart = !sessionStarted && !isLimitReached
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
@@ -1793,7 +1852,7 @@ const EnglishVoicePractice: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap' }}>
                 <button onClick={handleOpenSession} disabled={!moduleInfoLoaded || isLimitReached}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: ORANGE, color: '#fff', border: 'none', borderRadius: 14, padding: '14px 22px', fontSize: 14, fontWeight: 800, cursor: (!moduleInfoLoaded || isLimitReached) ? 'not-allowed' : 'pointer', boxShadow: `0 6px 20px ${ORANGE}55`, opacity: (!moduleInfoLoaded || isLimitReached) ? 0.5 : 1, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  <FaMicrophone /> {!moduleInfoLoaded ? 'Loading…' : !hasAccess ? 'Locked — Unlock to Start' : 'Start Speaking Now'}
+                  <FaMicrophone /> {!moduleInfoLoaded ? 'Loading…' : attemptsAvailable ? 'Start Speaking Now' : 'Locked — Unlock to Start'}
                 </button>
 
                 {moduleInfoLoaded && !hasAccess && (() => {
@@ -1803,6 +1862,22 @@ const EnglishVoicePractice: React.FC = () => {
                   const isBusy = buyingPlan === selectedPlan
                   return (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'rgba(255,255,255,0.85)', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+                      <button
+                        onClick={buySingleAttempt}
+                        disabled={buyingSingleAttempt || attemptsAvailable}
+                        title={attemptsAvailable ? 'You already have a bonus attempt available' : 'Try one session without committing to a plan'}
+                        style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                          padding: '6px 14px', borderRadius: 7, minWidth: 78, marginRight: 4,
+                          border: '1.5px dashed #f0a860', cursor: (buyingSingleAttempt || attemptsAvailable) ? 'not-allowed' : 'pointer',
+                          background: '#fff7ed', opacity: attemptsAvailable ? 0.6 : 1,
+                        }}
+                      >
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: ORANGE, whiteSpace: 'nowrap' }}>1 Attempt</span>
+                        <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>
+                          {attemptsAvailable ? '✓' : buyingSingleAttempt ? '…' : `₹${SINGLE_ATTEMPT_PRICE_RUPEES}`}
+                        </span>
+                      </button>
                       {(['6months', '12months'] as const).map((plan) => {
                         const price = plan === '6months' ? price6 : price12
                         const active = selectedPlan === plan
@@ -1848,7 +1923,7 @@ const EnglishVoicePractice: React.FC = () => {
                   )
                 })()}
               </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                 <FaClock /> Jump into a real conversation for just 60 seconds!
               </div>
             </div>

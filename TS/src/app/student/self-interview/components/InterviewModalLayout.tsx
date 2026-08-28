@@ -76,6 +76,9 @@ const InterviewModalLayout = () => {
   }
   const hasAccess = moduleInfoLoaded && (moduleInfo ? (moduleInfo.fullAccess || moduleInfo.active) : user?.status?.toLowerCase() === 'approved')
   const modulePurchased = moduleInfoLoaded && !!moduleInfo?.active && !moduleInfo?.fullAccess
+  // Unused bought single-attempt (₹9) bonuses this month — not topic-specific,
+  // so a locked student can spend it on any one topic (see attemptBonus.js).
+  const bonusRemaining = limits?.bonusRemaining ?? 0
 
   const buyModule = (plan: ModulePlan) => {
     if (!token || buyingPlan) return
@@ -124,6 +127,61 @@ const InterviewModalLayout = () => {
         razorpay.open()
       })
       .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingPlan(null) })
+  }
+
+  // Buy one interview attempt outright for a small fixed fee instead of the
+  // 6/12-month unlock — mirrors buyModule above but hits the single-attempt
+  // endpoints and just grants +1 bonus attempt (server-side), usable on ANY
+  // one topic (the bonus isn't topic-specific — see attemptBonus.js).
+  const SINGLE_ATTEMPT_PRICE_RUPEES = 9
+  const [buyingSingleAttempt, setBuyingSingleAttempt] = useState(false)
+  const buySingleAttempt = () => {
+    if (!token || buyingSingleAttempt) return
+    setBuyingSingleAttempt(true)
+    setBuyError(null)
+    fetch(`${baseURL}/api/student/module-access/single-attempt/create-order`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ moduleKey: 'selfInterview' }),
+    })
+      .then((r) => r.json())
+      .then((order) => {
+        if (!order.success) throw new Error(order.message || 'Failed to start payment')
+        const options = {
+          key: order.key,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Eklav',
+          description: order.moduleLabel,
+          order_id: order.orderId,
+          prefill: { name: user?.fullName || '', email: user?.email || '' },
+          theme: { color: '#ff7a00' },
+          handler: async (response: any) => {
+            try {
+              const verifyRes = await fetch(`${baseURL}/api/student/module-access/single-attempt/verify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ ...response, moduleKey: 'selfInterview' }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyData.success) throw new Error(verifyData.message || 'Payment verification failed')
+              fetchLimits()
+            } catch (e: any) {
+              setBuyError(e.message || 'Payment verification failed. Contact support.')
+            } finally {
+              setBuyingSingleAttempt(false)
+            }
+          },
+          modal: { ondismiss: () => setBuyingSingleAttempt(false) },
+        }
+        const razorpay = new (window as any).Razorpay(options)
+        razorpay.on('payment.failed', (response: any) => {
+          setBuyError(`Payment failed: ${response.error?.description || 'Unknown error'}`)
+          setBuyingSingleAttempt(false)
+        })
+        razorpay.open()
+      })
+      .catch((e) => { setBuyError(e.message || 'Failed to start payment'); setBuyingSingleAttempt(false) })
   }
 
   useEffect(() => {
@@ -221,6 +279,22 @@ const InterviewModalLayout = () => {
           const isBusy = buyingPlan === selectedPlan
           return (
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: '#fff', border: '1px solid #f0d9c0', borderRadius: 10, padding: 4, flexShrink: 0 }}>
+              <button
+                onClick={buySingleAttempt}
+                disabled={buyingSingleAttempt || bonusRemaining > 0}
+                title={bonusRemaining > 0 ? 'You already have a bonus attempt available' : 'Try one interview (any topic) without committing to a plan'}
+                style={{
+                  display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 1,
+                  padding: '6px 14px', borderRadius: 7, minWidth: 78, marginRight: 4,
+                  border: '1.5px dashed #f0a860', cursor: (buyingSingleAttempt || bonusRemaining > 0) ? 'not-allowed' : 'pointer',
+                  background: '#fff7ed', opacity: bonusRemaining > 0 ? 0.6 : 1,
+                }}
+              >
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: '#ff7a00', whiteSpace: 'nowrap' as const }}>1 Attempt</span>
+                <span style={{ fontSize: 14, fontWeight: 800, color: '#1a1a1a' }}>
+                  {bonusRemaining > 0 ? '✓' : buyingSingleAttempt ? '…' : `₹${SINGLE_ATTEMPT_PRICE_RUPEES}`}
+                </span>
+              </button>
               {(['6months', '12months'] as const).map((plan) => {
                 const price = plan === '6months' ? price6 : price12
                 const active = selectedPlan === plan
@@ -312,7 +386,7 @@ const InterviewModalLayout = () => {
             <p style={{ color: PAGE_GRAY, fontSize: 13, margin: '10px 0 0' }}>Practice interviews on React, JavaScript, Node.js and more.</p>
           </div>
           <div style={{ padding: '16px 20px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <TopicSelection onStart={handleStart} limits={limits?.limits || {}} hasModuleAccess={hasAccess} />
+            <TopicSelection onStart={handleStart} limits={limits?.limits || {}} hasModuleAccess={hasAccess} bonusRemaining={bonusRemaining} />
           </div>
           <div style={{ borderTop: `1px solid ${PAGE_BORDER}`, padding: '12px 20px', display: 'flex', gap: 0 }}>
             {[

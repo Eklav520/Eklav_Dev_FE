@@ -122,7 +122,7 @@ const ReadingPractice: React.FC = () => {
 
   // 🔹 Start practice & fetch AI reading prompt
   const startPractice = async () => {
-    if (!hasAccess) return
+    if (isLimitReached) return
     setStarted(true)
     setLoading(true)
     setFeedback(null)
@@ -357,22 +357,22 @@ const ReadingPractice: React.FC = () => {
           {/* Start button */}
           <button
             onClick={startPractice}
-            disabled={!hasAccess || isLimitReached}
+            disabled={isLimitReached}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-              background: (!hasAccess || isLimitReached) ? '#cbd5e1' : BLUE,
+              background: isLimitReached ? '#cbd5e1' : BLUE,
               color: '#fff', fontWeight: 800, fontSize: 16,
-              cursor: (!hasAccess || isLimitReached) ? 'not-allowed' : 'pointer',
+              cursor: isLimitReached ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              boxShadow: (!hasAccess || isLimitReached) ? 'none' : `0 6px 20px ${BLUE}35`,
+              boxShadow: isLimitReached ? 'none' : `0 6px 20px ${BLUE}35`,
               marginBottom: 14,
             }}
           >
             <FaPlay style={{ fontSize: 14 }} />
-            {!hasAccess ? 'Locked — Unlock to Start' : isLimitReached ? 'Limit Reached' : 'Start Reading Practice'}
+            {isLimitReached ? (!hasAccess ? 'Locked — Unlock to Start' : 'Limit Reached') : 'Start Reading Practice'}
           </button>
 
-          {(!hasAccess || isLimitReached) && (
+          {isLimitReached && (
             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 12, padding: '12px 16px', fontSize: 13, color: '#9a3412', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
               <FaBullseye style={{ flexShrink: 0 }} />
               {!hasAccess
