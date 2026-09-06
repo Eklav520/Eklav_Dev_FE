@@ -19,6 +19,7 @@ interface Message {
   sender: 'user' | 'eklav'
   text: string
   type: 'user' | 'correction' | 'reply'
+  note?: string
 }
 
 declare global {
@@ -183,6 +184,8 @@ const EnglishVoicePractice: React.FC = () => {
   const [feedback, setFeedback] = useState('')
   const [feedbackScore, setFeedbackScore] = useState<number | null>(null)
   const [feedbackBreakdown, setFeedbackBreakdown] = useState<{ grammar: number; fluency: number; vocabulary: number } | null>(null)
+  const [feedbackMistakes, setFeedbackMistakes] = useState<{ said: string; correction: string; note?: string }[]>([])
+  const [feedbackConversation, setFeedbackConversation] = useState('')
   const [sessionStarted, setSessionStarted] = useState(false)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -213,6 +216,15 @@ const EnglishVoicePractice: React.FC = () => {
   const transcriptRef = useRef('')
   const lastUserRef = useRef('')
   const accumulatedRef = useRef('')   // accumulates finals across pauses within one utterance
+  // Rolling conversation history sent to /api/english/chat so the tutor keeps
+  // context — stays on the same topic and tracks what was said earlier
+  // (past/present/future). Without this every turn was context-free.
+  const historyRef = useRef<{ role: 'user' | 'assistant'; content: string }[]>([])
+  // Student-side mistakes collected across the session (the per-turn corrections)
+  // and the full two-sided dialogue, both surfaced in the Feedback tab and sent
+  // to /api/english/end.
+  const mistakesRef = useRef<{ said: string; correction: string; note: string }[]>([])
+  const conversationRef = useRef('')
   const sessionActiveRef = useRef(false)
   const chatBodyRef = useRef<HTMLDivElement>(null)
   const [history, setHistory] = useState<any>(null)
@@ -291,6 +303,10 @@ const EnglishVoicePractice: React.FC = () => {
 
   const MAX_NO_RESPONSE = 3
   const SILENCE_TIMEOUT = 6000
+  // How long to wait after the student's last spoken word before sending their
+  // turn to the AI. Kept generous — learners speak slowly with mid-sentence
+  // pauses, and a short window was cutting them off and sending fragments.
+  const PAUSE_BEFORE_SEND_MS = 5000
   const ttsCountRef = useRef(0)
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
@@ -484,6 +500,8 @@ const EnglishVoicePractice: React.FC = () => {
         monthlyLimit: data.monthlyLimit,
         latestFeedback: data.latestFeedback ?? null,
         latestBreakdown: data.latestBreakdown ?? null,
+        latestMistakes: data.latestMistakes ?? [],
+        latestConversation: data.latestConversation ?? '',
         attempts: data.attempts ?? [],
       })
     } catch (error) {
@@ -666,7 +684,7 @@ const EnglishVoicePractice: React.FC = () => {
         accumulatedRef.current = (accumulatedRef.current + ' ' + newFinal.trim()).trim()
         setLiveSpeech(accumulatedRef.current)
         clearTimeout(speechPauseTimerRef.current)
-        // 2s pause after last final word before sending
+        // Wait for a real pause (not a slow speaker's mid-sentence gap) before sending
         speechPauseTimerRef.current = setTimeout(async () => {
           const text = accumulatedRef.current.trim()
           if (!sessionActiveRef.current || !text || text === lastUserRef.current) return
@@ -676,8 +694,9 @@ const EnglishVoicePractice: React.FC = () => {
           clearSilenceTimer()
           setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
           transcriptRef.current += `You: ${text}\n`
+          conversationRef.current += `You: ${text}\n`
           await sendToRob(text)
-        }, 2000)
+        }, PAUSE_BEFORE_SEND_MS)
       }
 
       if (interim.trim()) {
@@ -804,20 +823,30 @@ const EnglishVoicePractice: React.FC = () => {
     startThinkingTimer()
 
     try {
-      const { data } = await axios.post(`${baseURL}/api/english/chat`, { userMessage: msg })
+      // history holds only PRIOR turns — the server appends this userMessage itself
+      const { data } = await axios.post(`${baseURL}/api/english/chat`, {
+        userMessage: msg,
+        history: historyRef.current,
+      })
+
+      const turn: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: msg }]
+      if (data.reply) turn.push({ role: 'assistant', content: data.reply })
+      historyRef.current = [...historyRef.current, ...turn].slice(-20)
 
       const toSpeak: Array<{ spokenText: string; displayText: string; msgId: string; displayOffset: number }> = []
       if (data.correction && data.correction !== '-') {
         const id = mkId()
-        setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction' }])
+        setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction', note: data.mistakeNote || undefined }])
         setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
         toSpeak.push({ spokenText: 'Correction: ' + data.correction, displayText: data.correction, msgId: id, displayOffset: 'Correction: '.length })
+        mistakesRef.current = [...mistakesRef.current, { said: msg, correction: data.correction, note: data.mistakeNote || '' }]
       }
       if (data.reply) {
         const id = mkId()
         setMessages((p) => [...p, { id, sender: 'eklav', text: data.reply, type: 'reply' }])
         setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
         toSpeak.push({ spokenText: data.reply, displayText: data.reply, msgId: id, displayOffset: 0 })
+        conversationRef.current += `Coach: ${data.reply}\n`
       }
 
       setIsTyping(false)
@@ -848,11 +877,16 @@ const EnglishVoicePractice: React.FC = () => {
     stopListening()
     speechSynthesis.cancel()
     transcriptRef.current = ''
+    historyRef.current = []
+    mistakesRef.current = []
+    conversationRef.current = ''
     lastUserRef.current = ''
     setMessages([])
     setFeedback('')
     setFeedbackScore(null)
     setFeedbackBreakdown(null)
+    setFeedbackMistakes([])
+    setFeedbackConversation('')
     setActiveSessionTab('conversation')
     setSessionStarted(true)
     setSessionEnded(false)
@@ -920,10 +954,18 @@ const EnglishVoicePractice: React.FC = () => {
 
     try {
       const durationSeconds = Math.max(0, 180 - timeLeft)
-      const res = await axios.post(`${baseURL}/api/english/end`, { transcript: transcriptRef.current, durationSeconds, timeLimit: 180 }, { headers: { Authorization: `Bearer ${token}` } })
+      const res = await axios.post(`${baseURL}/api/english/end`, {
+        transcript: transcriptRef.current,
+        conversation: conversationRef.current,
+        mistakes: mistakesRef.current,
+        durationSeconds,
+        timeLimit: 180,
+      }, { headers: { Authorization: `Bearer ${token}` } })
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
       setFeedbackBreakdown(res.data.breakdown ?? null)
+      setFeedbackMistakes(res.data.mistakes ?? mistakesRef.current)
+      setFeedbackConversation(res.data.conversation ?? conversationRef.current)
       // A new attempt always lands in the current month — jump the picker
       // back there so the just-completed attempt is visible immediately.
       const nowMonth = getMonthKey(new Date())
@@ -1082,6 +1124,8 @@ const EnglishVoicePractice: React.FC = () => {
     setFeedback('')
     setFeedbackScore(null)
     setFeedbackBreakdown(null)
+    setFeedbackMistakes([])
+    setFeedbackConversation('')
     setTimeLeft(180)
     setIsPaused(false)
     isPausedRef.current = false
@@ -1125,6 +1169,8 @@ const EnglishVoicePractice: React.FC = () => {
     setFeedback(history.latestFeedback)
     setFeedbackBreakdown(history.latestBreakdown ?? null)
     setFeedbackScore(history.latestScore ?? null)
+    setFeedbackMistakes(history.latestMistakes ?? [])
+    setFeedbackConversation(history.latestConversation ?? '')
     setActiveSessionTab('feedback')
     setShowSessionModal(true)
   }
@@ -1460,6 +1506,11 @@ const EnglishVoicePractice: React.FC = () => {
                               </div>
                             )}
                             {displayText}{isTypingOut && <span style={{ animation: 'blink 1s infinite' }}>|</span>}
+                            {m.type === 'correction' && m.note && !isTypingOut && (
+                              <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #bbf7d0', fontSize: 12.5, color: '#3f6212', lineHeight: 1.5 }}>
+                                <strong style={{ fontWeight: 700 }}>What changed:</strong> {m.note}
+                              </div>
+                            )}
                           </div>
                         </div>
                         {m.sender === 'user' && (
@@ -1693,6 +1744,57 @@ const EnglishVoicePractice: React.FC = () => {
                                       {title && <strong style={{ color: PAGE_TEXT }}>{title}: </strong>}
                                       {body}
                                     </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Conversation mistakes — student's side */}
+                        {feedbackMistakes.length > 0 && (
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: 8, background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FaEdit style={{ color: '#dc2626', fontSize: 12 }} />
+                              </div>
+                              Your Mistakes ({feedbackMistakes.length})
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {feedbackMistakes.map((m, i) => (
+                                <div key={i} style={{ background: PAGE_BG, borderRadius: 10, padding: '10px 12px', border: '1px solid #e2e8f0' }}>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', marginBottom: 3 }}>You said</div>
+                                  <div style={{ fontSize: 12.5, color: '#dc2626', textDecoration: 'line-through', lineHeight: 1.5 }}>{m.said}</div>
+                                  <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', margin: '6px 0 3px' }}>Correct sentence</div>
+                                  <div style={{ fontSize: 12.5, color: '#16a34a', lineHeight: 1.5 }}>{m.correction}</div>
+                                  {m.note && (
+                                    <div style={{ fontSize: 12, color: '#3f6212', lineHeight: 1.5, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e2e8f0' }}>
+                                      <strong style={{ fontWeight: 700 }}>What changed:</strong> {m.note}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Full two-sided conversation */}
+                        {feedbackConversation.trim() && (
+                          <div style={{ background: CARD_BG, border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, color: PAGE_TEXT, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 26, height: 26, borderRadius: 8, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FaComments style={{ color: '#2563eb', fontSize: 12 }} />
+                              </div>
+                              Full Conversation
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 260, overflowY: 'auto' }}>
+                              {feedbackConversation.split('\n').map(l => l.trim()).filter(Boolean).map((line, i) => {
+                                const isYou = /^you:/i.test(line)
+                                const text = line.replace(/^(you|coach):\s*/i, '')
+                                return (
+                                  <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, lineHeight: 1.5 }}>
+                                    <span style={{ flexShrink: 0, fontWeight: 700, color: isYou ? ORANGE : '#2563eb', minWidth: 46 }}>{isYou ? 'You' : 'Coach'}</span>
+                                    <span style={{ color: PAGE_TEXT }}>{text}</span>
                                   </div>
                                 )
                               })}
