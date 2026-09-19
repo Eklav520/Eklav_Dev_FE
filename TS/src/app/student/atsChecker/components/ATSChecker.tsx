@@ -5,8 +5,10 @@ import { TEMPLATES, parseResume, downloadResumePdf, downloadResumeDocx } from ".
 import ResumePreview from "./ResumePreview";
 import {
   Upload, CheckCircle, Building2, FileText, BarChart3, Trophy,
-  Shield, ArrowRight, Target, Trash2, AlertCircle, Sparkles, Eye,
-  Check, ChevronRight,
+  Shield, ArrowRight, ArrowLeft, Target, Trash2, AlertCircle, Sparkles, Eye,
+  Check, ChevronRight, X, Lock, Unlock, Star, Lightbulb, RefreshCw,
+  Palette, Download, Copy, PartyPopper, User, GraduationCap, Settings,
+  Wrench, Award, Briefcase, ClipboardList, FileEdit,
 } from 'lucide-react';
 
 interface SectionStatus {
@@ -57,14 +59,14 @@ interface RecentAnalysis {
 }
 
 const SECTION_DEFS = [
-  { key: "contact" as keyof SectionStatus, label: "Contact Info", icon: "👤", regex: /email|phone|mobile|linkedin|github|portfolio/, missingMsg: "Add email, phone, LinkedIn URL", presentMsg: "Contact details found" },
-  { key: "summary" as keyof SectionStatus, label: "Summary / Objective", icon: "📋", regex: /summary|objective|profile|about me|about myself/, missingMsg: "Add a 2-3 line professional summary at the top", presentMsg: "Profile summary present" },
-  { key: "education" as keyof SectionStatus, label: "Education", icon: "🎓", regex: /education|degree|bachelor|master|university|college|b\.tech|m\.tech|b\.e|m\.e|bsc|msc|graduated/, missingMsg: "Add education with degree & graduation year", presentMsg: "Education section found" },
-  { key: "skills" as keyof SectionStatus, label: "Technical Skills", icon: "⚙️", regex: /skills|technical skills|tools|technologies|proficient|expertise|stack/, missingMsg: "Add a dedicated technical skills section", presentMsg: "Skills section present" },
-  { key: "experience" as keyof SectionStatus, label: "Work Experience", icon: "💼", regex: /experience|work experience|employment|internship|worked at|position|role at/, missingMsg: "Add internships, jobs or freelance experience", presentMsg: "Experience section present" },
-  { key: "projects" as keyof SectionStatus, label: "Projects", icon: "🛠️", regex: /project|portfolio|case study|built|developed|created/, missingMsg: "Add 2-3 projects with tech stack and outcomes", presentMsg: "Projects section present" },
-  { key: "certifications" as keyof SectionStatus, label: "Certifications", icon: "🏅", regex: /certificate|certification|certified|course completion|credential/, missingMsg: "Consider adding relevant certifications", presentMsg: "Certifications listed" },
-  { key: "achievements" as keyof SectionStatus, label: "Achievements", icon: "🏆", regex: /achievement|award|honor|winner|recognition|rank|hackathon|competition/, missingMsg: "Add awards, rankings or notable achievements", presentMsg: "Achievements mentioned" },
+  { key: "contact" as keyof SectionStatus, label: "Contact Info", icon: User, regex: /email|phone|mobile|linkedin|github|portfolio/, missingMsg: "Add email, phone, LinkedIn URL", presentMsg: "Contact details found" },
+  { key: "summary" as keyof SectionStatus, label: "Summary / Objective", icon: ClipboardList, regex: /summary|objective|profile|about me|about myself/, missingMsg: "Add a 2-3 line professional summary at the top", presentMsg: "Profile summary present" },
+  { key: "education" as keyof SectionStatus, label: "Education", icon: GraduationCap, regex: /education|degree|bachelor|master|university|college|b\.tech|m\.tech|b\.e|m\.e|bsc|msc|graduated/, missingMsg: "Add education with degree & graduation year", presentMsg: "Education section found" },
+  { key: "skills" as keyof SectionStatus, label: "Technical Skills", icon: Settings, regex: /skills|technical skills|tools|technologies|proficient|expertise|stack/, missingMsg: "Add a dedicated technical skills section", presentMsg: "Skills section present" },
+  { key: "experience" as keyof SectionStatus, label: "Work Experience", icon: Briefcase, regex: /experience|work experience|employment|internship|worked at|position|role at/, missingMsg: "Add internships, jobs or freelance experience", presentMsg: "Experience section present" },
+  { key: "projects" as keyof SectionStatus, label: "Projects", icon: Wrench, regex: /project|portfolio|case study|built|developed|created/, missingMsg: "Add 2-3 projects with tech stack and outcomes", presentMsg: "Projects section present" },
+  { key: "certifications" as keyof SectionStatus, label: "Certifications", icon: Award, regex: /certificate|certification|certified|course completion|credential/, missingMsg: "Consider adding relevant certifications", presentMsg: "Certifications listed" },
+  { key: "achievements" as keyof SectionStatus, label: "Achievements", icon: Trophy, regex: /achievement|award|honor|winner|recognition|rank|hackathon|competition/, missingMsg: "Add awards, rankings or notable achievements", presentMsg: "Achievements mentioned" },
 ];
 
 const detectSections = (text: string): SectionStatus =>
@@ -395,7 +397,7 @@ const ATSChecker: React.FC = () => {
               ATS Resume Checker
               {!hasAtsAccess && (
                 <span title="Unlock this module, or subscribe to a full plan" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: ORANGE, fontSize: 12, fontWeight: 700 }}>
-                  🔒 (Premium Module)
+                  <Lock size={12} /> (Premium Module)
                 </span>
               )}
             </h1>
@@ -522,7 +524,7 @@ const ATSChecker: React.FC = () => {
                       </div>
                     </div>
                     {i < ATS_STEPS.length - 1 && (
-                      <div style={{ flexShrink: 0, margin: '0 8px', color: i < activeStep ? ORANGE : BORDER, fontSize: 18, lineHeight: 1 }}>→</div>
+                      <div style={{ flexShrink: 0, margin: '0 8px', color: i < activeStep ? ORANGE : BORDER, display: 'flex', alignItems: 'center' }}><ArrowRight size={16} /></div>
                     )}
                   </React.Fragment>
                 );
@@ -685,7 +687,7 @@ const ATSChecker: React.FC = () => {
                   onClick={() => setCurrentStep(1)}
                   style={{ background: CARD_BG, border: `1.5px solid ${BORDER}`, color: GRAY, borderRadius: 10, padding: '11px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  ← Back
+                  <ArrowLeft size={14} /> Back
                 </button>
                 <button
                   onClick={handleSubmit}
@@ -731,7 +733,7 @@ const ATSChecker: React.FC = () => {
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <button onClick={() => setCurrentStep(2)}
                     style={{ background: CARD_BG, border: `1px solid ${BORDER}`, color: GRAY, borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                    ← Edit Details
+                    <ArrowLeft size={12} /> Edit Details
                   </button>
                   <button onClick={() => setShowResumeModal(true)}
                     style={{ background: BG, border: `1px solid ${BORDER}`, color: GRAY, borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -771,13 +773,17 @@ const ATSChecker: React.FC = () => {
                       <div style={{ margin: '8px 0' }}>
                         <CircleScore score={Math.round(animatedJd)} size={80} />
                       </div>
-                      <div style={{ fontSize: 12, color: scoreColor(result.jd_match_score), fontWeight: 600 }}>
-                        {result.jd_match_score >= 70 ? '✅ Likely to pass ATS' : result.jd_match_score >= 40 ? '⚠️ Add more JD keywords' : '❌ High rejection risk'}
+                      <div style={{ fontSize: 12, color: scoreColor(result.jd_match_score), fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                        {result.jd_match_score >= 70
+                          ? <><CheckCircle size={13} /> Likely to pass ATS</>
+                          : result.jd_match_score >= 40
+                          ? <><AlertCircle size={13} /> Add more JD keywords</>
+                          : <><X size={13} /> High rejection risk</>}
                       </div>
                     </>
                   ) : (
-                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: '#92400e', marginTop: 8 }}>
-                      💡 Paste a Job Description to unlock your JD Match score
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: '#92400e', marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left' }}>
+                      <Lightbulb size={14} style={{ flexShrink: 0 }} /> Paste a Job Description to unlock your JD Match score
                     </div>
                   )}
                 </div>
@@ -820,7 +826,7 @@ const ATSChecker: React.FC = () => {
               {sections && (
                 <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #7c3aed' }}>
-                    <span>📊</span>
+                    <BarChart3 size={15} color={TEXT} />
                     <h5 style={{ fontSize: 14, fontWeight: 700, color: TEXT, margin: 0 }}>Resume Section Analysis</h5>
                     <span style={{ marginLeft: 'auto', background: BG, color: GRAY, borderRadius: 10, padding: '2px 8px', fontSize: 11, fontWeight: 600 }}>{presentCount}/{SECTION_DEFS.length} found</span>
                   </div>
@@ -830,14 +836,16 @@ const ATSChecker: React.FC = () => {
                       const fb = def.key === "skills" ? result.section_feedback.skills : def.key === "experience" ? result.section_feedback.experience : def.key === "projects" ? result.section_feedback.projects : null;
                       const hasIssue = fb && (fb.includes("missing") || fb.includes("limited") || fb.includes("weak"));
                       const status = !present ? "miss" : hasIssue ? "warn" : "ok";
-                      const colors = { ok: { bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', dotBg: '#dcfce7', sym: '✓', text: '#166534' }, warn: { bg: '#fffbeb', border: '#fde68a', dot: '#d97706', dotBg: '#fef3c7', sym: '!', text: '#92400e' }, miss: { bg: '#fef2f2', border: '#fecaca', dot: '#dc2626', dotBg: '#fee2e2', sym: '✕', text: '#991b1b' } };
+                      const colors = { ok: { bg: '#f0fdf4', border: '#bbf7d0', dot: '#16a34a', dotBg: '#dcfce7', sym: Check, text: '#166534' }, warn: { bg: '#fffbeb', border: '#fde68a', dot: '#d97706', dotBg: '#fef3c7', sym: AlertCircle, text: '#92400e' }, miss: { bg: '#fef2f2', border: '#fecaca', dot: '#dc2626', dotBg: '#fee2e2', sym: X, text: '#991b1b' } };
                       const c = colors[status];
+                      const DefIcon = def.icon;
+                      const StatusIcon = c.sym;
                       return (
                         <div key={def.key} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 10, padding: '10px 12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                            <span style={{ fontSize: 14 }}>{def.icon}</span>
+                            <DefIcon size={14} color={c.text} />
                             <span style={{ fontSize: 11, fontWeight: 700, color: c.text, flex: 1 }}>{def.label}</span>
-                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: c.dotBg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, color: c.dot, flexShrink: 0 }}>{c.sym}</span>
+                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: c.dotBg, border: `1px solid ${c.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: c.dot, flexShrink: 0 }}><StatusIcon size={11} /></span>
                           </div>
                           <p style={{ fontSize: 10, color: c.text, margin: 0, lineHeight: 1.4 }}>{status === "miss" ? def.missingMsg : fb ? fb : def.presentMsg}</p>
                         </div>
@@ -851,21 +859,21 @@ const ATSChecker: React.FC = () => {
               {result.jd_match_score != null && (
                 <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 18px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #d97706' }}>
-                    <span>🎯</span>
+                    <Target size={15} color="#d97706" />
                     <h5 style={{ fontSize: 14, fontWeight: 700, color: TEXT, margin: 0 }}>JD Match{result.company_name ? ` — ${result.company_name}` : ''}</h5>
                     <span style={{ marginLeft: 'auto', background: '#fffbeb', color: '#d97706', borderRadius: 10, padding: '2px 8px', fontSize: 11, fontWeight: 700, border: '1px solid #fde68a' }}>{result.jd_match_score}% match</span>
                   </div>
                   <div style={{ padding: '16px 18px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', marginBottom: 8 }}>✅ Keywords matched in your resume</p>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><CheckCircle size={12} /> Keywords matched in your resume</p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                         {result.jd_matched_keywords?.length ? result.jd_matched_keywords.map((k, i) => <span key={i} style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600 }}>{k}</span>) : <span style={{ fontSize: 11, color: GRAY }}>No JD keywords matched</span>}
                       </div>
                     </div>
                     <div>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 8 }}>❌ JD keywords missing from your resume</p>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><X size={12} /> JD keywords missing from your resume</p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {result.jd_missing_keywords?.length ? result.jd_missing_keywords.map((k, i) => <span key={i} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600 }}>{k}</span>) : <span style={{ color: '#16a34a', fontSize: 11 }}>All JD keywords matched! 🎉</span>}
+                        {result.jd_missing_keywords?.length ? result.jd_missing_keywords.map((k, i) => <span key={i} style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, padding: '3px 8px', fontSize: 11, fontWeight: 600 }}>{k}</span>) : <span style={{ color: '#16a34a', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}><PartyPopper size={12} /> All JD keywords matched!</span>}
                       </div>
                     </div>
                   </div>
@@ -876,7 +884,7 @@ const ATSChecker: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #16a34a' }}>
-                    <span>✅</span><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Strengths</h5>
+                    <CheckCircle size={14} color="#16a34a" /><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Strengths</h5>
                     <span style={{ marginLeft: 'auto', background: '#f0fdf4', color: '#16a34a', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600 }}>{result.positive_points?.length || 0}</span>
                   </div>
                   <div style={{ padding: 14 }}>
@@ -884,7 +892,7 @@ const ATSChecker: React.FC = () => {
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {result.positive_points.map((p, i) => (
                           <li key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: i < result.positive_points!.length - 1 ? `1px solid ${BORDER}` : 'none', fontSize: 12, color: GRAY, lineHeight: 1.5 }}>
-                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>✓</span>{p}
+                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><Check size={11} /></span>{p}
                           </li>
                         ))}
                       </ul>
@@ -893,7 +901,7 @@ const ATSChecker: React.FC = () => {
                 </div>
                 <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #dc2626' }}>
-                    <span>⚠️</span><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Areas to Improve</h5>
+                    <AlertCircle size={14} color="#dc2626" /><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Areas to Improve</h5>
                     <span style={{ marginLeft: 'auto', background: '#fef2f2', color: '#dc2626', borderRadius: 10, padding: '1px 7px', fontSize: 11, fontWeight: 600 }}>{result.negative_points?.length || 0}</span>
                   </div>
                   <div style={{ padding: 14 }}>
@@ -901,7 +909,7 @@ const ATSChecker: React.FC = () => {
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {result.negative_points.map((p, i) => (
                           <li key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: i < result.negative_points!.length - 1 ? `1px solid ${BORDER}` : 'none', fontSize: 12, color: GRAY, lineHeight: 1.5 }}>
-                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 800, flexShrink: 0, marginTop: 1 }}>!</span>{p}
+                            <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}><AlertCircle size={11} /></span>{p}
                           </li>
                         ))}
                       </ul>
@@ -913,7 +921,7 @@ const ATSChecker: React.FC = () => {
               {/* Missing Keywords & Suggestions */}
               <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #0891b2' }}>
-                  <span>🛠️</span><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Missing Keywords & Suggestions</h5>
+                  <Wrench size={14} color="#0891b2" /><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Missing Keywords & Suggestions</h5>
                 </div>
                 <div style={{ padding: 16 }}>
                   {result.missing_keywords?.length ? (
@@ -928,7 +936,7 @@ const ATSChecker: React.FC = () => {
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {result.suggestions.map((s, i) => (
                         <li key={i} style={{ display: 'flex', gap: 8, padding: '6px 0', borderBottom: i < result.suggestions.length - 1 ? `1px solid ${BORDER}` : 'none', fontSize: 12, color: GRAY, lineHeight: 1.5 }}>
-                          <span style={{ color: '#0891b2', fontWeight: 700, flexShrink: 0 }}>→</span>{s}
+                          <span style={{ color: '#0891b2', flexShrink: 0, display: 'flex', alignItems: 'center', marginTop: 2 }}><ArrowRight size={13} /></span>{s}
                         </li>
                       ))}
                     </ul>
@@ -939,7 +947,7 @@ const ATSChecker: React.FC = () => {
               {/* Career Roadmap */}
               <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: `1px solid ${BORDER}`, borderLeft: '4px solid #059669' }}>
-                  <span>💼</span><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Career Roadmap</h5>
+                  <Briefcase size={14} color="#059669" /><h5 style={{ fontSize: 13, fontWeight: 700, color: TEXT, margin: 0 }}>Career Roadmap</h5>
                 </div>
                 <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   {[
@@ -1040,8 +1048,8 @@ const ATSChecker: React.FC = () => {
       {/* ── View Resume Modal ── */}
       <Modal show={showResumeModal} onHide={() => setShowResumeModal(false)} size="xl" centered dialogClassName="ats-modal-light">
         <Modal.Header closeButton style={{ background: CARD_BG, borderBottom: `1px solid ${BORDER}`, padding: '12px 20px' }}>
-          <Modal.Title style={{ fontSize: 14, fontWeight: 700, color: TEXT }}>
-            📄 {file?.name}
+          <Modal.Title style={{ fontSize: 14, fontWeight: 700, color: TEXT, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileText size={15} /> {file?.name}
             <span style={{ fontSize: 11, color: GRAY, marginLeft: 8 }}>{file ? (file.size / 1024).toFixed(0) + ' KB' : ''}</span>
           </Modal.Title>
         </Modal.Header>
@@ -1061,8 +1069,8 @@ const ATSChecker: React.FC = () => {
       {/* ── AI Improve Modal ── */}
       <Modal show={showImproveModal} onHide={() => setShowImproveModal(false)} size="xl" centered dialogClassName="ats-modal-dark">
         <Modal.Header closeButton className="ats-modal-header">
-          <Modal.Title style={{ fontSize: '1rem', fontWeight: 700, color: '#f0f0f0' }}>
-            ✨ AI-Improved Resume{companyName ? ` — Tailored for ${companyName}` : ''}
+          <Modal.Title style={{ fontSize: '1rem', fontWeight: 700, color: '#f0f0f0', display: 'flex', alignItems: 'center', gap: 7 }}>
+            <Sparkles size={16} /> AI-Improved Resume{companyName ? ` — Tailored for ${companyName}` : ''}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body className="ats-modal-body">
@@ -1072,7 +1080,7 @@ const ATSChecker: React.FC = () => {
               <div style={{ height: '75vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Score comparison */}
                 <div style={{ background: '#111116', border: '1px solid #1e1e24', borderRadius: 10, padding: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 10 }}>📊 Score Improvement</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}><BarChart3 size={13} /> Score Improvement</div>
                   {[
                     { label: 'Resume Quality', before: result?.score ?? 0, after: improveResult.estimated_ats_score ?? 0 },
                     ...(result?.jd_match_score != null ? [{ label: 'JD Match', before: result.jd_match_score, after: improveResult.estimated_jd_score ?? 0 }] : []),
@@ -1095,11 +1103,11 @@ const ATSChecker: React.FC = () => {
 
                 {improveResult.changes_made?.length ? (
                   <div style={{ background: '#111116', border: '1px solid #1e1e24', borderRadius: 10, padding: 14 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 8 }}>🔄 Changes Made</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 5 }}><RefreshCw size={12} /> Changes Made</div>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {improveResult.changes_made.map((c, i) => (
                         <li key={i} style={{ display: 'flex', gap: 6, fontSize: 11, color: '#ccc', padding: '3px 0', lineHeight: 1.4 }}>
-                          <span style={{ color: '#28a745', fontSize: 10, marginTop: 2 }}>✓</span>{c}
+                          <span style={{ color: '#28a745', marginTop: 2 }}><Check size={11} /></span>{c}
                         </li>
                       ))}
                     </ul>
@@ -1108,7 +1116,7 @@ const ATSChecker: React.FC = () => {
 
                 {/* Template selector */}
                 <div style={{ background: '#111116', border: '1px solid #1e1e24', borderRadius: 10, padding: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 10 }}>🎨 Choose Template</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}><Palette size={13} /> Choose Template</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                     {TEMPLATES.map(t => (
                       <button key={t.id} onClick={() => setSelectedTemplate(t.id)}
@@ -1123,7 +1131,7 @@ const ATSChecker: React.FC = () => {
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: '#e0e0e0' }}>{t.name}</div>
                         <div style={{ fontSize: 9, color: '#555', lineHeight: 1.3 }}>{t.desc}</div>
-                        {selectedTemplate === t.id && <span style={{ position: 'absolute', top: 6, right: 7, color: '#ff6b35', fontSize: 10, fontWeight: 800 }}>✓</span>}
+                        {selectedTemplate === t.id && <span style={{ position: 'absolute', top: 6, right: 7, color: '#ff6b35', display: 'flex' }}><Check size={12} /></span>}
                       </button>
                     ))}
                   </div>
@@ -1131,17 +1139,17 @@ const ATSChecker: React.FC = () => {
 
                 {/* Downloads */}
                 <div style={{ background: '#111116', border: '1px solid #1e1e24', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 2 }}>⬇️ Download Updated Resume</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#ff6b35', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 5 }}><Download size={13} /> Download Updated Resume</div>
                   <button onClick={handleDownloadDocx} style={{ background: 'rgba(23,105,255,0.12)', border: '1px solid rgba(23,105,255,0.3)', color: '#6699ff', padding: '10px 14px', borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                    <span style={{ fontSize: 20 }}>📝</span>
+                    <FileEdit size={20} />
                     <span><div style={{ fontWeight: 700, fontSize: 12 }}>Download Word</div><div style={{ fontSize: 10, opacity: 0.75 }}>.docx — editable</div></span>
                   </button>
                   <button onClick={handleDownloadPdf} style={{ background: 'rgba(220,53,69,0.12)', border: '1px solid rgba(220,53,69,0.3)', color: '#e06c75', padding: '10px 14px', borderRadius: 9, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                    <span style={{ fontSize: 20 }}>📄</span>
+                    <FileText size={20} />
                     <span><div style={{ fontWeight: 700, fontSize: 12 }}>Download PDF</div><div style={{ fontSize: 10, opacity: 0.75 }}>.pdf — ready to submit</div></span>
                   </button>
-                  <button onClick={handleCopy} style={{ background: 'rgba(40,167,69,0.12)', border: '1px solid rgba(40,167,69,0.3)', color: '#4caf72', padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                    {copied ? '✅ Copied!' : '📋 Copy to Clipboard'}
+                  <button onClick={handleCopy} style={{ background: 'rgba(40,167,69,0.12)', border: '1px solid rgba(40,167,69,0.3)', color: '#4caf72', padding: '9px 14px', borderRadius: 9, cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    {copied ? <><Check size={13} /> Copied!</> : <><Copy size={13} /> Copy to Clipboard</>}
                   </button>
                 </div>
               </div>
@@ -1153,8 +1161,8 @@ const ATSChecker: React.FC = () => {
                   <div style={{ display: 'flex', gap: 4, background: '#0a0a0e', border: '1px solid #2a2a32', borderRadius: 8, padding: 3 }}>
                     {(['preview', 'raw'] as const).map(m => (
                       <button key={m} onClick={() => setPreviewMode(m)}
-                        style={{ background: previewMode === m ? '#ff6b35' : 'transparent', border: 'none', color: previewMode === m ? '#fff' : '#666', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}>
-                        {m === 'preview' ? '👁 Preview' : '📝 Raw Text'}
+                        style={{ background: previewMode === m ? '#ff6b35' : 'transparent', border: 'none', color: previewMode === m ? '#fff' : '#666', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        {m === 'preview' ? <><Eye size={12} /> Preview</> : <><FileEdit size={12} /> Raw Text</>}
                       </button>
                     ))}
                   </div>
@@ -1174,8 +1182,8 @@ const ATSChecker: React.FC = () => {
       <Modal show={showPaywall} onHide={() => setShowPaywall(false)} centered dialogClassName="ats-modal-dark">
         <Modal.Body style={{ padding: 0 }}>
           <div style={{ background: 'linear-gradient(160deg,#0d0d0f,#111116)', borderRadius: 16, padding: '36px 28px', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: 12 }}>
-              {usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? '🔒' : '⭐'}
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center', color: usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? '#ef4444' : '#ff7a00' }}>
+              {usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? <Lock size={48} /> : <Star size={48} />}
             </div>
             {usage?.isSubscribed && (usage?.remaining ?? 0) <= 0 ? (
               <>
@@ -1189,12 +1197,12 @@ const ATSChecker: React.FC = () => {
                 <p style={{ color: '#aaa', fontSize: '0.88rem', lineHeight: 1.6, marginBottom: 6 }}>You've used your <strong style={{ color: '#fff' }}>1 free ATS check</strong>.</p>
                 <p style={{ color: '#666', fontSize: '0.82rem', marginBottom: 16 }}>Subscribe to get <strong style={{ color: '#ff7a00' }}>20 ATS checks</strong>, AI resume improvements, career roadmap insights and more.</p>
                 <div style={{ background: '#0a0a0e', border: '1px solid #1e1e24', borderRadius: 12, padding: '12px 18px', marginBottom: 22, textAlign: 'left' }}>
-                  {['✅ 20 ATS resume checks', '✅ AI-powered resume improvements', '✅ Job description keyword matching', '✅ Career roadmap & package insights', '✅ PDF & DOCX resume download'].map((f, i) => (
-                    <div key={i} style={{ color: '#ccc', fontSize: '0.82rem', padding: '4px 0', borderBottom: i < 4 ? '1px solid #1e1e24' : 'none' }}>{f}</div>
+                  {['20 ATS resume checks', 'AI-powered resume improvements', 'Job description keyword matching', 'Career roadmap & package insights', 'PDF & DOCX resume download'].map((f, i) => (
+                    <div key={i} style={{ color: '#ccc', fontSize: '0.82rem', padding: '4px 0', borderBottom: i < 4 ? '1px solid #1e1e24' : 'none', display: 'flex', alignItems: 'center', gap: 7 }}><CheckCircle size={13} color="#22c55e" style={{ flexShrink: 0 }} />{f}</div>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginBottom: 18 }}>
-                  <button style={{ background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: '0.95rem', color: '#fff', cursor: 'pointer' }} onClick={() => { setShowPaywall(false); window.location.href = '/student/subscription'; }}>🔓 View Plans</button>
+                  <button style={{ background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)', border: 'none', borderRadius: 10, padding: '10px 28px', fontWeight: 700, fontSize: '0.95rem', color: '#fff', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }} onClick={() => { setShowPaywall(false); window.location.href = '/student/subscription'; }}><Unlock size={15} /> View Plans</button>
                   <button style={{ background: 'transparent', border: '1px solid #2a2a32', borderRadius: 10, padding: '10px 20px', color: '#888', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }} onClick={() => setShowPaywall(false)}>Maybe Later</button>
                 </div>
 
