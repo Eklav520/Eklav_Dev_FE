@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { BulletLines } from './renderBoldText'
 
 // Template 4 — Elegant Minimal (ultra-clean, slate accent, generous whitespace)
 const accent = '#0f172a'
@@ -22,8 +23,9 @@ const ResumeElegant: React.FC<{ data: ResumeData }> = ({ data }) => {
 
   const Bullet = ({ text }: { text: string }) => (
     <div style={{ display: 'flex', gap: 10, marginBottom: 6, alignItems: 'flex-start' }}>
-      <div style={{ width: 1.5, height: 12, background: '#94a3b8', flexShrink: 0, marginTop: 4 }} />
-      <span style={{ fontSize: 11, color: '#334155', lineHeight: 1.7 }}>{text}</span>
+      {/* marginTop centers the 12px bar against the first line's box: (11*1.7 - 12) / 2 ≈ 3 */}
+      <div style={{ width: 1.5, height: 12, background: '#94a3b8', flexShrink: 0, marginTop: 3 }} />
+      <div style={{ flex: 1 }}><BulletLines text={text} fontSize={11} textColor="#334155" lineHeight={1.7} /></div>
     </div>
   )
 
@@ -38,6 +40,7 @@ const ResumeElegant: React.FC<{ data: ResumeData }> = ({ data }) => {
           {data.email    && <span>{data.email}</span>}
           {data.phone    && <span>{data.phone}</span>}
           {data.linkedin && <span>{data.linkedin}</span>}
+          {data.portfolio && <span>{data.portfolio}</span>}
           {location      && <span>{location}</span>}
         </div>
         <div style={{ height: 1, background: accent, marginTop: 14 }} />
@@ -86,6 +89,13 @@ const ResumeElegant: React.FC<{ data: ResumeData }> = ({ data }) => {
       {!!data.certifications?.length && (
         <Section title="Certifications">
           {data.certifications.map((c, i) => <Bullet key={i} text={c} />)}
+        </Section>
+      )}
+
+      {/* ── Key Achievements ── */}
+      {!!data.achievements?.length && (
+        <Section title="Key Achievements">
+          {data.achievements.map((a, i) => <Bullet key={i} text={a} />)}
         </Section>
       )}
 

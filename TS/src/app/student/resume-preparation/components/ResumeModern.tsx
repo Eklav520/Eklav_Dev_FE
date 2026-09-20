@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { BulletLines, ContactIcon } from './renderBoldText'
 
 // Template 2 — Modern Blue (clean sans-serif, colored header, two-column bullet skills)
 const accent = '#1d4ed8'
@@ -21,8 +22,9 @@ const ResumeModern: React.FC<{ data: ResumeData }> = ({ data }) => {
 
   const Bullet = ({ text }: { text: string }) => (
     <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'flex-start' }}>
-      <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0, marginTop: 5 }} />
-      <span style={{ fontSize: 11, color: '#374151', lineHeight: 1.7 }}>{text}</span>
+      {/* marginTop centers the dot against the first line's box: (11*1.7 - 6) / 2 ≈ 6 */}
+      <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, flexShrink: 0, marginTop: 6 }} />
+      <div style={{ flex: 1 }}><BulletLines text={text} fontSize={11} textColor="#374151" lineHeight={1.7} /></div>
     </div>
   )
 
@@ -34,10 +36,11 @@ const ResumeModern: React.FC<{ data: ResumeData }> = ({ data }) => {
         {name && <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: 0.5, marginBottom: 2 }}>{name}</div>}
         {data.role && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: 500, marginBottom: 10 }}>{data.role}</div>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 18px', fontSize: 10.5, color: 'rgba(255,255,255,0.8)' }}>
-          {data.email    && <span>✉ {data.email}</span>}
-          {data.phone    && <span>☏ {data.phone}</span>}
-          {data.linkedin && <span>🔗 {data.linkedin}</span>}
-          {location      && <span>📍 {location}</span>}
+          {data.email    && <span><ContactIcon>✉</ContactIcon> {data.email}</span>}
+          {data.phone    && <span><ContactIcon>☏</ContactIcon> {data.phone}</span>}
+          {data.linkedin && <span><ContactIcon>🔗</ContactIcon> {data.linkedin}</span>}
+          {data.portfolio && <span><ContactIcon>🌐</ContactIcon> {data.portfolio}</span>}
+          {location      && <span><ContactIcon>📍</ContactIcon> {location}</span>}
         </div>
       </div>
 
@@ -84,6 +87,13 @@ const ResumeModern: React.FC<{ data: ResumeData }> = ({ data }) => {
         {!!data.certifications?.length && (
           <Section title="Certifications">
             {data.certifications.map((c, i) => <Bullet key={i} text={c} />)}
+          </Section>
+        )}
+
+        {/* ── Key Achievements ── */}
+        {!!data.achievements?.length && (
+          <Section title="Key Achievements">
+            {data.achievements.map((a, i) => <Bullet key={i} text={a} />)}
           </Section>
         )}
 

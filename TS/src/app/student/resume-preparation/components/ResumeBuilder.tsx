@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import TemplateGallery from './TemplateGallery'
 import { TemplateKey, templateList } from './templateList'
 import { ResumeData } from './ResumeData'
@@ -13,7 +13,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import TopProgressBar from './TopProgressBar'
 import {
   User, GraduationCap, Zap, Briefcase, FolderOpen, Award, Trophy, MoreHorizontal,
-  FileText, PenLine, Eye, Download, CheckCircle, Circle, ArrowRight, Star,
+  FileText, PenLine, Eye, Download, CheckCircle, Circle, ArrowRight, Star, Check,
 } from 'lucide-react'
 import { BsFileEarmarkPerson, BsBook, BsBriefcase } from 'react-icons/bs'
 
@@ -49,6 +49,66 @@ const TEXT = 'var(--dash-text, #0f172a)'
 
 type MainStage = 1 | 2
 type SectionKey = 'personal' | 'education' | 'skills' | 'experience' | 'projects' | 'certifications' | 'achievements' | 'additional'
+
+// A4-ish canvas size every template component is authored against (see e.g.
+// ResumeClassic.tsx's own maxWidth: 794 / minHeight: 1122) — used to scale the whole
+// resume down to fit the narrow sidebar while filling in details, so students can see
+// it updating live instead of only at the final Preview & Download step.
+const LIVE_PREVIEW_WIDTH = 794
+const LIVE_PREVIEW_HEIGHT = 1122
+
+const LivePreview: React.FC<{ Component?: React.FC<{ data: ResumeData }>; data: ResumeData }> = ({ Component, data }) => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0.28)
+  // Actual rendered height of the resume content (unscaled) — while a student is still
+  // filling in details the page is usually far from full, and reserving the whole A4
+  // height up front just leaves a big blank strip under the preview. Sizing the box to
+  // the real content (capped at a full page once they fill it up) avoids that.
+  const [contentHeight, setContentHeight] = useState(LIVE_PREVIEW_HEIGHT)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const updateScale = () => setScale(el.offsetWidth / LIVE_PREVIEW_WIDTH)
+    updateScale()
+    const observer = new ResizeObserver(updateScale)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const updateHeight = () => setContentHeight(el.scrollHeight)
+    updateHeight()
+    const observer = new ResizeObserver(updateHeight)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [Component])
+
+  if (!Component) return null
+
+  const visibleHeight = Math.max(300, Math.min(contentHeight, LIVE_PREVIEW_HEIGHT))
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%', height: visibleHeight * scale, overflow: 'hidden', transition: 'height 0.15s ease',
+        borderRadius: 8, border: `1px solid ${BORDER}`, background: '#fff',
+      }}
+    >
+      <div ref={contentRef} className="live-preview-content" style={{ width: LIVE_PREVIEW_WIDTH, transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+        <Component data={data} />
+      </div>
+      {/* Every template's root div sets an inline minHeight: 1122 (the real A4 page
+          height, needed at final download time) — overridden here so scrollHeight
+          above reflects actual filled-in content instead of always reading ~1122. */}
+      <style>{`.live-preview-content > div { min-height: 0 !important; }`}</style>
+    </div>
+  )
+}
 
 const SIDEBAR_SECTIONS: { key: SectionKey; label: string; icon: React.ReactNode }[] = [
   { key: 'personal', label: 'Personal Information', icon: <User size={15} /> },
@@ -224,7 +284,7 @@ const ResumeBuilder: React.FC = () => {
   const renderSectionForm = () => {
     const props = { data: formData, setData: setFormData, goNext: goNextSection, goBack: goPrevSection }
     switch (activeSection) {
-      case 'personal': return <Step1Header {...props} />
+      case 'personal': return <Step1Header {...props} hasPhoto={!!selectedTemplate && templateList[selectedTemplate].hasPhoto} />
       case 'experience': return <Step2Experience {...props} />
       case 'achievements': return <Step3Achievements {...props} />
       case 'education': return <Step4Education {...props} />
@@ -286,32 +346,47 @@ const ResumeBuilder: React.FC = () => {
         Fill in your details step by step. You can save and continue anytime.
       </div>
 
-      {/* 3-column body */}
-      <div style={{ maxWidth: 1260, margin: '0 auto', padding: '20px 24px', display: 'grid', gridTemplateColumns: '200px 1fr 270px', gap: 20, alignItems: 'flex-start' }}>
-
-        {/* ── Left nav sidebar ── */}
-        <div style={{ background: CARD_BG, borderRadius: 12, border: `1px solid ${BORDER}`, padding: '8px 0', position: 'sticky', top: 20 }}>
-          {SIDEBAR_SECTIONS.map((s) => {
+      {/* ── Section stepper (horizontal) ── */}
+      <div style={{ maxWidth: 1520, margin: '0 auto', padding: '16px 24px 0' }}>
+        <div style={{ background: CARD_BG, borderRadius: 12, border: `1px solid ${BORDER}`, padding: '14px 20px', display: 'flex', alignItems: 'center', overflowX: 'auto' }}>
+          {SIDEBAR_SECTIONS.map((s, i) => {
             const isActive = activeSection === s.key
+            const isDone = SECTION_KEYS.indexOf(activeSection) > i
             return (
-              <button
-                key={s.key}
-                onClick={() => setActiveSection(s.key)}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '11px 16px', background: isActive ? '#fff7ed' : 'transparent',
-                  border: 'none', borderLeft: isActive ? `3px solid ${ORANGE}` : '3px solid transparent',
-                  cursor: 'pointer', textAlign: 'left',
-                  color: isActive ? ORANGE : TEXT,
-                  fontSize: 13, fontWeight: isActive ? 600 : 400, transition: 'all 0.15s',
-                }}
-              >
-                <span style={{ color: isActive ? ORANGE : GRAY, flexShrink: 0 }}>{s.icon}</span>
-                {s.label}
-              </button>
+              <React.Fragment key={s.key}>
+                {i > 0 && (
+                  <div style={{ flex: 1, minWidth: 16, height: 1, background: isDone ? ORANGE : BORDER, margin: '0 6px' }} />
+                )}
+                <button
+                  onClick={() => setActiveSection(s.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0,
+                    background: 'none', border: 'none', cursor: 'pointer', padding: '4px 2px',
+                    color: isActive ? ORANGE : isDone ? TEXT : GRAY,
+                    fontSize: 12.5, fontWeight: isActive ? 700 : 500, whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                      background: isActive ? ORANGE : isDone ? '#fff7ed' : '#f1f5f9',
+                      border: isActive ? 'none' : `1px solid ${isDone ? ORANGE : BORDER}`,
+                      color: isActive ? '#fff' : isDone ? ORANGE : GRAY,
+                    }}
+                  >
+                    {isDone ? <Check size={12} /> : s.icon}
+                  </span>
+                  {s.label}
+                </button>
+              </React.Fragment>
             )
           })}
         </div>
+      </div>
+
+      {/* 2-column body */}
+      <div style={{ maxWidth: 1520, margin: '0 auto', padding: '16px 24px 20px', display: 'grid', gridTemplateColumns: '1fr 540px', gap: 20, alignItems: 'flex-start' }}>
 
         {/* ── Center: form + info bar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -328,75 +403,83 @@ const ResumeBuilder: React.FC = () => {
         {/* ── Right info sidebar ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 20 }}>
 
-          {/* How It Works */}
-          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>How It Works</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {HOW_IT_WORKS.map((s, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 7, background: `${ORANGE}12`, border: `1px solid ${ORANGE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
-                    {s.icon}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 1 }}>{i + 1}. {s.title}</div>
-                    <div style={{ fontSize: 10, color: GRAY, lineHeight: 1.4 }}>{s.desc}</div>
-                  </div>
+          {/* Live Preview — updates as the student types, so they can see the actual
+              resume taking shape instead of only checking it at the final review step. */}
+          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '14px 14px 16px' }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Eye size={14} color={ORANGE} /> Live Preview
+            </h3>
+            <LivePreview Component={SelectedTemplateComponent} data={formData} />
+          </div>
+
+        </div>
+      </div>
+
+      {/* Your Resume Progress + How It Works + Resume Tips — moved below the main form.
+          They're reference/status info, not needed front-and-center while actively
+          filling in details; the sidebar space they used to take is now the Live Preview. */}
+      <div style={{ maxWidth: 1520, margin: '0 auto', padding: '0 24px 28px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Your Resume Progress</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
+            <div style={{ position: 'relative', width: 62, height: 62, flexShrink: 0 }}>
+              <svg width="62" height="62">
+                <circle cx="31" cy="31" r={r} fill="none" stroke={BORDER} strokeWidth="6" />
+                <circle cx="31" cy="31" r={r} fill="none" stroke={ORANGE} strokeWidth="6"
+                  strokeDasharray={`${(progressPct / 100) * circ} ${circ}`}
+                  strokeDashoffset={circ * 0.25} strokeLinecap="round" />
+              </svg>
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: TEXT }}>{progressPct}%</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{completedCount} of {PROGRESS_SECTIONS.length} Sections Completed</div>
+              {PROGRESS_SECTIONS.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                  <span style={{ color: item.done ? '#10b981' : BORDER, flexShrink: 0 }}>
+                    {item.done ? <CheckCircle size={13} /> : <Circle size={13} />}
+                  </span>
+                  <span style={{ fontSize: 10, color: item.done ? TEXT : GRAY, fontWeight: item.done ? 600 : 400 }}>{item.label}</span>
                 </div>
               ))}
             </div>
           </div>
+          <button
+            onClick={() => setActiveSection(nextIncompleteSection())}
+            style={{ width: '100%', padding: '8px', border: `1.5px solid ${BORDER}`, borderRadius: 9, background: CARD_BG, color: TEXT, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
+          >
+            Continue Building <ArrowRight size={13} />
+          </button>
+        </div>
 
-          {/* Your Resume Progress */}
-          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Your Resume Progress</h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-              <div style={{ position: 'relative', width: 62, height: 62, flexShrink: 0 }}>
-                <svg width="62" height="62">
-                  <circle cx="31" cy="31" r={r} fill="none" stroke={BORDER} strokeWidth="6" />
-                  <circle cx="31" cy="31" r={r} fill="none" stroke={ORANGE} strokeWidth="6"
-                    strokeDasharray={`${(progressPct / 100) * circ} ${circ}`}
-                    strokeDashoffset={circ * 0.25} strokeLinecap="round" />
-                </svg>
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: TEXT }}>{progressPct}%</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 6 }}>{completedCount} of {PROGRESS_SECTIONS.length} Sections Completed</div>
-                {PROGRESS_SECTIONS.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                    <span style={{ color: item.done ? '#10b981' : BORDER, flexShrink: 0 }}>
-                      {item.done ? <CheckCircle size={13} /> : <Circle size={13} />}
-                    </span>
-                    <span style={{ fontSize: 10, color: item.done ? TEXT : GRAY, fontWeight: item.done ? 600 : 400 }}>{item.label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={() => setActiveSection(nextIncompleteSection())}
-              style={{ width: '100%', padding: '8px', border: `1.5px solid ${BORDER}`, borderRadius: 9, background: CARD_BG, color: TEXT, fontWeight: 700, fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}
-            >
-              Continue Building <ArrowRight size={13} />
-            </button>
-          </div>
-
-          {/* Resume Tips */}
-          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
-            <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Resume Tips</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-              {RESUME_TIPS.map((tip, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 5, background: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
-                    {RESUME_TIP_ICONS[i]}
-                  </div>
-                  <span style={{ fontSize: 10, color: GRAY, lineHeight: 1.5 }}>{tip}</span>
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>How It Works</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {HOW_IT_WORKS.map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: `${ORANGE}12`, border: `1px solid ${ORANGE}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
+                  {s.icon}
                 </div>
-              ))}
-            </div>
-            <button style={{ background: 'none', border: 'none', color: ORANGE, fontWeight: 700, fontSize: 11, cursor: 'pointer', padding: '8px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
-              View All Tips <ArrowRight size={12} />
-            </button>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: TEXT, marginBottom: 1 }}>{i + 1}. {s.title}</div>
+                  <div style={{ fontSize: 10, color: GRAY, lineHeight: 1.4 }}>{s.desc}</div>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
 
+        <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '16px 18px' }}>
+          <h3 style={{ fontSize: 13, fontWeight: 800, color: TEXT, margin: '0 0 12px' }}>Resume Tips</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {RESUME_TIPS.map((tip, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                <div style={{ width: 22, height: 22, borderRadius: 5, background: BORDER, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, flexShrink: 0 }}>
+                  {RESUME_TIP_ICONS[i]}
+                </div>
+                <span style={{ fontSize: 10, color: GRAY, lineHeight: 1.5 }}>{tip}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

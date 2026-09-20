@@ -10,7 +10,7 @@ const GRAY = 'var(--dash-gray, #6b7280)'
 // only heading/label text sitting directly on the theme-following card needs to adapt.
 const TEXT = 'var(--dash-text, #111827)'
 const CARD_BG = 'var(--dash-card-bg, #ffffff)'
-const MAX_SUMMARY = 200
+const MAX_SUMMARY = 500
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: `1px solid ${BORDER}`,
@@ -22,7 +22,14 @@ const lbl: React.CSSProperties = {
   fontSize: 12, fontWeight: 600, color: TEXT, marginBottom: 5, display: 'block',
 }
 
-const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => {
+interface Step1HeaderProps extends StepProps {
+  // Whether the currently selected template actually renders a profile photo.
+  // When false, the upload field is hidden instead of collecting a photo that
+  // would never appear anywhere — that mismatch was confusing students.
+  hasPhoto?: boolean
+}
+
+const Step1Header: React.FC<Step1HeaderProps> = ({ data, setData, goNext, goBack, hasPhoto }) => {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const set = (field: string, value: string) =>
@@ -47,8 +54,8 @@ const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
         <p style={{ fontSize: 13, color: GRAY, margin: '4px 0 0' }}>Add your basic information</p>
       </div>
 
-      {/* Row 1: Full Name | Professional Title | Profile Photo */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 16, alignItems: 'start', marginBottom: 16 }}>
+      {/* Row 1: Full Name | Professional Title | Profile Photo (only for photo-capable templates) */}
+      <div style={{ display: 'grid', gridTemplateColumns: hasPhoto ? '1fr 1fr auto' : '1fr 1fr', gap: 16, alignItems: 'start', marginBottom: 16 }}>
         <div>
           <label style={lbl}>Full Name <span style={{ color: ORANGE }}>*</span></label>
           <input
@@ -67,49 +74,57 @@ const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
           />
         </div>
 
-        {/* Profile Photo */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 130 }}>
-          <label style={{ ...lbl, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>Profile Photo</label>
-          <div style={{
-            width: 76, height: 76, borderRadius: '50%',
-            background: '#f3f4f6', border: `2px solid ${BORDER}`,
-            overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {data.profilePhoto ? (
-              <img src={data.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <User size={32} color="#d1d5db" />
-            )}
+        {/* Profile Photo — hidden entirely when the chosen template doesn't display one,
+            so there's nothing to upload that would silently go unused. */}
+        {hasPhoto && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 130 }}>
+            <label style={{ ...lbl, alignSelf: 'flex-start', whiteSpace: 'nowrap' }}>Profile Photo</label>
+            <div style={{
+              width: 76, height: 76, borderRadius: '50%',
+              background: '#f3f4f6', border: `2px solid ${BORDER}`,
+              overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {data.profilePhoto ? (
+                <img src={data.profilePhoto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <User size={32} color="#d1d5db" />
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                style={{
+                  fontSize: 11, fontWeight: 600, color: ORANGE, background: '#fff',
+                  border: `1.5px solid ${ORANGE}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                }}
+              >
+                Change Photo
+              </button>
+              <button
+                type="button"
+                onClick={removePhoto}
+                style={{
+                  fontSize: 11, color: '#ef4444', background: '#fef2f2',
+                  border: '1px solid #fecaca', borderRadius: 6, padding: '5px 8px',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center',
+                }}
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+            <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhoto} />
+            <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', lineHeight: 1.4 }}>
+              JPG, PNG or WEBP (Max 2MB)
+            </span>
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              style={{
-                fontSize: 11, fontWeight: 600, color: ORANGE, background: '#fff',
-                border: `1.5px solid ${ORANGE}`, borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
-              }}
-            >
-              Change Photo
-            </button>
-            <button
-              type="button"
-              onClick={removePhoto}
-              style={{
-                fontSize: 11, color: '#ef4444', background: '#fef2f2',
-                border: '1px solid #fecaca', borderRadius: 6, padding: '5px 8px',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-              }}
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={handlePhoto} />
-          <span style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', lineHeight: 1.4 }}>
-            JPG, PNG or WEBP (Max 2MB)
-          </span>
-        </div>
+        )}
       </div>
+      {!hasPhoto && (
+        <p style={{ fontSize: 11.5, color: GRAY, margin: '-10px 0 16px', display: 'flex', alignItems: 'center', gap: 5 }}>
+          This template doesn't include a profile photo — switch templates from the preview step if you'd like one.
+        </p>
+      )}
 
       {/* Row 2: Email | Phone */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
@@ -164,7 +179,7 @@ const Step1Header: React.FC<StepProps> = ({ data, setData, goNext, goBack }) => 
         <label style={lbl}>Summary / Professional Headline</label>
         <div style={{ position: 'relative' }}>
           <textarea
-            style={{ ...inp, minHeight: 96, resize: 'vertical', lineHeight: 1.6 }}
+            style={{ ...inp, minHeight: 140, resize: 'vertical', lineHeight: 1.6 }}
             placeholder="Passionate Full Stack Developer with strong problem-solving skills and experience in building modern web applications."
             value={data.summary || ''}
             maxLength={MAX_SUMMARY}

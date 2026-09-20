@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { BulletLines, ContactIcon } from './renderBoldText'
 
 // Template — Henry Jackson style
 // Full-width header · Wide left main · Narrow right sidebar (light bg)
@@ -36,7 +37,7 @@ const ResumeCorporate: React.FC<{ data: ResumeData }> = ({ data }) => {
   const Bullet = ({ text }: { text: string }) => (
     <div style={{ display: 'flex', gap: 7, marginBottom: 4, alignItems: 'flex-start' }}>
       <span style={{ color: '#94a3b8', flexShrink: 0, fontSize: 9, marginTop: 4 }}>●</span>
-      <span style={{ fontSize: 10.5, color: '#374151', lineHeight: 1.65 }}>{text}</span>
+      <div style={{ flex: 1 }}><BulletLines text={text} fontSize={10.5} textColor="#374151" lineHeight={1.65} /></div>
     </div>
   )
 
@@ -62,10 +63,11 @@ const ResumeCorporate: React.FC<{ data: ResumeData }> = ({ data }) => {
           </div>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 16px', fontSize: 10, color: '#64748b' }}>
-          {data.email    && <span>✉ {data.email}</span>}
-          {data.linkedin && <span>🔗 {data.linkedin}</span>}
-          {location      && <span>📍 {location}</span>}
-          {data.phone    && <span>☏ {data.phone}</span>}
+          {data.email    && <span><ContactIcon>✉</ContactIcon> {data.email}</span>}
+          {data.linkedin && <span><ContactIcon>🔗</ContactIcon> {data.linkedin}</span>}
+          {data.portfolio && <span><ContactIcon>🌐</ContactIcon> {data.portfolio}</span>}
+          {location      && <span><ContactIcon>📍</ContactIcon> {location}</span>}
+          {data.phone    && <span><ContactIcon>☏</ContactIcon> {data.phone}</span>}
         </div>
       </div>
 

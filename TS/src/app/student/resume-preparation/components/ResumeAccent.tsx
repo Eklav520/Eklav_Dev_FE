@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { renderBoldText, BulletLines, ContactIcon } from './renderBoldText'
 
 // Template — Mary Lee style
 // Narrow left sidebar · Wide right column with large name at top
@@ -55,13 +56,25 @@ const ResumeAccent: React.FC<{ data: ResumeData }> = ({ data }) => {
       {/* ── LEFT Sidebar ── */}
       <div style={{ width: '30%', background: '#f0f9ff', borderRight: `3px solid ${ACCENT}`, padding: '28px 16px', boxSizing: 'border-box', flexShrink: 0 }}>
 
+        {/* Profile Photo */}
+        {data.profilePhoto && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <img
+              src={data.profilePhoto}
+              alt={name || 'Profile'}
+              style={{ width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${ACCENT}` }}
+            />
+          </div>
+        )}
+
         {/* Contacts */}
         <SideSection icon="✉" title="Contacts">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {data.email    && <div style={{ fontSize: 10, color: '#374151' }}>✉ {data.email}</div>}
-            {data.phone    && <div style={{ fontSize: 10, color: '#374151' }}>☏ {data.phone}</div>}
-            {data.linkedin && <div style={{ fontSize: 10, color: '#374151' }}>🔗 {data.linkedin}</div>}
-            {location      && <div style={{ fontSize: 10, color: '#374151' }}>📍 {location}</div>}
+            {data.email    && <div style={{ fontSize: 10, color: '#374151' }}><ContactIcon>✉</ContactIcon> {data.email}</div>}
+            {data.phone    && <div style={{ fontSize: 10, color: '#374151' }}><ContactIcon>☏</ContactIcon> {data.phone}</div>}
+            {data.linkedin && <div style={{ fontSize: 10, color: '#374151' }}><ContactIcon>🔗</ContactIcon> {data.linkedin}</div>}
+            {data.portfolio && <div style={{ fontSize: 10, color: '#374151' }}><ContactIcon>🌐</ContactIcon> {data.portfolio}</div>}
+            {location      && <div style={{ fontSize: 10, color: '#374151' }}><ContactIcon>📍</ContactIcon> {location}</div>}
           </div>
         </SideSection>
 
@@ -151,8 +164,8 @@ const ResumeAccent: React.FC<{ data: ResumeData }> = ({ data }) => {
                   const parts = p.split('–')
                   return (
                     <div key={i} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px' }}>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, color: ACCENT2, marginBottom: 2 }}>{parts[0]?.trim()}</div>
-                      {parts[1] && <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5 }}>{parts[1].trim()}</div>}
+                      <div style={{ fontSize: 10.5, fontWeight: 700, color: ACCENT2, marginBottom: 2, whiteSpace: 'pre-wrap' }}>{renderBoldText(parts[0]?.trim() || '')}</div>
+                      {parts[1] && <div style={{ fontSize: 10, color: '#64748b', lineHeight: 1.5 }}><BulletLines text={parts[1].trim()} fontSize={10} textColor="#64748b" lineHeight={1.5} /></div>}
                     </div>
                   )
                 })}

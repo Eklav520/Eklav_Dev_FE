@@ -56,7 +56,7 @@ const MiniPreview: React.FC<{ id: TemplateKey }> = ({ id }) => {
   const isAccent    = id === 'accent'
 
   return (
-    <div style={{ width: '100%', height: 140, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
+    <div style={{ width: '100%', height: 168, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
       {(isModern || isCreative) ? (
         <div style={{ background: a.bar, padding: '10px 12px 8px' }}>
           <div style={{ height: 7, width: 90, background: 'rgba(255,255,255,.9)', borderRadius: 3, marginBottom: 4 }} />
@@ -315,7 +315,7 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
           )}
 
           {/* Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {filtered.map(key => {
               const meta = TEMPLATE_META[key]
               const cat = CATEGORY_COLORS[meta.category]
@@ -340,6 +340,13 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                     boxShadow: isSelected ? `0 10px 28px rgba(255,122,0,.22)` : isHov ? `0 10px 28px rgba(255,122,0,.10)` : '0 1px 4px rgba(0,0,0,.06)',
                     opacity: isLocked ? 0.55 : 1,
                     position: 'relative',
+                    // Flex column so the Select button always sits flush with the card's
+                    // bottom edge (via marginTop: 'auto' below) regardless of how many
+                    // badge lines a given card has — grid rows stretch cards to equal
+                    // height, so this keeps every button in a row visually aligned.
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
                   }}
                 >
                   {/* Selected badge */}
@@ -361,17 +368,25 @@ const TemplateGallery: React.FC<TemplateGalleryProps> = ({
                     <MiniPreview id={key} />
                   </div>
 
-                  {/* Info */}
-                  <div style={{ padding: '10px 12px 12px' }}>
+                  {/* Info — flex column so the button (marginTop: 'auto') stays flush with
+                      the bottom of the card no matter how many badges this template has. */}
+                  <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: TEXT, marginBottom: 5 }}>{meta.label}</div>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: cat.color, background: cat.bg, borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 10 }}>
-                      {meta.category}
-                    </span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: cat.color, background: cat.bg, borderRadius: 20, padding: '2px 8px' }}>
+                        {meta.category}
+                      </span>
+                      {templateList[key].hasPhoto && (
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#0891b2', background: '#ecfeff', borderRadius: 20, padding: '2px 8px' }}>
+                          Includes Photo
+                        </span>
+                      )}
+                    </div>
                     <button
                       disabled={isLocked}
                       onClick={e => { e.stopPropagation(); if (!isLocked) setSelectedKey(key) }}
                       style={{
-                        width: '100%', padding: '7px', borderRadius: 8,
+                        width: '100%', padding: '7px', borderRadius: 8, marginTop: 'auto',
                         border: `1.5px solid ${isSelected ? ORANGE : isLocked ? BORDER : ORANGE}`,
                         background: isSelected ? ORANGE : isHov ? `${ORANGE}10` : CARD_BG,
                         color: isSelected ? '#fff' : isLocked ? GRAY : ORANGE,

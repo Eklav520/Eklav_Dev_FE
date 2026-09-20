@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { BulletLines, ContactIcon } from './renderBoldText'
 
 // Template 3 — Executive Two-Column (dark sidebar + clean content)
 const sidebar  = '#1e2d3d'
@@ -25,8 +26,11 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
 
   const MainBullet = ({ text }: { text: string }) => (
     <div style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'flex-start' }}>
-      <div style={{ width: 5, height: 5, borderRadius: '50%', background: accent, flexShrink: 0, marginTop: 6 }} />
-      <span style={{ fontSize: 11, color: '#374151', lineHeight: 1.7 }}>{text}</span>
+      {/* Pure line-height-center math (≈7) still looked too high in practice — text's
+          visual weight sits lower in the line box than the mathematical center, so this
+          is nudged down further based on direct visual feedback rather than the formula. */}
+      <div style={{ width: 5, height: 5, borderRadius: '50%', background: accent, flexShrink: 0, marginTop: 9 }} />
+      <div style={{ flex: 1 }}><BulletLines text={text} fontSize={11} textColor="#374151" lineHeight={1.7} /></div>
     </div>
   )
 
@@ -35,6 +39,17 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
 
       {/* ── Left Sidebar ── */}
       <div style={{ width: '32%', background: sidebar, padding: '36px 22px', color: '#fff', flexShrink: 0, boxSizing: 'border-box' }}>
+
+        {/* Profile Photo */}
+        {data.profilePhoto && (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <img
+              src={data.profilePhoto}
+              alt={name || 'Profile'}
+              style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: `3px solid ${accent}` }}
+            />
+          </div>
+        )}
 
         {/* Name + Role */}
         <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid rgba(255,255,255,0.15)' }}>
@@ -45,10 +60,11 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
         {/* Contact */}
         <SideSection title="Contact">
           <div style={{ fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.9 }}>
-            {data.email    && <div>✉ {data.email}</div>}
-            {data.phone    && <div>☏ {data.phone}</div>}
-            {data.linkedin && <div>🔗 {data.linkedin}</div>}
-            {location      && <div>📍 {location}</div>}
+            {data.email    && <div><ContactIcon>✉</ContactIcon> {data.email}</div>}
+            {data.phone    && <div><ContactIcon>☏</ContactIcon> {data.phone}</div>}
+            {data.linkedin && <div><ContactIcon>🔗</ContactIcon> {data.linkedin}</div>}
+            {data.portfolio && <div><ContactIcon>🌐</ContactIcon> {data.portfolio}</div>}
+            {location      && <div><ContactIcon>📍</ContactIcon> {location}</div>}
           </div>
         </SideSection>
 
@@ -60,15 +76,6 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
                 <span key={i} style={{ fontSize: 10, background: 'rgba(59,130,246,0.18)', color: '#93c5fd', border: '1px solid rgba(59,130,246,0.3)', borderRadius: 4, padding: '2px 8px', fontWeight: 600 }}>{s}</span>
               ))}
             </div>
-          </SideSection>
-        )}
-
-        {/* Education */}
-        {!!data.education?.length && (
-          <SideSection title="Education">
-            {data.education.map((e, i) => (
-              <div key={i} style={{ fontSize: 10.5, color: '#cbd5e1', lineHeight: 1.65, marginBottom: 6 }}>{e}</div>
-            ))}
           </SideSection>
         )}
 
@@ -106,6 +113,13 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
           </MainSection>
         )}
 
+        {/* Education */}
+        {!!data.education?.length && (
+          <MainSection title="Education">
+            {data.education.map((e, i) => <MainBullet key={i} text={e} />)}
+          </MainSection>
+        )}
+
         {/* Projects */}
         {!!data.projects?.length && (
           <MainSection title="Projects">
@@ -117,6 +131,13 @@ const ResumeProfessional: React.FC<{ data: ResumeData }> = ({ data }) => {
         {!!data.certifications?.length && (
           <MainSection title="Certifications">
             {data.certifications.map((c, i) => <MainBullet key={i} text={c} />)}
+          </MainSection>
+        )}
+
+        {/* Key Achievements */}
+        {!!data.achievements?.length && (
+          <MainSection title="Key Achievements">
+            {data.achievements.map((a, i) => <MainBullet key={i} text={a} />)}
           </MainSection>
         )}
       </div>

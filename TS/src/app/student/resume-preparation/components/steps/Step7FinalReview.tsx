@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react'
 import html2pdf from 'html2pdf.js'
 import { ResumeData } from '../ResumeData'
-import { Download, ArrowLeft, CheckCircle, Eye, Printer, LayoutTemplate } from 'lucide-react'
+import { buildResumeDocxBlob } from '../buildResumeDocx'
+import { Download, ArrowLeft, CheckCircle, Eye, Printer, LayoutTemplate, FileText, ChevronDown } from 'lucide-react'
 
 interface Step7FinalReviewProps {
   data: ResumeData
@@ -16,11 +17,13 @@ const GRAY = '#6b7280'
 
 const Step7FinalReview: React.FC<Step7FinalReviewProps> = ({ data, goBack, onChangeTemplate, SelectedTemplateComponent }) => {
   const resumeRef = useRef<HTMLDivElement>(null)
-  const [downloading, setDownloading] = useState(false)
+  const [downloading, setDownloading] = useState<'pdf' | 'word' | null>(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  const handleDownload = async () => {
+  const handleDownloadPdf = async () => {
     if (!resumeRef.current) return
-    setDownloading(true)
+    setMenuOpen(false)
+    setDownloading('pdf')
     try {
       await html2pdf()
         .from(resumeRef.current)
@@ -32,11 +35,58 @@ const Step7FinalReview: React.FC<Step7FinalReviewProps> = ({ data, goBack, onCha
         })
         .save()
     } finally {
-      setDownloading(false)
+      setDownloading(null)
+    }
+  }
+
+  const handleDownloadWord = async () => {
+    setMenuOpen(false)
+    setDownloading('word')
+    try {
+      const blob = await buildResumeDocxBlob(data)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${data.fullName || 'Resume'}_Resume.docx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } finally {
+      setDownloading(null)
     }
   }
 
   const handlePrint = () => window.print()
+
+  const DownloadMenu: React.FC<{ compact?: boolean }> = ({ compact }) => (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((o) => !o)}
+        disabled={!!downloading}
+        style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: downloading ? '#fdba74' : ORANGE, border: 'none', borderRadius: 8, padding: compact ? '10px 24px' : '9px 20px', cursor: downloading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}
+      >
+        {downloading
+          ? <><span style={{ width: 13, height: 13, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> {downloading === 'pdf' ? 'Generating PDF...' : 'Generating Word...'}</>
+          : <><Download size={14} /> Download <ChevronDown size={13} style={{ transform: menuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} /></>
+        }
+      </button>
+      {menuOpen && !downloading && (
+        <>
+          <div onClick={() => setMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 10 }} />
+          <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: `1px solid ${BORDER}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', overflow: 'hidden', zIndex: 11, minWidth: 170 }}>
+            <button type="button" onClick={handleDownloadPdf} style={{ width: '100%', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', background: '#fff', border: 'none', padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Download size={14} color={ORANGE} /> Download PDF
+            </button>
+            <button type="button" onClick={handleDownloadWord} style={{ width: '100%', textAlign: 'left', fontSize: 13, fontWeight: 600, color: '#374151', background: '#fff', border: 'none', borderTop: `1px solid ${BORDER}`, padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={14} color="#2563eb" /> Download Word (.docx)
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
@@ -77,17 +127,7 @@ const Step7FinalReview: React.FC<Step7FinalReviewProps> = ({ data, goBack, onCha
           >
             <Printer size={14} /> Print
           </button>
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading}
-            style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: downloading ? '#fdba74' : ORANGE, border: 'none', borderRadius: 8, padding: '9px 20px', cursor: downloading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}
-          >
-            {downloading
-              ? <><span style={{ width: 13, height: 13, border: '2px solid #fff', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', display: 'inline-block' }} /> Generating...</>
-              : <><Download size={14} /> Download PDF</>
-            }
-          </button>
+          <DownloadMenu />
         </div>
       </div>
 
@@ -122,14 +162,7 @@ const Step7FinalReview: React.FC<Step7FinalReviewProps> = ({ data, goBack, onCha
         <p style={{ fontSize: 13, color: GRAY, margin: 0 }}>
           Looks good? Download your resume and start applying!
         </p>
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={downloading}
-          style={{ fontSize: 13, fontWeight: 700, color: '#fff', background: ORANGE, border: 'none', borderRadius: 8, padding: '10px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, boxShadow: '0 2px 8px rgba(249,115,22,0.35)' }}
-        >
-          <Download size={14} /> Download Resume
-        </button>
+        <DownloadMenu compact />
       </div>
     </div>
   )

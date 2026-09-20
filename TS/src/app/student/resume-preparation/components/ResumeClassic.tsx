@@ -1,11 +1,12 @@
 import React from 'react'
 import { ResumeData } from './ResumeData'
+import { BulletLines } from './renderBoldText'
 
 // Template 1 — Classic Traditional (ATS-friendly, serif, black/white)
 const ResumeClassic: React.FC<{ data: ResumeData }> = ({ data }) => {
   const name = [data.fullName, data.surname].filter(Boolean).join(' ')
   const location = [data.city, data.country].filter(Boolean).join(', ')
-  const contact = [data.email, data.phone, data.linkedin, location].filter(Boolean).join('  •  ')
+  const contact = [data.email, data.phone, data.linkedin, data.portfolio, location].filter(Boolean).join('  •  ')
 
   const Divider = ({ title }: { title: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 8px' }}>
@@ -17,7 +18,7 @@ const ResumeClassic: React.FC<{ data: ResumeData }> = ({ data }) => {
   const Bullet = ({ text }: { text: string }) => (
     <div style={{ display: 'flex', gap: 8, marginBottom: 5, alignItems: 'flex-start' }}>
       <span style={{ color: '#555', flexShrink: 0, fontSize: 10, marginTop: 3 }}>▸</span>
-      <span style={{ fontSize: 11, color: '#222', lineHeight: 1.7 }}>{text}</span>
+      <div style={{ flex: 1 }}><BulletLines text={text} fontSize={11} textColor="#222" lineHeight={1.7} /></div>
     </div>
   )
 
@@ -69,6 +70,12 @@ const ResumeClassic: React.FC<{ data: ResumeData }> = ({ data }) => {
       {!!data.certifications?.length && (<>
         <Divider title="Certifications" />
         {data.certifications.map((c, i) => <Bullet key={i} text={c} />)}
+      </>)}
+
+      {/* ── Key Achievements ── */}
+      {!!data.achievements?.length && (<>
+        <Divider title="Key Achievements" />
+        {data.achievements.map((a, i) => <Bullet key={i} text={a} />)}
       </>)}
 
       {/* ── Languages / Hobbies ── */}
