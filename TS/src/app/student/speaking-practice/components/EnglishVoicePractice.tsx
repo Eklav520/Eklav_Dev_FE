@@ -20,6 +20,10 @@ interface Message {
   text: string
   type: 'user' | 'correction' | 'reply'
   note?: string
+  // Short native-language lead-in shown/spoken BEFORE the corrected sentence
+  // (e.g. Telugu for "you should say it correctly like this:"), replacing the
+  // plain "Improved" badge when a help language is selected.
+  intro?: string
 }
 
 declare global {
@@ -288,6 +292,12 @@ const EnglishVoicePractice: React.FC = () => {
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
+  // True from the moment an answer is sent until the coach actually starts speaking
+  // (onTTSStart). The recognizer's own onend handler auto-restarts listening whenever
+  // ttsCountRef is 0 — which it still is during the "thinking" wait, before any audio
+  // starts — so without this flag it would silently turn the mic back on ~300ms after
+  // we stop it, undoing the stop and re-showing "Listening for your answer".
+  const awaitingReplyRef = useRef(false)
   // The currently-playing ElevenLabs clip (if any) — so Pause can actually stop it.
   // speechSynthesis.cancel() only affects the browser-TTS fallback, not these <audio> clips.
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
@@ -734,6 +744,13 @@ const EnglishVoicePractice: React.FC = () => {
           accumulatedRef.current = ''
           setLiveSpeech('')
           clearSilenceTimer()
+          // Stop listening the moment the answer is sent — otherwise the recognizer
+          // keeps running silently through the whole "thinking" wait: the mic stays
+          // technically live (can pick up stray sound) and the "Listening for your
+          // answer" placeholder lingers under a message that's already been sent.
+          // It restarts on its own once the coach finishes speaking (onTTSEnd).
+          awaitingReplyRef.current = true
+          stopListening()
           setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
           transcriptRef.current += `You: ${text}\n`
           conversationRef.current += `You: ${text}\n`
@@ -753,8 +770,9 @@ const EnglishVoicePractice: React.FC = () => {
       setIsListening(false)
       setIsUserSpeaking(false)
       manualStopRef.current = false
-      // Auto-restart if session is active, not paused, and TTS is not playing
-      if (sessionActiveRef.current && !isPausedRef.current && ttsCountRef.current === 0) {
+      // Auto-restart if session is active, not paused, TTS is not playing, and we're not
+      // deliberately holding off while an answer is being processed (see awaitingReplyRef).
+      if (sessionActiveRef.current && !isPausedRef.current && ttsCountRef.current === 0 && !awaitingReplyRef.current) {
         setTimeout(() => startListening(), 300)
       }
     }
@@ -783,6 +801,9 @@ const EnglishVoicePractice: React.FC = () => {
     ttsCountRef.current += 1
     setBotSpeaking(true)
     stopListening()
+    // From here on ttsCountRef itself correctly keeps the mic off until the coach
+    // finishes speaking — the deliberate "thinking" hold is no longer needed.
+    awaitingReplyRef.current = false
   }
 
   const onTTSEnd = () => {
@@ -975,13 +996,27 @@ const EnglishVoicePractice: React.FC = () => {
 
         steps.push(async () => {
           const id = mkId()
-          setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction', note: data.mistakeNote || undefined }])
+          // Bubble shows intro + corrected sentence + "what changed" note together, in
+          // that reading order — intro replaces the plain "Improved" badge when present.
+          setMessages((p) => [...p, {
+            id, sender: 'eklav', text: data.correction, type: 'correction',
+            intro: data.correctionIntro || undefined,
+            note: data.mistakeNote || undefined,
+          }])
           setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+
+          // 1) Native-language intro first (static header line, no typewriter).
+          if (data.correctionIntroAudio) {
+            await speakAudioUrl(data.correctionIntroAudio)
+          }
+
+          // 2) Then the corrected sentence itself, with its typewriter reveal. No spoken
+          // "Correction:" prefix when an intro already announced it.
           const sg = setTimeout(() => clearTypewriter(id), 8000)
-          // Prefer the ElevenLabs voice generated server-side; fall back to browser TTS
-          // (with the spoken "Correction:" prefix it needs since there's no pre-baked audio) if that failed.
           if (data.correctionAudio) {
             await speakAudioUrl(data.correctionAudio, { msgId: id, displayText: data.correction })
+          } else if (data.correctionIntro) {
+            await speak(data.correction, { msgId: id, displayText: data.correction })
           } else {
             await speak('Correction: ' + data.correction, { msgId: id, displayText: data.correction, displayOffset: 'Correction: '.length })
           }
@@ -1042,6 +1077,9 @@ const EnglishVoicePractice: React.FC = () => {
     } finally {
       setIsTyping(false)
       stopThinkingTimer()
+      // Safety net: if the request itself failed before onTTSStart() was ever reached
+      // (e.g. network error), make sure the mic isn't left permanently held off.
+      awaitingReplyRef.current = false
     }
   }
 
@@ -1701,9 +1739,15 @@ const EnglishVoicePractice: React.FC = () => {
                           </div>
                           <div style={{ background: m.sender === 'user' ? '#dbeafe' : m.type === 'correction' ? '#f0fdf4' : '#fff', border: m.type === 'correction' ? '1px solid #bbf7d0' : '1px solid #e2e8f0', borderRadius: m.sender === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px', padding: '10px 15px', fontSize: 15, fontFamily: '"Segoe UI", system-ui, sans-serif', color: '#0f172a', lineHeight: 1.65 }}>
                             {m.type === 'correction' && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
-                                <FaCheck /> Improved
-                              </div>
+                              m.intro ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 700, color: '#22c55e', marginBottom: 5 }}>
+                                  <FaCheck style={{ flexShrink: 0 }} /> {m.intro}
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#22c55e', marginBottom: 4 }}>
+                                  <FaCheck /> Improved
+                                </div>
+                              )
                             )}
                             {displayText}{isTypingOut && <span style={{ animation: 'blink 1s infinite' }}>|</span>}
                             {m.type === 'correction' && m.note && !isTypingOut && (
