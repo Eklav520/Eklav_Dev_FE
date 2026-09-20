@@ -29,6 +29,28 @@ declare global {
   }
 }
 
+// Native ("help") language — when a mistake happens, the coach explains it in this
+// language (via mistakeNote, with real server-generated audio) so the student
+// actually understands why, while the conversation itself stays in English for practice.
+// ttsLang is only used as a browser-voice hint for the fallback path (when ElevenLabs
+// audio isn't available) — matched against whatever voices the device actually has.
+const NATIVE_LANGUAGES: { code: string; label: string; ttsLang: string }[] = [
+  { code: 'en', label: 'English only', ttsLang: 'en-US' },
+  { code: 'hi', label: 'Hindi', ttsLang: 'hi-IN' },
+  { code: 'te', label: 'Telugu', ttsLang: 'te-IN' },
+  { code: 'ta', label: 'Tamil', ttsLang: 'ta-IN' },
+  { code: 'kn', label: 'Kannada', ttsLang: 'kn-IN' },
+  { code: 'ml', label: 'Malayalam', ttsLang: 'ml-IN' },
+  { code: 'mr', label: 'Marathi', ttsLang: 'mr-IN' },
+  { code: 'bn', label: 'Bengali', ttsLang: 'bn-IN' },
+  { code: 'gu', label: 'Gujarati', ttsLang: 'gu-IN' },
+  { code: 'pa', label: 'Punjabi', ttsLang: 'pa-IN' },
+]
+const NATIVE_LANG_STORAGE_KEY = 'eklav_speaking_native_lang'
+
+// Length of one speaking-practice session.
+const SESSION_SECONDS = 360 // 6 minutes
+
 const EnglishVoicePractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
@@ -190,7 +212,7 @@ const EnglishVoicePractice: React.FC = () => {
   const [sessionEnded, setSessionEnded] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isListening, setIsListening] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(180)
+  const [timeLeft, setTimeLeft] = useState(SESSION_SECONDS)
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false)
 
   const [liveSpeech, setLiveSpeech] = useState('')
@@ -266,6 +288,9 @@ const EnglishVoicePractice: React.FC = () => {
   const silenceTimerRef = useRef<any>(null)
   const noResponseCountRef = useRef(0)
   const manualStopRef = useRef(false)
+  // The currently-playing ElevenLabs clip (if any) — so Pause can actually stop it.
+  // speechSynthesis.cancel() only affects the browser-TTS fallback, not these <audio> clips.
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const micCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -311,6 +336,12 @@ const EnglishVoicePractice: React.FC = () => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
   const [selectedVoiceName, setSelectedVoiceName] = useState<string>('')
+  const [nativeLanguage, setNativeLanguage] = useState<string>(() => {
+    try { return localStorage.getItem(NATIVE_LANG_STORAGE_KEY) || 'en' } catch { return 'en' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(NATIVE_LANG_STORAGE_KEY, nativeLanguage) } catch { /* ignore */ }
+  }, [nativeLanguage])
 
   const webcamRef = useRef<HTMLVideoElement>(null)
   const webcamStreamRef = useRef<MediaStream | null>(null)
@@ -568,7 +599,7 @@ const EnglishVoicePractice: React.FC = () => {
   const startSilenceTimer = () => {
     clearSilenceTimer()
     silenceTimerRef.current = setTimeout(async () => {
-      if (!sessionActiveRef.current || ttsCountRef.current > 0) return
+      if (!sessionActiveRef.current || isPausedRef.current || ttsCountRef.current > 0) return
       noResponseCountRef.current += 1
 
       if (noResponseCountRef.current <= MAX_NO_RESPONSE) {
@@ -578,7 +609,9 @@ const EnglishVoicePractice: React.FC = () => {
         setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
         await speak(msg, { msgId: id, displayText: msg })
         clearTypewriter(id)
-        startSilenceTimer()
+        // Re-check before re-arming — the user may have hit Pause while this
+        // "Are you there?" prompt was still being spoken.
+        if (sessionActiveRef.current && !isPausedRef.current) startSilenceTimer()
       } else {
         const msg = 'Sorry, closing the session. Have a nice day.'
         const id = mkId()
@@ -664,6 +697,15 @@ const EnglishVoicePractice: React.FC = () => {
     }
 
     rec.onresult = async (e: any) => {
+      // Hard gate: while the bot is speaking (correction/what-changed/reply — the whole
+      // turn, not just one clip), ignore anything the recognizer reports outright. The
+      // mic can pick up the device's own speaker output (no/weak echo cancellation) and
+      // misreport it as the student talking — e.g. transcribing fragments of the Telugu
+      // explanation as if it were said by the user. abort()-ing the recognizer on our end
+      // isn't always instant, so don't rely on that alone; just never act on results
+      // captured during this window.
+      if (ttsCountRef.current > 0) return
+
       clearSilenceTimer()
 
       let interim = ''
@@ -767,24 +809,110 @@ const EnglishVoicePractice: React.FC = () => {
     setTimeout(() => resolve(speechSynthesis.getVoices()), 3000)
   })
 
+  // Plays a server-generated audio clip (base64 data URL) — the ElevenLabs voice used
+  // for the greeting, reply, correction and native-language mistake explanation, since
+  // relying on the browser's built-in TTS proved unreliable (missing Indian-language
+  // voices entirely on most devices, robotic-sounding, inconsistent across browsers).
+  // tw: same typewriter sync as speak() below, driven off actual playback instead of utterance events.
+  const speakAudioUrl = (url: string, tw?: { msgId: string; displayText: string; displayOffset?: number }) =>
+    new Promise<void>((resolve) => {
+      if (!sessionActiveRef.current) return resolve()
+      onTTSStart()
+      const audio = new Audio(url)
+      currentAudioRef.current = audio
+
+      let twInterval: any = null
+      if (tw) {
+        const { msgId, displayText } = tw
+        const twTotalChars = displayText.length
+        audio.onplay = () => {
+          let pos = 0
+          twInterval = setInterval(() => {
+            pos = Math.min(pos + 3, twTotalChars)
+            setTypewriterMap(prev => ({ ...prev, [msgId]: pos }))
+            if (pos >= twTotalChars) clearInterval(twInterval)
+          }, 16)
+        }
+      }
+
+      let settled = false
+      const done = () => {
+        if (settled) return // handlePause triggers onpause, which must not also double-fire via onended/onerror
+        settled = true
+        if (twInterval) clearInterval(twInterval)
+        if (tw) setTypewriterMap(prev => ({ ...prev, [tw.msgId]: tw.displayText.length }))
+        if (currentAudioRef.current === audio) currentAudioRef.current = null
+        onTTSEnd()
+        resolve()
+      }
+      audio.onended = done
+      audio.onerror = done
+      // handlePause() calls audio.pause() directly to interrupt playback — without this,
+      // that pause would leave this promise (and the turn's playback loop awaiting it) stuck forever.
+      audio.onpause = done
+      audio.play().catch(done)
+    })
+
   // tw: typewriter sync — drives character-by-character reveal timed to actual TTS playback
-  const speak = (text: string, tw?: { msgId: string; displayText: string; displayOffset?: number }) =>
+  // lang: BCP-47 locale (e.g. 'te-IN') to speak this utterance in a native-language browser
+  // voice when one is installed — used for the mistake-note fallback when ElevenLabs audio
+  // isn't available, so it at least attempts the actual language instead of always English.
+  const speak = (text: string, tw?: { msgId: string; displayText: string; displayOffset?: number }, lang?: string) =>
     new Promise<void>((resolve) => {
     if (!sessionActiveRef.current) return resolve()
     onTTSStart()
 
     // Use voices directly from state (loaded at mount via onvoiceschanged) — no async wait
     const utter = new SpeechSynthesisUtterance(text.replace(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/gu, ''))
-    const pickedVoice = selectedVoiceName
+    const isNativeLang = !!lang && !lang.startsWith('en')
+    const langPrefix = lang?.split('-')[0].toLowerCase()
+    // Voice .lang formatting varies a lot across browsers/OSes (hyphens vs underscores,
+    // unexpected casing) — normalize before comparing, and also fall back to matching the
+    // voice's NAME against the language's English name (e.g. "Telugu"), since some
+    // installed voices report a generic/incorrect lang tag but still say what they are.
+    const NATIVE_LANG_NAME_HINTS: Record<string, string> = {
+      hi: 'hindi', te: 'telugu', ta: 'tamil', kn: 'kannada', ml: 'malayalam',
+      mr: 'marathi', bn: 'bengali', gu: 'gujarati', pa: 'punjabi',
+    }
+    const nameHint = langPrefix ? NATIVE_LANG_NAME_HINTS[langPrefix] : undefined
+    // True match on the actual language (e.g. a real installed Hindi voice) first.
+    const exactNativeVoice = isNativeLang
+      ? voices.find(v => v.lang.toLowerCase().replace('_', '-').startsWith(langPrefix!))
+        ?? (nameHint ? voices.find(v => v.name.toLowerCase().includes(nameHint)) : undefined)
+      : undefined
+    if (isNativeLang && !exactNativeVoice) {
+      console.warn(`[speak] No installed voice found for "${lang}". Available voices:`, voices.map(v => `${v.name} (${v.lang})`))
+    }
+    // No real voice for this language (e.g. Telugu/Tamil, which are rarely installed) —
+    // an Indian-accented ENGLISH voice reads it far more naturally than a US/UK default,
+    // and a female one specifically matches what students are used to hearing here.
+    const indianFallbackVoice = isNativeLang && !exactNativeVoice
+      ? voices.find(v => v.lang.toLowerCase() === 'en-in' && ['heera', 'female'].some(k => v.name.toLowerCase().includes(k)))
+        ?? voices.find(v => v.lang.toLowerCase() === 'en-in')
+      : undefined
+    const nativeVoice = exactNativeVoice ?? indianFallbackVoice
+    const pickedVoice = isNativeLang
+      ? nativeVoice
+      : selectedVoiceName
       ? voices.find(v => v.name === selectedVoiceName)
       : voices.find(v => voiceGender === 'female'
           ? ['google uk english female', 'zira', 'samantha', 'karen', 'female'].some(k => v.name.toLowerCase().includes(k))
           : ['google uk english male', 'david', 'alex', 'daniel', 'male'].some(k => v.name.toLowerCase().includes(k))
         )
+    // Still nothing matched — fall back to ANY available voice so the full text is at
+    // least attempted end-to-end rather than silently dropping unrenderable parts.
     if (pickedVoice) utter.voice = pickedVoice
     else if (voices[0]) utter.voice = voices[0]
-    utter.pitch = voiceGender === 'female' ? 1.05 : 0.95
-    utter.rate = 0.95
+    // Only set the target-language hint when we found a REAL matching voice for it.
+    // Setting utter.lang to a language the actual voice doesn't support (e.g. a "te-IN"
+    // hint while using the English-accent fallback voice) makes some engines — notably
+    // Microsoft/Windows voices — silently SKIP whatever text doesn't match that hint,
+    // rather than just reading it phonetically. That's exactly why English words were
+    // audible while the Telugu portions went silent: the voice could read fine, but the
+    // mismatched lang hint told it to drop anything it flagged as "not English".
+    if (lang && exactNativeVoice) utter.lang = lang
+    utter.pitch = isNativeLang ? 1 : voiceGender === 'female' ? 1.05 : 0.95
+    utter.rate = isNativeLang ? 0.85 : 0.95
 
     let twInterval: any = null
     let twMsgId: string | undefined
@@ -827,37 +955,89 @@ const EnglishVoicePractice: React.FC = () => {
       const { data } = await axios.post(`${baseURL}/api/english/chat`, {
         userMessage: msg,
         history: historyRef.current,
+        nativeLanguage,
+        voiceGender,
       })
 
       const turn: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: msg }]
       if (data.reply) turn.push({ role: 'assistant', content: data.reply })
       historyRef.current = [...historyRef.current, ...turn].slice(-20)
 
-      const toSpeak: Array<{ spokenText: string; displayText: string; msgId: string; displayOffset: number }> = []
+      // Each step below both reveals its bubble AND speaks it, run strictly in
+      // order — the reply bubble must not appear (or start its typewriter)
+      // until the correction + "what changed" explanation have fully finished
+      // playing, otherwise the student sees the next reply pop in while the
+      // correction is still being read aloud, which looks rushed/unprofessional.
+      const steps: Array<() => Promise<void>> = []
+
       if (data.correction && data.correction !== '-') {
-        const id = mkId()
-        setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction', note: data.mistakeNote || undefined }])
-        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
-        toSpeak.push({ spokenText: 'Correction: ' + data.correction, displayText: data.correction, msgId: id, displayOffset: 'Correction: '.length })
         mistakesRef.current = [...mistakesRef.current, { said: msg, correction: data.correction, note: data.mistakeNote || '' }]
+
+        steps.push(async () => {
+          const id = mkId()
+          setMessages((p) => [...p, { id, sender: 'eklav', text: data.correction, type: 'correction', note: data.mistakeNote || undefined }])
+          setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+          const sg = setTimeout(() => clearTypewriter(id), 8000)
+          // Prefer the ElevenLabs voice generated server-side; fall back to browser TTS
+          // (with the spoken "Correction:" prefix it needs since there's no pre-baked audio) if that failed.
+          if (data.correctionAudio) {
+            await speakAudioUrl(data.correctionAudio, { msgId: id, displayText: data.correction })
+          } else {
+            await speak('Correction: ' + data.correction, { msgId: id, displayText: data.correction, displayOffset: 'Correction: '.length })
+          }
+          clearTimeout(sg)
+          clearTypewriter(id)
+        })
+
+        // Speak the "what changed" explanation — the server generates real audio in the
+        // student's chosen help language (mistakeNoteAudio) via ElevenLabs. Text is
+        // already shown under the correction bubble regardless of whether audio came back.
+        if (data.mistakeNote) {
+          if (data.mistakeNoteAudio) {
+            steps.push(() => speakAudioUrl(data.mistakeNoteAudio))
+          } else {
+            // ElevenLabs unavailable/failed — try the browser's own voice for the
+            // student's chosen language (if the device has one installed) rather than
+            // defaulting to English; going silent here reads as "the voice broke" rather
+            // than a graceful fallback (confirmed by testing with the key removed).
+            const langInfo = NATIVE_LANGUAGES.find(l => l.code === nativeLanguage)
+            steps.push(() => speak(data.mistakeNote, undefined, langInfo?.ttsLang))
+          }
+        }
       }
+
       if (data.reply) {
-        const id = mkId()
-        setMessages((p) => [...p, { id, sender: 'eklav', text: data.reply, type: 'reply' }])
-        setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
-        toSpeak.push({ spokenText: data.reply, displayText: data.reply, msgId: id, displayOffset: 0 })
         conversationRef.current += `Coach: ${data.reply}\n`
+        steps.push(async () => {
+          const id = mkId()
+          setMessages((p) => [...p, { id, sender: 'eklav', text: data.reply, type: 'reply' }])
+          setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
+          const sg = setTimeout(() => clearTypewriter(id), 8000)
+          const tw = { msgId: id, displayText: data.reply }
+          if (data.replyAudio) await speakAudioUrl(data.replyAudio, tw)
+          else await speak(data.reply, tw)
+          clearTimeout(sg)
+          clearTypewriter(id)
+        })
       }
 
       setIsTyping(false)
       stopThinkingTimer()
 
-      for (const item of toSpeak) {
-        if (!sessionActiveRef.current) break
-        const sg = setTimeout(() => clearTypewriter(item.msgId), 8000)
-        await speak(item.spokenText, { msgId: item.msgId, displayText: item.displayText, displayOffset: item.displayOffset })
-        clearTimeout(sg)
-        clearTypewriter(item.msgId)
+      // Reserve the "bot is speaking" slot for the WHOLE turn (correction + what-changed
+      // + reply), not just each clip individually. Each step below also calls
+      // onTTSStart/onTTSEnd itself, which briefly drops the shared speaking counter to
+      // zero in the gap BETWEEN clips — without this outer reservation, that gap was
+      // enough to re-enable the mic mid-turn, catch a stray sound, and kick off a second
+      // overlapping reply while the "what changed" explanation was still playing.
+      onTTSStart()
+      try {
+        for (const step of steps) {
+          if (!sessionActiveRef.current || isPausedRef.current) break
+          await step()
+        }
+      } finally {
+        onTTSEnd()
       }
     } finally {
       setIsTyping(false)
@@ -890,7 +1070,7 @@ const EnglishVoicePractice: React.FC = () => {
     setActiveSessionTab('conversation')
     setSessionStarted(true)
     setSessionEnded(false)
-    setTimeLeft(180)
+    setTimeLeft(SESSION_SECONDS)
     setLiveSpeech('')
     setIsUserSpeaking(false)
   }
@@ -901,7 +1081,14 @@ const EnglishVoicePractice: React.FC = () => {
     clearSilenceTimer()
     stopListening()
     speechSynthesis.cancel()
-    ttsCountRef.current = 0
+    // speechSynthesis.cancel() only stops the browser-TTS fallback — an ElevenLabs
+    // clip currently playing via <audio> needs to be stopped separately. Both paths
+    // properly run their own onTTSEnd() via the cancel/pause event (see speak() and
+    // speakAudioUrl() above), so ttsCountRef unwinds correctly on its own — forcing it
+    // to 0 here would double-decrement once that event fires and can go negative.
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause()
+    }
     setBotSpeaking(false)
     stopThinkingTimer()
     setLiveSpeech('')
@@ -922,14 +1109,16 @@ const EnglishVoicePractice: React.FC = () => {
     startMicMonitor()
 
     try {
-      const res = await axios.post(`${baseURL}/api/english/start`)
+      const res = await axios.post(`${baseURL}/api/english/start`, { voiceGender })
       if (!sessionActiveRef.current) return
       const welcomeText = res.data.aiMessage
       const welcomeId = mkId()
       setMessages([{ id: welcomeId, sender: 'eklav', text: welcomeText, type: 'reply' }])
       setTypewriterMap(prev => ({ ...prev, [welcomeId]: 0 }))
       const sg = setTimeout(() => clearTypewriter(welcomeId), 8000)
-      await speak(welcomeText, { msgId: welcomeId, displayText: welcomeText })
+      const tw = { msgId: welcomeId, displayText: welcomeText }
+      if (res.data.aiMessageAudio) await speakAudioUrl(res.data.aiMessageAudio, tw)
+      else await speak(welcomeText, tw)
       clearTimeout(sg)
       clearTypewriter(welcomeId)
     } catch (err) {
@@ -953,13 +1142,13 @@ const EnglishVoicePractice: React.FC = () => {
     setActiveSessionTab('feedback')
 
     try {
-      const durationSeconds = Math.max(0, 180 - timeLeft)
+      const durationSeconds = Math.max(0, SESSION_SECONDS - timeLeft)
       const res = await axios.post(`${baseURL}/api/english/end`, {
         transcript: transcriptRef.current,
         conversation: conversationRef.current,
         mistakes: mistakesRef.current,
         durationSeconds,
-        timeLimit: 180,
+        timeLimit: SESSION_SECONDS,
       }, { headers: { Authorization: `Bearer ${token}` } })
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
@@ -1126,7 +1315,7 @@ const EnglishVoicePractice: React.FC = () => {
     setFeedbackBreakdown(null)
     setFeedbackMistakes([])
     setFeedbackConversation('')
-    setTimeLeft(180)
+    setTimeLeft(SESSION_SECONDS)
     setIsPaused(false)
     isPausedRef.current = false
   }
@@ -1239,6 +1428,17 @@ const EnglishVoicePractice: React.FC = () => {
                   }
                 </select>
               )}
+              {/* Help language — explains mistakes in this language, conversation stays in English */}
+              <select
+                value={nativeLanguage}
+                onChange={e => setNativeLanguage(e.target.value)}
+                title="When you make a mistake, the coach explains it in this language"
+                style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: nativeLanguage !== 'en' ? ORANGE : PAGE_TEXT, background: PAGE_BG, cursor: 'pointer', outline: 'none', maxWidth: 150 }}
+              >
+                {NATIVE_LANGUAGES.map(l => (
+                  <option key={l.code} value={l.code}>{l.code === 'en' ? 'English only' : `Explain in ${l.label}`}</option>
+                ))}
+              </select>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: PAGE_BG, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
                 <FaClock style={{ color: PAGE_TEXT, fontSize: 12 }} />
                 <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: PAGE_TEXT }}>Time Left: {formatTime(timeLeft)}</span>
