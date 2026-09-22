@@ -1,4 +1,42 @@
 /* ======================================================
+   PRE-INTRO COUNTDOWN
+   The big "3, 2, 1" shown over a blurred background while the intro voice loads.
+====================================================== */
+@keyframes countdownPop {
+  0% { opacity: 0; transform: scale(0.5); }
+  30% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes countdownSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ======================================================
+   MUTED MIC PROMPT
+   Gentle pulse on the answer mic while it's muted, so students notice they need
+   to tap it before speaking instead of talking with nothing being recorded.
+====================================================== */
+@keyframes micMutedPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(148,163,184,0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(148,163,184,0); }
+}
+
+/* ======================================================
+   TYPEWRITER CURSOR
+   Blinking caret shown while the question text is still typing out.
+====================================================== */
+.typing-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: #3b82f6;
+  animation: typingCursorBlink 0.9s steps(1) infinite;
+}
+@keyframes typingCursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* ======================================================
    THIN / HIDDEN SCROLLBARS
    Keeps panels scrollable without the bulky native scrollbar.
 ====================================================== */

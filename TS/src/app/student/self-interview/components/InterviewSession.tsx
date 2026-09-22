@@ -62,7 +62,17 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ interviewId, questi
   const [ledColor, setLedColor] = useState<'blue' | 'green' | 'yellow' | 'red'>('blue')
   const pdfRef = useRef<HTMLDivElement>(null)
   const speechSynthRef = useRef<SpeechSynthesisUtterance | null>(null)
+  const serverAudioRef = useRef<HTMLAudioElement | null>(null)
   const eyeMovementRef = useRef<NodeJS.Timeout>()
+  // Browsers block a <audio>.play() call that isn't triggered by a direct user
+  // gesture — the auto-fired intro/question speech runs from a useEffect (after an
+  // async fetch), so the very first attempt is routinely rejected and silently falls
+  // back to the old robotic browser voice. Once that happens, this shows a small
+  // "Tap to enable voice" prompt; clicking it IS a real gesture, so that retry
+  // succeeds, and browsers then keep allowing this page's audio for the rest of
+  // the session (no more prompts needed after the first unlock).
+  const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false)
+  const pendingSpeechRef = useRef<{ text: string; onDone: () => void } | null>(null)
   const [isIntroDone, setIsIntroDone] = useState(false);
 
 
@@ -111,94 +121,111 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ interviewId, questi
     }
   }, [robotStatus])
 
-// --- AI Interview Intro + Question Speech ---
-useEffect(() => {
-  // Skip if no questions
-  if (!questions.length) return
-
-  // Intro should play first before first question
-  if (!isIntroDone) {
-    const introText = "Welcome to the AI Interview. My name is Eklav. Let's start the interview.";
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(introText);
-      speechSynthRef.current = utterance;
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        setRobotStatus('speaking');
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        setRobotStatus('listening');
-        setTimeout(() => setIsIntroDone(true), 600); // small gap before first question
-      };
-
-      utterance.rate = 0.9;
-      utterance.pitch = 0.9;
-      utterance.volume = 1;
-
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v =>
-        v.name.includes('Google UK English Male') ||
-        v.name.includes('Microsoft David') ||
-        v.lang.includes('en-US')
-      );
-      if (voice) utterance.voice = voice;
-      window.speechSynthesis.speak(utterance);
-    }
-    return; // prevent question speech until intro finishes
-  }
-
-  // --- Speak the current question ---
-  if (!currentQuestion) return;
-
-  if ('speechSynthesis' in window) {
+  // Speaks via browser speechSynthesis — only used as a fallback when the server
+  // voice (below) is unavailable/fails, so the interview never goes silent.
+  const speakWithBrowserVoice = (text: string, onDone: () => void) => {
+    if (!('speechSynthesis' in window)) { onDone(); return }
     window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(currentQuestion);
+    const utterance = new SpeechSynthesisUtterance(text);
     speechSynthRef.current = utterance;
-
-    utterance.onstart = () => {
-      setIsSpeaking(true);
-      setRobotStatus('speaking');
-    };
-
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      setRobotStatus('listening');
-    };
-
-    utterance.onerror = () => {
-      setIsSpeaking(false);
-      setRobotStatus('idle');
-    };
-
+    utterance.onstart = () => { setIsSpeaking(true); setRobotStatus('speaking'); };
+    utterance.onend = () => { setIsSpeaking(false); setRobotStatus('listening'); onDone(); };
+    utterance.onerror = () => { setIsSpeaking(false); setRobotStatus('idle'); onDone(); };
     utterance.rate = 0.85;
-    utterance.pitch = 0.7;
+    utterance.pitch = 0.8;
     utterance.volume = 0.9;
-
     const voices = window.speechSynthesis.getVoices();
     const professionalVoice = voices.find(v =>
-      v.name.includes('Microsoft David') ||
-      v.name.includes('Google UK English Male') ||
-      v.name.includes('Alex') ||
+      v.name.includes('Microsoft Zira') ||
+      v.name.includes('Google UK English Female') ||
+      v.name.includes('Samantha') ||
       v.lang.includes('en-US')
     );
     if (professionalVoice) utterance.voice = professionalVoice;
-
-    setTimeout(() => window.speechSynthesis.speak(utterance), 600);
+    window.speechSynthesis.speak(utterance);
   }
 
-  return () => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+  // Same server-side voice as English Speaking Practice (ElevenLabs, falling back to
+  // OpenAI's "shimmer"/"echo" HD voices) instead of the browser's inconsistent
+  // built-in speechSynthesis — see POST /api/tts/speak (ttsService.js on the backend).
+  // Falls back to speakWithBrowserVoice if the server call fails outright.
+  const speak = async (text: string, onDone: () => void) => {
+    try {
+      const res = await fetch(`${baseURL}/api/tts/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text, gender: 'female' }),
+      })
+      if (!res.ok) {
+        console.error(`[SelfInterview TTS] /api/tts/speak returned ${res.status}`)
+      }
+      const data = await res.json()
+      if (data?.audio) {
+        const audio = new Audio(data.audio)
+        serverAudioRef.current = audio
+        audio.onplay = () => { setIsSpeaking(true); setRobotStatus('speaking'); };
+        audio.onended = () => { setIsSpeaking(false); setRobotStatus('listening'); onDone(); };
+        audio.onerror = () => { setIsSpeaking(false); setRobotStatus('idle'); onDone(); };
+        try {
+          await audio.play()
+          setNeedsAudioUnlock(false)
+          return
+        } catch (playErr) {
+          // Browser blocked the auto-fired play() — not an audio-generation
+          // failure, so don't fall back to the robotic browser voice here.
+          // Instead ask for one tap to unlock playback for the rest of the session.
+          console.warn('[SelfInterview TTS] Autoplay blocked, needs a user tap to unlock:', playErr)
+          pendingSpeechRef.current = { text, onDone }
+          setNeedsAudioUnlock(true)
+          return
+        }
+      }
+      console.warn('[SelfInterview TTS] No audio returned by server, falling back to browser voice')
+    } catch (err) {
+      console.error('[SelfInterview TTS] Server TTS request failed, falling back to browser voice:', err)
     }
-    setIsSpeaking(false);
-    setRobotStatus('idle');
-  };
-}, [currentQuestion, isIntroDone]);
+    speakWithBrowserVoice(text, onDone)
+  }
+
+  // Called from the "Tap to enable voice" button — a real click/tap, so the browser
+  // allows this play() call, and (per standard autoplay-policy behavior) keeps
+  // allowing this page's subsequent programmatic audio for the rest of the session.
+  const unlockAudioAndRetry = () => {
+    const pending = pendingSpeechRef.current
+    setNeedsAudioUnlock(false)
+    if (pending) speak(pending.text, pending.onDone)
+  }
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    serverAudioRef.current?.pause();
+    serverAudioRef.current = null;
+  }
+
+  // --- AI Interview Intro + Question Speech ---
+  useEffect(() => {
+    // Skip if no questions
+    if (!questions.length) return
+
+    // Intro should play first before first question
+    if (!isIntroDone) {
+      const introText = "Welcome to the AI Interview. My name is Eklav. Let's start the interview.";
+      speak(introText, () => setTimeout(() => setIsIntroDone(true), 600)); // small gap before first question
+      return () => stopSpeaking();
+    }
+
+    // --- Speak the current question ---
+    if (!currentQuestion) return;
+
+    const timer = setTimeout(() => speak(currentQuestion, () => {}), 600);
+
+    return () => {
+      clearTimeout(timer);
+      stopSpeaking();
+      setIsSpeaking(false);
+      setRobotStatus('idle');
+    };
+  }, [currentQuestion, isIntroDone]);
 
 
   const downloadPDF = async () => {
@@ -351,6 +378,19 @@ useEffect(() => {
 
   return (
     <div className="mt-4">
+      {needsAudioUnlock && (
+        <div
+          onClick={unlockAudioAndRetry}
+          style={{
+            position: 'sticky', top: 8, zIndex: 50, cursor: 'pointer',
+            background: '#f97316', color: '#fff', fontWeight: 600, fontSize: 13,
+            borderRadius: 8, padding: '10px 16px', marginBottom: 12,
+            display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center',
+          }}
+        >
+          🔊 Tap here to enable the interviewer's voice
+        </div>
+      )}
       {!interviewFinished ? (
         <Card className="p-0 border-0 text-white" style={{ background: 'transparent' }}>
           <div className="d-flex flex-column flex-md-row align-items-stretch">

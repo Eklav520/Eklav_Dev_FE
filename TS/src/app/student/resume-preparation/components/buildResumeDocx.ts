@@ -1,5 +1,6 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, BorderStyle } from 'docx'
 import { ResumeData } from './ResumeData'
+import { parseEntry } from './resumeEntryParser'
 
 const ACCENT = '2563eb'
 const MUTED = '6b7280'
@@ -16,33 +17,16 @@ function boldRuns(text: string): TextRun[] {
   )
 }
 
-// Same heading/"• " sub-bullet split used by BulletLines (renderBoldText.tsx), but
-// producing Word paragraphs instead of React nodes — a leading non-bulleted line (or
+// Turns one resume entry into Word paragraphs — a leading non-bulleted line (or
 // lines) becomes a plain paragraph, and each "• " line becomes its own bulleted
 // paragraph so it renders as a real Word bullet list, not literal "•" characters.
 function entryParagraphs(text: string): Paragraph[] {
-  const rawLines = (text || '').split('\n').map((l) => l.trim()).filter(Boolean)
-  const heading: string[] = []
-  const subBullets: string[] = []
-  let inBullets = false
-  for (const line of rawLines) {
-    if (line.startsWith('•')) {
-      inBullets = true
-      subBullets.push(line.replace(/^•\s*/, ''))
-    } else if (!inBullets) {
-      heading.push(line)
-    } else if (subBullets.length) {
-      subBullets[subBullets.length - 1] += ' ' + line
-    } else {
-      heading.push(line)
-    }
-  }
-  const headingText = heading.length ? heading.join('\n') : subBullets.shift() || ''
+  const { heading, bullets } = parseEntry(text)
   const paragraphs: Paragraph[] = []
-  headingText.split('\n').filter(Boolean).forEach((line) => {
+  heading.split('\n').filter(Boolean).forEach((line) => {
     paragraphs.push(new Paragraph({ children: boldRuns(line), spacing: { after: 40 } }))
   })
-  subBullets.forEach((b) => {
+  bullets.forEach((b) => {
     paragraphs.push(new Paragraph({ children: boldRuns(b), bullet: { level: 0 }, spacing: { after: 40 } }))
   })
   return paragraphs

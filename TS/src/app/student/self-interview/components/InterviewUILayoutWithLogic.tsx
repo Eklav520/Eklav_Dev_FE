@@ -39,7 +39,7 @@ const CODE_LANGUAGES = [
   { label: 'CSS', extension: css() },
   { label: 'SQL', extension: sql() },
 ] as const
-import { FaMicrophone, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb, FaShieldAlt, FaEye, FaHandPaper, FaVideo, FaSun, FaVolumeUp, FaUserCheck, FaClock, FaStop, FaStar, FaArrowRight, FaCheck } from 'react-icons/fa'
+import { FaMicrophone, FaMicrophoneSlash, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb, FaShieldAlt, FaEye, FaHandPaper, FaVideo, FaSun, FaVolumeUp, FaUserCheck, FaClock, FaStop, FaStar, FaArrowRight, FaCheck } from 'react-icons/fa'
 
 type AnswerItem = {
   question: string
@@ -324,6 +324,46 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null)
   const [isIntroDone, setIsIntroDone] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  // Same server-side voice as English Speaking Practice (ElevenLabs, falling back to
+  // OpenAI's "shimmer"/"echo" HD voices) instead of the browser's inconsistent
+  // built-in speechSynthesis — see POST /api/tts/speak (ttsService.js on the backend).
+  const serverAudioRef = useRef<HTMLAudioElement | null>(null)
+  // Browsers block a <audio>.play() call that isn't triggered by a direct user
+  // gesture — the auto-fired intro/question speech runs from a useEffect (after an
+  // async fetch), so the first attempt is routinely rejected and would otherwise
+  // silently fall back to the old robotic browser voice. When that happens, a
+  // "Tap to enable voice" prompt appears; tapping it IS a real gesture, so that
+  // retry succeeds and browsers then keep allowing this page's audio for the rest
+  // of the session (no more prompts needed after the first unlock).
+  const [needsAudioUnlock, setNeedsAudioUnlock] = useState(false)
+  const pendingSpeechRef = useRef<{ text: string; onDone: () => void; onStart?: (durationMs: number) => void } | null>(null)
+  // The question text types out in sync with the question being spoken, instead of
+  // appearing all at once — and stays empty during the intro, so nothing shows until
+  // the interviewer actually starts asking it.
+  const [typedQuestion, setTypedQuestion] = useState('')
+  const typeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Intro voice fetch used to visibly stall the start of the session (the /api/tts/speak
+  // round trip). A blurred "3, 2, 1" countdown now covers that wait instead — the intro
+  // audio is prefetched in the background while the countdown runs, so by the time it
+  // hits 0 the voice is ready (or nearly ready) to play immediately.
+  // countdownNum is purely the "3, 2, 1" display — it floors at 1 and holds there
+  // (instead of continuing to 0) until the prefetch actually finishes, so the intro
+  // starts the instant the overlay disappears rather than racing a fixed timer.
+  const [countdownNum, setCountdownNum] = useState(3)
+  // True once the "3, 2, 1" animation itself has finished but the voice still hasn't
+  // arrived — swaps the frozen last number for a spinner so it reads as "still
+  // working" instead of stuck.
+  const [showVoiceSpinner, setShowVoiceSpinner] = useState(false)
+  const [overlayVisible, setOverlayVisible] = useState(true)
+  const introAudioRef = useRef<string | null>(null)
+  const introTextRef = useRef('Welcome to the AI Interview. My name is Eklav. Let\'s start the interview.')
+  // A plain HTMLAudioElement caps out at volume 1.0 (100%) — to actually get louder,
+  // and to add some bass/warmth so the voice sounds fuller rather than thin, the
+  // server audio is routed through a small Web Audio graph (gain + a bass-boosting
+  // low-shelf filter) instead of playing directly. Browser-voice fallback (speechSynthesis)
+  // can't be routed this way, but it's already at max volume.
+  const audioCtxRef = useRef<AudioContext | null>(null)
 
   // transcript / recognition
   const recognitionRef = useRef<any>(null)
@@ -680,62 +720,260 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
     }
   }, [robotStatus])
 
-  // --- Speech Synthesis: intro + question readout
+  // Typing was visibly lagging behind the (faster-sounding) voice, so the typewriter
+  // runs well ahead of the audio's actual duration — it finishes at ~15% of the time
+  // the voice takes, instead of matching it exactly.
+  const TYPEWRITER_SPEED_FACTOR = 0.15
+
+  // Reveals the question text a character at a time, paced to finish roughly when the
+  // audio for it does — instead of the whole sentence appearing at once.
+  const startTypewriter = (text: string, durationMs: number) => {
+    if (typeIntervalRef.current) clearInterval(typeIntervalRef.current)
+    setTypedQuestion('')
+    if (!text) return
+    const stepMs = Math.min(18, Math.max(5, (durationMs * TYPEWRITER_SPEED_FACTOR) / text.length))
+    let i = 0
+    typeIntervalRef.current = setInterval(() => {
+      i++
+      setTypedQuestion(text.slice(0, i))
+      if (i >= text.length && typeIntervalRef.current) {
+        clearInterval(typeIntervalRef.current)
+        typeIntervalRef.current = null
+      }
+    }, stepMs)
+  }
+
+  const stopTypewriter = () => {
+    if (typeIntervalRef.current) { clearInterval(typeIntervalRef.current); typeIntervalRef.current = null }
+  }
+
+  // Rough chars-per-second for the browser voice fallback, where we don't get a real
+  // audio duration back — used only to pace the typewriter reasonably, not exact.
+  const BROWSER_VOICE_CHARS_PER_SEC = 13
+
+  // Routes an <audio> element through gain (louder than the 1.0 volume ceiling) and a
+  // bass-boosting low-shelf filter (richer/fuller, less thin) instead of playing it
+  // directly. Once an element is connected to a Web Audio graph, ALL its output goes
+  // through that graph — so if the AudioContext never actually resumes (its own,
+  // separate gesture-unlock requirement from the <audio>.play() one already handled
+  // elsewhere in this file), the voice would go completely silent instead of merely
+  // "not boosted". So resume() is raced against a short timeout, and the whole boost
+  // is skipped (plain, un-boosted playback) rather than risk that.
+  const applyVoiceBoost = async (audio: HTMLAudioElement) => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext
+      if (!AudioContextCtor) return
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContextCtor()
+      const ctx = audioCtxRef.current
+
+      if (ctx.state === 'suspended') {
+        await Promise.race([
+          ctx.resume().catch(() => {}),
+          new Promise((resolve) => setTimeout(resolve, 150)),
+        ])
+      }
+      if (ctx.state !== 'running') return // still locked — leave audio unboosted rather than risk silence
+
+      const source = ctx.createMediaElementSource(audio)
+      const bass = ctx.createBiquadFilter()
+      bass.type = 'lowshelf'
+      bass.frequency.value = 200
+      bass.gain.value = 6 // +6dB under ~200Hz — fuller, less thin
+      const gain = ctx.createGain()
+      gain.gain.value = 1.6 // ~60% louder than the audio element's own 1.0 ceiling
+
+      source.connect(bass)
+      bass.connect(gain)
+      gain.connect(ctx.destination)
+    } catch (err) {
+      console.warn('[SelfInterview TTS] Voice boost unavailable, playing at normal volume:', err)
+    }
+  }
+
+  // Speaks via browser speechSynthesis — only used as a fallback when the server
+  // voice (below) is unavailable/fails, so the interview never goes silent.
+  const speakWithBrowserVoice = (text: string, rate: number, pitch: number, onDone: () => void, onStart?: (durationMs: number) => void) => {
+    if (!('speechSynthesis' in window)) { onDone(); return }
+    window.speechSynthesis.cancel()
+    const u = new SpeechSynthesisUtterance(text)
+    speechRef.current = u
+    u.rate = rate
+    u.pitch = pitch
+    u.onstart = () => {
+      setIsSpeaking(true); setRobotStatus('speaking')
+      onStart?.((text.length / (BROWSER_VOICE_CHARS_PER_SEC * rate)) * 1000)
+    }
+    u.onend = () => { setIsSpeaking(false); setRobotStatus('listening'); onDone() }
+    u.onerror = () => { setIsSpeaking(false); setRobotStatus('idle'); onDone() }
+    const voices = window.speechSynthesis.getVoices()
+    const voice = voices.find((v) => (v.name || '').includes('Zira') || (v.name || '').includes('Google UK English Female') || (v.name || '').includes('Samantha'))
+      ?? voices.find((v) => (v.name || '').includes('Google') || (v.lang || '').includes('en'))
+    if (voice) u.voice = voice
+    window.speechSynthesis.speak(u)
+  }
+
+  // Bumped on every new speak() call and checked again after each await below — so a
+  // call left over from a superseded effect run (React StrictMode's dev-only double
+  // mount/cleanup/mount fires this effect twice in quick succession, and the first
+  // call's fetch/audio was still in flight when the second one started) notices it's
+  // stale and never plays, instead of both playing at once ("two times... mixed").
+  const speechEpochRef = useRef(0)
+
+  // fetchAudio(text) — a caller-supplied override so the intro (prefetched during the
+  // countdown, see introAudioRef) can skip this function's own network round trip and
+  // play back-to-back with the countdown ending, instead of a second visible wait.
+  const speak = async (
+    text: string, rate: number, pitch: number, onDone: () => void,
+    onStart?: (durationMs: number) => void, fetchAudio?: () => Promise<string | null>,
+  ) => {
+    const epoch = ++speechEpochRef.current
+    try {
+      const data: { audio: string | null } = fetchAudio
+        ? { audio: await fetchAudio() }
+        : await (async () => {
+            const res = await fetch(`${baseURL}/api/tts/speak`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ text, gender: 'female', voice: 'shimmer' }),
+            })
+            if (!res.ok) console.error(`[SelfInterview TTS] /api/tts/speak returned ${res.status}`)
+            return res.json()
+          })()
+      if (speechEpochRef.current !== epoch) return // superseded while awaiting the network
+      if (data?.audio) {
+        const audio = new Audio(data.audio)
+        // The server voice was noticeably faster-paced than the typewriter could
+        // comfortably match — 0.9x is a slight, still-natural-sounding slowdown.
+        audio.playbackRate = rate
+        await applyVoiceBoost(audio) // louder + a bit more bass, see applyVoiceBoost above
+        if (speechEpochRef.current !== epoch) return // superseded while the boost was resolving
+        serverAudioRef.current = audio
+        audio.onplay = () => {
+          setIsSpeaking(true); setRobotStatus('speaking')
+          // audio.duration is the clip's native length — at a slower playbackRate it
+          // actually takes duration/rate real-world seconds to finish playing.
+          const ms = Number.isFinite(audio.duration)
+            ? (audio.duration / audio.playbackRate) * 1000
+            : (text.length / BROWSER_VOICE_CHARS_PER_SEC / audio.playbackRate) * 1000
+          onStart?.(ms)
+        }
+        audio.onended = () => { setIsSpeaking(false); setRobotStatus('listening'); onDone() }
+        audio.onerror = () => { setIsSpeaking(false); setRobotStatus('idle'); onDone() }
+        try {
+          await audio.play()
+          if (speechEpochRef.current !== epoch) { audio.pause(); return } // superseded mid-play
+          setNeedsAudioUnlock(false)
+          return
+        } catch (playErr) {
+          if (speechEpochRef.current !== epoch) return
+          // Browser blocked the auto-fired play() — not an audio-generation failure,
+          // so don't fall back to the robotic browser voice here. Instead ask for
+          // one tap to unlock playback for the rest of the session.
+          console.warn('[SelfInterview TTS] Autoplay blocked, needs a user tap to unlock:', playErr)
+          pendingSpeechRef.current = { text, onDone: () => onDone(), onStart }
+          setNeedsAudioUnlock(true)
+          return
+        }
+      }
+      console.warn('[SelfInterview TTS] No audio returned by server, falling back to browser voice')
+    } catch (err) {
+      console.error('[SelfInterview TTS] Server TTS request failed, falling back to browser voice:', err)
+    }
+    if (speechEpochRef.current !== epoch) return
+    speakWithBrowserVoice(text, rate, pitch, onDone, onStart)
+  }
+
+  // Called from the "Tap to enable voice" button — a real click/tap, so the browser
+  // allows this play() call, and (per standard autoplay-policy behavior) keeps
+  // allowing this page's subsequent programmatic audio for the rest of the session.
+  const unlockAudioAndRetry = () => {
+    const pending = pendingSpeechRef.current
+    setNeedsAudioUnlock(false)
+    if (pending) speak(pending.text, 0.9, 1, pending.onDone, pending.onStart)
+  }
+
+  const stopSpeaking = () => {
+    speechEpochRef.current++ // invalidate any in-flight speak() call
+    stopTypewriter()
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+    serverAudioRef.current?.pause()
+    serverAudioRef.current = null
+  }
+
+  // Fetches TTS audio directly (no epoch/playback handling) — used to prefetch the
+  // intro in the background during the countdown, below.
+  const fetchTtsAudio = async (text: string): Promise<string | null> => {
+    try {
+      const res = await fetch(`${baseURL}/api/tts/speak`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text, gender: 'female', voice: 'shimmer' }),
+      })
+      if (!res.ok) console.error(`[SelfInterview TTS] prefetch returned ${res.status}`)
+      const data = await res.json()
+      return data?.audio ?? null
+    } catch (err) {
+      console.error('[SelfInterview TTS] Intro prefetch failed:', err)
+      return null
+    }
+  }
+
+  // --- Countdown + intro, as one linear sequence (deliberately a single effect,
+  // not several interacting ones — that was hard to reason about and prone to races). ---
+  // 1. Fires off the intro TTS fetch immediately.
+  // 2. Plays the "3, 2, 1" animation (800ms per number) in parallel.
+  // 3. If the fetch is still running once the animation ends, shows a spinner instead
+  //    of freezing on "1" — so a slow TTS response still reads as "working".
+  // 4. The moment the fetch resolves, hides the overlay and starts the intro voice
+  //    using that exact same result — no second fetch, no waiting on the JSX to
+  //    re-render and re-derive state, just one straight line of control flow.
   useEffect(() => {
     if (!questions || questions.length === 0) return
+    let cancelled = false
 
-    // play intro once then questions
-    if (!isIntroDone) {
-      const introText = "Welcome to the AI Interview. My name is Eklav. Let's start the interview."
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-        const u = new SpeechSynthesisUtterance(introText)
-        speechRef.current = u
-        u.rate = 0.95
-        u.pitch = 0.9
-        u.onstart = () => {
-          setIsSpeaking(true)
-          setRobotStatus('speaking')
-        }
-        u.onend = () => {
-          setIsSpeaking(false)
-          setRobotStatus('listening')
-          setTimeout(() => setIsIntroDone(true), 300)
-        }
-        const voices = window.speechSynthesis.getVoices()
-        const voice = voices.find((v) => (v.name || '').includes('Google') || (v.lang || '').includes('en'))
-        if (voice) u.voice = voice
-        window.speechSynthesis.speak(u)
-      } else {
-        setIsIntroDone(true)
+    const run = async () => {
+      const introAudioPromise = fetchTtsAudio(introTextRef.current)
+      for (let n = 3; n >= 1; n--) {
+        if (cancelled) return
+        setCountdownNum(n)
+        await new Promise((resolve) => setTimeout(resolve, 800))
       }
-      return
+      if (cancelled) return
+      setShowVoiceSpinner(true)
+      const audio = await introAudioPromise
+      if (cancelled) return
+      introAudioRef.current = audio
+      setOverlayVisible(false)
+      speak(
+        introTextRef.current, 0.8, 0.9,
+        () => setTimeout(() => setIsIntroDone(true), 300),
+        undefined,
+        async () => audio,
+      )
     }
+    run()
 
-    // read current question, then (optionally) start listening
+    return () => { cancelled = true; stopSpeaking() }
+  }, [questions])
+
+  // --- Speech: question readout (the intro itself is handled by the countdown
+  // effect above — this only fires once isIntroDone is true) ---
+  useEffect(() => {
+    if (!questions || questions.length === 0) return
+    if (!isIntroDone) return
     if (!currentQuestion) return
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(currentQuestion)
-      speechRef.current = u
-      u.rate = 0.88
-      u.pitch = 0.85
-      u.onstart = () => {
-        setIsSpeaking(true)
-        setRobotStatus('speaking')
-      }
-      u.onend = () => {
-        setIsSpeaking(false)
-        setRobotStatus('listening')
-        // do not auto-start listening by default â€" leave manual control for stability
-      }
-      const voices = window.speechSynthesis.getVoices()
-      const v = voices.find((vv) => (vv.name || '').includes('Microsoft') || (vv.name || '').includes('Google'))
-      if (v) u.voice = v
-      setTimeout(() => window.speechSynthesis.speak(u), 250)
-    }
+    setTypedQuestion('') // hide the previous question's text until this one starts being spoken
+    const timer = setTimeout(() => speak(
+      currentQuestion, 0.8, 0.85,
+      () => {
+        // do not auto-start listening by default — leave manual control for stability
+      },
+      (durationMs) => startTypewriter(currentQuestion, durationMs),
+    ), 250)
+
     return () => {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+      clearTimeout(timer)
+      stopSpeaking()
       setIsSpeaking(false)
       setRobotStatus('idle')
     }
@@ -1379,9 +1617,6 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const getField = (r: any, field: string, fallback: number) =>
     typeof r === 'object' && r !== null ? (r[field] ?? fallback) : fallback
 
-  const overallScore = scoredAnswers.length > 0
-    ? scoredAnswers.reduce((s, a) => s + getRating(a.rating), 0) / scoredAnswers.length
-    : 0
   const accuracy = scoredAnswers.length > 0
     ? scoredAnswers.reduce((s, a) => s + getField(a.rating, 'accuracy', getRating(a.rating)), 0) / scoredAnswers.length
     : 0
@@ -1391,9 +1626,60 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const completeness = scoredAnswers.length > 0
     ? scoredAnswers.reduce((s, a) => s + getField(a.rating, 'completeness', getRating(a.rating)), 0) / scoredAnswers.length
     : 0
+  // Derived directly from the three numbers actually shown in the breakdown below —
+  // NOT averaged from each answer's separately-stored rating.total — so the headline
+  // score is always mathematically consistent with what the student sees underneath
+  // it, regardless of what any individual stored rating happens to contain.
+  const overallScore = accuracy * 0.5 + clarity * 0.25 + completeness * 0.25
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117', fontFamily: '"Segoe UI", system-ui, sans-serif', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#0f1117', fontFamily: '"Segoe UI", system-ui, sans-serif', overflow: 'hidden', position: 'relative' }}>
+
+      {questions?.length > 0 && overlayVisible && (
+        <div
+          style={{
+            position: 'absolute', inset: 0, zIndex: 300,
+            backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+            background: 'rgba(15,17,23,0.55)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14,
+          }}
+        >
+          {!showVoiceSpinner ? (
+            <div
+              key={countdownNum}
+              style={{
+                fontSize: 96, fontWeight: 800, color: '#fff',
+                textShadow: '0 0 40px rgba(99,102,241,0.6)',
+                animation: 'countdownPop 0.8s ease-out',
+              }}
+            >
+              {countdownNum}
+            </div>
+          ) : (
+            // The intro voice occasionally takes longer than the "3, 2, 1" itself to
+            // generate — a spinner here (instead of a static "1") makes clear the app
+            // is still working, not stuck.
+            <div style={{ width: 56, height: 56, border: '4px solid rgba(255,255,255,0.2)', borderTopColor: '#8b5cf6', borderRadius: '50%', animation: 'countdownSpin 0.8s linear infinite' }} />
+          )}
+          <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 600 }}>
+            {!showVoiceSpinner ? 'Getting everything ready...' : "Preparing your interviewer's voice..."}
+          </div>
+        </div>
+      )}
+
+      {needsAudioUnlock && (
+        <div
+          onClick={unlockAudioAndRetry}
+          style={{
+            position: 'absolute', top: 8, left: '50%', transform: 'translateX(-50%)', zIndex: 200, cursor: 'pointer',
+            background: '#f97316', color: '#fff', fontWeight: 600, fontSize: 13,
+            borderRadius: 8, padding: '10px 16px',
+            display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+          }}
+        >
+          🔊 Tap here to enable the interviewer's voice
+        </div>
+      )}
 
       {/* â"€â"€ TOP HEADER BAR â"€â"€ */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', background: '#0d1117', borderBottom: '1px solid #1e2432', flexShrink: 0, gap: 16 }}>
@@ -1551,9 +1837,17 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                       </span>
                     </div>
                   </div>
-                  {/* Question text */}
-                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px', marginBottom: 8 }}>
-                    <p style={{ color: '#1e293b', fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.6 }}>{currentQuestion}</p>
+                  {/* Question text — stays empty during the intro, then types out in sync
+                      with the question actually being spoken (see startTypewriter). */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: '16px', marginBottom: 8, minHeight: 56 }}>
+                    {isIntroDone ? (
+                      <p style={{ color: '#1e293b', fontSize: 15, fontWeight: 700, margin: 0, lineHeight: 1.6 }}>
+                        {typedQuestion}
+                        {typedQuestion.length < currentQuestion.length && <span className="typing-cursor">▍</span>}
+                      </p>
+                    ) : (
+                      <p style={{ color: '#94a3b8', fontSize: 13, fontStyle: 'italic', margin: 0, lineHeight: 1.6 }}>The interviewer is introducing the session...</p>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1656,10 +1950,23 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 <button
                   onClick={isListening ? stopListening : startListening}
                   disabled={showFeedback || hasSubmitted}
-                  style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: isListening ? '#dc2626' : '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (showFeedback || hasSubmitted) ? 'not-allowed' : 'pointer', flexShrink: 0, opacity: (showFeedback || hasSubmitted) ? 0.5 : 1 }}
+                  title={isListening ? 'Mic is unmuted — click to mute' : 'Mic is muted — click to unmute and start answering'}
+                  style={{
+                    width: 34, height: 34, borderRadius: '50%', border: isListening ? 'none' : '2px solid #94a3b8',
+                    background: isListening ? '#dc2626' : '#e2e8f0', color: isListening ? '#fff' : '#475569',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: (showFeedback || hasSubmitted) ? 'not-allowed' : 'pointer', flexShrink: 0,
+                    opacity: (showFeedback || hasSubmitted) ? 0.5 : 1,
+                    animation: (!isListening && !showFeedback && !hasSubmitted) ? 'micMutedPulse 1.6s ease-in-out infinite' : 'none',
+                  }}
                 >
-                  <FaMicrophone size={13} />
+                  {isListening ? <FaMicrophone size={13} /> : <FaMicrophoneSlash size={13} />}
                 </button>
+                {!showFeedback && !hasSubmitted && (
+                  <span style={{ color: isListening ? '#dc2626' : '#94a3b8', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {isListening ? 'Recording' : 'Muted — tap mic'}
+                  </span>
+                )}
                 <canvas ref={canvasRef} width={200} height={34} style={{ flex: 1, height: 34, background: 'transparent', border: 'none' }} />
                 <span style={{ color: '#64748b', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
                   {String(Math.floor((QUESTION_TIME - timeLeft) / 60)).padStart(2, '0')}:{String((QUESTION_TIME - timeLeft) % 60).padStart(2, '0')}
@@ -1702,7 +2009,10 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                       </div>
                     </div>
                     <div style={{ color: '#64748b', fontSize: 11, fontWeight: 600 }}>
-                      Avg Score{scoredAnswers.length > 1 ? ` (${scoredAnswers.length} questions)` : ''}
+                      {/* A single question's score is a weighted total (see rating.total on the
+                          backend), not an average — "Avg Score" only makes sense once there are
+                          multiple questions' scores being averaged together. */}
+                      {scoredAnswers.length > 1 ? `Avg Score (${scoredAnswers.length} questions)` : 'Overall Score'}
                     </div>
                   </div>
 

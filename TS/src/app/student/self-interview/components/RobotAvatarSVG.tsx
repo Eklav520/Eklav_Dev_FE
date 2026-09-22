@@ -88,7 +88,11 @@ export default function RobotAvatarSVG({ size = 160, status }: Props) {
         {status === "speaking"
           ? "AI Speaking..."
           : status === "listening"
-          ? "Listening..."
+          // This just means the AI has stopped talking — NOT that the answer mic is
+          // recording (that's a separate toggle the student still has to tap). Saying
+          // "Listening..." here made students start answering immediately, before
+          // ever clicking the mic, so their answer went uncaptured.
+          ? "Your Turn"
           : status === "processing"
           ? "Processing..."
           : "Ready"}

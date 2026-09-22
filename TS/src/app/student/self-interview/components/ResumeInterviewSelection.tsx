@@ -55,6 +55,10 @@ const ResumeInterviewSelection = ({ onStart, resumeLimits, hasModuleAccess }: Pr
 
   const [validFile, setValidFile] = useState(false)
   const [fileError, setFileError] = useState('')
+  // True when the backend couldn't pull real text out of the uploaded file (most
+  // often an image-based/screenshotted PDF) — the interview will still start, but
+  // its questions will be generic instead of based on the actual resume content.
+  const [textWarning, setTextWarning] = useState(false)
 
 const used = resumeLimits?.used ?? 0
 const remainingFromAPI = resumeLimits?.remaining
@@ -131,11 +135,13 @@ const remaining =
       if (!res.ok) throw new Error(data.message)
 
       setInterviewId(data.interviewId)
+      setTextWarning(data.textExtracted === false)
 
     } catch (err: any) {
 
       setFileError(err.message || 'Resume upload failed')
       setValidFile(false)
+      setTextWarning(false)
 
     } finally {
 
@@ -154,6 +160,7 @@ const remaining =
     setValidFile(false)
     setInterviewId(null)
     setFileError('')
+    setTextWarning(false)
 
     if (!file) return
 
@@ -378,6 +385,17 @@ const remaining =
           </div>
         )}
 
+        {interviewId && !uploading && textWarning && (
+          <div
+            className="mt-2 small text-center"
+            style={{ color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}
+          >
+            We couldn't read text from this file — it looks like an image-based PDF (e.g. a screenshot
+            export). Starting now would give generic, resume-unrelated questions, so that's blocked.
+            Please upload a text-based PDF or a Word (.docx) file instead.
+          </div>
+        )}
+
 
         <Button
           className="w-100 fw-semibold"
@@ -387,16 +405,17 @@ const remaining =
             !interviewId ||
             uploading ||
             starting ||
-            remaining <= 0
+            remaining <= 0 ||
+            textWarning
           }
           onClick={startResumeInterview}
           style={{
             marginTop: 'auto',
-            backgroundColor: remaining > 0 ? '#2563eb' : '#ccc',
+            backgroundColor: (remaining > 0 && !textWarning) ? '#2563eb' : '#ccc',
             border: 'none',
             borderRadius: '10px',
             padding: '12px',
-            cursor: remaining > 0 ? 'pointer' : 'not-allowed',
+            cursor: (remaining > 0 && !textWarning) ? 'pointer' : 'not-allowed',
           }}
         >
 
@@ -405,6 +424,8 @@ const remaining =
               <Spinner size="sm" style={{ marginRight: 6 }} />
               Starting Interview...
             </>
+          ) : textWarning ? (
+            <><FaBan size={14} style={{ marginRight: 8 }} />Upload a Readable File to Continue</>
           ) : remaining > 0 ? (
             <><FaMicrophone size={14} style={{ marginRight: 8 }} />Start Interview</>
           ) : (

@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react'
-import html2pdf from 'html2pdf.js'
 import { ResumeData } from '../ResumeData'
 import { buildResumeDocxBlob } from '../buildResumeDocx'
+import { buildResumePdf } from '../buildResumePdf'
 import { Download, ArrowLeft, CheckCircle, Eye, Printer, LayoutTemplate, FileText, ChevronDown } from 'lucide-react'
 
 interface Step7FinalReviewProps {
@@ -21,19 +21,16 @@ const Step7FinalReview: React.FC<Step7FinalReviewProps> = ({ data, goBack, onCha
   const [menuOpen, setMenuOpen] = useState(false)
 
   const handleDownloadPdf = async () => {
-    if (!resumeRef.current) return
     setMenuOpen(false)
     setDownloading('pdf')
     try {
-      await html2pdf()
-        .from(resumeRef.current)
-        .set({
-          margin: 0.5,
-          filename: `${data.fullName || 'Resume'}_Resume.pdf`,
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' },
-        })
-        .save()
+      // Real text, not a screenshot — the old html2canvas-based export looked
+      // identical to the on-screen template but embedded it as a picture with zero
+      // selectable/parseable text, which silently failed real ATS systems and any
+      // tool (like the resume-based interview's resume upload) that reads the PDF
+      // as text. buildResumePdf() writes actual text via jsPDF instead.
+      const doc = buildResumePdf(data)
+      doc.save(`${data.fullName || 'Resume'}_Resume.pdf`)
     } finally {
       setDownloading(null)
     }
