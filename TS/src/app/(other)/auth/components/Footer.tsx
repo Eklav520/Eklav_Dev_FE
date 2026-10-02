@@ -8,7 +8,8 @@ import useTenant from '@/utils/tenant'
 const Footer = () => {
   const tenant = useTenant()
 
-  const tenantName = tenant?.name?.trim() || "Eklav"
+  // Subdomains show "Eklav" in the footer logo/copyright regardless of the tenant's own name.
+  const tenantName = "Eklav"
   const tenantLogo = tenant?.logo
   const themeColor = tenant?.themeColor || "#f97316"
 

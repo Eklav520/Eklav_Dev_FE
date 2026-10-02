@@ -286,7 +286,8 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
   const navigate = useNavigate();
   const tenant = useTenant();
 
-  const tenantName = tenant?.name || "Eklav";
+  // Subdomains display as "Eklav" here regardless of the tenant's own name.
+  const tenantName = "Eklav";
   const normalized = tenantName.charAt(0).toUpperCase() + tenantName.slice(1).toLowerCase();
   const first2 = normalized.slice(0, 2);
   const rest = normalized.slice(2);
