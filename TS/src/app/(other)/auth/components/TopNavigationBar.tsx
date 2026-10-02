@@ -135,6 +135,11 @@ const EmployersDropdown: FC = () => {
 
 const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSignupClick, showForEmployers = true }) => {
   const tenant = useTenant();
+  // The fixed-width crop below only matches the default logo_white.png's
+  // baked-in dead space — a white-label tenant's own logo/text renders at
+  // its own natural width, so forcing it into that same fixed box leaves a
+  // gap (narrower logo) or clips it (wider logo). Only crop for the default.
+  const isDefaultEklav = !tenant?.name || tenant.name.trim().toLowerCase() === "eklav";
   return (
     <TopNavbar className="futuristic-nav">
       <style>{`
@@ -396,9 +401,13 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
             the source PNG has ~19% dead transparent space on its right edge
             that otherwise renders as a big gap before the badge. */}
         <div className="d-flex align-items-center">
-          <div style={{ height: EKLAV_LOGO_HEIGHT, width: EKLAV_LOGO_HEIGHT * EKLAV_LOGO_CONTENT_RATIO, overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
+          {isDefaultEklav ? (
+            <div style={{ height: EKLAV_LOGO_HEIGHT, width: EKLAV_LOGO_HEIGHT * EKLAV_LOGO_CONTENT_RATIO, overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
+              <LogoBox height={EKLAV_LOGO_HEIGHT} tenant={tenant} alwaysDark />
+            </div>
+          ) : (
             <LogoBox height={EKLAV_LOGO_HEIGHT} tenant={tenant} alwaysDark />
-          </div>
+          )}
           <PoweredByBadge />
         </div>
 
