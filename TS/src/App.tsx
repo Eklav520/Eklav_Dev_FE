@@ -27,8 +27,10 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   const [out, setOut] = useState(false)
 
   useEffect(() => {
-    const t1 = setTimeout(() => setOut(true), 3200)
-    const t2 = setTimeout(() => onDone(), 3800)
+    // Extended (was 3200/3800) so "Powered by Brainovision" has more time on
+    // screen after it fades in at 2.1s, instead of disappearing almost right away.
+    const t1 = setTimeout(() => setOut(true), 4200)
+    const t2 = setTimeout(() => onDone(), 4800)
     return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [onDone])
 
@@ -110,6 +112,17 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           opacity: 0;
           animation: sp-tag 0.65s ease 1.75s forwards;
         }
+        .sp-powered {
+          font-size: 0.85rem;
+          font-family: 'Orbitron', sans-serif;
+          color: rgba(255,255,255,0.35);
+          text-transform: uppercase;
+          letter-spacing: 4px;
+          margin-top: 22px;
+          opacity: 0;
+          animation: sp-tag 0.65s ease 2.1s forwards;
+        }
+        .sp-powered .sp-powered-brand { color: rgba(255,107,0,0.85); font-weight: 700; }
       `}</style>
 
       <div className={`sp-wrap${out ? ' sp-out' : ''}`}>
@@ -126,6 +139,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
         </div>
         <div className="sp-line" />
         <div className="sp-tagline">Learn &nbsp;·&nbsp; Grow &nbsp;·&nbsp; Succeed</div>
+        <div className="sp-powered">Powered by <span className="sp-powered-brand">Brainovision</span></div>
       </div>
     </>
   )
