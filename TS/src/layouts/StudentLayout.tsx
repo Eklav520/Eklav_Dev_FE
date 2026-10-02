@@ -15,6 +15,7 @@ import logoWhite from '@/assets/images/logo_white.png'
 import logoBlack from '@/assets/images/logo_black.png'
 import logoIcon from '@/assets/images/logo-mobile-light.svg'
 import logoIconDark from '@/assets/images/logo-mobile.svg'
+import brainovisionLogo from '@/assets/images/partners/brainovision-logo.png'
 
 const ordinal = (n: number) => {
   const s = ['th', 'st', 'nd', 'rd']
@@ -448,6 +449,12 @@ const StudentLayout = ({ children }: ChildrenType) => {
 
           {/* Right actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Powered by Brainovision — partnership credit, not tenant-specific */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingRight: 12, borderRight: `1px solid ${navBorder}` }}>
+              <span style={{ fontSize: '0.75rem', color: textSecondary, fontWeight: 500, whiteSpace: 'nowrap' }}>Powered by</span>
+              <img src={brainovisionLogo} alt="Brainovision" style={{ height: 38, width: 'auto', borderRadius: 4, flexShrink: 0 }} />
+            </div>
+
             {/* Theme toggle — temporarily disabled, will re-enable later */}
             <button
               onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}

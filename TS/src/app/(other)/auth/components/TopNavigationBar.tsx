@@ -4,6 +4,44 @@ import { Container } from "react-bootstrap";
 import LogoBox from "@/components/LogoBox";
 import TopNavbar from "@/components/TopNavbar";
 import useTenant from "@/utils/tenant";
+import brainovisionLogo from "@/assets/images/partners/brainovision-logo.png";
+
+// Shared with the <LogoBox height={...}> below, so the Brainovision badge is
+// always sized proportionally to the actual Eklav logo instead of an
+// independent fixed value that can drift out of balance with it. 36 (not 34)
+// to match the theme's own .navbar-brand-item { height: $navbar-brand-height }
+// SCSS rule, which overrides the height prop anyway.
+const EKLAV_LOGO_HEIGHT = 36;
+// logo_white.png has ~211px of fully transparent padding baked into its right
+// edge (19% of its 1093px width) — invisible, but the <img> still lays out at
+// its full canvas width, which was the real source of the big gap after
+// "Eklav" that no margin/padding tweak could remove. This is the logo's
+// actual non-transparent content width (x:7–881) as a fraction of its height,
+// used below to clip that dead space out visually via an overflow:hidden
+// wrapper instead of margin/padding.
+const EKLAV_LOGO_CONTENT_RATIO = (881 - 7) / 228;
+// The Brainovision logo's own artwork has more empty vertical padding baked
+// into the PNG than the Eklav wordmark does, so matching heights exactly made
+// it read as smaller — this scales it up a bit to compensate and keep both
+// looking visually balanced.
+const BRAINOVISION_LOGO_HEIGHT = Math.round(EKLAV_LOGO_HEIGHT * 1.3);
+
+// Partner-brand badge shown next to the logo — a fixed Eklav/Brainovision
+// partnership credit, not tenant-specific, so it's unaffected by white-label
+// tenant branding. The logo already contains the brand name, so no separate
+// "Brainovision" text is needed alongside it.
+const PoweredByBadge: FC = () => (
+  <div className="nav-powered-by">
+    <span className="nav-powered-by-divider" />
+    <span className="nav-powered-by-text">Powered by</span>
+    <img
+      src={brainovisionLogo}
+      alt="Brainovision"
+      className="nav-powered-by-logo"
+      style={{ height: BRAINOVISION_LOGO_HEIGHT }}
+    />
+  </div>
+);
 
 const PostJobPage = lazy(() => import("@/app/post-job/page"));
 
@@ -130,6 +168,13 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
           box-shadow: none !important;
           position: relative;
           z-index: 1;
+        }
+
+        /* Bootstrap's .navbar-brand ships a built-in margin-right: 1rem — that was
+           the actual source of the big gap after the logo, not the badge's own
+           spacing next to it. */
+        .futuristic-nav .navbar-brand {
+          margin-right: 0 !important;
         }
 
         /* Single controlled bottom line */
@@ -297,6 +342,48 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
           font-size: 0.7rem;
           color: rgba(255,255,255,0.5);
         }
+
+        /* "Powered by Brainovision" badge */
+        .nav-powered-by {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          margin-left: 0;
+          padding-left: 20px;
+        }
+
+        .nav-powered-by-divider {
+          width: 2px;
+          height: 28px;
+          background: rgba(255,255,255,0.45);
+          border-radius: 1px;
+          flex-shrink: 0;
+        }
+
+        .nav-powered-by-text {
+          font-size: 0.75rem;
+          color: rgba(255,255,255,0.75);
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .nav-powered-by-logo {
+          /* height is set inline from BRAINOVISION_LOGO_HEIGHT, scaled off the
+             actual Eklav logo height so the two stay visually balanced */
+          width: auto;
+          flex-shrink: 0;
+          border-radius: 4px;
+          box-shadow: 0 0 10px rgba(255,255,255,0.12);
+        }
+
+        @media (max-width: 767px) {
+          .nav-powered-by-text { display: none; }
+          .nav-powered-by { gap: 6px; margin-left: 10px; padding-left: 10px; }
+        }
+
+        @media (max-width: 520px) {
+          .nav-powered-by { display: none; }
+        }
       `}</style>
 
       <Container
@@ -304,8 +391,16 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         className="d-flex align-items-center justify-content-between px-4 px-xl-5"
         style={{ height: 60 }}
       >
-        {/* Logo — auth nav is always dark so force white logo */}
-        <LogoBox height={34} tenant={tenant} alwaysDark />
+        {/* Logo — auth nav is always dark so force white logo. Clipped to the
+            logo's real content width (see EKLAV_LOGO_CONTENT_RATIO above) —
+            the source PNG has ~19% dead transparent space on its right edge
+            that otherwise renders as a big gap before the badge. */}
+        <div className="d-flex align-items-center">
+          <div style={{ height: EKLAV_LOGO_HEIGHT, width: EKLAV_LOGO_HEIGHT * EKLAV_LOGO_CONTENT_RATIO, overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
+            <LogoBox height={EKLAV_LOGO_HEIGHT} tenant={tenant} alwaysDark />
+          </div>
+          <PoweredByBadge />
+        </div>
 
         {/* Actions */}
         <div className="d-flex align-items-center gap-3">
