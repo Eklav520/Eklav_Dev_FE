@@ -11,7 +11,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import "./About.css";
 import useTenant from "@/utils/tenant";
-import SiteBannerStrip from "./SiteBannerStrip";
+import HeroContentSlot from "./HeroContentSlot";
 import avatar1 from "@/assets/images/avatar/01.jpg";
 import avatar2 from "@/assets/images/avatar/02.jpg";
 import avatar3 from "@/assets/images/avatar/03.jpg";
@@ -365,7 +365,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 Powerful learning tools, AI practice systems, and real industry training — all at an affordable cost.
               </p>
 
-              <SiteBannerStrip onVisibleChange={setBannerVisible} />
+              <HeroContentSlot onVisibleChange={setBannerVisible} />
 
               <div className="neo-tags">
                 {["Learn with Experts", "Practice with AI", "Get Placed", "Gain Knowledge"].map((t) => (
