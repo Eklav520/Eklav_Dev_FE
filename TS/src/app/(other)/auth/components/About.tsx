@@ -589,6 +589,13 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                     <small>Improve communication</small>
                   </span>
                 </div>
+                <div className="hero-floating-card hero-card-code-challenge">
+                  <span className="hero-floating-icon hero-floating-orange"><CodeAIIcon /></span>
+                  <span className="hero-floating-copy">
+                    <strong>Code Challenge</strong>
+                    <small>Solve hands-on problems</small>
+                  </span>
+                </div>
               </div>
             </Col>
           </Row>
