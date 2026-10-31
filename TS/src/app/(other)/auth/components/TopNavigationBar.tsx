@@ -382,27 +382,62 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         }
 
         @media (max-width: 767px) {
+          .futuristic-nav .nav-container {
+            height: auto !important;
+            min-height: 56px;
+            padding-right: 12px !important;
+            padding-left: 12px !important;
+          }
+
           .nav-powered-by-text { display: none; }
           .nav-powered-by { gap: 6px; margin-left: 10px; padding-left: 10px; }
+          .nav-actions { gap: 8px !important; }
+          .nav-login-btn,
+          .nav-signup-btn {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+          }
+          .nav-employers-trigger {
+            gap: 4px;
+            padding: 6px 0;
+            font-size: 0.7rem;
+          }
+          .nav-brand-group .navbar-brand-item { height: 26px !important; }
+          .nav-logo-crop { width: 100px !important; height: 26px !important; }
         }
 
         @media (max-width: 520px) {
           .nav-powered-by { display: none; }
         }
+
+        @media (max-width: 380px) {
+          .futuristic-nav .nav-container {
+            justify-content: center !important;
+            row-gap: 8px;
+            padding-top: 8px;
+            padding-bottom: 8px;
+          }
+
+          .nav-brand-group,
+          .nav-actions {
+            width: 100%;
+            justify-content: center;
+          }
+        }
       `}</style>
 
       <Container
         fluid
-        className="d-flex align-items-center justify-content-between px-4 px-xl-5"
+        className="nav-container d-flex align-items-center justify-content-between px-4 px-xl-5"
         style={{ height: 60 }}
       >
         {/* Logo — auth nav is always dark so force white logo. Clipped to the
             logo's real content width (see EKLAV_LOGO_CONTENT_RATIO above) —
             the source PNG has ~19% dead transparent space on its right edge
             that otherwise renders as a big gap before the badge. */}
-        <div className="d-flex align-items-center">
+        <div className="nav-brand-group d-flex align-items-center">
           {isDefaultEklav ? (
-            <div style={{ height: EKLAV_LOGO_HEIGHT, width: EKLAV_LOGO_HEIGHT * EKLAV_LOGO_CONTENT_RATIO, overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
+            <div className="nav-logo-crop" style={{ height: EKLAV_LOGO_HEIGHT, width: EKLAV_LOGO_HEIGHT * EKLAV_LOGO_CONTENT_RATIO, overflow: "hidden", display: "flex", alignItems: "center", flexShrink: 0 }}>
               <LogoBox height={EKLAV_LOGO_HEIGHT} tenant={tenant} alwaysDark />
             </div>
           ) : (
@@ -412,7 +447,7 @@ const TopNavigationBar: FC<TopNavigationBarProps> = memo(({ onLoginClick, onSign
         </div>
 
         {/* Actions */}
-        <div className="d-flex align-items-center gap-3">
+        <div className="nav-actions d-flex align-items-center gap-3">
           {showForEmployers && <EmployersDropdown />}
           {onLoginClick && (
             <button className="nav-login-btn" onClick={onLoginClick}>

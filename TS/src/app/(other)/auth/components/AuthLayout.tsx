@@ -3,7 +3,6 @@ import { Col, Container, Row, Carousel, Modal, Button } from "react-bootstrap";
 import logo from "@/assets/images/logo_white.png";
 import { ChildrenType } from "@/types/component-props";
 import useToggle from "@/hooks/useToggle";
-import HeroMovingTopics from "./HeroMovingTopics";
 import TrustedCompanies from "./TrustedCompanies";
 import About from "./About";
 import ForgotPassword from "../forgot-password/components/ForgotPassword";
@@ -991,7 +990,6 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
 
           {/* Footer Components - Full width */}
           <div className="w-100">
-            <HeroMovingTopics />
             <TrustedCompanies />
           </div>
 
