@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Container, Row, Col } from "react-bootstrap";
 import {
   FaArrowRight, FaBookOpen, FaChartLine, FaChevronLeft, FaChevronRight,
-  FaClock, FaCode, FaDatabase, FaLayerGroup, FaStar,
+  FaClock, FaCode, FaDatabase, FaLayerGroup, FaQuoteLeft, FaStar, FaUser,
 } from "react-icons/fa";
 import logoLight from "@/assets/images/logo_white.png";
 import heroStudent from "@/assets/images/hero-student.png";
@@ -16,10 +16,6 @@ import { useNavigate } from "react-router-dom";
 import "./About.css";
 import useTenant from "@/utils/tenant";
 import HeroContentSlot from "./HeroContentSlot";
-import avatar1 from "@/assets/images/avatar/01.jpg";
-import avatar2 from "@/assets/images/avatar/02.jpg";
-import avatar3 from "@/assets/images/avatar/03.jpg";
-import avatar4 from "@/assets/images/avatar/04.jpg";
 
 type AboutProps = { onStartJourneyClick?: () => void; onCourseClick?: () => void };
 type Course = {
@@ -342,15 +338,63 @@ const CourseMarquee = () => {
 };
 
 /* ── Success Stories ── */
-type PublicStory = { _id: string; studentName: string; story: string; rating: number };
+type PublicStory = {
+  _id: string;
+  studentName: string;
+  story: string;
+  rating: number;
+  avatar?: string;
+  avatarUrl?: string;
+  profileImage?: string;
+  profilePicture?: string;
+  studentAvatar?: string;
+  profile?: {
+    avatar?: string;
+    profileImage?: string;
+    profilePicture?: string;
+  };
+  student?: {
+    avatar?: string;
+    profileImage?: string;
+    profilePicture?: string;
+  };
+};
 
 const StoryStars = ({ rating }: { rating: number }) => (
-  <div style={{ display: "flex", gap: 3 }}>
+  <div className="success-story-stars" aria-label={`${rating} out of 5 stars`}>
     {[1, 2, 3, 4, 5].map((n) => (
-      <span key={n} style={{ color: n <= rating ? "#fbbf24" : "rgba(255,255,255,0.18)", fontSize: "0.9rem" }}>★</span>
+      <span key={n} aria-hidden="true" className={n <= rating ? "is-filled" : ""}>★</span>
     ))}
   </div>
 );
+
+const getStoryAvatarUrl = (story: PublicStory, baseURL: string) => {
+  const avatar = story.student?.profileImage
+    || story.student?.profilePicture
+    || story.student?.avatar
+    || story.profile?.profileImage
+    || story.profile?.profilePicture
+    || story.profile?.avatar
+    || story.profileImage
+    || story.profilePicture
+    || story.studentAvatar
+    || story.avatar;
+  if (!avatar) return undefined;
+  if (avatar.startsWith("http") || avatar.startsWith("/") || avatar.startsWith("data:")) return avatar;
+  return `${baseURL}/uploads/${avatar}`;
+};
+
+const StoryAvatar = ({ story, baseURL, className }: { story: PublicStory; baseURL: string; className: string }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const avatar = getStoryAvatarUrl(story, baseURL);
+
+  return (
+    <span className={`${className} success-story-avatar`} role="img" aria-label={`${story.studentName || "Student"} profile`}>
+      {(!avatar || imageFailed) && <FaUser aria-hidden="true" />}
+      {avatar && !imageFailed && <img src={avatar} alt="" onError={() => setImageFailed(true)} />}
+    </span>
+  );
+};
 
 const SuccessStoriesSection = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL;
@@ -359,10 +403,13 @@ const SuccessStoriesSection = () => {
 
   useEffect(() => {
     fetch(`${baseURL}/success-stories/public`)
-      .then((r) => (r.ok ? r.json() : { stories: [] }))
-      .then((data) => setStories(Array.isArray(data?.stories) ? data.stories : []))
-      .catch(() => {});
-  }, []);
+      .then((response) => {
+        if (!response.ok) throw new Error(`Could not load public success stories (${response.status})`);
+        return response.json();
+      })
+      .then((data: { stories?: PublicStory[] }) => setStories(Array.isArray(data?.stories) ? data.stories : []))
+      .catch((error: unknown) => console.error("Failed to load public success stories:", error));
+  }, [baseURL]);
 
   useEffect(() => {
     if (stories.length < 2) return;
@@ -372,80 +419,78 @@ const SuccessStoriesSection = () => {
 
   if (stories.length === 0) return null;
   const s = stories[idx];
+  const previous = stories[(idx - 1 + stories.length) % stories.length];
+  const next = stories[(idx + 1) % stories.length];
+  const changeStory = (direction: -1 | 1) => {
+    setIdx((current) => (current + direction + stories.length) % stories.length);
+  };
 
   return (
-    <div style={{ marginTop: "3rem", width: "100%", maxWidth: 640, marginLeft: "auto", marginRight: "auto" }}>
-      <div className="neo-section-badge" style={{ marginBottom: "1rem" }}>SUCCESS STORIES</div>
+    <section className="success-stories">
+      <header className="success-stories-heading">
+        <span className="success-stories-badge"><FaStar /> Success Stories</span>
+        <h2>Real Learners. <span>Real Careers.</span></h2>
+        <p>Hear from our learners who upskilled with Eklav and landed great opportunities.</p>
+      </header>
 
-      <div style={{ position: "relative" }}>
-        <div
-          key={s._id}
-          style={{
-            background: "rgba(255,255,255,0.045)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 16,
-            padding: "1.8rem",
-            backdropFilter: "blur(6px)",
-            textAlign: "center",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <StoryStars rating={s.rating} />
+      <div className={`success-stories-stage${stories.length > 2 ? " has-side-stories" : stories.length === 2 ? " has-next-story" : ""}`}>
+        {stories.length > 2 && (
+          <button type="button" className="success-story-card success-story-preview" onClick={() => changeStory(-1)} aria-label={`Read story from ${previous.studentName}`}>
+            <StoryAvatar story={previous} baseURL={baseURL} className="success-story-preview-avatar" />
+            <span className="success-story-preview-copy">
+              <span className="success-story-preview-quote">{previous.story}</span>
+              <StoryStars rating={previous.rating} />
+            </span>
+          </button>
+        )}
+
+        <article className="success-story-card success-story-featured" key={s._id}>
+          <div className="success-story-quote-row">
+            <FaQuoteLeft className="success-story-quote-icon" aria-hidden="true" />
+            <blockquote>{s.story}</blockquote>
           </div>
-          <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.94rem", lineHeight: 1.8, margin: "1rem 0 1.3rem" }}>
-            "{s.story}"
-          </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#ff7a00,#ff944d)",
-              display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "0.82rem", flexShrink: 0,
-            }}>
-              {s.studentName?.charAt(0)?.toUpperCase() || "S"}
+          <div className="success-story-featured-footer">
+            <div className="success-story-author">
+              <StoryAvatar story={s} baseURL={baseURL} className="success-story-author-avatar" />
+              <span className="success-story-author-copy">
+                <strong>{s.studentName || "Eklav Learner"}</strong>
+                <small>Eklav learner</small>
+                <StoryStars rating={s.rating} />
+              </span>
             </div>
-            <span style={{ color: "#fff", fontWeight: 600, fontSize: "0.88rem" }}>{s.studentName}</span>
           </div>
-        </div>
+        </article>
 
         {stories.length > 1 && (
-          <>
-            <button
-              onClick={() => setIdx((i) => (i - 1 + stories.length) % stories.length)}
-              aria-label="Previous story"
-              style={{
-                position: "absolute", top: "50%", left: -18, transform: "translateY(-50%)",
-                width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(15,15,20,0.85)", color: "#fff", cursor: "pointer", fontSize: "1rem",
-              }}
-            >&#8249;</button>
-            <button
-              onClick={() => setIdx((i) => (i + 1) % stories.length)}
-              aria-label="Next story"
-              style={{
-                position: "absolute", top: "50%", right: -18, transform: "translateY(-50%)",
-                width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.18)",
-                background: "rgba(15,15,20,0.85)", color: "#fff", cursor: "pointer", fontSize: "1rem",
-              }}
-            >&#8250;</button>
-          </>
+          <button type="button" className="success-story-card success-story-preview success-story-preview-next" onClick={() => changeStory(1)} aria-label={`Read story from ${next.studentName}`}>
+            <StoryAvatar story={next} baseURL={baseURL} className="success-story-preview-avatar" />
+            <span className="success-story-preview-copy">
+              <span className="success-story-preview-quote">{next.story}</span>
+              <StoryStars rating={next.rating} />
+            </span>
+          </button>
         )}
       </div>
 
       {stories.length > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: "1rem" }}>
-          {stories.map((story, i) => (
-            <button
-              key={story._id}
-              onClick={() => setIdx(i)}
-              aria-label={`Go to story ${i + 1}`}
-              style={{
-                width: i === idx ? 20 : 7, height: 7, borderRadius: 4, border: "none", padding: 0,
-                background: i === idx ? "#ff7a00" : "rgba(255,255,255,0.25)", cursor: "pointer", transition: "all 0.2s",
-              }}
-            />
-          ))}
+        <div className="success-stories-controls">
+          <button type="button" className="success-stories-arrow" onClick={() => changeStory(-1)} aria-label="Previous story"><FaChevronLeft /></button>
+          <div className="success-stories-dots" aria-label="Choose a success story">
+            {stories.map((story, i) => (
+              <button
+                key={story._id}
+                type="button"
+                className={i === idx ? "active" : ""}
+                onClick={() => setIdx(i)}
+                aria-label={`Go to story ${i + 1}`}
+                aria-current={i === idx ? "true" : undefined}
+              />
+            ))}
+          </div>
+          <button type="button" className="success-stories-arrow" onClick={() => changeStory(1)} aria-label="Next story"><FaChevronRight /></button>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
@@ -458,7 +503,6 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
   const tenantName = "Eklav";
   const normalized = tenantName.charAt(0).toUpperCase() + tenantName.slice(1).toLowerCase();
   const isCoreDataLabs = tenant?.name === "coredatalabs" || window?.location?.hostname === "coredatalabs.eklav.in";
-  const students = [avatar1, avatar2, avatar3, avatar4];
   const [featIdx, setFeatIdx] = useState(0);
   // Hide the "Next-Gen E-Learning Platform" badge when the site banner is
   // actually showing above it — saves vertical space instead of stacking both.
@@ -755,7 +799,7 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
         <ParticleCanvas />
         <div className="neo-grid-overlay" />
         <Container style={{ position: "relative", zIndex: 1 }}>
-          <div className="mission-glass-panel">
+          <div className="mission-glass-panel mission-stories-panel">
             <div className="mission-corner mission-tl" />
             <div className="mission-corner mission-tr" />
             <div className="mission-corner mission-bl" />
