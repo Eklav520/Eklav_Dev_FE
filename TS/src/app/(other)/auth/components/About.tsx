@@ -21,7 +21,7 @@ import avatar2 from "@/assets/images/avatar/02.jpg";
 import avatar3 from "@/assets/images/avatar/03.jpg";
 import avatar4 from "@/assets/images/avatar/04.jpg";
 
-type AboutProps = { onStartJourneyClick?: () => void };
+type AboutProps = { onStartJourneyClick?: () => void; onCourseClick?: () => void };
 type Course = {
   _id: string;
   title: string;
@@ -46,7 +46,7 @@ const getCourseCategories = (category?: string[] | string): string[] => {
   return [category.trim()].filter(Boolean);
 };
 
-const PublicCourseCatalog = () => {
+const PublicCourseCatalog = ({ onCourseClick }: { onCourseClick?: () => void }) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL;
   const [courses, setCourses] = useState<Course[]>([]);
   const [activeCategory, setActiveCategory] = useState("All Courses");
@@ -90,6 +90,14 @@ const PublicCourseCatalog = () => {
     track.scrollBy({ left: direction * track.clientWidth * 0.8, behavior: "smooth" });
   };
 
+  const openCourse = () => {
+    if (onCourseClick) {
+      onCourseClick();
+      return;
+    }
+    navigate("/auth/sign-in");
+  };
+
   const imageURL = (image?: string) => {
     if (!image) return undefined;
     if (image.startsWith("http") || image.startsWith("/")) return image;
@@ -127,13 +135,13 @@ const PublicCourseCatalog = () => {
             <h3>{course.title}</h3>
             <p>{course.shortDescription || getCourseCategories(course.category).slice(0, 2).join(", ") || "Explore this course"}</p>
           </div>
-          <button type="button" aria-label={`View ${course.title}`} onClick={() => navigate(`/pages/course/detail-adv/${course._id}`)}>
+          <button type="button" aria-label={`View ${course.title}`} onClick={openCourse}>
             <FaArrowRight />
           </button>
         </>
       )}
       {!compact && (
-        <button type="button" className="catalog-course-open" onClick={() => navigate(`/pages/course/detail-adv/${course._id}`)}>
+        <button type="button" className="catalog-course-open" onClick={openCourse}>
           View course <FaArrowRight />
         </button>
       )}
@@ -193,7 +201,7 @@ const PublicCourseCatalog = () => {
             <p className="catalog-subtitle">Discover more courses to keep growing your skills.</p>
           </div>
           <div className="catalog-trending-controls">
-            <button type="button" className="catalog-view-all" onClick={() => navigate("/pages/course/grid")}>View All Courses <FaArrowRight /></button>
+            <button type="button" className="catalog-view-all" onClick={openCourse}>View All Courses <FaArrowRight /></button>
             <button type="button" aria-label="Scroll trending courses left" onClick={() => scrollTrack(trendingTrackRef.current, -1)}><FaChevronLeft /></button>
             <button type="button" aria-label="Scroll trending courses right" onClick={() => scrollTrack(trendingTrackRef.current, 1)}><FaChevronRight /></button>
           </div>
@@ -442,7 +450,7 @@ const SuccessStoriesSection = () => {
 };
 
 /* ── Main About ── */
-const About = ({ onStartJourneyClick }: AboutProps) => {
+const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
   const navigate = useNavigate();
   const tenant = useTenant();
 
@@ -556,14 +564,14 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 <div className="hero-floating-card hero-card-interview">
                   <span className="hero-floating-icon hero-floating-blue"><AIMockInterviewIcon /></span>
                   <span className="hero-floating-copy">
-                    <strong>AI Mock Interview</strong>
+                    <strong className="hero-typing-title hero-typing-interview">AI Mock Interview</strong>
                     <small>Practice with AI</small>
                   </span>
                 </div>
                 <div className="hero-floating-card hero-card-progress">
                   <span className="hero-progress-ring" aria-hidden="true"><span /></span>
                   <span className="hero-floating-copy">
-                    <strong>Course Progress</strong>
+                    <strong className="hero-typing-title hero-typing-progress">Course Progress</strong>
                     <small>Track your learning journey</small>
                     <span className="hero-progress-bar"><span /></span>
                   </span>
@@ -571,28 +579,28 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
                 <div className="hero-floating-card hero-card-placement">
                   <span className="hero-floating-icon hero-floating-orange"><JobVacanciesIcon /></span>
                   <span className="hero-floating-copy">
-                    <strong>Placement Ready</strong>
+                    <strong className="hero-typing-title hero-typing-placement">Placement Ready</strong>
                     <small>Explore career opportunities</small>
                   </span>
                 </div>
                 <div className="hero-floating-card hero-card-aptitude">
                   <span className="hero-floating-icon hero-floating-purple"><AptitudeIcon /></span>
                   <span className="hero-floating-copy">
-                    <strong>Aptitude Practice</strong>
+                    <strong className="hero-typing-title hero-typing-aptitude">Aptitude Practice</strong>
                     <small>Build problem-solving skills</small>
                   </span>
                 </div>
                 <div className="hero-floating-card hero-card-speaking">
                   <span className="hero-floating-icon hero-floating-cyan"><JamIcon /></span>
                   <span className="hero-floating-copy">
-                    <strong>English Speaking</strong>
+                    <strong className="hero-typing-title hero-typing-speaking">English Speaking</strong>
                     <small>Improve communication</small>
                   </span>
                 </div>
                 <div className="hero-floating-card hero-card-code-challenge">
                   <span className="hero-floating-icon hero-floating-orange"><CodeAIIcon /></span>
                   <span className="hero-floating-copy">
-                    <strong>Code Challenge</strong>
+                    <strong className="hero-typing-title hero-typing-code">Code Challenge</strong>
                     <small>Solve hands-on problems</small>
                   </span>
                 </div>
@@ -740,7 +748,7 @@ const About = ({ onStartJourneyClick }: AboutProps) => {
       </section>
       )}
 
-      <PublicCourseCatalog />
+      <PublicCourseCatalog onCourseClick={onCourseClick} />
 
       {/* ── MISSION ── */}
       <section className="neo-mission">

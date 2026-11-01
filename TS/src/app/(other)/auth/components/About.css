@@ -1266,17 +1266,40 @@
   }
 }
 
+@keyframes hero-card-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+@keyframes hero-card-glow {
+  0%, 100% {
+    box-shadow: 0 12px 30px rgba(34, 48, 71, 0.12);
+    border-color: rgba(230, 235, 243, 0.95);
+  }
+  50% {
+    box-shadow: 0 16px 34px rgba(34, 48, 71, 0.2), 0 0 12px rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 1);
+  }
+}
+
 .hero-card-interview { animation-delay: 100ms; }
 .hero-card-progress { animation-delay: 240ms; }
 .hero-card-placement { animation-delay: 380ms; }
 .hero-card-aptitude { animation-delay: 520ms; }
 .hero-card-speaking { animation-delay: 660ms; }
-.hero-card-code-challenge { top: 87%; right: -2%; min-width: 215px; animation-delay: 800ms; }
+.hero-card-code-challenge { top: 87%; right: 1%; min-width: 215px; animation-delay: 800ms; }
 .hero-card-interview { top: 8%; left: 2%; }
 .hero-card-progress { top: 34%; left: -7%; min-width: 218px; }
-.hero-card-placement { top: -5%; right: -2%; min-width: 225px; }
+.hero-card-placement { top: -5%; right: 1%; min-width: 225px; }
 .hero-card-aptitude { top: 63%; left: -1%; min-width: 205px; }
-.hero-card-speaking { top: 52%; right: -2%; min-width: 195px; }
+.hero-card-speaking { top: 52%; right: -4%; min-width: 195px; }
+.hero-floating-card {
+  animation-name: hero-card-enter, hero-card-float, hero-card-glow;
+  animation-duration: 600ms, 4s, 3.2s;
+  animation-timing-function: cubic-bezier(0.2, 0.75, 0.25, 1), ease-in-out, ease-in-out;
+  animation-iteration-count: 1, infinite, infinite;
+  animation-fill-mode: forwards, none, none;
+}
 
 .hero-floating-icon {
   display: grid;
@@ -1311,10 +1334,42 @@
   line-height: 1.25;
 }
 
+.hero-typing-title {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: hidden;
+  border-right: 2px solid #ff7a00;
+  white-space: nowrap;
+  animation: hero-title-type 5.2s steps(18, end) infinite, hero-title-cursor 750ms step-end infinite;
+}
+
+.hero-typing-progress { animation-delay: 900ms, 0ms; }
+.hero-typing-placement { animation-delay: 1.8s, 0ms; }
+.hero-typing-aptitude { animation-delay: 2.7s, 0ms; }
+.hero-typing-speaking { animation-delay: 3.6s, 0ms; }
+.hero-typing-code { animation-delay: 4.5s, 0ms; }
+
+@keyframes hero-title-type {
+  0%, 8% { max-width: 0; }
+  48%, 68% { max-width: 100%; }
+  100% { max-width: 0; }
+}
+
+@keyframes hero-title-cursor {
+  50% { border-color: transparent; }
+}
+
 .hero-floating-copy small {
   color: #738096;
   font-size: 0.66rem;
   line-height: 1.3;
+}
+
+@property --hero-progress {
+  syntax: "<percentage>";
+  inherits: false;
+  initial-value: 0%;
 }
 
 .hero-progress-ring {
@@ -1323,7 +1378,15 @@
   height: 48px;
   flex: 0 0 48px;
   border-radius: 50%;
-  background: conic-gradient(#20bd8b 0 75%, #e7f2ef 75% 100%);
+  --hero-progress: 0%;
+  background: conic-gradient(#20bd8b 0 var(--hero-progress), #e7f2ef var(--hero-progress) 100%);
+  animation: hero-progress-fill 4.8s ease-in-out infinite;
+}
+
+@keyframes hero-progress-fill {
+  0%, 12% { --hero-progress: 0%; }
+  58%, 76% { --hero-progress: 75%; }
+  100% { --hero-progress: 0%; }
 }
 
 .hero-progress-ring::after {
@@ -1345,10 +1408,17 @@
 
 .hero-progress-bar span {
   display: block;
-  width: 72%;
+  width: 0;
   height: 100%;
   border-radius: inherit;
   background: #20bd8b;
+  animation: hero-progress-bar-fill 4.8s ease-in-out infinite;
+}
+
+@keyframes hero-progress-bar-fill {
+  0%, 12% { width: 0; }
+  58%, 76% { width: 72%; }
+  100% { width: 0; }
 }
 
 /* Platform overview and animated solar-system section. */
@@ -1652,6 +1722,23 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-floating-card {
     opacity: 1;
+    animation: none;
+    translate: none;
+  }
+
+  .hero-typing-title {
+    max-width: 100%;
+    border-right: 0;
+    animation: none;
+  }
+
+  .hero-progress-ring {
+    --hero-progress: 75%;
+    animation: none;
+  }
+
+  .hero-progress-bar span {
+    width: 72%;
     animation: none;
   }
 }

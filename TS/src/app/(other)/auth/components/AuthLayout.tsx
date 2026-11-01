@@ -974,7 +974,10 @@ const AuthLayout: FC<ChildrenType> = ({ children }) => {
           <Suspense fallback={<LoadingFallback />}>
             <Banner toggleOffCanvas={toggleOffCanvasMenu} />
           </Suspense>
-          <About onStartJourneyClick={() => handleOpen("signin")} />
+          <About
+            onStartJourneyClick={() => handleOpen("signin")}
+            onCourseClick={() => handleOpen("signin")}
+          />
 
           {/* Main Row - Full height */}
           {/* <Row className="g-0 mx-0 min-vh-100">
