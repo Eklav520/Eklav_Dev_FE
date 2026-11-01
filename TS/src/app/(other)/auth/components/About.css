@@ -1380,7 +1380,8 @@
   .success-stories-stage.has-side-stories,
   .success-stories-stage.has-next-story {
     height: auto;
-    min-height: 280px;
+    min-height: 0;
+    padding: 0 2px;
   }
 
   .success-story-preview {
@@ -1392,9 +1393,16 @@
     top: auto;
     left: auto;
     transform: none;
+    animation-name: success-story-enter-mobile;
     height: 280px;
+    box-sizing: border-box;
     width: min(100%, 680px);
     margin: 0 auto;
+  }
+
+  @keyframes success-story-enter-mobile {
+    from { opacity: 0.5; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
   }
 }
 
@@ -1405,6 +1413,12 @@
 
   .success-stories-heading {
     margin-bottom: 1.25rem;
+    padding: 0.8rem 0.85rem 0.95rem;
+    border-radius: 18px;
+  }
+
+  .success-stories-heading h2 {
+    font-size: clamp(1.55rem, 7vw, 2rem);
   }
 
   .success-stories-heading p {
@@ -1412,14 +1426,17 @@
   }
 
   .success-story-featured {
-    height: 280px;
-    padding: 1.35rem 1.2rem;
-    border-radius: 18px;
+    width: 100%;
+    height: auto;
+    min-height: 250px;
+    padding: 1.35rem 1.1rem;
+    border-radius: 24px;
     transform: none;
   }
 
   .success-story-quote-row {
-    gap: 0.75rem;
+    flex: 0 1 auto;
+    gap: 0.65rem;
   }
 
   .success-story-quote-icon {
@@ -1428,6 +1445,7 @@
 
   .success-story-quote-row blockquote {
     font-size: 0.92rem;
+    line-height: 1.55;
   }
 
   .success-story-author-avatar {
@@ -1438,6 +1456,10 @@
 
   .success-story-author-copy strong {
     font-size: 0.9rem;
+  }
+
+  .success-stories-controls {
+    margin-top: 1rem;
   }
 }
 
