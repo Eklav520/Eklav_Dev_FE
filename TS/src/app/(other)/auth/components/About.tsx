@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Container, Row, Col } from "react-bootstrap";
 import {
   FaArrowRight, FaBookOpen, FaChartLine, FaChevronLeft, FaChevronRight,
-  FaClock, FaCode, FaDatabase, FaLayerGroup, FaQuoteLeft, FaStar, FaUser,
+  FaBolt, FaCheckCircle, FaClock, FaCode, FaDatabase, FaLayerGroup, FaPlay,
+  FaQuoteLeft, FaStar, FaTerminal, FaTrophy, FaUsers, FaUser,
 } from "react-icons/fa";
 import logoLight from "@/assets/images/logo_white.png";
 import heroStudent from "@/assets/images/hero-student.png";
+import codeChallengeStudent from "@/assets/images/code-challenge-student.png";
 import {
   TechCoursesIcon, StudyMaterialIcon, ATSCheckerIcon, ChittiRoboIcon,
   EmailPracticeIcon, JamIcon, AIMockInterviewIcon, AptitudeIcon,
@@ -18,6 +20,7 @@ import useTenant from "@/utils/tenant";
 import HeroContentSlot from "./HeroContentSlot";
 
 type AboutProps = { onStartJourneyClick?: () => void; onCourseClick?: () => void };
+const codeChallengeLabel = "EKLAV CODE CHALLENGE";
 type Course = {
   _id: string;
   title: string;
@@ -504,6 +507,8 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
   const normalized = tenantName.charAt(0).toUpperCase() + tenantName.slice(1).toLowerCase();
   const isCoreDataLabs = tenant?.name === "coredatalabs" || window?.location?.hostname === "coredatalabs.eklav.in";
   const [featIdx, setFeatIdx] = useState(0);
+  const [challengeLabelLength, setChallengeLabelLength] = useState(0);
+  const [isDeletingChallengeLabel, setIsDeletingChallengeLabel] = useState(false);
   // Hide the "Next-Gen E-Learning Platform" badge when the site banner is
   // actually showing above it — saves vertical space instead of stacking both.
   const [bannerVisible, setBannerVisible] = useState(false);
@@ -527,6 +532,33 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
     const t = setInterval(() => setFeatIdx(i => (i + 1) % features.length), 2800);
     return () => clearInterval(t);
   }, [features.length]);
+
+  useEffect(() => {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (reducedMotion.matches) {
+      setChallengeLabelLength(codeChallengeLabel.length);
+      return;
+    }
+
+    let delay = isDeletingChallengeLabel ? 55 : 115;
+    if (!isDeletingChallengeLabel && challengeLabelLength === codeChallengeLabel.length) {
+      delay = 1300;
+    } else if (isDeletingChallengeLabel && challengeLabelLength === 0) {
+      delay = 350;
+    }
+
+    const timer = window.setTimeout(() => {
+      if (!isDeletingChallengeLabel && challengeLabelLength === codeChallengeLabel.length) {
+        setIsDeletingChallengeLabel(true);
+      } else if (isDeletingChallengeLabel && challengeLabelLength === 0) {
+        setIsDeletingChallengeLabel(false);
+      } else {
+        setChallengeLabelLength((length) => length + (isDeletingChallengeLabel ? -1 : 1));
+      }
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [challengeLabelLength, isDeletingChallengeLabel]);
 
   return (
     <div className="futuristic-about">
@@ -651,6 +683,97 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
               </div>
             </Col>
           </Row>
+        </Container>
+      </section>
+
+      {/* ── CODE CHALLENGE ── */}
+      <section className="code-challenge-section" aria-labelledby="code-challenge-title">
+        <Container fluid className="px-4 px-xl-5">
+          <div className="code-challenge-main">
+            <div className="code-challenge-copy">
+              <span className="code-challenge-badge" aria-label={codeChallengeLabel}>
+                <span className="code-challenge-symbol" aria-hidden="true">&lt;/&gt;</span>
+                <span className="code-challenge-typing" aria-hidden="true">
+                  <span className="code-challenge-typed">
+                    {codeChallengeLabel.slice(
+                      0,
+                      isDeletingChallengeLabel || challengeLabelLength === codeChallengeLabel.length
+                        ? challengeLabelLength
+                        : Math.max(0, challengeLabelLength - 1),
+                    )}
+                  </span>
+                  {challengeLabelLength > 0 && challengeLabelLength < codeChallengeLabel.length && !isDeletingChallengeLabel && (
+                    <span className="code-challenge-current">{codeChallengeLabel[challengeLabelLength - 1]}</span>
+                  )}
+                  <span className="code-challenge-cursor" />
+                </span>
+              </span>
+              <h2 id="code-challenge-title">
+                Practice. Solve. Improve.
+                <span>Get Placement Ready.</span>
+              </h2>
+              <p className="code-challenge-description">
+                A structured coding practice platform to sharpen your problem-solving skills and crack top company coding rounds.
+              </p>
+
+              <div className="code-challenge-features">
+                <div><span><FaCode aria-hidden="true" /></span><strong>5000+<small>Coding Problems</small></strong></div>
+                <div><span><FaLayerGroup aria-hidden="true" /></span><strong>Multiple<small>Topics &amp; Domains</small></strong></div>
+                <div><span><FaChartLine aria-hidden="true" /></span><strong>Real-time<small>Code Execution</small></strong></div>
+                <div><span><FaTrophy aria-hidden="true" /></span><strong>Company-wise<small>Practice Sets</small></strong></div>
+                <div><span><FaTerminal aria-hidden="true" /></span><strong>Difficulty Levels<small>Easy, Medium, Hard</small></strong></div>
+                <div><span><FaBolt aria-hidden="true" /></span><strong>Contests &amp;<small>Leaderboards</small></strong></div>
+              </div>
+
+              <button
+                type="button"
+                className="neo-cta-btn code-challenge-cta"
+                onClick={() => navigate("/student/code-challenge")}
+              >
+                <span>Start Coding Now</span>
+                <FaArrowRight className="neo-cta-icon" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="code-challenge-visual" aria-hidden="true">
+              <div className="code-challenge-editor">
+                <div className="code-challenge-editor-nav">
+                  <span className="code-challenge-brand"><b>e</b> Eklav</span>
+                  <span className="is-active"><FaTerminal /> Practice</span>
+                  <span>Contests</span>
+                  <span>Leaderboard</span>
+                  <span>Interview</span>
+                </div>
+                <div className="code-challenge-editor-content">
+                  <div className="code-challenge-problem">
+                    <h3>Two Sum <span>Easy</span></h3>
+                    <p>Given an array of integers nums and an integer target, return the indices of the two numbers such that they add up to target.</p>
+                    <strong>Example:</strong>
+                    <pre>Input: nums = [2,7,11,15], target = 9{"\n"}Output: [0,1]</pre>
+                  </div>
+                  <div className="code-challenge-code">
+                    <div className="code-challenge-code-toolbar"><span>☕ Java</span><button type="button"><FaPlay /> Run</button><button type="button">Submit <FaArrowRight /></button></div>
+                    <pre><span>1</span> class Solution {"{"}{"\n"}<span>2</span>   public int[] twoSum(int[] nums, int target) {"{"}{"\n"}<span>3</span>     <i>// Write your code here</i>{"\n"}<span>4</span>   {"}"}{"\n"}<span>5</span> {"}"}</pre>
+                    <div className="code-challenge-accepted"><FaCheckCircle /> <strong>Accepted</strong><small>Runtime: 62 ms&nbsp;&nbsp; Memory: 44.2 MB</small></div>
+                  </div>
+                </div>
+              </div>
+              <img src={codeChallengeStudent} alt="" className="code-challenge-student" />
+              <div className="code-challenge-levels">
+                <div><FaChartLine /><strong>Easy</strong><span>Build Basics</span></div>
+                <div><FaChartLine /><strong>Medium</strong><span>Improve Logic</span></div>
+                <div><FaChartLine /><strong>Hard</strong><span>Master DSA</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="code-challenge-stats" aria-label="Coding challenge platform highlights">
+            <div><span><FaCode aria-hidden="true" /></span><strong>5000+<small>Problems</small></strong></div>
+            <div><span><FaUsers aria-hidden="true" /></span><strong>50+<small>Topics</small></strong></div>
+            <div><span><FaTrophy aria-hidden="true" /></span><strong>Weekly<small>Coding Contests</small></strong></div>
+            <div><span><FaChartLine aria-hidden="true" /></span><strong>Global<small>Leaderboard</small></strong></div>
+            <div><span><FaBolt aria-hidden="true" /></span><strong>Company<small>Preparation</small></strong></div>
+          </div>
         </Container>
       </section>
 
@@ -796,15 +919,8 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
 
       {/* ── MISSION ── */}
       <section className="neo-mission">
-        <ParticleCanvas />
-        <div className="neo-grid-overlay" />
         <Container style={{ position: "relative", zIndex: 1 }}>
           <div className="mission-glass-panel mission-stories-panel">
-            <div className="mission-corner mission-tl" />
-            <div className="mission-corner mission-tr" />
-            <div className="mission-corner mission-bl" />
-            <div className="mission-corner mission-br" />
-
             <SuccessStoriesSection />
 
             <button
