@@ -53,6 +53,8 @@ interface LiveStudent {
   lastSeenAt?: string;
 }
 
+const escapeHtml = (v: any) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean; filterRoundType?: string }> = ({ defaultExamId, hideHeader, hideExamSelector, filterRoundType }) => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -429,6 +431,8 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
 
     const answersHTML = detailedAnswers.length > 0 ? detailedAnswers.map((ans, idx) => {
       const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+      const isCode = (ans.questionType || '').toUpperCase() === 'CODE';
+      const typeLabel = isCode ? 'CODE' : isFill ? 'FILL' : 'MCQ';
       const isCorrect = ans.isCorrect === true;
       const isWrong = ans.isCorrect === false;
       const borderColor = isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#ccc';
@@ -457,13 +461,16 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           </div>
           <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:12px;">
             <span style="background:${isFill ? '#d4edda' : '#fff3e0'}; color:${isFill ? '#155724' : '#e65100'}; border:1px solid ${isFill ? '#28a745' : '#ff7a00'}; border-radius:20px; padding:1px 9px; font-size:10px; font-weight:700;">
-              ${isFill ? 'FILL' : 'MCQ'}
+              ${typeLabel}
             </span>
             <span style="font-size:18px; font-weight:700; color:${statusColor};">${statusIcon}</span>
           </div>
         </div>
         ${optionsHTML}
-        <div style="display:flex; gap:10px; flex-wrap:wrap; padding-left:32px;">
+        ${isCode ? `<div style="padding-left:32px;">
+          <div style="color:#666; font-size:12px; margin-bottom:6px;">Language: ${escapeHtml(ans.language || 'Not selected')} · Tests passed: ${ans.codePassedTests ?? 0}/${ans.codeTotalTests ?? 0}</div>
+          <pre style="margin:0; padding:10px 12px; background:#f7f7f7; border:1px solid #ddd; border-radius:6px; font-size:11px; white-space:pre-wrap; word-break:break-word;">${escapeHtml(ans.selectedOption || 'No code submitted')}</pre>
+        </div>` : `<div style="display:flex; gap:10px; flex-wrap:wrap; padding-left:32px;">
           <span style="background:#f5f5f5; border-radius:4px; padding:4px 10px; font-size:12px;">
             <span style="color:#999;">Student: </span>
             <span style="font-weight:600; color:${statusColor};">${ans.selectedOption || '(no answer)'}</span>
@@ -472,7 +479,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
             <span style="color:#999;">Correct: </span>
             <span style="font-weight:600; color:#28a745;">${ans.correctAnswer}</span>
           </span>` : ''}
-        </div>
+        </div>`}
       </div>`;
     }).join('') : '<p style="color:#999; text-align:center;">No answer data available</p>';
 
@@ -1141,6 +1148,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                       const isCorrect = ans.isCorrect === true;
                       const isWrong = ans.isCorrect === false;
                       const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+                      const isCode = (ans.questionType || '').toUpperCase() === 'CODE';
                       return (
                         <div key={idx} style={{
                           background: '#0d0d0d',
@@ -1155,12 +1163,12 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                               <span style={{
-                                background: isFill ? 'rgba(40,167,69,0.15)' : 'rgba(255,107,53,0.15)',
-                                color: isFill ? '#28a745' : '#ff6b35',
-                                border: `1px solid ${isFill ? '#28a745' : '#ff6b35'}`,
+                                background: isCode ? 'rgba(56,189,248,0.15)' : isFill ? 'rgba(40,167,69,0.15)' : 'rgba(255,107,53,0.15)',
+                                color: isCode ? '#38bdf8' : isFill ? '#28a745' : '#ff6b35',
+                                border: `1px solid ${isCode ? '#38bdf8' : isFill ? '#28a745' : '#ff6b35'}`,
                                 borderRadius: '20px', padding: '1px 9px', fontSize: '10px', fontWeight: 700
                               }}>
-                                {isFill ? 'FILL' : 'MCQ'}
+                                {isCode ? 'CODE' : isFill ? 'FILL' : 'MCQ'}
                               </span>
                               {isCorrect && <span style={{ color: '#28a745', fontSize: '18px', fontWeight: 700 }}>✓</span>}
                               {isWrong && <span style={{ color: '#dc3545', fontSize: '18px', fontWeight: 700 }}>✗</span>}
@@ -1189,6 +1197,17 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                             </div>
                           )}
 
+                          {isCode ? (
+                            <div style={{ paddingLeft: '34px' }}>
+                              <div style={{ color: '#9da2a8', fontSize: '12px', marginBottom: '6px' }}>
+                                Language: <b style={{ color: '#e0e0e0' }}>{ans.language || 'Not selected'}</b> · Tests passed:{' '}
+                                <b style={{ color: ans.codeTotalTests && ans.codePassedTests === ans.codeTotalTests ? '#28a745' : '#f4b43f' }}>{ans.codePassedTests ?? 0}/{ans.codeTotalTests ?? 0}</b>
+                              </div>
+                              <pre style={{ margin: 0, padding: '10px 12px', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', borderRadius: '8px', background: '#080808', border: '1px solid #252525', color: '#ddd', fontSize: '12px' }}>
+                                {ans.selectedOption || 'No code submitted'}
+                              </pre>
+                            </div>
+                          ) : (
                           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingLeft: '34px' }}>
                             <div style={{ background: '#1a1a1a', borderRadius: '6px', padding: '5px 12px', fontSize: '12px' }}>
                               <span style={{ color: '#8a8a8a' }}>Student: </span>
@@ -1203,6 +1222,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                               </div>
                             )}
                           </div>
+                          )}
                         </div>
                       );
                     })}

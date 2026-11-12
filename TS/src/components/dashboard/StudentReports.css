@@ -1560,3 +1560,18 @@
     grid-column: auto;
   }
 }
+
+/* Small spinner in a sortable header while institute-wide ranks load */
+.sr-sort-loader {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-left: 2px;
+  border: 1.5px solid rgba(255, 122, 0, 0.3);
+  border-top-color: #ff7a00;
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: sr-sort-spin 0.7s linear infinite;
+}
+
+@keyframes sr-sort-spin { to { transform: rotate(360deg); } }

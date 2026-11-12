@@ -1,38 +1,54 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  FaCalculator, FaFileCsv, FaFileArchive, FaCalendarCheck, FaChevronLeft, FaChevronRight, FaSyncAlt,
+  FaSpinner, FaExclamationTriangle, FaInbox, FaMedal,
+} from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
 import CsvUploadForm from './components/BulkUpload'
 import PuzzleUploadForm from './components/PuzzleUpload'
-import { BsFiletypeCsv, BsPuzzle, BsCalendarCheck } from 'react-icons/bs'
+import { UPLOAD_CSS } from './components/UploadParts'
 import { useAuthContext } from '@/context/useAuthContext'
+import {
+  AdminPage, PageHeader, Tabs, SearchInput, TableFooter, EmptyState, ProgressBar, initialsOf, scoreBadgeClass,
+} from '@/components/admin-ui'
 
-// ── Daily Exam Results component ──────────────────────────────────────────────
+// ── Daily Exam Results ────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 20
 
 function formatSecs(s: number) {
-  const m = Math.floor(s / 60).toString().padStart(2, '0')
-  const sec = (s % 60).toString().padStart(2, '0')
+  const m = Math.floor((s || 0) / 60).toString().padStart(2, '0')
+  const sec = ((s || 0) % 60).toString().padStart(2, '0')
   return `${m}:${sec}`
 }
 
-const CAT: Record<string, { color: string; bg: string }> = {
-  Aptitude:  { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
-  Reasoning: { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  Technical: { color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-  Puzzle:    { color: '#fb923c', bg: 'rgba(251,146,60,0.12)' },
+const CATEGORY_BADGE: Record<string, string> = {
+  Aptitude: 'aui-badge-blue', Reasoning: 'aui-badge-purple', Technical: 'aui-badge-green', Puzzle: 'aui-badge-orange',
 }
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
+/* Local YYYY-MM-DD (toISOString would shift the day in IST evenings) */
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const shiftDay = (date: string, days: number) => { const d = new Date(`${date}T00:00:00`); d.setDate(d.getDate() + days); return ymd(d) }
+const longDate = (date: string) => new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+
+const RankBadge = ({ rank }: { rank: number }) => (
+  <span className={`aqr-rank${rank <= 3 ? ` is-${rank}` : ''}`}>
+    {rank <= 3 && <FaMedal size={9} />}#{rank}
+  </span>
+)
 
 const DailyExamResults: React.FC = () => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = ymd(new Date())
   const [date, setDate] = useState(today)
   const [page, setPage] = useState(1)
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [search, setSearch] = useState('')
 
   const fetchResults = useCallback(async () => {
     if (!token) return
@@ -40,14 +56,14 @@ const DailyExamResults: React.FC = () => {
     setError('')
     try {
       const res = await fetch(
-        `${baseURL}/api/admin/daily-aptitude/results?date=${date}&page=${page}&limit=20`,
+        `${baseURL}/api/admin/daily-aptitude/results?date=${date}&page=${page}&limit=${PAGE_SIZE}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const json = await res.json()
       if (json.success) setData(json)
       else setError(json.message || 'Failed to load results')
     } catch {
-      setError('Network error')
+      setError('Network error. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -55,151 +71,100 @@ const DailyExamResults: React.FC = () => {
 
   useEffect(() => { fetchResults() }, [fetchResults])
 
-  const pct = (a: any) => a.percentage ?? 0
-  const pctColor = (p: number) => p >= 70 ? '#34d399' : p >= 40 ? '#fbbf24' : '#f87171'
+  const changeDate = (next: string) => {
+    if (!next || next > today) return
+    setDate(next); setPage(1); setSearch('')
+  }
+
+  const attempts: any[] = data?.attempts ?? []
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return attempts.filter(a => !q || a.studentName?.toLowerCase().includes(q) || a.studentEmail?.toLowerCase().includes(q))
+  }, [attempts, search])
+
+  const avg = attempts.length ? Math.round(attempts.reduce((s, a) => s + (a.percentage ?? 0), 0) / attempts.length) : null
+  const top = attempts.length ? Math.max(...attempts.map(a => a.percentage ?? 0)) : null
 
   return (
-    <div style={{ padding: '1.5rem 1.25rem', maxWidth: 980, margin: '0 auto' }}>
-      <style>{`
-        .der-date::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; opacity: 0.8; }
-        .der-row:hover td { background: rgba(255,122,0,0.04) !important; }
-        .der-btn:hover:not(:disabled) { background: rgba(255,122,0,0.15) !important; border-color: #ff7a00 !important; color: #ff7a00 !important; }
-      `}</style>
-
-      {/* ── Header + controls ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 11, color: '#555', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>Select Date</div>
-          <input
-            type="date" value={date} max={today} className="der-date"
-            onChange={e => { setDate(e.target.value); setPage(1) }}
-            style={{
-              padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              border: '1.5px solid #2a2a3a', background: '#12121e', color: '#e0e0f0',
-              outline: 'none', cursor: 'pointer',
-            }}
-          />
+    <div className="aui-card">
+      <div className="aui-toolbar">
+        <div className="aqr-datebar">
+          <button type="button" className="aui-icon-btn" onClick={() => changeDate(shiftDay(date, -1))} aria-label="Previous day" title="Previous day"><FaChevronLeft size={11} /></button>
+          <input type="date" className="aui-date" value={date} max={today} onChange={e => changeDate(e.target.value)} aria-label="Exam date" />
+          <button type="button" className="aui-icon-btn" onClick={() => changeDate(shiftDay(date, 1))} disabled={date >= today} aria-label="Next day" title="Next day"><FaChevronRight size={11} /></button>
+          <div className="aui-toolbar-title aqr-date-title">
+            <h3>{date === today ? 'Today' : longDate(date)}</h3>
+            <p>
+              {data ? `${data.total ?? attempts.length} attempt${(data.total ?? attempts.length) === 1 ? '' : 's'}` : 'Loading…'}
+              {avg != null && <> · avg <b>{avg}%</b> · top <b>{top}%</b></>}
+              {date !== today && <> · <button type="button" className="aqr-link" onClick={() => changeDate(today)}>Jump to today</button></>}
+            </p>
+          </div>
         </div>
-        <button
-          onClick={fetchResults}
-          style={{
-            padding: '9px 22px', borderRadius: 10, border: 'none',
-            background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)',
-            color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(255,122,0,0.3)',
-          }}
-        >↻ Refresh</button>
+        <div className="aui-toolbar-filters">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search student…" />
+          <button type="button" className="aui-btn" onClick={fetchResults} disabled={loading}>
+            <FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh
+          </button>
+        </div>
       </div>
 
-      {/* ── Stat chips ── */}
-      {data && !loading && (
-        <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Date', val: new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), icon: '📅' },
-            { label: 'Total Attempts', val: data.total, icon: '👥' },
-            { label: 'Page', val: `${data.page} / ${Math.max(1, data.pages)}`, icon: '📄' },
-          ].map(item => (
-            <div key={item.label} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              background: '#0e0e1c', border: '1px solid #1e1e30',
-              borderRadius: 12, padding: '10px 18px',
-            }}>
-              <span style={{ fontSize: 18 }}>{item.icon}</span>
-              <div>
-                <div style={{ fontSize: 10, color: '#555', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600 }}>{item.label}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: '#e0e0f0', marginTop: 1 }}>{item.val}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {error && <div className="aui-alert aqr-alert"><FaExclamationTriangle /> <span>{error}</span></div>}
 
-      {/* ── Loading ── */}
-      {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-          <div style={{ width: 36, height: 36, border: '3px solid rgba(255,122,0,0.15)', borderTop: '3px solid #ff7a00', borderRadius: '50%', animation: 'da-spin 0.8s linear infinite' }} />
-          <style>{`@keyframes da-spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}`}</style>
-        </div>
-      )}
-
-      {/* ── Error ── */}
-      {error && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', borderRadius: 12, padding: '14px 18px', color: '#f87171', marginBottom: 16, fontSize: 13 }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* ── Table ── */}
-      {data && !loading && (
-        data.attempts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: '#33334a', fontSize: 14 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>📭</div>
-            No students attempted the exam on {date}.
+      {loading && !data ? (
+        <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading results…</div>
+      ) : !data || attempts.length === 0 ? (
+        <EmptyState
+          icon={FaInbox}
+          title="No attempts on this day"
+          text={`No students took the daily aptitude exam on ${longDate(date)}.`}
+          action={date !== today ? <button type="button" className="aui-btn aui-btn-sm" onClick={() => changeDate(today)}>Go to today</button> : undefined}
+        />
+      ) : visible.length === 0 ? (
+        <EmptyState icon={FaInbox} title="No students match" text="Try a different name or email." action={<button type="button" className="aui-btn aui-btn-sm" onClick={() => setSearch('')}>Clear search</button>} />
+      ) : (
+        <>
+          <div className={`aui-table-scroll${loading ? ' aqr-busy' : ''}`}>
+            <table className="aui-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 90 }}>Rank</th>
+                  <th>Student</th>
+                  <th style={{ width: 130 }}>Category</th>
+                  <th style={{ width: 220 }}>Score</th>
+                  <th style={{ width: 100 }}>Result</th>
+                  <th style={{ width: 90 }}>Time</th>
+                  <th style={{ width: 110 }}>Submitted</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((a, i) => {
+                  const p = a.percentage ?? 0
+                  return (
+                    <tr key={`${a.studentEmail}-${i}`}>
+                      <td><RankBadge rank={a.rank} /></td>
+                      <td>
+                        <div className="aui-person">
+                          <span className="aui-avatar">{initialsOf(a.studentName)}</span>
+                          <div className="aui-stack">
+                            <strong>{a.studentName}</strong>
+                            <small>{a.studentEmail}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td><span className={`aui-badge ${CATEGORY_BADGE[a.category] || 'aui-badge-muted'}`}>{a.category || '—'}</span></td>
+                      <td><ProgressBar value={p} tone={p >= 70 ? 'green' : p >= 40 ? 'amber' : 'orange'} label={`${a.score}/${a.total}`} /></td>
+                      <td><span className={`aui-badge ${scoreBadgeClass(p >= 70 ? 80 : p >= 40 ? 50 : 0)}`}>{p}%</span></td>
+                      <td className="aqr-mono">{formatSecs(a.timeTakenSeconds)}</td>
+                      <td className="aui-num">{new Date(a.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-        ) : (
-          <>
-            <div style={{ borderRadius: 14, border: '1px solid #1a1a2a', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: '#0a0a18' }}>
-                    {['Rank', 'Student', 'Email', 'Category', 'Score', '%', 'Time', 'Submitted'].map(h => (
-                      <th key={h} style={{
-                        padding: '12px 16px', textAlign: 'left', fontWeight: 700,
-                        color: '#444', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8,
-                        borderBottom: '1px solid #1a1a2a', whiteSpace: 'nowrap',
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.attempts.map((a: any, i: number) => {
-                    const cat = CAT[a.category] ?? { color: '#888', bg: 'rgba(136,136,136,0.1)' }
-                    const p = pct(a)
-                    return (
-                      <tr key={i} className="der-row" style={{ borderBottom: '1px solid #111120' }}>
-                        <td style={{ padding: '13px 16px', fontWeight: 900, fontSize: 15 }}>
-                          {MEDAL[a.rank]
-                            ? <span>{MEDAL[a.rank]}</span>
-                            : <span style={{ color: '#33334a' }}>#{a.rank}</span>
-                          }
-                        </td>
-                        <td style={{ padding: '13px 16px', fontWeight: 700, color: '#e0e0f0' }}>{a.studentName}</td>
-                        <td style={{ padding: '13px 16px', color: '#44445a', fontSize: 12 }}>{a.studentEmail}</td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <span style={{
-                            fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                            background: cat.bg, color: cat.color, border: `1px solid ${cat.color}33`,
-                          }}>{a.category}</span>
-                        </td>
-                        <td style={{ padding: '13px 16px', fontWeight: 800, color: '#e0e0f0' }}>{a.score}<span style={{ color: '#33334a', fontWeight: 400 }}>/{a.total}</span></td>
-                        <td style={{ padding: '13px 16px', fontWeight: 800, color: pctColor(p) }}>{p}%</td>
-                        <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontSize: 12, color: '#6366f1', fontWeight: 700 }}>{formatSecs(a.timeTakenSeconds)}</td>
-                        <td style={{ padding: '13px 16px', color: '#33334a', fontSize: 12 }}>
-                          {new Date(a.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {data.pages > 1 && (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 18 }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="der-btn"
-                  style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid #1e1e30', background: 'transparent', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#2a2a3a' : '#666', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}>
-                  ‹ Prev
-                </button>
-                <span style={{ padding: '7px 14px', fontSize: 13, color: '#444', background: '#0a0a18', borderRadius: 9, border: '1px solid #1a1a28' }}>{page} / {data.pages}</span>
-                <button onClick={() => setPage(p => Math.min(data.pages, p + 1))} disabled={page === data.pages} className="der-btn"
-                  style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid #1e1e30', background: 'transparent', cursor: page === data.pages ? 'not-allowed' : 'pointer', color: page === data.pages ? '#2a2a3a' : '#666', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}>
-                  Next ›
-                </button>
-              </div>
-            )}
-          </>
-        )
+          <TableFooter page={page} pageSize={PAGE_SIZE} total={data.total ?? attempts.length} onPageChange={setPage} noun="attempts" />
+        </>
       )}
     </div>
   )
@@ -207,48 +172,54 @@ const DailyExamResults: React.FC = () => {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-const AptitudeQuestionsUpload = () => {
-  const [activeTab, setActiveTab] = useState<'csv' | 'puzzle' | 'results'>('csv')
+type Tab = 'csv' | 'puzzle' | 'results'
 
-  const TABS = [
-    { key: 'csv',     label: 'Text Questions',     icon: BsFiletypeCsv,    desc: 'CSV upload',     color: '#0d6efd' },
-    { key: 'puzzle',  label: 'Puzzle Questions',    icon: BsPuzzle,         desc: 'ZIP + images',   color: '#d97706' },
-    { key: 'results', label: 'Daily Exam Results',  icon: BsCalendarCheck,  desc: 'View attempts',  color: '#16a34a' },
-  ] as const
+const AptitudeQuestionsUpload = () => {
+  const [activeTab, setActiveTab] = useState<Tab>('csv')
 
   return (
-    <>
-      <PageMetaData title="Quiz Upload" />
+    <AdminPage>
+      <PageMetaData title="Aptitude Questions" />
 
-      {/* Tab switcher */}
-      <div style={{ maxWidth: 720, margin: '1.5rem auto 0', padding: '0 1rem' }}>
-        <div style={{ display: 'flex', background: '#f1f3f5', borderRadius: 12, padding: 4, gap: 4 }}>
-          {TABS.map(({ key, label, icon: Icon, desc, color }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              style={{
-                flex: 1,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                padding: '10px 14px', border: 'none', borderRadius: 9, cursor: 'pointer',
-                fontWeight: 600, fontSize: '0.85rem', transition: 'all 0.2s',
-                background: activeTab === key ? '#fff' : 'transparent',
-                color: activeTab === key ? color : '#6b7280',
-                boxShadow: activeTab === key ? '0 1px 4px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              <Icon size={16} />
-              <span>{label}</span>
-              <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#9ca3af' }}>({desc})</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        icon={FaCalculator}
+        title="Aptitude Questions"
+        subtitle="Upload question banks and review daily exam results"
+        actions={
+          <Tabs<Tab>
+            value={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { value: 'csv', label: 'Text Questions', icon: FaFileCsv },
+              { value: 'puzzle', label: 'Puzzle Questions', icon: FaFileArchive },
+              { value: 'results', label: 'Daily Results', icon: FaCalendarCheck },
+            ]}
+          />
+        }
+      />
 
       {activeTab === 'csv'     && <CsvUploadForm />}
       {activeTab === 'puzzle'  && <PuzzleUploadForm />}
       {activeTab === 'results' && <DailyExamResults />}
-    </>
+
+      <style>{UPLOAD_CSS + `
+        .aqr-datebar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .aqr-date-title { margin-left: 6px; }
+        .aqr-date-title h3 { white-space: nowrap; }
+        .aqr-date-title b { color: #e5e7eb; }
+        .aqr-link { padding: 0; border: 0; background: none; color: #ff9a3c; font-size: 0.78rem; font-weight: 600; }
+        .aqr-link:hover { color: #ffb15e; text-decoration: underline; }
+        .aqr-alert { margin: 0.85rem !important; }
+        .aqr-busy { opacity: 0.55; pointer-events: none; }
+        .aqr-mono { color: #c3c7ca; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.78rem; }
+        .aqr-rank { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid #3a3e42; border-radius: 99px; background: #1b1e20; color: #9da2a6; font-size: 0.72rem; font-weight: 800; }
+        .aqr-rank.is-1 { border-color: rgba(250,204,21,0.45); background: rgba(250,204,21,0.14); color: #facc15; }
+        .aqr-rank.is-2 { border-color: rgba(203,213,225,0.4); background: rgba(203,213,225,0.1); color: #cbd5e1; }
+        .aqr-rank.is-3 { border-color: rgba(217,119,6,0.45); background: rgba(217,119,6,0.14); color: #f59e0b; }
+        .aui-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        @media (max-width: 575.98px) { .aqr-datebar { width: 100%; flex-wrap: wrap; } }
+      `}</style>
+    </AdminPage>
   )
 }
 

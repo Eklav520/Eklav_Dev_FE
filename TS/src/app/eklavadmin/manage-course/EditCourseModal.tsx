@@ -20,6 +20,7 @@ import {
   FaUpload
 } from 'react-icons/fa'
 import { useState, useRef } from 'react'
+import { AdminSelect } from '@/components/admin-ui'
 import ReactQuill from 'react-quill-new'
 import 'react-quill-new/dist/quill.snow.css'
 
@@ -289,6 +290,35 @@ const EditCourseModal = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
+  // AdminSelect -> the same handler the native <select>s used (it only reads name / value / type)
+  const selectChange = (name: string) => (value: string) =>
+    onFormChange({ target: { name, value, type: 'select-one' } } as unknown as React.ChangeEvent<HTMLSelectElement>)
+
+  const tabCounts: Record<string, number | undefined> = {
+    content: selectedCourse?.videos?.length,
+    faq: selectedCourse?.addFAQ?.length,
+    quiz: selectedCourse?.quiz?.length,
+  }
+  // Readiness: what a course needs before it's worth publishing; each item jumps to its tab
+  const priceSet = !!selectedCourse && (String(selectedCourse.price ?? '').trim() !== '' || (selectedCourse as any).courseType === 'free')
+  const readiness = selectedCourse ? [
+    { key: 'title', tab: 'basic', label: 'Title & category', done: !!selectedCourse.title?.trim() && !!getCategoryText(selectedCourse.category)?.trim() },
+    { key: 'short', tab: 'basic', label: 'Short description', done: !!selectedCourse.shortDescription?.trim() },
+    { key: 'image', tab: 'media', label: 'Course image', done: !!(imagePreviewUrl || selectedCourse.image) },
+    { key: 'videos', tab: 'content', label: 'At least one video', done: (selectedCourse.videos?.length || 0) > 0 },
+    { key: 'price', tab: 'pricing', label: 'Price (or free)', done: priceSet },
+  ] : []
+  const readyPct = readiness.length ? Math.round((readiness.filter(r => r.done).length / readiness.length) * 100) : 0
+  const tabDone: Record<string, boolean> = {
+    basic: readiness.filter(r => r.tab === 'basic').every(r => r.done),
+    media: !!readiness.find(r => r.key === 'image')?.done,
+    content: !!readiness.find(r => r.key === 'videos')?.done,
+    pricing: priceSet,
+  }
+  const levelText = selectedCourse ? (Array.isArray(selectedCourse.level) ? selectedCourse.level[0] : selectedCourse.level) : ''
+  const headerStatus = selectedCourse?.status || 'Draft'
+  const headerCategory = selectedCourse ? getCategoryText(selectedCourse.category) : ''
+
   const tabs = [
     { key: 'basic',    label: 'Basic Info',  icon: <FaHashtag size={13} /> },
     { key: 'content',  label: 'Content',     icon: <FaList size={13} /> },
@@ -306,10 +336,21 @@ const EditCourseModal = ({
       {/* ── Header ── */}
       <div className="ecm-header">
         <div className="ecm-header-left">
-          <div className="ecm-header-icon"><FaRegEdit size={14} /></div>
+          {selectedCourse?.image
+            ? <img className="ecm-header-thumb" src={selectedCourse.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+            : <div className="ecm-header-icon"><FaRegEdit size={14} /></div>}
           <div>
             <div className="ecm-header-title">{selectedCourse?.title || 'Loading…'}</div>
-            <div className="ecm-header-sub">Edit Course</div>
+            <div className="ecm-header-sub">
+              <span>Edit Course</span>
+              {selectedCourse && (
+                <>
+                  <span className={`ecm-pill ecm-pill-${headerStatus.toLowerCase()}`}>{headerStatus}</span>
+                  {headerCategory && <span className="ecm-pill">{headerCategory}</span>}
+                  {selectedCourse.isFeatured && <span className="ecm-pill ecm-pill-featured">Featured</span>}
+                </>
+              )}
+            </div>
           </div>
         </div>
         <button className="ecm-close-btn" onClick={onHide} aria-label="Close">✕</button>
@@ -332,7 +373,10 @@ const EditCourseModal = ({
                   onClick={() => setActiveTab(t.key)}
                 >
                   <span className="ecm-tab-icon">{t.icon}</span>
-                  {t.label}
+                  <span className="ecm-tab-label">{t.label}</span>
+                  {tabCounts[t.key] != null
+                    ? <span className="ecm-tab-count">{tabCounts[t.key]}</span>
+                    : tabDone[t.key] && <FaCheckCircle className="ecm-tab-done" aria-label="Complete" />}
                 </button>
               ))}
             </nav>
@@ -361,19 +405,27 @@ const EditCourseModal = ({
                     <Col md={6}>
                       <div className="ecm-field">
                         <label className="ecm-label">Short Description</label>
-                        <textarea className="ecm-input" rows={3} name="shortDescription" value={selectedCourse.shortDescription || ''} onChange={onFormChange} placeholder="Brief overview (appears in listings)" />
+                        <textarea className="ecm-input ecm-autogrow" rows={4} name="shortDescription" value={selectedCourse.shortDescription || ''} onChange={onFormChange} placeholder="Brief overview (appears in listings)" />
+                        <span className="ecm-hint ecm-charcount">{(selectedCourse.shortDescription || '').length} characters · shown on course cards</span>
                       </div>
                     </Col>
                     <Col md={6}>
                       <div className="ecm-field">
                         <label className="ecm-label">Course Level</label>
-                        <select className="ecm-input" name="level" value={Array.isArray(selectedCourse.level) ? selectedCourse.level[0] : selectedCourse.level || ''} onChange={onFormChange}>
-                          <option value="">Select Level</option>
-                          <option value="Beginner">Beginner</option>
-                          <option value="Intermediate">Intermediate</option>
-                          <option value="Advanced">Advanced</option>
-                          <option value="All level">All Levels</option>
-                        </select>
+                        <div className="ecm-select aui-page">
+                          <AdminSelect
+                            label="Course level"
+                            value={Array.isArray(selectedCourse.level) ? selectedCourse.level[0] || '' : selectedCourse.level || ''}
+                            options={[
+                              { value: '', label: 'Select level' },
+                              { value: 'Beginner', label: 'Beginner' },
+                              { value: 'Intermediate', label: 'Intermediate' },
+                              { value: 'Advanced', label: 'Advanced' },
+                              { value: 'All level', label: 'All Levels' },
+                            ]}
+                            onChange={selectChange('level')}
+                          />
+                        </div>
                       </div>
                     </Col>
                     <Col md={12}>
@@ -794,9 +846,9 @@ const EditCourseModal = ({
                       <Col md={4} key={name}>
                         <div className="ecm-field">
                           <label className="ecm-label">{label}</label>
-                          <select className="ecm-input" name={name} value={value} onChange={onFormChange}>
-                            {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                          </select>
+                          <div className="ecm-select aui-page">
+                            <AdminSelect label={label} value={value} options={options.map(([v, l]) => ({ value: v, label: l }))} onChange={selectChange(name)} />
+                          </div>
                         </div>
                       </Col>
                     ))}
@@ -839,6 +891,62 @@ const EditCourseModal = ({
               )}
 
             </div>
+
+            {/* Live summary: how the course card looks + what is still missing */}
+            <aside className="ecm-aside">
+              <div className="ecm-aside-title">Course card preview</div>
+              <div className="ecm-card-preview">
+                <div className="ecm-card-img">
+                  {(imagePreviewUrl || selectedCourse.image)
+                    ? <img src={imagePreviewUrl || selectedCourse.image} alt="" onError={e => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden' }} />
+                    : <span><FaImage size={18} /> No image yet</span>}
+                  {selectedCourse.isFeatured && <span className="ecm-card-flag">Featured</span>}
+                </div>
+                <div className="ecm-card-body">
+                  <div className="ecm-card-meta">
+                    {headerCategory && <span>{headerCategory}</span>}
+                    {levelText && <span>{levelText}</span>}
+                  </div>
+                  <strong>{selectedCourse.title || 'Untitled course'}</strong>
+                  <div className="ecm-card-stats">
+                    <span><FaVideo size={10} /> {selectedCourse.videos?.length || 0} videos</span>
+                    {selectedCourse.duration && <span>{selectedCourse.duration}</span>}
+                  </div>
+                  <div className="ecm-card-price">
+                    {String(selectedCourse.price ?? '').trim() === ''
+                      ? ((selectedCourse as any).courseType === 'free'
+                          ? <b className="is-free">Free</b>
+                          : <span className="ecm-card-noprice">Price not set</span>)
+                      : <>
+                          <b>&#8377;{selectedCourse.discountPrice || selectedCourse.price}</b>
+                          {selectedCourse.discountPrice && <s>&#8377;{selectedCourse.price}</s>}
+                        </>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="ecm-aside-title ecm-ready-head">
+                <span>Readiness</span>
+                <b className={readyPct === 100 ? 'is-done' : ''}>{readyPct}%</b>
+              </div>
+              <div className="ecm-ready-track"><span style={{ width: `${readyPct}%` }} className={readyPct === 100 ? 'is-done' : ''} /></div>
+              <ul className="ecm-ready">
+                {readiness.map(r => (
+                  <li key={r.key}>
+                    <button type="button" className={r.done ? 'is-done' : ''} onClick={() => setActiveTab(r.tab)}>
+                      {r.done ? <FaCheckCircle /> : <span className="ecm-ready-dot" />}
+                      <span>{r.label}</span>
+                      {!r.done && <em>Add</em>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="ecm-aside-note">
+                {headerStatus === 'Published'
+                  ? 'This course is live for students.'
+                  : 'Set Publish Status to Published in Settings when the course is ready.'}
+              </p>
+            </aside>
           </div>
         )}
       </Modal.Body>
@@ -884,15 +992,14 @@ const EditCourseModal = ({
           <Col md={4}>
             <div className="ecm-field">
               <label className="ecm-label">Language <span className="text-danger">*</span></label>
-              <select
-                className="ecm-input"
-                value={caseStudyModal.draft.language || 'java'}
-                onChange={(e) => setCaseStudyModal(p => ({ ...p, draft: { ...p.draft, language: e.target.value } }))}
-              >
-                {CS_LANGUAGES.map(l => (
-                  <option key={l.value} value={l.value}>{l.label}</option>
-                ))}
-              </select>
+              <div className="ecm-select aui-page">
+                <AdminSelect
+                  label="Language"
+                  value={caseStudyModal.draft.language || 'java'}
+                  options={CS_LANGUAGES.map(l => ({ value: l.value, label: l.label }))}
+                  onChange={(value) => setCaseStudyModal(p => ({ ...p, draft: { ...p.draft, language: value } }))}
+                />
+              </div>
             </div>
           </Col>
           <Col md={12}>
@@ -958,7 +1065,19 @@ const EditCourseModal = ({
         display: flex; align-items: center; justify-content: center; color: #ff8c00;
       }
       .ecm-header-title { color: #fff; font-weight: 600; font-size: 0.95rem; line-height: 1.2; }
-      .ecm-header-sub { color: #6c757d; font-size: 0.75rem; margin-top: 1px; }
+      .ecm-header-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #6c757d; font-size: 0.75rem; margin-top: 4px; }
+      .ecm-header-thumb { width: 56px; height: 40px; flex-shrink: 0; border: 1px solid #2a2e32; border-radius: 8px; object-fit: cover; }
+      .ecm-pill { padding: 2px 9px; border: 1px solid #3a3e42; border-radius: 99px; background: #1b1e20; color: #9da2a6; font-size: 0.66rem; font-weight: 700; }
+      .ecm-pill-published { border-color: rgba(49,216,102,0.25); background: rgba(49,216,102,0.12); color: #45dd75; }
+      .ecm-pill-draft { border-color: rgba(246,170,36,0.3); background: rgba(246,170,36,0.12); color: #f4b43f; }
+      .ecm-pill-featured { border-color: rgba(56,189,248,0.3); background: rgba(56,189,248,0.1); color: #38bdf8; }
+      .ecm-tab-label { flex: 1; }
+      .ecm-tab-count { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: #1f2226; color: #9da2a6; font-size: 0.66rem; font-weight: 700; text-align: center; }
+      .ecm-tab-btn.active .ecm-tab-count { background: rgba(255,140,0,0.18); color: #ffb15e; }
+      /* Dark kit dropdowns sized like the other inputs */
+      .ecm-select .aui-dropdown, .ecm-select .aui-dropdown-trigger { width: 100%; }
+      .ecm-select .aui-dropdown-trigger { height: 38px; border-color: #2a2a2a; background: #1e1e1e; font-size: 0.85rem; }
+      .ecm-select .aui-dropdown-menu { left: 0; right: auto; }
       .ecm-close-btn {
         background: none; border: none; color: #6c757d;
         font-size: 18px; line-height: 1; cursor: pointer; padding: 4px 8px;
@@ -985,7 +1104,46 @@ const EditCourseModal = ({
       .ecm-tab-btn:hover { background: #1a1a1a; color: #ccc; }
       .ecm-tab-btn.active { background: rgba(255,140,0,0.1); color: #ff8c00; font-weight: 600; }
       .ecm-tab-icon { width: 18px; display: flex; align-items: center; justify-content: center; }
-      .ecm-content { flex: 1; overflow-y: auto; background: #141414; padding: 0; }
+      .ecm-content { flex: 1; min-width: 0; overflow-y: auto; background: #141414; padding: 0; }
+      .ecm-tab-done { color: #45dd75; font-size: 0.72rem; flex-shrink: 0; }
+      .ecm-autogrow { field-sizing: content; min-height: 104px; max-height: 240px; }
+      .ecm-charcount { display: block; margin-top: 4px; text-align: right; }
+
+      /* Summary panel */
+      .ecm-aside { width: 300px; flex-shrink: 0; overflow-y: auto; padding: 20px 18px; border-left: 1px solid #1e1e1e; background: #101010; }
+      .ecm-aside-title { margin-bottom: 10px; color: #6c757d; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.7px; text-transform: uppercase; }
+      .ecm-card-preview { overflow: hidden; border: 1px solid #262626; border-radius: 12px; background: #161616; }
+      .ecm-card-img { position: relative; display: grid; place-items: center; aspect-ratio: 16 / 9; background: #1c1c1c; color: #555; font-size: 0.78rem; }
+      .ecm-card-img span { display: inline-flex; align-items: center; gap: 8px; }
+      .ecm-card-img img { width: 100%; height: 100%; object-fit: cover; }
+      .ecm-card-flag { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: 99px; background: #0ea5e9; color: #fff; font-size: 0.62rem; font-weight: 700; }
+      .ecm-card-body { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; }
+      .ecm-card-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+      .ecm-card-meta span { padding: 1px 8px; border-radius: 99px; background: #222; color: #9ca3af; font-size: 0.62rem; font-weight: 700; }
+      .ecm-card-body strong { color: #fff; font-size: 0.9rem; line-height: 1.35; }
+      .ecm-card-stats { display: flex; gap: 12px; color: #8a8f95; font-size: 0.72rem; }
+      .ecm-card-stats span { display: inline-flex; align-items: center; gap: 5px; }
+      .ecm-card-price { display: flex; align-items: baseline; gap: 8px; margin-top: 2px; }
+      .ecm-card-price b { color: #ff9a3c; font-size: 1rem; }
+      .ecm-card-price b.is-free { color: #45dd75; }
+      .ecm-card-price s { color: #6b7280; font-size: 0.76rem; }
+      .ecm-card-noprice { color: #8a8f95; font-size: 0.8rem; font-style: italic; }
+      .ecm-ready-head { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; }
+      .ecm-ready-head b { color: #ff9a3c; font-size: 0.8rem; letter-spacing: 0; }
+      .ecm-ready-head b.is-done { color: #45dd75; }
+      .ecm-ready-track { height: 6px; overflow: hidden; border-radius: 99px; background: #222; }
+      .ecm-ready-track span { display: block; height: 100%; border-radius: 99px; background: #ff8c00; transition: width 0.3s ease; }
+      .ecm-ready-track span.is-done { background: #31d866; }
+      .ecm-ready { margin: 12px 0 0; padding: 0; list-style: none; }
+      .ecm-ready button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 8px; border: 0; border-radius: 7px; background: none; color: #c3c7ca; font-size: 0.8rem; text-align: left; cursor: pointer; }
+      .ecm-ready button:hover { background: #1a1a1a; }
+      .ecm-ready button > svg { color: #45dd75; font-size: 0.8rem; }
+      .ecm-ready button.is-done span { color: #8a8f95; }
+      .ecm-ready button span { flex: 1; }
+      .ecm-ready button em { color: #ff9a3c; font-size: 0.7rem; font-style: normal; font-weight: 700; }
+      .ecm-ready button .ecm-ready-dot { width: 12px; height: 12px; flex: 0 0 12px; border: 1.5px solid #4b5056; border-radius: 50%; }
+      .ecm-aside-note { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #1e1e1e; color: #6b7280; font-size: 0.74rem; line-height: 1.5; }
+      @media (max-width: 1399.98px) { .ecm-aside { display: none; } }
 
       /* ── Section ── */
       .ecm-section { padding: 20px 24px; }

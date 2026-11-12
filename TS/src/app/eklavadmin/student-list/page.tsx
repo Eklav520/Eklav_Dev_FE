@@ -4,6 +4,8 @@ import { FaMapMarkerAlt, FaRegEnvelope, FaSearch, FaDownload, FaPhone, FaGraduat
 import { MdVerified, MdPending, MdAssessment, MdDateRange } from 'react-icons/md'
 import { BsThreeDotsVertical, BsSortDown, BsSortUp } from 'react-icons/bs'
 import PageMetaData from '@/components/PageMetaData'
+import { AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, TableFooter, EmptyState, initialsOf } from '@/components/admin-ui'
+import { FaSort, FaSortUp, FaSortDown, FaUsers, FaHourglassHalf, FaUserPlus, FaTimes, FaExclamationTriangle, FaClipboardList, FaCode, FaLaptopCode, FaUserTie, FaCalendarCheck, FaPaperPlane } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 import * as XLSX from 'xlsx'
 
@@ -48,116 +50,47 @@ interface StudentDetailsModalProps {
   student: Student | null
 }
 
-// Professional Pagination Component
-const ProfessionalPagination: React.FC<{
-  currentPage: number
-  totalPages: number
-  totalStudents: number
-  studentsPerPage: number
-  onPageChange: (page: number) => void
-}> = ({ currentPage, totalPages, totalStudents, studentsPerPage, onPageChange }) => {
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5
-    
-    if (totalPages <= maxVisible + 2) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
-      } else {
-        pages.push(1)
-        pages.push('...')
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-    return pages
-  }
-
-  return (
-    <div className="professional-pagination">
-      <div className="pagination-info">
-        Page {currentPage} of {totalPages}
-      </div>
-      <div className="pagination-controls">
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-        >
-          <FaAngleDoubleLeft />
-        </button>
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <FaChevronLeft />
-        </button>
-        
-        {getPageNumbers().map((page, index) => (
-          page === '...' ? (
-            <span key={`dots-${index}`} className="pagination-dots">...</span>
-          ) : (
-            <button
-              key={page}
-              className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
-              onClick={() => onPageChange(page as number)}
-            >
-              {page}
-            </button>
-          )
-        ))}
-        
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          <FaChevronRight />
-        </button>
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-        >
-          <FaAngleDoubleRight />
-        </button>
-      </div>
-      <div className="pagination-stats">
-        Showing {((currentPage - 1) * studentsPerPage) + 1}–{Math.min(currentPage * studentsPerPage, totalStudents)} of {totalStudents} students
-      </div>
-    </div>
-  )
+/* Photo when it loads, initials otherwise — a missing or broken image never leaves an empty slot */
+const StudentAvatar = ({ name, image, baseURL }: { name: string; image?: string; baseURL: string }) => {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => { setFailed(false) }, [image])
+  const src = image ? (/^(https?:|data:)/.test(image) ? image : `${baseURL}${image}`) : ''
+  return src && !failed
+    ? <img className="aui-avatar sl-photo" src={src} alt="" onError={() => setFailed(true)} />
+    : <span className="aui-avatar">{initialsOf(name)}</span>
 }
 
 // Student Details Modal Component
+const RATING_WORDS = ['', 'Poor', 'Fair', 'Good', 'Very good', 'Excellent']
+
 const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ show, onHide, student }) => {
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackRating, setFeedbackRating] = useState<number>(0)
+  const [hoverRating, setHoverRating] = useState<number>(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [feedbackResult, setFeedbackResult] = useState<{ ok: boolean; text: string } | null>(null)
+  const [photoFailed, setPhotoFailed] = useState(false)
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
+
+  // Fresh state for each student opened
+  useEffect(() => {
+    setPhotoFailed(false)
+    setFeedbackResult(null)
+    setFeedbackText('')
+    setFeedbackRating(0)
+  }, [student?._id])
 
   const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!student) return
     setIsSubmitting(true)
+    setFeedbackResult(null)
 
     try {
-      await fetch(`${baseURL}/adminProfiles/admin/${student._id}/feedback`, {
+      const res = await fetch(`${baseURL}/adminProfiles/admin/${student._id}/feedback`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${user?.token}`,
         },
@@ -166,12 +99,13 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ show, onHide,
           rating: feedbackRating,
         }),
       })
+      if (!res.ok) throw new Error(`Feedback failed (${res.status})`)
       setFeedbackText('')
       setFeedbackRating(0)
-      alert('Feedback sent successfully!')
+      setFeedbackResult({ ok: true, text: `Feedback sent to ${student.fullName.split(' ')[0]}.` })
     } catch (error) {
       console.error('Error sending feedback:', error)
-      alert('Failed to send feedback')
+      setFeedbackResult({ ok: false, text: 'Could not send feedback. Please try again.' })
     } finally {
       setIsSubmitting(false)
     }
@@ -179,358 +113,261 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ show, onHide,
 
   if (!student) return null
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'approved':
-        return <Badge bg="success" className="px-3 py-2"><FaCheckCircle className="me-1" /> Approved</Badge>
-      case 'pending':
-        return <Badge bg="warning" className="px-3 py-2 text-dark"><MdPending className="me-1" /> Pending</Badge>
-      case 'rejected':
-        return <Badge bg="danger" className="px-3 py-2"><FaTimesCircle className="me-1" /> Rejected</Badge>
-      default:
-        return <Badge bg="secondary" className="px-3 py-2">{status}</Badge>
-    }
-  }
+  const status = student.status || 'pending'
+  const statusBadge = (
+    <span className={`aui-badge aui-badge-dot ${status === 'approved' ? 'aui-badge-green' : status === 'rejected' ? 'aui-badge-red' : 'aui-badge-amber'}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  )
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
+  const averageRating = student.feedback?.length
+    ? (student.feedback.reduce((acc, f) => acc + f.rating, 0) / student.feedback.length).toFixed(1)
+    : null
 
-  const getAverageRating = () => {
-    if (!student.feedback || student.feedback.length === 0) return null
-    const sum = student.feedback.reduce((acc, f) => acc + f.rating, 0)
-    return (sum / student.feedback.length).toFixed(1)
-  }
+  const photoUrl = student.profileImage
+    ? (/^(https?:|data:)/.test(student.profileImage) ? student.profileImage : `${baseURL}${student.profileImage}`)
+    : ''
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 
-  const averageRating = getAverageRating()
+  const scores = student.assessmentScores
+  const scoreItems = scores ? [
+    { label: 'Quiz', value: scores.quizScore, icon: FaClipboardList, tone: 'sdm-tone-orange' },
+    { label: 'Code Challenge', value: scores.codeChallengeScore, icon: FaCode, tone: 'sdm-tone-purple' },
+    { label: 'Technical', value: scores.technicalRoundScore, icon: FaLaptopCode, tone: 'sdm-tone-blue' },
+    { label: 'HR Round', value: scores.hrRoundScore, icon: FaUserTie, tone: 'sdm-tone-green' },
+  ] : []
+  const scoreTotal = scoreItems.reduce((sum, s) => sum + (s.value || 0), 0)
+
+  const details: { label: string; value: React.ReactNode; icon: React.ComponentType<{ size?: number }> }[] = [
+    { label: 'Email', icon: FaEnvelope, value: <a href={`mailto:${student.email}`}>{student.email}</a> },
+    { label: 'Phone', icon: FaPhoneAlt, value: student.phoneNo ? <a href={`tel:${student.phoneNo}`}>{student.phoneNo}</a> : '—' },
+    { label: 'Department', icon: FaGraduationCap, value: student.department || '—' },
+    { label: 'Batch', icon: FaUsers, value: student.batch || '—' },
+    { label: 'Joining year', icon: MdDateRange, value: student.joiningYear || '—' },
+    { label: 'Registered', icon: FaCalendarCheck, value: fmtDate(student.createdAt) },
+  ]
+
+  const shownRating = hoverRating || feedbackRating
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" centered className="student-details-modal">
-      {/* Hero Header */}
-      <div className="modal-hero-header position-relative overflow-hidden rounded-top-3">
-        <div className="modal-hero-bg" />
-        <div className="position-absolute top-0 end-0 p-3">
-          <button
-            type="button"
-            className="btn-close btn-close-white opacity-75"
-            onClick={onHide}
-            aria-label="Close"
-          />
-        </div>
-        <div className="d-flex align-items-center gap-4 p-4 position-relative">
-          {student.profileImage ? (
-            <img
-              src={`${baseURL}${student.profileImage}`}
-              alt={student.fullName}
-              className="rounded-circle modal-avatar"
-            />
-          ) : (
-            <div className="rounded-circle modal-avatar-initials d-flex align-items-center justify-content-center">
-              {getInitials(student.fullName)}
+    <Modal show={show} onHide={onHide} centered scrollable dialogClassName="sdm-dialog" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+      <div className="aui-page sdm">
+        {/* Header */}
+        <div className="sdm-head">
+          <span className="sdm-avatar">
+            {photoUrl && !photoFailed
+              ? <img src={photoUrl} alt="" onError={() => setPhotoFailed(true)} />
+              : initialsOf(student.fullName)}
+          </span>
+          <div className="sdm-identity">
+            <h3>{student.fullName}</h3>
+            <div className="sdm-badges">
+              {statusBadge}
+              {student.batch && <span className="aui-badge aui-badge-muted">{student.batch}</span>}
+              {averageRating && <span className="aui-badge aui-badge-amber"><FaStar size={9} /> {averageRating}</span>}
+              {student.role && <span className="aui-badge aui-badge-blue">{student.role.charAt(0).toUpperCase() + student.role.slice(1)}</span>}
             </div>
-          )}
-          <div className="flex-grow-1">
-            <h4 className="text-white fw-bold mb-1">{student.fullName}</h4>
-            <div className="d-flex align-items-center gap-2 flex-wrap">
-              {getStatusBadge(student.status || 'pending')}
-              {student.batch && (
-                <Badge bg="secondary" className="fw-normal">{student.batch}</Badge>
-              )}
-              {averageRating && (
-                <span className="d-flex align-items-center gap-1 text-warning small">
-                  <FaStar size={12} />
-                  <span>{averageRating}</span>
-                </span>
-              )}
-            </div>
-            {student.college && (
-              <p className="text-white-50 small mb-0 mt-2">
-                <FaBuilding className="me-1" size={11} />
-                {student.college}
-              </p>
-            )}
+            {student.college && <p className="sdm-college"><FaBuilding size={11} /> <span>{student.college}</span></p>}
           </div>
-        </div>
-      </div>
-
-      <Modal.Body className="modal-body-dark p-4">
-        {/* Contact + Academic side by side */}
-        <div className="row g-3 mb-3">
-          <div className="col-md-6">
-            <div className="modal-info-card h-100">
-              <div className="modal-info-card-title">
-                <FaEnvelope size={13} className="me-2 text-orange" />
-                Contact
-              </div>
-              <div className="modal-info-row">
-                <span className="modal-info-label">Email</span>
-                <a href={`mailto:${student.email}`} className="modal-info-value text-orange text-decoration-none text-truncate">
-                  {student.email}
-                </a>
-              </div>
-              <div className="modal-info-row">
-                <span className="modal-info-label">Phone</span>
-                <a href={`tel:${student.phoneNo}`} className="modal-info-value text-orange text-decoration-none">
-                  {student.phoneNo}
-                </a>
-              </div>
-              {student.joiningYear && (
-                <div className="modal-info-row">
-                  <span className="modal-info-label">Joined</span>
-                  <span className="modal-info-value">{student.joiningYear}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="col-md-6">
-            <div className="modal-info-card h-100">
-              <div className="modal-info-card-title">
-                <FaGraduationCap size={13} className="me-2 text-orange" />
-                Academic
-              </div>
-              {student.department && (
-                <div className="modal-info-row">
-                  <span className="modal-info-label">Department</span>
-                  <span className="modal-info-value">{student.department}</span>
-                </div>
-              )}
-              {student.batch && (
-                <div className="modal-info-row">
-                  <span className="modal-info-label">Batch</span>
-                  <span className="modal-info-value">{student.batch}</span>
-                </div>
-              )}
-              {student.role && (
-                <div className="modal-info-row">
-                  <span className="modal-info-label">Role</span>
-                  <span className="modal-info-value text-capitalize">{student.role}</span>
-                </div>
-              )}
-              <div className="modal-info-row">
-                <span className="modal-info-label">Registered</span>
-                <span className="modal-info-value">
-                  {new Date(student.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          </div>
+          <button type="button" className="aui-icon-btn" onClick={onHide} aria-label="Close"><FaTimes size={12} /></button>
         </div>
 
-        {/* Assessment Scores */}
-        {student.assessmentScores && (
-          <div className="modal-info-card mb-3">
-            <div className="modal-info-card-title">
-              <MdAssessment size={14} className="me-2 text-orange" />
-              Assessment Scores
-            </div>
-            <div className="row g-2 mt-1">
-              {[
-                { label: 'Quiz', value: student.assessmentScores.quizScore },
-                { label: 'Code Challenge', value: student.assessmentScores.codeChallengeScore },
-                { label: 'Technical', value: student.assessmentScores.technicalRoundScore },
-                { label: 'HR Round', value: student.assessmentScores.hrRoundScore },
-              ].map(({ label, value }) => (
-                <div key={label} className="col-6 col-md-3">
-                  <div className="score-tile text-center">
-                    <div className="score-tile-value">{value ?? '—'}</div>
-                    <div className="score-tile-label">{label}</div>
-                  </div>
+        <div className="aui-modal-body sdm-body">
+          {/* Details */}
+          <div className="sdm-details">
+            {details.map(({ label, value, icon: Icon }) => (
+              <div key={label} className="sdm-detail">
+                <span className="sdm-detail-icon"><Icon size={12} /></span>
+                <div>
+                  <small>{label}</small>
+                  <strong>{value}</strong>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Skills */}
-        {student.skills && student.skills.length > 0 && (
-          <div className="modal-info-card mb-3">
-            <div className="modal-info-card-title">Skills</div>
-            <div className="d-flex flex-wrap gap-2 mt-2">
-              {student.skills.map((skill, idx) => (
-                <span key={idx} className="skill-chip">{skill}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* About */}
-        {student.about && (
-          <div className="modal-info-card mb-3">
-            <div className="modal-info-card-title">About</div>
-            <p className="text-muted small mb-0 mt-2 lh-lg">{student.about}</p>
-          </div>
-        )}
-
-        {/* Feedback History */}
-        {student.feedback && student.feedback.length > 0 && (
-          <div className="modal-info-card mb-3">
-            <div className="d-flex align-items-center justify-content-between">
-              <div className="modal-info-card-title mb-0">
-                <FaStar size={13} className="me-2 text-orange" />
-                Feedback History
               </div>
-              {averageRating && (
-                <span className="avg-rating-badge">
-                  <FaStar size={11} className="text-warning me-1" />
-                  {averageRating} avg
-                </span>
-              )}
-            </div>
-            <div className="feedback-scroll mt-3">
-              {student.feedback.map((fb) => (
-                <div key={fb._id} className="feedback-item">
-                  <div className="d-flex justify-content-between align-items-start mb-1">
-                    <div className="d-flex gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <FaStar key={i} size={11} color={i < fb.rating ? '#ffc107' : '#3a3a3a'} />
-                      ))}
+            ))}
+          </div>
+
+          {/* Assessment scores */}
+          {scores && (
+            <section className="sdm-section">
+              <div className="sdm-section-head">
+                <span className="aui-section-label">Assessment scores</span>
+                <span className="sdm-total">Total <b>{scoreTotal}</b></span>
+              </div>
+              <div className="sdm-scores">
+                {scoreItems.map(({ label, value, icon: Icon, tone }) => (
+                  <div key={label} className="sdm-score">
+                    <span className={`sdm-score-icon ${tone}`}><Icon size={13} /></span>
+                    <div>
+                      <strong>{value ?? '—'}</strong>
+                      <small>{label}</small>
                     </div>
-                    <small className="text-muted">{new Date(fb.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</small>
                   </div>
-                  <p className="small mb-0 text-muted lh-base">{fb.text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Send Feedback */}
-        <div className="modal-info-card">
-          <div className="modal-info-card-title mb-3">
-            <FaStar size={13} className="me-2 text-orange" />
-            Send Feedback
-          </div>
-          <Form onSubmit={handleSubmitFeedback}>
-            <div className="mb-3">
-              <div className="d-flex gap-2 mb-3">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <FaStar
-                    key={star}
-                    size={22}
-                    color={star <= feedbackRating ? '#ff8c00' : '#3a3a3a'}
-                    onClick={() => setFeedbackRating(star)}
-                    style={{ cursor: 'pointer', transition: 'color 0.15s' }}
-                  />
                 ))}
-                {feedbackRating > 0 && (
-                  <span className="text-muted small ms-1 align-self-center">{feedbackRating}/5</span>
-                )}
               </div>
-              <Form.Control
-                as="textarea"
+            </section>
+          )}
+
+          {/* Skills */}
+          {student.skills && student.skills.length > 0 && (
+            <section className="sdm-section">
+              <span className="aui-section-label">Skills</span>
+              <div className="sdm-chips">
+                {student.skills.map((skill, idx) => <span key={idx} className="sdm-chip">{skill}</span>)}
+              </div>
+            </section>
+          )}
+
+          {/* About */}
+          {student.about && (
+            <section className="sdm-section">
+              <span className="aui-section-label">About</span>
+              <p className="sdm-about">{student.about}</p>
+            </section>
+          )}
+
+          {/* Feedback history */}
+          {student.feedback && student.feedback.length > 0 && (
+            <section className="sdm-section">
+              <div className="sdm-section-head">
+                <span className="aui-section-label">Feedback history · {student.feedback.length}</span>
+                {averageRating && <span className="sdm-total"><FaStar className="sdm-star" /> <b>{averageRating}</b> average</span>}
+              </div>
+              <div className="sdm-feedback-list">
+                {student.feedback.map((fb) => (
+                  <div key={fb._id} className="sdm-feedback">
+                    <div className="sdm-feedback-top">
+                      <span className="sdm-stars">
+                        {[...Array(5)].map((_, i) => <FaStar key={i} size={11} className={i < fb.rating ? 'is-on' : ''} />)}
+                      </span>
+                      <small>{fmtDate(fb.date)}</small>
+                    </div>
+                    <p>{fb.text}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Send feedback */}
+          <section className="sdm-section sdm-send">
+            <span className="aui-section-label">Send feedback</span>
+            {feedbackResult && (
+              <div className={`aui-alert ${feedbackResult.ok ? 'aui-alert-success' : ''}`}>
+                {feedbackResult.ok ? <FaCheckCircle /> : <FaTimesCircle />} <span>{feedbackResult.text}</span>
+              </div>
+            )}
+            <form onSubmit={handleSubmitFeedback}>
+              <div className="sdm-rate" onMouseLeave={() => setHoverRating(0)}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    className={star <= shownRating ? 'is-on' : ''}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onClick={() => setFeedbackRating(star)}
+                    aria-label={`${star} star${star > 1 ? 's' : ''}`}
+                  >
+                    <FaStar />
+                  </button>
+                ))}
+                <span>{shownRating ? `${RATING_WORDS[shownRating]} · ${shownRating}/5` : 'Choose a rating'}</span>
+              </div>
+              <textarea
+                className="aui-input sdm-textarea"
                 rows={3}
-                placeholder="Write your feedback..."
+                placeholder={`Write feedback for ${student.fullName.split(' ')[0]}…`}
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
                 required
-                className="modal-textarea"
               />
-            </div>
-            <div className="d-flex justify-content-end gap-2">
-              <Button variant="outline-secondary" size="sm" onClick={onHide}>
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="btn-orange"
-                disabled={isSubmitting || !feedbackText.trim() || feedbackRating === 0}
-              >
-                {isSubmitting ? <FaSpinner className="spinner me-1" size={12} /> : null}
-                Submit Feedback
-              </Button>
-            </div>
-          </Form>
+              <div className="sdm-send-actions">
+                <span className="aui-hint">Pick a rating and write a short note.</span>
+                <button type="submit" className="aui-btn aui-btn-primary" disabled={isSubmitting || !feedbackText.trim() || feedbackRating === 0}>
+                  {isSubmitting ? <><FaSpinner className="aui-spin" style={{ color: '#fff' }} /> Sending…</> : <><FaPaperPlane size={11} /> Submit Feedback</>}
+                </button>
+              </div>
+            </form>
+          </section>
         </div>
-      </Modal.Body>
+
+        <div className="aui-modal-foot">
+          <button type="button" className="aui-btn" onClick={onHide}>Close</button>
+        </div>
+      </div>
+
+      <style>{`
+        .sdm-dialog { max-width: 820px; }
+        .sdm { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 3.5rem); }
+        .sdm-head { position: relative; display: flex; align-items: flex-start; gap: 16px; padding: 1.25rem 1.4rem; border-bottom: 1px solid #25282b; background: radial-gradient(ellipse at 0% 0%, rgba(255,122,0,0.16), transparent 55%), #111315; }
+        .sdm-avatar { display: grid; place-items: center; width: 64px; height: 64px; flex: 0 0 64px; overflow: hidden; border: 2px solid rgba(255,122,0,0.55); border-radius: 50%; background: #25201b; color: #ffb15e; font-size: 1.25rem; font-weight: 800; box-shadow: 0 0 0 4px rgba(255,122,0,0.1); }
+        .sdm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .sdm-identity { flex: 1; min-width: 0; }
+        .sdm-identity h3 { margin: 2px 0 8px; color: #fff; font-size: 1.25rem; font-weight: 800; }
+        .sdm-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+        .sdm-college { display: flex; align-items: flex-start; gap: 7px; margin: 10px 0 0; color: #a6abb0; font-size: 0.8rem; line-height: 1.45; }
+        .sdm-college svg { flex: 0 0 auto; margin-top: 3px; color: #858a90; }
+
+        .sdm-body { padding: 1.2rem 1.4rem; }
+        .sdm-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); overflow: hidden; border: 1px solid #25282b; border-radius: 12px; }
+        .sdm-detail { display: flex; align-items: flex-start; gap: 10px; min-width: 0; padding: 0.8rem 0.9rem; border-right: 1px solid #202326; border-bottom: 1px solid #202326; }
+        .sdm-detail:nth-child(3n) { border-right: 0; }
+        .sdm-detail:nth-last-child(-n+3) { border-bottom: 0; }
+        .sdm-detail-icon { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border-radius: 8px; background: rgba(255,122,0,0.1); color: #ff9a3c; }
+        .sdm-detail > div { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+        .sdm-detail small { color: #858a90; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+        .sdm-detail strong { overflow: hidden; color: #eceef0; font-size: 0.82rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+        .sdm-detail a { color: #ffb15e; text-decoration: none; }
+        .sdm-detail a:hover { text-decoration: underline; }
+
+        .sdm-section { margin-top: 1.3rem; }
+        .sdm-section .aui-section-label { display: block; margin: 0 0 0.6rem; }
+        .sdm-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.75rem; }
+        .sdm-section-head .aui-section-label { margin-bottom: 0.6rem; }
+        .sdm-total { color: #858a90; font-size: 0.76rem; }
+        .sdm-total b { color: #fff; }
+        .sdm-star { color: #f4b43f; font-size: 0.7rem; }
+
+        .sdm-scores { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+        .sdm-score { display: flex; align-items: center; gap: 10px; padding: 0.75rem 0.85rem; border: 1px solid #25282b; border-radius: 12px; background: linear-gradient(145deg, #151719, #101214); }
+        .sdm-score > div { display: flex; flex-direction: column; }
+        .sdm-score strong { color: #fff; font-size: 1.3rem; font-weight: 800; line-height: 1.1; }
+        .sdm-score small { color: #858a90; font-size: 0.68rem; }
+        .sdm-score-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
+        .sdm-tone-orange { background: rgba(255,122,0,0.13); color: #ff9a3c; }
+        .sdm-tone-purple { background: rgba(176,132,255,0.13); color: #c4a5ff; }
+        .sdm-tone-blue { background: rgba(56,189,248,0.12); color: #38bdf8; }
+        .sdm-tone-green { background: rgba(49,216,102,0.13); color: #45dd75; }
+
+        .sdm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+        .sdm-chip { padding: 4px 12px; border: 1px solid rgba(255,122,0,0.3); border-radius: 99px; background: rgba(255,122,0,0.08); color: #ffb15e; font-size: 0.76rem; font-weight: 600; }
+        .sdm-about { margin: 0; color: #b4b9be; font-size: 0.84rem; line-height: 1.65; }
+
+        .sdm-feedback-list { display: flex; max-height: 220px; flex-direction: column; gap: 8px; overflow-y: auto; }
+        .sdm-feedback { padding: 0.7rem 0.85rem; border: 1px solid #25282b; border-radius: 10px; background: #111315; }
+        .sdm-feedback-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+        .sdm-feedback-top small { color: #6b7280; font-size: 0.7rem; }
+        .sdm-feedback p { margin: 0; color: #c3c7ca; font-size: 0.8rem; line-height: 1.55; }
+        .sdm-stars { display: inline-flex; gap: 2px; color: #3a3e42; }
+        .sdm-stars .is-on { color: #f4b43f; }
+
+        .sdm-send { padding-top: 1.2rem; border-top: 1px dashed #2a2e33; }
+        .sdm-send .aui-alert { margin-bottom: 0.75rem; }
+        .sdm-rate { display: flex; align-items: center; gap: 4px; margin-bottom: 0.65rem; }
+        .sdm-rate button { padding: 2px; border: 0; background: none; color: #3a3e42; font-size: 1.35rem; line-height: 1; transition: color 0.12s, transform 0.12s; }
+        .sdm-rate button.is-on { color: #ffb020; }
+        .sdm-rate button:hover { transform: scale(1.12); }
+        .sdm-rate span { margin-left: 8px; color: #a6abb0; font-size: 0.78rem; }
+        .sdm-textarea { height: auto; min-height: 90px; padding: 0.65rem 0.8rem; line-height: 1.5; resize: vertical; }
+        .sdm-send-actions { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.7rem; }
+
+        @media (max-width: 767.98px) {
+          .sdm-details { grid-template-columns: 1fr 1fr; }
+          .sdm-detail:nth-child(3n) { border-right: 1px solid #202326; }
+          .sdm-detail:nth-child(2n) { border-right: 0; }
+          .sdm-scores { grid-template-columns: 1fr 1fr; }
+        }
+      `}</style>
     </Modal>
-  )
-}
-
-// Student Card Component for Grid View
-const StudentCard: React.FC<{ student: Student; onViewDetails: (student: Student) => void; onContact: (student: Student) => void }> = ({ student, onViewDetails, onContact }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'success'
-      case 'pending': return 'warning'
-      case 'rejected': return 'danger'
-      default: return 'secondary'
-    }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
-  const baseURL = import.meta.env.VITE_API_BASE_URL
-
-  return (
-    <div className="student-card bg-dark-lighter rounded-3 p-3 border border-secondary hover-glow">
-      <div className="d-flex align-items-start justify-content-between mb-3">
-        <div className="d-flex align-items-center gap-3">
-          {student.profileImage ? (
-            <img 
-              src={`${baseURL}${student.profileImage}`} 
-              alt={student.fullName}
-              className="rounded-circle"
-              style={{ width: 56, height: 56, objectFit: 'cover' }}
-            />
-          ) : (
-            <div className="rounded-circle bg-orange text-white d-flex align-items-center justify-content-center" style={{ width: 56, height: 56, fontSize: 20, fontWeight: 600 }}>
-              {getInitials(student.fullName)}
-            </div>
-          )}
-          <div>
-            <h6 className="mb-0 text-white">{student.fullName}</h6>
-            <small className="text-muted">{student.email}</small>
-          </div>
-        </div>
-        <Badge bg={getStatusColor(student.status || 'pending')} className="px-2 py-1">
-          {student.status || 'pending'}
-        </Badge>
-      </div>
-      
-      <div className="mb-2">
-        <FaPhone className="text-muted me-2" size={12} />
-        <small className="text-muted">{student.phoneNo}</small>
-      </div>
-      
-      {student.college && (
-        <div className="mb-3">
-          <FaBuilding className="text-muted me-2" size={12} />
-          <small className="text-muted">{student.college.length > 40 ? student.college.substring(0, 40) + '...' : student.college}</small>
-        </div>
-      )}
-      
-      <div className="d-flex gap-2 mt-2">
-        <Button 
-          variant="outline-orange" 
-          size="sm" 
-          className="flex-grow-1"
-          onClick={() => onViewDetails(student)}
-        >
-          <FaEye className="me-1" /> View
-        </Button>
-        <Button 
-          variant="orange" 
-          size="sm" 
-          className="flex-grow-1"
-          onClick={() => onContact(student)}
-        >
-          <FaPhone className="me-1" /> Contact
-        </Button>
-      </div>
-    </div>
   )
 }
 
@@ -550,15 +387,8 @@ const StudentListPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
-  // Pending (unapplied) filter values — applied only when user clicks Apply
-  const [pendingStatus, setPendingStatus] = useState<string>('all')
-  const [pendingBatch, setPendingBatch] = useState<string>('all')
-  const [pendingCollege, setPendingCollege] = useState<string>('all')
-  const [pendingDateFrom, setPendingDateFrom] = useState<string>('')
-  const [pendingDateTo, setPendingDateTo] = useState<string>('')
   const [sortBy, setSortBy] = useState<string>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [currentPage, setCurrentPage] = useState(1)
   const [college, setCollege] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
@@ -585,7 +415,7 @@ const StudentListPage: React.FC = () => {
   const [auditLoading, setAuditLoading] = useState(false)
   const [showAudit, setShowAudit] = useState(false)
 
-  const studentsPerPage = 50
+  const [studentsPerPage, setStudentsPerPage] = useState(50)
 
   // Fetch profile
   const fetchProfile = async () => {
@@ -896,17 +726,18 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-50">
-        <FaSpinner className="text-orange spinner-grow" size={40} />
-      </div>
+      <AdminPage>
+        <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading students…</div>
+      </AdminPage>
     )
   }
 
   const approvedCount = students.filter(s => s.status === 'approved').length
-  const pendingCount = students.filter(s => s.status === 'pending').length
+  const pendingCount = students.filter(s => (s.status || 'pending') === 'pending').length
   const rejectedCount = students.filter(s => s.status === 'rejected').length
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const isNew = (createdAt: string) => new Date(createdAt) > sevenDaysAgo
+  const newCount = students.filter(s => isNew(s.createdAt)).length
 
   const handleSortColumn = (column: string) => {
     if (sortBy === column) {
@@ -915,255 +746,86 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
       setSortBy(column)
       setSortOrder('asc')
     }
+    setCurrentPage(1)
   }
 
-  const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <BsSortDown className="ms-1 text-secondary opacity-50" size={12} />
-    return sortOrder === 'asc' ? <BsSortUp className="ms-1 text-orange" size={12} /> : <BsSortDown className="ms-1 text-orange" size={12} />
+  const SortHeader = ({ column, label }: { column: string; label: string }) => (
+    <button type="button" className={`sl-sort${sortBy === column ? ' is-active' : ''}`} onClick={() => handleSortColumn(column)}>
+      {label}
+      {sortBy !== column ? <FaSort /> : sortOrder === 'asc' ? <FaSortUp /> : <FaSortDown />}
+    </button>
+  )
+
+  const filtersActive = !!(searchTerm || filterStatus !== 'all' || filterBatch !== 'all' || filterCollege !== 'all' || dateFrom || dateTo)
+  const resetFilters = () => {
+    setSearchTerm(''); setFilterStatus('all'); setFilterBatch('all'); setFilterCollege('all')
+    setDateFrom(''); setDateTo(''); setCurrentPage(1)
   }
+  const onFilter = <T,>(setter: (v: T) => void) => (value: T) => { setter(value); setCurrentPage(1) }
+
+  const statusBadge = (status?: string) => {
+    const s = status || 'pending'
+    return <span className={`aui-badge aui-badge-dot ${s === 'approved' ? 'aui-badge-green' : s === 'rejected' ? 'aui-badge-red' : 'aui-badge-amber'}`}>{s.charAt(0).toUpperCase() + s.slice(1)}</span>
+  }
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const roleLabel = (r: string) => r === 'admin' ? 'Admin' : r === 'tutor' ? 'Tutor' : r === 'instituteAdmin' ? 'Institute Admin' : r === 'collegeAdmin' ? 'College Admin' : r
+  const allOnPageSelected = paginatedStudents.length > 0 && paginatedStudents.every(s => selectedIds.has(s._id))
 
   return (
     <>
       <PageMetaData title="Student Management | Admin Dashboard" />
 
-      <div className="admin-dashboard">
-        {/* Header */}
-        <div className="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-          <div>
-            <h5 className="text-white mb-1 fw-semibold">Student Management</h5>
-            <p className="text-muted mb-0 small">
-              <FaUserGraduate className="me-1" />
-              {filteredStudents.length !== students.length
-                ? `Showing ${filteredStudents.length} of ${students.length} students`
-                : `${students.length} total students`}
-            </p>
-          </div>
-          <div className="d-flex gap-2 flex-wrap">
-            {selectedIds.size > 0 && (
-              <Button
-                variant="orange"
-                size="sm"
-                className="btn-orange"
-                onClick={() => openMessageModal(students.filter(s => selectedIds.has(s._id)))}
-              >
-                <FaRegEnvelope className="me-2" />
-                Message Selected ({selectedIds.size})
-              </Button>
-            )}
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
-            >
-              {viewMode === 'table' ? 'Grid View' : 'Table View'}
-            </Button>
-            <Button
-              variant="outline-orange"
-              size="sm"
-              onClick={handleDownloadExcel}
-              disabled={filteredStudents.length === 0}
-            >
-              <FaDownload className="me-2" />
-              Export Excel
-            </Button>
-            <Button
-              variant="outline-secondary"
-              size="sm"
-              onClick={fetchAuditData}
-              disabled={auditLoading}
-            >
-              {auditLoading ? <FaSpinner className="me-1" size={12} /> : <FaUserShield className="me-1" size={12} />}
-              User Audit
-            </Button>
-          </div>
-        </div>
-
-        {/* Stat Cards */}
-        {/* Stat pills + Search on same row */}
-        <div className="d-flex align-items-center gap-2 mb-3 flex-wrap">
-          {[
-            { label: 'Total', value: students.length, color: '#ff8c00', bg: 'rgba(255,140,0,0.08)', border: 'rgba(255,140,0,0.25)' },
-            { label: 'Approved', value: approvedCount, color: '#198754', bg: 'rgba(25,135,84,0.08)', border: 'rgba(25,135,84,0.25)' },
-            { label: 'Pending', value: pendingCount, color: '#ffc107', bg: 'rgba(255,193,7,0.08)', border: 'rgba(255,193,7,0.25)' },
-            { label: 'Rejected', value: rejectedCount, color: '#dc3545', bg: 'rgba(220,53,69,0.08)', border: 'rgba(220,53,69,0.25)' },
-          ].map(({ label, value, color, bg, border }) => (
-            <div
-              key={label}
-              className="stat-card d-flex align-items-center gap-2 rounded-3 px-3 py-2 flex-shrink-0"
-              style={{ background: bg, border: `1px solid ${border}` }}
-            >
-              <span className="fw-bold" style={{ color, fontSize: '1rem', lineHeight: 1 }}>{value}</span>
-              <span className="text-muted" style={{ fontSize: '0.72rem' }}>{label}</span>
-            </div>
-          ))}
-          <div className="position-relative flex-grow-1" style={{ minWidth: 180 }}>
-            <FaSearch className="position-absolute top-50 start-0 translate-middle-y ms-3 text-muted" size={12} />
-            <input
-              type="text"
-              className="form-control bg-dark-lighter border-secondary text-white ps-5"
-              style={{ height: 36, fontSize: '0.85rem' }}
-              placeholder="Search name, email, phone, college..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+      <AdminPage>
+        <PageHeader
+          icon={FaUserGraduate}
+          title="Students"
+          stats={
+            <StatCards
+              inline
+              items={[
+                { label: 'Total', value: students.length, icon: FaUsers, tone: 'orange' },
+                { label: 'Approved', value: approvedCount, icon: FaCheckCircle, tone: 'green' },
+                { label: 'Pending', value: pendingCount, icon: FaHourglassHalf, tone: 'amber' },
+                { label: 'Rejected', value: rejectedCount, icon: FaTimesCircle, tone: 'red' },
+                { label: 'New · 7 days', value: newCount, icon: FaUserPlus, tone: 'blue' },
+              ]}
             />
-          </div>
-        </div>
+          }
+          actions={
+            <>
+              <button type="button" className="aui-btn" onClick={fetchAuditData} disabled={auditLoading}>
+                {auditLoading ? <FaSpinner className="aui-spin" size={11} /> : <FaUserShield size={11} />} {showAudit ? 'Hide Audit' : 'User Audit'}
+              </button>
+              <button type="button" className="aui-btn aui-btn-primary" onClick={handleDownloadExcel} disabled={filteredStudents.length === 0}>
+                <FaDownload size={11} /> Export Excel
+              </button>
+            </>
+          }
+        />
 
-        {/* Filter Toolbar — all on one line */}
-        <Card className="bg-dark border-secondary mb-4">
-          <CardBody className="py-2 px-3">
-            <div className="d-flex align-items-center gap-2" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
-              <select
-                className="form-select bg-dark-lighter border-secondary text-white flex-shrink-0"
-                style={{ width: 'auto', minWidth: 130, height: 36, fontSize: '0.82rem' }}
-                value={pendingStatus}
-                onChange={(e) => setPendingStatus(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="approved">Approved</option>
-                <option value="pending">Pending</option>
-                <option value="rejected">Rejected</option>
-              </select>
-              <select
-                className="form-select bg-dark-lighter border-secondary text-white flex-shrink-0"
-                style={{ width: 'auto', minWidth: 130, height: 36, fontSize: '0.82rem' }}
-                value={pendingBatch}
-                onChange={(e) => setPendingBatch(e.target.value)}
-              >
-                <option value="all">All Batches</option>
-                {batches.map(batch => (
-                  <option key={batch} value={batch}>{batch}</option>
-                ))}
-              </select>
-              <select
-                className="form-select bg-dark-lighter border-secondary text-white flex-shrink-0"
-                style={{ width: 'auto', minWidth: 160, maxWidth: 240, height: 36, fontSize: '0.82rem' }}
-                value={pendingCollege}
-                onChange={(e) => setPendingCollege(e.target.value)}
-              >
-                <option value="all">All Colleges</option>
-                {colleges.map(col => (
-                  <option key={col} value={col}>{col.length > 35 ? col.substring(0, 35) + '...' : col}</option>
-                ))}
-              </select>
-              <div className="d-flex align-items-center gap-1 flex-shrink-0" style={{ background: '#2a2a2a', border: '1px solid #444', borderRadius: 8, padding: '4px 10px', height: 36 }}>
-                <MdDateRange className="text-muted flex-shrink-0" size={14} />
-                <input
-                  type="date"
-                  className="date-range-input"
-                  title="From date"
-                  value={pendingDateFrom}
-                  max={pendingDateTo || undefined}
-                  onChange={(e) => setPendingDateFrom(e.target.value)}
-                />
-                <span className="text-muted" style={{ fontSize: 11 }}>–</span>
-                <input
-                  type="date"
-                  className="date-range-input"
-                  title="To date"
-                  value={pendingDateTo}
-                  min={pendingDateFrom || undefined}
-                  onChange={(e) => setPendingDateTo(e.target.value)}
-                />
-              </div>
-              <Button
-                size="sm"
-                className="btn-orange flex-shrink-0"
-                onClick={() => {
-                  setFilterStatus(pendingStatus)
-                  setFilterBatch(pendingBatch)
-                  setFilterCollege(pendingCollege)
-                  setDateFrom(pendingDateFrom)
-                  setDateTo(pendingDateTo)
-                  setCurrentPage(1)
-                }}
-              >
-                Apply
-              </Button>
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                className="flex-shrink-0"
-                title="Reset all filters"
-                onClick={() => {
-                  setPendingStatus('all')
-                  setPendingBatch('all')
-                  setPendingCollege('all')
-                  setPendingDateFrom('')
-                  setPendingDateTo('')
-                  setFilterStatus('all')
-                  setFilterBatch('all')
-                  setFilterCollege('all')
-                  setDateFrom('')
-                  setDateTo('')
-                  setSearchTerm('')
-                  setSortBy('date')
-                  setSortOrder('desc')
-                  setCurrentPage(1)
-                }}
-              >
-                Reset
-              </Button>
-            </div>
-          </CardBody>
-        </Card>
-
-        {/* ── User Audit Section ── */}
+        {/* ── User audit ── */}
         {showAudit && auditData && (
-          <div className="audit-section mb-4">
-
-            {/* Non-student users */}
-            <div className="audit-card mb-3">
-              <div className="audit-card-header">
-                <div className="d-flex align-items-center gap-2">
-                  <FaUserShield size={14} className="text-orange" />
-                  <span>Non-Student Users</span>
-                  <span className="audit-badge">{auditData.nonStudents.length}</span>
+          <div className="sl-audit">
+            <div className="aui-card">
+              <div className="aui-toolbar">
+                <div className="aui-toolbar-title">
+                  <h3><FaUserShield className="sl-title-icon" /> Non-Student Users <span className="aui-badge aui-badge-muted">{auditData.nonStudents.length}</span></h3>
+                  <p>Admins, tutors, institute admins and college admins</p>
                 </div>
-                <span className="audit-sub">Admins, Tutors, Institute Admins, College Admins</span>
               </div>
-              <div className="audit-table-wrap">
-                <table className="audit-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Role</th>
-                      <th>Status</th>
-                      <th>Registered</th>
-                    </tr>
-                  </thead>
+              <div className="aui-table-scroll sl-audit-scroll">
+                <table className="aui-table">
+                  <thead><tr><th style={{ width: 44 }}>#</th><th>User</th><th>Role</th><th>Status</th><th>Registered</th></tr></thead>
                   <tbody>
                     {auditData.nonStudents.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center text-muted py-3">No records</td></tr>
+                      <tr><td colSpan={5}><span className="aui-num">No records</span></td></tr>
                     ) : auditData.nonStudents.map((u, i) => (
                       <tr key={u._id}>
-                        <td className="audit-num">{i + 1}</td>
-                        <td>
-                          <div className="audit-avatar-row">
-                            <div className="audit-avatar">{(u.name || u.email || '?')[0].toUpperCase()}</div>
-                            <span className="audit-name">{u.name || '—'}</span>
-                          </div>
-                        </td>
-                        <td className="audit-email">{u.email}</td>
-                        <td>
-                          <span className={`audit-role-badge audit-role-${u.role}`}>
-                            {u.role === 'admin' ? 'Admin'
-                              : u.role === 'tutor' ? 'Tutor'
-                              : u.role === 'instituteAdmin' ? 'Institute Admin'
-                              : u.role === 'collegeAdmin' ? 'College Admin'
-                              : u.role}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`audit-status ${u.status === 'approved' ? 'audit-approved' : 'audit-pending'}`}>
-                            {u.status}
-                          </span>
-                        </td>
-                        <td className="audit-date">
-                          {new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
+                        <td className="aui-num">{i + 1}</td>
+                        <td><div className="aui-person"><span className="aui-avatar">{initialsOf(u.name || u.email)}</span><div className="aui-stack"><strong>{u.name || '—'}</strong><small>{u.email}</small></div></div></td>
+                        <td><span className="aui-badge aui-badge-purple">{roleLabel(u.role)}</span></td>
+                        <td>{statusBadge(u.status)}</td>
+                        <td className="aui-num">{fmtDate(u.createdAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1171,247 +833,197 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
               </div>
             </div>
 
-            {/* Students without profile */}
-            <div className="audit-card">
-              <div className="audit-card-header">
-                <div className="d-flex align-items-center gap-2">
-                  <FaUserGraduate size={14} className="text-warning" />
-                  <span>Students Without Profile</span>
-                  <span className="audit-badge audit-badge-warn">{auditData.studentsWithoutProfile.length}</span>
+            <div className="aui-card">
+              <div className="aui-toolbar">
+                <div className="aui-toolbar-title">
+                  <h3><FaExclamationTriangle className="sl-title-icon is-warn" /> Students Without Profile <span className={`aui-badge ${auditData.studentsWithoutProfile.length ? 'aui-badge-amber' : 'aui-badge-green'}`}>{auditData.studentsWithoutProfile.length}</span></h3>
+                  <p>Registered accounts with no profile record — the source of count mismatches</p>
                 </div>
-                <span className="audit-sub">Registered accounts with no profile record — count mismatch source</span>
               </div>
-              <div className="audit-table-wrap">
-                <table className="audit-table">
-                  <thead>
-                    <tr>
-                      <th>#</th>
-                      <th>Name</th>
-                      <th>Email</th>
-                      <th>Status</th>
-                      <th>Registered</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditData.studentsWithoutProfile.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center py-3" style={{ color: '#28a745' }}>✓ All students have a profile — no mismatch</td></tr>
-                    ) : auditData.studentsWithoutProfile.map((u, i) => (
-                      <tr key={u._id}>
-                        <td className="audit-num">{i + 1}</td>
-                        <td>
-                          <div className="audit-avatar-row">
-                            <div className="audit-avatar audit-avatar-warn">{(u.name || u.email || '?')[0].toUpperCase()}</div>
-                            <span className="audit-name">{u.name || '—'}</span>
-                          </div>
-                        </td>
-                        <td className="audit-email">{u.email}</td>
-                        <td>
-                          <span className={`audit-status ${u.status === 'approved' ? 'audit-approved' : 'audit-pending'}`}>
-                            {u.status}
-                          </span>
-                        </td>
-                        <td className="audit-date">
-                          {new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {auditData.studentsWithoutProfile.length === 0 ? (
+                <div className="sl-audit-ok"><FaCheckCircle /> Every student has a profile — no mismatch</div>
+              ) : (
+                <div className="aui-table-scroll sl-audit-scroll">
+                  <table className="aui-table">
+                    <thead><tr><th style={{ width: 44 }}>#</th><th>Student</th><th>Status</th><th>Registered</th></tr></thead>
+                    <tbody>
+                      {auditData.studentsWithoutProfile.map((u, i) => (
+                        <tr key={u._id}>
+                          <td className="aui-num">{i + 1}</td>
+                          <td><div className="aui-person"><span className="aui-avatar">{initialsOf(u.name || u.email)}</span><div className="aui-stack"><strong>{u.name || '—'}</strong><small>{u.email}</small></div></div></td>
+                          <td>{statusBadge(u.status)}</td>
+                          <td className="aui-num">{fmtDate(u.createdAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-
           </div>
         )}
 
-        {/* Students List */}
-        {viewMode === 'table' ? (
-          <Card className="bg-dark border-secondary">
-            <div className="table-responsive">
-              <table className="table table-dark table-hover mb-0 align-middle">
-                <thead style={{ borderBottom: '2px solid #3a3a3a' }}>
-                  <tr>
-                    <th className="ps-3" style={{ width: 36 }}>
-                      <Form.Check
-                        type="checkbox"
-                        checked={paginatedStudents.length > 0 && paginatedStudents.every(s => selectedIds.has(s._id))}
-                        onChange={() => toggleSelectAllVisible(paginatedStudents)}
-                      />
-                    </th>
-                    <th className="text-muted" style={{ width: 50 }}>#</th>
-                    <th
-                      className="text-muted sortable-th"
-                      onClick={() => handleSortColumn('name')}
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      Student <SortIcon column="name" />
-                    </th>
-                    <th
-                      className="text-muted sortable-th"
-                      onClick={() => handleSortColumn('college')}
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      College <SortIcon column="college" />
-                    </th>
-                    <th
-                      className="text-muted sortable-th"
-                      onClick={() => handleSortColumn('batch')}
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      Batch <SortIcon column="batch" />
-                    </th>
-                    <th className="text-muted">Contact</th>
-                    <th
-                      className="text-muted sortable-th"
-                      onClick={() => handleSortColumn('status')}
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      Status <SortIcon column="status" />
-                    </th>
-                    <th
-                      className="text-muted sortable-th"
-                      onClick={() => handleSortColumn('date')}
-                      style={{ cursor: 'pointer', userSelect: 'none' }}
-                    >
-                      Registered <SortIcon column="date" />
-                    </th>
-                    <th className="text-muted text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedStudents.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="text-center text-muted py-5">
-                        <FaUserGraduate size={32} className="mb-3 d-block mx-auto opacity-25" />
-                        No students found matching your filters
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedStudents.map((student, idx) => (
-                      <tr key={student._id} style={{ borderBottom: '1px solid #2a2a2a' }}>
-                        <td className="ps-3" onClick={e => e.stopPropagation()}>
-                          <Form.Check
-                            type="checkbox"
-                            checked={selectedIds.has(student._id)}
-                            onChange={() => toggleSelect(student._id)}
-                          />
-                        </td>
-                        <td className="text-muted small">
-                          {(currentPage - 1) * studentsPerPage + idx + 1}
-                        </td>
-                        <td>
-                          <div className="d-flex align-items-center gap-3">
-                            {student.profileImage ? (
-                              <img
-                                src={`${baseURL}${student.profileImage}`}
-                                alt={student.fullName}
-                                className="rounded-circle flex-shrink-0"
-                                style={{ width: 38, height: 38, objectFit: 'cover' }}
-                              />
-                            ) : (
-                              <div className="rounded-circle bg-orange text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 38, height: 38, fontSize: 13, fontWeight: 600 }}>
-                                {student.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-                              </div>
-                            )}
-                            <div className="overflow-hidden">
-                              <div className="d-flex align-items-center gap-2">
-                                <span className="text-white fw-medium text-truncate">{student.fullName}</span>
-                                {isNew(student.createdAt) && (
-                                  <Badge bg="success" className="px-2 py-1 flex-shrink-0" style={{ fontSize: 10 }}>NEW</Badge>
-                                )}
-                              </div>
-                              <div className="small text-muted text-truncate">{student.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="text-muted small" title={student.college || ''}>
-                            {student.college ? (student.college.length > 30 ? student.college.substring(0, 30) + '…' : student.college) : '—'}
-                          </div>
-                        </td>
-                        <td>
-                          {student.batch
-                            ? <Badge bg="secondary" className="fw-normal">{student.batch}</Badge>
-                            : <span className="text-muted">—</span>}
-                        </td>
-                        <td>
-                          <div className="text-white small">{student.phoneNo}</div>
-                        </td>
-                        <td>
-                          <Badge
-                            className="text-capitalize px-2 py-1"
-                            bg={student.status === 'approved' ? 'success' : student.status === 'rejected' ? 'danger' : 'warning'}
-                            text={student.status === 'pending' ? 'dark' : undefined}
-                          >
-                            {student.status || 'pending'}
-                          </Badge>
-                        </td>
-                        <td>
-                          <div className="text-muted small">
-                            {new Date(student.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                          </div>
-                        </td>
-                        <td>
-                          <div className="d-flex gap-2 justify-content-center">
-                            <Button
-                              variant="outline-orange"
-                              size="sm"
-                              title="View details"
-                              onClick={() => { setSelectedStudent(student); setShowDetailsModal(true) }}
-                            >
-                              <FaEye />
-                            </Button>
-                            <Button
-                              variant="orange"
-                              size="sm"
-                              title="Contact student"
-                              onClick={() => { setSelectedStudent(student); setShowContactModal(true) }}
-                            >
-                              <FaPhone />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+        {/* ── Students table ── */}
+        <div className="aui-card">
+          <div className="aui-toolbar">
+            <SearchInput value={searchTerm} onChange={onFilter(setSearchTerm)} placeholder="Search name, email, phone or college…" />
+            <div className="aui-toolbar-filters">
+              <AdminSelect
+                label="Status"
+                prefix="Status:"
+                value={filterStatus}
+                options={[
+                  { value: 'all', label: `All (${students.length})` },
+                  { value: 'approved', label: `Approved (${approvedCount})` },
+                  { value: 'pending', label: `Pending (${pendingCount})` },
+                  { value: 'rejected', label: `Rejected (${rejectedCount})` },
+                ]}
+                onChange={onFilter(setFilterStatus)}
+              />
+              <AdminSelect label="Batch" prefix="Batch:" value={filterBatch} options={[{ value: 'all', label: 'All' }, ...batches.sort().map(b => ({ value: b, label: b }))]} onChange={onFilter(setFilterBatch)} />
+              <div className="sl-college">
+                <AdminSelect label="College" prefix="College:" value={filterCollege} options={[{ value: 'all', label: 'All' }, ...colleges.sort().map(c => ({ value: c, label: c }))]} onChange={onFilter(setFilterCollege)} />
+              </div>
+              <div className="sl-dates" title="Registered between">
+                <MdDateRange />
+                <input type="date" className="aui-date" aria-label="Registered from" value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} />
+                <span>–</span>
+                <input type="date" className="aui-date" aria-label="Registered to" value={dateTo} min={dateFrom || undefined} onChange={e => { setDateTo(e.target.value); setCurrentPage(1) }} />
+              </div>
+              {filtersActive && (
+                <button type="button" className="aui-btn" onClick={resetFilters}><FaTimes size={10} /> Reset</button>
+              )}
             </div>
-          </Card>
-        ) : (
-          <Row className="g-3">
-            {paginatedStudents.length === 0 ? (
-              <Col xs={12}>
-                <div className="text-center text-muted py-5 bg-dark rounded-3">
-                  <FaUserGraduate size={32} className="mb-3 d-block mx-auto opacity-25" />
-                  No students found matching your filters
-                </div>
-              </Col>
-            ) : (
-              paginatedStudents.map(student => (
-                <Col key={student._id} lg={4} md={6}>
-                  <StudentCard
-                    student={student}
-                    onViewDetails={(s) => { setSelectedStudent(s); setShowDetailsModal(true) }}
-                    onContact={(s) => { setSelectedStudent(s); setShowContactModal(true) }}
-                  />
-                </Col>
-              ))
-            )}
-          </Row>
-        )}
+          </div>
 
-        {/* Professional Pagination */}
-        {totalPages > 1 && (
-          <ProfessionalPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalStudents={filteredStudents.length}
-            studentsPerPage={studentsPerPage}
-            onPageChange={setCurrentPage}
-          />
-        )}
+          {selectedIds.size > 0 && (
+            <div className="sl-bulk">
+              <span><b>{selectedIds.size}</b> student{selectedIds.size === 1 ? '' : 's'} selected</span>
+              <div>
+                <button type="button" className="aui-btn aui-btn-sm" onClick={() => setSelectedIds(new Set())}>Clear selection</button>
+                <button type="button" className="aui-btn aui-btn-sm aui-btn-primary" onClick={() => openMessageModal(students.filter(s => selectedIds.has(s._id)))}>
+                  <FaRegEnvelope size={11} /> Message Selected
+                </button>
+              </div>
+            </div>
+          )}
 
-      </div>
+          {paginatedStudents.length === 0 ? (
+            <EmptyState
+              icon={FaUserGraduate}
+              title={students.length ? 'No students match' : 'No students yet'}
+              text={students.length ? 'Try a different search or filter.' : 'Students appear here once they register.'}
+              action={filtersActive ? <button type="button" className="aui-btn aui-btn-sm" onClick={resetFilters}>Clear filters</button> : undefined}
+            />
+          ) : (
+            <>
+              <div className="aui-table-scroll">
+                <table className="aui-table sl-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 40 }}>
+                        <input type="checkbox" className="sl-check" aria-label="Select all on this page" checked={allOnPageSelected} onChange={() => toggleSelectAllVisible(paginatedStudents)} />
+                      </th>
+                      <th style={{ width: 44 }}>#</th>
+                      <th><SortHeader column="name" label="Student" /></th>
+                      <th><SortHeader column="college" label="College" /></th>
+                      <th style={{ width: 110 }}><SortHeader column="batch" label="Batch" /></th>
+                      <th style={{ width: 130 }}>Phone</th>
+                      <th style={{ width: 120 }}><SortHeader column="status" label="Status" /></th>
+                      <th style={{ width: 130 }}><SortHeader column="date" label="Registered" /></th>
+                      <th style={{ width: 120 }} className="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStudents.map((student, idx) => {
+                      const selected = selectedIds.has(student._id)
+                      return (
+                        <tr key={student._id} className={selected ? 'is-selected' : ''}>
+                          <td><input type="checkbox" className="sl-check" aria-label={`Select ${student.fullName}`} checked={selected} onChange={() => toggleSelect(student._id)} /></td>
+                          <td className="aui-num">{(currentPage - 1) * studentsPerPage + idx + 1}</td>
+                          <td>
+                            <div className="aui-person">
+                              <StudentAvatar name={student.fullName} image={student.profileImage} baseURL={baseURL} />
+                              <div className="aui-stack">
+                                <strong>
+                                  {student.fullName}
+                                  {isNew(student.createdAt) && <span className="aui-badge aui-badge-blue sl-new">New</span>}
+                                </strong>
+                                <small>{student.email}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span className="sl-college-text" title={student.college || ''}>{student.college || '—'}</span></td>
+                          <td>{student.batch ? <span className="aui-badge aui-badge-muted">{student.batch}</span> : <span className="aui-num">—</span>}</td>
+                          <td>{student.phoneNo ? <span className="aui-inline-icon"><FaPhoneAlt /> {student.phoneNo}</span> : <span className="aui-num">—</span>}</td>
+                          <td>{statusBadge(student.status)}</td>
+                          <td className="aui-num">{fmtDate(student.createdAt)}</td>
+                          <td className="text-end">
+                            <div className="sl-actions">
+                              <button type="button" className="aui-btn aui-btn-sm" onClick={() => { setSelectedStudent(student); setShowDetailsModal(true) }}>
+                                <FaEye size={11} /> View
+                              </button>
+                              <button type="button" className="aui-icon-btn" title="Message student" aria-label={`Message ${student.fullName}`} onClick={() => { setSelectedStudent(student); setShowContactModal(true) }}>
+                                <FaRegEnvelope size={11} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <TableFooter
+                page={currentPage}
+                pageSize={studentsPerPage}
+                total={filteredStudents.length}
+                onPageChange={setCurrentPage}
+                pageSizeOptions={[25, 50, 100]}
+                onPageSizeChange={size => { setStudentsPerPage(size); setCurrentPage(1) }}
+                noun="students"
+              />
+            </>
+          )}
+        </div>
+
+        <style>{`
+          .sl-audit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+          .sl-audit .aui-card { margin-top: 1.25rem; }
+          .sl-audit-scroll { max-height: 300px; overflow-y: auto; }
+          .sl-audit-scroll thead th { position: sticky; top: 0; z-index: 1; background: #17191b; }
+          .sl-audit-ok { display: flex; align-items: center; gap: 8px; padding: 1.4rem 1rem; color: #45dd75; font-size: 0.84rem; }
+          .sl-title-icon { margin-right: 6px; color: #ff9a3c; font-size: 0.85rem; vertical-align: -1px; }
+          .sl-title-icon.is-warn { color: #f4b43f; }
+          .aui-toolbar-title h3 .aui-badge { margin-left: 6px; vertical-align: 2px; }
+
+          .sl-college .aui-dropdown-value { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+          .sl-college .aui-dropdown-menu { min-width: 280px; max-width: 360px; }
+          .sl-college .aui-dropdown-menu button { white-space: normal; }
+          .sl-dates { display: inline-flex; align-items: center; gap: 6px; color: #858a90; font-size: 0.75rem; }
+          .sl-dates > svg { color: #9aa0a6; }
+          .sl-dates .aui-date { width: 132px; }
+
+          .sl-bulk { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.55rem 0.85rem; border-bottom: 1px solid #25282b; background: rgba(255, 122, 0, 0.07); color: #d1d5db; font-size: 0.8rem; }
+          .sl-bulk b { color: #ffb15e; }
+          .sl-bulk > div { display: flex; gap: 8px; }
+
+          .sl-check { width: 15px; height: 15px; accent-color: #ff7a00; color-scheme: dark; cursor: pointer; vertical-align: middle; }
+          .sl-table tbody tr.is-selected { background: rgba(255, 122, 0, 0.05); }
+          .sl-photo { object-fit: cover; padding: 0; }
+          .sl-new { margin-left: 8px; vertical-align: 1px; }
+          .sl-college-text { display: block; max-width: 260px; overflow: hidden; color: #c3c7ca; font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+          .sl-actions { display: inline-flex; gap: 6px; }
+
+          .sl-sort { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; }
+          .sl-sort svg { color: #5b616a; font-size: 0.6rem; }
+          .sl-sort:hover, .sl-sort.is-active { color: #ff9a3c; }
+          .sl-sort.is-active svg { color: #ff9a3c; }
+
+          @media (max-width: 1199.98px) { .sl-audit { grid-template-columns: 1fr; } }
+        `}</style>
+      </AdminPage>
+
 
       {/* Student Details Modal */}
       <StudentDetailsModal
@@ -1421,7 +1033,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
       />
 
       {/* Contact Modal */}
-      <Modal show={showContactModal} onHide={() => setShowContactModal(false)} centered size="sm" className="contact-modal">
+      <Modal show={showContactModal} onHide={() => setShowContactModal(false)} centered size="sm" className="contact-modal" backdropClassName="aui-backdrop">
         <div className="modal-hero-header position-relative overflow-hidden rounded-top-3" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' }}>
           <div className="position-absolute top-0 end-0 p-3">
             <button type="button" className="btn-close btn-close-white opacity-75" onClick={() => setShowContactModal(false)} aria-label="Close" />
@@ -1481,7 +1093,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
       </Modal>
 
       {/* Bulk Promotional Message Modal */}
-      <Modal show={showMessageModal} onHide={() => setShowMessageModal(false)} centered size="lg" className="contact-modal">
+      <Modal show={showMessageModal} onHide={() => setShowMessageModal(false)} centered size="lg" className="contact-modal" backdropClassName="aui-backdrop">
         <div className="modal-hero-header position-relative overflow-hidden rounded-top-3" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' }}>
           <div className="position-absolute top-0 end-0 p-3">
             <button type="button" className="btn-close btn-close-white opacity-75" onClick={() => setShowMessageModal(false)} aria-label="Close" />

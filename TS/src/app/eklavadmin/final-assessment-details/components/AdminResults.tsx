@@ -9,8 +9,10 @@ import {
   FaCheckDouble, FaFileExport, FaGraduationCap,
   FaTrophy, FaUsers, FaAward, FaCalendarAlt,
   FaUser, FaEnvelope, FaBookOpen, FaPercent,
-  FaPlay, FaStop
+  FaPlay, FaStop, FaRedoAlt, FaFilePdf, FaEdit,
+  FaSpinner, FaExclamationTriangle, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
+import { PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf } from '@/components/admin-ui';
 import { useAuthContext } from '@/context/useAuthContext';
 import axios from 'axios';
 
@@ -51,6 +53,8 @@ interface LiveStudent {
   lastSeenAt?: string;
 }
 
+const escapeHtml = (v: any) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
 const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hideExamSelector?: boolean; filterRoundType?: string }> = ({ defaultExamId, hideHeader, hideExamSelector, filterRoundType }) => {
   const { user } = useAuthContext();
   const token = user?.token;
@@ -64,6 +68,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [approveComments, setApproveComments] = useState('');
   const [approving, setApproving] = useState(false);
+  const [selectedRoundTypes, setSelectedRoundTypes] = useState<string[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
   const [showBulkApproveModal, setShowBulkApproveModal] = useState(false);
@@ -78,19 +83,14 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   const [exams, setExams] = useState<{ id: string; title: string }[]>([]);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
   const examsLoadedRef = React.useRef(false);
+  const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
+  const [answersLoading, setAnswersLoading] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
   const [showLiveStudentsModal, setShowLiveStudentsModal] = useState(false);
   const [liveStudents, setLiveStudents] = useState<LiveStudent[]>([]);
   const [selectedLiveExamId, setSelectedLiveExamId] = useState<string>('');
   const [liveStudentsLoading, setLiveStudentsLoading] = useState(false);
   const [liveStudentsError, setLiveStudentsError] = useState('');
-
-  // Detailed answers state
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailedAnswers, setDetailedAnswers] = useState<any[]>([]);
-  const [englishAnswers, setEnglishAnswers] = useState<any[]>([]);
-  const [codeSubmissions, setCodeSubmissions] = useState<any[]>([]);
-  const [aiEvaluating, setAiEvaluating] = useState<string | null>(null);
-  const [detailTab, setDetailTab] = useState<'overview' | 'mcq' | 'english' | 'coding'>('overview');
 
   useEffect(() => {
     fetchStats(selectedExamId || undefined);
@@ -300,21 +300,22 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
 
   const handleApprove = async (status: 'approved' | 'rejected') => {
     if (!selectedResult) return;
-    
+
     try {
       setApproving(true);
       const response = await axios.put(
         `${baseURL}/api/assessment/admin/results/${selectedResult._id}/approve`,
-        { approvalStatus: status, comments: approveComments },
+        { approvalStatus: status, comments: approveComments, roundTypes: selectedRoundTypes },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       if (response.data.success) {
         await fetchResults();
         await fetchStats(selectedExamId || undefined);
         setShowApproveModal(false);
         setSelectedResult(null);
         setApproveComments('');
+        setSelectedRoundTypes([]);
       }
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to update approval status');
@@ -368,6 +369,185 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     }
   };
 
+  const [englishAnswers, setEnglishAnswers] = useState<any[]>([]);
+  const [codeSubmissions, setCodeSubmissions] = useState<any[]>([]);
+  const [aiEvaluating, setAiEvaluating] = useState<string | null>(null);
+
+  const fetchDetailedAnswers = async (resultId: string) => {
+    try {
+      setAnswersLoading(true);
+      setDetailedAnswers([]);
+      setEnglishAnswers([]);
+      setCodeSubmissions([]);
+      const res = await axios.get(`${baseURL}/api/assessment/admin/results/${resultId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setDetailedAnswers(res.data.data?.detailedAnswers || []);
+        setEnglishAnswers(res.data.data?.englishAnswers || []);
+        setCodeSubmissions(res.data.data?.codeSubmissions || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch detailed answers', err);
+    } finally {
+      setAnswersLoading(false);
+    }
+  };
+
+  const handleRescore = async () => {
+    if (!selectedResult) return;
+    try {
+      setRescoring(true);
+      const res = await axios.post(
+        `${baseURL}/api/assessment/admin/results/${selectedResult._id}/rescore`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        // Refresh answers display and result list
+        await fetchDetailedAnswers(selectedResult._id);
+        await fetchResults();
+        // Update selectedResult score inline
+        setSelectedResult(prev => prev ? {
+          ...prev,
+          totalScore: res.data.data.score,
+          finalPercentage: res.data.data.percentage,
+          resultStatus: res.data.data.resultStatus,
+        } : prev);
+        alert(`Re-scored: ${res.data.message}`);
+      }
+    } catch (err: any) {
+      alert(err?.response?.data?.error || 'Re-score failed');
+    } finally {
+      setRescoring(false);
+    }
+  };
+
+  const handleDownloadReport = () => {
+    if (!selectedResult) return;
+
+    const correctCount = detailedAnswers.filter(a => a.isCorrect === true).length;
+    const totalCount = detailedAnswers.length;
+
+    const answersHTML = detailedAnswers.length > 0 ? detailedAnswers.map((ans, idx) => {
+      const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+      const isCode = (ans.questionType || '').toUpperCase() === 'CODE';
+      const typeLabel = isCode ? 'CODE' : isFill ? 'FILL' : 'MCQ';
+      const isCorrect = ans.isCorrect === true;
+      const isWrong = ans.isCorrect === false;
+      const borderColor = isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#ccc';
+      const statusIcon = isCorrect ? '✓' : isWrong ? '✗' : '—';
+      const statusColor = isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#999';
+
+      const optionsHTML = !isFill && ans.options?.length > 0
+        ? `<div style="margin:6px 0 8px 0; display:flex; flex-wrap:wrap; gap:6px;">
+            ${ans.options.map((opt: any) => {
+              const isSel = opt.key === ans.selectedOption;
+              const isCorr = opt.key === ans.correctAnswer;
+              return `<span style="padding:3px 10px; border-radius:4px; font-size:12px; font-weight:600;
+                background:${isCorr ? '#d4edda' : isSel && !isCorr ? '#f8d7da' : '#f5f5f5'};
+                border:1px solid ${isCorr ? '#28a745' : isSel && !isCorr ? '#dc3545' : '#ddd'};
+                color:${isCorr ? '#155724' : isSel && !isCorr ? '#721c24' : '#555'};">
+                ${opt.key}. ${opt.text}${isCorr ? ' ✓' : isSel && !isCorr ? ' ✗' : ''}
+              </span>`;
+            }).join('')}
+           </div>` : '';
+
+      return `<div style="border:1px solid ${borderColor}; border-radius:8px; padding:14px 16px; margin-bottom:10px; background:#fff;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+          <div style="display:flex; gap:8px; flex:1;">
+            <span style="color:#999; font-size:12px; min-width:24px; padding-top:2px;">Q${idx + 1}.</span>
+            <span style="font-size:14px; color:#111; line-height:1.5;">${ans.questionText || '—'}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0; margin-left:12px;">
+            <span style="background:${isFill ? '#d4edda' : '#fff3e0'}; color:${isFill ? '#155724' : '#e65100'}; border:1px solid ${isFill ? '#28a745' : '#ff7a00'}; border-radius:20px; padding:1px 9px; font-size:10px; font-weight:700;">
+              ${typeLabel}
+            </span>
+            <span style="font-size:18px; font-weight:700; color:${statusColor};">${statusIcon}</span>
+          </div>
+        </div>
+        ${optionsHTML}
+        ${isCode ? `<div style="padding-left:32px;">
+          <div style="color:#666; font-size:12px; margin-bottom:6px;">Language: ${escapeHtml(ans.language || 'Not selected')} · Tests passed: ${ans.codePassedTests ?? 0}/${ans.codeTotalTests ?? 0}</div>
+          <pre style="margin:0; padding:10px 12px; background:#f7f7f7; border:1px solid #ddd; border-radius:6px; font-size:11px; white-space:pre-wrap; word-break:break-word;">${escapeHtml(ans.selectedOption || 'No code submitted')}</pre>
+        </div>` : `<div style="display:flex; gap:10px; flex-wrap:wrap; padding-left:32px;">
+          <span style="background:#f5f5f5; border-radius:4px; padding:4px 10px; font-size:12px;">
+            <span style="color:#999;">Student: </span>
+            <span style="font-weight:600; color:${statusColor};">${ans.selectedOption || '(no answer)'}</span>
+          </span>
+          ${ans.correctAnswer ? `<span style="background:#f5f5f5; border-radius:4px; padding:4px 10px; font-size:12px;">
+            <span style="color:#999;">Correct: </span>
+            <span style="font-weight:600; color:#28a745;">${ans.correctAnswer}</span>
+          </span>` : ''}
+        </div>`}
+      </div>`;
+    }).join('') : '<p style="color:#999; text-align:center;">No answer data available</p>';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Exam Report — ${selectedResult.student.name}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; color: #111; background: #fff; }
+    @media print { body { padding: 0; } .no-print { display: none; } }
+    h1 { color: #ff7a00; font-size: 22px; margin-bottom: 4px; }
+    .meta { color: #555; font-size: 13px; margin-bottom: 24px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 15px; font-weight: 700; color: #ff7a00; border-bottom: 2px solid #ff7a00; padding-bottom: 6px; margin-bottom: 14px; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+    .info-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0; font-size: 13px; }
+    .info-label { color: #777; }
+    .info-value { font-weight: 600; }
+    .score-box { background: ${selectedResult.resultStatus === 'passed' ? '#d4edda' : '#f8d7da'}; border: 1px solid ${selectedResult.resultStatus === 'passed' ? '#28a745' : '#dc3545'}; border-radius: 8px; padding: 16px; display: flex; justify-content: space-around; margin-bottom: 24px; text-align: center; }
+    .score-item span { display: block; font-size: 12px; color: #777; margin-bottom: 4px; }
+    .score-item strong { font-size: 20px; font-weight: 700; color: ${selectedResult.resultStatus === 'passed' ? '#155724' : '#721c24'}; }
+    .print-btn { background: #ff7a00; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:20px;">
+    <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <h1>📋 Exam Assessment Report</h1>
+  <p class="meta">Generated on ${new Date().toLocaleString('en-IN')}</p>
+
+  <div class="section">
+    <div class="section-title">Student Information</div>
+    <div class="info-grid">
+      <div class="info-item"><span class="info-label">Name</span><span class="info-value">${selectedResult.student.name || 'N/A'}</span></div>
+      <div class="info-item"><span class="info-label">Email</span><span class="info-value">${selectedResult.student.email || 'N/A'}</span></div>
+      <div class="info-item"><span class="info-label">Exam</span><span class="info-value">${selectedResult.exam.title}</span></div>
+      <div class="info-item"><span class="info-label">Submitted</span><span class="info-value">${formatDate(selectedResult.createdAt)}</span></div>
+    </div>
+  </div>
+
+  <div class="score-box">
+    <div class="score-item"><span>Total Score</span><strong>${selectedResult.totalScore}</strong></div>
+    <div class="score-item"><span>Percentage</span><strong>${selectedResult.finalPercentage?.toFixed(1)}%</strong></div>
+    <div class="score-item"><span>Result</span><strong>${selectedResult.resultStatus?.toUpperCase()}</strong></div>
+    <div class="score-item"><span>Correct Answers</span><strong>${correctCount} / ${totalCount}</strong></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Student Answers</div>
+    ${answersHTML}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `exam-report-${selectedResult.student.name?.replace(/\s+/g, '-')}-${Date.now()}.html`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
   const exportCSV = async () => {
     try {
       const response = await axios.get(`${baseURL}/api/assessment/admin/results/export/csv`, {
@@ -398,7 +578,15 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     return <Badge bg={variants[status] || 'secondary'}>{status}</Badge>;
   };
 
-  const getApprovalBadge = (status: string) => {
+  const getApprovalBadge = (status: string, roundResults?: any[]) => {
+    if (roundResults && roundResults.length > 0) {
+      const anyApproved = roundResults.some((r: any) => r.approvalStatus === 'approved');
+      const allApproved = roundResults.every((r: any) => r.approvalStatus === 'approved');
+      const anyRejected = roundResults.some((r: any) => r.approvalStatus === 'rejected');
+      if (anyRejected) return <Badge bg="danger"><FaTimesCircle className="me-1" /> Rejected</Badge>;
+      if (allApproved) return <Badge bg="success"><FaCheckCircle className="me-1" /> Approved</Badge>;
+      if (anyApproved) return <Badge style={{ background: '#f59e0b' }}><FaClock className="me-1" /> Partial</Badge>;
+    }
     switch(status) {
       case 'approved':
         return <Badge bg="success"><FaCheckCircle className="me-1" /> Approved</Badge>;
@@ -459,342 +647,256 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     });
   };
 
+  const ROUND_SHORT: Record<string, string> = { mcq: 'MCQ', coding: 'Coding', tr: 'Technical', hr: 'HR', english: 'English' };
+
+  /* Overall approval for a row — rounds win over the legacy result-level status */
+  const approvalOf = (result: Result): 'approved' | 'rejected' | 'partial' | 'pending' => {
+    const rounds: any[] = result.roundResults || [];
+    if (rounds.length) {
+      if (rounds.some(r => r.approvalStatus === 'rejected')) return 'rejected';
+      if (rounds.every(r => r.approvalStatus === 'approved')) return 'approved';
+      if (rounds.some(r => r.approvalStatus === 'approved')) return 'partial';
+    }
+    return result.approvalStatus === 'approved' ? 'approved' : result.approvalStatus === 'rejected' ? 'rejected' : 'pending';
+  };
+  const APPROVAL_BADGE = {
+    approved: { cls: 'aui-badge-green', label: 'Approved', icon: FaCheckCircle },
+    rejected: { cls: 'aui-badge-red', label: 'Rejected', icon: FaTimesCircle },
+    partial: { cls: 'aui-badge-amber', label: 'Partial', icon: FaClock },
+    pending: { cls: 'aui-badge-muted', label: 'Pending', icon: FaClock },
+  };
+
+  const filtersActive = !!(filters.search || filters.status || (!filterRoundType && filters.roundType));
+  const clearFilters = () => {
+    setFilters({ search: '', status: '', roundType: filterRoundType || '' });
+    setCurrentPage(1);
+  };
+  const setFilter = (key: 'search' | 'status' | 'roundType', value: string) => {
+    setFilters(f => ({ ...f, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  const openApproval = (result: Result) => {
+    setSelectedResult(result);
+    setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
+    setApproveComments((result as any).approvalComments || '');
+    setShowApproveModal(true);
+  };
+
+  const pageNumbers = (() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | 'gap')[] = [1];
+    if (currentPage > 3) pages.push('gap');
+    for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) pages.push(p);
+    if (currentPage < totalPages - 2) pages.push('gap');
+    pages.push(totalPages);
+    return pages;
+  })();
+
   return (
-    <div className="admin-results-container">
-      {/* Header */}
+    <div className="aui-page arx">
       {!hideHeader && (
-        <div className="header-section">
-          <h1 className="page-title">
-            <FaGraduationCap className="title-icon" />
-            Assessment Results Dashboard
-          </h1>
-          <p className="page-subtitle">Monitor and manage student assessment submissions</p>
-        </div>
+        <PageHeader icon={FaGraduationCap} title="Assessment Results" subtitle="Monitor and manage student assessment submissions" />
       )}
 
-      {/* Stats Cards */}
       {stats && (
-        <div className="stats-wrapper">
-          <div className="stat-card">
-            <div className="stat-icon"><FaUsers /></div>
-            <div className="stat-info">
-              <span>Total Submissions</span>
-              <strong>{stats.totalSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card success">
-            <div className="stat-icon"><FaTrophy /></div>
-            <div className="stat-info">
-              <span>Passed</span>
-              <strong>{stats.passedSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card danger">
-            <div className="stat-icon"><FaTimesCircle /></div>
-            <div className="stat-info">
-              <span>Failed</span>
-              <strong>{stats.failedSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card warning">
-            <div className="stat-icon"><FaClock /></div>
-            <div className="stat-info">
-              <span>Pending Approval</span>
-              <strong>{stats.pendingApproval || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card info">
-            <div className="stat-icon"><FaAward /></div>
-            <div className="stat-info">
-              <span>Avg Score</span>
-              <strong>{stats.averagePercentage?.toFixed(1) || 0}%</strong>
-            </div>
-          </div>
-        </div>
+        <StatCards
+          items={[
+            { label: 'Submissions', value: stats.totalSubmissions || 0, icon: FaUsers, tone: 'orange' },
+            { label: 'Passed', value: stats.passedSubmissions || 0, icon: FaTrophy, tone: 'green' },
+            { label: 'Failed', value: stats.failedSubmissions || 0, icon: FaTimesCircle, tone: 'red' },
+            { label: 'Pending Approval', value: stats.pendingApproval || 0, icon: FaClock, tone: 'amber' },
+            { label: 'Average Score', value: `${stats.averagePercentage?.toFixed(1) || 0}%`, icon: FaAward, tone: 'blue' },
+          ]}
+        />
       )}
 
-      {/* Filters and Actions */}
-      <div className="filters-bar">
-        <div className="filters-group">
-          {!hideExamSelector && (
-            <select
-              value={selectedExamId}
-              onChange={(e) => {
-                setSelectedExamId(e.target.value);
-                setCurrentPage(1);
-              }}
-              style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
-            >
-              <option value="">-- Select an Exam --</option>
-              {exams.map((exam, idx) => (
-                <option key={exam.id} value={exam.id}>
-                  {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* <button 
-            className="live-btn"
-            onClick={() => {
-              const targetExamId = selectedExamId || exams[0]?.id;
-              if (targetExamId) openLiveStudentsModal(targetExamId);
-            }}
-            title={exams.length > 0 ? 'View students currently taking this exam' : 'No exams available'}
-            disabled={exams.length === 0}
-          >
-            <span className="live-dot"></span> Live Students
-          </button> */}
-
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={filters.search}
-              onChange={(e) => {
-                setFilters({...filters, search: e.target.value});
-                setCurrentPage(1);
-              }}
-            />
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>Submissions</h3>
+            <p>Select rows to approve in bulk · open a student to review answers</p>
           </div>
-          
-          <select
-            value={filters.status}
-            onChange={(e) => {
-              setFilters({...filters, status: e.target.value});
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Results</option>
-            <option value="passed">Passed</option>
-            <option value="failed">Failed</option>
-          </select>
-          
-          <select
-            value={filters.roundType}
-            onChange={(e) => {
-              setFilters({...filters, roundType: e.target.value});
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Rounds</option>
-            <option value="mcq">MCQ</option>
-            <option value="tr">Technical Round</option>
-            <option value="hr">HR Round</option>
-            <option value="coding">Coding</option>
-          </select>
-          
-          <button className="clear-btn" onClick={() => {
-            setFilters({search: '', status: '', roundType: ''});
-            setCurrentPage(1);
-            if (exams.length > 0) setSelectedExamId(exams[0].id);
-          }}>
-            <FaFilter /> Clear
-          </button>
-          
-          <button className="export-btn" onClick={exportCSV}>
-            <FaFileExport /> Export
-          </button>
+          <div className="aui-toolbar-filters">
+            {!hideExamSelector && (
+              <AdminSelect
+                label="Exam"
+                prefix="Exam:"
+                value={selectedExamId}
+                options={[{ value: '', label: 'All exams' }, ...exams.map(e => ({ value: e.id, label: e.title }))]}
+                onChange={(v) => { setSelectedExamId(v); setCurrentPage(1); }}
+              />
+            )}
+            <SearchInput value={filters.search} onChange={(v) => setFilter('search', v)} placeholder="Search name or email…" />
+            <AdminSelect
+              label="Result"
+              value={filters.status}
+              options={[{ value: '', label: 'All results' }, { value: 'passed', label: 'Passed' }, { value: 'failed', label: 'Failed' }]}
+              onChange={(v) => setFilter('status', v)}
+            />
+            {!filterRoundType && (
+              <AdminSelect
+                label="Round"
+                value={filters.roundType}
+                options={[{ value: '', label: 'All rounds' }, ...['mcq', 'coding', 'tr', 'hr', 'english'].map(v => ({ value: v, label: ROUND_SHORT[v] }))]}
+                onChange={(v) => setFilter('roundType', v)}
+              />
+            )}
+            {filtersActive && (
+              <button type="button" className="aui-btn" onClick={clearFilters}><FaTimesCircle size={11} /> Clear</button>
+            )}
+            <button type="button" className="aui-btn" onClick={exportCSV}><FaFileExport size={11} /> Export CSV</button>
+          </div>
         </div>
-        
+
         {selectedSubmissions.length > 0 && (
-          <div className="bulk-actions">
-            <button className="bulk-approve-btn" onClick={() => setShowBulkApproveModal(true)}>
-              <FaCheckDouble /> Bulk Approve ({selectedSubmissions.length})
-            </button>
+          <div className="arx-bulk">
+            <span><b>{selectedSubmissions.length}</b> submission{selectedSubmissions.length === 1 ? '' : 's'} selected</span>
+            <div>
+              <button type="button" className="aui-btn aui-btn-sm" onClick={() => setSelectedSubmissions([])}>Deselect</button>
+              <button type="button" className="aui-btn aui-btn-sm aui-btn-primary" onClick={() => setShowBulkApproveModal(true)}>
+                <FaCheckDouble size={11} /> Approve Selected
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Results Table */}
-      <div className="table-wrapper">
         {loading ? (
-          <div className="loading-state">
-            <Spinner animation="border" variant="warning" />
-            <p>Loading results...</p>
-          </div>
+          <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading results…</div>
         ) : error ? (
-          <Alert variant="danger">{error}</Alert>
+          <div className="aui-alert arx-alert"><FaTimesCircle /> <span>{error}</span></div>
         ) : results.length === 0 ? (
-          <div className="empty-state">
-            <p>No results found</p>
-          </div>
+          <EmptyState
+            icon={FaChartLine}
+            title={filtersActive ? 'No submissions match' : 'No submissions yet'}
+            text={filtersActive ? 'Try a different search or filter.' : 'Results appear here as soon as students submit this round.'}
+            action={filtersActive ? <button type="button" className="aui-btn aui-btn-sm" onClick={clearFilters}>Clear filters</button> : undefined}
+          />
         ) : (
           <>
-            <table className="results-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSubmissions.length === results.length && results.length > 0}
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-                  <th>Student</th>
-                  <th>Email</th>
-                  <th>Round Results</th>
-                  <th>Approval</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((result) => (
-                  <tr key={result._id}>
-                    <td>
+            <div className="aui-table-scroll">
+              <table className="aui-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>
                       <input
                         type="checkbox"
-                        checked={selectedSubmissions.includes(result._id)}
-                        onChange={() => handleSelectOne(result._id)}
+                        className="arx-check"
+                        aria-label="Select all"
+                        checked={selectedSubmissions.length === results.length && results.length > 0}
+                        onChange={handleSelectAll}
                       />
-                    </td>
-                    <td>
-                      <div className="student-cell">
-                        <div className="student-avatar">
-                          {result.student.name?.charAt(0) || '?'}
-                        </div>
-                        <div>
-                          <span className="student-name">{result.student.name || 'N/A'}</span>
-                          {result.roundResults?.some((r: any) => r.violationAutoSubmit) && (
-                            <span style={{
-                              display: 'inline-block', marginLeft: '6px',
-                              background: 'rgba(220,53,69,0.15)', color: '#dc3545',
-                              border: '1px solid rgba(220,53,69,0.4)',
-                              borderRadius: '5px', padding: '1px 6px',
-                              fontSize: '0.68rem', fontWeight: 700,
-                            }}>
-                              ⚠ Violation
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="email-cell">{result.student.email || 'N/A'}</td>
-                    <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {(result.roundResults || [])
-                          .filter((r: any) => !filterRoundType || r.roundType === filterRoundType)
-                          .map((r: any) => {
-                          const LABELS: Record<string, string> = { mcq: 'MCQ', coding: 'Code', tr: 'Tech', hr: 'HR', english: 'English' };
-                          const label = LABELS[r.roundType] || r.roundType?.toUpperCase();
-                          const passed = r.passed;
-                          return (
-                            <span key={r.roundType} style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '3px 9px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-                              background: passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                              color: passed ? '#22c55e' : '#ef4444',
-                              border: `1px solid ${passed ? '#22c55e44' : '#ef444444'}`,
-                            }}>
-                              {passed ? '✓' : '✗'} {label}
-                              <span style={{ fontWeight: 400, opacity: 0.8 }}>{r.percentage?.toFixed(0)}%</span>
-                            </span>
-                          );
-                        })}
-                        {(!result.roundResults || result.roundResults.length === 0) && (
-                          <span style={{ color: '#555', fontSize: '0.78rem' }}>—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{getApprovalBadge(result.approvalStatus)}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="view-btn"
-                          onClick={async () => {
-                            setSelectedResult(result);
-                            setDetailTab(
-                              filterRoundType === 'mcq' ? 'mcq'
-                              : filterRoundType === 'english' ? 'english'
-                              : 'overview'
-                            );
-                            setDetailedAnswers([]);
-                            setEnglishAnswers([]);
-                            setCodeSubmissions([]);
-                            setShowDetailsModal(true);
-                            setDetailLoading(true);
-                            try {
-                              const r = await axios.get(`${baseURL}/api/assessment/admin/results/${result._id}`, {
-                                headers: { Authorization: `Bearer ${token}` },
-                              });
-                              if (r.data.success) {
-                                setDetailedAnswers(r.data.data.detailedAnswers || []);
-                                setEnglishAnswers(r.data.data.englishAnswers || []);
-                                setCodeSubmissions(r.data.data.codeSubmissions || []);
-                              }
-                            } catch { /* ignore */ }
-                            setDetailLoading(false);
-                          }}
-                        >
-                          <FaEye /> View
-                        </button>
-                        {result.approvalStatus === 'pending' && (
-                          <button
-                            className="approve-btn"
-                            onClick={() => {
-                              setSelectedResult(result);
-                              setShowApproveModal(true);
-                            }}
-                          >
-                            <FaCheckCircle /> Approve
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    </th>
+                    <th>Student</th>
+                    <th>Round Results</th>
+                    <th style={{ width: 130 }}>Approval</th>
+                    <th style={{ width: 230 }} className="text-end">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {results.map((result) => {
+                    const approval = APPROVAL_BADGE[approvalOf(result)];
+                    const ApprovalIcon = approval.icon;
+                    const rounds = (result.roundResults || []).filter((r: any) => !filterRoundType || r.roundType === filterRoundType);
+                    const isSelected = selectedSubmissions.includes(result._id);
+                    return (
+                      <tr key={result._id} className={isSelected ? 'is-selected' : ''}>
+                        <td>
+                          <input type="checkbox" className="arx-check" aria-label={`Select ${result.student.name}`} checked={isSelected} onChange={() => handleSelectOne(result._id)} />
+                        </td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(result.student.name || '?')}</span>
+                            <div className="aui-stack">
+                              <strong>
+                                {result.student.name || 'N/A'}
+                                {result.roundResults?.some((r: any) => r.violationAutoSubmit) && (
+                                  <span className="aui-badge aui-badge-red arx-flag" title="Auto-submitted after a proctoring violation">
+                                    <FaExclamationTriangle size={8} /> Violation
+                                  </span>
+                                )}
+                              </strong>
+                              <small>{result.student.email || 'N/A'}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="arx-rounds">
+                            {rounds.length === 0 && <span className="aui-num">—</span>}
+                            {rounds.map((r: any) => {
+                              const approved = r.approvalStatus === 'approved';
+                              const cls = approved ? (r.passed ? 'aui-badge-green' : 'aui-badge-red') : 'aui-badge-muted';
+                              const Icon = approved ? (r.passed ? FaCheckCircle : FaTimesCircle) : FaClock;
+                              return (
+                                <span key={r.roundType} className={`aui-badge ${cls}`} title={approved ? (r.passed ? 'Passed · approved' : 'Failed · approved') : 'Awaiting approval'}>
+                                  <Icon size={9} /> {ROUND_SHORT[r.roundType] || r.roundType?.toUpperCase()}
+                                  <em>{r.percentage?.toFixed(0)}%</em>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td><span className={`aui-badge ${approval.cls}`}><ApprovalIcon size={9} /> {approval.label}</span></td>
+                        <td className="text-end">
+                          <div className="arx-actions">
+                            <button
+                              type="button"
+                              className="aui-btn aui-btn-sm"
+                              onClick={() => { setSelectedResult(result); setShowDetailsModal(true); fetchDetailedAnswers(result._id); }}
+                            >
+                              <FaEye size={11} /> View
+                            </button>
+                            {result.approvalStatus === 'pending' ? (
+                              <button type="button" className="aui-btn aui-btn-sm aui-btn-soft" onClick={() => openApproval(result)}>
+                                <FaCheckCircle size={11} /> Approve
+                              </button>
+                            ) : (
+                              <button type="button" className="aui-btn aui-btn-sm" onClick={() => openApproval(result)}>
+                                <FaEdit size={11} /> Edit
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination-wrapper">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      className={pageNum === currentPage ? 'active' : ''}
-                      onClick={() => setCurrentPage(pageNum)}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <div className="aui-footer">
+              <span>Page <b>{currentPage}</b> of <b>{Math.max(1, totalPages)}</b> · <b>{results.length}</b> on this page</span>
+              {totalPages > 1 && (
+                <div className="aui-pages">
+                  <button type="button" className="aui-page-btn" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} aria-label="Previous page"><FaChevronLeft /></button>
+                  {pageNumbers.map((p, i) => p === 'gap'
+                    ? <span key={`gap-${i}`} className="aui-page-gap">…</span>
+                    : <button type="button" key={p} className={`aui-page-btn${p === currentPage ? ' is-active' : ''}`} onClick={() => setCurrentPage(p)}>{p}</button>)}
+                  <button type="button" className="aui-page-btn" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} aria-label="Next page"><FaChevronRight /></button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
 
+      <style>{`
+        .arx { padding: 1.25rem 1.5rem 1.5rem; }
+        .arx > .aui-stats:first-child { margin-top: 0; }
+        .arx-bulk { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.55rem 0.85rem; border-bottom: 1px solid #25282b; background: rgba(255,122,0,0.07); color: #d1d5db; font-size: 0.8rem; }
+        .arx-bulk b { color: #ffb15e; }
+        .arx-bulk > div { display: flex; gap: 8px; }
+        .arx-alert { margin: 0.85rem !important; }
+        .arx-check { width: 15px; height: 15px; accent-color: #ff7a00; color-scheme: dark; cursor: pointer; vertical-align: middle; }
+        .arx .aui-table tbody tr.is-selected { background: rgba(255,122,0,0.05); }
+        .arx-flag { margin-left: 8px; vertical-align: 1px; }
+        .arx-rounds { display: flex; flex-wrap: wrap; gap: 6px; }
+        .arx-rounds em { margin-left: 2px; font-style: normal; font-weight: 600; opacity: 0.8; }
+        .arx-actions { display: inline-flex; gap: 6px; }
+      `}</style>
+
       {/* Professional Details Modal */}
-      <Modal show={showDetailsModal} onHide={() => setShowDetailsModal(false)} size="lg" centered className="professional-modal">
+      <Modal show={showDetailsModal} onHide={() => { setShowDetailsModal(false); setDetailedAnswers([]); setCodeSubmissions([]); }} fullscreen className="professional-modal">
         <Modal.Header closeButton className="modal-header-custom">
           <Modal.Title className="modal-title-custom">
             <FaUserGraduate className="me-2" />
@@ -804,232 +906,6 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
         <Modal.Body className="modal-body-custom">
           {selectedResult && (
             <div>
-              {/* ── Tab nav ── */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20, borderBottom: '1px solid #1f1f1f', paddingBottom: 12 }}>
-                {[
-                  ...(!filterRoundType || filterRoundType === 'coding' ? [{ key: 'overview', label: '📊 Overview' }] : []),
-                  ...(detailedAnswers.length > 0 && (!filterRoundType || filterRoundType === 'mcq') ? [{ key: 'mcq', label: `📝 MCQ Answers (${detailedAnswers.length})` }] : []),
-                  ...(englishAnswers.length > 0 && (!filterRoundType || filterRoundType === 'english') ? [{ key: 'english', label: `🇬🇧 English Answers (${englishAnswers.length})` }] : []),
-                  ...(filterRoundType && !['mcq', 'english', 'coding'].includes(filterRoundType) ? [{ key: 'overview', label: '📊 Overview' }] : []),
-                ].map(t => (
-                  <button
-                    key={t.key}
-                    onClick={() => setDetailTab(t.key as any)}
-                    style={{
-                      padding: '6px 16px', borderRadius: 8, fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer',
-                      background: detailTab === t.key ? '#ff6b35' : 'transparent',
-                      border: `1px solid ${detailTab === t.key ? '#ff6b35' : '#2a2a2a'}`,
-                      color: detailTab === t.key ? '#000' : '#888',
-                    }}
-                  >{t.label}</button>
-                ))}
-                {detailLoading && <span style={{ color: '#666', fontSize: '0.78rem', alignSelf: 'center' }}>Loading answers…</span>}
-              </div>
-
-              {/* ── MCQ Answers Tab ── */}
-              {detailTab === 'mcq' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {detailedAnswers.map((ans: any, i: number) => (
-                    <div key={i} style={{ background: '#0d0d0d', border: `1px solid ${ans.isCorrect === true ? '#22c55420' : ans.isCorrect === false ? '#ef444420' : '#1f1f1f'}`, borderLeft: `3px solid ${ans.isCorrect === true ? '#22c554' : ans.isCorrect === false ? '#ef4444' : '#444'}`, borderRadius: 10, padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 10 }}>
-                        <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, color: '#666' }}>{i + 1}</span>
-                        <p style={{ margin: 0, fontSize: '0.88rem', color: '#e0e0e0', lineHeight: 1.6, fontWeight: 500 }}>{ans.questionText}</p>
-                      </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {ans.questionType === 'CODE' ? (
-                          <div style={{ width: '100%' }}>
-                            <div style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: 8 }}>
-                              Language: {ans.language || 'Not selected'} · Tests passed: {ans.codePassedTests}/{ans.codeTotalTests}
-                            </div>
-                            <pre style={{ margin: 0, padding: 12, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', borderRadius: 8, background: '#080808', border: '1px solid #252525', color: '#ddd', fontSize: '0.78rem' }}>
-                              {ans.selectedOption || 'No code submitted'}
-                            </pre>
-                          </div>
-                        ) : (ans.options || []).map((opt: any) => {
-                          const key = opt.key || opt;
-                          const text = opt.text || opt;
-                          const isSelected = ans.selectedOption === key;
-                          const isCorrect = ans.correctAnswer === key;
-                          return (
-                            <span key={key} style={{ padding: '4px 12px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 600, border: `1px solid ${isCorrect ? '#22c554' : isSelected ? '#ef4444' : '#252525'}`, background: isCorrect ? 'rgba(34,197,84,0.1)' : isSelected ? 'rgba(239,68,68,0.1)' : '#111', color: isCorrect ? '#22c554' : isSelected ? '#ef4444' : '#666' }}>
-                              {isSelected && !isCorrect && '✗ '}{isCorrect && '✓ '}{key}: {text}
-                            </span>
-                          );
-                        })}
-                      </div>
-                      {ans.isCorrect === null && ans.questionType !== 'CODE' && <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 6 }}>Answer: {ans.selectedOption || '—'} (auto-correct unavailable)</div>}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* ── English Answers Tab ── */}
-              {detailTab === 'english' && (
-                englishAnswers.length > 0 ? (
-                  <EnglishAnswersView answers={englishAnswers} />
-                ) : (
-                  (() => {
-                    const engResult = (selectedResult.roundResults || []).find((r: any) => r.roundType === 'english');
-                    return (
-                      <div style={{ padding: '2rem', textAlign: 'center' }}>
-                        {engResult ? (
-                          <>
-                            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>🇬🇧</div>
-                            <p style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: 8 }}>
-                              Detailed answer breakdown is not available for this submission.
-                            </p>
-                            <div style={{ display: 'inline-flex', gap: 16, marginTop: 8, background: '#1a1a1a', padding: '12px 24px', borderRadius: 10 }}>
-                              <span style={{ color: '#888', fontSize: '0.85rem' }}>Score: <strong style={{ color: '#fff' }}>{engResult.score}/{engResult.total}</strong></span>
-                              <span style={{ color: '#888', fontSize: '0.85rem' }}>Percentage: <strong style={{ color: engResult.passed ? '#22c55e' : '#ef4444' }}>{engResult.percentage?.toFixed(1)}%</strong></span>
-                              <span style={{ background: engResult.passed ? '#22c55e22' : '#ef444422', color: engResult.passed ? '#22c55e' : '#ef4444', padding: '2px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 700 }}>{engResult.passed ? 'Passed' : 'Failed'}</span>
-                            </div>
-                          </>
-                        ) : (
-                          <p style={{ color: '#666', fontSize: '0.9rem' }}>No English round data found.</p>
-                        )}
-                      </div>
-                    );
-                  })()
-                )
-              )}
-
-              {/* ── Coding Tab (removed — code shown inline in Overview) ── */}
-              {false && codeSubmissions.map((sub: any) => (
-                    <div key={sub._id} style={{ background: '#0d0d0d', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
-                      {/* Header */}
-                      <div style={{ padding: '14px 18px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                        <div>
-                          <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>
-                            ⌨️ {sub.challengeId?.title || 'Code Challenge'}
-                          </span>
-                          <span style={{ marginLeft: 12, background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 600 }}>
-                            {sub.language?.toUpperCase()}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
-                            {sub.testsPassed}/{sub.testsTotal} tests passed
-                          </span>
-                          <span style={{ background: sub.testsPassed === sub.testsTotal ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#ef4444', border: `1px solid ${sub.testsPassed === sub.testsTotal ? '#22c55e44' : '#ef444444'}`, borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>
-                            {sub.testsPassed === sub.testsTotal ? '✓ Passed' : '✗ Failed'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Code block */}
-                      <div style={{ position: 'relative' }}>
-                        <div style={{ position: 'absolute', top: 10, right: 12, zIndex: 1 }}>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(sub.code || '')}
-                            style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', cursor: 'pointer' }}
-                          >
-                            Copy
-                          </button>
-                        </div>
-                        <pre style={{ margin: 0, padding: '16px 18px', overflowX: 'auto', fontSize: '0.8rem', lineHeight: 1.6, color: '#e2e8f0', background: '#080808', maxHeight: 320, overflowY: 'auto' }}>
-                          <code>{sub.code || '(no code submitted)'}</code>
-                        </pre>
-                      </div>
-
-                      {/* Test cases */}
-                      {sub.results?.length > 0 && (
-                        <div style={{ padding: '14px 18px', borderTop: '1px solid #1e1e1e' }}>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Test Cases</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {sub.results.map((t: any, i: number) => (
-                              <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, padding: '8px 12px', borderRadius: 8, background: t.passed ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)', border: `1px solid ${t.passed ? '#22c55e22' : '#ef444422'}`, fontSize: '0.75rem' }}>
-                                <span style={{ color: '#888' }}>Input: <code style={{ color: '#ddd' }}>{t.input}</code></span>
-                                <span style={{ color: '#888' }}>Expected: <code style={{ color: '#ddd' }}>{t.expectedOutput}</code></span>
-                                <span style={{ color: '#888' }}>Got: <code style={{ color: t.passed ? '#22c55e' : '#ef4444' }}>{t.actualOutput || '—'}</code></span>
-                                <span style={{ fontWeight: 700, color: t.passed ? '#22c55e' : '#ef4444' }}>{t.passed ? '✓' : '✗'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* AI Evaluation section */}
-                      <div style={{ padding: '14px 18px', borderTop: '1px solid #1e1e1e' }}>
-                        {sub.aiEvaluation ? (
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                              <span style={{ fontWeight: 700, color: '#a855f7', fontSize: '0.88rem' }}>🤖 AI Evaluation</span>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 20, padding: '2px 12px', fontSize: '0.78rem', fontWeight: 700 }}>
-                                  Score: {sub.aiEvaluation.score}/100
-                                </span>
-                                <span style={{
-                                  background: sub.aiEvaluation.rating === 'Excellent' ? 'rgba(34,197,94,0.12)' : sub.aiEvaluation.rating === 'Good' ? 'rgba(59,130,246,0.12)' : sub.aiEvaluation.rating === 'Fair' ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)',
-                                  color: sub.aiEvaluation.rating === 'Excellent' ? '#22c55e' : sub.aiEvaluation.rating === 'Good' ? '#3b82f6' : sub.aiEvaluation.rating === 'Fair' ? '#eab308' : '#ef4444',
-                                  borderRadius: 20, padding: '2px 12px', fontSize: '0.78rem', fontWeight: 700,
-                                }}>
-                                  {sub.aiEvaluation.rating}
-                                </span>
-                                <button
-                                  onClick={async () => {
-                                    setAiEvaluating(sub._id);
-                                    try {
-                                      const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-                                      if (r.data.success) {
-                                        setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s));
-                                      }
-                                    } catch { /* ignore */ }
-                                    setAiEvaluating(null);
-                                  }}
-                                  disabled={!!aiEvaluating}
-                                  style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', padding: '4px 12px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
-                                >
-                                  🔄 Re-evaluate
-                                </button>
-                              </div>
-                            </div>
-                            <p style={{ color: '#ccc', fontSize: '0.83rem', lineHeight: 1.6, marginBottom: 12 }}>{sub.aiEvaluation.summary}</p>
-                            <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                              {sub.aiEvaluation.codeQuality && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Quality: {sub.aiEvaluation.codeQuality}</span>}
-                              {sub.aiEvaluation.timeComplexity && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Time: {sub.aiEvaluation.timeComplexity}</span>}
-                              {sub.aiEvaluation.spaceComplexity && <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem' }}>Space: {sub.aiEvaluation.spaceComplexity}</span>}
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                              <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid #22c55e22', borderRadius: 8, padding: '10px 14px' }}>
-                                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22c55e', marginBottom: 6 }}>✓ Strengths</div>
-                                {(sub.aiEvaluation.strengths || []).map((s: string, i: number) => <div key={i} style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: 3 }}>• {s}</div>)}
-                              </div>
-                              <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid #ef444422', borderRadius: 8, padding: '10px 14px' }}>
-                                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', marginBottom: 6 }}>↑ Improvements</div>
-                                {(sub.aiEvaluation.improvements || []).map((s: string, i: number) => <div key={i} style={{ color: '#aaa', fontSize: '0.78rem', marginBottom: 3 }}>• {s}</div>)}
-                              </div>
-                            </div>
-                            <div style={{ marginTop: 6, fontSize: '0.68rem', color: '#444' }}>
-                              Evaluated by {sub.aiEvaluation.model} · {sub.aiEvaluation.evaluatedAt ? new Date(sub.aiEvaluation.evaluatedAt).toLocaleString() : ''}
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#555', fontSize: '0.83rem' }}>No AI evaluation yet</span>
-                            <button
-                              onClick={async () => {
-                                setAiEvaluating(sub._id);
-                                try {
-                                  const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } });
-                                  if (r.data.success) {
-                                    setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s));
-                                  }
-                                } catch { /* ignore */ }
-                                setAiEvaluating(null);
-                              }}
-                              disabled={!!aiEvaluating}
-                              style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', border: 'none', color: '#fff', padding: '8px 20px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: aiEvaluating ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: aiEvaluating ? 0.7 : 1 }}
-                            >
-                              {aiEvaluating === sub._id ? '⏳ Evaluating...' : '🤖 AI Evaluate Code'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-              {/* ── Overview Tab ── */}
-              {detailTab === 'overview' && <>
               {/* Student Info Card */}
               <div className="info-card">
                 <h5 className="section-title">
@@ -1084,8 +960,19 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                             <Badge bg={r.passed ? 'success' : 'danger'}>
                               {r.passed ? 'Passed' : 'Failed'}
                             </Badge>
-                            {r.violationAutoSubmit && (
+                            {r.tabSwitchViolationCount > 0 && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>
+                                🖥 Tab/window switches: {r.tabSwitchViolationCount}{r.violationAutoSubmit ? ' (auto-submitted)' : ''}
+                              </span>
+                            )}
+                            {r.violationAutoSubmit && !r.tabSwitchViolationCount && (
                               <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#ef4444' }}>⚠ Auto-submitted</span>
+                            )}
+                            {r.faceViolationCount > 0 && (
+                              <span style={{ display: 'block', marginTop: 4, fontSize: '0.72rem', color: '#f59e0b' }}>
+                                👁 Face/gaze violations: {r.faceViolationCount}
+                                {' '}(Eye: {r.eyeViolationCount || 0} · Head: {r.headViolationCount || 0} · Mask: {r.maskViolationCount || 0} · No face: {r.noFaceViolationCount || 0})
+                              </span>
                             )}
                           </div>
                         </div>
@@ -1095,7 +982,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                 </div>
               </div>
 
-              {/* Video Recordings — compact, supports native fullscreen via controls */}
+              {/* Video Recordings — moved up, compact layout */}
               {selectedResult.recordings && Object.keys(selectedResult.recordings).length > 0 && (
                 <div className="recordings-card">
                   <h5 className="section-title">
@@ -1124,121 +1011,280 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   </div>
                 </div>
               )}
-              {/* Code Submissions — always shown inline when coding round exists */}
+
+              {/* Code Submission */}
               {((!filterRoundType || filterRoundType === 'coding') && selectedResult.roundResults?.some((r: any) => r.roundType === 'coding')) && (
                 <div className="rounds-card">
                   <h5 className="section-title">
                     <span className="me-2">⌨️</span> Code Submission
                   </h5>
-                  {detailLoading ? (
+                  {answersLoading ? (
                     <p style={{ color: '#666', padding: '1rem 0', fontSize: '0.85rem' }}>Loading code submission...</p>
                   ) : codeSubmissions.length === 0 ? (
                     <p style={{ color: '#555', padding: '1rem 0', fontSize: '0.85rem' }}>No code submission found for this student.</p>
                   ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {codeSubmissions.map((sub: any) => (
-                      <div key={sub._id} style={{ background: '#080808', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
-                        {/* Header */}
-                        <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{sub.challengeId?.title || 'Code Challenge'}</span>
-                            <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem', fontWeight: 600 }}>{sub.language?.toUpperCase()}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#f97316', fontWeight: 700, fontSize: '0.82rem' }}>
-                              {sub.testsPassed}/{sub.testsTotal} tests passed
-                            </span>
-                            <span style={{ background: sub.testsPassed > 0 ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', color: sub.testsPassed > 0 ? '#f97316' : '#ef4444', border: `1px solid ${sub.testsPassed > 0 ? '#f9731644' : '#ef444444'}`, borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700 }}>
-                              {sub.testsPassed === sub.testsTotal && sub.testsTotal > 0 ? '✓ All Passed' : sub.testsPassed > 0 ? `${sub.testsPassed} Partial` : '✗ Failed'}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Code block */}
-                        <div style={{ position: 'relative' }}>
-                          <div style={{ position: 'absolute', top: 8, right: 10, zIndex: 1, display: 'flex', gap: 6 }}>
-                            <span style={{ color: '#555', fontSize: '0.68rem', padding: '2px 8px', background: '#111', borderRadius: 4 }}>{sub.language}</span>
-                            <button onClick={() => navigator.clipboard.writeText(sub.code || '')} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', cursor: 'pointer' }}>Copy</button>
-                          </div>
-                          <pre style={{ margin: 0, padding: '14px 16px', overflowX: 'auto', fontSize: '0.78rem', lineHeight: 1.6, color: '#e2e8f0', background: '#050505', maxHeight: 280, overflowY: 'auto' }}>
-                            <code>{sub.code || '(no code submitted)'}</code>
-                          </pre>
-                        </div>
-
-                        {/* Test case results */}
-                        {sub.results?.length > 0 && (
-                          <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Test Cases</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                              {sub.results.map((t: any, i: number) => (
-                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, padding: '7px 12px', borderRadius: 7, background: t.passed ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${t.passed ? '#22c55e22' : '#ef444422'}`, fontSize: '0.73rem' }}>
-                                  <span style={{ color: '#666' }}>In: <code style={{ color: '#bbb' }}>{t.input?.replace(/\n/g, '↵')}</code></span>
-                                  <span style={{ color: '#666' }}>Expected: <code style={{ color: '#bbb' }}>{t.expectedOutput || '—'}</code></span>
-                                  <span style={{ color: '#666' }}>Got: <code style={{ color: t.passed ? '#22c55e' : '#ef4444' }}>{t.actualOutput || '—'}</code></span>
-                                  <span style={{ fontWeight: 700, color: t.passed ? '#22c55e' : '#ef4444', textAlign: 'right' }}>{t.passed ? '✓' : '✗'}</span>
-                                </div>
-                              ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                      {codeSubmissions.map((sub: any) => (
+                        <div key={sub._id} style={{ background: '#080808', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
+                          {/* Header */}
+                          <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e1e1e', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>{sub.challengeId?.title || 'Code Challenge'}</span>
+                              <span style={{ background: '#1a1a1a', color: '#888', border: '1px solid #2a2a2a', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem', fontWeight: 600 }}>{sub.language?.toUpperCase()}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <span style={{ color: sub.testsPassed === sub.testsTotal ? '#22c55e' : '#f97316', fontWeight: 700, fontSize: '0.82rem' }}>
+                                {sub.testsPassed}/{sub.testsTotal} tests passed
+                              </span>
+                              <span style={{ background: sub.testsPassed > 0 ? 'rgba(249,115,22,0.12)' : 'rgba(239,68,68,0.12)', color: sub.testsPassed > 0 ? '#f97316' : '#ef4444', border: `1px solid ${sub.testsPassed > 0 ? '#f9731644' : '#ef444444'}`, borderRadius: 20, padding: '2px 10px', fontSize: '0.72rem', fontWeight: 700 }}>
+                                {sub.testsPassed === sub.testsTotal && sub.testsTotal > 0 ? '✓ All Passed' : sub.testsPassed > 0 ? `${sub.testsPassed} Partial` : '✗ Failed'}
+                              </span>
                             </div>
                           </div>
-                        )}
 
-                        {/* AI Evaluation */}
-                        <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
-                          {sub.aiEvaluation ? (
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-                                <span style={{ fontWeight: 700, color: '#a855f7', fontSize: '0.85rem' }}>🤖 AI Evaluation</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <span style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>Score: {sub.aiEvaluation.score}/100</span>
-                                  <span style={{ background: sub.aiEvaluation.rating === 'Excellent' ? 'rgba(34,197,94,0.12)' : sub.aiEvaluation.rating === 'Good' ? 'rgba(59,130,246,0.12)' : sub.aiEvaluation.rating === 'Fair' ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)', color: sub.aiEvaluation.rating === 'Excellent' ? '#22c55e' : sub.aiEvaluation.rating === 'Good' ? '#3b82f6' : sub.aiEvaluation.rating === 'Fair' ? '#eab308' : '#ef4444', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>{sub.aiEvaluation.rating}</span>
-                                  <button onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }} disabled={!!aiEvaluating} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
-                                    {aiEvaluating === sub._id ? '⏳' : '🔄'} Re-evaluate
-                                  </button>
-                                </div>
-                              </div>
-                              <p style={{ color: '#bbb', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 10 }}>{sub.aiEvaluation.summary}</p>
-                              <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-                                {sub.aiEvaluation.codeQuality && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Quality: {sub.aiEvaluation.codeQuality}</span>}
-                                {sub.aiEvaluation.timeComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Time: {sub.aiEvaluation.timeComplexity}</span>}
-                                {sub.aiEvaluation.spaceComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Space: {sub.aiEvaluation.spaceComplexity}</span>}
-                              </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid #22c55e22', borderRadius: 8, padding: '10px 12px' }}>
-                                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#22c55e', marginBottom: 5 }}>✓ Strengths</div>
-                                  {(sub.aiEvaluation.strengths || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
-                                </div>
-                                <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid #ef444422', borderRadius: 8, padding: '10px 12px' }}>
-                                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#ef4444', marginBottom: 5 }}>↑ Improvements</div>
-                                  {(sub.aiEvaluation.improvements || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
-                                </div>
-                              </div>
-                              <div style={{ marginTop: 6, fontSize: '0.67rem', color: '#444' }}>Evaluated by {sub.aiEvaluation.model} · {sub.aiEvaluation.evaluatedAt ? new Date(sub.aiEvaluation.evaluatedAt).toLocaleString() : ''}</div>
+                          {/* Code block */}
+                          <div style={{ position: 'relative' }}>
+                            <div style={{ position: 'absolute', top: 8, right: 10, zIndex: 1, display: 'flex', gap: 6 }}>
+                              <span style={{ color: '#555', fontSize: '0.68rem', padding: '2px 8px', background: '#111', borderRadius: 4 }}>{sub.language}</span>
+                              <button onClick={() => navigator.clipboard.writeText(sub.code || '')} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '2px 8px', borderRadius: 4, fontSize: '0.68rem', cursor: 'pointer' }}>Copy</button>
                             </div>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ color: '#555', fontSize: '0.82rem' }}>No AI evaluation yet</span>
-                              <button
-                                onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }}
-                                disabled={!!aiEvaluating}
-                                style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', border: 'none', color: '#fff', padding: '8px 20px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: aiEvaluating ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: aiEvaluating ? 0.7 : 1 }}
-                              >
-                                {aiEvaluating === sub._id ? '⏳ Evaluating...' : '🤖 AI Evaluate Code'}
-                              </button>
+                            <pre style={{ margin: 0, padding: '14px 16px', overflowX: 'auto', fontSize: '0.78rem', lineHeight: 1.6, color: '#e2e8f0', background: '#050505', maxHeight: 280, overflowY: 'auto' }}>
+                              <code>{sub.code || '(no code submitted)'}</code>
+                            </pre>
+                          </div>
+
+                          {/* Test case results */}
+                          {sub.results?.length > 0 && (
+                            <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
+                              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#666', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Test Cases</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                {sub.results.map((t: any, i: number) => (
+                                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 8, padding: '7px 12px', borderRadius: 7, background: t.passed ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)', border: `1px solid ${t.passed ? '#22c55e22' : '#ef444422'}`, fontSize: '0.73rem' }}>
+                                    <span style={{ color: '#666' }}>In: <code style={{ color: '#bbb' }}>{t.input?.replace(/\n/g, '↵')}</code></span>
+                                    <span style={{ color: '#666' }}>Expected: <code style={{ color: '#bbb' }}>{t.expectedOutput || '—'}</code></span>
+                                    <span style={{ color: '#666' }}>Got: <code style={{ color: t.passed ? '#22c55e' : '#ef4444' }}>{t.actualOutput || '—'}</code></span>
+                                    <span style={{ fontWeight: 700, color: t.passed ? '#22c55e' : '#ef4444', textAlign: 'right' }}>{t.passed ? '✓' : '✗'}</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
+
+                          {/* AI Evaluation */}
+                          <div style={{ padding: '12px 16px', borderTop: '1px solid #1e1e1e' }}>
+                            {sub.aiEvaluation ? (
+                              <div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                                  <span style={{ fontWeight: 700, color: '#a855f7', fontSize: '0.85rem' }}>🤖 AI Evaluation</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ background: 'rgba(168,85,247,0.12)', color: '#a855f7', border: '1px solid rgba(168,85,247,0.3)', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>Score: {sub.aiEvaluation.score}/100</span>
+                                    <span style={{ background: sub.aiEvaluation.rating === 'Excellent' ? 'rgba(34,197,94,0.12)' : sub.aiEvaluation.rating === 'Good' ? 'rgba(59,130,246,0.12)' : sub.aiEvaluation.rating === 'Fair' ? 'rgba(234,179,8,0.12)' : 'rgba(239,68,68,0.12)', color: sub.aiEvaluation.rating === 'Excellent' ? '#22c55e' : sub.aiEvaluation.rating === 'Good' ? '#3b82f6' : sub.aiEvaluation.rating === 'Fair' ? '#eab308' : '#ef4444', borderRadius: 20, padding: '2px 12px', fontSize: '0.76rem', fontWeight: 700 }}>{sub.aiEvaluation.rating}</span>
+                                    <button onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }} disabled={!!aiEvaluating} style={{ background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', color: '#a855f7', padding: '3px 10px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer' }}>
+                                      {aiEvaluating === sub._id ? '⏳' : '🔄'} Re-evaluate
+                                    </button>
+                                  </div>
+                                </div>
+                                <p style={{ color: '#bbb', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 10 }}>{sub.aiEvaluation.summary}</p>
+                                <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+                                  {sub.aiEvaluation.codeQuality && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Quality: {sub.aiEvaluation.codeQuality}</span>}
+                                  {sub.aiEvaluation.timeComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Time: {sub.aiEvaluation.timeComplexity}</span>}
+                                  {sub.aiEvaluation.spaceComplexity && <span style={{ background: '#111', color: '#777', border: '1px solid #222', borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem' }}>Space: {sub.aiEvaluation.spaceComplexity}</span>}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                  <div style={{ background: 'rgba(34,197,94,0.05)', border: '1px solid #22c55e22', borderRadius: 8, padding: '10px 12px' }}>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#22c55e', marginBottom: 5 }}>✓ Strengths</div>
+                                    {(sub.aiEvaluation.strengths || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
+                                  </div>
+                                  <div style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid #ef444422', borderRadius: 8, padding: '10px 12px' }}>
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: '#ef4444', marginBottom: 5 }}>↑ Improvements</div>
+                                    {(sub.aiEvaluation.improvements || []).map((s: string, i: number) => <div key={i} style={{ color: '#999', fontSize: '0.76rem', marginBottom: 2 }}>• {s}</div>)}
+                                  </div>
+                                </div>
+                                <div style={{ marginTop: 6, fontSize: '0.67rem', color: '#444' }}>Evaluated by {sub.aiEvaluation.model} · {sub.aiEvaluation.evaluatedAt ? new Date(sub.aiEvaluation.evaluatedAt).toLocaleString() : ''}</div>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#555', fontSize: '0.82rem' }}>No AI evaluation yet</span>
+                                <button
+                                  onClick={async () => { setAiEvaluating(sub._id); try { const r = await axios.post(`${baseURL}/api/assessment/admin/ai-evaluate-code/${sub._id}`, {}, { headers: { Authorization: `Bearer ${token}` } }); if (r.data.success) setCodeSubmissions(prev => prev.map(s => s._id === sub._id ? { ...s, aiEvaluation: r.data.evaluation } : s)); } catch {} setAiEvaluating(null); }}
+                                  disabled={!!aiEvaluating}
+                                  style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)', border: 'none', color: '#fff', padding: '8px 20px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: aiEvaluating ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: aiEvaluating ? 0.7 : 1 }}
+                                >
+                                  {aiEvaluating === sub._id ? '⏳ Evaluating...' : '🤖 AI Evaluate Code'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
-              </> /* end overview tab */}
+
+              {/* Student Answers — MCQ */}
+              {(!filterRoundType || filterRoundType === 'mcq') && <div className="info-card" style={{ marginBottom: '20px' }}>
+                <h5 className="section-title">
+                  <FaBookOpen className="me-2" /> Student Answers
+                  {!answersLoading && detailedAnswers.length > 0 && (
+                    <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#8a8a8a', fontWeight: 400 }}>
+                      {detailedAnswers.filter(a => a.isCorrect === true).length} / {detailedAnswers.length} correct
+                    </span>
+                  )}
+                </h5>
+
+                {answersLoading ? (
+                  <div style={{ textAlign: 'center', padding: '24px', color: '#8a8a8a' }}>
+                    <Spinner animation="border" size="sm" style={{ color: '#ff7a00' }} />
+                    <span style={{ marginLeft: '10px' }}>Loading answers...</span>
+                  </div>
+                ) : detailedAnswers.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#555', fontSize: '13px' }}>
+                    No answer data available for this submission.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {detailedAnswers.map((ans, idx) => {
+                      const isCorrect = ans.isCorrect === true;
+                      const isWrong = ans.isCorrect === false;
+                      const isFill = (ans.questionType || '').toUpperCase() === 'FILL';
+                      const isCode = (ans.questionType || '').toUpperCase() === 'CODE';
+                      return (
+                        <div key={idx} style={{
+                          background: '#0d0d0d',
+                          border: `1px solid ${isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#2c2c2c'}`,
+                          borderRadius: '10px',
+                          padding: '14px 16px',
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', flex: 1 }}>
+                              <span style={{ color: '#555', fontSize: '12px', minWidth: '26px', paddingTop: '2px' }}>Q{idx + 1}.</span>
+                              <span style={{ color: '#e0e0e0', fontSize: '14px', lineHeight: '1.5' }}>{ans.questionText || '—'}</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              <span style={{
+                                background: isCode ? 'rgba(56,189,248,0.15)' : isFill ? 'rgba(40,167,69,0.15)' : 'rgba(255,107,53,0.15)',
+                                color: isCode ? '#38bdf8' : isFill ? '#28a745' : '#ff6b35',
+                                border: `1px solid ${isCode ? '#38bdf8' : isFill ? '#28a745' : '#ff6b35'}`,
+                                borderRadius: '20px', padding: '1px 9px', fontSize: '10px', fontWeight: 700
+                              }}>
+                                {isCode ? 'CODE' : isFill ? 'FILL' : 'MCQ'}
+                              </span>
+                              {isCorrect && <span style={{ color: '#28a745', fontSize: '18px', fontWeight: 700 }}>✓</span>}
+                              {isWrong && <span style={{ color: '#dc3545', fontSize: '18px', fontWeight: 700 }}>✗</span>}
+                            </div>
+                          </div>
+
+                          {/* MCQ options with highlight */}
+                          {!isFill && ans.options?.length > 0 && (
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', paddingLeft: '34px', marginBottom: '8px' }}>
+                              {ans.options.map((opt: any) => {
+                                const isSelected = opt.key === ans.selectedOption;
+                                const isCorrectOpt = opt.key === ans.correctAnswer;
+                                return (
+                                  <span key={opt.key} style={{
+                                    padding: '3px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 600,
+                                    background: isCorrectOpt ? 'rgba(40,167,69,0.2)' : isSelected ? 'rgba(220,53,69,0.2)' : '#1a1a1a',
+                                    border: `1px solid ${isCorrectOpt ? '#28a745' : isSelected ? '#dc3545' : '#333'}`,
+                                    color: isCorrectOpt ? '#28a745' : isSelected ? '#dc3545' : '#888',
+                                  }}>
+                                    {opt.key}. {opt.text}
+                                    {isSelected && !isCorrectOpt && ' ✗'}
+                                    {isCorrectOpt && ' ✓'}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {isCode ? (
+                            <div style={{ paddingLeft: '34px' }}>
+                              <div style={{ color: '#9da2a8', fontSize: '12px', marginBottom: '6px' }}>
+                                Language: <b style={{ color: '#e0e0e0' }}>{ans.language || 'Not selected'}</b> · Tests passed:{' '}
+                                <b style={{ color: ans.codeTotalTests && ans.codePassedTests === ans.codeTotalTests ? '#28a745' : '#f4b43f' }}>{ans.codePassedTests ?? 0}/{ans.codeTotalTests ?? 0}</b>
+                              </div>
+                              <pre style={{ margin: 0, padding: '10px 12px', maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', borderRadius: '8px', background: '#080808', border: '1px solid #252525', color: '#ddd', fontSize: '12px' }}>
+                                {ans.selectedOption || 'No code submitted'}
+                              </pre>
+                            </div>
+                          ) : (
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', paddingLeft: '34px' }}>
+                            <div style={{ background: '#1a1a1a', borderRadius: '6px', padding: '5px 12px', fontSize: '12px' }}>
+                              <span style={{ color: '#8a8a8a' }}>Student: </span>
+                              <span style={{ color: isCorrect ? '#28a745' : isWrong ? '#dc3545' : '#aaa', fontWeight: 600 }}>
+                                {ans.selectedOption || '(no answer)'}
+                              </span>
+                            </div>
+                            {ans.correctAnswer && (
+                              <div style={{ background: '#1a1a1a', borderRadius: '6px', padding: '5px 12px', fontSize: '12px' }}>
+                                <span style={{ color: '#8a8a8a' }}>Correct: </span>
+                                <span style={{ color: '#28a745', fontWeight: 600 }}>{ans.correctAnswer}</span>
+                              </div>
+                            )}
+                          </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>}
+
+              {/* English Round Answers */}
+              {(!filterRoundType || filterRoundType === 'english') && (() => {
+                const engResult = (selectedResult.roundResults || []).find((r: any) => r.roundType === 'english');
+                if (!engResult) return null;
+                return (
+                  <div className="info-card" style={{ marginBottom: '20px' }}>
+                    <h5 className="section-title">
+                      <span style={{ marginRight: 8 }}>🇬🇧</span> English Round Answers
+                      {englishAnswers.length > 0 && (
+                        <span style={{ marginLeft: 'auto', fontSize: '13px', color: '#8a8a8a', fontWeight: 400 }}>
+                          {englishAnswers.filter((a: any) => a.isCorrect === true).length} / {englishAnswers.filter((a: any) => a.answerType === 'mcq').length} MCQ correct
+                        </span>
+                      )}
+                    </h5>
+                    {englishAnswers.length > 0 ? (
+                      <InstituteEnglishAnswersView answers={englishAnswers} />
+                    ) : (
+                      <div style={{ padding: '1.5rem', textAlign: 'center' }}>
+                        <p style={{ color: '#aaa', fontSize: '0.88rem', marginBottom: 10 }}>
+                          Detailed answer breakdown is not available for this submission.
+                        </p>
+                        <div style={{ display: 'inline-flex', gap: 16, background: '#1e1e1e', padding: '10px 20px', borderRadius: 10 }}>
+                          <span style={{ color: '#888', fontSize: '0.85rem' }}>Score: <strong style={{ color: '#fff' }}>{engResult.score}/{engResult.total}</strong></span>
+                          <span style={{ color: '#888', fontSize: '0.85rem' }}>Percentage: <strong style={{ color: engResult.passed ? '#22c55e' : '#ef4444' }}>{engResult.percentage?.toFixed(1)}%</strong></span>
+                          <span style={{ background: engResult.passed ? '#22c55e22' : '#ef444422', color: engResult.passed ? '#22c55e' : '#ef4444', padding: '2px 10px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 700 }}>{engResult.passed ? 'Passed' : 'Failed'}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
             </div>
           )}
         </Modal.Body>
-        <Modal.Footer className="modal-footer-custom">
-          <Button variant="secondary" onClick={() => setShowDetailsModal(false)} className="close-modal-btn">
+
+        <Modal.Footer className="modal-footer-custom" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Button
+              style={{ background: '#1a6fc4', border: 'none', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleRescore}
+              disabled={rescoring}
+            >
+              {rescoring ? <Spinner size="sm" animation="border" /> : <FaRedoAlt />}
+              {rescoring ? 'Re-scoring...' : 'Re-score'}
+            </Button>
+            <Button
+              style={{ background: '#28a745', border: 'none', color: '#fff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              onClick={handleDownloadReport}
+              disabled={answersLoading}
+            >
+              <FaFilePdf /> Download Report
+            </Button>
+          </div>
+          <Button variant="secondary" onClick={() => { setShowDetailsModal(false); setDetailedAnswers([]); setCodeSubmissions([]); }} className="close-modal-btn">
             Close
           </Button>
         </Modal.Footer>
@@ -1269,6 +1315,43 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                   <span className="info-value">{selectedResult.totalScore || 0} ({selectedResult.finalPercentage?.toFixed(1) || 0}%)</span>
                 </div>
               </div>
+
+              {/* Per-round selection */}
+              {selectedResult.roundResults && selectedResult.roundResults.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#cbd5e1', marginBottom: 8 }}>Select rounds to approve:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {selectedResult.roundResults.map((r: any) => {
+                      const label: Record<string, string> = { mcq: 'MCQ Quiz', coding: 'Code Challenge', tr: 'Technical Round', hr: 'HR Round', english: 'English' }
+                      const checked = selectedRoundTypes.includes(r.roundType)
+                      return (
+                        <label
+                          key={r.roundType}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                            background: checked ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.06)',
+                            border: `1px solid ${checked ? '#22c55e' : '#334155'}`,
+                            borderRadius: 8, padding: '6px 12px', fontSize: 13, fontWeight: 600,
+                            color: checked ? '#22c55e' : '#94a3b8', transition: 'all 0.15s',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setSelectedRoundTypes(prev =>
+                              checked ? prev.filter(x => x !== r.roundType) : [...prev, r.roundType]
+                            )}
+                            style={{ accentColor: '#22c55e' }}
+                          />
+                          {label[r.roundType] || r.roundType}
+                          <span style={{ opacity: 0.7, fontWeight: 400 }}>({r.score}/{r.total})</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <Form.Group className="mt-3">
                 <Form.Label className="comment-label">Comments (Optional)</Form.Label>
                 <Form.Control
@@ -1287,9 +1370,9 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           <Button variant="danger" onClick={() => handleApprove('rejected')} disabled={approving} className="reject-modal-btn">
             <FaTimesCircle className="me-1" /> Reject
           </Button>
-          <Button variant="success" onClick={() => handleApprove('approved')} disabled={approving} className="approve-modal-btn">
+          <Button variant="success" onClick={() => handleApprove('approved')} disabled={approving || selectedRoundTypes.length === 0} className="approve-modal-btn">
             {approving ? <Spinner size="sm" className="me-1" /> : <FaCheckCircle className="me-1" />}
-            Approve
+            Approve {selectedRoundTypes.length > 0 ? `(${selectedRoundTypes.length} round${selectedRoundTypes.length > 1 ? 's' : ''})` : ''}
           </Button>
         </Modal.Footer>
       </Modal>
@@ -1670,7 +1753,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
           gap: 8px;
         }
 
-        .view-btn, .approve-btn {
+        .view-btn, .approve-btn, .edit-approval-btn {
           padding: 6px 12px;
           border-radius: 6px;
           font-size: 12px;
@@ -1690,6 +1773,17 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
         .view-btn:hover {
           background: #ff7a00;
           color: #000000;
+        }
+
+        .edit-approval-btn {
+          background: transparent;
+          border: 1px solid #6366f1;
+          color: #6366f1;
+        }
+
+        .edit-approval-btn:hover {
+          background: #6366f1;
+          color: #fff;
         }
 
         .approve-btn {
@@ -1761,8 +1855,8 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
         .modal-body-custom {
           padding: 24px;
           color: #e0e0e0;
-          max-height: 70vh;
           overflow-y: auto;
+          flex: 1;
         }
 
         .modal-footer-custom {
@@ -2178,9 +2272,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
   );
 };
 
-// ── English Answers View ─────────────────────────────────────────────────────
-
-const ENGLISH_SECTION_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
+const ENGLISH_SECTION_META: Record<string, { label: string; emoji: string; color: string }> = {
   reading_comprehension: { label: 'Reading Comprehension', emoji: '📖', color: '#3b82f6' },
   verbal_ability:        { label: 'Verbal Ability',        emoji: '🔤', color: '#8b5cf6' },
   sentence_correction:   { label: 'Sentence Correction',   emoji: '✅', color: '#22c55e' },
@@ -2190,104 +2282,67 @@ const ENGLISH_SECTION_LABELS: Record<string, { label: string; emoji: string; col
   essay_writing:         { label: 'Essay Writing',         emoji: '✍️', color: '#ec4899' },
 };
 
-const EnglishAnswersView: React.FC<{ answers: any[] }> = ({ answers }) => {
-  if (!answers.length) return <p style={{ color: '#555', textAlign: 'center', padding: '2rem' }}>No English answers found.</p>;
-
-  // Group by section
+const InstituteEnglishAnswersView: React.FC<{ answers: any[] }> = ({ answers }) => {
+  if (!answers.length) return null;
   const grouped: Record<string, any[]> = {};
   for (const a of answers) {
     const s = a.section || 'unknown';
     if (!grouped[s]) grouped[s] = [];
     grouped[s].push(a);
   }
-
   const OPTIONS = ['A', 'B', 'C', 'D'];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {Object.entries(grouped).map(([section, qs]) => {
-        const meta = ENGLISH_SECTION_LABELS[section] || { label: section, emoji: '📄', color: '#888' };
+        const meta = ENGLISH_SECTION_META[section] || { label: section, emoji: '📄', color: '#888' };
         const isMCQ = qs[0]?.answerType !== 'writing';
-        const correct = isMCQ ? qs.filter(q => q.isCorrect).length : 0;
-
+        const correct = isMCQ ? qs.filter((q: any) => q.isCorrect).length : 0;
         return (
           <div key={section}>
-            {/* Section header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, padding: '10px 14px', background: `${meta.color}10`, border: `1px solid ${meta.color}30`, borderRadius: 10 }}>
-              <span style={{ fontSize: '1.3rem' }}>{meta.emoji}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: meta.color }}>{meta.label}</div>
-                <div style={{ fontSize: '0.72rem', color: '#666' }}>{qs.length} question{qs.length > 1 ? 's' : ''}{isMCQ ? ` · ${correct}/${qs.length} correct` : ''}</div>
-              </div>
-              {isMCQ && (
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: correct === qs.length ? '#22c55e' : correct === 0 ? '#ef4444' : '#f59e0b' }}>{Math.round((correct / qs.length) * 100)}%</div>
-                  <div style={{ fontSize: '0.65rem', color: '#555' }}>accuracy</div>
-                </div>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '8px 12px', background: `${meta.color}10`, border: `1px solid ${meta.color}30`, borderRadius: 8 }}>
+              <span>{meta.emoji}</span>
+              <span style={{ fontWeight: 700, fontSize: '0.88rem', color: meta.color }}>{meta.label}</span>
+              {isMCQ && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#666' }}>{correct}/{qs.length} correct</span>}
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {qs.map((ans: any, qi: number) => {
-                if (!isMCQ) {
-                  // Writing answer
-                  const wordCount = ans.writtenAnswer?.trim().split(/\s+/).length || 0;
+                if (ans.answerType === 'writing') {
                   return (
-                    <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${ans.writtenAnswer ? meta.color + '30' : '#1f1f1f'}`, borderRadius: 10, padding: '14px 16px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: meta.color, marginBottom: 8 }}>{ans.questionText}</div>
-                      {ans.prompt && <div style={{ background: '#141414', borderRadius: 8, padding: '10px 12px', fontSize: '0.83rem', color: '#bbb', lineHeight: 1.65, marginBottom: 10 }}>{ans.prompt}</div>}
-                      {ans.evaluationCriteria?.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                          {ans.evaluationCriteria.map((c: string) => (
-                            <span key={c} style={{ background: `${meta.color}15`, color: meta.color, border: `1px solid ${meta.color}30`, borderRadius: 4, fontSize: '0.65rem', fontWeight: 600, padding: '2px 7px' }}>{c}</span>
-                          ))}
-                        </div>
-                      )}
+                    <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${meta.color}25`, borderRadius: 8, padding: '12px 14px' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: meta.color, marginBottom: 6 }}>{ans.questionText}</div>
+                      {ans.prompt && <div style={{ background: '#141414', borderRadius: 6, padding: '8px 10px', fontSize: '0.8rem', color: '#bbb', lineHeight: 1.6, marginBottom: 8 }}>{ans.prompt}</div>}
                       {ans.writtenAnswer ? (
-                        <div style={{ background: '#111', border: `1px solid ${meta.color}25`, borderRadius: 8, padding: '12px 14px', fontSize: '0.85rem', color: '#ddd', lineHeight: 1.75, whiteSpace: 'pre-wrap' }}>
+                        <div style={{ background: '#111', border: `1px solid #2a2a2a`, borderRadius: 6, padding: '10px 12px', fontSize: '0.83rem', color: '#ddd', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
                           {ans.writtenAnswer}
-                          <div style={{ marginTop: 8, fontSize: '0.7rem', color: '#555' }}>{wordCount} words · {ans.marks} marks</div>
+                          <div style={{ marginTop: 6, fontSize: '0.68rem', color: '#555' }}>{ans.writtenAnswer.trim().split(/\s+/).length} words</div>
                         </div>
-                      ) : (
-                        <div style={{ color: '#444', fontSize: '0.8rem', fontStyle: 'italic' }}>No answer submitted</div>
-                      )}
+                      ) : <div style={{ color: '#555', fontSize: '0.78rem', fontStyle: 'italic' }}>No answer submitted</div>}
                     </div>
                   );
                 }
-
-                // MCQ answer
-                const borderColor = ans.isCorrect === true ? '#22c554' : ans.isCorrect === false ? '#ef4444' : '#1f1f1f';
+                const borderColor = ans.isCorrect === true ? '#28a745' : ans.isCorrect === false ? '#dc3545' : '#2c2c2c';
                 return (
-                  <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${borderColor}30`, borderLeft: `3px solid ${borderColor}`, borderRadius: 10, padding: '12px 16px' }}>
-                    {ans.passage && qi === 0 && (
-                      <div style={{ background: '#141414', border: `1px solid ${meta.color}20`, borderRadius: 8, padding: '10px 12px', fontSize: '0.82rem', color: '#bbb', lineHeight: 1.7, marginBottom: 12 }}>
-                        <div style={{ fontSize: '0.62rem', fontWeight: 700, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5 }}>Passage</div>
-                        {ans.passage}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                      <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: ans.isCorrect === true ? '#22c55420' : ans.isCorrect === false ? '#ef444420' : '#1a1a1a', border: `1px solid ${borderColor}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 800, color: borderColor }}>{qi + 1}</span>
-                      <p style={{ margin: 0, fontSize: '0.87rem', color: '#e0e0e0', lineHeight: 1.6 }}>{ans.questionText}</p>
+                  <div key={qi} style={{ background: '#0d0d0d', border: `1px solid ${borderColor}`, borderRadius: 8, padding: '10px 14px' }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                      <span style={{ color: '#555', fontSize: '12px', minWidth: 22 }}>Q{qi + 1}.</span>
+                      <span style={{ color: '#e0e0e0', fontSize: '13.5px', lineHeight: 1.55 }}>{ans.questionText}</span>
+                      <span style={{ marginLeft: 'auto', fontSize: '18px', color: ans.isCorrect === true ? '#28a745' : '#dc3545' }}>{ans.isCorrect === true ? '✓' : ans.isCorrect === false ? '✗' : ''}</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', paddingLeft: 30 }}>
                       {OPTIONS.map(opt => {
                         const text = ans[`option${opt}`];
                         if (!text) return null;
-                        const isSelected = (ans.selectedOption || '').toUpperCase() === opt;
-                        const isCorrectOpt = (ans.correctAnswer || '').toUpperCase() === opt;
+                        const isSel = (ans.selectedOption || '').toUpperCase() === opt;
+                        const isCorr = (ans.correctAnswer || '').toUpperCase() === opt;
                         return (
-                          <div key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderRadius: 7, background: isCorrectOpt ? 'rgba(34,197,84,0.08)' : isSelected ? 'rgba(239,68,68,0.08)' : '#111', border: `1px solid ${isCorrectOpt ? '#22c55440' : isSelected ? '#ef444440' : '#1f1f1f'}` }}>
-                            <span style={{ flexShrink: 0, width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, background: isCorrectOpt ? '#22c554' : isSelected ? '#ef4444' : '#1a1a1a', color: (isCorrectOpt || isSelected) ? '#fff' : '#555' }}>{opt}</span>
-                            <span style={{ fontSize: '0.8rem', color: isCorrectOpt ? '#22c554' : isSelected ? '#ef4444' : '#888' }}>{isSelected && !isCorrectOpt ? '✗ ' : isCorrectOpt ? '✓ ' : ''}{text}</span>
+                          <div key={opt} style={{ padding: '4px 10px', borderRadius: 5, fontSize: '12px', border: `1px solid ${isCorr ? '#28a745' : isSel ? '#dc3545' : '#252525'}`, background: isCorr ? 'rgba(40,167,69,0.08)' : isSel ? 'rgba(220,53,69,0.08)' : '#111', color: isCorr ? '#28a745' : isSel ? '#dc3545' : '#666' }}>
+                            {isSel && !isCorr ? '✗ ' : isCorr ? '✓ ' : ''}{opt}: {text}
                           </div>
                         );
                       })}
                     </div>
-                    {ans.explanation && (
-                      <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(34,197,84,0.05)', border: '1px solid rgba(34,197,84,0.15)', borderRadius: 6, fontSize: '0.75rem', color: '#22c554' }}>
-                        💡 {ans.explanation}
-                      </div>
-                    )}
+                    {ans.explanation && <div style={{ marginTop: 6, paddingLeft: 30, fontSize: '11px', color: '#22c55e' }}>💡 {ans.explanation}</div>}
                   </div>
                 );
               })}

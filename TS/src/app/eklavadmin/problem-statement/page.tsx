@@ -1,9 +1,8 @@
 import { useState } from 'react'
+import { FaCode, FaFileExcel, FaRobot } from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
-import AdminCreateProblem from './components/AdminCreateProblem'
-import AdminViewSubmissions from './components/AdminViewSubmissions'
-import AdminCreateChallenge from './components/AdminCreateChallenge'
-import AdminChallengeList from './components/AdminChallengeList'
+import { AdminPage, PageHeader, Tabs } from '@/components/admin-ui'
+import { UPLOAD_CSS } from '../aptitudeQuestionsUpload/components/UploadParts'
 import AdminProblemsUpload from './components/AdminProblemsUpload'
 import AdminSolutionRunner from './components/AdminSolutionRunner'
 
@@ -13,32 +12,29 @@ const ProblemStatement = () => {
   const [view, setView] = useState<ViewMode>('upload')
 
   return (
-    <>
-      <PageMetaData title="Communication Skills" />
-      {/* <AdminCreateProblem /> */}
-      {/* <AdminCreateChallenge/> */}
-      {/* <AdminSubmissionList/> */}
+    <AdminPage>
+      <PageMetaData title="Coding Problems" />
 
-      <div style={{ margin: '1rem', display: 'flex', gap: 8 }}>
-        <button
-          onClick={() => setView('upload')}
-          className={view === 'upload' ? 'btn btn-primary' : 'btn btn-outline-primary'}
-          type="button"
-        >
-          Upload Problems
-        </button>
-
-        <button
-          onClick={() => setView('solutions')}
-          className={view === 'solutions' ? 'btn btn-success' : 'btn btn-outline-success'}
-          type="button"
-        >
-          AI Solutions &amp; Tests
-        </button>
-      </div>
+      <PageHeader
+        icon={FaCode}
+        title="Coding Problems"
+        subtitle="Upload problem statements and verify them with AI-generated solutions"
+        actions={
+          <Tabs<ViewMode>
+            value={view}
+            onChange={setView}
+            items={[
+              { value: 'upload', label: 'Upload Problems', icon: FaFileExcel },
+              { value: 'solutions', label: 'AI Solutions & Tests', icon: FaRobot },
+            ]}
+          />
+        }
+      />
 
       {view === 'upload' ? <AdminProblemsUpload /> : <AdminSolutionRunner />}
-    </>
+
+      <style>{UPLOAD_CSS}</style>
+    </AdminPage>
   )
 }
 

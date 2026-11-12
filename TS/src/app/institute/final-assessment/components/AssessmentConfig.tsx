@@ -1088,7 +1088,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                 <QuestionListModal
                     show={!!viewRound}
                     onHide={() => { setViewRound(null); fetchQuestionCounts(); }}
-                    examId={examId}
+                    examId={examId || ''}
                     roundType={viewRound.type}
                     roundLabel={viewRound.label}
                     readOnly={(() => {

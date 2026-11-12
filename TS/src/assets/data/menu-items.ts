@@ -227,6 +227,7 @@ export const CATEGORY_MENU_ITEMS: MenuItemType[] = [
   },
 ]
 
+// Grouped so the sidebar stays short; every page keeps its own key and URL
 export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
   {
     key: 'dashboard',
@@ -250,22 +251,36 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'eklavadmin',
   },
   {
-    key: 'ticketManagement',
-    label: 'Ticket Management',
-    icon: BsTicketPerforated,
-    url: '/eklavadmin/ticket-management',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'successStories',
-    label: 'Success Stories',
-    icon: BsLightbulb,
-    url: '/eklavadmin/success-stories',
-    parentKey: 'eklavadmin',
+    key: 'supportGroup',
+    label: 'Support',
+    icon: BsChatDots,
+    children: [
+      {
+        key: 'ticketManagement',
+        label: 'Ticket Management',
+        icon: BsTicketPerforated,
+        url: '/eklavadmin/ticket-management',
+        parentKey: 'eklavadmin',
+      },
+      // {
+      //   key: 'admin',
+      //   label: 'Admin Chatbox',
+      //   icon: FaComments,
+      //   url: '/eklavadmin/admin-chatbox',
+      //   parentKey: 'eklavadmin',
+      // },
+      {
+        key: 'successStories',
+        label: 'Success Stories',
+        icon: BsTrophy,
+        url: '/eklavadmin/success-stories',
+        parentKey: 'eklavadmin',
+      },
+    ],
   },
   {
     key: 'courses',
-    label: 'Courses Details',
+    label: 'Courses',
     icon: BsBook,
     children: [
       {
@@ -273,6 +288,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         label: 'Courses List',
         icon: BsCardChecklist,
         url: '/eklavadmin/manage-course',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'adminreels',
+        label: 'Admin Reels',
+        icon: FaVideo,
+        url: '/eklavadmin/admin-reels',
         parentKey: 'eklavadmin',
       },
     ],
@@ -284,7 +306,7 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     children: [
       {
         key: 'aptitudeQuestionsUpload',
-        label: 'Aptitude Questions Upload',
+        label: 'Aptitude Questions',
         icon: BsCalculator,
         url: '/eklavadmin/aptitude-questions-upload',
         parentKey: 'eklavadmin',
@@ -306,36 +328,15 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
       {
         key: 'companyInterview',
         label: 'Company Interview',
-        icon: BsMic,
+        icon: BsBriefcase,
         url: '/eklavadmin/company-interview',
         parentKey: 'eklavadmin',
       },
     ],
   },
   {
-    key: 'otherActivities',
-    label: 'Other Activities',
-    icon: BsGrid,
-    children: [
-      {
-        key: 'onlineClasses',
-        label: 'Online Classes',
-        icon: FaVideo,
-        url: '/eklavadmin/online-classes',
-        parentKey: 'eklavadmin',
-      },
-      {
-        key: 'InterviewDetails',
-        label: 'Interview Details Upload',
-        icon: AiOutlineCloudUpload,
-        url: '/eklavadmin/admin-interview-details',
-        parentKey: 'eklavadmin',
-      },
-    ],
-  },
-  {
-    key: 'finalAssessmentActivities',
-    label: 'Final Assessment',
+    key: 'assessmentsGroup',
+    label: 'Assessments',
     icon: MdOutlineAssessment,
     children: [
       {
@@ -347,39 +348,46 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
       },
       {
         key: 'uploadAssessmentsDetails',
-        label: 'Assessments Details',
+        label: 'Assessment Results',
         icon: BsFileEarmarkArrowUp,
         url: '/eklavadmin/final-assessment-details',
         parentKey: 'eklavadmin',
       },
-    ],
-  },
-  {
-    key: 'lsrwContentActivities',
-    label: 'LSRW Content',
-    icon: BsChatSquareText,
-    children: [
       {
         key: 'lsrwListeningReadingContent',
-        label: 'Content Bank',
-        icon: AiOutlineCloudUpload,
+        label: 'LSRW Content Bank',
+        icon: BsChatSquareText,
         url: '/eklavadmin/lsrw-content',
         parentKey: 'eklavadmin',
       },
       {
         key: 'lsrwListeningReadingResults',
-        label: 'Listening & Reading Results',
-        icon: BsChatSquareText,
+        label: 'LSRW Results',
+        icon: BsClipboardCheck,
         url: '/eklavadmin/lsrw-submissions',
         parentKey: 'eklavadmin',
       },
     ],
   },
   {
-    key: 'announcementsAchievements',
-    label: 'Achievements',
-    icon: BsBellFill,
+    key: 'otherActivities',
+    label: 'Activities',
+    icon: BsGrid,
     children: [
+      // {
+      //   key: 'onlineClasses',
+      //   label: 'Online Classes',
+      //   icon: BsCameraVideo,
+      //   url: '/eklavadmin/online-classes',
+      //   parentKey: 'eklavadmin',
+      // },
+      {
+        key: 'InterviewDetails',
+        label: 'Interview Details Upload',
+        icon: AiOutlineCloudUpload,
+        url: '/eklavadmin/admin-interview-details',
+        parentKey: 'eklavadmin',
+      },
       {
         key: 'announcements',
         label: 'Achievements',
@@ -390,75 +398,76 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
     ],
   },
   {
-    key: 'admin',
-    label: 'Admin Chatbox',
-    icon: FaComments,
-    url: '/eklavadmin/admin-chatbox',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'instituteStudents',
-    label: 'Manage Institute Students',
-    icon: HiOutlineUserGroup,
-    url: '/eklavadmin/manage-institute-students',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'collegeDetails',
-    label: 'Add College Details',
+    key: 'institutesGroup',
+    label: 'Institutes & Colleges',
     icon: MdOutlineSchool,
-    url: '/eklavadmin/college-details',
-    parentKey: 'eklavadmin',
+    children: [
+      {
+        key: 'instituteDetails',
+        label: 'Institute Details',
+        icon: HiOutlineUserGroup,
+        url: '/eklavadmin/institute-details',
+        parentKey: 'eklavadmin',
+      },
+      // {
+      //   key: 'instituteStudents',
+      //   label: 'Institute Students',
+      //   icon: BsPeople,
+      //   url: '/eklavadmin/manage-institute-students',
+      //   parentKey: 'eklavadmin',
+      // },
+      {
+        key: 'collegeDetails',
+        label: 'College Details',
+        icon: MdOutlineSchool,
+        url: '/eklavadmin/college-details',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'hrDetails',
+        label: 'HR Management',
+        icon: BsBriefcase,
+        url: '/eklavadmin/hr-details',
+        parentKey: 'eklavadmin',
+      },
+    ],
   },
   {
-    key: 'instituteDetails',
-    label: 'Add Institute Details',
-    icon: HiOutlineUserGroup,
-    url: '/eklavadmin/institute-details',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'hrDetails',
-    label: 'HR Management',
-    icon: BsBriefcase,
-    url: '/eklavadmin/hr-details',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'adminreels',
-    label: 'Admin Reels Upload',
-    icon: FaVideo,
-    url: '/eklavadmin/admin-reels',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'couponManagement',
-    label: 'Manage Coupons',
-    icon: MdOutlineLocalOffer,
-    url: '/eklavadmin/coupon-management',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'modulePricing',
-    label: 'Module Pricing',
+    key: 'billingGroup',
+    label: 'Pricing & Offers',
     icon: MdOutlineCurrencyRupee,
-    url: '/eklavadmin/module-pricing',
-    parentKey: 'eklavadmin',
+    children: [
+      {
+        key: 'modulePricing',
+        label: 'Module Pricing',
+        icon: MdOutlineCurrencyRupee,
+        url: '/eklavadmin/module-pricing',
+        parentKey: 'eklavadmin',
+      },
+      {
+        key: 'couponManagement',
+        label: 'Coupons',
+        icon: MdOutlineLocalOffer,
+        url: '/eklavadmin/coupon-management',
+        parentKey: 'eklavadmin',
+      },
+    ],
   },
-  {
-    key: 'profile',
-    label: 'Edit Profile',
-    icon: BsPencilSquare,
-    url: '/eklavadmin/edit-profile',
-    parentKey: 'eklavadmin',
-  },
-  {
-    key: 'payout',
-    label: 'Payout',
-    icon: BsWallet2,
-    url: '/eklavadmin/payout',
-    parentKey: 'eklavadmin',
-  },
+  // Edit Profile and Payout are kept for later; uncomment to bring them back
+  // {
+  //   key: 'profile',
+  //   label: 'Edit Profile',
+  //   icon: BsPencilSquare,
+  //   url: '/eklavadmin/edit-profile',
+  //   parentKey: 'eklavadmin',
+  // },
+  // {
+  //   key: 'payout',
+  //   label: 'Payout',
+  //   icon: BsWallet2,
+  //   url: '/eklavadmin/payout',
+  //   parentKey: 'eklavadmin',
+  // },
 ]
 
 export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [

@@ -158,7 +158,7 @@ const SiteBannerUpload = () => {
   }
 
   return (
-    <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.1rem 1.25rem', marginTop: '1.5rem' }}>
+    <div style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.1rem 1.25rem' }}>
       {/* Banner / Events switch */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap' as const, gap: 10 }}>
         <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>Landing Page Hero Content</div>

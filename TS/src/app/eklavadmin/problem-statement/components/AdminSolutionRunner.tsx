@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Card, Button, Form, Alert, ProgressBar, Badge, InputGroup } from 'react-bootstrap'
-import { FaCheckCircle, FaTimesCircle, FaPlay, FaStop, FaSearch, FaStethoscope } from 'react-icons/fa'
+import {
+  FaCheckCircle, FaTimesCircle, FaPlay, FaStop, FaStethoscope, FaRobot, FaSpinner, FaExclamationTriangle,
+  FaTimes, FaCode, FaChevronLeft, FaChevronRight,
+} from 'react-icons/fa'
+import { SearchInput, EmptyState } from '@/components/admin-ui'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
 import DiagnoseModal from './DiagnoseModal'
@@ -59,7 +62,7 @@ const StatusIcon = ({
   return (
     <button
       type="button"
-      className="btn btn-sm btn-link p-0 border-0"
+      className="asr-lang-btn"
       onClick={() => onToggle(nextPassed)}
       title={
         untested
@@ -68,11 +71,11 @@ const StatusIcon = ({
       }
     >
       {untested ? (
-        <span className="text-muted">—</span>
+        <span className="is-none">—</span>
       ) : result!.passed ? (
-        <FaCheckCircle color="#22c55e" size={18} />
+        <FaCheckCircle color="#45dd75" size={16} />
       ) : (
-        <FaTimesCircle color="#ef4444" size={18} title={result!.error || 'Failed'} />
+        <FaTimesCircle color="#fb737a" size={16} title={result!.error || 'Failed'} />
       )}
     </button>
   )
@@ -288,189 +291,142 @@ const AdminSolutionRunner = () => {
       ? Math.round(((runStatus.processed || 0) / runStatus.total) * 100)
       : 0
 
+  const DIFF_BADGE: Record<string, string> = { Easy: 'aui-badge-green', Medium: 'aui-badge-amber', Hard: 'aui-badge-red' }
+
   return (
-    <Card className="border-0 shadow-sm">
-      <Card.Header className="fw-semibold bg-white border-bottom">
-        <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-          <span>AI Solutions &amp; Test Runner</span>
-          <div className="d-flex align-items-center gap-2">
-            {isRunning ? (
-              <Badge bg="primary">
-                <span
-                  className="spinner-border spinner-border-sm me-2"
-                  role="status"
-                  aria-hidden="true"
-                  style={{ width: '0.7rem', height: '0.7rem' }}
-                />
-                Running {runStatus.processed || 0}/{runStatus.total || 0} ({progressPct}%)
-              </Badge>
-            ) : (
-              <Badge bg="secondary">Idle</Badge>
-            )}
-            <Badge bg="danger">{failedCount} failed</Badge>
-            <Badge bg="success">{passedCount} passed</Badge>
-            <Badge bg="light" text="dark">{untestedCount} not run</Badge>
-            <Badge bg="secondary">{problems.length} total</Badge>
+    <div className="aui-card">
+      <div className="aui-toolbar">
+        <div className="asr-title">
+          <span className="asr-title-icon"><FaRobot /></span>
+          <div className="aui-toolbar-title">
+            <h3>
+              AI Solutions &amp; Tests
+              {isRunning
+                ? <span className="aui-badge aui-badge-blue asr-state"><FaSpinner className="aui-spin" size={9} style={{ color: 'inherit' }} /> Running · {progressPct}%</span>
+                : <span className="aui-badge aui-badge-muted asr-state">Idle</span>}
+            </h3>
+            <p>Generate a reference solution per problem and check it against the test cases</p>
           </div>
         </div>
-      </Card.Header>
+        <div className="asr-counts">
+          <span className="asr-count is-red"><b>{failedCount}</b> failed</span>
+          <span className="asr-count is-green"><b>{passedCount}</b> passed</span>
+          <span className="asr-count"><b>{untestedCount}</b> not run</span>
+          <span className="asr-count"><b>{problems.length}</b> total</span>
+        </div>
+      </div>
 
-      <Card.Body>
-        {error && (
-          <Alert variant="danger" onClose={() => setError('')} dismissible>
-            {error}
-          </Alert>
-        )}
-
-        <div className="d-flex flex-wrap align-items-center gap-3 mb-3">
-          <Button variant="primary" onClick={handleRunTests} disabled={isRunning || loading}>
-            <FaPlay className="me-2" />
-            {isRunning ? 'Running...' : `Run Batch ${page}`}
-          </Button>
-
-          {isRunning && (
-            <Button variant="outline-danger" onClick={handleStopTests}>
-              <FaStop className="me-2" />
-              Stop
-            </Button>
+      <div className="asr-controls">
+        <div className="asr-run">
+          {isRunning ? (
+            <button type="button" className="aui-btn aui-btn-danger" onClick={handleStopTests}>
+              <FaStop size={10} /> Stop run
+            </button>
+          ) : (
+            <button type="button" className="aui-btn aui-btn-primary" onClick={handleRunTests} disabled={loading}>
+              {loading ? <FaSpinner className="aui-spin" style={{ color: '#fff' }} /> : <FaPlay size={10} />} Run Batch {page}
+            </button>
           )}
-
-          <Form.Check
-            type="checkbox"
-            id="force-regenerate"
-            label="Force regenerate all solutions"
-            checked={forceRegenerate}
-            onChange={(e) => setForceRegenerate(e.target.checked)}
-            disabled={isRunning}
-          />
-
-          <InputGroup style={{ maxWidth: 300 }} className="ms-auto">
-            <InputGroup.Text>
-              <FaSearch />
-            </InputGroup.Text>
-            <Form.Control
-              placeholder="Search problems..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
-            />
-          </InputGroup>
+          <label className="aui-toggle asr-force" title="Regenerate solutions even for problems that already have one">
+            <input type="checkbox" checked={forceRegenerate} onChange={(e) => setForceRegenerate(e.target.checked)} disabled={isRunning} />
+            <span className="aui-toggle-track" />
+            <span>Force regenerate</span>
+          </label>
         </div>
+        <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1) }} placeholder="Search problems…" />
+      </div>
 
-        {(isRunning || runStatus.status === 'done' || runStatus.status === 'error') && (
-          <div className="mb-3">
-            <div className="d-flex justify-content-between mb-1">
-              <small className="text-muted">
-                {isRunning
-                  ? `Processing ${runStatus.processed || 0} / ${runStatus.total || 0}${runStatus.batchNumber ? ` (Batch ${runStatus.batchNumber})` : ''}`
-                  : `Last run: ${runStatus.passed || 0} passed, ${runStatus.failed || 0} failed${runStatus.batchNumber ? ` (Batch ${runStatus.batchNumber})` : ''}`}
-              </small>
-              {isRunning && <small className="text-muted">{progressPct}%</small>}
-            </div>
-            <ProgressBar
-              now={isRunning ? progressPct : 100}
-              variant={runStatus.status === 'error' ? 'danger' : 'primary'}
-              animated={isRunning}
-              striped={isRunning}
-            />
-            {runStatus.status === 'error' && (
-              <small className="text-danger">{runStatus.error}</small>
-            )}
+      {(isRunning || runStatus.status === 'done' || runStatus.status === 'error' || runStatus.status === 'stopped') && (
+        <div className={`asr-progress${runStatus.status === 'error' ? ' is-error' : ''}`}>
+          <div className="asr-progress-head">
+            <span>
+              {isRunning
+                ? <>Processing <b>{runStatus.processed || 0}</b> of <b>{runStatus.total || 0}</b>{runStatus.batchNumber ? ` · batch ${runStatus.batchNumber}` : ''}</>
+                : <>Last run{runStatus.batchNumber ? ` (batch ${runStatus.batchNumber})` : ''}: <b className="is-green">{runStatus.passed || 0} passed</b> · <b className="is-red">{runStatus.failed || 0} failed</b>{runStatus.status === 'stopped' ? ' · stopped' : ''}</>}
+            </span>
+            {isRunning && <b>{progressPct}%</b>}
           </div>
-        )}
+          <div className="asr-progress-track"><span style={{ width: `${isRunning ? progressPct : 100}%` }} className={isRunning ? 'is-running' : ''} /></div>
+          {runStatus.status === 'error' && runStatus.error && <p className="aui-error">{runStatus.error}</p>}
+        </div>
+      )}
 
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Problem</th>
-                <th className="text-center">Java</th>
-                <th className="text-center">JavaScript</th>
-                <th className="text-center">Python</th>
-                <th className="text-center">Status</th>
-                <th className="text-center">Fix</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pageRows.map((p) => {
-                const status = overallStatus(p)
-                return (
-                  <tr key={p._id}>
-                    <td>{p.title}</td>
-                    {LANGUAGES.map((l) => (
-                      <td key={l.key} className="text-center">
-                        <StatusIcon
-                          result={p.testResults?.[l.key]}
-                          onToggle={(nextPassed) => handleToggleStatus(p._id, l.key, nextPassed)}
-                        />
-                      </td>
-                    ))}
-                    <td className="text-center">
-                      <button
-                        type="button"
-                        className="btn btn-sm p-0 border-0 bg-transparent"
-                        onClick={() => handleToggleOverallStatus(p._id, status !== 'pass')}
-                        title={status === 'pass' ? 'Click to mark all languages Failed' : 'Click to mark all languages Passed'}
-                      >
-                        {status === 'pass' && <Badge bg="success">Pass</Badge>}
-                        {status === 'fail' && <Badge bg="danger">Failed</Badge>}
-                        {status === 'untested' && <Badge bg="secondary">Not run</Badge>}
-                      </button>
-                    </td>
-                    <td className="text-center">
-                      <Button
-                        variant="outline-primary"
-                        size="sm"
-                        title="Diagnose &amp; propose a fix (test data or solution) — review before it's applied"
-                        onClick={() => setDiagnoseTarget({ id: p._id, title: p.title })}
-                      >
-                        <FaStethoscope className="me-1" />
-                        Diagnose
-                      </Button>
-                    </td>
-                  </tr>
-                )
-              })}
-              {pageRows.length === 0 && (
+      {error && (
+        <div className="aui-alert asr-alert"><FaExclamationTriangle /> <span>{error}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+
+      {pageRows.length === 0 ? (
+        <EmptyState icon={FaCode} title={problems.length ? 'No problems match' : 'No problems yet'} text={problems.length ? 'Try a different search.' : 'Upload problems first, then run the tests here.'} />
+      ) : (
+        <>
+          <div className="aui-table-scroll">
+            <table className="aui-table asr-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} className="text-center text-muted py-4">
-                    No problems found.
-                  </td>
+                  <th style={{ width: 52 }}>#</th>
+                  <th>Problem</th>
+                  {LANGUAGES.map(l => <th key={l.key} className="text-center" style={{ width: 96 }}>{l.label}</th>)}
+                  <th className="text-center" style={{ width: 110 }}>Status</th>
+                  <th className="text-end" style={{ width: 130 }}>Fix</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="d-flex justify-content-between align-items-center mt-3">
-            <small className="text-muted">
-              Batch {page} of {totalPages} — showing {(page - 1) * PER_PAGE + 1}
-              -{Math.min(page * PER_PAGE, filtered.length)} of {filtered.length} problems
-            </small>
-            <div className="d-flex gap-2">
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline-secondary"
-                size="sm"
-                disabled={page >= totalPages}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Next
-              </Button>
+              </thead>
+              <tbody>
+                {pageRows.map((p, i) => {
+                  const status = overallStatus(p)
+                  return (
+                    <tr key={p._id} className={status === 'fail' ? 'is-failed' : ''}>
+                      <td className="aui-num">{(page - 1) * PER_PAGE + i + 1}</td>
+                      <td>
+                        <div className="asr-problem">
+                          <strong title={p.title}>{p.title}</strong>
+                          {p.difficulty && <span className={`aui-badge ${DIFF_BADGE[p.difficulty] || 'aui-badge-muted'}`}>{p.difficulty}</span>}
+                        </div>
+                      </td>
+                      {LANGUAGES.map((l) => (
+                        <td key={l.key} className="text-center">
+                          <StatusIcon result={p.testResults?.[l.key]} onToggle={(nextPassed) => handleToggleStatus(p._id, l.key, nextPassed)} />
+                        </td>
+                      ))}
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          className="asr-status-btn"
+                          onClick={() => handleToggleOverallStatus(p._id, status !== 'pass')}
+                          title={status === 'pass' ? 'Click to mark all languages Failed' : 'Click to mark all languages Passed'}
+                        >
+                          {status === 'pass' && <span className="aui-badge aui-badge-dot aui-badge-green">Pass</span>}
+                          {status === 'fail' && <span className="aui-badge aui-badge-dot aui-badge-red">Failed</span>}
+                          {status === 'untested' && <span className="aui-badge aui-badge-muted">Not run</span>}
+                        </button>
+                      </td>
+                      <td className="text-end">
+                        <button
+                          type="button"
+                          className={`aui-btn aui-btn-sm${status === 'fail' ? ' aui-btn-soft' : ''}`}
+                          title="Diagnose & propose a fix (test data or solution) — review before it's applied"
+                          onClick={() => setDiagnoseTarget({ id: p._id, title: p.title })}
+                        >
+                          <FaStethoscope size={11} /> Diagnose
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Each page is one run batch, so the footer doubles as the batch picker */}
+          <div className="aui-footer">
+            <span>Batch <b>{page}</b> of <b>{totalPages}</b> · showing <b>{(page - 1) * PER_PAGE + 1}</b>–<b>{Math.min(page * PER_PAGE, filtered.length)}</b> of <b>{filtered.length}</b> problems</span>
+            <div className="aui-pages">
+              <button type="button" className="aui-page-btn" disabled={page <= 1 || isRunning} onClick={() => setPage((p) => p - 1)} aria-label="Previous batch"><FaChevronLeft /></button>
+              <button type="button" className="aui-page-btn" disabled={page >= totalPages || isRunning} onClick={() => setPage((p) => p + 1)} aria-label="Next batch"><FaChevronRight /></button>
             </div>
           </div>
-        )}
-      </Card.Body>
+        </>
+      )}
 
       <DiagnoseModal
         show={diagnoseTarget !== null}
@@ -479,7 +435,40 @@ const AdminSolutionRunner = () => {
         problemTitle={diagnoseTarget?.title || ''}
         onApplied={fetchReport}
       />
-    </Card>
+
+      <style>{`
+        .asr-title { display: flex; align-items: center; gap: 12px; }
+        .asr-title-icon { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid rgba(255,122,0,0.3); border-radius: 10px; background: rgba(255,122,0,0.1); color: #ff9a3c; font-size: 0.95rem; }
+        .asr-state { margin-left: 8px; vertical-align: 2px; }
+        .asr-counts { display: flex; flex-wrap: wrap; gap: 6px; }
+        .asr-count { padding: 4px 11px; border: 1px solid #2c3034; border-radius: 99px; background: #17191c; color: #9da2a8; font-size: 0.72rem; }
+        .asr-count b { color: #eceef0; }
+        .asr-count.is-red b { color: #fb737a; }
+        .asr-count.is-green b { color: #45dd75; }
+        .asr-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.75rem 0.85rem; border-bottom: 1px solid #25282b; }
+        .asr-run { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .asr-force { align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: #c3c7ca; font-size: 0.8rem; }
+        .asr-force .aui-toggle-track { margin-top: 0; }
+        .asr-progress { padding: 0.75rem 0.85rem; border-bottom: 1px solid #25282b; background: rgba(56,189,248,0.04); }
+        .asr-progress.is-error { background: rgba(251,95,103,0.05); }
+        .asr-progress-head { display: flex; justify-content: space-between; margin-bottom: 6px; color: #a6abb0; font-size: 0.78rem; }
+        .asr-progress-head b { color: #eceef0; }
+        .asr-progress-head b.is-green { color: #45dd75; }
+        .asr-progress-head b.is-red { color: #fb737a; }
+        .asr-progress-track { height: 7px; overflow: hidden; border-radius: 99px; background: #23262a; }
+        .asr-progress-track span { display: block; height: 100%; border-radius: 99px; background: #4b5056; transition: width 0.4s ease; }
+        .asr-progress-track span.is-running { background: linear-gradient(90deg, #38bdf8, #7dd3fc); }
+        .asr-progress .aui-error { margin-top: 6px; }
+        .asr-alert { margin: 0.85rem !important; }
+        .asr-table tbody tr.is-failed { background: rgba(251,95,103,0.04); }
+        .asr-problem { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .asr-problem strong { overflow: hidden; color: #eceef0; font-size: 0.82rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; max-width: 520px; }
+        .asr-status-btn { padding: 0; border: 0; background: none; cursor: pointer; }
+        .asr-lang-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 1px solid transparent; border-radius: 8px; background: none; cursor: pointer; transition: background 0.15s, border-color 0.15s; }
+        .asr-lang-btn:hover { border-color: #34383d; background: #1b1e21; }
+        .asr-lang-btn .is-none { color: #4b5056; font-weight: 700; }
+      `}</style>
+    </div>
   )
 }
 

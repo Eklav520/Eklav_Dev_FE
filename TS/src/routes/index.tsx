@@ -94,8 +94,9 @@ const TicketManagement = lazy(() => import('@/app/eklavadmin/ticket-management/p
 const SuccessStories = lazy(() => import('@/app/eklavadmin/success-stories/page'))
 const Orders = lazy(() => import('@/app/eklavadmin/order/page'))
 const InstructorReviews = lazy(() => import('@/app/eklavadmin/review/page'))
-const Payout = lazy(() => import('@/app/eklavadmin/payout/page'))
-const EditProfile = lazy(() => import('@/app/eklavadmin/edit-profile/page'))
+// Kept for later (Payout, Edit Profile); uncomment with their routes below
+// const Payout = lazy(() => import('@/app/eklavadmin/payout/page'))
+// const EditProfile = lazy(() => import('@/app/eklavadmin/edit-profile/page'))
 const Settings = lazy(() => import('@/app/eklavadmin/setting/page'))
 const DeleteAccount = lazy(() => import('@/app/eklavadmin/delete-account/page'))
 const MockInterview = lazy(() => import('@/app/eklavadmin/course-resume/page'))
@@ -105,17 +106,20 @@ const ProblemStatementScore = lazy(() => import('@/app/eklavadmin/dailyChallenge
 const AdminSelfInterview = lazy(() => import('@/app/eklavadmin/self-interview/page'))
 const AdminCompanyInterview = lazy(() => import('@/app/eklavadmin/company-interviews/page'))
 const AdminInterviewDetails = lazy(() => import('@/app/eklavadmin/interview-details/page'))
-const ScheduleOnlineClasses = lazy(() => import('@/app/eklavadmin/online-classes/page'))
+// Parked for later (Eklav admin Online Classes); uncomment with its route below
+// const ScheduleOnlineClasses = lazy(() => import('@/app/eklavadmin/online-classes/page'))
 const AptitudeQuestionsUpload = lazy(() => import('@/app/eklavadmin/aptitudeQuestionsUpload/page'))
 const SelfInterviewEvaluation = lazy(() => import('@/app/eklavadmin/self-interview-evaluation/page'))
 const StudentQuizResult = lazy(() => import('@/app/eklavadmin/studentQuizresult/page'))
-const AdminChatbox = lazy(() => import('@/app/eklavadmin/adminChatPanel/page'))
+// Parked for later (Admin Chatbox); uncomment with its route below
+// const AdminChatbox = lazy(() => import('@/app/eklavadmin/adminChatPanel/page'))
 const AdminReelsUpload = lazy(() => import('@/app/eklavadmin/adminReelsUpload/page'))
 const AdminCollegeDetails = lazy(() => import('@/app/eklavadmin/collegeDetails/pages'))
 const AdminCouponManagement = lazy(() => import('@/app/eklavadmin/couponManagement/pages'))
 const AdminModulePricing = lazy(() => import('@/app/eklavadmin/module-pricing/page'))
 const AddInstitute = lazy(() => import('@/app/eklavadmin/instituteDetails/pages'))
-const ManageInstituteStudents = lazy(() => import('@/app/eklavadmin/institute-details/page'))
+// Parked for later (Manage Institute Students); uncomment with its route below
+// const ManageInstituteStudents = lazy(() => import('@/app/eklavadmin/institute-details/page'))
 const HRDetailsPage = lazy(() => import('@/app/eklavadmin/hr-details/page'))
 const AnnouncementsAdminPage = lazy(() => import('@/app/institute/announcements/page'))
 
@@ -633,11 +637,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Students Quiz Result',
     element: <StudentQuizResult />,
   },
-  {
-    path: '/eklavadmin/online-classes',
-    name: 'Schedule OnlineClasses',
-    element: <ScheduleOnlineClasses />,
-  },
+  // {
+  //   path: '/eklavadmin/online-classes',
+  //   name: 'Schedule OnlineClasses',
+  //   element: <ScheduleOnlineClasses />,
+  // },
   {
     path: '/eklavadmin/order',
     name: 'Orders',
@@ -648,16 +652,16 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Reviews',
     element: <InstructorReviews />,
   },
-  {
-    path: '/eklavadmin/payout',
-    name: 'Payout',
-    element: <Payout />,
-  },
-  {
-    path: '/eklavadmin/edit-profile',
-    name: 'Edit Profile',
-    element: <EditProfile />,
-  },
+  // {
+  //   path: '/eklavadmin/payout',
+  //   name: 'Payout',
+  //   element: <Payout />,
+  // },
+  // {
+  //   path: '/eklavadmin/edit-profile',
+  //   name: 'Edit Profile',
+  //   element: <EditProfile />,
+  // },
   {
     path: '/eklavadmin/setting',
     name: 'Settings',
@@ -728,21 +732,21 @@ export const EklavAdminRoutes: RoutesProps[] = [
     name: 'Add Institute',
     element: <AddInstitute />,
   },
-  {
-    path: '/eklavadmin/manage-institute-students',
-    name: 'Manage Institute Students',
-    element: <ManageInstituteStudents />,
-  },
+  // {
+  //   path: '/eklavadmin/manage-institute-students',
+  //   name: 'Manage Institute Students',
+  //   element: <ManageInstituteStudents />,
+  // },
   {
     path: '/eklavadmin/hr-details',
     name: 'HR Management',
     element: <HRDetailsPage />,
   },
-  {
-    path: '/eklavadmin/admin-chatbox',
-    name: 'Admin Chatbox',
-    element: <AdminChatbox />,
-  },
+  // {
+  //   path: '/eklavadmin/admin-chatbox',
+  //   name: 'Admin Chatbox',
+  //   element: <AdminChatbox />,
+  // },
   {
     path: '/eklavadmin/admin-reels',
     name: 'Admin Reels',

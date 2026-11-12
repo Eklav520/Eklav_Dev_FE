@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Modal, Spinner, Form, Alert } from 'react-bootstrap'
-import { FaBuilding, FaGlobe, FaLock, FaUnlock } from 'react-icons/fa'
+import { Modal } from 'react-bootstrap'
+import { FaBuilding, FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaLock, FaSpinner, FaTimes, FaUnlock } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import { SearchInput, Tabs, EmptyState } from '@/components/admin-ui'
 
 interface Institute {
   _id: string
@@ -25,6 +26,8 @@ interface Props {
   onUpdated: (courseId: string, allowedInstitutes: string[]) => void
 }
 
+type AccessFilter = 'all' | 'granted' | 'none'
+
 const InstituteAccessModal = ({ show, course, onHide, onUpdated }: Props) => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -32,14 +35,17 @@ const InstituteAccessModal = ({ show, course, onHide, onUpdated }: Props) => {
   const [institutes, setInstitutes]     = useState<Institute[]>([])
   const [allowed, setAllowed]           = useState<Set<string>>(new Set())
   const [loading, setLoading]           = useState(false)
-  const [toggling, setToggling]         = useState<string | null>(null)
+  const [toggling, setToggling]         = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy]         = useState(false)
   const [error, setError]               = useState('')
   const [search, setSearch]             = useState('')
+  const [filter, setFilter]             = useState<AccessFilter>('all')
 
   useEffect(() => {
     if (!show) return
     setError('')
     setSearch('')
+    setFilter('all')
 
     // Seed current allowed list from course prop
     setAllowed(new Set(course?.allowedInstitutes ?? []))
@@ -56,193 +62,174 @@ const InstituteAccessModal = ({ show, course, onHide, onUpdated }: Props) => {
       .finally(() => setLoading(false))
   }, [show, course?._id])
 
-  const toggle = async (institute: Institute) => {
+  // One grant/revoke call — same endpoint as before
+  const setAccess = async (institute: Institute, grant: boolean) => {
     if (!course) return
-    const isGranted = allowed.has(institute._id)
-    const action = isGranted ? 'revoke' : 'grant'
-
-    setToggling(institute._id)
+    setToggling(prev => new Set(prev).add(institute._id))
     try {
       const res = await fetch(`${baseURL}/courses/${course._id}/institute-access`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
-        body: JSON.stringify({ action, instituteId: institute._id }),
+        body: JSON.stringify({ action: grant ? 'grant' : 'revoke', instituteId: institute._id }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Failed')
 
-      const newAllowed = new Set(data.allowedInstitutes as string[])
-      setAllowed(newAllowed)
+      setAllowed(new Set(data.allowedInstitutes as string[]))
       onUpdated(course._id, data.allowedInstitutes)
     } catch (err: any) {
-      setError(err.message || 'Something went wrong')
+      setError(`${institute.name}: ${err.message || 'Something went wrong'}`)
     } finally {
-      setToggling(null)
+      setToggling(prev => { const next = new Set(prev); next.delete(institute._id); return next })
     }
   }
 
-  const filtered = institutes.filter(
-    (i) =>
-      i.name.toLowerCase().includes(search.toLowerCase()) ||
-      i.domain.toLowerCase().includes(search.toLowerCase())
-  )
+  const q = search.trim().toLowerCase()
+  const searched = institutes.filter((i) => !q || i.name.toLowerCase().includes(q) || i.domain.toLowerCase().includes(q))
+  const shown = searched.filter((i) =>
+    filter === 'all' ? true : filter === 'granted' ? allowed.has(i._id) : !allowed.has(i._id))
 
-  const grantedCount = filtered.filter((i) => allowed.has(i._id)).length
+  const grantedTotal = institutes.filter((i) => allowed.has(i._id)).length
+
+  // Bulk: one call per institute that needs to change, in order
+  const setAccessForShown = async (grant: boolean) => {
+    const targets = shown.filter((i) => allowed.has(i._id) !== grant)
+    if (!targets.length) return
+    setBulkBusy(true)
+    setError('')
+    for (const inst of targets) await setAccess(inst, grant)
+    setBulkBusy(false)
+  }
+  const canGrantShown = shown.some((i) => !allowed.has(i._id))
+  const canRevokeShown = shown.some((i) => allowed.has(i._id))
 
   return (
-    <Modal show={show} onHide={onHide} size="lg" contentClassName="bg-dark text-white" centered>
-      <Modal.Header closeButton closeVariant="white" style={{ borderColor: '#2a2a2a' }}>
-        <Modal.Title style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <FaBuilding style={{ color: '#ff7a00' }} />
-          Institute Access
-          {course && (
-            <span style={{ color: '#ff7a00', fontWeight: 700, marginLeft: 4 }}>— {course.title}</span>
-          )}
-        </Modal.Title>
-      </Modal.Header>
-
-      <Modal.Body style={{ padding: '20px 24px' }}>
-
-        {/* Info banner */}
-        <div
-          style={{
-            background: 'rgba(255,122,0,0.07)', border: '1px solid rgba(255,122,0,0.2)',
-            borderRadius: 10, padding: '12px 16px', marginBottom: 20,
-            fontSize: '0.82rem', color: '#ccc', display: 'flex', gap: 10, alignItems: 'flex-start',
-          }}
-        >
-          <FaGlobe style={{ color: '#ff7a00', marginTop: 2, flexShrink: 0 }} />
+    <Modal show={show} onHide={() => !bulkBusy && onHide()} size="lg" centered scrollable contentClassName="aui-modal" backdropClassName="aui-backdrop">
+      <div className="aui-page iam">
+        <div className="aui-modal-head">
+          <span className="aui-heading-icon"><FaBuilding /></span>
           <div>
-            Toggle access per institute. Students of granted institutes can
-            <strong style={{ color: '#fff' }}> see and enroll</strong> in this course from their portal.
-            Changes take effect immediately.
+            <h3>Institute Access</h3>
+            <p>{course?.title}</p>
+          </div>
+          <span className={`aui-badge ${grantedTotal ? 'aui-badge-green' : 'aui-badge-muted'}`}>
+            {grantedTotal} / {institutes.length} granted
+          </span>
+          <button type="button" className="aui-icon-btn" onClick={onHide} disabled={bulkBusy} aria-label="Close"><FaTimes size={12} /></button>
+        </div>
+
+        <div className="iam-toolbar">
+          <p className="iam-note"><FaInfoCircle /> Students of granted institutes can <b>see and enroll</b> in this course from their portal. Changes save instantly.</p>
+          <div className="iam-controls">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search name or domain…" />
+            <Tabs<AccessFilter>
+              small
+              label="Access filter"
+              value={filter}
+              onChange={setFilter}
+              items={[
+                { value: 'all', label: 'All', count: searched.length },
+                { value: 'granted', label: 'Granted', count: searched.filter((i) => allowed.has(i._id)).length },
+                { value: 'none', label: 'No access', count: searched.filter((i) => !allowed.has(i._id)).length },
+              ]}
+            />
           </div>
         </div>
 
-        {/* Search + stats */}
-        <div className="d-flex gap-3 align-items-center mb-3">
-          <input
-            type="search"
-            placeholder="Search by name or domain..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1, background: '#111', border: '1px solid #333', color: '#e2e8f0',
-              borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem', outline: 'none',
-            }}
-          />
-          <div style={{ fontSize: '0.75rem', color: '#888', whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#22c55e', fontWeight: 700 }}>{grantedCount}</span>
-            {' '}/ {filtered.length} granted
-          </div>
-        </div>
+        <div className="aui-modal-body iam-body">
+          {error && (
+            <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span>
+              <button type="button" className="aui-alert-close" onClick={() => setError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+            </div>
+          )}
 
-        {error && (
-          <Alert variant="danger" className="py-2 mb-3" style={{ fontSize: '0.82rem' }}>
-            {error}
-          </Alert>
-        )}
-
-        {loading ? (
-          <div className="text-center py-5">
-            <Spinner variant="warning" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center text-muted py-4" style={{ fontSize: '0.85rem' }}>
-            {search ? 'No institutes match your search.' : 'No institutes found.'}
-          </div>
-        ) : (
-          <div style={{ maxHeight: 420, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {filtered.map((inst) => {
-              const isGranted = allowed.has(inst._id)
-              const isToggling = toggling === inst._id
-
-              return (
-                <div
-                  key={inst._id}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    background: isGranted ? 'rgba(34,197,94,0.06)' : '#111',
-                    border: `1px solid ${isGranted ? 'rgba(34,197,94,0.25)' : '#222'}`,
-                    borderRadius: 10, padding: '12px 16px',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {/* Logo / Avatar */}
-                  <div
-                    style={{
-                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                      background: '#1a1a1a', border: '1px solid #2a2a2a',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {inst.logo ? (
-                      <img src={inst.logo} alt={inst.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <span style={{ color: '#ff7a00', fontWeight: 700, fontSize: '0.9rem' }}>
-                        {inst.name.slice(0, 2).toUpperCase()}
+          {loading ? (
+            <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading institutes…</div>
+          ) : shown.length === 0 ? (
+            <EmptyState
+              icon={FaBuilding}
+              title={institutes.length ? 'No institutes match' : 'No institutes yet'}
+              text={institutes.length ? 'Try a different search or filter.' : 'Add institutes first, then share courses with them.'}
+            />
+          ) : (
+            <div className="iam-list">
+              {shown.map((inst) => {
+                const isGranted = allowed.has(inst._id)
+                const busy = toggling.has(inst._id)
+                return (
+                  <div key={inst._id} className={`iam-row${isGranted ? ' is-granted' : ''}`}>
+                    <span className="iam-logo">
+                      {inst.logo ? <img src={inst.logo} alt="" /> : inst.name.slice(0, 2).toUpperCase()}
+                    </span>
+                    <div className="aui-stack iam-name">
+                      <strong>{inst.name}</strong>
+                      <small>{inst.domain}</small>
+                    </div>
+                    <span className={`aui-badge aui-badge-dot ${inst.status === 'active' ? 'aui-badge-green' : 'aui-badge-muted'}`}>
+                      {inst.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                    <label className="aui-toggle iam-switch" title={isGranted ? 'Revoke access' : 'Grant access'}>
+                      <input type="checkbox" checked={isGranted} disabled={busy || bulkBusy} onChange={() => setAccess(inst, !isGranted)} aria-label={`${isGranted ? 'Revoke' : 'Grant'} access for ${inst.name}`} />
+                      <span className="aui-toggle-track" />
+                      <span className={`iam-state${isGranted ? ' is-on' : ''}`}>
+                        {busy ? <FaSpinner className="aui-spin" /> : isGranted ? <FaUnlock /> : <FaLock />}
+                        {isGranted ? 'Granted' : 'No access'}
                       </span>
-                    )}
+                    </label>
                   </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.88rem' }}>
-                      {inst.name}
-                    </div>
-                    <div style={{ color: '#666', fontSize: '0.72rem', marginTop: 2 }}>
-                      {inst.domain}
-                    </div>
-                  </div>
-
-                  {/* Status pill */}
-                  <div
-                    style={{
-                      fontSize: '0.65rem', fontWeight: 700, padding: '2px 9px',
-                      borderRadius: 20,
-                      background: inst.status === 'active' ? 'rgba(34,197,94,0.12)' : 'rgba(107,114,128,0.12)',
-                      color: inst.status === 'active' ? '#22c55e' : '#6b7280',
-                      border: `1px solid ${inst.status === 'active' ? 'rgba(34,197,94,0.25)' : 'rgba(107,114,128,0.25)'}`,
-                    }}
-                  >
-                    {inst.status}
-                  </div>
-
-                  {/* Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    {isToggling ? (
-                      <Spinner size="sm" variant="warning" />
-                    ) : (
-                      <>
-                        <span style={{ fontSize: '0.72rem', color: isGranted ? '#22c55e' : '#555' }}>
-                          {isGranted ? (
-                            <><FaUnlock style={{ marginRight: 4 }} />Access granted</>
-                          ) : (
-                            <><FaLock style={{ marginRight: 4 }} />No access</>
-                          )}
-                        </span>
-                        <Form.Check
-                          type="switch"
-                          checked={isGranted}
-                          onChange={() => toggle(inst)}
-                          style={{ transform: 'scale(1.1)' }}
-                        />
-                      </>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
+        <div className="aui-modal-foot iam-foot">
+          <div className="iam-bulk">
+            <button type="button" className="aui-btn aui-btn-sm" onClick={() => setAccessForShown(true)} disabled={bulkBusy || loading || !canGrantShown}>
+              <FaUnlock size={10} /> Grant all shown
+            </button>
+            <button type="button" className="aui-btn aui-btn-sm" onClick={() => setAccessForShown(false)} disabled={bulkBusy || loading || !canRevokeShown}>
+              <FaLock size={10} /> Revoke all shown
+            </button>
+            {bulkBusy && <span className="aui-hint"><FaSpinner className="aui-spin" /> Updating…</span>}
           </div>
-        )}
-      </Modal.Body>
+          <button type="button" className="aui-btn aui-btn-primary" onClick={onHide} disabled={bulkBusy}>
+            <FaCheckCircle size={11} /> Done
+          </button>
+        </div>
+      </div>
 
-      <Modal.Footer style={{ borderColor: '#2a2a2a', justifyContent: 'flex-start' }}>
-        <span style={{ fontSize: '0.75rem', color: '#666' }}>
-          {allowed.size} institute{allowed.size !== 1 ? 's' : ''} have access to this course
-        </span>
-      </Modal.Footer>
+      <style>{`
+        .iam { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 3.5rem); }
+        .iam .aui-modal-head > .aui-badge { flex-shrink: 0; }
+        .iam-toolbar { padding: 0.9rem 1.25rem 0.75rem; border-bottom: 1px solid #25282b; }
+        .iam-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 0.75rem; color: #a6abb0; font-size: 0.78rem; line-height: 1.5; }
+        .iam-note svg { flex: 0 0 auto; margin-top: 3px; color: #ff9a3c; }
+        .iam-note b { color: #eceef0; }
+        .iam-controls { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+        .iam-controls .aui-search { flex: 1 1 220px; width: auto; }
+        .iam-body { padding: 0.75rem 1.25rem 1rem; }
+        .iam-body .aui-alert { margin-bottom: 0.75rem; }
+        .iam-list { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #25282b; border-radius: 12px; }
+        .iam-row { display: flex; align-items: center; gap: 12px; padding: 0.7rem 0.9rem; border-bottom: 1px solid #202326; transition: background 0.15s; }
+        .iam-row:last-child { border-bottom: 0; }
+        .iam-row:hover { background: #15171a; }
+        .iam-row.is-granted { background: rgba(49, 216, 102, 0.05); }
+        .iam-logo { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; overflow: hidden; border: 1px solid #2c3034; border-radius: 10px; background: #1b1e21; color: #ff9a3c; font-size: 0.78rem; font-weight: 800; }
+        .iam-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .iam-name { flex: 1; }
+        .iam-switch { align-items: center; gap: 10px; width: 138px; flex: 0 0 138px; padding: 0; border: 0; background: none; }
+        .iam-switch .aui-toggle-track { margin-top: 0; }
+        .iam-state { display: inline-flex; align-items: center; gap: 5px; color: #858a90; font-size: 0.74rem; font-weight: 650; }
+        .iam-state.is-on { color: #45dd75; }
+        .iam-foot { justify-content: space-between; }
+        .iam-bulk { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .iam-bulk .aui-hint { display: inline-flex; align-items: center; gap: 6px; }
+        @media (max-width: 575.98px) {
+          .iam-row { flex-wrap: wrap; }
+          .iam-switch { width: auto; flex: 1 0 100%; padding-left: 50px; }
+        }
+      `}</style>
     </Modal>
   )
 }

@@ -1,14 +1,16 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import axios from 'axios'
 import CryptoJS from 'crypto-js'
-import { Modal, Form, Spinner, Alert } from 'react-bootstrap'
+import { Modal } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
 import {
-  FaBriefcase, FaPlus, FaSearch, FaUser, FaEnvelope, FaLock,
-  FaPhone, FaBuilding, FaTrashAlt, FaUserTie,
+  FaBriefcase, FaPlus, FaTrashAlt, FaUserTie, FaSpinner, FaSyncAlt, FaTimes,
+  FaCheckCircle, FaExclamationTriangle, FaEye, FaEyeSlash, FaInfoCircle,
 } from 'react-icons/fa'
+import { AdminPage, EmptyState, PageHeader, SearchInput, StatCards, TableFooter, initialsOf, type StatItem } from '@/components/admin-ui'
 
 const SECRET_KEY = 'EKLAV@2025'
+const PAGE_SIZE = 15
 
 type HRUser = {
   _id: string
@@ -28,6 +30,14 @@ const EMPTY_FORM = {
   fullName: '', email: '', password: '', phoneNumber: '', companyName: '', designation: '',
 }
 
+const FIELDS: { key: keyof typeof EMPTY_FORM; label: string; type: string; placeholder: string; required: boolean }[] = [
+  { key: 'fullName',    label: 'Full name',    type: 'text',  placeholder: "HR's full name",    required: true },
+  { key: 'email',       label: 'Email',        type: 'email', placeholder: 'hr@company.com',    required: true },
+  { key: 'companyName', label: 'Company',      type: 'text',  placeholder: 'e.g. Infosys, TCS', required: false },
+  { key: 'designation', label: 'Designation',  type: 'text',  placeholder: 'e.g. HR Recruiter', required: false },
+  { key: 'phoneNumber', label: 'Phone number', type: 'tel',   placeholder: '10-digit number',   required: false },
+]
+
 const HRManager: React.FC = () => {
   const { user } = useAuthContext()
   const token = user?.token
@@ -36,33 +46,35 @@ const HRManager: React.FC = () => {
   const [hrUsers, setHrUsers] = useState<HRUser[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [listError, setListError] = useState('')
+  const [notice, setNotice] = useState('')
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [addError, setAddError] = useState('')
-  const [addSuccess, setAddSuccess] = useState('')
 
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<HRUser | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const fetchHRUsers = useCallback(async () => {
     if (!token) return
     setLoading(true)
+    setListError('')
     try {
       const r = await axios.get(`${baseURL}/api/eklavadmin/hr-users`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { page, limit: 15, search },
+        params: { page, limit: PAGE_SIZE, search },
       })
       setHrUsers(r.data.users || [])
       setTotal(r.data.total || 0)
-      setTotalPages(r.data.totalPages || 1)
     } catch {
       setHrUsers([])
+      setListError('Could not load HR users.')
     } finally {
       setLoading(false)
     }
@@ -70,11 +82,25 @@ const HRManager: React.FC = () => {
 
   useEffect(() => { fetchHRUsers() }, [fetchHRUsers])
 
+  // Search as you type (debounced)
+  useEffect(() => {
+    const t = setTimeout(() => { if (searchInput.trim() !== search) { setSearch(searchInput.trim()); setPage(1) } }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!notice) return
+    const t = setTimeout(() => setNotice(''), 4000)
+    return () => clearTimeout(t)
+  }, [notice])
+
+  const openAdd = () => { setForm({ ...EMPTY_FORM }); setAddError(''); setShowPassword(false); setShowAddModal(true) }
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (form.password.length < 6) { setAddError('Password must be at least 6 characters.'); return }
     setSubmitting(true)
     setAddError('')
-    setAddSuccess('')
     try {
       const encryptedPassword = CryptoJS.AES.encrypt(form.password, SECRET_KEY).toString()
       await axios.post(
@@ -82,10 +108,10 @@ const HRManager: React.FC = () => {
         { ...form, password: encryptedPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      setAddSuccess('HR user created successfully.')
+      setNotice(`HR user "${form.fullName}" was created.`)
       setForm({ ...EMPTY_FORM })
+      setShowAddModal(false)
       fetchHRUsers()
-      setTimeout(() => { setShowAddModal(false); setAddSuccess('') }, 1200)
     } catch (err: any) {
       setAddError(err?.response?.data?.message || 'Failed to create HR user')
     } finally {
@@ -94,227 +120,232 @@ const HRManager: React.FC = () => {
   }
 
   const handleDelete = async () => {
-    if (!deleteId) return
+    if (!deleteTarget) return
     setDeleting(true)
     try {
-      await axios.delete(`${baseURL}/api/eklavadmin/hr-users/${deleteId}`, {
+      await axios.delete(`${baseURL}/api/eklavadmin/hr-users/${deleteTarget._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      setDeleteId(null)
-      fetchHRUsers()
-    } catch {
-      // silent — could add toast
+      setNotice(`"${getDisplayName(deleteTarget)}" was deleted.`)
+      // Step back a page when the last row on this page was removed
+      if (hrUsers.length === 1 && page > 1) setPage(page - 1)
+      else fetchHRUsers()
+    } catch (err: any) {
+      setListError(err?.response?.data?.message || 'Failed to delete the HR user.')
     } finally {
       setDeleting(false)
+      setDeleteTarget(null)
     }
-  }
-
-  const inputStyle: React.CSSProperties = {
-    background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 8,
-    padding: '9px 12px', color: '#fff', fontSize: '0.83rem', outline: 'none', width: '100%',
   }
 
   const getDisplayName = (u: HRUser) => u.profile?.fullName || u.name || u.email
 
+  const pageApproved = hrUsers.filter((u) => u.status === 'approved').length
+  const stats: StatItem[] = [
+    { label: 'HR users', value: total, icon: FaUserTie, tone: 'orange' },
+  ]
+
   return (
-    <div style={{ padding: '24px', minHeight: '80vh', background: '#0a0a0a', color: '#fff' }}>
+    <AdminPage>
+      <PageHeader
+        icon={FaBriefcase}
+        title="HR Details"
+        subtitle="Recruiter logins for the HR portal"
+        stats={<StatCards inline items={stats} loading={loading && hrUsers.length === 0} />}
+        actions={
+          <>
+            <button type="button" className="aui-btn" onClick={fetchHRUsers} disabled={loading}>
+              <FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh
+            </button>
+            <button type="button" className="aui-btn aui-btn-primary" onClick={openAdd}><FaPlus size={11} /> Create HR User</button>
+          </>
+        }
+      />
 
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: 'rgba(249,115,22,0.15)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: 10, padding: '10px 12px' }}>
-            <FaBriefcase style={{ color: '#f97316', fontSize: 22 }} />
+      {notice && (
+        <div className="aui-alert aui-alert-success"><FaCheckCircle /> <span>{notice}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setNotice('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+      {listError && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{listError}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setListError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>All HR users</h3>
+            <p>{hrUsers.length > 0 ? <><b>{pageApproved}</b> of <b>{hrUsers.length}</b> on this page approved</> : 'Search by name or email'}</p>
           </div>
-          <div>
-            <h3 style={{ margin: 0, fontWeight: 800, color: '#fff', fontSize: '1.3rem' }}>HR Management</h3>
-            <p style={{ margin: 0, color: '#666', fontSize: '0.82rem' }}>
-              Create and manage HR recruiter logins — {total} HR user{total !== 1 ? 's' : ''}
-            </p>
+          <div className="aui-toolbar-filters">
+            <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Search name or email…" />
+            <span className="aui-count">{total} user{total === 1 ? '' : 's'}</span>
           </div>
         </div>
-        <button
-          onClick={() => { setShowAddModal(true); setAddError(''); setAddSuccess('') }}
-          style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '9px 18px', borderRadius: 8, fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 7 }}
-        >
-          <FaPlus /> Create HR User
-        </button>
-      </div>
 
-      {/* Search bar */}
-      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: '14px 20px', marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <FaSearch style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: 13 }} />
-          <input
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { setSearch(searchInput); setPage(1) } }}
-            placeholder="Search by name or email..."
-            style={{ ...inputStyle, paddingLeft: 34 }}
-          />
-        </div>
-        <button onClick={() => { setSearch(searchInput); setPage(1) }} style={{ background: '#f97316', border: 'none', color: '#fff', padding: '8px 16px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>
-          Search
-        </button>
-        {search && (
-          <button onClick={() => { setSearch(''); setSearchInput(''); setPage(1) }} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '8px 12px', borderRadius: 8, fontSize: '0.8rem', cursor: 'pointer' }}>
-            Clear
-          </button>
-        )}
-      </div>
-
-      {/* Table */}
-      <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem', color: '#555' }}>
-            <Spinner animation="border" size="sm" style={{ color: '#f97316', marginRight: 8 }} />
-            Loading HR users...
-          </div>
+        {loading && hrUsers.length === 0 ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" /><p>Loading HR users…</p></div>
         ) : hrUsers.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: '#444' }}>
-            <FaUserTie style={{ fontSize: 44, marginBottom: 14, color: '#1e3a5f' }} />
-            <p style={{ color: '#555' }}>{search ? 'No HR users match your search' : 'No HR users created yet'}</p>
-          </div>
+          <EmptyState
+            icon={FaUserTie}
+            title={search ? 'No HR users match' : 'No HR users yet'}
+            text={search ? 'Try a different name or email.' : 'Create a login so a recruiter can use the HR portal.'}
+            action={search
+              ? <button type="button" className="aui-btn" onClick={() => setSearchInput('')}>Clear search</button>
+              : <button type="button" className="aui-btn aui-btn-primary" onClick={openAdd}><FaPlus size={11} /> Create HR User</button>}
+          />
         ) : (
           <>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <div className={`aui-table-scroll${loading ? ' hr-refreshing' : ''}`}>
+              <table className="aui-table">
                 <thead>
-                  <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1e1e1e' }}>
-                    {['#', 'Name', 'Email', 'Company', 'Designation', 'Phone', 'Status', 'Created', 'Action'].map(h => (
-                      <th key={h} style={{ padding: '11px 14px', color: '#666', fontWeight: 700, textAlign: 'left', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
-                    ))}
+                  <tr>
+                    <th style={{ width: 52 }}>#</th>
+                    <th>HR user</th>
+                    <th>Company</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th className="text-end" style={{ width: 80 }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {hrUsers.map((u, idx) => (
-                    <tr key={u._id} style={{ borderBottom: '1px solid #161616' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#0f0f0f')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <td style={{ padding: '11px 14px', color: '#555' }}>{(page - 1) * 15 + idx + 1}</td>
-                      <td style={{ padding: '11px 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'linear-gradient(135deg, #f97316, #ea580c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.75rem', flexShrink: 0, color: '#fff' }}>
-                            {getDisplayName(u).charAt(0).toUpperCase()}
+                  {hrUsers.map((u, idx) => {
+                    const approved = u.status === 'approved'
+                    return (
+                      <tr key={u._id}>
+                        <td className="aui-num">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(getDisplayName(u))}</span>
+                            <div className="aui-stack">
+                              <strong>{getDisplayName(u)}</strong>
+                              <small>{u.email}</small>
+                            </div>
                           </div>
-                          <span style={{ color: '#e0e0e0', fontWeight: 600 }}>{getDisplayName(u)}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#888' }}>{u.email}</td>
-                      <td style={{ padding: '11px 14px', color: '#aaa' }}>{u.profile?.companyName || '—'}</td>
-                      <td style={{ padding: '11px 14px', color: '#aaa' }}>{u.profile?.designation || '—'}</td>
-                      <td style={{ padding: '11px 14px', color: '#aaa' }}>{u.profile?.phoneNo || '—'}</td>
-                      <td style={{ padding: '11px 14px' }}>
-                        <span style={{ background: u.status === 'approved' ? 'rgba(34,197,94,0.12)' : 'rgba(234,179,8,0.12)', color: u.status === 'approved' ? '#22c55e' : '#eab308', border: `1px solid ${u.status === 'approved' ? '#22c55e44' : '#eab30844'}`, borderRadius: 20, padding: '2px 9px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'capitalize' }}>
-                          {u.status || 'pending'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '11px 14px', color: '#666', whiteSpace: 'nowrap' }}>
-                        {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                      </td>
-                      <td style={{ padding: '11px 14px' }}>
-                        <button
-                          onClick={() => setDeleteId(u._id)}
-                          title="Delete HR user"
-                          style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: '0.75rem' }}
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          {u.profile?.companyName || u.profile?.designation ? (
+                            <div className="aui-stack">
+                              <span className="hr-company">{u.profile?.companyName || '—'}</span>
+                              {u.profile?.designation && <small className="hr-muted">{u.profile.designation}</small>}
+                            </div>
+                          ) : <span className="hr-dash">—</span>}
+                        </td>
+                        <td>{u.profile?.phoneNo || <span className="hr-dash">—</span>}</td>
+                        <td>
+                          <span className={`aui-badge aui-badge-dot ${approved ? 'aui-badge-green' : 'aui-badge-amber'} hr-status`}>{u.status || 'pending'}</span>
+                        </td>
+                        <td className="hr-muted">
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="text-end">
+                          <button type="button" className="aui-icon-btn hr-del" title="Delete HR user" onClick={() => setDeleteTarget(u)}><FaTrashAlt size={11} /></button>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            <div style={{ padding: '12px 20px', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-              <span style={{ color: '#555', fontSize: '0.78rem' }}>
-                Showing {(page - 1) * 15 + 1}–{Math.min(page * 15, total)} of {total} HR users
-              </span>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ background: '#111', border: '1px solid #222', color: page === 1 ? '#333' : '#888', padding: '5px 10px', borderRadius: 6, cursor: page === 1 ? 'not-allowed' : 'pointer', fontSize: '0.8rem' }}>‹</button>
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-                  const pg = totalPages <= 7 ? i + 1 : page <= 4 ? i + 1 : page - 3 + i
-                  return pg > 0 && pg <= totalPages ? (
-                    <button key={pg} onClick={() => setPage(pg)} style={{ background: pg === page ? '#f97316' : '#111', border: `1px solid ${pg === page ? '#f97316' : '#222'}`, color: pg === page ? '#fff' : '#888', padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: '0.8rem', fontWeight: pg === page ? 700 : 400 }}>{pg}</button>
-                  ) : null
-                })}
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ background: '#111', border: '1px solid #222', color: page === totalPages ? '#333' : '#888', padding: '5px 10px', borderRadius: 6, cursor: page === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.8rem' }}>›</button>
-              </div>
-            </div>
+            <TableFooter page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} noun="HR users" />
           </>
         )}
       </div>
 
-      {/* ── Create HR User Modal ── */}
-      <Modal show={showAddModal} onHide={() => setShowAddModal(false)} centered size="lg" className="student-modal">
-        <Modal.Header closeButton className="modal-header-custom">
-          <Modal.Title style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <FaUserTie /> Create HR User
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="modal-body-custom">
-          {addError && <Alert variant="danger" style={{ fontSize: '0.82rem', marginBottom: 14 }}>{addError}</Alert>}
-          {addSuccess && <Alert variant="success" style={{ fontSize: '0.82rem', marginBottom: 14 }}>{addSuccess}</Alert>}
-          <Form onSubmit={handleCreate}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              {[
-                { key: 'fullName',     label: 'Full Name',    icon: <FaUser />,     type: 'text',     placeholder: "HR's full name",       required: true  },
-                { key: 'email',        label: 'Email',        icon: <FaEnvelope />, type: 'email',    placeholder: 'hr@company.com',        required: true  },
-                { key: 'password',     label: 'Password',     icon: <FaLock />,     type: 'password', placeholder: 'Min 6 characters',      required: true  },
-                { key: 'phoneNumber',  label: 'Phone Number', icon: <FaPhone />,    type: 'tel',      placeholder: '10-digit number',       required: false },
-                { key: 'companyName',  label: 'Company Name', icon: <FaBuilding />, type: 'text',     placeholder: 'e.g. Infosys, TCS',     required: false },
-                { key: 'designation',  label: 'Designation',  icon: <FaUserTie />,  type: 'text',     placeholder: 'e.g. HR Recruiter',     required: false },
-              ].map(({ key, label, icon, type, placeholder, required }) => (
-                <Form.Group key={key} style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  <label style={{ fontSize: '0.75rem', color: '#888', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    {icon} {label}{required && <span style={{ color: '#ef4444' }}>*</span>}
-                  </label>
-                  <input
-                    type={type}
-                    placeholder={placeholder}
-                    required={required}
-                    value={(form as any)[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </Form.Group>
+      {/* ── Create HR User ── */}
+      <Modal show={showAddModal} onHide={() => !submitting && setShowAddModal(false)} centered size="lg" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <form onSubmit={handleCreate} className="aui-page">
+          <div className="aui-modal-head">
+            <span className="aui-heading-icon"><FaUserTie /></span>
+            <div>
+              <h3>Create HR user</h3>
+              <p>A login for the HR portal</p>
+            </div>
+            <button type="button" className="aui-icon-btn" onClick={() => setShowAddModal(false)} disabled={submitting} aria-label="Close"><FaTimes size={12} /></button>
+          </div>
+          <div className="aui-modal-body">
+            {addError && <div className="aui-alert"><FaExclamationTriangle /> <span>{addError}</span></div>}
+
+            <div className="aui-section-label">Account</div>
+            <div className="aui-field-row">
+              {FIELDS.slice(0, 2).map((f) => (
+                <div key={f.key} className="aui-field">
+                  <label className="aui-label" htmlFor={`hr-${f.key}`}>{f.label} <span className="hr-req">*</span></label>
+                  <input id={`hr-${f.key}`} className="aui-input" type={f.type} placeholder={f.placeholder} required value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+            </div>
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="hr-password">Password <span className="hr-req">*</span></label>
+              <div className="hr-pass">
+                <input id="hr-password" className="aui-input" type={showPassword ? 'text' : 'password'} placeholder="At least 6 characters" required value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} autoComplete="new-password" />
+                <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <FaEyeSlash /> : <FaEye />}</button>
+              </div>
+              <p className="aui-hint">Share it with the recruiter securely.</p>
+            </div>
+
+            <div className="aui-section-label">Profile <span className="aui-optional">Optional</span></div>
+            <div className="aui-field-row">
+              {FIELDS.slice(2).map((f) => (
+                <div key={f.key} className="aui-field">
+                  <label className="aui-label" htmlFor={`hr-${f.key}`}>{f.label}</label>
+                  <input id={`hr-${f.key}`} className="aui-input" type={f.type} placeholder={f.placeholder} value={form[f.key]} onChange={(e) => setForm((p) => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
               ))}
             </div>
 
-            <div style={{ marginTop: 8, padding: '10px 12px', background: 'rgba(249,115,22,0.08)', border: '1px solid rgba(249,115,22,0.2)', borderRadius: 8, fontSize: '0.75rem', color: '#94a3b8' }}>
-              This HR user will be created in the global Eklav database with role <strong style={{ color: '#f97316' }}>hrAdmin</strong> and can log in at <strong style={{ color: '#f97316' }}>/hr/dashboard</strong>.
+            <div className="aui-alert aui-alert-info hr-info">
+              <FaInfoCircle />
+              <span>Created in the global Eklav database with role <b>hrAdmin</b>. They sign in at <b>/hr/dashboard</b>.</span>
             </div>
-
-            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button type="button" onClick={() => setShowAddModal(false)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '9px 20px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-              <button type="submit" disabled={submitting} style={{ background: 'linear-gradient(135deg, #f97316, #ea580c)', border: 'none', color: '#fff', padding: '9px 22px', borderRadius: 8, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 8 }}>
-                {submitting ? <><Spinner animation="border" size="sm" /> Creating...</> : <><FaPlus /> Create HR User</>}
-              </button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-
-      {/* ── Delete Confirm Modal ── */}
-      <Modal show={!!deleteId} onHide={() => setDeleteId(null)} centered className="student-modal" size="sm">
-        <Modal.Header closeButton className="modal-header-custom">
-          <Modal.Title style={{ fontSize: '1rem' }}>Delete HR User?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="modal-body-custom">
-          <p style={{ color: '#aaa', fontSize: '0.83rem', marginBottom: 20 }}>
-            This will permanently delete the HR user and their profile. This action cannot be undone.
-          </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button onClick={() => setDeleteId(null)} style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}>Cancel</button>
-            <button onClick={handleDelete} disabled={deleting} style={{ background: '#ef4444', border: 'none', color: '#fff', padding: '8px 18px', borderRadius: 8, fontWeight: 700, cursor: deleting ? 'not-allowed' : 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 7 }}>
-              {deleting ? <Spinner animation="border" size="sm" /> : <FaTrashAlt />} Delete
+          </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={() => setShowAddModal(false)} disabled={submitting}>Cancel</button>
+            <button type="submit" className="aui-btn aui-btn-primary" disabled={submitting}>
+              {submitting ? <FaSpinner className="aui-spin" style={{ color: '#fff' }} /> : <FaPlus size={11} />} {submitting ? 'Creating…' : 'Create HR user'}
             </button>
           </div>
-        </Modal.Body>
+        </form>
       </Modal>
-    </div>
+
+      {/* ── Delete confirm ── */}
+      <Modal show={!!deleteTarget} onHide={() => !deleting && setDeleteTarget(null)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <div className="aui-modal-head">
+          <span className="hr-del-icon"><FaTrashAlt /></span>
+          <div>
+            <h3>Delete HR user?</h3>
+            <p>{deleteTarget ? `${getDisplayName(deleteTarget)} · ${deleteTarget.email}` : ''}</p>
+          </div>
+        </div>
+        <div className="aui-modal-body"><p className="hr-modal-text">Their login and profile are deleted permanently and they can no longer sign in to the HR portal.</p></div>
+        <div className="aui-modal-foot">
+          <button type="button" className="aui-btn" onClick={() => setDeleteTarget(null)} disabled={deleting}>Cancel</button>
+          <button type="button" className="aui-btn aui-btn-danger" onClick={handleDelete} disabled={deleting}>
+            {deleting ? <FaSpinner className="aui-spin" /> : <FaTrashAlt size={11} />} Delete
+          </button>
+        </div>
+      </Modal>
+
+      <style>{`
+        .hr-refreshing { opacity: 0.55; transition: opacity 0.15s; }
+        .hr-company { color: #e5e7eb; font-size: 0.82rem; font-weight: 600; }
+        .hr-muted { color: #858a90 !important; font-size: 0.76rem; }
+        .hr-dash { color: #4b5056; }
+        .hr-status { text-transform: capitalize; }
+        .hr-del:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+        .hr-req { color: #ff7a00; }
+        .hr-pass { position: relative; }
+        .hr-pass .aui-input { padding-right: 2.6rem; }
+        .hr-pass button { position: absolute; top: 0; right: 0; display: grid; place-items: center; width: 40px; height: 40px; border: 0; background: none; color: #6b7280; cursor: pointer; }
+        .hr-pass button:hover { color: #fff; }
+        .hr-info { margin: 0.25rem 0 0 !important; font-size: 0.78rem; }
+        .hr-del-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid rgba(251,95,103,0.3); border-radius: 10px; background: rgba(251,95,103,0.1); color: #fb737a; }
+        .hr-modal-text { margin: 0; color: #a6abb0; font-size: 0.84rem; line-height: 1.6; }
+      `}</style>
+    </AdminPage>
   )
 }
 

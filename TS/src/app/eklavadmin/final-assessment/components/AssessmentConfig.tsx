@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Modal } from "react-bootstrap";
 import { useAuthContext } from "@/context/useAuthContext";
 import AdminQuizUpload from "./QuizComponents/AdminQuizUpload";
@@ -14,19 +14,96 @@ import {
     FaTimesCircle,
     FaClock,
     FaCalendarAlt,
-    FaPercentage,
     FaList,
     FaCode,
     FaComments,
     FaUserTie,
     FaLanguage,
-    FaPlus,
     FaTrash,
-    FaEdit,
     FaInfoCircle,
     FaExclamationTriangle,
-    FaUpload
+    FaUpload,
+    FaTimes,
+    FaCheck,
+    FaLock,
+    FaEye,
+    FaListUl,
+    FaClipboardList,
+    FaChevronDown,
+    FaSearch,
+    FaPlus,
+    FaUsers,
 } from "react-icons/fa";
+/* Exam switcher: lists existing exams with a short summary, "Create new exam" sits apart at the bottom */
+const ExamPicker = ({ exams, value, onChange }: { exams: any[]; value: string; onChange: (id: string) => void }) => {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState("");
+    const ref = useRef<HTMLDivElement>(null);
+    const current = exams.find((e) => e._id === value);
+
+    useEffect(() => {
+        if (!open) return;
+        const onPointer = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
+        const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+        document.addEventListener("mousedown", onPointer);
+        document.addEventListener("keydown", onKey);
+        return () => { document.removeEventListener("mousedown", onPointer); document.removeEventListener("keydown", onKey); };
+    }, [open]);
+
+    const pick = (id: string) => { onChange(id); setOpen(false); setQuery(""); };
+    const q = query.trim().toLowerCase();
+    const visible = exams.filter((e) => !q || (e.title || "").toLowerCase().includes(q));
+    const meta = (e: any) => {
+        const n = (e.rounds || []).length;
+        const who = Array.isArray(e.branch) && e.branch.length ? e.branch.join(", ") : "All branches";
+        return `${n} round${n === 1 ? "" : "s"} · ${who}`;
+    };
+
+    return (
+        <div className="afc-picker" ref={ref}>
+            <button type="button" className={`afc-picker-trigger${open ? " is-open" : ""}`} onClick={() => setOpen((v) => !v)} aria-haspopup="listbox" aria-expanded={open}>
+                <span className={`afc-picker-icon${current ? "" : " is-new"}`}>{current ? <FaClipboardList /> : <FaPlus />}</span>
+                <span className="afc-picker-text">
+                    <small>{current ? "Editing exam" : "New exam · unsaved"}</small>
+                    <strong>{current ? current.title : "Untitled exam"}</strong>
+                </span>
+                <FaChevronDown className="afc-picker-caret" />
+            </button>
+            {open && (
+                <div className="afc-picker-menu">
+                    <div className="afc-picker-head">
+                        <span>Your exams</span>
+                        <span className="aui-badge aui-badge-muted">{exams.length}</span>
+                    </div>
+                    {exams.length > 5 && (
+                        <div className="afc-picker-search">
+                            <FaSearch />
+                            <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search exams…" />
+                        </div>
+                    )}
+                    <ul role="listbox" aria-label="Exams">
+                        {visible.length === 0 ? (
+                            <li className="afc-picker-empty">{exams.length ? "No exams match" : "No exams yet — create your first one below"}</li>
+                        ) : visible.map((e) => (
+                            <li key={e._id} role="option" aria-selected={e._id === value}>
+                                <button type="button" className={e._id === value ? "is-active" : ""} onClick={() => pick(e._id)}>
+                                    <span className="aui-stack">
+                                        <strong>{e.title}</strong>
+                                        <small>{meta(e)}</small>
+                                    </span>
+                                    {e._id === value && <FaCheckCircle />}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <button type="button" className="afc-picker-new" onClick={() => pick("")}>
+                        <FaPlus size={10} /> Create new exam
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
 
 type RoundType = "mcq" | "coding" | "tr" | "hr" | "english";
 
@@ -58,9 +135,9 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
     const { user } = useAuthContext();
 
     const [rounds, setRounds] = useState<RoundConfig[]>([
-        { roundType: "mcq", enabled: false, pickCount: 10, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
-        { roundType: "coding", enabled: false, pickCount: 1, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
-        { roundType: "tr", enabled: false, pickCount: 5, timeSeconds: 600, startDateTime: "", endDateTime: "", passPercentage: 40 },
+        { roundType: "mcq",     enabled: false, pickCount: 10, timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+        { roundType: "coding",  enabled: false, pickCount: 1,  timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+        { roundType: "tr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
         { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
         { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
     ]);
@@ -83,6 +160,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
     const [viewRound, setViewRound] = useState<{ type: 'mcq'|'tr'|'hr'; label: string } | null>(null);
     const [savedRoundTypes, setSavedRoundTypes] = useState<Set<string>>(new Set());
     const [savingRound, setSavingRound] = useState<string | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
     const currentYear = new Date().getFullYear();
     const JOINING_YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - i));
@@ -155,15 +233,24 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                 if (data.success) {
                     const exam = data.exam;
                     setTitle(exam.title);
+                    onSave?.(exam); // lets the page header show the selected exam's name
                     setDescription(exam.description || "");
                     setBranch(Array.isArray(exam.branch) ? exam.branch : (exam.branch ? [exam.branch] : []));
                     setJoiningYear(Array.isArray(exam.joiningYear) ? exam.joiningYear : (exam.joiningYear ? [exam.joiningYear] : []));
 
-                    const updatedRounds = rounds.map((defaultRound) => {
+                    // Always start from clean defaults — never carry over previous exam's state
+                    const freshDefaults: RoundConfig[] = [
+                        { roundType: "mcq",     enabled: false, pickCount: 10, timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "coding",  enabled: false, pickCount: 1,  timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "tr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "hr",      enabled: false, pickCount: 5,  timeSeconds: 600,  startDateTime: "", endDateTime: "", passPercentage: 40 },
+                        { roundType: "english", enabled: false, pickCount: 50, timeSeconds: 1800, startDateTime: "", endDateTime: "", passPercentage: 40 },
+                    ];
+
+                    const updatedRounds = freshDefaults.map((defaultRound) => {
                         const existing = exam.rounds.find(
                             (r: any) => r.roundType === defaultRound.roundType
                         );
-
                         if (existing) {
                             return {
                                 ...defaultRound,
@@ -175,7 +262,6 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                                 passPercentage: existing.passPercentage || 40,
                             };
                         }
-
                         return defaultRound;
                     });
 
@@ -236,9 +322,6 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
         const deleteId = id || examId;
         if (!deleteId) return;
 
-        const confirmDelete = window.confirm("Are you sure you want to delete this exam?");
-        if (!confirmDelete) return;
-
         try {
             setLoading(true);
             const res = await fetch(
@@ -297,30 +380,20 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                 return;
             }
 
-            /* ================= FRONTEND OVERLAP CHECK ================= */
+            /* ── Within-exam overlap check ── */
             for (let i = 0; i < enabledRounds.length; i++) {
                 for (let j = i + 1; j < enabledRounds.length; j++) {
-                    const r1 = enabledRounds[i];
-                    const r2 = enabledRounds[j];
-
-                    const r1Start = new Date(r1.startDateTime);
-                    const r1End = new Date(r1.endDateTime);
-
-                    const r2Start = new Date(r2.startDateTime);
-                    const r2End = new Date(r2.endDateTime);
-
-                    const overlap = r1Start < r2End && r1End > r2Start;
-
+                    const r1 = enabledRounds[i], r2 = enabledRounds[j];
+                    const overlap = new Date(r1.startDateTime) < new Date(r2.endDateTime) &&
+                                    new Date(r1.endDateTime)   > new Date(r2.startDateTime);
                     if (overlap) {
-                        setMessage({
-                            type: 'error',
-                            text: `${roundIcons[r1.roundType].label} overlaps with ${roundIcons[r2.roundType].label}`
-                        });
+                        setMessage({ type: 'error', text: `${r1.roundType.toUpperCase()} and ${r2.roundType.toUpperCase()} rounds overlap within the same exam` });
                         window.scrollTo({ top: 0, behavior: 'smooth' });
                         return;
                     }
                 }
             }
+
             setSaving(true);
             setMessage(null);
 
@@ -362,13 +435,14 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
             const data = await res.json();
 
             if (data.success) {
-                setMessage({ type: 'success', text: '✅ Configuration saved successfully!' });
+                setMessage({ type: 'success', text: 'Configuration saved successfully.' });
                 window.scrollTo({ top: 0, behavior: 'smooth' });
 
                 if (!examId && data.examId) {
                     setExamId?.(data.examId);
                 }
 
+                // Notify parent with the saved exam so it can refresh round tabs immediately
                 if (data.exam) {
                     onSave?.(data.exam);
                     setSavedRoundTypes(new Set(data.exam.rounds.map((r: any) => r.roundType)));
@@ -439,7 +513,7 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
                     setSavedRoundTypes(new Set(data.exam.rounds.map((r: any) => r.roundType)));
                     onSave?.(data.exam);
                 }
-                setMessage({ type: 'success', text: `✅ ${roundType.toUpperCase()} round saved! Upload is now enabled.` });
+                setMessage({ type: 'success', text: `${roundIcons[roundType as RoundType].label} saved — question upload is now enabled.` });
             } else {
                 setMessage({ type: 'error', text: data.message || 'Failed to save round config.' });
             }
@@ -452,1027 +526,431 @@ export default function AssessmentConfig({ examId, setExamId, onSave }: Props) {
         }
     };
 
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins} min${mins !== 1 ? 's' : ''} ${secs > 0 ? `${secs} sec` : ''}`;
+    const fmtShort = (local: string) =>
+        local ? new Date(local).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+
+    const selectedExam = examList.find((e) => e._id === examId);
+    const enabledCount = rounds.filter((r) => r.enabled).length;
+    const toggleChip = (list: string[], value: string, set: (v: string[]) => void) =>
+        set(list.includes(value) ? list.filter((x) => x !== value) : [...list, value]);
+
+    const uploadTitle: Record<RoundType, string> = {
+        mcq: 'MCQ Questions',
+        coding: 'Code Challenges',
+        tr: 'Technical Interview Questions',
+        hr: 'HR Interview Questions',
+        english: 'English Assessment',
     };
 
     return (
         <>
-            {/* Fixed Position Toast Notification */}
+            {/* Toast — per-round saves happen far down the page, so feedback floats top-right */}
             {message && (
-                <div className={`toast-notification ${message.type}`}>
-                    <div className="toast-content">
-                        {message.type === 'success' ? (
-                            <FaCheckCircle className="toast-icon success" />
-                        ) : (
-                            <FaTimesCircle className="toast-icon error" />
-                        )}
-                        <span className="toast-message">{message.text}</span>
-                        <button
-                            className="toast-close"
-                            onClick={() => setMessage(null)}
-                        >
-                            ×
-                        </button>
-                    </div>
+                <div className={`aui-alert afc-toast ${message.type === 'success' ? 'aui-alert-success' : ''}`} role="status">
+                    {message.type === 'success' ? <FaCheckCircle /> : <FaExclamationTriangle />}
+                    <span>{message.text}</span>
+                    <button type="button" className="aui-alert-close" onClick={() => setMessage(null)} aria-label="Dismiss"><FaTimes size={11} /></button>
                 </div>
             )}
 
-            <div className="assessment-config-container">
-                <div className="config-card">
-                    {/* Two Fields in One Row - Exam Selection & Title */}
-                    <div className="form-row-group">
-                        <div className="form-group-half">
-                            <label className="form-label">
-                                <FaInfoCircle className="label-icon" />
-                                Exam Configuration
-                            </label>
-                            <select
-                                value={examId || ""}
-                                onChange={(e) => handleExamChange(e.target.value)}
-                                className="form-select-custom"
-                            >
-                                <option value="">+ Create New Exam</option>
-                                {examList.map((e) => (
-                                    <option key={e._id} value={e._id}>
-                                        {e.title}
-                                    </option>
-                                ))}
-                            </select>
-                            <small className="form-hint">Select an existing exam to edit, or create a new one</small>
-                        </div>
+            {/* ── Exam details ── */}
+            <div className="aui-card">
+                <div className="aui-toolbar">
+                    <div className="aui-toolbar-title">
+                        <h3>Exam Details {!examId && <span className="aui-badge aui-badge-orange afc-title-badge">New</span>}</h3>
+                        <p>{examId ? 'Editing an existing exam — the title is locked' : 'Name the exam and choose who it is for'}</p>
+                    </div>
+                    <div className="aui-toolbar-filters">
+                        <ExamPicker exams={examList} value={examId || ''} onChange={handleExamChange} />
+                        {examId && (
+                            <>
+                                <button type="button" className="aui-icon-btn afc-delete" onClick={() => setConfirmDelete(true)} disabled={loading} title="Delete exam" aria-label="Delete exam">
+                                    <FaTrash size={11} />
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
 
-                        <div className="form-group-half">
-                            <label className="form-label">
-                                <FaCheckCircle className="label-icon" />
-                                Exam Title
-                            </label>
-                            <input
-                                value={title}
-                                disabled={!!examId}
-                                onChange={(e) => setTitle(e.target.value)}
-                                placeholder={!examId ? "e.g., Full Stack Developer Assessment" : "Title is locked when editing existing exam"}
-                                className={`form-input-custom ${!!examId ? 'disabled-input' : ''}`}
-                            />
-                            <small className="form-hint">
-                                {examId
-                                    ? 'Title is locked when editing existing exam'
-                                    : 'Enter a descriptive title for your new exam'}
-                            </small>
-                        </div>
+                <div className="afc-body">
+                    <div className="aui-field">
+                        <label className="aui-label" htmlFor="afc-title">Exam Title</label>
+                        <input
+                            id="afc-title"
+                            className="aui-input"
+                            value={title}
+                            disabled={!!examId}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="e.g. Full Stack Developer Assessment"
+                        />
                     </div>
 
-                    <div className="form-row-group">
-                        <div className="form-group-full">
-                            <label className="form-label">
-                                <FaInfoCircle className="label-icon" />
-                                Exam Description
-                            </label>
-                            <textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Enter a description or instructions students will see before starting the exam"
-                                className="form-input-custom form-textarea-custom"
-                                rows={4}
-                            />
-                            <small className="form-hint">
-                                This description will display to students while they take the exam.
-                            </small>
-                        </div>
+                    <div className="aui-field">
+                        <label className="aui-label" htmlFor="afc-desc">Description <span className="aui-optional">Shown to students</span></label>
+                        <textarea
+                            id="afc-desc"
+                            className="aui-input afc-textarea"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Instructions students will see before starting the exam"
+                            rows={3}
+                        />
                     </div>
 
-                    {/* Target Batch */}
-                    <div className="form-row-group">
-                        <div className="form-group-half">
-                            <label className="form-label">
-                                <FaList className="label-icon" />
-                                Target Branch
-                                {branch.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(255,122,0,0.2)', color: '#ff7a00', borderRadius: 10, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700 }}>{branch.length} selected</span>}
-                            </label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0.6rem 0' }}>
-                                {BRANCHES.map(b => {
-                                    const active = branch.includes(b);
-                                    return (
-                                        <button
-                                            key={b}
-                                            type="button"
-                                            onClick={() => setBranch(active ? branch.filter(x => x !== b) : [...branch, b])}
-                                            style={{
-                                                background: active ? 'rgba(255,122,0,0.2)' : '#111',
-                                                color: active ? '#ff7a00' : '#888',
-                                                border: `1px solid ${active ? '#ff7a00' : '#2c2c2c'}`,
-                                                borderRadius: 20,
-                                                padding: '4px 14px',
-                                                fontSize: '0.78rem',
-                                                fontWeight: active ? 700 : 400,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s',
-                                            }}
-                                        >{b}</button>
-                                    );
-                                })}
+                    {/* Audience — an explicit "All" chip per row instead of "leave empty" */}
+                    <div className="afc-audience">
+                        <div className="afc-audience-head">
+                            <span className="aui-label">Who can take this exam</span>
+                            <span className="afc-summary">
+                                <FaUsers size={11} /> Visible to:{' '}
+                                <b>{branch.length ? branch.join(', ') : 'All branches'}</b>
+                                <i>·</i>
+                                <b>{joiningYear.length ? `${[...joiningYear].sort().reverse().join(', ')} batch${joiningYear.length > 1 ? 'es' : ''}` : 'All batches'}</b>
+                            </span>
+                        </div>
+                        {([
+                            { label: 'Branch', hint: 'Pick one or more', values: BRANCHES, list: branch, set: setBranch },
+                            { label: 'Joining year', hint: 'Student batch', values: JOINING_YEARS, list: joiningYear, set: setJoiningYear },
+                        ]).map((group) => (
+                            <div key={group.label} className="afc-aud-row">
+                                <div className="afc-aud-label">
+                                    <strong>{group.label}</strong>
+                                    <small>{group.list.length ? `${group.list.length} selected` : group.hint}</small>
+                                </div>
+                                <div className="afc-chips">
+                                    <button type="button" className={`afc-chip afc-chip-all${group.list.length === 0 ? ' is-active' : ''}`} aria-pressed={group.list.length === 0} onClick={() => group.set([])}>
+                                        {group.list.length === 0 && <FaCheck size={9} />} All
+                                    </button>
+                                    <span className="afc-chip-sep" aria-hidden="true" />
+                                    {group.values.map((v) => (
+                                        <button key={v} type="button" className={`afc-chip${group.list.includes(v) ? ' is-active' : ''}`} aria-pressed={group.list.includes(v)} onClick={() => toggleChip(group.list, v, group.set)}>
+                                            {group.list.includes(v) && <FaCheck size={9} />} {v}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <small className="form-hint">Select none to show to all branches</small>
-                        </div>
-                        <div className="form-group-half">
-                            <label className="form-label">
-                                <FaCalendarAlt className="label-icon" />
-                                Target Joining Year
-                                {joiningYear.length > 0 && <span style={{ marginLeft: 8, background: 'rgba(253,126,20,0.2)', color: '#fd7e14', borderRadius: 10, padding: '1px 7px', fontSize: '0.72rem', fontWeight: 700 }}>{joiningYear.length} selected</span>}
-                            </label>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0.6rem 0' }}>
-                                {JOINING_YEARS.map(y => {
-                                    const active = joiningYear.includes(y);
-                                    return (
-                                        <button
-                                            key={y}
-                                            type="button"
-                                            onClick={() => setJoiningYear(active ? joiningYear.filter(x => x !== y) : [...joiningYear, y])}
-                                            style={{
-                                                background: active ? 'rgba(253,126,20,0.2)' : '#111',
-                                                color: active ? '#fd7e14' : '#888',
-                                                border: `1px solid ${active ? '#fd7e14' : '#2c2c2c'}`,
-                                                borderRadius: 20,
-                                                padding: '4px 14px',
-                                                fontSize: '0.78rem',
-                                                fontWeight: active ? 700 : 400,
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s',
-                                            }}
-                                        >{y}</button>
-                                    );
-                                })}
-                            </div>
-                            <small className="form-hint">Select none to show to all batches</small>
-                        </div>
-                    </div>
-
-                    {/* Rounds Section */}
-                    <div className="rounds-section">
-                        <div className="section-header">
-                            <h6 className="section-title">Assessment Rounds</h6>
-                            <p className="section-subtitle">Enable and configure each round of the assessment</p>
-                        </div>
-
-                        <div className="rounds-grid">
-                            {rounds.map((round, index) => {
-                                const RoundIcon = roundIcons[round.roundType].icon;
-                                const roundInfo = roundIcons[round.roundType];
-
-                                return (
-                                    <div key={round.roundType} className={`round-card ${round.enabled ? 'enabled' : ''}`}>
-                                        <div className="round-header">
-                                            <div className="round-header-left">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={round.enabled}
-                                                    onChange={() => toggleRound(index)}
-                                                    id={`round-${round.roundType}`}
-                                                    className="round-checkbox"
-                                                />
-                                                <label htmlFor={`round-${round.roundType}`} className="round-checkbox-label">
-                                                    <RoundIcon className="round-icon" style={{ color: roundInfo.color }} />
-                                                    <div>
-                                                        <span className="round-name">{roundInfo.label}</span>
-                                                        <span className="round-description">{roundInfo.description}</span>
-                                                    </div>
-                                                </label>
-                                            </div>
-                                            <div className="round-status">
-                                                {round.enabled ? (
-                                                    <span className="status-badge enabled">Active</span>
-                                                ) : (
-                                                    <span className="status-badge disabled">Inactive</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {round.enabled && (
-                                            <div className="round-body">
-                                                <div className="form-row">
-                                                    <div className="form-group-small">
-                                                        <label className="form-label-small">Questions</label>
-                                                        <input
-                                                            type="number"
-                                                            min={1}
-                                                            max={50}
-                                                            value={round.pickCount}
-                                                            onChange={(e) => updateRound(index, 'pickCount', Number(e.target.value))}
-                                                            className="form-input-small"
-                                                        />
-                                                    </div>
-                                                    <div className="form-group-small">
-                                                        <label className="form-label-small">Time (seconds)</label>
-                                                        <input
-                                                            type="number"
-                                                            min={60}
-                                                            step={60}
-                                                            value={round.timeSeconds}
-                                                            onChange={(e) => updateRound(index, 'timeSeconds', Number(e.target.value))}
-                                                            className="form-input-small"
-                                                        />
-                                                        <small className="time-hint">{formatTime(round.timeSeconds)}</small>
-                                                    </div>
-                                                    <div className="form-group-small">
-                                                        <label className="form-label-small">Pass %</label>
-                                                        <input
-                                                            type="number"
-                                                            min={0}
-                                                            max={100}
-                                                            value={round.passPercentage}
-                                                            onChange={(e) => updateRound(index, 'passPercentage', Number(e.target.value))}
-                                                            className="form-input-small"
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="form-row">
-                                                    <div className="form-group-full">
-                                                        <label className="form-label-small">
-                                                            <FaCalendarAlt className="me-1" /> Start Date & Time
-                                                        </label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            value={round.startDateTime}
-                                                            onChange={(e) => updateRound(index, 'startDateTime', e.target.value)}
-                                                            className="form-input-custom"
-                                                        />
-                                                    </div>
-                                                    <div className="form-group-full">
-                                                        <label className="form-label-small">
-                                                            <FaClock className="me-1" /> End Date & Time
-                                                        </label>
-                                                        <input
-                                                            type="datetime-local"
-                                                            value={round.endDateTime}
-                                                            onChange={(e) => updateRound(index, 'endDateTime', e.target.value)}
-                                                            className="form-input-custom"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {/* Per-round Save Config button */}
-                                                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleSaveRound(round.roundType)}
-                                                        disabled={savingRound === round.roundType}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1.1rem', background: savingRound === round.roundType ? '#333' : roundInfo.color, border: 'none', borderRadius: 8, cursor: savingRound === round.roundType ? 'not-allowed' : 'pointer', color: '#fff', fontWeight: 600, fontSize: '0.82rem', opacity: savingRound === round.roundType ? 0.7 : 1 }}
-                                                    >
-                                                        <FaSave style={{ fontSize: '0.75rem' }} />
-                                                        {savingRound === round.roundType ? 'Saving…' : 'Save Config'}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Upload + View buttons — only after round is saved to server */}
-                                        {round.enabled && (() => {
-                                            const count = questionCounts[round.roundType] ?? 0;
-                                            const isScheduled = !!(round.startDateTime && round.endDateTime);
-                                            const isStarted = startedRoundTypes.has(round.roundType);
-                                            const isMCQTRHR = round.roundType === 'mcq' || round.roundType === 'tr' || round.roundType === 'hr';
-                                            const isSaved = savedRoundTypes.has(round.roundType);
-                                            return (
-                                                <div style={{ padding: '0.85rem 1rem', borderTop: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                                    {!isSaved ? (
-                                                        <small style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#666', fontSize: '0.78rem' }}>
-                                                            <span style={{ color: '#f59e0b' }}>💾</span>
-                                                            Set dates above and click <strong style={{ color: roundInfo.color }}>&nbsp;Save Config&nbsp;</strong> to enable upload
-                                                        </small>
-                                                    ) : !isScheduled ? (
-                                                        <small style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#666', fontSize: '0.78rem' }}>
-                                                            <span style={{ color: '#f59e0b' }}>📅</span>
-                                                            Set Start &amp; End dates above, then save to enable upload
-                                                        </small>
-                                                    ) : isStarted ? (
-                                                        <>
-                                                            <span style={{ background: 'rgba(239,68,68,0.12)', color: '#ef4444', fontSize: '0.78rem', padding: '4px 12px', borderRadius: 20, fontWeight: 600, border: '1px solid #ef444430' }}>
-                                                                🔒 Exam in Progress — Editing Locked
-                                                            </span>
-                                                            {count > 0 && (
-                                                                <button type="button"
-                                                                    onClick={() => isMCQTRHR
-                                                                        ? setViewRound({ type: round.roundType as 'mcq'|'tr'|'hr', label: roundInfo.label })
-                                                                        : setUploadRound(round.roundType)}
-                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.45rem 1rem', background: 'transparent', border: `1px solid ${roundInfo.color}55`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.82rem' }}>
-                                                                    👁 View Questions ({count})
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <button type="button" onClick={() => setUploadRound(round.roundType)}
-                                                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.5rem 1.1rem', background: roundInfo.color, border: 'none', borderRadius: 8, cursor: 'pointer', color: '#fff', fontWeight: 600, fontSize: '0.83rem' }}>
-                                                                <FaUpload style={{ fontSize: '0.75rem' }} />
-                                                                {round.roundType === 'english' ? 'Manage Sections' : 'Upload Questions'}
-                                                            </button>
-                                                            {count > 0 && isMCQTRHR && (
-                                                                <button type="button"
-                                                                    onClick={() => setViewRound({ type: round.roundType as 'mcq'|'tr'|'hr', label: roundInfo.label })}
-                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.1rem', background: 'transparent', border: `1px solid ${roundInfo.color}`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.83rem' }}>
-                                                                    📋 View / Edit ({count})
-                                                                </button>
-                                                            )}
-                                                            {count > 0 && !isMCQTRHR && (
-                                                                <button type="button" onClick={() => setUploadRound(round.roundType)}
-                                                                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0.5rem 1.1rem', background: 'transparent', border: `1px solid ${roundInfo.color}`, borderRadius: 8, cursor: 'pointer', color: roundInfo.color, fontWeight: 600, fontSize: '0.83rem' }}>
-                                                                    📋 View / Edit ({count})
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                </div>
-                                            );
-                                        })()}
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        ))}
                     </div>
                 </div>
             </div>
 
+            {/* ── Rounds ── */}
+            <div className="aui-card">
+                <div className="aui-toolbar">
+                    <div className="aui-toolbar-title">
+                        <h3>Assessment Rounds</h3>
+                        <p>Turn on a round, schedule it and save — then upload its questions</p>
+                    </div>
+                    <span className="aui-badge aui-badge-muted">{enabledCount} of {rounds.length} enabled</span>
+                </div>
+
+                <div className="afc-rounds">
+                    {rounds.map((round, index) => {
+                        const info = roundIcons[round.roundType];
+                        const RoundIcon = info.icon;
+                        const count = questionCounts[round.roundType] ?? 0;
+                        const isScheduled = !!(round.startDateTime && round.endDateTime);
+                        const isStarted = startedRoundTypes.has(round.roundType);
+                        const isMCQTRHR = round.roundType === 'mcq' || round.roundType === 'tr' || round.roundType === 'hr';
+                        const isSaved = savedRoundTypes.has(round.roundType);
+                        const isSaving = savingRound === round.roundType;
+                        const openQuestions = () => isMCQTRHR
+                            ? setViewRound({ type: round.roundType as 'mcq' | 'tr' | 'hr', label: info.label })
+                            : setUploadRound(round.roundType);
+
+                        return (
+                            <div key={round.roundType} className={`afc-round${round.enabled ? ' is-on' : ''}`} style={{ '--afc-tone': info.color } as React.CSSProperties}>
+                                <div className="afc-round-head">
+                                    <span className="afc-round-icon"><RoundIcon /></span>
+                                    <div className="aui-stack afc-round-name">
+                                        <strong>{info.label}</strong>
+                                        <small>
+                                            {round.enabled && isSaved && isScheduled
+                                                ? <><FaCalendarAlt size={9} /> {fmtShort(round.startDateTime)} → {fmtShort(round.endDateTime)}</>
+                                                : info.description}
+                                        </small>
+                                    </div>
+                                    <div className="afc-round-badges">
+                                        {!round.enabled ? (
+                                            <span className="aui-badge aui-badge-muted">Off</span>
+                                        ) : isStarted ? (
+                                            <span className="aui-badge aui-badge-red"><FaLock size={8} /> In progress · locked</span>
+                                        ) : isSaved ? (
+                                            <span className="aui-badge aui-badge-green aui-badge-dot">Saved</span>
+                                        ) : (
+                                            <span className="aui-badge aui-badge-amber aui-badge-dot">Not saved</span>
+                                        )}
+                                        {round.enabled && isSaved && (
+                                            <span className={`aui-badge ${count > 0 ? 'aui-badge-blue' : 'aui-badge-muted'}`}>
+                                                {count} question{count === 1 ? '' : 's'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <label className="aui-toggle afc-switch" title={round.enabled ? 'Disable round' : 'Enable round'}>
+                                        <input type="checkbox" checked={round.enabled} onChange={() => toggleRound(index)} aria-label={`Enable ${info.label}`} />
+                                        <span className="aui-toggle-track" />
+                                    </label>
+                                </div>
+
+                                {round.enabled && (
+                                    <div className="afc-round-body">
+                                        <div className="afc-round-grid">
+                                            <div className="aui-field">
+                                                <label className="aui-label">Questions</label>
+                                                <input type="number" min={1} max={50} className="aui-input" value={round.pickCount} onChange={(e) => updateRound(index, 'pickCount', Number(e.target.value))} />
+                                            </div>
+                                            <div className="aui-field">
+                                                <label className="aui-label">Duration</label>
+                                                <div className="aui-input-group afc-suffix">
+                                                    <input type="number" min={1} step={1} className="aui-input" value={Math.round(round.timeSeconds / 60)} onChange={(e) => updateRound(index, 'timeSeconds', Number(e.target.value) * 60)} />
+                                                    <span>min</span>
+                                                </div>
+                                            </div>
+                                            <div className="aui-field">
+                                                <label className="aui-label">Pass mark</label>
+                                                <div className="aui-input-group afc-suffix">
+                                                    <input type="number" min={0} max={100} className="aui-input" value={round.passPercentage} onChange={(e) => updateRound(index, 'passPercentage', Number(e.target.value))} />
+                                                    <span>%</span>
+                                                </div>
+                                            </div>
+                                            <div className="aui-field">
+                                                <label className="aui-label"><FaCalendarAlt size={10} /> Starts</label>
+                                                <input type="datetime-local" className="aui-input" value={round.startDateTime} onChange={(e) => updateRound(index, 'startDateTime', e.target.value)} />
+                                            </div>
+                                            <div className="aui-field">
+                                                <label className="aui-label"><FaClock size={10} /> Ends</label>
+                                                <input type="datetime-local" className="aui-input" value={round.endDateTime} onChange={(e) => updateRound(index, 'endDateTime', e.target.value)} />
+                                            </div>
+                                        </div>
+
+                                        <div className="afc-round-foot">
+                                            <span className="aui-hint afc-hint">
+                                                {isStarted
+                                                    ? <><FaLock /> Students have started this round — questions are view-only.</>
+                                                    : !isSaved
+                                                        ? <><FaInfoCircle /> Set the schedule and click Save Round to enable question upload.</>
+                                                        : !isScheduled
+                                                            ? <><FaInfoCircle /> Set start and end times, then save to enable upload.</>
+                                                            : count === 0
+                                                                ? <><FaInfoCircle /> Saved — now add questions for this round.</>
+                                                                : <><FaCheckCircle className="afc-ok" /> Ready · {count} question{count === 1 ? '' : 's'} in the bank, {round.pickCount} picked per student.</>}
+                                            </span>
+                                            <div className="afc-round-actions">
+                                                {!isStarted && (
+                                                    <button type="button" className="aui-btn" onClick={() => handleSaveRound(round.roundType)} disabled={isSaving}>
+                                                        {isSaving ? <><FaSpinner className="aui-spin" /> Saving…</> : <><FaSave size={11} /> Save Round</>}
+                                                    </button>
+                                                )}
+                                                {isSaved && isScheduled && (isStarted ? (
+                                                    count > 0 && (
+                                                        <button type="button" className="aui-btn aui-btn-soft" onClick={openQuestions}>
+                                                            <FaEye size={11} /> View Questions ({count})
+                                                        </button>
+                                                    )
+                                                ) : (
+                                                    <>
+                                                        {count > 0 && (
+                                                            <button type="button" className="aui-btn aui-btn-soft" onClick={openQuestions}>
+                                                                <FaListUl size={11} /> View / Edit ({count})
+                                                            </button>
+                                                        )}
+                                                        <button type="button" className="aui-btn aui-btn-primary" onClick={() => setUploadRound(round.roundType)}>
+                                                            <FaUpload size={11} /> {round.roundType === 'english' ? 'Manage Sections' : 'Upload Questions'}
+                                                        </button>
+                                                    </>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
             <style>{`
-                /* Fixed Toast Notification */
-                .toast-notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 10000;
-                    animation: slideInRight 0.3s ease-out;
-                    max-width: 400px;
-                    min-width: 300px;
+                .afc-toast { position: fixed; top: 20px; right: 20px; z-index: 1080; width: min(420px, calc(100vw - 40px)); margin: 0 !important; box-shadow: 0 14px 34px rgba(0,0,0,0.55); backdrop-filter: blur(8px); animation: afc-in 0.25s ease-out; }
+                .afc-toast:not(.aui-alert-success) { background: rgba(40, 14, 16, 0.95); }
+                .afc-toast.aui-alert-success { background: rgba(10, 32, 18, 0.95); }
+                @keyframes afc-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+                .afc-title-badge { margin-left: 8px; vertical-align: 2px; }
+                .afc-picker { position: relative; }
+                .afc-picker-trigger { display: flex; align-items: center; gap: 10px; width: 300px; height: 44px; padding: 0 0.7rem 0 0.4rem; border: 1px solid #34383d; border-radius: 9px; background: #17191c; color: #e6e8ea; text-align: left; transition: border-color 0.15s, box-shadow 0.15s; }
+                .afc-picker-trigger:hover { border-color: #4a4f55; }
+                .afc-picker-trigger.is-open, .afc-picker-trigger:focus-visible { border-color: rgba(255,122,0,0.75); box-shadow: 0 0 0 2px rgba(255,122,0,0.12); outline: none; }
+                .afc-picker-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 8px; background: rgba(56,189,248,0.12); color: #38bdf8; font-size: 0.8rem; }
+                .afc-picker-icon.is-new { background: rgba(255,122,0,0.13); color: #ff9a3c; }
+                .afc-picker-text { display: flex; flex: 1; min-width: 0; flex-direction: column; line-height: 1.2; }
+                .afc-picker-text small { color: #858a90; font-size: 0.64rem; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+                .afc-picker-text strong { overflow: hidden; color: #f1f5f9; font-size: 0.82rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+                .afc-picker-caret { color: #9aa0a6; font-size: 0.62rem; transition: transform 0.15s; }
+                .afc-picker-trigger.is-open .afc-picker-caret { transform: rotate(180deg); }
+                .afc-picker-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; width: 340px; overflow: hidden; border: 1px solid #34383d; border-radius: 11px; background: #17191c; box-shadow: 0 18px 40px rgba(0,0,0,0.6); }
+                .afc-picker-head { display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 0.8rem 0.45rem; color: #9da2a8; font-size: 0.66rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+                .afc-picker-search { position: relative; margin: 0 0.5rem 0.4rem; }
+                .afc-picker-search svg { position: absolute; top: 50%; left: 10px; color: #6b7280; font-size: 0.7rem; transform: translateY(-50%); }
+                .afc-picker-search input { width: 100%; height: 32px; padding: 0 0.6rem 0 1.9rem; border: 1px solid #2c3034; border-radius: 7px; outline: none; background: #111315; color: #e6e8ea; font-size: 0.78rem; }
+                .afc-picker-search input:focus { border-color: rgba(255,122,0,0.6); }
+                .afc-picker-menu ul { max-height: 280px; margin: 0; padding: 0 0.35rem 0.35rem; overflow-y: auto; list-style: none; }
+                .afc-picker-menu li button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 0.5rem 0.6rem; border: 0; border-radius: 7px; background: transparent; text-align: left; }
+                .afc-picker-menu li button:hover { background: #23262a; }
+                .afc-picker-menu li button.is-active { background: rgba(255,122,0,0.1); }
+                .afc-picker-menu li button.is-active strong { color: #ffb15e; }
+                .afc-picker-menu li button > svg { flex: 0 0 auto; color: #ff7a00; font-size: 0.75rem; }
+                .afc-picker-empty { padding: 0.75rem 0.6rem; color: #6b7280; font-size: 0.78rem; }
+                .afc-picker-new { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0.7rem 0.95rem; border: 0; border-top: 1px solid #2c3034; background: #131518; color: #ff9a3c; font-size: 0.8rem; font-weight: 650; text-align: left; }
+                .afc-picker-new:hover { background: rgba(255,122,0,0.08); color: #ffb15e; }
+
+                .afc-audience { margin-top: 0.25rem; padding-top: 1rem; border-top: 1px solid #202326; }
+                .afc-audience-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+                .afc-summary { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border: 1px solid rgba(255,122,0,0.25); border-radius: 99px; background: rgba(255,122,0,0.07); color: #a6abb0; font-size: 0.74rem; }
+                .afc-summary svg { color: #ff9a3c; }
+                .afc-summary b { color: #f1f5f9; font-weight: 650; }
+                .afc-summary i { color: #4b5056; font-style: normal; }
+                .afc-aud-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px dashed #24272b; }
+                .afc-aud-row:last-child { border-bottom: 0; padding-bottom: 0.2rem; }
+                .afc-aud-label { display: flex; flex-direction: column; gap: 2px; }
+                .afc-aud-label strong { color: #e5e7eb; font-size: 0.8rem; font-weight: 650; }
+                .afc-aud-label small { color: #6b7280; font-size: 0.7rem; }
+                .afc-chip-sep { width: 1px; height: 20px; margin: 0 4px; align-self: center; background: #2c3034; }
+                .afc-chip-all.is-active { border-color: rgba(56,189,248,0.55); background: rgba(56,189,248,0.12); color: #7dd3fc; }
+                .afc-delete:hover:not(:disabled) { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+
+                .afc-body { padding: 1.1rem 1.1rem 0.9rem; }
+                .afc-textarea { height: auto; min-height: 84px; padding: 0.6rem 0.8rem; line-height: 1.5; resize: vertical; }
+                .afc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+                .afc-chip { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 0.75rem; border: 1px solid #34383d; border-radius: 99px; background: #17191c; color: #b4b9be; font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: border-color 0.15s, background 0.15s, color 0.15s; }
+                .afc-chip:hover { border-color: #4a4f55; color: #fff; }
+                .afc-chip.is-active { border-color: rgba(255,122,0,0.6); background: rgba(255,122,0,0.13); color: #ffb15e; }
+                .afc-hint { display: flex; align-items: flex-start; gap: 7px; line-height: 1.45; }
+                .afc-hint svg { flex: 0 0 auto; margin-top: 2px; color: #ff9a3c; }
+                .afc-hint .afc-ok { color: #45dd75; }
+
+                .afc-rounds { display: flex; flex-direction: column; }
+                .afc-round { border-bottom: 1px solid #202326; border-left: 3px solid transparent; transition: background 0.15s; }
+                .afc-round:last-child { border-bottom: 0; border-radius: 0 0 12px 12px; }
+                .afc-round.is-on { border-left-color: var(--afc-tone); background: #111315; }
+                .afc-round-head { display: flex; align-items: center; gap: 12px; padding: 0.85rem 1.1rem; }
+                .afc-round-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid color-mix(in srgb, var(--afc-tone) 35%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--afc-tone) 13%, transparent); color: var(--afc-tone); font-size: 0.9rem; }
+                .afc-round:not(.is-on) .afc-round-icon { filter: saturate(0.4); opacity: 0.75; }
+                .afc-round-name { flex: 1; }
+                .afc-round-name strong { font-size: 0.86rem; }
+                .afc-round-name small { display: inline-flex; align-items: center; gap: 5px; }
+                .afc-round-badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+                .afc-switch { padding: 0; border: 0; background: none; }
+                .afc-switch .aui-toggle-track { margin-top: 0; }
+
+                .afc-round-body { padding: 0 1.1rem 0.95rem calc(1.1rem + 48px); }
+                .afc-round-grid { display: grid; grid-template-columns: repeat(3, minmax(90px, 0.6fr)) repeat(2, minmax(190px, 1fr)); gap: 0 0.85rem; }
+                .afc-round-grid .aui-field { margin-bottom: 0.8rem; }
+                .afc-round-grid .aui-label { font-size: 0.74rem; color: #b4b9be; }
+                .afc-round-grid .aui-label svg { color: #6b7280; }
+                .afc-suffix > .aui-input { padding-right: 2.6rem; }
+                .afc-suffix > span { position: absolute; right: 0.8rem; color: #858a90; font-size: 0.76rem; font-weight: 600; pointer-events: none; }
+                .afc-round-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding-top: 0.8rem; border-top: 1px dashed #2a2e33; }
+                .afc-round-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+                .afc-full-head { display: flex; align-items: center; gap: 12px; padding: 0.85rem 1.25rem; border-bottom: 1px solid #25282b; background: #111315; color: #eceef0; }
+                .afc-full-head > div { flex: 1; min-width: 0; }
+                .afc-full-head h3 { display: flex; align-items: center; gap: 10px; margin: 0; color: #fff; font-size: 1.05rem; font-weight: 750; }
+                .afc-full-head p { margin: 2px 0 0; color: #858a90; font-size: 0.76rem; }
+                .afc-full-body { background: #0a0a0a !important; padding: 1.25rem 1.5rem !important; }
+
+                .afc-notice { padding: 0.65rem 0.85rem; border: 1px solid rgba(129,140,248,0.25); border-radius: 9px; background: rgba(129,140,248,0.07); color: #c7cbe0; font-size: 0.78rem; line-height: 1.5; margin-bottom: 1rem; }
+                .afc-notice code { color: #a5b4fc; }
+                .afc-result { padding: 1.25rem 0.5rem 0.5rem; text-align: center; }
+                .afc-result-icon { display: inline-grid; place-items: center; width: 52px; height: 52px; margin-bottom: 0.75rem; border-radius: 15px; font-size: 1.3rem; }
+                .afc-result-icon.is-ok { background: rgba(49,216,102,0.13); color: #45dd75; }
+                .afc-result-icon.is-warn { background: rgba(246,170,36,0.14); color: #f4b43f; }
+                .afc-result-icon.is-fail { background: rgba(251,95,103,0.13); color: #fb737a; }
+                .afc-result h4 { margin: 0 0 4px; color: #fff; font-size: 1.05rem; font-weight: 750; }
+                .afc-result p { margin: 0; color: #9aa0a6; font-size: 0.84rem; }
+                .afc-result p b { color: #fff; }
+                .afc-failed { max-height: 140px; margin-top: 1rem; overflow-y: auto; text-align: left; }
+                .afc-failed div { margin-bottom: 4px; padding: 5px 10px; border: 1px solid rgba(251,95,103,0.2); border-radius: 7px; background: rgba(251,95,103,0.07); font-size: 0.75rem; }
+                .afc-failed b { color: #fb737a; }
+                .afc-failed span { margin-left: 8px; color: #858a90; }
+
+                .afc-confirm { padding: 1.5rem 1.5rem 1.1rem; text-align: center; }
+                .afc-confirm-icon { display: inline-grid; place-items: center; width: 48px; height: 48px; margin-bottom: 0.75rem; border: 1px solid rgba(251,95,103,0.3); border-radius: 14px; background: rgba(251,95,103,0.12); color: #fb737a; font-size: 1.05rem; }
+                .afc-confirm h3 { margin: 0 0 0.4rem; color: #fff; font-size: 1.05rem; font-weight: 750; }
+                .afc-confirm p { margin: 0; color: #9aa0a6; font-size: 0.82rem; line-height: 1.5; }
+                .afc-confirm p b { color: #e5e7eb; }
+
+                @media (max-width: 1199.98px) {
+                    .afc-round-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+                    .afc-round-grid > :nth-child(4), .afc-round-grid > :nth-child(5) { grid-column: span 1; }
                 }
-
-                @keyframes slideInRight {
-                    from {
-                        transform: translateX(100%);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
+                @media (max-width: 767.98px) {
+                    .afc-round-body { padding-left: 1.1rem; }
+                    .afc-round-grid { grid-template-columns: 1fr 1fr; }
+                    .afc-round-head { flex-wrap: wrap; }
+                    .afc-round-badges { order: 4; width: 100%; justify-content: flex-start; padding-left: 48px; }
+                    .afc-picker, .afc-picker-trigger { width: 100%; }
+                    .afc-picker-menu { left: 0; right: auto; width: 100%; }
+                    .afc-aud-row { grid-template-columns: 1fr; gap: 0.5rem; }
                 }
-
-                @keyframes slideOutRight {
-                    from {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
-                    to {
-                        transform: translateX(100%);
-                        opacity: 0;
-                    }
-                }
-
-                .toast-notification.hiding {
-                    animation: slideOutRight 0.3s ease-out forwards;
-                }
-
-                .toast-content {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 14px 18px;
-                    border-radius: 12px;
-                    background: #1a1a1a;
-                    border: 1px solid;
-                    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-                    backdrop-filter: blur(10px);
-                }
-
-                .toast-notification.success .toast-content {
-                    border-color: #28a745;
-                    background: linear-gradient(135deg, #0a1a0a 0%, #0a0a0a 100%);
-                }
-
-                .toast-notification.error .toast-content {
-                    border-color: #dc3545;
-                    background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
-                }
-
-                .toast-icon {
-                    font-size: 1.5rem;
-                    flex-shrink: 0;
-                }
-
-                .toast-icon.success {
-                    color: #28a745;
-                }
-
-                .toast-icon.error {
-                    color: #dc3545;
-                }
-
-                .toast-message {
-                    flex: 1;
-                    color: #ffffff;
-                    font-size: 0.9rem;
-                    font-weight: 500;
-                    line-height: 1.4;
-                }
-
-                .toast-close {
-                    background: rgba(255, 255, 255, 0.1);
-                    border: none;
-                    color: #ffffff;
-                    font-size: 1.25rem;
-                    cursor: pointer;
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    transition: all 0.2s ease;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .toast-close:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                    transform: scale(1.05);
-                }
-
-                /* Scroll to top button hint */
-                .scroll-hint {
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
-                    background: rgba(255, 107, 53, 0.9);
-                    color: white;
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    z-index: 9999;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    transition: all 0.2s ease;
-                }
-
-                .scroll-hint:hover {
-                    background: #ff6b35;
-                    transform: translateY(-2px);
-                }
-
-                .assessment-config-container {
-                    background: #000000;
-                    min-height: 100vh;
-                    padding: 0;
-                }
-
-                .config-card {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                    background: #0a0a0a;
-                    border: 1px solid #1f1f1f;
-                    border-radius: 16px;
-                    overflow: hidden;
-                }
-
-                .config-header {
-                    background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
-                    border-bottom: 1px solid #ff6b35;
-                    padding: 1.5rem;
-                }
-
-                .config-title {
-                    color: #ffffff;
-                    font-size: 1.5rem;
-                    font-weight: 700;
-                    margin: 0;
-                }
-
-                .config-subtitle {
-                    color: #8a8a8a;
-                    font-size: 0.85rem;
-                    margin: 0.25rem 0 0 0;
-                }
-
-                /* Two Fields in One Row */
-                .form-row-group {
-                    display: flex;
-                    gap: 1.5rem;
-                    padding: 1.5rem;
-                    border-bottom: 1px solid #1f1f1f;
-                }
-
-                .form-group-half {
-                    flex: 1;
-                }
-
-                .form-label {
-                    color: #ff6b35;
-                    font-weight: 500;
-                    margin-bottom: 0.5rem;
-                    display: flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .label-icon {
-                    font-size: 0.85rem;
-                }
-
-                .form-select-custom, .form-input-custom {
-                    width: 100%;
-                    background: #000000;
-                    border: 1px solid #2c2c2c;
-                    color: #ffffff;
-                    padding: 0.75rem;
-                    border-radius: 8px;
-                    transition: all 0.2s ease;
-                }
-
-                .form-select-custom:focus, .form-input-custom:focus {
-                    background: #141414;
-                    border-color: #ff6b35;
-                    box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
-                    outline: none;
-                }
-
-                .disabled-input {
-                    background: #0a0a0a;
-                    cursor: not-allowed;
-                    opacity: 0.7;
-                }
-
-                .form-hint {
-                    color: #6c757d;
-                    font-size: 0.7rem;
-                    margin-top: 0.5rem;
-                    display: block;
-                }
-
-                /* Rounds Section */
-                .rounds-section {
-                    padding: 1.5rem;
-                }
-
-                .section-header {
-                    margin-bottom: 1.5rem;
-                }
-
-                .section-title {
-                    color: #ff6b35;
-                    font-size: 1rem;
-                    font-weight: 600;
-                    margin-bottom: 0.25rem;
-                }
-
-                .section-subtitle {
-                    color: #8a8a8a;
-                    font-size: 0.8rem;
-                    margin: 0;
-                }
-
-                .rounds-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
-                    gap: 1.5rem;
-                }
-
-                .round-card {
-                    background: #000000;
-                    border: 1px solid #2c2c2c;
-                    border-radius: 12px;
-                    transition: all 0.2s ease;
-                }
-
-                .round-card.enabled {
-                    border-color: #ff6b35;
-                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
-                }
-
-                .round-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    padding: 1rem;
-                    border-bottom: 1px solid #2c2c2c;
-                }
-
-                .round-header-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                    flex: 1;
-                }
-
-                .round-checkbox {
-                    width: 18px;
-                    height: 18px;
-                    cursor: pointer;
-                    accent-color: #ff6b35;
-                }
-
-                .round-checkbox-label {
-                    display: flex;
-                    align-items: center;
-                    gap: 0.75rem;
-                    cursor: pointer;
-                    margin: 0;
-                    flex: 1;
-                }
-
-                .round-icon {
-                    font-size: 1.25rem;
-                }
-
-                .round-name {
-                    color: #ffffff;
-                    font-weight: 600;
-                    display: block;
-                    font-size: 0.9rem;
-                }
-
-                .round-description {
-                    color: #6c757d;
-                    font-size: 0.7rem;
-                    display: block;
-                }
-
-                .status-badge {
-                    padding: 0.25rem 0.75rem;
-                    border-radius: 20px;
-                    font-size: 0.7rem;
-                    font-weight: 600;
-                }
-
-                .status-badge.enabled {
-                    background: rgba(40, 167, 69, 0.2);
-                    color: #28a745;
-                    border: 1px solid rgba(40, 167, 69, 0.3);
-                }
-
-                .status-badge.disabled {
-                    background: rgba(108, 117, 125, 0.2);
-                    color: #8a8a8a;
-                    border: 1px solid rgba(108, 117, 125, 0.3);
-                }
-
-                .round-body {
-                    padding: 1rem;
-                }
-
-                .form-row {
-                    display: flex;
-                    gap: 1rem;
-                    margin-bottom: 1rem;
-                    flex-wrap: wrap;
-                }
-
-                .form-group-small {
-                    flex: 1;
-                    min-width: 100px;
-                }
-
-                .form-group-full {
-                    flex: 1;
-                }
-
-                .form-label-small {
-                    color: #ff6b35;
-                    font-size: 0.75rem;
-                    font-weight: 500;
-                    margin-bottom: 0.25rem;
-                    display: block;
-                }
-
-                .form-input-small {
-                    width: 100%;
-                    background: #0a0a0a;
-                    border: 1px solid #2c2c2c;
-                    color: #ffffff;
-                    padding: 0.5rem;
-                    border-radius: 6px;
-                }
-
-                .time-hint {
-                    color: #6c757d;
-                    font-size: 0.65rem;
-                    display: block;
-                    margin-top: 0.25rem;
-                }
-
-                /* Form Actions */
-                .form-actions {
-                    padding: 1.5rem;
-                    border-top: 1px solid #1f1f1f;
-                    display: flex;
-                    justify-content: flex-end;
-                }
-
-                .submit-btn {
-                    background: linear-gradient(135deg, #ff6b35 0%, #ff8c5a 100%);
-                    border: none;
-                    padding: 0.75rem 2rem;
-                    border-radius: 8px;
-                    color: #000000;
-                    font-weight: 600;
-                    transition: all 0.2s ease;
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 0.5rem;
-                }
-
-                .submit-btn:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
-                }
-
-                .submit-btn:disabled {
-                    opacity: 0.7;
-                    cursor: not-allowed;
-                }
-
-                .spinner-icon {
-                    animation: spin 1s linear infinite;
-                    margin-right: 0.5rem;
-                }
-
-                @keyframes spin {
-                    from { transform: rotate(0deg); }
-                    to { transform: rotate(360deg); }
-                }
-
-                /* Responsive */
-                @media (max-width: 768px) {
-                    .toast-notification {
-                        top: 10px;
-                        right: 10px;
-                        left: 10px;
-                        max-width: none;
-                    }
-
-                    .form-row-group {
-                        flex-direction: column;
-                        gap: 1rem;
-                    }
-
-                    .rounds-grid {
-                        grid-template-columns: 1fr;
-                    }
-
-                    .form-row {
-                        flex-direction: column;
-                    }
-
-                    .form-group-small, .form-group-full {
-                        width: 100%;
-                    }
-
-                    .config-header {
-                        padding: 1rem;
-                    }
-
-                    .config-title {
-                        font-size: 1.25rem;
-                    }
-
-                    .form-actions {
-                        justify-content: stretch;
-                    }
-
-                    .submit-btn {
-                        width: 100%;
-                        justify-content: center;
-                    }
-
-                    .round-header-left {
-                        flex-wrap: wrap;
-                    }
-                }
-            .exam-list-section  {
-                max-width: 1200px;
-                margin: 2rem auto 0 auto;
-                background: #0a0a0a;
-                border: 1px solid #1f1f1f;
-                border-radius: 16px;
-                overflow: hidden;
-            }
-
-            .exam-list-header {
-                background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
-                border-bottom: 1px solid #ff6b35;
-                padding: 1.25rem 1.5rem;
-            }
-
-            .exam-list-title {
-                color: #ff6b35;
-                font-size: 1rem;
-                font-weight: 600;
-                margin: 0;
-            }
-
-            .exam-list-subtitle {
-                color: #8a8a8a;
-                font-size: 0.8rem;
-                margin: 0.2rem 0 0 0;
-            }
-
-            .no-exams {
-                display: flex;
-                align-items: center;
-                gap: 0.75rem;
-                padding: 2rem;
-                color: #555;
-                font-size: 0.9rem;
-            }
-
-            .no-exams-icon {
-                font-size: 1.2rem;
-                color: #333;
-            }
-
-            .table-wrapper {
-                overflow-x: auto;
-            }
-
-            .exam-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 0.85rem;
-            }
-
-            .exam-table thead tr {
-                background: #111;
-                border-bottom: 1px solid #2c2c2c;
-            }
-
-            .exam-table th {
-                padding: 0.85rem 1rem;
-                color: #ff6b35;
-                font-weight: 600;
-                text-align: left;
-                white-space: nowrap;
-            }
-
-            .exam-table tbody tr {
-                border-bottom: 1px solid #1a1a1a;
-                transition: background 0.15s ease;
-            }
-
-            .exam-table tbody tr:hover {
-                background: #111;
-            }
-
-            .exam-table tbody tr.active-row {
-                background: rgba(255, 107, 53, 0.05);
-                border-left: 3px solid #ff6b35;
-            }
-
-            .exam-table td {
-                padding: 0.85rem 1rem;
-                color: #ccc;
-                vertical-align: middle;
-            }
-
-            .exam-title-cell {
-                color: #fff;
-                font-weight: 500;
-                display: inline-block;
-                margin-right: 0.5rem;
-            }
-
-            .editing-badge {
-                background: rgba(255, 107, 53, 0.2);
-                color: #ff6b35;
-                border: 1px solid rgba(255, 107, 53, 0.4);
-                font-size: 0.65rem;
-                padding: 2px 8px;
-                border-radius: 20px;
-                font-weight: 600;
-                vertical-align: middle;
-            }
-
-            .rounds-badges {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.35rem;
-            }
-
-            .round-badge {
-                font-size: 0.65rem;
-                padding: 2px 8px;
-                border-radius: 20px;
-                font-weight: 600;
-                white-space: nowrap;
-            }
-
-            .round-badge.mcq   { background: rgba(255,122,0,0.15); color: #ff7a00; border: 1px solid rgba(255,122,0,0.3); }
-            .round-badge.coding { background: rgba(40,167,69,0.15); color: #28a745; border: 1px solid rgba(40,167,69,0.3); }
-            .round-badge.tr    { background: rgba(23,162,184,0.15); color: #17a2b8; border: 1px solid rgba(23,162,184,0.3); }
-            .round-badge.hr    { background: rgba(253,126,20,0.15); color: #fd7e14; border: 1px solid rgba(253,126,20,0.3); }
-
-            .desc-cell {
-                color: #777;
-                font-size: 0.8rem;
-            }
-
-            .action-btns {
-                display: flex;
-                gap: 0.5rem;
-                align-items: center;
-            }
-
-            .edit-btn {
-                background: rgba(255, 107, 53, 0.15);
-                border: 1px solid rgba(255, 107, 53, 0.4);
-                color: #ff6b35;
-                padding: 0.4rem 0.85rem;
-                border-radius: 6px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-                transition: all 0.2s ease;
-            }
-
-            .edit-btn:hover {
-                background: rgba(255, 107, 53, 0.25);
-            }
-
-            .delete-btn {
-                background: rgba(220, 53, 69, 0.15);
-                border: 1px solid rgba(220, 53, 69, 0.4);
-                color: #dc3545;
-                padding: 0.4rem 0.85rem;
-                border-radius: 6px;
-                font-size: 0.75rem;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 5px;
-                transition: all 0.2s ease;
-            }
-
-            .delete-btn:hover:not(:disabled) {
-                background: rgba(220, 53, 69, 0.25);
-            }
-
-            .delete-btn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
-
-            @media (max-width: 768px) {
-                .exam-list-container {
-                    margin: 1rem auto 0 auto;
-                    border-radius: 12px;
-                }
-                .action-btns {
-                    flex-direction: column;
-                }
-            }
             `}</style>
 
-            {/* Upload / Manage Questions Modal */}
-            <Modal
-                show={!!uploadRound}
-                onHide={() => { setUploadRound(null); fetchQuestionCounts(); }}
-                fullscreen
-                backdrop="static"
-            >
-                <Modal.Header closeButton style={{ background: '#0a0a0a', borderBottom: '1px solid #1f1f1f' }}>
-                    <Modal.Title style={{ color: '#fff', fontSize: '1rem', fontWeight: 700 }}>
-                        {uploadRound === 'mcq'     && '📋 MCQ Questions'}
-                        {uploadRound === 'coding'  && '💻 Code Challenges'}
-                        {uploadRound === 'tr'      && '🎤 Technical Interview Questions'}
-                        {uploadRound === 'hr'      && '👥 HR Interview Questions'}
-                        {uploadRound === 'english' && '🇬🇧 English Assessment'}
-                        {uploadRound && (() => {
-                            const isStarted = startedRoundTypes.has(uploadRound);
-                            return isStarted ? <span style={{ marginLeft: 12, fontSize: '0.75rem', color: '#ef4444', background: 'rgba(239,68,68,0.12)', padding: '2px 10px', borderRadius: 20, border: '1px solid #ef444430' }}>🔒 View Only — Exam in Progress</span> : null;
-                        })()}
-                    </Modal.Title>
-                </Modal.Header>
-                <Modal.Body style={{ background: '#000', padding: '1.5rem', overflowY: 'auto' }}>
-                    {uploadRound && examId && (() => {
-                        const isStarted = startedRoundTypes.has(uploadRound);
-                        return (
-                            <>
-                                {uploadRound === 'mcq'     && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'coding'  && <AdminCreateProblem defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'tr'      && <InterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'hr'      && <HRInterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
-                                {uploadRound === 'english' && <EnglishRoundConfig defaultExamId={examId} readOnly={isStarted} />}
-                            </>
-                        );
-                    })()}
-                </Modal.Body>
+            {/* ── Delete exam confirm ── */}
+            <Modal show={confirmDelete} onHide={() => !loading && setConfirmDelete(false)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+                <div className="aui-page">
+                    <div className="aui-modal-body afc-confirm">
+                        <span className="afc-confirm-icon"><FaTrash /></span>
+                        <h3>Delete this exam?</h3>
+                        <p><b>{title || selectedExam?.title}</b> and its round configuration will be removed. This can’t be undone.</p>
+                    </div>
+                    <div className="aui-modal-foot">
+                        <button type="button" className="aui-btn" onClick={() => setConfirmDelete(false)} disabled={loading}>Cancel</button>
+                        <button type="button" className="aui-btn aui-btn-danger" onClick={async () => { await handleDeleteExam(); setConfirmDelete(false); }} disabled={loading}>
+                            {loading ? <><FaSpinner className="aui-spin" /> Deleting…</> : <><FaTrash size={11} /> Delete Exam</>}
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ── Upload / Manage Questions (full screen) ── */}
+            <Modal show={!!uploadRound} onHide={() => { setUploadRound(null); fetchQuestionCounts(); }} fullscreen backdrop="static">
+                {uploadRound && (() => {
+                    const info = roundIcons[uploadRound];
+                    const RoundIcon = info.icon;
+                    const isStarted = startedRoundTypes.has(uploadRound);
+                    return (
+                        <>
+                            <div className="afc-full-head">
+                                <span className="aui-heading-icon"><RoundIcon /></span>
+                                <div>
+                                    <h3>
+                                        {uploadTitle[uploadRound]}
+                                        {isStarted && <span className="aui-badge aui-badge-red"><FaLock size={8} /> View only — exam in progress</span>}
+                                    </h3>
+                                    <p>{title || selectedExam?.title}</p>
+                                </div>
+                                <button type="button" className="aui-icon-btn" onClick={() => { setUploadRound(null); fetchQuestionCounts(); }} aria-label="Close"><FaTimes size={12} /></button>
+                            </div>
+                            <Modal.Body className="afc-full-body">
+                                {examId && (
+                                    <>
+                                        {uploadRound === 'mcq'     && <AdminQuizUpload defaultExamId={examId} readOnly={isStarted} />}
+                                        {uploadRound === 'coding'  && <AdminCreateProblem defaultExamId={examId} readOnly={isStarted} />}
+                                        {uploadRound === 'tr'      && <InterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                        {uploadRound === 'hr'      && <HRInterviewQuestions defaultExamId={examId} readOnly={isStarted} />}
+                                        {uploadRound === 'english' && <EnglishRoundConfig defaultExamId={examId} readOnly={isStarted} />}
+                                    </>
+                                )}
+                            </Modal.Body>
+                        </>
+                    );
+                })()}
             </Modal>
 
             {viewRound && (
                 <QuestionListModal
                     show={!!viewRound}
                     onHide={() => { setViewRound(null); fetchQuestionCounts(); }}
-                    examId={examId}
+                    examId={examId || ''}
                     roundType={viewRound.type}
                     roundLabel={viewRound.label}
                     readOnly={(() => {

@@ -15,6 +15,7 @@ import { useAuthContext } from '@/context/useAuthContext'
 import './StudentReports.css'
 import StudentReportDocument from './StudentReportDocument'
 import StudentReportsSheet, { type SheetRow } from './StudentReportsSheet'
+import logoBlack from '@/assets/images/logo_black.png'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   type Student, type Report, type ReportMetric, type ReportStatus, type TrendPoint,
@@ -31,6 +32,31 @@ const fmt        = (d: string | null) =>
 const PAGE_SIZE  = 10
 const toDateInput = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 const todayISO = () => toDateInput(new Date())
+const logoUrl = new URL(logoBlack, window.location.href).href
+
+/* Placeholder page shown in the export tab while reports load (updated live by id) */
+const exportProgressPage = (logo: string) => `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>0% · Preparing report</title>
+<style>
+  body { margin: 0; height: 100vh; display: grid; place-items: center; background: #f6f7fb; font-family: "Segoe UI", system-ui, sans-serif; color: #1f2937; }
+  .ep { width: min(440px, 88vw); padding: 34px 36px 30px; border: 1px solid #e5e7eb; border-radius: 18px; background: #fff; box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08); text-align: center; }
+  .ep img { height: 34px; margin-bottom: 22px; }
+  .ep h1 { margin: 0 0 4px; font-size: 1.05rem; font-weight: 700; }
+  .ep p { margin: 0; color: #6b7280; font-size: 0.86rem; }
+  #ep-pct { margin: 22px 0 10px; color: #ff7a00; font-size: 2.6rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  .ep-track { height: 10px; overflow: hidden; border-radius: 99px; background: #f1f2f6; }
+  #ep-bar { width: 0; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #ff7a00, #ffa53d); transition: width 0.3s ease; }
+  #ep-count { margin-top: 12px; font-variant-numeric: tabular-nums; }
+  #ep-stage { margin-top: 18px; color: #9ca3af; font-size: 0.78rem; }
+</style></head>
+<body><div class="ep">
+  <img src="${logo}" alt="Eklav" />
+  <h1>Preparing student performance summary</h1>
+  <p>Loading each student's report for the PDF</p>
+  <div id="ep-pct">0%</div>
+  <div class="ep-track"><div id="ep-bar"></div></div>
+  <p id="ep-count">Starting…</p>
+  <p id="ep-stage">Keep this tab open — the print dialog opens automatically when it's ready.</p>
+</div></body></html>`
 const METRIC_ICONS: Record<string, IconType> = {
   engagement: FaCalendarAlt, course: FaBook, interview: FaRobot,
   english: FaLanguage, assessment: FaClipboardList, code: FaCode,
@@ -345,6 +371,9 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number; timeSecs?: number }>>({})
   const [rankSort, setRankSort]       = useState<'none' | 'asc' | 'desc'>('none')
   const [timeSort, setTimeSort]       = useState<'none' | 'asc' | 'desc'>('none')
+  /* Institute-wide ranks drive both sorts; 'error' is retried on the next sort click */
+  const [ranksStatus, setRanksStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [ranksReload, setRanksReload] = useState(0)
   const [showModal, setShowModal]     = useState(false)
   const [modalError, setModalError]   = useState('')
 
@@ -371,10 +400,11 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
     return matchesSearch && matchesBranch && matchesYear
   })
   /* Rank sort spans every page: live ranks cover the whole institute.
-     Students without a rank always go last. */
+     Students without a rank always go last.
+     Sort keys come only from liveRanks — never from per-page reports, which arrive one by one:
+     using them reshuffled the page as each loaded, restarting the load forever ("Loading…"). */
   if (rankSort !== 'none') {
-    const rankOf = (student: Student) =>
-      liveRanks[student._id]?.position ?? performanceReports[student._id]?.rank?.position ?? null
+    const rankOf = (student: Student) => liveRanks[student._id]?.position ?? null
     filtered.sort((a, b) => {
       const ra = rankOf(a), rb = rankOf(b)
       if (ra == null || rb == null) return ra == null ? (rb == null ? 0 : 1) : -1
@@ -384,22 +414,25 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   /* Time sort also spans every page — live ranks carry each student's time for the period.
      Students without data go last. */
   if (timeSort !== 'none') {
-    const timeOf = (student: Student) =>
-      liveRanks[student._id]?.timeSecs ?? performanceReports[student._id]?.timeSpent?.totalSecs ?? null
+    const timeOf = (student: Student) => liveRanks[student._id]?.timeSecs ?? null
     filtered.sort((a, b) => {
       const ta = timeOf(a), tb = timeOf(b)
       if (ta == null || tb == null) return ta == null ? (tb == null ? 0 : 1) : -1
       return timeSort === 'asc' ? ta - tb : tb - ta
     })
   }
+  // Ranks failed earlier (e.g. the API was restarting) — fetch them again before sorting
+  const ensureRanks = () => { if (ranksStatus === 'error') setRanksReload(n => n + 1) }
   // One sort at a time: picking rank clears time and vice versa
   const cycleRankSort = () => {
+    ensureRanks()
     setRankSort(current => current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none')
     setTimeSort('none')
     setPage(1)
   }
   // Most time first is the useful default for time spent
   const cycleTimeSort = () => {
+    ensureRanks()
     setTimeSort(current => current === 'none' ? 'desc' : current === 'desc' ? 'asc' : 'none')
     setRankSort('none')
     setPage(1)
@@ -409,20 +442,35 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const pageKey = paginated.map(student => student._id).join(',')
 
+  /* Loaded reports are cached per date range: paging or re-sorting only fetches what's missing,
+     and the cache is cleared only when the range changes. */
+  const reportsCache = useRef<{ period: string; reports: Record<string, Report> }>({ period: '', reports: {} })
+  reportsCache.current.reports = performanceReports
+
   useEffect(() => {
     let cancelled = false
-    const students = paginated
-    if (!user?.token || students.length === 0) {
+    const period = `${periodFrom}|${periodTo}`
+    const periodChanged = reportsCache.current.period !== period
+    reportsCache.current.period = period
+    const known = periodChanged ? {} : reportsCache.current.reports
+    if (periodChanged) {
       setPerformanceReports({})
-      setLoadingReportIds(new Set())
       setReportLoadErrors({})
+    }
+
+    const students = paginated.filter(student => !known[student._id])
+    if (!user?.token || students.length === 0) {
+      setLoadingReportIds(new Set())
       return
     }
 
     const ids = new Set(students.map(student => student._id))
-    setPerformanceReports({})
     setLoadingReportIds(ids)
-    setReportLoadErrors({})
+    setReportLoadErrors(previous => {
+      const next = { ...previous }
+      ids.forEach(id => { delete next[id] })
+      return next
+    })
 
     const loadPageReports = async () => {
       await Promise.all(students.map(async student => {
@@ -500,12 +548,17 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
     const params = new URLSearchParams()
     if (periodFrom) params.set('from', periodFrom)
     if (periodTo) params.set('to', periodTo)
+    setRanksStatus('loading')
     fetch(`${baseURL}${apiBase}/student-ranks?${params}`, { headers: { Authorization: `Bearer ${user.token}` } })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (!cancelled) setLiveRanks(d?.success ? d.ranks : {}) })
-      .catch(() => { if (!cancelled) setLiveRanks({}) })
+      .then(d => {
+        if (cancelled) return
+        setLiveRanks(d?.success ? d.ranks : {})
+        setRanksStatus(d?.success ? 'ready' : 'error')
+      })
+      .catch(() => { if (!cancelled) { setLiveRanks({}); setRanksStatus('error') } })
     return () => { cancelled = true }
-  }, [user?.token, baseURL, apiBase, periodFrom, periodTo])
+  }, [user?.token, baseURL, apiBase, periodFrom, periodTo, ranksReload])
   const withLiveRank = (studentReport: Report, studentId: string): Report =>
     liveRanks[studentId] ? { ...studentReport, rank: liveRanks[studentId] } : studentReport
 
@@ -588,13 +641,30 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
     // Open the window synchronously (still inside the click) so pop-up blockers allow it
     const pw = window.open('', '_blank')
     if (!pw) { alert('Please allow pop-ups for this site to export the PDF.'); return }
-    pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Preparing report…</title></head><body style="font-family:Segoe UI,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#374151">Preparing student performance summary…</body></html>')
+    pw.document.write(exportProgressPage(logoUrl))
+    pw.document.close()
+
+    // Live progress in the export tab: percentage, bar, count and the tab title
+    const showProgress = (loaded: number, total: number, stage?: string) => {
+      try {
+        const pct = total ? Math.round((loaded / total) * 100) : 100
+        const doc = pw.document
+        const set = (id: string, text: string) => { const el = doc.getElementById(id); if (el) el.textContent = text }
+        set('ep-pct', `${pct}%`)
+        set('ep-count', `${loaded} of ${total} student report${total === 1 ? '' : 's'} loaded`)
+        if (stage) set('ep-stage', stage)
+        const bar = doc.getElementById('ep-bar') as HTMLElement | null
+        if (bar) bar.style.width = `${pct}%`
+        doc.title = `${pct}% · Preparing report`
+      } catch { /* tab closed by the user */ }
+    }
 
     const students = [...filtered]
     const reports: Record<string, Report> = { ...performanceReports }
     const queue = students.filter(student => !reports[student._id])
     let done = students.length - queue.length
     setExportProgress({ done, total: students.length })
+    showProgress(done, students.length)
 
     const worker = async () => {
       while (queue.length) {
@@ -607,11 +677,14 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
         }
         done += 1
         setExportProgress({ done, total: students.length })
+        showProgress(done, students.length)
       }
     }
 
     try {
       await Promise.all(Array.from({ length: 6 }, worker))
+      showProgress(students.length, students.length, 'Building the PDF…')
+      await new Promise(resolve => setTimeout(resolve, 60)) // let the tab paint the final step
 
       const rows: SheetRow[] = students.map(student => {
         const studentReport = reports[student._id]
@@ -673,7 +746,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
           <HeaderSelect label="Filter by joining year" value={yearFilter} options={toOptions('All Years', years)} onChange={year => { setYearFilter(year); setPage(1) }} />
           <button type="button" className="sr-export-button" onClick={exportStudents} disabled={loadingList || filtered.length === 0 || !!exportProgress} title="Download a PDF summary of every student in the current filter">
             {exportProgress
-              ? <><span className="sr-button-loader" /> Preparing {exportProgress.done}/{exportProgress.total}</>
+              ? <><span className="sr-button-loader" /> Preparing {exportProgress.total ? Math.round((exportProgress.done / exportProgress.total) * 100) : 100}% · {exportProgress.done}/{exportProgress.total}</>
               : <><FaFileDownload /> Export PDF</>}
           </button>
         </div>
@@ -737,14 +810,14 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
             <div className="sr-table-head">
               {['#', 'Student', 'Roll / Branch', 'Daily Engagement', 'Course Progress', 'AI Interview', 'English Practice', 'Assessments', 'Code Challenge', 'Time Spent', 'Overall', 'Rank', 'Status', 'Actions'].map(heading => heading === 'Rank' ? (
                 <div key={heading} aria-sort={rankSort === 'asc' ? 'ascending' : rankSort === 'desc' ? 'descending' : 'none'}>
-                  <button type="button" className={`sr-sort-button${rankSort !== 'none' ? ' is-active' : ''}`} onClick={cycleRankSort} title="Sort by rank">
-                    Rank {rankSort === 'asc' ? <FaSortUp /> : rankSort === 'desc' ? <FaSortDown /> : <FaSort />}
+                  <button type="button" className={`sr-sort-button${rankSort !== 'none' ? ' is-active' : ''}`} onClick={cycleRankSort} title={ranksStatus === 'error' ? 'Ranks could not be loaded — click to retry' : ranksStatus === 'loading' ? 'Loading ranks…' : 'Sort by rank'}>
+                    Rank {ranksStatus === 'loading' && rankSort !== 'none' ? <span className="sr-sort-loader" /> : rankSort === 'asc' ? <FaSortUp /> : rankSort === 'desc' ? <FaSortDown /> : <FaSort />}
                   </button>
                 </div>
               ) : heading === 'Time Spent' ? (
                 <div key={heading} aria-sort={timeSort === 'asc' ? 'ascending' : timeSort === 'desc' ? 'descending' : 'none'}>
-                  <button type="button" className={`sr-sort-button${timeSort !== 'none' ? ' is-active' : ''}`} onClick={cycleTimeSort} title={timeSort === 'desc' ? 'Most time first — click for least' : timeSort === 'asc' ? 'Least time first — click to clear' : 'Sort by time spent'}>
-                    Time Spent {timeSort === 'asc' ? <FaSortUp /> : timeSort === 'desc' ? <FaSortDown /> : <FaSort />}
+                  <button type="button" className={`sr-sort-button${timeSort !== 'none' ? ' is-active' : ''}`} onClick={cycleTimeSort} title={ranksStatus === 'error' ? 'Time data could not be loaded — click to retry' : timeSort === 'desc' ? 'Most time first — click for least' : timeSort === 'asc' ? 'Least time first — click to clear' : 'Sort by time spent'}>
+                    Time Spent {ranksStatus === 'loading' && timeSort !== 'none' ? <span className="sr-sort-loader" /> : timeSort === 'asc' ? <FaSortUp /> : timeSort === 'desc' ? <FaSortDown /> : <FaSort />}
                   </button>
                 </div>
               ) : (

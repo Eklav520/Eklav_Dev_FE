@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import axios from 'axios'
-import { Card, Button, Form, Row, Col, Image, Modal, Spinner, Badge } from 'react-bootstrap'
-import { FaBuilding, FaMapMarkerAlt, FaMailBulk, FaEdit, FaTrash, FaPlus, FaSearch, FaUniversity, FaFileImage, FaTimes, FaCheck, FaSpinner, FaInfoCircle, FaFilter } from 'react-icons/fa'
-import { MdLocationPin, MdPinDrop, MdVerified, MdPending } from 'react-icons/md'
+import { Modal } from 'react-bootstrap'
+import { FaCheckCircle, FaCloudUploadAlt, FaEdit, FaExclamationTriangle, FaImage, FaMapMarkerAlt, FaPlus, FaSpinner, FaSyncAlt, FaTimes, FaTrash, FaUniversity } from 'react-icons/fa'
+import { AdminPage, AdminSelect, EmptyState, PageHeader, SearchInput, StatCards, TableFooter, initialsOf, type StatItem } from '@/components/admin-ui'
 
 type College = {
   _id: string
@@ -12,883 +12,351 @@ type College = {
   logo?: string
 }
 
-// Professional Pagination Component
-const CollegePagination: React.FC<{
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-}> = ({ currentPage, totalPages, onPageChange }) => {
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5
-    
-    if (totalPages <= maxVisible + 2) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
-      } else {
-        pages.push(1)
-        pages.push('...')
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-    return pages
-  }
+type FormState = { name: string; address: string; pincode: string; logo: File | null }
+const EMPTY_FORM: FormState = { name: '', address: '', pincode: '', logo: null }
+const PAGE_SIZE = 10
 
+const CollegeLogo = ({ src, name, size = 40 }: { src?: string; name: string; size?: number }) => {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
   return (
-    <div className="college-pagination">
-      <div className="pagination-info">
-        <FaInfoCircle className="me-1" /> Page {currentPage} of {totalPages}
-      </div>
-      <div className="pagination-controls">
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-        >
-          «
-        </button>
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          ‹
-        </button>
-        
-        {getPageNumbers().map((page, index) => (
-          page === '...' ? (
-            <span key={`dots-${index}`} className="pagination-dots">...</span>
-          ) : (
-            <button
-              key={page}
-              className={`pagination-btn ${currentPage === page ? 'active' : ''}`}
-              onClick={() => onPageChange(page as number)}
-            >
-              {page}
-            </button>
-          )
-        ))}
-        
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          ›
-        </button>
-        <button
-          className="pagination-btn"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-        >
-          »
-        </button>
-      </div>
-      <div className="pagination-stats">
-        Showing {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalPages * 10)} of {totalPages * 10}+ Colleges
-      </div>
-    </div>
+    <span className="cda-logo" style={{ width: size, height: size, flexBasis: size }}>
+      {src && !failed ? <img src={src} alt={name} onError={() => setFailed(true)} /> : <span>{initialsOf(name)}</span>}
+    </span>
   )
 }
 
-// Logo Upload Component
-const LogoUpload: React.FC<{
-  currentLogo?: string
-  onFileSelect: (file: File | null) => void
-}> = ({ currentLogo, onFileSelect }) => {
-  const [preview, setPreview] = useState<string | null>(currentLogo || null)
+/* Logo picker: shows the saved logo until a new file is chosen; the new file can be undone */
+const LogoUpload: React.FC<{ currentLogo?: string; name: string; file: File | null; onFileSelect: (file: File | null) => void }> = ({ currentLogo, name, file, onFileSelect }) => {
+  const inputRef = useRef<HTMLInputElement>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
 
-  const handleFileChange = (file: File | null) => {
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-      onFileSelect(file)
-    } else {
-      setPreview(null)
-      onFileSelect(null)
-    }
-  }
+  useEffect(() => {
+    if (!file) { setPreview(null); return }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
-  const handleDrag = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true)
-    } else if (e.type === 'dragleave') {
-      setDragActive(false)
-    }
-  }
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      handleFileChange(file)
-    }
-  }
+  const pick = (f?: File) => { if (f && f.type.startsWith('image/')) onFileSelect(f) }
+  const shown = preview || currentLogo
 
   return (
-    <div className="logo-upload">
-      <div
-        className={`upload-area ${dragActive ? 'drag-active' : ''}`}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        onClick={() => document.getElementById('logo-input')?.click()}
-      >
-        {preview ? (
-          <div className="preview-container">
-            <Image src={preview} className="preview-image" />
-            <button
-              type="button"
-              className="remove-image"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleFileChange(null)
-              }}
-            >
-              <FaTimes />
-            </button>
-          </div>
-        ) : (
-          <div className="upload-placeholder">
-            <FaFileImage className="upload-icon" />
-            <p>Click or drag to upload logo</p>
-            <small>PNG, JPG, JPEG (Max 2MB)</small>
-          </div>
-        )}
+    <div
+      className={`cda-drop${dragActive ? ' is-drag' : ''}`}
+      onDragOver={(e) => { e.preventDefault(); setDragActive(true) }}
+      onDragLeave={() => setDragActive(false)}
+      onDrop={(e) => { e.preventDefault(); setDragActive(false); pick(e.dataTransfer.files?.[0]) }}
+    >
+      <input ref={inputRef} type="file" accept="image/*" className="d-none" onChange={(e) => { pick(e.target.files?.[0]); e.target.value = '' }} />
+      {shown ? <CollegeLogo src={shown} name={name || 'College'} size={64} /> : <span className="cda-drop-icon"><FaImage /></span>}
+      <div className="aui-stack">
+        <strong>{file ? file.name : currentLogo ? 'Current logo' : 'Drop a logo here'}</strong>
+        <small>{file ? `${(file.size / 1024).toFixed(0)} KB · saved when you click Save` : 'PNG or JPG, square works best (max 2 MB)'}</small>
       </div>
-      <input
-        id="logo-input"
-        type="file"
-        accept="image/*"
-        style={{ display: 'none' }}
-        onChange={(e) => {
-          const file = e.target.files?.[0]
-          handleFileChange(file || null)
-        }}
-      />
+      <div className="cda-drop-btns">
+        <button type="button" className="aui-btn aui-btn-sm" onClick={() => inputRef.current?.click()}>
+          <FaCloudUploadAlt size={11} /> {shown ? 'Replace' : 'Browse'}
+        </button>
+        {file && <button type="button" className="aui-icon-btn" title="Undo new logo" onClick={() => onFileSelect(null)}><FaTimes size={11} /></button>}
+      </div>
     </div>
   )
 }
 
 const CollegeAdmin: React.FC = () => {
   const [colleges, setColleges] = useState<College[]>([])
-  const [filteredColleges, setFilteredColleges] = useState<College[]>([])
-  const [form, setForm] = useState<{ name: string; address: string; pincode: string; logo: File | null }>({
-    name: '',
-    address: '',
-    pincode: '',
-    logo: null,
-  })
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [editing, setEditing] = useState<College | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [sort, setSort] = useState('az')
   const [currentPage, setCurrentPage] = useState(1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<College | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const baseURL = import.meta.env.VITE_API_BASE_URL
-  const collegesPerPage = 10
 
-  // Fetch all colleges
   const fetchColleges = async () => {
     try {
       setLoading(true)
       const res = await axios.get(`${baseURL}/api/colleges`)
       const data = Array.isArray(res.data) ? res.data : res.data.colleges || []
       setColleges(data)
-      setFilteredColleges(data)
       setError(null)
     } catch (err) {
       console.error('❌ Error fetching colleges:', err)
-      setError('Failed to fetch college list. Please try again later.')
+      setError('Failed to fetch the college list. Please try again later.')
       setColleges([])
-      setFilteredColleges([])
     } finally {
       setLoading(false)
     }
   }
 
+  useEffect(() => { fetchColleges() }, []) // eslint-disable-line
+  useEffect(() => setCurrentPage(1), [searchTerm, sort])
   useEffect(() => {
-    fetchColleges()
-  }, [])
+    if (!successMessage) return
+    const t = setTimeout(() => setSuccessMessage(null), 4000)
+    return () => clearTimeout(t)
+  }, [successMessage])
 
-  // Filter colleges based on search
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredColleges(colleges)
-    } else {
-      const filtered = colleges.filter(college =>
-        college.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        college.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        college.pincode.includes(searchTerm)
-      )
-      setFilteredColleges(filtered)
-    }
-    setCurrentPage(1)
-  }, [searchTerm, colleges])
+  const filteredColleges = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase()
+    const rows = q
+      ? colleges.filter((c) => (c.name || '').toLowerCase().includes(q) || (c.address || '').toLowerCase().includes(q) || (c.pincode || '').includes(q))
+      : colleges
+    return [...rows].sort((a, b) => (sort === 'za' ? -1 : 1) * (a.name || '').localeCompare(b.name || ''))
+  }, [colleges, searchTerm, sort])
 
-  // Add or update college
+  const stats: StatItem[] = [
+    { label: 'Colleges', value: colleges.length, icon: FaUniversity, tone: 'orange' },
+    { label: 'Missing logo', value: colleges.filter((c) => !c.logo).length, icon: FaImage, tone: 'amber' },
+  ]
+
+  const openAdd = () => { setEditing(null); setForm(EMPTY_FORM); setFormError(null); setShowModal(true) }
+
+  const handleEdit = (college: College) => {
+    setEditing(college)
+    setForm({ name: college.name, address: college.address, pincode: college.pincode, logo: null })
+    setFormError(null)
+    setShowModal(true)
+  }
+
+  const closeModal = () => { if (saving) return; setShowModal(false); setEditing(null); setForm(EMPTY_FORM) }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!form.name.trim() || !form.address.trim() || !form.pincode.trim()) { setFormError('Fill in the name, address and pincode.'); return }
     try {
-      setLoading(true)
+      setSaving(true)
+      setFormError(null)
       const data = new FormData()
-      data.append('name', form.name)
-      data.append('address', form.address)
-      data.append('pincode', form.pincode)
+      data.append('name', form.name.trim())
+      data.append('address', form.address.trim())
+      data.append('pincode', form.pincode.trim())
       if (form.logo) data.append('logo', form.logo)
 
       if (editing) {
         await axios.put(`${baseURL}/api/colleges/${editing._id}`, data)
-        setSuccessMessage('College updated successfully!')
+        setSuccessMessage(`"${form.name.trim()}" was updated.`)
       } else {
         await axios.post(`${baseURL}/api/colleges`, data)
-        setSuccessMessage('College added successfully!')
+        setSuccessMessage(`"${form.name.trim()}" was added.`)
       }
 
-      setForm({ name: '', address: '', pincode: '', logo: null })
-      setEditing(null)
       setShowModal(false)
+      setEditing(null)
+      setForm(EMPTY_FORM)
       fetchColleges()
-      
-      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error('❌ Error saving college:', err)
-      setError('Failed to save college. Please check your input or try again.')
-      setTimeout(() => setError(null), 3000)
+      setFormError('Failed to save the college. Please check the details and try again.')
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
-  // Delete college
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (college: College) => {
     try {
-      setLoading(true)
-      await axios.delete(`${baseURL}/api/colleges/${id}`)
-      setSuccessMessage('College deleted successfully!')
+      setDeleting(true)
+      await axios.delete(`${baseURL}/api/colleges/${college._id}`)
+      setSuccessMessage(`"${college.name}" was deleted.`)
       setShowDeleteConfirm(null)
       fetchColleges()
-      setTimeout(() => setSuccessMessage(null), 3000)
     } catch (err) {
       console.error('❌ Error deleting college:', err)
-      setError('Failed to delete college. Please try again later.')
-      setTimeout(() => setError(null), 3000)
+      setError('Failed to delete the college. Please try again later.')
+      setShowDeleteConfirm(null)
     } finally {
-      setLoading(false)
+      setDeleting(false)
     }
   }
 
-  // Open edit modal
-  const handleEdit = (college: College) => {
-    setEditing(college)
-    setForm({
-      name: college.name,
-      address: college.address,
-      pincode: college.pincode,
-      logo: null,
-    })
-    setShowModal(true)
-  }
-
-  // Pagination
-  const totalPages = Math.ceil(filteredColleges.length / collegesPerPage)
-  const paginatedColleges = filteredColleges.slice(
-    (currentPage - 1) * collegesPerPage,
-    currentPage * collegesPerPage
-  )
+  const pageRows = filteredColleges.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
 
   return (
-    <>
-      <div className="college-admin-dashboard">
+    <AdminPage>
+      <PageHeader
+        icon={FaUniversity}
+        title="College Details"
+        subtitle="Colleges students can choose from when they sign up"
+        stats={<StatCards inline items={stats} loading={loading && colleges.length === 0} />}
+        actions={
+          <>
+            <button type="button" className="aui-btn" onClick={fetchColleges} disabled={loading}>
+              <FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh
+            </button>
+            <button type="button" className="aui-btn aui-btn-primary" onClick={openAdd}><FaPlus size={11} /> Add College</button>
+          </>
+        }
+      />
 
-        {/* ── Compact top bar ── */}
-        <div className="ca-topbar">
-          <div className="ca-topbar-left">
-            <div className="ca-topbar-icon"><FaUniversity size={15} /></div>
-            <span className="ca-topbar-title">College Management</span>
-            <div className="ca-pill"><FaUniversity size={10} /><b>{colleges.length}</b><span>Total</span></div>
-            <div className="ca-pill succ"><MdVerified size={10} /><b>{colleges.filter(c => c.name).length}</b><span>Active</span></div>
+      {successMessage && (
+        <div className="aui-alert aui-alert-success"><FaCheckCircle /> <span>{successMessage}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setSuccessMessage(null)} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+      {error && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setError(null)} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>All colleges</h3>
+            <p>Search by name, address or pincode</p>
           </div>
-
-          {/* Inline search */}
-          <div className="ca-search-wrap">
-            <FaSearch size={11} className="ca-search-icon" />
-            <input
-              className="ca-search"
-              placeholder="Search name, address or pincode…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button className="ca-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>
-            )}
-            {searchTerm && <span className="ca-pill info" style={{ marginLeft: 6 }}>{filteredColleges.length} results</span>}
+          <div className="aui-toolbar-filters">
+            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search colleges…" />
+            <AdminSelect label="Sort" prefix="Sort:" value={sort} onChange={setSort} options={[{ value: 'az', label: 'Name A–Z' }, { value: 'za', label: 'Name Z–A' }]} />
+            <span className="aui-count">{filteredColleges.length} college{filteredColleges.length === 1 ? '' : 's'}</span>
           </div>
-
-          <button
-            className="ca-add-btn"
-            onClick={() => { setEditing(null); setForm({ name: '', address: '', pincode: '', logo: null }); setShowModal(true); }}
-          >
-            <FaPlus size={11} /> Add New College
-          </button>
         </div>
 
-        {/* Toast messages */}
-        {successMessage && (
-          <div className="ca-toast ca-toast-success"><FaCheck className="me-2" />{successMessage}</div>
-        )}
-        {error && (
-          <div className="ca-toast ca-toast-error"><FaTimes className="me-2" />{error}</div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="loading-container">
-            <Spinner animation="border" variant="orange" />
-            <p className="mt-2 text-muted">Loading colleges...</p>
-          </div>
-        )}
-
-        {/* Colleges Table */}
-        {!loading && (
-          <Card className="bg-dark border-secondary">
-            <div className="table-responsive">
-              <table className="college-table">
+        {loading && colleges.length === 0 ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" /><p>Loading colleges…</p></div>
+        ) : filteredColleges.length === 0 ? (
+          <EmptyState
+            icon={FaUniversity}
+            title={searchTerm ? 'No colleges match' : 'No colleges yet'}
+            text={searchTerm ? 'Try a different name, address or pincode.' : 'Add the first college so students can pick it at sign-up.'}
+            action={searchTerm
+              ? <button type="button" className="aui-btn" onClick={() => setSearchTerm('')}>Clear search</button>
+              : <button type="button" className="aui-btn aui-btn-primary" onClick={openAdd}><FaPlus size={11} /> Add College</button>}
+          />
+        ) : (
+          <>
+            <div className="aui-table-scroll">
+              <table className="aui-table">
                 <thead>
                   <tr>
-                    <th>Logo</th>
-                    <th>College Name</th>
+                    <th style={{ width: 52 }}>#</th>
+                    <th>College</th>
                     <th>Address</th>
-                    <th>Pincode</th>
-                    <th className="text-center">Actions</th>
+                    <th style={{ width: 120 }}>Pincode</th>
+                    <th className="text-end" style={{ width: 100 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedColleges.length > 0 ? (
-                    paginatedColleges.map((college) => (
-                      <tr key={college._id}>
-                        <td>
-                          {college.logo ? (
-                            <Image src={college.logo} className="college-logo" roundedCircle />
-                          ) : (
-                            <div className="logo-placeholder">
-                              <FaUniversity />
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <div className="college-name">{college.name}</div>
-                        </td>
-                        <td>
-                          <div className="college-address">
-                            <FaMapMarkerAlt className="text-orange me-1" size={12} />
-                            {college.address}
+                  {pageRows.map((college, i) => (
+                    <tr key={college._id}>
+                      <td className="aui-num">{(currentPage - 1) * PAGE_SIZE + i + 1}</td>
+                      <td>
+                        <div className="aui-person">
+                          <CollegeLogo src={college.logo} name={college.name} />
+                          <div className="aui-stack">
+                            <strong>{college.name}</strong>
+                            {!college.logo && <small className="cda-nologo">No logo</small>}
                           </div>
-                        </td>
-                        <td>
-                          <Badge bg="dark" className="pincode-badge">
-                            <MdPinDrop className="me-1" />
-                            {college.pincode}
-                          </Badge>
-                        </td>
-                        <td className="action-buttons">
-                          <Button
-                            variant="outline-orange"
-                            size="sm"
-                            onClick={() => handleEdit(college)}
-                            title="Edit College"
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => setShowDeleteConfirm(college)}
-                            title="Delete College"
-                          >
-                            <FaTrash />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="empty-state">
-                        <div className="empty-state-content">
-                          <FaUniversity size={48} className="text-muted mb-3" />
-                          <h5>No Colleges Found</h5>
-                          <p className="text-muted">Get started by adding your first college</p>
-                          <Button
-                            variant="orange"
-                            onClick={() => {
-                              setEditing(null)
-                              setForm({ name: '', address: '', pincode: '', logo: null })
-                              setShowModal(true)
-                            }}
-                          >
-                            <FaPlus className="me-2" />
-                            Add College
-                          </Button>
+                        </div>
+                      </td>
+                      <td><span className="cda-address"><FaMapMarkerAlt size={11} /> {college.address || '—'}</span></td>
+                      <td><span className="cda-pin">{college.pincode || '—'}</span></td>
+                      <td className="text-end">
+                        <div className="cda-actions">
+                          <button type="button" className="aui-icon-btn" title="Edit" onClick={() => handleEdit(college)}><FaEdit /></button>
+                          <button type="button" className="aui-icon-btn cda-del" title="Delete" onClick={() => setShowDeleteConfirm(college)}><FaTrash /></button>
                         </div>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <CollegePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            )}
-          </Card>
+            <TableFooter page={currentPage} pageSize={PAGE_SIZE} total={filteredColleges.length} onPageChange={setCurrentPage} noun="colleges" />
+          </>
         )}
       </div>
 
-      {/* Add/Edit Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg" className="college-modal">
-        <Modal.Header closeButton className="bg-dark border-secondary">
-          <Modal.Title className="text-white">
-            <div className="d-flex align-items-center gap-2">
-              {editing ? <FaEdit className="text-orange" /> : <FaPlus className="text-orange" />}
-              <span>{editing ? 'Edit College' : 'Add New College'}</span>
+      {/* Add/Edit */}
+      <Modal show={showModal} onHide={closeModal} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <form onSubmit={handleSubmit} className="aui-page">
+          <div className="aui-modal-head">
+            <span className="aui-heading-icon">{editing ? <FaEdit /> : <FaPlus />}</span>
+            <div>
+              <h3>{editing ? 'Edit college' : 'Add a college'}</h3>
+              <p>{editing ? editing.name : 'It appears in the college list at student sign-up'}</p>
             </div>
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="bg-dark">
-          <Form onSubmit={handleSubmit}>
-            <Row className="g-4">
-              <Col md={12}>
-                <Form.Label className="text-muted">College Name</Form.Label>
-                <div className="input-with-icon">
-                  <FaUniversity className="input-icon" />
-                  <Form.Control
-                    type="text"
-                    placeholder="Enter college name"
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="bg-dark-lighter border-secondary text-white"
-                  />
-                </div>
-              </Col>
-              <Col md={12}>
-                <Form.Label className="text-muted">Address</Form.Label>
-                <div className="input-with-icon">
-                  <FaMapMarkerAlt className="input-icon" />
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    placeholder="Enter complete address"
-                    required
-                    value={form.address}
-                    onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    className="bg-dark-lighter border-secondary text-white"
-                  />
-                </div>
-              </Col>
-              <Col md={6}>
-                <Form.Label className="text-muted">Pincode</Form.Label>
-                <div className="input-with-icon">
-                  <MdPinDrop className="input-icon" />
-                  <Form.Control
-                    type="text"
-                    placeholder="Enter pincode"
-                    required
-                    value={form.pincode}
-                    onChange={(e) => setForm({ ...form, pincode: e.target.value })}
-                    className="bg-dark-lighter border-secondary text-white"
-                  />
-                </div>
-              </Col>
-              <Col md={6}>
-                <Form.Label className="text-muted">College Logo</Form.Label>
-                <LogoUpload
-                  currentLogo={editing?.logo}
-                  onFileSelect={(file) => setForm({ ...form, logo: file })}
-                />
-              </Col>
-            </Row>
-            <div className="modal-actions mt-4">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowModal(false)
-                  setEditing(null)
-                  setForm({ name: '', address: '', pincode: '', logo: null })
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="orange" disabled={loading}>
-                {loading ? <FaSpinner className="spinning" /> : (editing ? 'Update College' : 'Add College')}
-              </Button>
-            </div>
-          </Form>
-        </Modal.Body>
-      </Modal>
-
-      {/* Delete Confirmation Modal */}
-      <Modal show={!!showDeleteConfirm} onHide={() => setShowDeleteConfirm(null)} centered className="delete-modal">
-        <Modal.Header closeButton className="bg-dark border-secondary">
-          <Modal.Title className="text-white">Confirm Delete</Modal.Title>
-        </Modal.Header>
-        <Modal.Body className="bg-dark text-white">
-          <div className="text-center py-3">
-            <FaTrash size={48} className="text-danger mb-3" />
-            <h5>Are you sure?</h5>
-            <p className="text-muted">
-              You are about to delete <strong>{showDeleteConfirm?.name}</strong>. This action cannot be undone.
-            </p>
+            <button type="button" className="aui-icon-btn" onClick={closeModal} aria-label="Close"><FaTimes size={12} /></button>
           </div>
-        </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
-          <Button variant="secondary" onClick={() => setShowDeleteConfirm(null)}>
-            Cancel
-          </Button>
-          <Button variant="danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm._id)}>
-            Delete College
-          </Button>
-        </Modal.Footer>
+          <div className="aui-modal-body">
+            {formError && <div className="aui-alert"><FaExclamationTriangle /> <span>{formError}</span></div>}
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="cda-name">College name</label>
+              <input id="cda-name" className="aui-input" placeholder="e.g. JNTU College of Engineering" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="cda-address">Address</label>
+              <textarea id="cda-address" className="aui-input cda-textarea" rows={2} placeholder="Street, area, city" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="cda-pin">Pincode</label>
+              <input id="cda-pin" className="aui-input cda-pin-input" inputMode="numeric" maxLength={6} placeholder="e.g. 500085" value={form.pincode} onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '') })} />
+            </div>
+            <div className="aui-field" style={{ marginBottom: 0 }}>
+              <span className="aui-label">Logo <span className="aui-optional">Optional</span></span>
+              <LogoUpload currentLogo={editing?.logo} name={form.name} file={form.logo} onFileSelect={(file) => setForm((f) => ({ ...f, logo: file }))} />
+            </div>
+          </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={closeModal} disabled={saving}>Cancel</button>
+            <button type="submit" className="aui-btn aui-btn-primary" disabled={saving}>
+              {saving ? <FaSpinner className="aui-spin" style={{ color: '#fff' }} /> : <FaCheckCircle size={11} />} {editing ? 'Save changes' : 'Add college'}
+            </button>
+          </div>
+        </form>
       </Modal>
 
-      {/* Global Styles */}
+      {/* Delete */}
+      <Modal show={!!showDeleteConfirm} onHide={() => !deleting && setShowDeleteConfirm(null)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <div className="aui-modal-head">
+          <span className="cda-del-icon"><FaTrash /></span>
+          <div>
+            <h3>Delete this college?</h3>
+            <p>{showDeleteConfirm?.name}</p>
+          </div>
+        </div>
+        <div className="aui-modal-body"><p className="cda-modal-text">It will no longer appear in the college list at sign-up. This can't be undone.</p></div>
+        <div className="aui-modal-foot">
+          <button type="button" className="aui-btn" onClick={() => setShowDeleteConfirm(null)} disabled={deleting}>Cancel</button>
+          <button type="button" className="aui-btn aui-btn-danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} disabled={deleting}>
+            {deleting ? <FaSpinner className="aui-spin" /> : <FaTrash size={11} />} Delete college
+          </button>
+        </div>
+      </Modal>
+
       <style>{`
-        .college-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
-
-        /* ── Compact top bar ── */
-        .ca-topbar {
-          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-          background: #141414; border: 1px solid #222; border-radius: 12px;
-          padding: 8px 14px;
-        }
-        .ca-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .ca-topbar-icon {
-          width: 30px; height: 30px; border-radius: 8px;
-          background: rgba(255,140,0,.12); display: flex; align-items: center;
-          justify-content: center; color: #ff8c00;
-        }
-        .ca-topbar-title { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; }
-        .ca-pill {
-          display: flex; align-items: center; gap: 4px;
-          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
-          padding: 3px 10px; font-size: .72rem; color: #888; white-space: nowrap;
-        }
-        .ca-pill b { color: #ccc; }
-        .ca-pill.succ { border-color: #22c55e33; } .ca-pill.succ b { color: #22c55e; }
-        .ca-pill.info { border-color: #38bdf833; } .ca-pill.info b { color: #38bdf8; }
-
-        /* Inline search */
-        .ca-search-wrap {
-          flex: 1; min-width: 200px; position: relative;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .ca-search-icon { position: absolute; left: 10px; color: #555; pointer-events: none; }
-        .ca-search {
-          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
-          color: #ccc; font-size: .8rem; padding: 6px 30px 6px 28px; outline: none;
-          transition: border-color .15s;
-        }
-        .ca-search:focus { border-color: #ff8c00; }
-        .ca-search-clear {
-          position: absolute; right: 8px;
-          background: none; border: none; color: #555; cursor: pointer; padding: 0;
-        }
-        .ca-search-clear:hover { color: #ff8c00; }
-
-        .ca-add-btn {
-          background: #ff8c00; border: none; color: #fff; border-radius: 8px;
-          padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
-          display: flex; align-items: center; gap: 6px; white-space: nowrap;
-          transition: background .15s; flex-shrink: 0;
-        }
-        .ca-add-btn:hover { background: #e67e00; }
-
-        /* Toast */
-        .ca-toast {
-          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
-          display: flex; align-items: center;
-        }
-        .ca-toast-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
-        .ca-toast-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
-
-        .college-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-
-        .college-table thead th {
-          padding: 1rem;
-          text-align: left;
-          color: #6c757d;
-          font-weight: 500;
-          border-bottom: 1px solid #3a3a3a;
-        }
-
-        .college-table tbody tr {
-          border-bottom: 1px solid #2a2a2a;
-          transition: background 0.2s;
-        }
-
-        .college-table tbody tr:hover {
-          background: rgba(255, 140, 0, 0.05);
-        }
-
-        .college-table td {
-          padding: 1rem;
-        }
-
-        .college-logo {
-          width: 48px;
-          height: 48px;
-          object-fit: cover;
-        }
-
-        .logo-placeholder {
-          width: 48px;
-          height: 48px;
-          background: #2a2a2a;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ff8c00;
-          font-size: 20px;
-        }
-
-        .college-name {
-          font-weight: 500;
-          color: white;
-        }
-
-        .college-address {
-          font-size: 0.875rem;
-          color: #adb5bd;
-          max-width: 300px;
-        }
-
-        .pincode-badge {
-          background: #2a2a2a !important;
-          color: #ff8c00 !important;
-          padding: 0.5rem 1rem;
-          font-weight: 500;
-        }
-
-        .action-buttons {
-          display: flex;
-          gap: 0.5rem;
-          justify-content: center;
-        }
-
-        .action-buttons button {
-          width: 32px;
-          height: 32px;
-          padding: 0;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .empty-state {
-          text-align: center;
-          padding: 3rem !important;
-        }
-
-        .empty-state-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-
-        .input-with-icon {
-          position: relative;
-        }
-
-        .input-icon {
-          position: absolute;
-          left: 1rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-        }
-
-        .input-with-icon input,
-        .input-with-icon textarea {
-          padding-left: 2.5rem;
-        }
-
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 1rem;
-          padding-top: 1rem;
-          border-top: 1px solid #3a3a3a;
-        }
-
-        .spinning {
-          animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-
-        .loading-container {
-          text-align: center;
-          padding: 3rem;
-        }
-
-        .college-pagination {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 1.5rem;
-          background: #1e1e1e;
-          border-radius: 12px;
-          border-top: 1px solid #3a3a3a;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-
-        .pagination-btn {
-          min-width: 36px;
-          height: 36px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          color: #e0e0e0;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-
-        .pagination-btn:hover:not(:disabled) {
-          background: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-
-        .pagination-btn.active {
-          background: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-
-        .pagination-btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .pagination-dots {
-          color: #6c757d;
-          padding: 0 0.5rem;
-        }
-
-        .custom-alert {
-          border-radius: 12px;
-          border: none;
-        }
-
-        /* Logo Upload Styles */
-        .logo-upload {
-          width: 100%;
-        }
-
-        .upload-area {
-          border: 2px dashed #3a3a3a;
-          border-radius: 12px;
-          padding: 1rem;
-          text-align: center;
-          cursor: pointer;
-          transition: all 0.2s;
-          background: #2a2a2a;
-        }
-
-        .upload-area:hover, .upload-area.drag-active {
-          border-color: #ff8c00;
-          background: rgba(255, 140, 0, 0.05);
-        }
-
-        .preview-container {
-          position: relative;
-          display: inline-block;
-        }
-
-        .preview-image {
-          max-width: 100px;
-          max-height: 100px;
-          object-fit: contain;
-        }
-
-        .remove-image {
-          position: absolute;
-          top: -8px;
-          right: -8px;
-          background: #dc3545;
-          border: none;
-          border-radius: 50%;
-          width: 24px;
-          height: 24px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          cursor: pointer;
-        }
-
-        .upload-placeholder {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .upload-icon {
-          font-size: 32px;
-          color: #6c757d;
-        }
-
-        .upload-placeholder p {
-          margin: 0;
-          color: #adb5bd;
-        }
-
-        .upload-placeholder small {
-          color: #6c757d;
-        }
+        .cda-logo { display: inline-grid; place-items: center; flex: 0 0 auto; overflow: hidden; border-radius: 10px; background: #fff; }
+        .cda-logo img { width: 100%; height: 100%; padding: 3px; object-fit: contain; }
+        .cda-logo > span { display: grid; place-items: center; width: 100%; height: 100%; background: rgba(255,122,0,0.12); color: #ff9a3c; font-size: 0.78rem; font-weight: 800; }
+        .cda-nologo { color: #b8860b !important; }
+        .cda-address { display: inline-flex; align-items: flex-start; gap: 6px; max-width: 420px; color: #a6abb0; font-size: 0.8rem; line-height: 1.45; }
+        .cda-address svg { flex: 0 0 auto; margin-top: 3px; color: #ff9a3c; }
+        .cda-pin { color: #c3c7ca; font-size: 0.8rem; font-variant-numeric: tabular-nums; letter-spacing: 0.03em; }
+        .cda-actions { display: inline-flex; gap: 6px; }
+        .cda-del:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+        .cda-textarea { height: auto; padding: 0.6rem 0.8rem; resize: vertical; }
+        .cda-pin-input { max-width: 200px; letter-spacing: 0.06em; }
+        .cda-drop { display: flex; align-items: center; gap: 14px; padding: 0.85rem 1rem; border: 1.5px dashed #3a3f45; border-radius: 12px; background: #111315; transition: border-color 0.15s, background 0.15s; }
+        .cda-drop.is-drag { border-color: rgba(255,122,0,0.7); background: rgba(255,122,0,0.05); }
+        .cda-drop .aui-stack { flex: 1; min-width: 0; }
+        .cda-drop strong { overflow: hidden; color: #e5e7eb; font-size: 0.84rem; text-overflow: ellipsis; white-space: nowrap; }
+        .cda-drop small { color: #6b7280; font-size: 0.72rem; }
+        .cda-drop-icon { display: grid; place-items: center; width: 64px; height: 64px; flex: 0 0 64px; border: 1px solid rgba(255,122,0,0.25); border-radius: 12px; background: rgba(255,122,0,0.08); color: #ff7a00; font-size: 1.3rem; }
+        .cda-drop-btns { display: flex; gap: 6px; }
+        .cda-del-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid rgba(251,95,103,0.3); border-radius: 10px; background: rgba(251,95,103,0.1); color: #fb737a; }
+        .cda-modal-text { margin: 0; color: #a6abb0; font-size: 0.84rem; line-height: 1.6; }
       `}</style>
-    </>
+    </AdminPage>
   )
 }
 

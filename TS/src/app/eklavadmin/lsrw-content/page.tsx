@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react'
-import { Spinner } from 'react-bootstrap'
-import { FaHeadphones, FaBook, FaTrash, FaUpload, FaLayerGroup, FaCog, FaSave, FaMicrophone, FaFont, FaPlus, FaRandom, FaImage, FaFileExcel } from 'react-icons/fa'
+import { Modal } from 'react-bootstrap'
+import { FaHeadphones, FaBook, FaTrash, FaUpload, FaLayerGroup, FaCog, FaSave, FaMicrophone, FaFont, FaPlus, FaRandom, FaImage, FaFileExcel, FaCheckCircle, FaSpinner, FaExclamationTriangle, FaSearch, FaFileAudio } from 'react-icons/fa'
+import type { IconType } from 'react-icons'
 import * as XLSX from 'xlsx'
 import PageMetaData from '@/components/PageMetaData'
 import { useAuthContext } from '@/context/useAuthContext'
+import { AdminPage, PageHeader, Tabs, SearchInput, AdminSelect, EmptyState } from '@/components/admin-ui'
 
-const PAGE_BG     = 'var(--dash-page-bg, #f8fafc)'
-const CARD_BG     = 'var(--dash-card-bg, #ffffff)'
-const PAGE_BORDER = 'var(--dash-border, #e2e8f0)'
-const PAGE_TEXT   = 'var(--dash-text, #0f172a)'
-const PAGE_GRAY   = 'var(--dash-gray, #64748b)'
+const PAGE_BG     = '#111315'
+const CARD_BG     = '#17191c'
+const PAGE_BORDER = '#2c3034'
+const PAGE_TEXT   = '#eceef0'
+const PAGE_GRAY   = '#9da2a8'
 const ORANGE = '#ff7a00'
-const BLUE   = '#2563eb'
-const PURPLE = '#7c3aed'
-const GREEN  = '#16a34a'
-const CYAN   = '#0891b2'
-const PINK   = '#db2777'
-const TEAL   = '#0d9488'
+const BLUE   = '#60a5fa'
+const PURPLE = '#a78bfa'
+const GREEN  = '#45dd75'
+const CYAN   = '#22d3ee'
+const PINK   = '#f472b6'
+const TEAL   = '#2dd4bf'
 
 type Tab = 'reading' | 'listening' | 'speaking' | 'grammar' | 'jumbled' | 'storytelling' | 'passages'
 
@@ -51,6 +53,17 @@ type Item = {
 type GrammarType = 'mcq' | 'fill'
 type GrammarDraft = { type: GrammarType; category: string; question: string; options: string[]; correctAnswer: string }
 type GrammarExcelItem = GrammarDraft & { marks?: number; timeLimit?: number }
+
+type Section = { key: Tab; label: string; icon: IconType; color: string; hint: string }
+const SECTIONS: Section[] = [
+  { key: 'reading',      label: 'Reading',       icon: FaBook,       color: ORANGE, hint: 'Sentences for the reading round' },
+  { key: 'listening',    label: 'Listening',     icon: FaHeadphones, color: BLUE,   hint: 'Audio clips, each paired with its transcript' },
+  { key: 'speaking',     label: 'Speaking',      icon: FaMicrophone, color: PURPLE, hint: 'Topics students speak about' },
+  { key: 'grammar',      label: 'Grammar',       icon: FaFont,       color: GREEN,  hint: 'MCQ and fill-in-the-blank questions' },
+  { key: 'jumbled',      label: 'Jumbled',       icon: FaRandom,     color: CYAN,   hint: 'Sentences split into parts to put back in order' },
+  { key: 'storytelling', label: 'Story Telling', icon: FaImage,      color: PINK,   hint: 'Image or text prompts with points to cover' },
+  { key: 'passages',     label: 'Passages',      icon: FaFileAudio,  color: TEAL,   hint: 'One audio passage with its own MCQ questions' },
+]
 
 const TIME_LIMIT_OPTIONS = [15, 30, 45, 60, 90]
 const SPEAKING_TIME_OPTIONS = [30, 45, 60, 90, 120, 180]
@@ -140,6 +153,10 @@ const LSRWContentAdmin = () => {
   const [passageQSubTab, setPassageQSubTab] = useState<'manual' | 'bulk'>('manual')
 
   const [submitting, setSubmitting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const endpointBase = tab === 'speaking' ? 'lsrw-speaking-content'
@@ -924,14 +941,15 @@ const LSRWContentAdmin = () => {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!user?.token) return
-    if (!confirm('Delete this item? This cannot be undone.')) return
+  const confirmDelete = async () => {
+    if (!user?.token || !deleteId) return
+    setDeleting(true)
     try {
-      const res = await fetch(`${baseURL}/api/eklavadmin/${endpointBase}/${id}`, { method: 'DELETE', headers: authHeader })
+      const res = await fetch(`${baseURL}/api/eklavadmin/${endpointBase}/${deleteId}`, { method: 'DELETE', headers: authHeader })
       const data = await res.json()
-      if (data.success) setItems((prev) => prev.filter((i) => i._id !== id))
+      if (data.success) setItems((prev) => prev.filter((i) => i._id !== deleteId))
     } catch (err) { console.error(err) }
+    finally { setDeleting(false); setDeleteId(null) }
   }
 
   const toggleActive = async (item: Item) => {
@@ -947,132 +965,92 @@ const LSRWContentAdmin = () => {
     } catch (err) { console.error(err) }
   }
 
+  const settingsFields: { tab: Tab; value: number; set: (n: number) => void; unit: string }[] = [
+    { tab: 'reading', value: readingCount, set: setReadingCount, unit: 'sentences' },
+    { tab: 'listening', value: listeningCount, set: setListeningCount, unit: 'clips' },
+    { tab: 'speaking', value: speakingCount, set: setSpeakingCount, unit: 'topics' },
+    { tab: 'grammar', value: grammarCount, set: setGrammarCount, unit: 'questions' },
+    { tab: 'jumbled', value: jumbledCount, set: setJumbledCount, unit: 'sentences' },
+    { tab: 'storytelling', value: storyCount, set: setStoryCount, unit: 'prompts' },
+    { tab: 'passages', value: passageCount, set: setPassageCount, unit: 'passages' },
+  ]
+
   const accent = tab === 'reading' ? ORANGE : tab === 'listening' ? BLUE : tab === 'speaking' ? PURPLE : tab === 'grammar' ? GREEN : tab === 'jumbled' ? CYAN : tab === 'storytelling' ? PINK : TEAL
 
+  const meta = SECTIONS.find((s) => s.key === tab)!
+  const q = search.trim().toLowerCase()
+  const visibleItems = items.filter((item) => {
+    if (statusFilter === 'active' && !item.isActive) return false
+    if (statusFilter === 'inactive' && item.isActive) return false
+    if (!q) return true
+    const haystack = [item.sentence, item.topic, item.question, item.promptText, item.category, ...(item.parts || []), ...(item.points || []), ...(item.questions || []).map((x) => x.question)]
+    return haystack.some((v) => v && v.toLowerCase().includes(q))
+  })
+  const activeCount = items.filter((i) => i.isActive).length
+  const shownPerAttempt = settingsFields.find((f) => f.tab === tab)?.value ?? 0
+
   return (
-    <div style={{ background: PAGE_BG, minHeight: '100vh', padding: '24px 28px 40px', fontFamily: '"Segoe UI", system-ui, sans-serif' }}>
+    <AdminPage className="lsrw-page">
       <PageMetaData title="LSRW Content Bank" />
 
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: PAGE_TEXT, margin: '0 0 4px' }}>Listening, Reading & Speaking — Content Bank</h2>
-        <p style={{ color: PAGE_GRAY, fontSize: 13, margin: 0 }}>Bulk-upload a large pool of sentences/audio/topics, then choose how many each student gets — a random subset every attempt.</p>
-      </div>
+      <PageHeader
+        icon={FaLayerGroup}
+        title="LSRW Content Bank"
+        subtitle="Build a large pool for each skill; every student attempt gets a random set from it"
+      />
 
       {/* Round settings */}
-      <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '16px 20px', marginBottom: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FaCog size={13} color={PAGE_TEXT} />
-            <span style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT }}>Round Settings — questions per student attempt</span>
+      <div className="aui-card lsrw-settings">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3><FaCog size={13} style={{ marginRight: 8, color: '#ff9a3c', verticalAlign: '-1px' }} />Questions per attempt</h3>
+            <p>How many items each student gets from every bank, picked at random each attempt</p>
           </div>
-          <button
-            onClick={saveSettings}
-            disabled={savingSettings}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, background: PAGE_TEXT, border: 'none', color: '#fff', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: savingSettings ? 'not-allowed' : 'pointer', flexShrink: 0 }}
-          >
-            <FaSave size={11} /> {savingSettings ? 'Saving…' : settingsSaved ? 'Saved ✓' : 'Save Settings'}
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, alignItems: 'flex-end', gap: 16 }}>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Reading questions shown</label>
-            <input
-              type="number" min={0} value={readingCount}
-              onChange={(e) => setReadingCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Listening questions shown</label>
-            <input
-              type="number" min={0} value={listeningCount}
-              onChange={(e) => setListeningCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Speaking topics shown</label>
-            <input
-              type="number" min={0} value={speakingCount}
-              onChange={(e) => setSpeakingCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Grammar questions shown</label>
-            <input
-              type="number" min={0} value={grammarCount}
-              onChange={(e) => setGrammarCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Jumbled sentences shown</label>
-            <input
-              type="number" min={0} value={jumbledCount}
-              onChange={(e) => setJumbledCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Story prompts shown</label>
-            <input
-              type="number" min={0} value={storyCount}
-              onChange={(e) => setStoryCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: PAGE_GRAY, display: 'block', marginBottom: 4 }}>Passages shown</label>
-            <input
-              type="number" min={0} value={passageCount}
-              onChange={(e) => setPassageCount(Number(e.target.value))}
-              style={{ width: 120, border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '7px 10px', fontSize: 13.5, color: PAGE_TEXT, background: CARD_BG }}
-            />
-          </div>
-          <span style={{ fontSize: 11.5, color: PAGE_GRAY, width: '100%' }}>
-            Each attempt randomly picks {readingCount} Reading sentences, {listeningCount} Listening clips, {speakingCount} Speaking topics, {grammarCount} Grammar questions, {jumbledCount} Jumbled sentences, {storyCount} Story prompts, and {passageCount} full Passages (each with its own questions).
-          </span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{
-        display: 'flex', marginBottom: 20, background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 12,
-        boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflowX: 'auto' as const,
-      }}>
-        {(['reading', 'listening', 'speaking', 'grammar', 'jumbled', 'storytelling', 'passages'] as const).map((t) => {
-          const tColor = t === 'reading' ? ORANGE : t === 'listening' ? BLUE : t === 'speaking' ? PURPLE : t === 'grammar' ? GREEN : t === 'jumbled' ? CYAN : t === 'storytelling' ? PINK : TEAL
-          const tBg = t === 'reading' ? '#fff7ed' : t === 'listening' ? '#eff6ff' : t === 'speaking' ? '#f5f3ff' : t === 'grammar' ? '#f0fdf4' : t === 'jumbled' ? '#ecfeff' : t === 'storytelling' ? '#fdf2f8' : '#f0fdfa'
-          const active = tab === t
-          return (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              style={{
-                flex: '1 1 0', minWidth: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '12px 10px', cursor: 'pointer', border: 'none', borderBottom: `2.5px solid ${active ? tColor : 'transparent'}`,
-                background: active ? tBg : 'transparent',
-                color: active ? tColor : PAGE_GRAY,
-                fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap' as const,
-              }}
-            >
-              {t === 'reading' ? <FaBook size={11} /> : t === 'listening' ? <FaHeadphones size={11} /> : t === 'speaking' ? <FaMicrophone size={11} /> : t === 'grammar' ? <FaFont size={11} /> : t === 'jumbled' ? <FaRandom size={11} /> : t === 'storytelling' ? <FaImage size={11} /> : <FaHeadphones size={11} />}
-              {t === 'reading' ? 'Reading' : t === 'listening' ? 'Listening' : t === 'speaking' ? 'Speaking' : t === 'grammar' ? 'Grammar' : t === 'jumbled' ? 'Jumbled' : t === 'storytelling' ? 'Story Telling' : 'Passages'}
+          <div className="aui-toolbar-filters">
+            {settingsSaved && <span className="aui-badge aui-badge-green"><FaCheckCircle size={10} /> Saved</span>}
+            <button type="button" className="aui-btn aui-btn-primary" onClick={saveSettings} disabled={savingSettings}>
+              {savingSettings ? <FaSpinner className="aui-spin" style={{ color: '#fff' }} /> : <FaSave size={11} />} {savingSettings ? 'Saving…' : 'Save settings'}
             </button>
-          )
-        })}
+          </div>
+        </div>
+        <div className="lsrw-counts">
+          {settingsFields.map((f) => {
+            const s = SECTIONS.find((x) => x.key === f.tab)!
+            return (
+              <label key={f.tab} className={`lsrw-count${tab === f.tab ? ' is-current' : ''}`} style={{ ['--acc' as any]: s.color }}>
+                <span className="lsrw-count-head"><s.icon size={11} /> {s.label}</span>
+                <span className="lsrw-count-input">
+                  <input type="number" min={0} value={f.value} onChange={(e) => f.set(Math.max(0, Number(e.target.value)))} aria-label={`${s.label} items per attempt`} />
+                  <small>{f.unit}</small>
+                </span>
+              </label>
+            )
+          })}
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 20, alignItems: 'start' }}>
-        {/* Bulk add form */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 20px', boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-            <FaLayerGroup size={12} color={accent} />
-            <span style={{ fontWeight: 700, fontSize: 14, color: PAGE_TEXT }}>
-              {tab === 'storytelling' ? 'Add Story Prompt' : tab === 'passages' ? 'Add Passage' : `Bulk Add ${tab === 'reading' ? 'Reading' : tab === 'listening' ? 'Listening' : tab === 'speaking' ? 'Speaking' : tab === 'grammar' ? 'Grammar' : 'Jumbled Sentence'} Items`}
-            </span>
+      <div className="lsrw-tabs">
+        <Tabs<Tab>
+          value={tab}
+          onChange={(t) => { setTab(t); setSearch(''); setStatusFilter('') }}
+          label="Content type"
+          items={SECTIONS.map((s) => ({ value: s.key, label: s.label, icon: s.icon }))}
+        />
+      </div>
+
+      <div className="lsrw-grid" style={{ ['--acc' as any]: accent }}>
+        {/* Add form */}
+        <div className="aui-card lsrw-form-card">
+          <div className="aui-toolbar">
+            <div className="lsrw-title">
+              <span className="lsrw-title-icon"><meta.icon /></span>
+              <div className="aui-toolbar-title">
+                <h3>{tab === 'storytelling' ? 'Add story prompts' : tab === 'passages' ? 'Add a passage' : `Add ${meta.label.toLowerCase()} items`}</h3>
+                <p>{meta.hint}</p>
+              </div>
+            </div>
           </div>
+          <div className="lsrw-form">
 
           {tab === 'passages' ? (
             <>
@@ -1096,7 +1074,7 @@ const LSRWContentAdmin = () => {
                       style={{
                         flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                         border: `1.5px solid ${passageQSubTab === t ? TEAL : PAGE_BORDER}`,
-                        background: passageQSubTab === t ? '#f0fdfa' : CARD_BG,
+                        background: passageQSubTab === t ? 'rgba(45,212,191,0.1)' : CARD_BG,
                         color: passageQSubTab === t ? TEAL : PAGE_TEXT,
                       }}
                     >
@@ -1115,7 +1093,7 @@ const LSRWContentAdmin = () => {
                     </div>
                     <label style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                      border: `1.5px dashed ${TEAL}66`, borderRadius: 10, padding: '12px', marginBottom: 4, background: '#f0fdfa',
+                      border: `1.5px dashed ${TEAL}66`, borderRadius: 10, padding: '12px', marginBottom: 4, background: 'rgba(45,212,191,0.1)',
                     }}>
                       <FaFileExcel size={14} color={TEAL} />
                       <span style={{ fontSize: 12.5, color: TEAL, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Question, Options, Answer columns</span>
@@ -1184,7 +1162,7 @@ const LSRWContentAdmin = () => {
                         <span style={{ fontSize: 12, color: PAGE_TEXT }}>{q.question}</span>
                         <div style={{ fontSize: 10.5, color: PAGE_GRAY, marginTop: 2 }}>Answer: {q.correctAnswer} · {q.marks} marks · {q.timeLimit}s</div>
                       </div>
-                      <button onClick={() => removeFromPassageBatch(i)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', flexShrink: 0 }}>
+                      <button onClick={() => removeFromPassageBatch(i)} style={{ border: 'none', background: 'none', color: '#fb737a', cursor: 'pointer', flexShrink: 0 }}>
                         <FaTrash size={11} />
                       </button>
                     </div>
@@ -1202,7 +1180,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${storySubTab === t ? PINK : PAGE_BORDER}`,
-                      background: storySubTab === t ? '#fdf2f8' : CARD_BG,
+                      background: storySubTab === t ? 'rgba(244,114,182,0.1)' : CARD_BG,
                       color: storySubTab === t ? PINK : PAGE_TEXT,
                     }}
                   >
@@ -1221,7 +1199,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${storyPromptType === t ? PINK : PAGE_BORDER}`,
-                      background: storyPromptType === t ? '#fdf2f8' : CARD_BG,
+                      background: storyPromptType === t ? 'rgba(244,114,182,0.1)' : CARD_BG,
                       color: storyPromptType === t ? PINK : PAGE_TEXT,
                     }}
                   >
@@ -1297,13 +1275,13 @@ const LSRWContentAdmin = () => {
                   </span>
                   <label style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                    border: `1.5px dashed ${PINK}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: '#fdf2f8',
+                    border: `1.5px dashed ${PINK}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: 'rgba(244,114,182,0.1)',
                   }}>
                     <FaFileExcel size={14} color={PINK} />
                     <span style={{ fontSize: 12.5, color: PINK, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Prompt Text, Points, Marks columns</span>
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleStoryExcelUpload(e.target.files)} style={{ display: 'none' }} />
                   </label>
-                  {excelStoryMsg && <div style={{ fontSize: 11.5, color: '#16a34a', marginBottom: 10 }}>{excelStoryMsg}</div>}
+                  {excelStoryMsg && <div style={{ fontSize: 11.5, color: '#45dd75', marginBottom: 10 }}>{excelStoryMsg}</div>}
 
                   {excelStoryItems ? (
                     <>
@@ -1338,7 +1316,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${jumbledSubTab === t ? CYAN : PAGE_BORDER}`,
-                      background: jumbledSubTab === t ? '#ecfeff' : CARD_BG,
+                      background: jumbledSubTab === t ? 'rgba(34,211,238,0.1)' : CARD_BG,
                       color: jumbledSubTab === t ? CYAN : PAGE_TEXT,
                     }}
                   >
@@ -1373,11 +1351,11 @@ const LSRWContentAdmin = () => {
                       </select>
                     </div>
                   </div>
-                  {error && <div style={{ fontSize: 12.5, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+                  {error && <div style={{ fontSize: 12.5, color: '#fb737a', marginBottom: 12 }}>{error}</div>}
                   <button
                     onClick={handleAddSingleJumbled}
                     disabled={submitting}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: CYAN, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13.5, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: ORANGE, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13.5, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
                   >
                     <FaPlus size={12} /> {submitting ? 'Saving…' : 'Add Sentence'}
                   </button>
@@ -1392,13 +1370,13 @@ const LSRWContentAdmin = () => {
                   </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                    border: `1.5px dashed ${CYAN}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: '#ecfeff',
+                    border: `1.5px dashed ${CYAN}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: 'rgba(34,211,238,0.1)',
                   }}>
                     <FaFileExcel size={14} color={CYAN} />
                     <span style={{ fontSize: 12.5, color: CYAN, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Sentence, Marks, Time Limit columns</span>
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleJumbledExcelUpload(e.target.files)} style={{ display: 'none' }} />
                   </label>
-                  {excelJumbledMsg && <div style={{ fontSize: 11.5, color: '#16a34a', marginBottom: 10 }}>{excelJumbledMsg}</div>}
+                  {excelJumbledMsg && <div style={{ fontSize: 11.5, color: '#45dd75', marginBottom: 10 }}>{excelJumbledMsg}</div>}
 
                   {excelJumbledItems ? (
                     <>
@@ -1443,7 +1421,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${grammarSubTab === t ? GREEN : PAGE_BORDER}`,
-                      background: grammarSubTab === t ? '#f0fdf4' : CARD_BG,
+                      background: grammarSubTab === t ? 'rgba(69,221,117,0.1)' : CARD_BG,
                       color: grammarSubTab === t ? GREEN : PAGE_TEXT,
                     }}
                   >
@@ -1462,13 +1440,13 @@ const LSRWContentAdmin = () => {
                   </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                    border: `1.5px dashed ${GREEN}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: '#f0fdf4',
+                    border: `1.5px dashed ${GREEN}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: 'rgba(69,221,117,0.1)',
                   }}>
                     <FaFileExcel size={14} color={GREEN} />
                     <span style={{ fontSize: 12.5, color: GREEN, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Type, Category, Question, Options, Answer columns</span>
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleGrammarExcelUpload(e.target.files)} style={{ display: 'none' }} />
                   </label>
-                  {excelGrammarMsg && <div style={{ fontSize: 11.5, color: '#16a34a', marginBottom: 10 }}>{excelGrammarMsg}</div>}
+                  {excelGrammarMsg && <div style={{ fontSize: 11.5, color: '#45dd75', marginBottom: 10 }}>{excelGrammarMsg}</div>}
 
                   {excelGrammarItems ? (
                     <>
@@ -1502,7 +1480,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '7px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${draftType === t ? GREEN : PAGE_BORDER}`,
-                      background: draftType === t ? '#f0fdf4' : CARD_BG,
+                      background: draftType === t ? 'rgba(69,221,117,0.1)' : CARD_BG,
                       color: draftType === t ? GREEN : PAGE_TEXT,
                     }}
                   >
@@ -1574,7 +1552,7 @@ const LSRWContentAdmin = () => {
                         <span style={{ fontSize: 12, color: PAGE_TEXT }}>{d.question}</span>
                         <div style={{ fontSize: 10.5, color: PAGE_GRAY, marginTop: 2 }}>Answer: {d.correctAnswer}</div>
                       </div>
-                      <button onClick={() => removeFromGrammarBatch(i)} style={{ border: 'none', background: 'none', color: '#dc2626', cursor: 'pointer', flexShrink: 0 }}>
+                      <button onClick={() => removeFromGrammarBatch(i)} style={{ border: 'none', background: 'none', color: '#fb737a', cursor: 'pointer', flexShrink: 0 }}>
                         <FaTrash size={11} />
                       </button>
                     </div>
@@ -1609,7 +1587,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${speakingSubTab === t ? PURPLE : PAGE_BORDER}`,
-                      background: speakingSubTab === t ? '#f5f3ff' : CARD_BG,
+                      background: speakingSubTab === t ? 'rgba(167,139,250,0.1)' : CARD_BG,
                       color: speakingSubTab === t ? PURPLE : PAGE_TEXT,
                     }}
                   >
@@ -1642,11 +1620,11 @@ const LSRWContentAdmin = () => {
                       </select>
                     </div>
                   </div>
-                  {error && <div style={{ fontSize: 12.5, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+                  {error && <div style={{ fontSize: 12.5, color: '#fb737a', marginBottom: 12 }}>{error}</div>}
                   <button
                     onClick={handleAddSingleSpeaking}
                     disabled={submitting}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: PURPLE, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13.5, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: ORANGE, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0', fontSize: 13.5, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1 }}
                   >
                     <FaPlus size={12} /> {submitting ? 'Saving…' : 'Add Topic'}
                   </button>
@@ -1661,13 +1639,13 @@ const LSRWContentAdmin = () => {
                   </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                    border: `1.5px dashed ${PURPLE}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: '#f5f3ff',
+                    border: `1.5px dashed ${PURPLE}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: 'rgba(167,139,250,0.1)',
                   }}>
                     <FaFileExcel size={14} color={PURPLE} />
                     <span style={{ fontSize: 12.5, color: PURPLE, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Topic, Marks, Time Limit columns</span>
                     <input type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleSpeakingExcelUpload(e.target.files)} style={{ display: 'none' }} />
                   </label>
-                  {excelSpeakingMsg && <div style={{ fontSize: 11.5, color: '#16a34a', marginBottom: 10 }}>{excelSpeakingMsg}</div>}
+                  {excelSpeakingMsg && <div style={{ fontSize: 11.5, color: '#45dd75', marginBottom: 10 }}>{excelSpeakingMsg}</div>}
 
                   {excelSpeakingItems ? (
                     <>
@@ -1712,7 +1690,7 @@ const LSRWContentAdmin = () => {
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 8, fontSize: 12.5, fontWeight: 700, cursor: 'pointer',
                       border: `1.5px solid ${readingSubTab === t ? ORANGE : PAGE_BORDER}`,
-                      background: readingSubTab === t ? '#fff7ed' : CARD_BG,
+                      background: readingSubTab === t ? 'rgba(255,122,0,0.1)' : CARD_BG,
                       color: readingSubTab === t ? ORANGE : PAGE_TEXT,
                     }}
                   >
@@ -1747,7 +1725,7 @@ const LSRWContentAdmin = () => {
                     </div>
                   </div>
 
-                  {error && <div style={{ fontSize: 12.5, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+                  {error && <div style={{ fontSize: 12.5, color: '#fb737a', marginBottom: 12 }}>{error}</div>}
 
                   <button
                     onClick={handleAddSingleReading}
@@ -1774,7 +1752,7 @@ const LSRWContentAdmin = () => {
                   </div>
                   <label style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer',
-                    border: `1.5px dashed ${ORANGE}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: '#fff7ed',
+                    border: `1.5px dashed ${ORANGE}66`, borderRadius: 10, padding: '12px', marginBottom: 10, background: 'rgba(255,122,0,0.1)',
                   }}>
                     <FaFileExcel size={14} color={ORANGE} />
                     <span style={{ fontSize: 12.5, color: ORANGE, fontWeight: 600 }}>Choose .xlsx / .xls / .csv — Sentence, Marks, Time Limit columns</span>
@@ -1784,7 +1762,7 @@ const LSRWContentAdmin = () => {
                       style={{ display: 'none' }}
                     />
                   </label>
-                  {excelLoadMsg && <div style={{ fontSize: 11.5, color: '#16a34a', marginBottom: 10 }}>{excelLoadMsg}</div>}
+                  {excelLoadMsg && <div style={{ fontSize: 11.5, color: '#45dd75', marginBottom: 10 }}>{excelLoadMsg}</div>}
 
                   {excelParsedItems ? (
                     // File loaded — its own Sentence/Marks/Time Limit columns
@@ -1904,13 +1882,13 @@ const LSRWContentAdmin = () => {
 
             return (
               <>
-                {error && <div style={{ fontSize: 12.5, color: '#dc2626', marginBottom: 12 }}>{error}</div>}
+                {error && <div style={{ fontSize: 12.5, color: '#fb737a', marginBottom: 12 }}>{error}</div>}
                 <button
                   onClick={onClick}
                   disabled={submitting}
                   style={{
                     width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    background: accent, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0',
+                    background: ORANGE, border: 'none', color: '#fff', borderRadius: 10, padding: '10px 0',
                     fontSize: 13.5, fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.6 : 1,
                   }}
                 >
@@ -1920,238 +1898,210 @@ const LSRWContentAdmin = () => {
               </>
             )
           })()}
+          </div>
         </div>
 
-        {/* List */}
-        <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}`, fontWeight: 700, fontSize: 14, color: PAGE_TEXT }}>
-            {items.length} {tab === 'reading' ? 'Reading' : tab === 'listening' ? 'Listening' : tab === 'speaking' ? 'Speaking' : tab === 'grammar' ? 'Grammar' : tab === 'jumbled' ? 'Jumbled Sentence' : tab === 'storytelling' ? 'Story' : 'Passage'} item{items.length === 1 ? '' : 's'} in the bank
+        {/* Bank */}
+        <div className="aui-card">
+          <div className="aui-toolbar">
+            <div className="aui-toolbar-title">
+              <h3>{meta.label} bank</h3>
+              <p>
+                {loading ? 'Loading…' : <><b>{items.length}</b> item{items.length === 1 ? '' : 's'} · <b>{activeCount}</b> active · students get <b>{shownPerAttempt}</b> per attempt</>}
+              </p>
+            </div>
+            <div className="aui-toolbar-filters">
+              <SearchInput value={search} onChange={setSearch} placeholder={`Search ${meta.label.toLowerCase()}…`} />
+              <AdminSelect
+                label="Status"
+                value={statusFilter}
+                onChange={(v) => setStatusFilter(v as '' | 'active' | 'inactive')}
+                options={[{ value: '', label: 'All statuses' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }]}
+              />
+            </div>
           </div>
+
+          {!loading && items.length > 0 && activeCount < shownPerAttempt && (
+            <div className="aui-alert lsrw-warn">
+              <FaExclamationTriangle />
+              <span>Only <b>{activeCount}</b> active item{activeCount === 1 ? '' : 's'}, but students are set to get <b>{shownPerAttempt}</b> per attempt.</span>
+            </div>
+          )}
+
           {loading ? (
-            <div style={{ padding: 40, textAlign: 'center' as const }}>
-              <Spinner animation="border" style={{ color: accent, width: 22, height: 22 }} />
-            </div>
+            <div className="aui-empty"><FaSpinner className="aui-spin" /><p>Loading {meta.label.toLowerCase()} items…</p></div>
           ) : items.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center' as const, color: PAGE_GRAY, fontSize: 13 }}>No items yet — add some on the left.</div>
-          ) : tab === 'grammar' ? (
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' as const }}>
-              {items.map((item) => (
-                <div key={item._id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: GREEN, background: '#f0fdf4', border: `1px solid ${GREEN}55`, borderRadius: 6, padding: '1px 7px' }}>
-                        {item.type === 'mcq' ? 'MCQ' : 'FILL'}
-                      </span>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: PAGE_GRAY }}>{item.category}</span>
-                    </div>
-                    <div style={{ fontSize: 13.5, color: PAGE_TEXT, marginBottom: 6 }}>{item.question}</div>
-                    {item.type === 'mcq' ? (
-                      <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                        {item.options?.map((opt, i) => (
-                          <span key={i} style={{
-                            fontSize: 11, borderRadius: 6, padding: '2px 8px',
-                            border: `1px solid ${opt === item.correctAnswer ? '#22c55e' : PAGE_BORDER}`,
-                            background: opt === item.correctAnswer ? '#f0fdf4' : PAGE_BG,
-                            color: opt === item.correctAnswer ? '#16a34a' : PAGE_GRAY,
-                            fontWeight: opt === item.correctAnswer ? 700 : 400,
-                          }}>{opt}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 700 }}>Answer: {item.correctAnswer}</div>
-                    )}
-                    <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginTop: 6 }}>
-                      {item.marks} marks · {item.timeLimit ?? 30} sec time limit · added {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleActive(item)}
-                    style={{
-                      flexShrink: 0, border: `1px solid ${item.isActive ? '#22c55e' : PAGE_BORDER}`,
-                      background: item.isActive ? '#f0fdf4' : PAGE_BG, color: item.isActive ? '#16a34a' : PAGE_GRAY,
-                      borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {item.isActive ? 'Active' : 'Inactive'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    aria-label="Delete"
-                    style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <FaTrash size={11} color="#dc2626" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : tab === 'jumbled' ? (
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' as const }}>
-              {items.map((item) => (
-                <div key={item._id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 6 }}>
-                      {item.parts?.map((p, i) => (
-                        <span key={i} style={{ fontSize: 12, borderRadius: 6, padding: '2px 8px', border: `1px solid ${CYAN}55`, background: '#ecfeff', color: CYAN, fontWeight: 600 }}>{p}</span>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: PAGE_GRAY }}>
-                      {item.marks} marks · {item.timeLimit ?? 60} sec time limit · added {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleActive(item)}
-                    style={{
-                      flexShrink: 0, border: `1px solid ${item.isActive ? '#22c55e' : PAGE_BORDER}`,
-                      background: item.isActive ? '#f0fdf4' : PAGE_BG, color: item.isActive ? '#16a34a' : PAGE_GRAY,
-                      borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {item.isActive ? 'Active' : 'Inactive'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    aria-label="Delete"
-                    style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <FaTrash size={11} color="#dc2626" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : tab === 'storytelling' ? (
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' as const }}>
-              {items.map((item) => (
-                <div key={item._id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  {item.promptType === 'image' && item.imageUrl && (
-                    <img src={item.imageUrl} alt="" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }} />
+            <EmptyState icon={meta.icon} title="Nothing in this bank yet" text="Add items with the form on the left." />
+          ) : visibleItems.length === 0 ? (
+            <EmptyState icon={FaSearch} title="No items match" text="Try a different search or status." action={<button type="button" className="aui-btn" onClick={() => { setSearch(''); setStatusFilter('') }}>Clear filters</button>} />
+          ) : (
+            <div className="lsrw-list">
+              {visibleItems.map((item, idx) => (
+                <div key={item._id} className={`lsrw-row${item.isActive ? '' : ' is-off'}`}>
+                  <span className="lsrw-num">{idx + 1}</span>
+                  {tab === 'storytelling' && item.promptType === 'image' && item.imageUrl && (
+                    <img src={item.imageUrl} alt="" className="lsrw-thumb" />
                   )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 10.5, fontWeight: 700, color: PINK, background: '#fdf2f8', border: `1px solid ${PINK}55`, borderRadius: 6, padding: '1px 7px' }}>
-                        {item.promptType === 'image' ? 'IMAGE' : 'TEXT'}
-                      </span>
-                    </div>
-                    {item.promptType === 'text' && (
-                      <div style={{ fontSize: 13.5, color: PAGE_TEXT, marginBottom: 6 }}>{item.promptText}</div>
-                    )}
-                    <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6, marginBottom: 6 }}>
-                      {item.points?.map((p, i) => (
-                        <span key={i} style={{ fontSize: 11, borderRadius: 6, padding: '2px 8px', border: `1px solid ${PAGE_BORDER}`, background: PAGE_BG, color: PAGE_GRAY }}>{p}</span>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: PAGE_GRAY }}>
-                      {item.marks} marks · {item.timeLimit ?? 120}s · added {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleActive(item)}
-                    style={{
-                      flexShrink: 0, border: `1px solid ${item.isActive ? '#22c55e' : PAGE_BORDER}`,
-                      background: item.isActive ? '#f0fdf4' : PAGE_BG, color: item.isActive ? '#16a34a' : PAGE_GRAY,
-                      borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {item.isActive ? 'Active' : 'Inactive'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    aria-label="Delete"
-                    style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <FaTrash size={11} color="#dc2626" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : tab === 'passages' ? (
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' as const }}>
-              {items.map((item) => (
-                <div key={item._id} style={{ padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: 10 }}>
-                    <div style={{ flex: 1 }}>
-                      {item.audioUrl && <audio controls src={item.audioUrl} style={{ width: '100%', marginBottom: 6 }} />}
-                      <div style={{ fontSize: 11.5, color: PAGE_GRAY }}>
-                        {item.questions?.length ?? 0} question{item.questions?.length === 1 ? '' : 's'} · added {new Date(item.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleActive(item)}
-                      style={{
-                        flexShrink: 0, border: `1px solid ${item.isActive ? '#22c55e' : PAGE_BORDER}`,
-                        background: item.isActive ? '#f0fdf4' : PAGE_BG, color: item.isActive ? '#16a34a' : PAGE_GRAY,
-                        borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                      }}
-                    >
-                      {item.isActive ? 'Active' : 'Inactive'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item._id)}
-                      aria-label="Delete"
-                      style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                    >
-                      <FaTrash size={11} color="#dc2626" />
-                    </button>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6 }}>
-                    {item.questions?.map((q, qi) => (
-                      <div key={qi} style={{ border: `1px solid ${PAGE_BORDER}`, borderRadius: 8, padding: '8px 12px' }}>
-                        <div style={{ fontSize: 12.5, color: PAGE_TEXT, marginBottom: 4 }}>{qi + 1}. {q.question}</div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 6 }}>
-                          {q.options.map((opt, oi) => (
-                            <span key={oi} style={{
-                              fontSize: 10.5, borderRadius: 6, padding: '2px 7px',
-                              border: `1px solid ${opt === q.correctAnswer ? '#22c55e' : PAGE_BORDER}`,
-                              background: opt === q.correctAnswer ? '#f0fdf4' : PAGE_BG,
-                              color: opt === q.correctAnswer ? '#16a34a' : PAGE_GRAY,
-                              fontWeight: opt === q.correctAnswer ? 700 : 400,
-                            }}>{opt}</span>
+                  <div className="lsrw-body">
+                    {tab === 'grammar' ? (
+                      <>
+                        <div className="lsrw-tags">
+                          <span className="aui-badge aui-badge-green">{item.type === 'mcq' ? 'MCQ' : 'Fill in the blank'}</span>
+                          {item.category && <span className="aui-badge aui-badge-muted">{item.category}</span>}
+                        </div>
+                        <p className="lsrw-text">{item.question}</p>
+                        {item.type === 'mcq'
+                          ? <div className="lsrw-opts">{item.options?.map((opt, i) => <span key={i} className={opt === item.correctAnswer ? 'is-correct' : ''}>{opt}</span>)}</div>
+                          : <div className="lsrw-answer">Answer: {item.correctAnswer}</div>}
+                      </>
+                    ) : tab === 'jumbled' ? (
+                      <div className="lsrw-parts">{item.parts?.map((p, i) => <span key={i}>{p}</span>)}</div>
+                    ) : tab === 'storytelling' ? (
+                      <>
+                        <div className="lsrw-tags"><span className="aui-badge aui-badge-purple">{item.promptType === 'image' ? 'Image prompt' : 'Text prompt'}</span></div>
+                        {item.promptType === 'text' && <p className="lsrw-text">{item.promptText}</p>}
+                        {!!item.points?.length && <ol className="lsrw-points">{item.points.map((p, i) => <li key={i}>{p}</li>)}</ol>}
+                      </>
+                    ) : tab === 'passages' ? (
+                      <>
+                        {item.audioUrl && <audio controls src={item.audioUrl} className="lsrw-audio" />}
+                        <div className="lsrw-pq">
+                          {item.questions?.map((pq, qi) => (
+                            <div key={qi}>
+                              <p className="lsrw-text">{qi + 1}. {pq.question}</p>
+                              <div className="lsrw-opts">{pq.options.map((opt, oi) => <span key={oi} className={opt === pq.correctAnswer ? 'is-correct' : ''}>{opt}</span>)}</div>
+                              <small className="lsrw-meta">{pq.marks} mark{pq.marks === 1 ? '' : 's'} · {pq.timeLimit}s</small>
+                            </div>
                           ))}
                         </div>
-                        <div style={{ fontSize: 10.5, color: PAGE_GRAY, marginTop: 4 }}>{q.marks} marks · {q.timeLimit} sec</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ maxHeight: '70vh', overflowY: 'auto' as const }}>
-              {items.map((item) => (
-                <div key={item._id} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '14px 20px', borderBottom: `1px solid ${PAGE_BORDER}` }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13.5, color: PAGE_TEXT, marginBottom: 6 }}>{item.sentence ?? item.topic}</div>
-                    {item.audioUrl && (
-                      <audio controls src={item.audioUrl} style={{ height: 32, maxWidth: 320 }} />
+                      </>
+                    ) : (
+                      <>
+                        <p className="lsrw-text">{item.sentence ?? item.topic}</p>
+                        {item.audioUrl && <audio controls src={item.audioUrl} className="lsrw-audio lsrw-audio-sm" />}
+                      </>
                     )}
-                    <div style={{ fontSize: 11.5, color: PAGE_GRAY, marginTop: 6 }}>
-                      {item.marks} marks · {item.timeLimit ?? 30} sec time limit · added {new Date(item.createdAt).toLocaleDateString()}
-                    </div>
+                    <small className="lsrw-meta">
+                      {tab === 'passages'
+                        ? `${item.questions?.length ?? 0} question${item.questions?.length === 1 ? '' : 's'}`
+                        : `${item.marks} mark${item.marks === 1 ? '' : 's'} · ${item.timeLimit ?? (tab === 'storytelling' ? 120 : tab === 'jumbled' ? 60 : 30)}s`}
+                      {' · added '}{new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </small>
                   </div>
-                  <button
-                    onClick={() => toggleActive(item)}
-                    style={{
-                      flexShrink: 0, border: `1px solid ${item.isActive ? '#22c55e' : PAGE_BORDER}`,
-                      background: item.isActive ? '#f0fdf4' : PAGE_BG, color: item.isActive ? '#16a34a' : PAGE_GRAY,
-                      borderRadius: 20, padding: '3px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    {item.isActive ? 'Active' : 'Inactive'}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item._id)}
-                    aria-label="Delete"
-                    style={{ flexShrink: 0, width: 30, height: 30, borderRadius: 8, border: `1px solid ${PAGE_BORDER}`, background: CARD_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-                  >
-                    <FaTrash size={11} color="#dc2626" />
-                  </button>
+                  <div className="lsrw-actions">
+                    <label className="lsrw-switch" title={item.isActive ? 'Active: students can get this item' : 'Inactive: hidden from students'}>
+                      <input type="checkbox" checked={item.isActive} onChange={() => toggleActive(item)} />
+                      <span className="aui-toggle-track" />
+                      <span>{item.isActive ? 'Active' : 'Off'}</span>
+                    </label>
+                    <button type="button" className="aui-icon-btn lsrw-del" title="Delete" aria-label="Delete" onClick={() => setDeleteId(item._id)}><FaTrash size={11} /></button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+
+      <Modal show={deleteId !== null} onHide={() => !deleting && setDeleteId(null)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <div className="aui-modal-head">
+          <span className="lsrw-del-icon"><FaTrash /></span>
+          <div>
+            <h3>Delete this item?</h3>
+            <p>{meta.label} bank</p>
+          </div>
+        </div>
+        <div className="aui-modal-body"><p className="lsrw-modal-text">It is removed from the bank for good. To hide it from students but keep it, switch it off instead.</p></div>
+        <div className="aui-modal-foot">
+          <button type="button" className="aui-btn" onClick={() => setDeleteId(null)} disabled={deleting}>Cancel</button>
+          <button type="button" className="aui-btn aui-btn-danger" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? <FaSpinner className="aui-spin" /> : <FaTrash size={11} />} Delete
+          </button>
+        </div>
+      </Modal>
+
+      <style>{LSRW_CSS}</style>
+    </AdminPage>
   )
 }
+
+const LSRW_CSS = `
+  .lsrw-settings { margin-bottom: 1rem; }
+  .lsrw-counts { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; padding: 1rem 1.1rem 1.1rem; }
+  .lsrw-count { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0.7rem 0.8rem; border: 1px solid #25282b; border-radius: 10px; background: #111315; cursor: text; transition: border-color 0.15s; }
+  .lsrw-count:hover { border-color: #3a3f45; }
+  .lsrw-count.is-current { border-color: color-mix(in srgb, var(--acc) 55%, transparent); background: color-mix(in srgb, var(--acc) 7%, #111315); }
+  .lsrw-count-head { display: flex; align-items: center; gap: 6px; color: #c3c7ca; font-size: 0.74rem; font-weight: 650; }
+  .lsrw-count-head svg { color: var(--acc); }
+  .lsrw-count-input { display: flex; align-items: baseline; gap: 6px; }
+  .lsrw-count-input input { width: 100%; min-width: 0; padding: 0; border: 0; outline: none; background: none; color: #fff; font-size: 1.35rem; font-weight: 800; line-height: 1.1; color-scheme: dark; }
+  .lsrw-count-input small { color: #6b7280; font-size: 0.68rem; }
+
+  .lsrw-tabs { margin-bottom: 1rem; overflow-x: auto; }
+  .lsrw-tabs .aui-tabs { min-width: 100%; }
+  .lsrw-tabs .aui-tabs button { flex: 1 0 auto; justify-content: center; }
+
+  .lsrw-grid { display: grid; grid-template-columns: minmax(360px, 430px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .lsrw-title { display: flex; align-items: center; gap: 12px; }
+  .lsrw-title-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid color-mix(in srgb, var(--acc) 35%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--acc) 12%, transparent); color: var(--acc); font-size: 0.95rem; }
+
+  /* Add form: the original inline-styled fields, recoloured for the dark kit */
+  .lsrw-form { padding: 1.1rem 1.2rem 1.2rem; color: #eceef0; }
+  .lsrw-form label { color: #c3c7ca !important; }
+  .lsrw-form input:not([type=radio]):not([type=checkbox]), .lsrw-form textarea, .lsrw-form select {
+    border: 1px solid #34383d !important; border-radius: 8px !important; background: #17191c !important; color: #f1f5f9 !important; color-scheme: dark; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .lsrw-form input:not([type=radio]):not([type=checkbox]):focus, .lsrw-form textarea:focus, .lsrw-form select:focus { border-color: rgba(255,122,0,0.75) !important; box-shadow: 0 0 0 3px rgba(255,122,0,0.12); }
+  .lsrw-form input::placeholder, .lsrw-form textarea::placeholder { color: #5b616a; }
+  .lsrw-form input[type=file] { padding: 6px 8px !important; color: #9da2a8 !important; cursor: pointer; }
+  .lsrw-form input[type=file]::file-selector-button { margin-right: 10px; padding: 5px 12px; border: 1px solid #34383d; border-radius: 6px; background: #202327; color: #e0e3e5; font-weight: 600; cursor: pointer; }
+  .lsrw-form input[type=radio], .lsrw-form input[type=checkbox] { accent-color: #ff7a00; }
+  .lsrw-form select option { background: #17191c; color: #f1f5f9; }
+  .lsrw-form audio { color-scheme: dark; }
+  .lsrw-form button:disabled { cursor: not-allowed; }
+
+  .lsrw-warn { margin: 0.85rem 1rem 0 !important; border-color: rgba(244,180,63,0.3) !important; background: rgba(244,180,63,0.07) !important; color: #f4c46b !important; }
+  .lsrw-warn svg { color: #f4b43f; }
+  .lsrw-list { max-height: 72vh; overflow-y: auto; }
+  .lsrw-row { display: flex; align-items: flex-start; gap: 12px; padding: 0.85rem 1rem; border-bottom: 1px solid #202326; transition: background 0.15s; }
+  .lsrw-row:last-child { border-bottom: 0; }
+  .lsrw-row:hover { background: #0f1113; }
+  .lsrw-row.is-off .lsrw-body { opacity: 0.55; }
+  .lsrw-num { display: grid; place-items: center; min-width: 26px; height: 26px; padding: 0 4px; border-radius: 7px; background: #17191c; color: #6b7280; font-size: 0.7rem; font-weight: 700; }
+  .lsrw-thumb { width: 72px; height: 54px; flex: 0 0 72px; border: 1px solid #25282b; border-radius: 8px; object-fit: cover; }
+  .lsrw-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .lsrw-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lsrw-text { margin: 0; color: #eceef0; font-size: 0.85rem; line-height: 1.55; }
+  .lsrw-meta { color: #6b7280; font-size: 0.72rem; }
+  .lsrw-opts, .lsrw-parts { display: flex; flex-wrap: wrap; gap: 5px; }
+  .lsrw-opts span { padding: 2px 9px; border: 1px solid #2c3034; border-radius: 6px; background: #141618; color: #9da2a8; font-size: 0.74rem; }
+  .lsrw-opts span.is-correct { border-color: rgba(69,221,117,0.45); background: rgba(69,221,117,0.1); color: #45dd75; font-weight: 700; }
+  .lsrw-parts span { padding: 3px 10px; border: 1px solid rgba(34,211,238,0.3); border-radius: 6px; background: rgba(34,211,238,0.08); color: #67e8f9; font-size: 0.78rem; font-weight: 600; }
+  .lsrw-answer { color: #45dd75; font-size: 0.76rem; font-weight: 700; }
+  .lsrw-points { margin: 0; padding-left: 1.1rem; color: #a6abb0; font-size: 0.78rem; line-height: 1.6; }
+  .lsrw-audio { width: 100%; max-width: 420px; height: 36px; color-scheme: dark; }
+  .lsrw-audio-sm { max-width: 320px; height: 32px; }
+  .lsrw-pq { display: flex; flex-direction: column; gap: 8px; }
+  .lsrw-pq > div { display: flex; flex-direction: column; gap: 5px; padding: 0.6rem 0.75rem; border: 1px solid #25282b; border-radius: 8px; background: #111315; }
+  .lsrw-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .lsrw-switch { position: relative; display: inline-flex; align-items: center; gap: 7px; margin: 0; color: #9da2a8; font-size: 0.72rem; font-weight: 650; cursor: pointer; }
+  .lsrw-switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .lsrw-switch .aui-toggle-track { margin-top: 0; }
+  .lsrw-switch input:checked + .aui-toggle-track { background: #31c45e; }
+  .lsrw-switch input:checked + .aui-toggle-track::after { background: #fff; transform: translateX(16px); }
+  .lsrw-switch input:checked ~ span:last-child { color: #45dd75; }
+  .lsrw-switch span:last-child { min-width: 36px; }
+  .lsrw-del:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+  .lsrw-del-icon { display: grid; place-items: center; width: 36px; height: 36px; flex: 0 0 36px; border: 1px solid rgba(251,95,103,0.3); border-radius: 10px; background: rgba(251,95,103,0.1); color: #fb737a; }
+  .lsrw-modal-text { margin: 0; color: #a6abb0; font-size: 0.84rem; line-height: 1.6; }
+
+  @media (max-width: 1399.98px) { .lsrw-counts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 1199.98px) { .lsrw-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 767.98px) {
+    .lsrw-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .lsrw-row { flex-wrap: wrap; }
+    .lsrw-actions { width: 100%; justify-content: flex-end; }
+  }
+`
 
 export default LSRWContentAdmin

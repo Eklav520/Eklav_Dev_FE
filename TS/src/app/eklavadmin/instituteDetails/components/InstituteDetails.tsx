@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom'
 import axios from 'axios'
-import { Card, Button, Form, Modal, Spinner, Alert, Badge, Row, Col } from 'react-bootstrap'
+import { Button, Form, Modal, Spinner, Alert, Badge, Row, Col, Dropdown } from 'react-bootstrap'
 import { useAuthContext } from '@/context/useAuthContext'
-import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH, FaEye, FaIdCard, FaCodeBranch, FaCalendarAlt, FaVenusMars, FaPhoneAlt, FaSave } from 'react-icons/fa'
+import { AdminPage, PageHeader, StatCards, SearchInput, TableFooter, EmptyState, initialsOf, type StatItem } from '@/components/admin-ui'
+import { FaBuilding, FaEnvelope, FaPhone, FaGlobe, FaEdit, FaTrash, FaPlus, FaUserPlus, FaExternalLinkAlt, FaCopy, FaCheck, FaTimes, FaSpinner, FaInfoCircle, FaSearch, FaFilter, FaUniversity, FaKey, FaUserGraduate, FaClipboardList, FaSlidersH, FaEye, FaIdCard, FaCodeBranch, FaCalendarAlt, FaVenusMars, FaPhoneAlt, FaSave, FaSyncAlt, FaCheckCircle, FaExclamationTriangle, FaEllipsisV } from 'react-icons/fa'
 import { MdDomain, MdEmail, MdPhone, MdAdminPanelSettings, MdVerified } from 'react-icons/md'
 
 type Institute = {
@@ -122,61 +123,6 @@ const ALL_NAV_KEYS_WITH_SUBS = FULL_NAV_TREE.flatMap(s => [s.key, ...((s as any)
 
 const BRANCH_OPTIONS = ['CSE', 'ECE', 'EEE', 'MECH', 'CIVIL', 'IT', 'MBA', 'MCA', 'Other']
 const YEAR_OPTIONS = Array.from({ length: 8 }, (_, i) => String(new Date().getFullYear() - i))
-
-// Professional Pagination Component
-const InstitutePagination: React.FC<{
-  currentPage: number
-  totalPages: number
-  onPageChange: (page: number) => void
-}> = ({ currentPage, totalPages, onPageChange }) => {
-  const getPageNumbers = () => {
-    const pages: (number | string)[] = []
-    const maxVisible = 5
-    
-    if (totalPages <= maxVisible + 2) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i)
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 2) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i)
-      } else {
-        pages.push(1)
-        pages.push('...')
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i)
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-    return pages
-  }
-
-  return (
-    <div className="institute-pagination">
-      <div className="pagination-info">
-        <FaInfoCircle className="me-1" size={12} />
-        Page {currentPage} of {totalPages}
-      </div>
-      <div className="pagination-controls">
-        <button className="pagination-btn" onClick={() => onPageChange(1)} disabled={currentPage === 1}>«</button>
-        <button className="pagination-btn" onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1}>‹</button>
-        {getPageNumbers().map((page, idx) => (
-          page === '...' ? <span key={`dots-${idx}`} className="pagination-dots">...</span> :
-          <button key={idx} className={`pagination-btn ${currentPage === page ? 'active' : ''}`} onClick={() => onPageChange(page as number)}>{page}</button>
-        ))}
-        <button className="pagination-btn" onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages}>›</button>
-        <button className="pagination-btn" onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages}>»</button>
-      </div>
-      <div className="pagination-stats">
-        Showing {((currentPage - 1) * 10) + 1} - {Math.min(currentPage * 10, totalPages * 10)} of {totalPages * 10}+ Institutes
-      </div>
-    </div>
-  )
-}
 
 const InstituteAdmin: React.FC = () => {
   const { user } = useAuthContext()
@@ -746,251 +692,161 @@ const InstituteAdmin: React.FC = () => {
     return name ? `${name.toLowerCase().replace(/\s+/g, '')}.eklav.in` : ''
   }
 
+  const totalStudents = Object.values(studentCounts).reduce((sum, n) => sum + (n || 0), 0)
+  const headerStats: StatItem[] = [
+    { label: 'Institutes', value: institutes.length, icon: FaUniversity, tone: 'orange' },
+    { label: 'Live portals', value: institutes.filter(i => i.domain).length, icon: MdDomain, tone: 'blue' },
+    { label: 'Students', value: totalStudents.toLocaleString('en-IN'), icon: FaUserGraduate, tone: 'green' },
+  ]
+  const openAddInstitute = () => { setEditing(null); setForm({ name: '', email: '', phone: '' }); setShowModal(true) }
+
   return (
-    <>
-      <div className="institute-admin-dashboard">
+    <AdminPage className="ia-page">
+      <PageHeader
+        icon={FaUniversity}
+        title="Institute Details"
+        subtitle="Institutes on Eklav, their portals, admins, students and navigation"
+        stats={<StatCards inline items={headerStats} loading={loading && institutes.length === 0} />}
+        actions={
+          <>
+            <button type="button" className="aui-btn" onClick={fetchInstitutes} disabled={loading}>
+              <FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh
+            </button>
+            <button type="button" className="aui-btn aui-btn-primary" onClick={openAddInstitute}><FaPlus size={11} /> Add Institute</button>
+          </>
+        }
+      />
 
-        {/* ── Compact top bar ── */}
-        <div className="ia-topbar">
-          <div className="ia-topbar-left">
-            <div className="ia-topbar-icon"><FaUniversity size={15} /></div>
-            <span className="ia-topbar-title">Institute Management</span>
-            <div className="ia-pill"><FaBuilding size={10} /><b>{institutes.length}</b><span>Total</span></div>
-            <div className="ia-pill succ"><MdVerified size={10} /><b>{institutes.filter(i => i.domain).length}</b><span>Domains</span></div>
+      {successMessage && (
+        <div className="aui-alert aui-alert-success"><FaCheckCircle /> <span>{successMessage}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setSuccessMessage(null)} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+      {error && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setError(null)} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>All institutes</h3>
+            <p>Search by name, email, phone or portal domain</p>
           </div>
-
-          {/* Inline search */}
-          <div className="ia-search-wrap">
-            <FaSearch size={11} className="ia-search-icon" />
-            <input
-              className="ia-search"
-              placeholder="Search name, email, phone or domain…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {searchTerm && (
-              <button className="ia-search-clear" onClick={() => setSearchTerm('')}><FaTimes size={10} /></button>
-            )}
-            {searchTerm && <span className="ia-pill info" style={{ marginLeft: 6 }}>{filteredInstitutes.length} results</span>}
+          <div className="aui-toolbar-filters">
+            <SearchInput value={searchTerm} onChange={setSearchTerm} placeholder="Search institutes…" />
+            <span className="aui-count">{filteredInstitutes.length} institute{filteredInstitutes.length === 1 ? '' : 's'}</span>
           </div>
-
-          <button
-            className="ia-add-btn"
-            onClick={() => { setEditing(null); setForm({ name: '', email: '', phone: '' }); setShowModal(true); }}
-          >
-            <FaPlus size={11} /> Add Institute
-          </button>
         </div>
 
-        {/* Toast messages */}
-        {successMessage && (
-          <div className="ia-toast ia-toast-success"><FaCheck className="me-2" />{successMessage}</div>
-        )}
-        {error && (
-          <div className="ia-toast ia-toast-error"><FaTimes className="me-2" />{error}</div>
-        )}
-
-        {/* Loading State */}
-        {loading && (
-          <div className="loading-container">
-            <Spinner animation="border" variant="orange" />
-            <p className="mt-2 text-muted">Loading institutes...</p>
-          </div>
-        )}
-
-        {/* Institutes Table */}
-        {!loading && (
-          <Card className="bg-dark border-secondary">
-            <div className="table-responsive">
-              <table className="institute-table">
+        {loading && institutes.length === 0 ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" /><p>Loading institutes…</p></div>
+        ) : filteredInstitutes.length === 0 ? (
+          <EmptyState
+            icon={FaUniversity}
+            title={searchTerm ? 'No institutes match' : 'No institutes yet'}
+            text={searchTerm ? 'Try a different name, email or domain.' : 'Add the first institute to create its portal.'}
+            action={searchTerm
+              ? <button type="button" className="aui-btn" onClick={() => setSearchTerm('')}>Clear search</button>
+              : <button type="button" className="aui-btn aui-btn-primary" onClick={openAddInstitute}><FaPlus size={11} /> Add Institute</button>}
+          />
+        ) : (
+          <>
+            <div className="aui-table-scroll">
+              <table className="aui-table">
                 <thead>
                   <tr>
-                    <th>Institute Name</th>
-                    <th>Contact Info</th>
-                    <th>Domain</th>
-                    <th className="text-center">Students</th>
-                    <th className="text-center">Actions</th>
+                    <th style={{ width: 52 }}>#</th>
+                    <th>Institute</th>
+                    <th>Contact</th>
+                    <th>Portal</th>
+                    <th className="text-center" style={{ width: 110 }}>Students</th>
+                    <th className="text-end" style={{ width: 140 }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedInstitutes.length > 0 ? (
-                    paginatedInstitutes.map((inst) => (
+                  {paginatedInstitutes.map((inst, i) => {
+                    const count = studentCounts[inst._id] ?? 0
+                    const navCount = inst.navSections?.length ?? 0
+                    return (
                       <tr key={inst._id}>
+                        <td className="aui-num">{(currentPage - 1) * institutesPerPage + i + 1}</td>
                         <td>
-                          <div className="institute-name">
-                            <FaBuilding className="text-orange me-2" size={16} />
-                            <strong>{inst.name}</strong>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(inst.name)}</span>
+                            <div className="aui-stack">
+                              <strong>{inst.name}</strong>
+                              {inst.createdAt && <small>Added {new Date(inst.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</small>}
+                            </div>
                           </div>
                         </td>
                         <td>
-                          <div className="contact-info">
-                            <div className="contact-item">
-                              <MdEmail className="text-muted me-1" size={12} />
-                              <small>{inst.email}</small>
-                            </div>
-                            {inst.phone && (
-                              <div className="contact-item mt-1">
-                                <MdPhone className="text-muted me-1" size={12} />
-                                <small>{inst.phone}</small>
-                              </div>
-                            )}
+                          <div className="ia-contact">
+                            <span><MdEmail size={12} /> {inst.email}</span>
+                            {inst.phone && <span><MdPhone size={12} /> {inst.phone}</span>}
                           </div>
                         </td>
                         <td>
                           {inst.domain ? (
-                            <div className="domain-info">
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                <Badge bg="dark" className="domain-badge">
-                                  <MdDomain className="me-1" />
-                                  {inst.domain}
-                                </Badge>
-                                {inst.navSections && inst.navSections.length > 0 && inst.navSections.length < ALL_KEYS.length ? (
-                                  <span style={{ fontSize: '0.65rem', background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
-                                    Nav: {inst.navSections.length}/{ALL_KEYS.length}
-                                  </span>
-                                ) : inst.navSections && inst.navSections.length === ALL_KEYS.length ? (
-                                  <span style={{ fontSize: '0.65rem', background: 'rgba(34,197,94,0.1)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 20, padding: '2px 8px', fontWeight: 600 }}>
-                                    Nav: All
-                                  </span>
-                                ) : null}
+                            <div className="ia-portal">
+                              <div className="ia-portal-row">
+                                <a href={`https://${inst.domain}`} target="_blank" rel="noopener noreferrer" className="ia-domain" title="Open portal">
+                                  {inst.domain} <FaExternalLinkAlt size={9} />
+                                </a>
+                                <button type="button" className="ia-copy" onClick={() => handleCopyDomain(inst.domain!)} title="Copy portal URL">
+                                  {copiedDomain === inst.domain ? <><FaCheck size={10} /> Copied</> : <><FaCopy size={10} /> Copy</>}
+                                </button>
                               </div>
-                              <div className="domain-actions mt-1">
-                                <Button
-                                  variant="link"
-                                  size="sm"
-                                  className="domain-link"
-                                  onClick={() => window.open(`https://${inst.domain}`, "_blank")}
-                                >
-                                  <FaExternalLinkAlt size={12} /> Open Portal
-                                </Button>
-                                <Button
-                                  variant="link"
-                                  size="sm"
-                                  className="domain-link"
-                                  onClick={() => handleCopyDomain(inst.domain!)}
-                                >
-                                  {copiedDomain === inst.domain ? <FaCheck className="text-success" /> : <FaCopy size={12} />}
-                                  {copiedDomain === inst.domain ? ' Copied!' : ' Copy URL'}
-                                </Button>
-                              </div>
+                              {navCount > 0 && (
+                                <span className={`aui-badge ${navCount >= ALL_KEYS.length ? 'aui-badge-green' : 'aui-badge-purple'}`}>
+                                  Student nav: {navCount >= ALL_KEYS.length ? 'all sections' : `${navCount}/${ALL_KEYS.length}`}
+                                </span>
+                              )}
                             </div>
                           ) : (
-                            <Badge bg="secondary">No Domain</Badge>
+                            <span className="aui-badge aui-badge-muted">No domain</span>
                           )}
                         </td>
                         <td className="text-center">
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                            <span style={{
-                              fontSize: '1.3rem', fontWeight: 700,
-                              color: (studentCounts[inst._id] ?? 0) > 0 ? '#ff8c00' : '#444',
-                            }}>
-                              {studentCounts[inst._id] ?? '—'}
-                            </span>
-                            <span style={{ fontSize: '0.65rem', color: '#555', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              {(studentCounts[inst._id] ?? 0) === 1 ? 'student' : 'students'}
-                            </span>
+                          <button type="button" className={`ia-count${count > 0 ? ' has' : ''}`} onClick={() => openStudentsModal(inst)} title="View students">
+                            <b>{studentCounts[inst._id] ?? '—'}</b>
+                            <small>{count === 1 ? 'student' : 'students'}</small>
+                          </button>
+                        </td>
+                        <td className="text-end">
+                          <div className="ia-actions">
+                            <button type="button" className="aui-icon-btn" title="View students" onClick={() => openStudentsModal(inst)}><FaEye /></button>
+                            <button type="button" className="aui-icon-btn" title="Edit institute" onClick={() => handleEdit(inst)}><FaEdit /></button>
+                            <Dropdown align="end">
+                              <Dropdown.Toggle as="button" className="aui-icon-btn" title="More actions"><FaEllipsisV /></Dropdown.Toggle>
+                              <Dropdown.Menu className="ia-menu" popperConfig={{ strategy: 'fixed' }} renderOnMount>
+                                <Dropdown.Header className="ia-menu-head">Admins</Dropdown.Header>
+                                <Dropdown.Item className="ia-menu-item" onClick={() => openCreateAdmin(inst)}><FaUserPlus /> Create admin</Dropdown.Item>
+                                <Dropdown.Divider className="ia-menu-divider" />
+                                <Dropdown.Header className="ia-menu-head">Navigation</Dropdown.Header>
+                                <Dropdown.Item className="ia-menu-item" onClick={() => openNavConfig(inst)}><FaSlidersH /> Student navigation & access</Dropdown.Item>
+                                <Dropdown.Item className="ia-menu-item" onClick={() => openAdminNavConfig(inst)}><FaClipboardList /> Admin navigation</Dropdown.Item>
+                                <Dropdown.Item className="ia-menu-item" onClick={() => openFeatureRules(inst)}><FaKey /> Year / branch access rules</Dropdown.Item>
+                                <Dropdown.Divider className="ia-menu-divider" />
+                                <Dropdown.Item className="ia-menu-item ia-menu-danger" onClick={() => setShowDeleteConfirm(inst)}><FaTrash /> Delete institute</Dropdown.Item>
+                              </Dropdown.Menu>
+                            </Dropdown>
                           </div>
                         </td>
-                        <td className="action-buttons">
-                          <Button
-                            variant="outline-primary"
-                            size="sm"
-                            onClick={() => openStudentsModal(inst)}
-                            title="View Students"
-                          >
-                            <FaEye />
-                          </Button>
-                          <Button
-                            variant="outline-orange"
-                            size="sm"
-                            onClick={() => handleEdit(inst)}
-                            title="Edit Institute"
-                          >
-                            <FaEdit />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => setShowDeleteConfirm(inst)}
-                            title="Delete Institute"
-                          >
-                            <FaTrash />
-                          </Button>
-                          <Button
-                            variant="outline-success"
-                            size="sm"
-                            onClick={() => openCreateAdmin(inst)}
-                            title="Create Admin"
-                          >
-                            <FaUserPlus />
-                          </Button>
-                          <Button
-                            variant="outline-info"
-                            size="sm"
-                            onClick={() => openNavConfig(inst)}
-                            title="Student Navigation"
-                          >
-                            <FaSlidersH />
-                          </Button>
-                          <Button
-                            variant="outline-warning"
-                            size="sm"
-                            onClick={() => openAdminNavConfig(inst)}
-                            title="Admin Navigation"
-                          >
-                            <FaClipboardList />
-                          </Button>
-                          <Button
-                            variant="outline-danger"
-                            size="sm"
-                            onClick={() => openFeatureRules(inst)}
-                            title="Year/Branch Access Rules"
-                          >
-                            <FaKey />
-                          </Button>
-                        </td>
                       </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="empty-state">
-                        <div className="empty-state-content">
-                          <FaBuilding size={48} className="text-muted mb-3" />
-                          <h5>No Institutes Found</h5>
-                          <p className="text-muted">Get started by adding your first institute</p>
-                          <Button
-                            variant="orange"
-                            onClick={() => {
-                              setEditing(null)
-                              setForm({ name: '', email: '', phone: '' })
-                              setShowModal(true)
-                            }}
-                          >
-                            <FaPlus className="me-2" />
-                            Add Institute
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <InstitutePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-              />
-            )}
-          </Card>
+            <TableFooter page={currentPage} pageSize={institutesPerPage} total={filteredInstitutes.length} onPageChange={setCurrentPage} noun="institutes" />
+          </>
         )}
       </div>
 
       {/* Create/Edit Institute Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg" className="institute-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showModal} onHide={() => setShowModal(false)} centered size="lg" className="institute-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2">
@@ -1065,7 +921,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* Create Admin Modal */}
-      <Modal show={showAdminModal} onHide={() => setShowAdminModal(false)} centered size="lg" className="admin-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showAdminModal} onHide={() => setShowAdminModal(false)} centered size="lg" className="admin-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2">
@@ -1150,7 +1006,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal show={!!showDeleteConfirm} onHide={() => setShowDeleteConfirm(null)} centered className="delete-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={!!showDeleteConfirm} onHide={() => setShowDeleteConfirm(null)} centered className="delete-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">Confirm Delete</Modal.Title>
         </Modal.Header>
@@ -1453,7 +1309,7 @@ const InstituteAdmin: React.FC = () => {
         />,
         document.body
       )}
-      <Modal show={showStudentsModal} onHide={() => setShowStudentsModal(false)} centered size="xl" backdrop={false} className="institute-modal students-modal" style={{ zIndex: 1050 }}>
+      <Modal contentClassName="aui-modal ia-modal" show={showStudentsModal} onHide={() => setShowStudentsModal(false)} centered size="xl" backdrop={false} className="institute-modal students-modal" style={{ zIndex: 1050 }}>
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white" style={{ width: '100%' }}>
             <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -1670,7 +1526,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* ── Edit Student Modal ── */}
-      <Modal show={!!editStudent} onHide={() => setEditStudent(null)} centered size="lg" className="institute-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={!!editStudent} onHide={() => setEditStudent(null)} centered size="lg" className="institute-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2">
@@ -1765,7 +1621,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* ── Admin Nav Config Modal ── */}
-      <Modal show={showAdminNavModal} onHide={() => setShowAdminNavModal(false)} centered size="lg" className="institute-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showAdminNavModal} onHide={() => setShowAdminNavModal(false)} centered size="lg" className="institute-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2">
@@ -1850,7 +1706,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* ── Feature Rules Modal (retired — now part of Nav Config modal) ── */}
-      <Modal show={showFeatureRulesModal} onHide={() => setShowFeatureRulesModal(false)} size="sm" centered>
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showFeatureRulesModal} onHide={() => setShowFeatureRulesModal(false)} size="sm" centered>
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white" style={{ fontSize: '1rem' }}>Access Rules Moved</Modal.Title>
         </Modal.Header>
@@ -1867,7 +1723,51 @@ const InstituteAdmin: React.FC = () => {
 
       {/* Global Styles */}
       <style>{`
-        .institute-admin-dashboard { padding: 0; display: flex; flex-direction: column; gap: 10px; }
+        /* ── Table ── */
+        .ia-contact { display: flex; flex-direction: column; gap: 3px; color: #a6abb0; font-size: 0.78rem; }
+        .ia-contact span { display: inline-flex; align-items: center; gap: 6px; }
+        .ia-contact svg { color: #6b7280; }
+        .ia-portal { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+        .ia-portal-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .ia-domain { display: inline-flex; align-items: center; gap: 6px; color: #ffb15e; font-size: 0.8rem; text-decoration: none; }
+        .ia-domain svg { opacity: 0.6; }
+        .ia-domain:hover { color: #ffc98a; text-decoration: underline; }
+        .ia-copy { display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px; border: 0; background: none; color: #6b7280; font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+        .ia-copy:hover { color: #fff; }
+        .ia-count { display: inline-flex; flex-direction: column; align-items: center; min-width: 64px; padding: 2px 6px; border: 0; background: none; cursor: pointer; }
+        .ia-count:hover b { text-decoration: underline; }
+        .ia-count b { color: #4b5056; font-size: 1.05rem; font-weight: 800; line-height: 1.1; }
+        .ia-count.has b { color: #ff9a3c; }
+        .ia-count small { color: #6b7280; font-size: 0.62rem; letter-spacing: 0.04em; text-transform: uppercase; }
+        .ia-actions { display: inline-flex; gap: 6px; }
+        .ia-actions .dropdown-toggle::after { display: none; }
+        .ia-menu { min-width: 240px; padding: 6px !important; border: 1px solid #34383d !important; border-radius: 10px !important; background: #17191c !important; box-shadow: 0 14px 34px rgba(0,0,0,0.55); }
+        .ia-menu-head { padding: 6px 10px 4px !important; color: #6b7280 !important; font-size: 0.62rem !important; font-weight: 750 !important; letter-spacing: 0.06em; text-transform: uppercase; }
+        .ia-menu-item { display: flex !important; align-items: center; gap: 9px; padding: 7px 10px !important; border-radius: 7px; color: #d9dde1 !important; font-size: 0.8rem !important; }
+        .ia-menu-item svg { color: #858a90; font-size: 0.78rem; }
+        .ia-menu-item:hover, .ia-menu-item:focus { background: #23262a !important; color: #fff !important; }
+        .ia-menu-danger, .ia-menu-danger svg { color: #fb737a !important; }
+        .ia-menu-danger:hover { background: rgba(251,95,103,0.12) !important; }
+        .ia-menu-divider { margin: 4px 0 !important; border-color: #2a2e32 !important; }
+
+        /* ── Popups: existing forms, recoloured for the kit ── */
+        .ia-modal .modal-header { padding: 1rem 1.25rem; border-bottom: 1px solid #25282b !important; background: #111315 !important; }
+        .ia-modal .modal-header .modal-title { color: #fff !important; font-size: 1.02rem; font-weight: 750; }
+        .ia-modal .modal-header .btn-close { filter: invert(1) grayscale(1); opacity: 0.6; }
+        .ia-modal .modal-body { background: #0e1012 !important; color: #e5e7eb; }
+        .ia-modal .modal-footer { border-top: 1px solid #25282b !important; background: #111315 !important; }
+        .ia-modal .form-label, .ia-modal .text-muted { color: #9da2a8 !important; }
+        .ia-modal .form-control, .ia-modal .form-select { border: 1px solid #34383d !important; border-radius: 8px; background-color: #17191c !important; color: #f1f5f9 !important; color-scheme: dark; }
+        .ia-modal .form-control::placeholder { color: #5b616a; }
+        .ia-modal .form-control:focus, .ia-modal .form-select:focus { border-color: rgba(255,122,0,0.75) !important; box-shadow: 0 0 0 3px rgba(255,122,0,0.12) !important; }
+        .ia-modal .btn { border-radius: 8px; font-size: 0.82rem; font-weight: 600; }
+        .ia-modal .btn-secondary { border-color: #34383d; background: #17191c; color: #e0e3e5; }
+        .ia-modal .btn-secondary:hover { border-color: #71777e; background: #202327; color: #fff; }
+        .btn-orange { border-color: #ff7a00; background: #ff7a00; color: #fff; }
+        .btn-orange:hover, .btn-orange:focus { border-color: #e66e00; background: #e66e00; color: #fff; }
+        .ia-modal .modal-actions { border-top-color: #25282b; }
+        .ia-modal .domain-preview { border-color: #34383d; background: #17191c; }
+        .ia-modal .table { --bs-table-bg: transparent; --bs-table-color: #e5e7eb; }
 
         /* ── Nav Config Modal ── */
         .nav-config-modal .modal-content {
@@ -1886,108 +1786,10 @@ const InstituteAdmin: React.FC = () => {
           -webkit-backdrop-filter: blur(10px) !important;
         }
 
-        /* ── Compact top bar ── */
-        .ia-topbar {
-          display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-          background: #141414; border: 1px solid #222; border-radius: 12px;
-          padding: 8px 14px;
-        }
-        .ia-topbar-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .ia-topbar-icon {
-          width: 30px; height: 30px; border-radius: 8px;
-          background: rgba(255,140,0,.12); display: flex; align-items: center;
-          justify-content: center; color: #ff8c00;
-        }
-        .ia-topbar-title { color: #fff; font-weight: 700; font-size: .9rem; white-space: nowrap; }
-        .ia-pill {
-          display: flex; align-items: center; gap: 4px;
-          background: #1e1e1e; border: 1px solid #2a2a2a; border-radius: 20px;
-          padding: 3px 10px; font-size: .72rem; color: #888; white-space: nowrap;
-        }
-        .ia-pill b { color: #ccc; }
-        .ia-pill.succ { border-color: #22c55e33; } .ia-pill.succ b { color: #22c55e; }
-        .ia-pill.info { border-color: #38bdf833; } .ia-pill.info b { color: #38bdf8; }
-
-        .ia-search-wrap {
-          flex: 1; min-width: 200px; position: relative;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .ia-search-icon { position: absolute; left: 10px; color: #555; pointer-events: none; }
-        .ia-search {
-          width: 100%; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px;
-          color: #ccc; font-size: .8rem; padding: 6px 30px 6px 28px; outline: none;
-          transition: border-color .15s;
-        }
-        .ia-search:focus { border-color: #ff8c00; }
-        .ia-search-clear {
-          position: absolute; right: 8px;
-          background: none; border: none; color: #555; cursor: pointer; padding: 0;
-        }
-        .ia-search-clear:hover { color: #ff8c00; }
-
-        .ia-add-btn {
-          background: #ff8c00; border: none; color: #fff; border-radius: 8px;
-          padding: 6px 14px; font-size: .8rem; font-weight: 600; cursor: pointer;
-          display: flex; align-items: center; gap: 6px; white-space: nowrap;
-          transition: background .15s; flex-shrink: 0;
-        }
-        .ia-add-btn:hover { background: #e67e00; }
-
-        /* Toast */
-        .ia-toast {
-          padding: 8px 16px; border-radius: 8px; font-size: .82rem;
-          display: flex; align-items: center;
-        }
-        .ia-toast-success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); color: #22c55e; }
-        .ia-toast-error   { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.25);  color: #ef4444; }
-
         .bg-orange { background-color: #ff8c00; }
         .bg-dark-lighter { background-color: #2a2a2a; }
         .text-orange { color: #ff8c00; }
         .border-orange { border-color: #ff8c00; }
-        
-        .institute-table {
-          width: 100%;
-          border-collapse: collapse;
-        }
-        .institute-table thead th {
-          padding: 1rem;
-          text-align: left;
-          color: #6c757d;
-          font-weight: 500;
-          border-bottom: 1px solid #3a3a3a;
-        }
-        .institute-table tbody tr {
-          border-bottom: 1px solid #2a2a2a;
-          transition: background 0.2s;
-        }
-        .institute-table tbody tr:hover { background: rgba(255, 140, 0, 0.05); }
-        .institute-table td { padding: 1rem; }
-        
-        .institute-name { color: white; font-weight: 500; }
-        .contact-info { font-size: 0.875rem; }
-        .contact-item { color: #adb5bd; }
-        
-        .domain-badge {
-          background: #2a2a2a !important;
-          color: #ff8c00 !important;
-          padding: 0.5rem 1rem;
-          font-weight: 500;
-        }
-        .domain-actions { display: flex; gap: 0.5rem; }
-        .domain-link {
-          padding: 0;
-          font-size: 0.75rem;
-          color: #ff8c00;
-          text-decoration: none;
-        }
-        .domain-link:hover { color: #e67e00; }
-        
-        .action-buttons { display: flex; gap: 0.5rem; justify-content: center; }
-        .action-buttons button { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
-        
-        .empty-state { text-align: center; padding: 3rem !important; }
-        .empty-state-content { display: flex; flex-direction: column; align-items: center; }
         
         .input-with-icon { position: relative; }
         .input-icon {
@@ -2028,44 +1830,6 @@ const InstituteAdmin: React.FC = () => {
         
         .loading-container { text-align: center; padding: 3rem; }
         
-        .institute-pagination {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1rem 1.5rem;
-          background: #1e1e1e;
-          border-radius: 12px;
-          border-top: 1px solid #3a3a3a;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-        
-        .pagination-btn {
-          min-width: 36px;
-          height: 36px;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          background: #2a2a2a;
-          border: 1px solid #3a3a3a;
-          color: #e0e0e0;
-          border-radius: 8px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .pagination-btn:hover:not(:disabled) {
-          background: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-        .pagination-btn.active {
-          background: #ff8c00;
-          border-color: #ff8c00;
-          color: white;
-        }
-        .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        .pagination-dots { color: #6c757d; padding: 0 0.5rem; }
-        
         .custom-alert { border-radius: 12px; border: none; }
         
         .btn-outline-orange {
@@ -2088,7 +1852,7 @@ const InstituteAdmin: React.FC = () => {
       `}</style>
 
       {/* ── Add Student Modal ── */}
-      <Modal show={showAddStudentModal} onHide={() => setShowAddStudentModal(false)} centered size="lg" className="institute-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showAddStudentModal} onHide={() => setShowAddStudentModal(false)} centered size="lg" className="institute-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2"><FaPlus /> Add Student — {studentsInstitute?.name}</div>
@@ -2135,7 +1899,7 @@ const InstituteAdmin: React.FC = () => {
       </Modal>
 
       {/* ── Bulk Upload Modal ── */}
-      <Modal show={showBulkModal} onHide={() => setShowBulkModal(false)} centered size="lg" className="institute-modal">
+      <Modal contentClassName="aui-modal ia-modal" backdropClassName="aui-backdrop" show={showBulkModal} onHide={() => setShowBulkModal(false)} centered size="lg" className="institute-modal">
         <Modal.Header closeButton className="bg-dark border-secondary">
           <Modal.Title className="text-white">
             <div className="d-flex align-items-center gap-2"><FaUserPlus /> Bulk Upload Students — {studentsInstitute?.name}</div>
@@ -2189,7 +1953,7 @@ const InstituteAdmin: React.FC = () => {
           )}
         </Modal.Body>
       </Modal>
-    </>
+    </AdminPage>
   )
 }
 
